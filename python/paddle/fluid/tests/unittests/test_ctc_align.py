@@ -217,5 +217,16 @@ class TestCTCAlignOpApi(unittest.TestCase):
                       return_numpy=False)
 
 
+class BadInputTestCTCAlignr(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                x = fluid.layers.data(name='x', shape=[8], dtype='int64')
+                cost = fluid.layers.ctc_greedy_decoder(input=x, blank=0)
+
+            self.assertRaises(TypeError, test_bad_x)
+
+
 if __name__ == "__main__":
     unittest.main()

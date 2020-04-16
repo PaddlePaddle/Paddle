@@ -18,7 +18,7 @@ import paddle
 import paddle.fluid as fluid
 
 
-class TestVarianceLayer(unittest.TestCase):
+class TestStdLayer(unittest.TestCase):
     def setUp(self):
         self._dtype = "float64"
         self._input = np.random.random([2, 3, 4, 5]).astype(self._dtype)
@@ -30,7 +30,7 @@ class TestVarianceLayer(unittest.TestCase):
                 name="data", dtype=self._dtype, shape=[None, 3, 4, 5])
             out = prog.current_block().create_var(
                 dtype=self._dtype, shape=[2, 3, 4, 5])
-            paddle.var(input=data,
+            paddle.std(input=data,
                        axis=axis,
                        keepdim=keepdim,
                        unbiased=unbiased,
@@ -44,7 +44,7 @@ class TestVarianceLayer(unittest.TestCase):
     def dynamic(self, axis=None, keepdim=False, unbiased=True):
         with fluid.dygraph.guard(self._place):
             data = fluid.dygraph.to_variable(self._input)
-            out = paddle.var(input=data,
+            out = paddle.std(input=data,
                              axis=axis,
                              keepdim=keepdim,
                              unbiased=unbiased)
@@ -53,10 +53,10 @@ class TestVarianceLayer(unittest.TestCase):
     def numpy(self, axis=None, keepdim=False, unbiased=True):
         ddof = 1 if unbiased else 0
         axis = tuple(axis) if isinstance(axis, list) else axis
-        return np.var(self._input, axis=axis, keepdims=keepdim, ddof=ddof)
+        return np.std(self._input, axis=axis, keepdims=keepdim, ddof=ddof)
 
     def test_equal(self):
-        places = [fluid.CPUPlace()]
+        places = []
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:

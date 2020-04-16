@@ -198,14 +198,10 @@ class StaticModelRunner(layers.Layer):
         self._recheck_stop_gradients()
 
     def train(self):
-        # TODO: remove global train_mode setting
-        framework._dygraph_tracer().train_mode()
         self._is_test = False
         self._change_is_test_status(False)
 
     def eval(self):
-        # TODO: remove global train_mode setting
-        framework._dygraph_tracer().eval_mode()
         self._is_test = True
         self._change_is_test_status(True)
 

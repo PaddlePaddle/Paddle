@@ -95,8 +95,6 @@ template <typename DeviceContext, typename T>
 class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
     auto* prior_box = context.Input<framework::LoDTensor>("PriorBox");
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");

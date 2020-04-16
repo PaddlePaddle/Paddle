@@ -13,6 +13,10 @@
 # limitations under the License.
 """Defination of device workers."""
 
+from __future__ import print_function
+
+from paddle.fluid.incubate.fleet.parameter_server import version
+
 __all__ = [
     'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
 ]
@@ -33,7 +37,7 @@ class DeviceWorker(object):
     def _set_infer(self, infer=False):
         """
         set inference flag for current device worker
-        
+
         Args:
             infer(bool): whether to do inference
         """
@@ -101,6 +105,9 @@ class Hogwild(DeviceWorker):
         if not opt_info:
             return
 
+        if version.is_transpiler() and "fleet_desc" not in opt_info:
+            return
+
         program_configs = opt_info["program_configs"]
         downpour = trainer_desc.downpour_param
         hogwild = trainer_desc.hogwild_param
@@ -149,7 +156,7 @@ class Hogwild(DeviceWorker):
                 i].slot_gradient)
             sparse_table.fea_dim = \
                 self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                i].accessor.fea_dim
+                    i].accessor.fea_dim
             # not use emb_dim
             sparse_table.emb_dim = -1
             # not use hard code click
@@ -246,12 +253,12 @@ class DownpourSGD(DeviceWorker):
                     "no_cvm"] == True:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                    i].accessor.fea_dim
+                        i].accessor.fea_dim
                 sparse_table.fea_dim = sparse_table.emb_dim
             else:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                    i].accessor.fea_dim - 2
+                        i].accessor.fea_dim - 2
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
@@ -346,12 +353,12 @@ class DownpourSGDOPT(DeviceWorker):
                     "no_cvm"] == True:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                    i].accessor.fea_dim
+                        i].accessor.fea_dim
                 sparse_table.fea_dim = sparse_table.emb_dim
             else:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                    i].accessor.fea_dim - 2
+                        i].accessor.fea_dim - 2
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
@@ -406,7 +413,7 @@ class Section(DeviceWorker):
             cfg.program_desc.ParseFromString(program["program"]._get_desc()
                                              .serialize_to_string())
             # TODO: why does not work
-            #cfg.program_desc.CopyFrom(program.program._get_desc())
+            # cfg.program_desc.CopyFrom(program.program._get_desc())
             place = pipeline_opt["place_list"][i]
             if isinstance(place, core.CPUPlace):
                 cfg.place = cfg.CPUPlace
