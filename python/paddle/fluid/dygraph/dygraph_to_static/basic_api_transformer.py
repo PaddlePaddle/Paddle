@@ -16,7 +16,6 @@ import astor
 import gast
 
 from paddle.fluid import unique_name
-
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api, is_to_variable
 from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
@@ -58,6 +57,8 @@ class BasicApiTransformer(gast.NodeTransformer):
         value_node = node.value
         for child_node in gast.walk(value_node):
             if isinstance(child_node, gast.Call):
+                # TODO(liym27):
+                #  Considers that a dygraph api which modifies the input or has a output.
                 if is_dygraph_api(child_node):
                     return
                 else:
