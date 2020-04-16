@@ -30,8 +30,18 @@ __all__ = [
 ]
 
 model_urls = {
+    'resnet18': ('https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams',
+                 '0ba53eea9bc970962d0ef96f7b94057e'),
+    'resnet34': ('https://paddle-hapi.bj.bcebos.com/models/resnet34.pdparams',
+                 '46bc9f7c3dd2e55b7866285bee91eff3'),
     'resnet50': ('https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams',
-                 '0884c9087266496c41c60d14a96f8530')
+                 '0884c9087266496c41c60d14a96f8530'),
+    'resnet101':
+    ('https://paddle-hapi.bj.bcebos.com/models/resnet101.pdparams',
+     'fb07a451df331e4b0bb861ed97c3a9b9'),
+    'resnet152':
+    ('https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams',
+     'f9c700f26d3644bb76ad2226ed5f5713'),
 }
 
 
@@ -252,8 +262,8 @@ class ResNet(Model):
         return x
 
 
-def _resnet(arch, Block, depth, pretrained):
-    model = ResNet(Block, depth, num_classes=1000, with_pool=True)
+def _resnet(arch, Block, depth, pretrained, **kwargs):
+    model = ResNet(Block, depth, **kwargs)
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
@@ -265,46 +275,46 @@ def _resnet(arch, Block, depth, pretrained):
     return model
 
 
-def resnet18(pretrained=False):
+def resnet18(pretrained=False, **kwargs):
     """ResNet 18-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    return _resnet('resnet18', BasicBlock, 18, pretrained)
+    return _resnet('resnet18', BasicBlock, 18, pretrained, **kwargs)
 
 
-def resnet34(pretrained=False):
+def resnet34(pretrained=False, **kwargs):
     """ResNet 34-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    return _resnet('resnet34', BasicBlock, 34, pretrained)
+    return _resnet('resnet34', BasicBlock, 34, pretrained, **kwargs)
 
 
-def resnet50(pretrained=False):
+def resnet50(pretrained=False, **kwargs):
     """ResNet 50-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    return _resnet('resnet50', BottleneckBlock, 50, pretrained)
+    return _resnet('resnet50', BottleneckBlock, 50, pretrained, **kwargs)
 
 
-def resnet101(pretrained=False):
+def resnet101(pretrained=False, **kwargs):
     """ResNet 101-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    return _resnet('resnet101', BottleneckBlock, 101, pretrained)
+    return _resnet('resnet101', BottleneckBlock, 101, pretrained, **kwargs)
 
 
-def resnet152(pretrained=False):
+def resnet152(pretrained=False, **kwargs):
     """ResNet 152-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    return _resnet('resnet152', BottleneckBlock, 152, pretrained)
+    return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)
