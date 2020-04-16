@@ -22,7 +22,8 @@ namespace framework {
 namespace ir {
 
 void MatmulTransposeReshapePass::ApplyImpl(ir::Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph, "graph cannot be null");
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::InvalidArgument("graph cannot be null"));
   FusePassBase::Init(name_scope_, graph);
 
   GraphPatternDetector gpd;

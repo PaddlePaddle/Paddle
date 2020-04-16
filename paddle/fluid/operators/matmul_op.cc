@@ -417,7 +417,12 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     //  if matmul+transpose+reshape fuse activated
     if (!reshape_out.empty() && !axis_out.empty()) {
-      PADDLE_ENFORCE(reshape_out.size() == 3 || reshape_out.size() == 4);
+      auto reshape_out_size = reshape_out.size();
+      PADDLE_ENFORCE_EQ(reshape_out_size == 3 || reshape_out_size == 4, true,
+                        platform::errors::InvalidArgument(
+                            "reshape_out supported rank is 3 and 4, "
+                            "received %d",
+                            reshape_out_size));
       framework::DDim shape_out =
           ddim_out.transpose(axis_out).reshape(reshape_out);
       context->SetOutputDim("Out", shape_out);

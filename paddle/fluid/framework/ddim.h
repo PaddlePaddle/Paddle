@@ -153,24 +153,26 @@ class DDim {
     size_t x_rank = in_dims.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(x_rank, axis_size,
-                      "The input dimension's size "
-                      "should be equal to the axis's size. "
-                      "But received dimension is %d, "
-                      "axis's size is %d",
-                      x_rank, axis_size);
+    PADDLE_ENFORCE_EQ(
+        x_rank, axis_size,
+        platform::errors::InvalidArgument("The input dimension's size "
+                                          "should be equal to the axis's size. "
+                                          "But received dimension is %d, "
+                                          "axis's size is %d",
+                                          x_rank, axis_size));
 
     std::vector<T> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE(
-          axis[i] < static_cast<T>(axis_size) && ++count[axis[i]] == 1,
-          "ValueError: Each element of axis should "
-          "be a unique value range from 0 to (dims - 1), "
-          "where the dims is the axis's size, "
-          "unique value means this axis value can appear only once. "
-          "But received axis[%d] is %d, axis_size is %d, "
-          "count[axis[%d]] is %d",
-          i, axis[i], axis_size, i, count[axis[i]]);
+      PADDLE_ENFORCE_EQ(
+          axis[i] < static_cast<T>(axis_size) && ++count[axis[i]] == 1, true,
+          platform::errors::InvalidArgument(
+              "ValueError: Each element of axis should "
+              "be a unique value range from 0 to (dims - 1), "
+              "where the dims is the axis's size, "
+              "unique value means this axis value can appear only once. "
+              "But received axis[%d] is %d, axis_size is %d, "
+              "count[axis[%d]] is %d",
+              i, axis[i], axis_size, i, count[axis[i]]));
     }
 
     framework::DDim out_dims(in_dims);

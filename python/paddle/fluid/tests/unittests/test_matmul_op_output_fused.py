@@ -50,7 +50,7 @@ class TestMatMulOpSpecial(OpTest):
 
 
 @skip_check_grad_ci(reason="Tests inference only optimization.")
-class TestMatMulOpSpecialHackedXSimplest(TestMatMulOpSpecial):
+class TestMatMulOpSpecialSimplest(TestMatMulOpSpecial):
     def generate_data(self):
         bs = 3
         self.x = np.random.random([bs, 12, 128, 128]).astype("float32")
