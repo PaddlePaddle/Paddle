@@ -1161,7 +1161,7 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
-def softmax(input, use_cudnn=False, name=None, axis=-1):
+def softmax(input, use_cudnn=True, name=None, axis=-1):
     """
     This operator implements the softmax layer. The calculation process is as follows:
 
