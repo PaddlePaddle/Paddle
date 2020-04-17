@@ -18,36 +18,57 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class ThreadLocalAllocation : public Allocation {
- public:
-  ThreadLocalAllocation(void* ptr, size_t size, platform::Place place)
-      : Allocation(ptr, size, place) {}
-
-  void SetThreadLocalAllocator(std::shared_ptr<Allocator> allocator) {
-    allocator_ = allocator;
+ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
+    : place_(p) {
+  if (platform::is_gpu_place(place_)) {
+    buddy_allocator_.reset(new memory::detail::BuddyAllocator(
+        std::unique_ptr<memory::detail::SystemAllocator>(
+            new memory::detail::GPUAllocator(
+                boost::get<platform::CUDAPlace>(place_).device)),
+        platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+  } else {
+    LOG(FATAL) << "Thread local allocator only supports CUDAPlace now.";
   }
+}
 
- private:
-  std::shared_ptr<Allocator> allocator_;
-};
+std::shared_ptr<ThreadLocalAllocatorImpl> CUDAThreadLocalAllocatorPool::Get(
+    int gpu_id) {
+  auto pos = std::distance(devices_.begin(),
+                           std::find(devices_.begin(), devices_.end(), gpu_id));
+  PADDLE_ENFORCE_LT(
+      pos, devices_.size(),
+      platform::errors::InvalidArgument(
+          "The position of device should be less than the size of devices."));
+  std::call_once(*init_flags_[pos], [this, pos, gpu_id] {
+    platform::SetDeviceId(devices_[pos]);
+    allocators_[pos].reset(
+        new ThreadLocalAllocatorImpl(platform::CUDAPlace(gpu_id)));
+  });
+  return allocators_[pos];
+}
 
-Allocation* ThreadLocalAllocator::AllocateImpl(size_t size) {
+CUDAThreadLocalAllocatorPool::CUDAThreadLocalAllocatorPool()
+    : devices_(platform::GetSelectedDevices()) {
+  auto gpu_num = devices_.size();
+  allocators_.resize(gpu_num);
+  init_flags_.reserve(gpu_num);
+  for (size_t i = 0; i < gpu_num; ++i) {
+    init_flags_.emplace_back(new std::once_flag());
+  }
+}
+
+ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
+  VLOG(10) << "ThreadLocalAllocatorImpl::AllocateImpl " << size;
   void* ptr = buddy_allocator_->Alloc(size);
   auto* tl_allocation = new ThreadLocalAllocation(ptr, size, place_);
-  tl_allocation->SetThreadLocalAllocator(shared_from_this());
+  tl_allocation->SetThreadLocalAllocatorImpl(shared_from_this());
   return tl_allocation;
 }
 
-void ThreadLocalAllocator::FreeImpl(Allocation* allocation) {
-  auto* tl_allocation = static_cast<ThreadLocalAllocation*>(allocation);
-  buddy_allocator_->Free(tl_allocation->ptr());
-  delete tl_allocation;
-}
-
-const std::shared_ptr<Allocator>& GetThreadLocalAllocator() {
-  static thread_local std::shared_ptr<Allocator> allocator(
-      new ThreadLocalAllocator(platform::CUDAPlace()));
-  return allocator;
+void ThreadLocalAllocatorImpl::FreeImpl(ThreadLocalAllocation* allocation) {
+  VLOG(10) << "ThreadLocalAllocatorImpl::FreeImpl " << allocation;
+  buddy_allocator_->Free(allocation->ptr());
+  delete allocation;
 }
 
 }  // namespace allocation
