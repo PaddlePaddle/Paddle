@@ -21,7 +21,7 @@ import numpy as np
 import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import declarative
 
 np.random.seed(2020)
 
@@ -34,7 +34,7 @@ class SimpleFcLayer(fluid.dygraph.Layer):
         super(SimpleFcLayer, self).__init__()
         self._linear = fluid.dygraph.Linear(fc_size, fc_size)
 
-    @dygraph_to_static_output
+    @declarative
     def forward(self, x):
         x = fluid.dygraph.to_variable(x)
         y = self._linear(x)
