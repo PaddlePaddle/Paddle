@@ -87,11 +87,8 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "elementwise_add", "elementwise_add1",
           std::vector<std::string>({"h", "i"}), std::vector<std::string>({"j"}),
           mkldnn_enabled_op.compare("elementwise_add") == 0);
-    SetOp(&prog, "elementwise_add", "elementwise_add2",
-          std::vector<std::string>({"j", "k"}), std::vector<std::string>({"l"}),
-          mkldnn_enabled_op.compare("elementwise_add") == 0);
-    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"l"}),
-          std::vector<std::string>({"m"}),
+    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"j"}),
+          std::vector<std::string>({"k"}),
           mkldnn_enabled_op.compare("softmax") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
@@ -154,7 +151,7 @@ TEST(MKLDNNInplacePass, inplace_softmax_branched) {
 
 TEST(MKLDNNInplacePass, inplace_elementwise_add) {
   // Two elementwise_add mkl-dnn enabled op instances to be made inplace
-  MKLDNNInplacePassTest().MainTest("elementwise_add", false, 2);
+  MKLDNNInplacePassTest().MainTest("elementwise_add", false, 1);
 }
 }  // namespace ir
 }  // namespace framework
