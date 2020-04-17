@@ -72,7 +72,7 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(in_dim[1] % 2, 0,
                       platform::errors::InvalidArgument(
                           "input's second dimension must be even. But "
-                          "received: Input 2nd dim is [%d]",
+                          "received: Input 2nd dimension is [%d]",
                           in_dim[1]));
 
     ctx->SetOutputDim("Output", in_dim);

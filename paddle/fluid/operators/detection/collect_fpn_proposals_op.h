@@ -71,11 +71,19 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int post_nms_topN = context.Attr<int>("post_nms_topN");
 
     PADDLE_ENFORCE_GE(post_nms_topN, 0UL,
-                      "The parameter post_nms_topN must be a positive integer");
+                      platform::errors::InvalidArgument(
+                          "The parameter post_nms_topN must be "
+                          "a positive integer. But received post_nms_topN = %d",
+                          post_nms_topN));
 
     // assert that the length of Rois and scores are same
-    PADDLE_ENFORCE(multi_layer_rois.size() == multi_layer_scores.size(),
-                   "DistributeFpnProposalsOp need 1 level of LoD");
+    PADDLE_ENFORCE_EQ(
+        multi_layer_rois.size(), multi_layer_scores.size(),
+        platform::errors::InvalidArgument(
+            "The number of RoIs and Scores should"
+            " be the same. But received number of RoIs is %d, number of Scores "
+            "is %d",
+            multi_layer_rois.size(), multi_layer_scores.size()));
     // Check if the lod information of two LoDTensor is same
     const int num_fpn_level = multi_layer_rois.size();
     std::vector<int> integral_of_all_rois(num_fpn_level + 1, 0);

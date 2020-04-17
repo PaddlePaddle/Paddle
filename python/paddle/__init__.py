@@ -36,6 +36,7 @@ batch = batch.batch
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
+import paddle.imperative
 
 # TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
@@ -59,10 +60,10 @@ from .tensor.creation import full  #DEFINE_ALIAS
 from .tensor.creation import full_like  #DEFINE_ALIAS
 # from .tensor.creation import triu   #DEFINE_ALIAS
 # from .tensor.creation import tril   #DEFINE_ALIAS
-# from .tensor.creation import meshgrid   #DEFINE_ALIAS
+from .tensor.creation import meshgrid  #DEFINE_ALIAS
 # from .tensor.stat import mean   #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
-# from .tensor.stat import std   #DEFINE_ALIAS
+from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import greater_equal   #DEFINE_ALIAS
@@ -141,7 +142,7 @@ from .tensor.math import logsumexp  #DEFINE_ALIAS
 # from .tensor.math import inverse   #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
-# from .tensor.math import addcmul   #DEFINE_ALIAS
+from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clamp  #DEFINE_ALIAS
 # from .tensor.attribute import rank   #DEFINE_ALIAS
@@ -155,7 +156,7 @@ from .tensor.linalg import norm  #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
 from .tensor.linalg import dist  #DEFINE_ALIAS
 from .tensor.linalg import t  #DEFINE_ALIAS
-# from .tensor.linalg import cross   #DEFINE_ALIAS
+from .tensor.linalg import cross  #DEFINE_ALIAS
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS
 # from .tensor.manipulation import cast   #DEFINE_ALIAS
@@ -183,7 +184,7 @@ from .tensor.linalg import t  #DEFINE_ALIAS
 # from .tensor.manipulation import unstack   #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.manipulation import unbind   #DEFINE_ALIAS
-# from .tensor.manipulation import roll   #DEFINE_ALIAS
+from .tensor.manipulation import roll  #DEFINE_ALIAS
 from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import argmin   #DEFINE_ALIAS
 # from .tensor.search import argsort   #DEFINE_ALIAS
@@ -192,9 +193,9 @@ from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import masked_select   #DEFINE_ALIAS
 # from .tensor.search import topk   #DEFINE_ALIAS
 # from .tensor.search import where   #DEFINE_ALIAS
-# from .tensor.search import index_select   #DEFINE_ALIAS
+from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import index_sample  #DEFINE_ALIAS
-# from .tensor.search import nonzero   #DEFINE_ALIAS
+from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
 # from .framework.framework import get_default_dtype   #DEFINE_ALIAS
