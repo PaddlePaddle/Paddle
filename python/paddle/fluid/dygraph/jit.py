@@ -16,7 +16,7 @@ from __future__ import print_function
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
-import warnings
+import logging
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
@@ -26,6 +26,8 @@ from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dy
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+
+logger = logging.getLogger("fluid")
 
 
 def create_program_from_desc(program_desc):
@@ -52,17 +54,49 @@ def extract_vars(inputs):
 
 
 def _dygraph_to_static_func_(dygraph_func):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @dygraph_to_static_func only converts imperative dygraph APIs into
+    declarative net-building APIs, which means it doesn't return immediate
+    digital result as imperative mode. Users should handle Program and Executor
+    by themselves.
+
+    Note:
+    This decorator is NOT our recommended way to transform imperative function
+    to declarative function. We will remove this decorator after we finalize
+    cleaning up code.
+
+    Args:
+        dygraph_func(callable): callable imperative function
+
+    Returns:
+        A callable converting imperative dygraph APIs into declarative
+        net-building APIs.
+
+    Examples:
+        class NetWithExternalFunc(fluid.dygraph.Layer):
+            @dygraph_to_static_func
+            def forward(self, x, label=None):
+                if fluid.layers.mean(x) < 0:
+                    x_v = x - 1
+                else:
+                    x_v = add_fn(x)
+
+                x_v = softmax(x_v)
+                if label is not None:
+                    loss = loss_fn(x_v, label)
+                    return loss
+                return x_v
+    """
+
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
-        if in_dygraph_mode():
-            warnings.warn(
-                "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode. We will just return dygraph output. Use the "
-                "decorator in static mode if you would like to translate to "
-                "static graph.")
-            return dygraph_func(*args, **kwargs)
         program_translator = ProgramTranslator()
-        if not program_translator.enable_declarative:
+        if in_dygraph_mode() or not program_translator.enable_declarative:
+            logger.info(
+                "The decorator 'dygraph_to_static_func' doesn't work in "
+                "dygraph mode or set enable_declarative_function to False. "
+                "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
         static_func = program_translator.get_func(dygraph_func)
         return static_func(*args, **kwargs)
@@ -75,15 +109,14 @@ dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 def _declarative_(dygraph_func):
     def __impl__(*args, **kwargs):
-        if in_dygraph_mode():
-            warnings.warn(
-                "The decorator 'declarative' doesn't work in dygraph mode. We "
-                "will just return dygraph output. Use the decorator in static "
-                "mode if you would like to translate to static graph.")
+        program_translator = ProgramTranslator()
+        if in_dygraph_mode() or not program_translator.enable_declarative:
+            logger.info(
+                "The decorator 'declarative' doesn't work in dygraph "
+                "mode or set enable_declarative_function to False. We will "
+                "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
         program_translator = ProgramTranslator()
-        if not program_translator.enable_declarative:
-            return dygraph_func(*args, **kwargs)
         return program_translator.get_output(dygraph_func, *args, **kwargs)
 
     return __impl__

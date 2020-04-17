@@ -1,4 +1,17 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,10 +28,10 @@
 from __future__ import print_function
 import gast
 import inspect
+import logging
 import numpy
 import textwrap
 import threading
-import warnings
 
 from paddle.fluid import framework
 from paddle.fluid import core, executor
@@ -31,6 +44,8 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
+
+logger = logging.getLogger("fluid")
 
 
 class FunctionCache(object):
@@ -283,13 +298,11 @@ class ProgramTranslator(object):
         """
         Returns the output tensors for dygraph function and its arguments
         """
-        if in_dygraph_mode():
-            warnings.warn(
+        if in_dygraph_mode() or not self.enable_declarative:
+            logger.info(
                 "The ProgramTranslator.get_output doesn't work in dygraph "
-                "mode. We will just return dygraph output. Use it in "
-                "static mode if you would like to translate to static graph.")
-            return dygraph_func(*args, **kwargs)
-        if not self.enable_declarative:
+                "mode or set enable_declarative_function to False. We will "
+                "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
         program_cache = self.get_program_cache()
@@ -308,13 +321,11 @@ class ProgramTranslator(object):
         """
         Returns the translated static function from dygraph function
         """
-        if in_dygraph_mode():
-            warnings.warn(
+        if in_dygraph_mode() or not self.enable_declarative:
+            logger.info(
                 "The ProgramTranslator.get_func doesn't work in dygraph "
-                "mode. We will just return dygraph function. Use it in "
-                "static mode if you would like to translate to static graph.")
-            return dygraph_func
-        if not self.enable_declarative:
+                "mode or set enable_declarative_function to False. We will "
+                "just return dygraph output.")
             return dygraph_func
 
         static_func = convert_function_with_cache(dygraph_func)
@@ -325,17 +336,11 @@ class ProgramTranslator(object):
         Returns the translated static program and input/output variables from
         dygraph function.
         """
-        if in_dygraph_mode():
-            warnings.warn(
+        if in_dygraph_mode() or not self.enable_declarative:
+            logger.info(
                 "The ProgramTranslator.get_program doesn't work in dygraph "
-                "mode. We will just return dygraph output. Use it in static "
-                "mode if you would like to translate to static graph.")
-            return dygraph_func(*args, **kwargs)
-        if not self.enable_declarative:
-            warnings.warn(
-                "The ProgramTranslator.get_program doesn't work when you set "
-                "enable_declarative_function to False. We will just return "
-                "dygraph output.")
+                "mode or set enable_declarative_function to False. We will "
+                "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
         program_cache = self.get_program_cache()
