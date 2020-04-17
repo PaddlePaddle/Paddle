@@ -13,7 +13,7 @@ ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel tk-devel tkinter libtool xz graphviz gettext-devel
+RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel tk-devel tkinter libtool xz graphviz gettext-devel ccache
 RUN yum install -y curl-devel
 
 COPY tools/manylinux1/build_scripts ./build_scripts
@@ -33,6 +33,13 @@ RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
 RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz && \
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
+
+# ccache 3.6
+RUN wget https://paddle-ci.cdn.bcebos.com/ccache-3.6.tar.gz && \
+    tar xf ccache-3.6.tar.gz && mkdir /usr/local/ccache-3.6 && cd ccache-3.6 && \
+    ./configure -prefix=/usr/local/ccache-3.6 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache
 
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
