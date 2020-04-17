@@ -77,10 +77,10 @@ class CholeskyGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CholeskyGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "CholeskyGrad");
     OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "CholeskyGrad");
-    auto dims = ctx->GetInputDim("X");
+    auto dims = ctx->GetInputDim("Out");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, dims);
