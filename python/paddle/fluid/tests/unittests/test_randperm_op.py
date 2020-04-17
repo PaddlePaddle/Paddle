@@ -132,7 +132,7 @@ class TestRandpermOp_attr_out(unittest.TestCase):
             data_1 = fluid.layers.fill_constant([n], "int64", 3)
             paddle.randperm(n=n, out=data_1)
 
-            data_2 = paddle.randperm(n=n, dtype="int32", device="cpu")
+            data_2 = paddle.randperm(n=n, dtype="int32", device="gpu")
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -156,7 +156,7 @@ class TestRandpermDygraphMode(unittest.TestCase):
             self.assertTrue(
                 check_randperm_out(n, data_1_np), msg=error_msg(data_1_np))
 
-            data_2 = paddle.randperm(n, dtype="int32", device="cpu")
+            data_2 = paddle.randperm(n, dtype="int32", device="gpu")
             data_2_np = data_2.numpy()
             self.assertTrue(
                 check_randperm_out(n, data_2_np), msg=error_msg(data_2_np))
