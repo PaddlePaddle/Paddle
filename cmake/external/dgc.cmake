@@ -18,12 +18,17 @@ SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc")
 SET(DGC_INSTALL_DIR "${THIRD_PARTY_PATH}/install/dgc")
 SET(DGC_INCLUDE_DIR "${DGC_INSTALL_DIR}/include" CACHE PATH "dgc include directory." FORCE)
 SET(DGC_LIBRARIES   "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
+SET(DGC_URL         "http://fleet.bj.bcebos.com/collective_ef2216a.tgz")
 INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
+
+cache_third_party(extern_dgc
+        URL       ${DGC_URL}
+        DIR       DGC_SOURCES_DIR)
 
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    URL             "http://fleet.bj.bcebos.com/collective_ef2216a.tgz"
+    "${DGC_DOWNLOAD_CMD}"
     URL_MD5         "2f67549fd5f1262383d83289abc4f88f"
     SOURCE_DIR      "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
