@@ -36,8 +36,21 @@ class BmnMetric(Metric):
         #get video_dict and video_list
         if self.mode == 'test':
             self.get_test_dataset_dict()
+            if not os.path.isdir(self.cfg.TEST.output_path):
+                os.makedirs(self.cfg.TEST.output_path)
+            if not os.path.isdir(self.cfg.TEST.result_path):
+                os.makedirs(self.cfg.TEST.result_path)
         elif self.mode == 'infer':
             self.get_infer_dataset_dict()
+            if not os.path.isdir(self.cfg.INFER.output_path):
+                os.makedirs(self.cfg.INFER.output_path)
+            if not os.path.isdir(self.cfg.INFER.result_path):
+                os.makedirs(self.cfg.INFER.result_path)
+
+    def add_metric_op(self, preds, label):
+        pred_bm, pred_start, pred_en = preds
+        video_index = label[-1]
+        return [pred_bm, pred_start, pred_en, video_index]  #return list
 
     def update(self, pred_bm, pred_start, pred_end, fid):
         # generate proposals

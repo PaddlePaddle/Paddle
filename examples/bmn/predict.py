@@ -37,7 +37,6 @@ def parse_args():
     parser.add_argument(
         "-d",
         "--dynamic",
-        default=True,
         action='store_true',
         help="enable dygraph mode, only support dynamic mode at present time")
     parser.add_argument(
@@ -54,10 +53,21 @@ def parse_args():
         help='weight path, None to automatically download weights provided by Paddle.'
     )
     parser.add_argument(
-        '--save_dir',
+        '--filelist',
+        type=str,
+        default="infer.list",
+        help='infer file list, default to use ./infer.list')
+    parser.add_argument(
+        '--output_path',
+        type=str,
+        default="output/INFER/BMN_results",
+        help='output dir path, default to use output/INFER/BMN_results')
+    parser.add_argument(
+        '--result_path',
         type=str,
         default="predict_results/",
-        help='output dir path, default to use ./predict_results/')
+        help='output dir path after post processing, default to use ./predict_results/'
+    )
     parser.add_argument(
         '--log_interval',
         type=int,
@@ -69,18 +79,21 @@ def parse_args():
 
 # Prediction
 def infer_bmn(args):
-    # only support dynamic mode at present time
     device = set_device(args.device)
     fluid.enable_dygraph(device) if args.dynamic else None
 
+    #config setting
     config = parse_config(args.config_file)
     infer_cfg = merge_configs(config, 'infer', vars(args))
 
-    if not os.path.isdir(config.INFER.output_path):
-        os.makedirs(config.INFER.output_path)
-    if not os.path.isdir(config.INFER.result_path):
-        os.makedirs(config.INFER.result_path)
+    feat_dim = config.MODEL.feat_dim
+    tscale = config.MODEL.tscale
+    dscale = config.MODEL.dscale
+    prop_boundary_ratio = config.MODEL.prop_boundary_ratio
+    num_sample = config.MODEL.num_sample
+    num_sample_perbin = config.MODEL.num_sample_perbin
 
+    #input and video index
     inputs = [
         Input(
             [None, config.MODEL.feat_dim, config.MODEL.tscale],
@@ -92,7 +105,13 @@ def infer_bmn(args):
     #data
     infer_dataset = BmnDataset(infer_cfg, 'infer')
 
-    model = bmn(config, pretrained=args.weights is None)
+    #model
+    model = bmn(tscale,
+                dscale,
+                prop_boundary_ratio,
+                num_sample,
+                num_sample_perbin,
+                pretrained=args.weights is None)
     model.prepare(
         metrics=BmnMetric(
             config, mode='infer'),
