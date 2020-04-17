@@ -54,7 +54,7 @@ python downloads.py dataset
 我们开源了在自建数据集上训练的词法分析模型，可供用户直接使用，可通过下述链接进行下载:
 ```bash
 # download baseline model
-python downloads.py lac
+python downloads.py model
 ```
 
 ### 模型训练
