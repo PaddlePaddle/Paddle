@@ -21,7 +21,7 @@ from __future__ import print_function
 import io
 import numpy as np
 
-import paddle.fluid as fluid
+import paddle
 
 
 class LacDataset(object):
@@ -76,11 +76,11 @@ class LacDataset(object):
 
     @property
     def vocab_size(self):
-        return len(self.word2id_dict.values())
+        return max(self.word2id_dict.values()) + 1
 
     @property
     def num_labels(self):
-        return len(self.label2id_dict.values())
+        return max(self.label2id_dict.values()) + 1
 
     def get_num_examples(self, filename):
         """num of line of file"""
@@ -120,48 +120,121 @@ class LacDataset(object):
 
         def wrapper():
             fread = io.open(filename, "r", encoding="utf-8")
-            headline = next(fread)
-            headline = headline.strip().split('\t')
-            assert len(headline) == 2 and headline[0] == "text_a" and headline[
-                1] == "label"
-            buf = []
-            for line in fread:
-                words, labels = line.strip("\n").split("\t")
-                if len(words) < 1:
-                    continue
-                word_ids = self.word_to_ids(words.split("\002"))
-                label_ids = self.label_to_ids(labels.split("\002"))
-                assert len(word_ids) == len(label_ids)
-                word_ids = word_ids[0:max_seq_len]
-                words_len = np.int64(len(word_ids))
-                word_ids += [0 for _ in range(max_seq_len - words_len)]
-                label_ids = label_ids[0:max_seq_len]
-                label_ids += [0 for _ in range(max_seq_len - words_len)]
-                assert len(word_ids) == len(label_ids)
-                yield word_ids, label_ids, words_len
+            if mode == "train": 
+                headline = next(fread)
+                headline = headline.strip().split('\t')
+                assert len(headline) == 2 and headline[0] == "text_a" and headline[
+                    1] == "label"
+                buf = []
+                for line in fread:
+                    words, labels = line.strip("\n").split("\t")
+                    if len(words) < 1:
+                        continue
+                    word_ids = self.word_to_ids(words.split("\002"))
+                    label_ids = self.label_to_ids(labels.split("\002"))
+                    assert len(word_ids) == len(label_ids)
+                    words_len = np.int64(len(word_ids))
+                        
+                    word_ids = word_ids[0:max_seq_len]
+                    words_len = np.int64(len(word_ids))
+                    word_ids += [0 for _ in range(max_seq_len - words_len)]
+                    label_ids = label_ids[0:max_seq_len]
+                    label_ids += [0 for _ in range(max_seq_len - words_len)]
+                    assert len(word_ids) == len(label_ids)
+                    yield word_ids, label_ids, words_len
+            elif mode == "test": 
+                headline = next(fread)
+                headline = headline.strip().split('\t')
+                assert len(headline) == 2 and headline[0] == "text_a" and headline[
+                           1] == "label"
+                buf = []
+                for line in fread:
+                    words, labels = line.strip("\n").split("\t")
+                    if len(words) < 1:
+                        continue
+                    word_ids = self.word_to_ids(words.split("\002"))
+                    label_ids = self.label_to_ids(labels.split("\002"))
+                    assert len(word_ids) == len(label_ids)
+                    words_len = np.int64(len(word_ids))
+                    yield word_ids, label_ids, words_len
+            else: 
+                for line in fread: 
+                    words = line.strip("\n").split('\t')[0]
+                    if words == u"text_a": 
+                        continue
+                    if "\002" not in words: 
+                        word_ids = self.word_to_ids(words)
+                    else: 
+                        word_ids = self.word_to_ids(words.split("\002"))
+                    words_len = np.int64(len(word_ids))
+                    yield word_ids, words_len
+
             fread.close()
 
         return wrapper
 
 
-def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
-    def wrapper():
-        batch_words, batch_labels, seq_lens = [], [], []
-        for epoch in xrange(args.epoch):
+def create_lexnet_data_generator(args, reader, file_name, place, mode="train"): 
+    def padding_data(max_len, batch_data): 
+        padding_batch_data = []
+        for data in batch_data: 
+            data += [0 for _ in range(max_len - len(data))]
+            padding_batch_data.append(data)
+        return padding_batch_data
+
+    def wrapper(): 
+        if mode == "train": 
+            batch_words, batch_labels, seq_lens = [], [], []
+            for epoch in xrange(args.epoch):
+                for instance in reader.file_reader(
+                        file_name, mode, max_seq_len=args.max_seq_len)():
+                    words, labels, words_len = instance
+                    if len(seq_lens) < args.batch_size:
+                        batch_words.append(words)
+                        batch_labels.append(labels)
+                        seq_lens.append(words_len)
+                    if len(seq_lens) == args.batch_size: 
+                        yield batch_words, seq_lens, batch_labels, batch_labels
+                        batch_words, batch_labels, seq_lens = [], [], []
+
+            if len(seq_lens) > 0:
+                yield batch_words, seq_lens, batch_labels, batch_labels
+        elif mode == "test": 
+            batch_words, batch_labels, seq_lens, max_len = [], [], [], 0
             for instance in reader.file_reader(
-                    file_name, mode, max_seq_len=args.max_seq_len)():
+                file_name, mode, max_seq_len=args.max_seq_len)():
                 words, labels, words_len = instance
+                max_len = words_len if words_len > max_len else max_len
                 if len(seq_lens) < args.batch_size:
                     batch_words.append(words)
-                    batch_labels.append(labels)
                     seq_lens.append(words_len)
-                if len(seq_lens) == args.batch_size:
-                    yield batch_words, batch_labels, seq_lens, batch_labels
-                    batch_words, batch_labels, seq_lens = [], [], []
+                    batch_labels.append(labels)
+                if len(seq_lens) == args.batch_size: 
+                    padding_batch_words = padding_data(max_len, batch_words)
+                    padding_batch_labels = padding_data(max_len, batch_labels)
+                    yield padding_batch_words, seq_lens, padding_batch_labels, padding_batch_labels
+                    batch_words, batch_labels, seq_lens, max_len = [], [], [], 0
+            if len(seq_lens) > 0: 
+                padding_batch_words = padding_data(max_len, batch_words)
+                padding_batch_labels = padding_data(max_len, batch_labels)
+                yield padding_batch_words, seq_lens, padding_batch_labels, padding_batch_labels
 
-        if len(seq_lens) > 0:
-            yield batch_words, batch_labels, seq_lens, batch_labels
-            batch_words, batch_labels, seq_lens = [], [], []
+        else: 
+            batch_words, seq_lens, max_len = [], [], 0
+            for instance in reader.file_reader(
+                   file_name, mode, max_seq_len=args.max_seq_len)():
+                words, words_len = instance
+                if len(seq_lens) < args.batch_size:
+                    batch_words.append(words)
+                    seq_lens.append(words_len)
+                    max_len = words_len if words_len > max_len else max_len
+                if len(seq_lens) == args.batch_size: 
+                    padding_batch_words = padding_data(max_len, batch_words)
+                    yield padding_batch_words, seq_lens
+                    batch_words, seq_lens, max_len = [], [], 0
+            if len(seq_lens) > 0: 
+                padding_batch_words = padding_data(max_len, batch_words)
+                yield padding_batch_words, seq_lens
 
     return wrapper
 
