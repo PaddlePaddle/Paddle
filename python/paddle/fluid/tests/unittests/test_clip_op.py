@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 from op_test import OpTest
 
 
@@ -67,6 +69,23 @@ class TestCase3(TestClipOp):
         self.shape = (4, 8, 16)
         self.max = 0.7
         self.min = 0.2
+
+
+class TestClipOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
+                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':
