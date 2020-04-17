@@ -67,26 +67,38 @@ def _dygraph_to_static_func_(dygraph_func):
     cleaning up code.
 
     Args:
-        dygraph_func(callable): callable imperative function
+        dygraph_func (callable): callable imperative function.
 
     Returns:
-        A callable converting imperative dygraph APIs into declarative
+        callable: converting imperative dygraph APIs into declarative
         net-building APIs.
 
     Examples:
-        class NetWithExternalFunc(fluid.dygraph.Layer):
-            @dygraph_to_static_func
-            def forward(self, x, label=None):
-                if fluid.layers.mean(x) < 0:
-                    x_v = x - 1
-                else:
-                    x_v = add_fn(x)
+        .. code-block:: python
 
-                x_v = softmax(x_v)
-                if label is not None:
-                    loss = loss_fn(x_v, label)
-                    return loss
-                return x_v
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import dygraph_to_static_func
+
+          @dygraph_to_static_func
+          def func(x):
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+
+               return x_v
+
+          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+
+          x_v = func(x)
+          exe = fluid.Executor(fluid.CPUPlace())
+          out = exe.run(fetch_list=[x_v])
+          print(out[0])
+          # [[1. 1. 1.]
+          #  [1. 1. 1.]
+          #  [1. 1. 1.]]
+
     """
 
     # TODO: remove this decorator after we finalize training API
@@ -108,6 +120,40 @@ dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def _declarative_(dygraph_func):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @declarative handles the Program and Executor of static mode and returns
+    the result as a dygraph VarBase.
+
+    Args:
+        dygraph_func (callable): callable imperative function.
+
+    Returns:
+        VarBase: containing the numerical result.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import declarative
+
+
+          @declarative
+          def func(x):
+              x = fluid.dygraph.to_variable(x)
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+              return x_v
+
+          x = np.ones([1, 2])
+          x_v = func(x)
+          print(x_v.numpy()) # [[2. 2.]]
+
+    """
+
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
         if in_dygraph_mode() or not program_translator.enable_declarative:
