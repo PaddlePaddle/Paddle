@@ -26,13 +26,15 @@ import argparse
 import numpy as np
 
 work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.join(work_dir))
+sys.path.append(os.path.join(work_dir, "../"))
+
 
 from hapi.metrics import Metric
 from hapi.model import Model, Input, Loss, set_device
 from hapi.text.text import SequenceTagging
 
 from utils.check import check_gpu, check_version
+from utils.configure import PDConfig
 from reader import LacDataset, create_lexnet_data_generator, create_dataloader 
 
 import paddle.fluid as fluid
@@ -258,92 +260,10 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("sequence tagging training")
-    parser.add_argument(
-        "-wd",
-        "--word_dict_path",
-        default=None,
-        type=str,
-        help='word dict path')
-    parser.add_argument(
-        "-ld",
-        "--label_dict_path",
-        default=None,
-        type=str,
-        help='label dict path')
-    parser.add_argument(
-        "-wrd",
-        "--word_rep_dict_path",
-        default=None,
-        type=str,
-        help='The path of the word replacement Dictionary.')
-    parser.add_argument(
-        "-dev",
-        "--device",
-        type=str,
-        default='gpu',
-        help="device to use, gpu or cpu")
-    parser.add_argument(
-        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
-    parser.add_argument(
-        "-e", "--epoch", default=10, type=int, help="number of epoch")
-    parser.add_argument(
-        '-lr',
-        '--base_learning_rate',
-        default=1e-3,
-        type=float,
-        metavar='LR',
-        help='initial learning rate')
-    parser.add_argument(
-        "--word_emb_dim",
-        default=128,
-        type=int,
-        help='word embedding dimension')
-    parser.add_argument(
-        "--grnn_hidden_dim", default=128, type=int, help="hidden dimension")
-    parser.add_argument(
-        "--bigru_num", default=2, type=int, help='the number of bi-rnn')
-    parser.add_argument("-elr", "--emb_learning_rate", default=1.0, type=float)
-    parser.add_argument("-clr", "--crf_learning_rate", default=1.0, type=float)
-    parser.add_argument(
-        "-b", "--batch_size", default=300, type=int, help="batch size")
-    parser.add_argument(
-        "--max_seq_len", default=126, type=int, help="max sequence length")
-    parser.add_argument(
-        "-n", "--num_devices", default=1, type=int, help="number of devices")
-    parser.add_argument(
-        "-o",
-        "--save_dir",
-        default="./model",
-        type=str,
-        help="save model path")
-    parser.add_argument(
-        "--init_from_checkpoint",
-        default=None,
-        type=str,
-        help="load init model parameters")
-    parser.add_argument(
-        "--init_from_pretrain_model",
-        default=None,
-        type=str,
-        help="load pretrain model parameters")
-    parser.add_argument(
-        "-sf", "--save_freq", default=1, type=int, help="save frequency")
-    parser.add_argument(
-        "-ef", "--eval_freq", default=1, type=int, help="eval frequency")
-    parser.add_argument(
-        "--output_file", default="predict.result", type=str, help="predict output file")
-    parser.add_argument(
-        "--predict_file", default="./data/infer.tsv", type=str, help="predict output file")
-    parser.add_argument(
-        "--test_file", default="./data/test.tsv", type=str, help="predict and eval output file")
-    parser.add_argument(
-        "--train_file", default="./data/train.tsv", type=str, help="train file")
-    parser.add_argument(
-        "--mode", default="train", type=str, help="train|test|predict")
-
-    args = parser.parse_args()
-    print(args)
+    args = PDConfig(yaml_file="sequence_tagging.yaml")
+    args.build()
+    args.Print()
+    
     use_gpu = True if args.device == "gpu" else False
     check_gpu(use_gpu)
     check_version()
