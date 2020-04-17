@@ -124,12 +124,9 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
   float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
   float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaMemcpyAsync(output_ptrs, h_odatas,
-                      d_output_ptrs_.size() * sizeof(float*),
-                      cudaMemcpyHostToDevice, stream),
-      platform::errors::External(
-          "CUDA Memcpy failed during split plugin run."));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
+      cudaMemcpyHostToDevice, stream));
 
   int outer_rows = outer_rows_ * batchSize;
 
