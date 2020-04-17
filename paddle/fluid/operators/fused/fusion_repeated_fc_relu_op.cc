@@ -66,7 +66,7 @@ void FusionRepeatedFCReluOp::InferShape(
   for (size_t i = 1; i < sz; ++i) {
     PADDLE_ENFORCE_EQ(w_dims[i].size(), 2,
                       platform::errors::InvalidArgument(
-                          "Every weight shape size should be 2., but received "
+                          "Every weight shape size should be 2, but received "
                           "w_dims[%d].size() = %d.",
                           i, w_dims[i].size()));
     PADDLE_ENFORCE_EQ(

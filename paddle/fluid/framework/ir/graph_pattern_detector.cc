@@ -1490,20 +1490,22 @@ PDNode *patterns::ConvConcatReLU::operator()() {
   return relu_out;
 }
 
-PDNode *patterns::ConvRequant::operator()() {
-  // Create Operators
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+PDNode *patterns::OpRequant::operator()() {
+  auto any_op = pattern->NewNode(any_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      return node->Op()->HasAttr("Scale_out") ? true : false;
+                    });
+  auto requant_in = pattern->NewNode(requant_in_repr())
+                        ->assert_is_op_input("requantize", "Input");
   auto requant_op =
       pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
-  auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output("conv2d", "Output");
   auto requant_out = pattern->NewNode(requant_out_repr())
                          ->AsOutput()
                          ->assert_is_op_output("requantize", "Output");
 
-  conv_op->LinksTo({conv_out});
-  requant_op->LinksFrom({conv_out}).LinksTo({requant_out});
-
+  any_op->LinksTo({requant_in});
+  requant_op->LinksFrom({requant_in}).LinksTo({requant_out});
   return requant_out;
 }
 
@@ -1579,6 +1581,21 @@ PDNode *patterns::MatmulDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::ScaleMatmul::operator()() {
+  auto scale_in = pattern->NewNode(scale_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("scale", "X");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
+  matmul_op->LinksFrom({scale_out});
+  return matmul_op;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
@@ -1619,6 +1636,7 @@ PDNode *patterns::ConvElementwiseaddAct::operator()(PDNode *conv_in) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_persistable_var()
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
   auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
@@ -1666,6 +1684,7 @@ PDNode *patterns::ConvElementwiseadd2Act::operator()(PDNode *conv_in) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_persistable_var()
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
   auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
