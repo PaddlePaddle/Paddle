@@ -139,15 +139,6 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.visit(self.root)
         return self.wrapper_root
 
-    def visit_FunctionDef(self, node):
-        self.generic_visit(node)
-        if hasattr(node, 'decorator_list'):
-            decorator_list = [
-                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
-            ]
-            node.decorator_list = decorator_list
-        return node
-
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
             return None
