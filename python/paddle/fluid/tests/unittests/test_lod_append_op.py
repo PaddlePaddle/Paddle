@@ -49,7 +49,7 @@ class TestLodAppendOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program()):
 
-            def test_Variable():
+            def test_x_Variable():
                 # The input(x) must be Variable.
                 x1 = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
                 level1 = [0, 2, 4]
@@ -57,23 +57,31 @@ class TestLodAppendOpError(unittest.TestCase):
                 self.assertRaises(TypeError, fluid.layers.lod_append, x1,
                                   level1)
 
+            def test_level_Variable():
+                # The input(level) must be Variable or list.
+                x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
+                level2 = 2
+                fluid.layers.lod_append(x2, level2)
+                self.assertRaises(TypeError, fluid.layers.lod_append, x2,
+                                  level2)
+
             def test_x_dtype():
                 for dtype in ["bool", "float16"]:
-                    x2 = fluid.layers.data(
-                        name='x_' + dtype, shape=[4], dtype=dtype)
-                    level2 = fluid.layers.data(
-                        name='level2', shape=[4], dtype='int32', lod_level=2)
-                    self.assertRaises(TypeError, fluid.layers.lod_append, x2,
-                                      level2)
+                    x3 = fluid.layers.data(
+                        name='x3_' + dtype, shape=[4], dtype=dtype)
+                    level3 = fluid.layers.data(
+                        name='level3', shape=[4], dtype='int32', lod_level=2)
+                    self.assertRaises(TypeError, fluid.layers.lod_append, x3,
+                                      level3)
 
             def test_level_dtype():
                 for dtype in ["bool", "float16", "float32", "float64", "int64"]:
-                    x3 = fluid.layers.data(
-                        name='x3', shape=[4], dtype='float32')
-                    level3 = fluid.layers.data(
-                        name='level3', shape=[4], dtype=dtype, lod_level=0)
-                    self.assertRaises(TypeError, fluid.layers.lod_append, x3,
-                                      level3)
+                    x4 = fluid.layers.data(
+                        name='x4_' + dtype, shape=[4], dtype='float32')
+                    level4 = fluid.layers.data(
+                        name='level4', shape=[4], dtype=dtype, lod_level=0)
+                    self.assertRaises(TypeError, fluid.layers.lod_append, x4,
+                                      level4)
 
 
 if __name__ == "__main__":

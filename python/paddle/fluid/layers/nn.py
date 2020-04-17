@@ -6194,6 +6194,7 @@ def lod_reset(x, y=None, target_lod=None):
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
+        check_type(y, 'y', (Variable), 'lod_reset')
         if y.lod_level == 0:
             check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
         helper.append_op(
