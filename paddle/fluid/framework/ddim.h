@@ -162,16 +162,22 @@ class DDim {
 
     std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE_LT(axis[i], static_cast<int>(axis_size),
+                        platform::errors::InvalidArgument(
+                            "ValueError: Each element of axis should "
+                            "be a unique value range from 0 to (dims - 1), "
+                            "where the dims is the axis's size, "
+                            "But received axis[%d] is %d, axis_size is %d",
+                            i, axis[i], axis_size));
       PADDLE_ENFORCE_EQ(
-          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1, true,
+          ++count[axis[i]], 1,
           platform::errors::InvalidArgument(
               "ValueError: Each element of axis should "
               "be a unique value range from 0 to (dims - 1), "
               "where the dims is the axis's size, "
               "unique value means this axis value can appear only once. "
-              "But received axis[%d] is %d, axis_size is %d, "
-              "count[axis[%d]] is %d",
-              i, axis[i], axis_size, i, count[axis[i]]));
+              "But received count[axis[%d]] is %d",
+              i, count[axis[i]]));
     }
 
     framework::DDim out_dims(in_dims);
