@@ -67,7 +67,7 @@ class Optimizer(object):
                  parameter_list=None,
                  regularization=None,
                  name=None):
-        self._parameter_list = parameter_list
+        self._parameter_list = None
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
@@ -78,7 +78,9 @@ class Optimizer(object):
                 self._name = unique_name.generate(name)
             else:
                 self._name = unique_name.generate(self.__class__.__name__)
-            if self._parameter_list is None:
+            if parameter_list is not None:
+                self._parameter_list = parameter_list
+            else:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
@@ -442,7 +444,7 @@ class Optimizer(object):
             belong_to_optimizer=True)
         if device is None or index is None:
             device, index = self._get_device_for_param(param.name)
-        with device_guard(device, index):
+        with device_guard(device):
             self.helper.set_variable_initializer(
                 var, initializer=Constant(value=float(fill_value)))
 
@@ -668,8 +670,6 @@ class Optimizer(object):
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
                 "Maybe that you should call fluid.layers.mean to process the current loss.".format(
                     loss.shape)
-            parameter_list = parameter_list if parameter_list \
-                else self._parameter_list
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
@@ -804,12 +804,11 @@ class Optimizer(object):
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
-                to be updated. The default value is None.   
-            grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-                some derived class of ``GradientClipBase`` . There are three cliping strategies 
-                ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-                :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
-                gradient clipping.
+                to be updated. The default value is None.
+            grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
+                graph mode does not need to use this argument. Currently, this argument
+                only supports gradient clipping in dygraph mode. In the future, this
+                argument my be adjusted. The default value is None.
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
@@ -820,14 +819,6 @@ class Optimizer(object):
             Please refer to the example of current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._grad_clip = grad_clip
-        parameter_list = parameter_list if parameter_list \
-            else self._parameter_list
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -858,11 +849,8 @@ class SGDOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -966,11 +954,8 @@ class MomentumOptimizer(Optimizer):
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1105,11 +1090,8 @@ class DGCMomentumOptimizer(Optimizer):
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
         local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
         num_trainers (int, optional): The number of training nodes. Optional, default is None.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as \
+            :ref:`api_fluid_regularizer_L2DecayRegularizer`. Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1490,11 +1472,8 @@ class LarsMomentumOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`.
+            Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1603,11 +1582,8 @@ class AdagradOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1722,11 +1698,8 @@ class AdamOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1971,11 +1944,8 @@ class AdamaxOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2223,11 +2193,8 @@ class DecayedAdagradOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2322,11 +2289,9 @@ class AdadeltaOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
+                fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no
+                regularization.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -2473,11 +2438,8 @@ class RMSPropOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2641,11 +2603,8 @@ class FtrlOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2783,11 +2742,8 @@ class LambOptimizer(AdamOptimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (Regularizer|None): A Regularizer, such as
+           fluid.regularizer.L1DecayRegularizer. Default None.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -2947,11 +2903,8 @@ class ModelAverage(Optimizer):
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -3833,8 +3786,6 @@ class RecomputeOptimizer(Optimizer):
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
-        self._learning_rate = self._optimizer._learning_rate
-        self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
@@ -3986,8 +3937,7 @@ class RecomputeOptimizer(Optimizer):
                 checkpoints=self._checkpoints)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
-            if hasattr(self._optimizer, "_append_dgc_ops"):
-                self._optimizer._append_dgc_ops(params_grads)
+            self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4281,11 +4231,12 @@ class ModelParallelOptimizer(object):
 
     def __init__(self, optimizer, num_macrobatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
-            raise Exception("ModelParallelOptimizer is not supported now "
+            raise Exception("ModelParallelOptimizer is not supported "
                             "in dygraph mode.")
         if not isinstance(optimizer, Optimizer):
-            raise ValueError("optimizer must be an instance of Optimizer, "
-                             "but the given type is {}.".format(
+            raise ValueError("The 'optimizer' parameter for "
+                             "ModelParallelOptimizer must be an instance of "
+                             "Optimizer, but the given type is {}.".format(
                                  type(optimizer)))
 
         self._optimizer = optimizer
@@ -4349,6 +4300,7 @@ class ModelParallelOptimizer(object):
         # Map from device to its corresponding section program info
         device_program_map = dict()
         block = main_program.block(0)
+
         for op in block.ops:
             device = op.attr(self._op_device_key)
             device_index = op.attr(self._op_device_index_key)
@@ -4356,7 +4308,7 @@ class ModelParallelOptimizer(object):
             # Todo: add op_device attr for sum op in backward pass
             if device == "" and op.type == "sum":
                 device = "gpu"
-                device_index = "6"
+                device_index = "5"
             if device == "cpu":
                 dev_spec = device
             else:
@@ -4391,6 +4343,11 @@ class ModelParallelOptimizer(object):
                                var_name as input.
             var_name (string): Variable name.
         """
+
+        # Todo: how to deal with learning rate
+        if var_name == "learning_rate":
+            return
+
         prev_op = []
         for op in ops:
             if op == cur_op:
@@ -4593,12 +4550,15 @@ class ModelParallelOptimizer(object):
         """
         for op in block.ops:
             type = op.type
-            if op.has_attr('sub_block'):
-                raise ValueError("We do not support program with "
-                                 "sub blocks now.")
+            #if op.has_attr('sub_block'):
+            #    raise ValueError("We do not support program with "
+            #                     "sub blocks now.")
+            if op.type == "conditional_block":
+                assert op.attr(self._op_role_key) & 1 == 0
             if not op._has_kernel(type):
-                raise ValueError("Does not support op({}) without "
-                                 "kernel now.".format(op.type))
+                #raise ValueError("Does not support op({}) without "
+                #                 "kernel now.".format(op.type))
+                continue
             assert op.has_attr(self._op_device_key), (
                 "op ({}) has no {} attribute.".format(op.type,
                                                       self._op_device_key))
@@ -4611,7 +4571,7 @@ class ModelParallelOptimizer(object):
             # we set it as "gpu" just for test
             if device == "" and op.type == "sum":
                 device = "gpu"
-                device_index = "6"
+                device_index = "5"
             if device == "cpu": continue
             assert device, "op {} has no op_device attribute.".format(op.type)
             assert device_index, (
@@ -4628,11 +4588,19 @@ class ModelParallelOptimizer(object):
         for index, op in reversed(list(enumerate(block.ops))):
             cur_device = op.attr(self._op_device_key)
             cur_device_index = op.attr(self._op_device_index_key)
+
+            # A trick for ops without kernels: only set op_device_index
+            if not op._has_kernel(op.type):
+                assert cur_device == ""
+                cur_device = 'gpu' if cur_device_index else 'cpu'
+                op._set_attr(self._op_device_key, 'gpu')
+
             # Todo: add op_device for sum op in backward pass
             # we set it as "gpu" just for test
             if cur_device == "" and op.type == "sum":
                 cur_device = "gpu"
-                cur_device_index = "6"
+                cur_device_index = "5"
+
             if cur_device == "cpu":
                 cur_device_spec = cur_device
             else:
@@ -4645,11 +4613,18 @@ class ModelParallelOptimizer(object):
                     continue
                 prev_device = prev_op.attr(self._op_device_key)
                 prev_device_index = prev_op.attr(self._op_device_index_key)
+
+                # A trick for ops without kernels: only set op_device_index
+                if not prev_op._has_kernel(prev_op.type):
+                    assert prev_device == ""
+                    prev_device = 'gpu' if prev_device_index else 'cpu'
+                    prev_op._set_attr(self._op_device_key, 'gpu')
+
                 # Todo: add op_device for sum op in backward pass
                 # we set it as "gpu" just for test
                 if prev_device == "" and prev_op.type == "sum":
                     prev_device = "gpu"
-                    prev_device_index = "6"
+                    prev_device_index = "5"
                 if prev_device == "cpu":
                     prev_device_spec = prev_device
                 else:
@@ -4707,7 +4682,7 @@ class ModelParallelOptimizer(object):
             # we set it as "gpu" just for test
             if device == "" and op.type == "sum":
                 device = "gpu"
-                device_index = "6"
+                device_index = "5"
             # Backward pass
             if self._is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
@@ -4808,6 +4783,36 @@ class ModelParallelOptimizer(object):
                 #        self._op_device_index_key: device_index,
                 #        self._op_role_key: self._op_role.Optimize
                 #    })
+    def _add_sub_blocks(self, main_block, program_list):
+        main_program = main_block.program
+        for prog_info in program_list:
+            prog = prog_info['program']
+            #print("program:", prog)
+            for op in prog.block(0).ops:
+                if not op.has_attr('sub_block'):
+                    continue
+                #origin_sub_block_desc = op.attr('sub_block')
+                origin_sub_block_id = op.attr('sub_block').id
+                origin_sub_block = main_program.block(origin_sub_block_id)
+                new_sub_block = prog._create_block(parent_idx=0)
+                # clone vars
+                #print("new_sub_block.id:", new_sub_block.idx)
+                #print("new_sub_block.program:", new_sub_block.program)
+                #new_sub_block._sync_with_cpp()
+                #for var in origin_sub_block.vars:
+                #    new_sub_block._clone_variable(var)
+                # clone ops
+                #for origin_op in origin_sub_block.ops:
+                #    new_sub_block.append_op(type=origin_op.type,
+                #                            inputs=origin_op.inputs,
+                #                            outputs=origin_op.outputs,
+                #                            attrs=origin.all_attrs())
+
+                # reset the block of op
+                op._set_attr('sub_block:', new_sub_block)
+                print('sub_block_desc:', new_sub_block.desc)
+                #print("sub_block.id:", op._block_attr_id("sub_block"))
+                #prog._sync_with_cpp()
 
     def minimize(self,
                  loss,
@@ -4816,6 +4821,7 @@ class ModelParallelOptimizer(object):
                  no_grad_set=None,
                  print_list=list()):
         block = loss.block
+        main_block = block
         if startup_program is None:
             startup_program = default_startup_program()
         _, params_grads = self._optimizer.minimize(loss, startup_program,
@@ -4825,9 +4831,9 @@ class ModelParallelOptimizer(object):
                                                           startup_program)
         self._insert_enq_deq_ops_for_update(block, startup_program)
         device_list = sorted(devices)
-        if "cpu" in device_list:
-            assert device_list[0] == "cpu", \
-                "If CPU device is used, it must be the first device."
+        #if "cpu" in device_list:
+        #    assert device_list[0] == "cpu", \
+        #        "If CPU device is used, it must be the first device."
         program = block.program
 
         place_list = []
@@ -4857,23 +4863,34 @@ class ModelParallelOptimizer(object):
                                           sorted(devices))
 
         device_spec = device_spec_list[-1]
+        print("device_spec: ", device_spec)
+        """
         block = program_list[-1]['program'].block(0)
         print_list.append('mean_0.tmp_0')
         #print_list.append('fc_0.tmp_0')
         #print_list.append('data_1')
         #print_list.append('label')
-        #print_list.append('accuracy_0.tmp_0')
-        #print_list.append('accuracy_1.tmp_0')
+        print_list.append('accuracy_0.tmp_0')
+        print_list.append('accuracy_1.tmp_0')
         #print_list.append('fc_0.w_0')
         #print_list.append('fc_0.w_0_0@GRAD')
         #print_list.append('fc_0.w_0_1@GRAD')
+        #print_list.append('fc_0.w_0@GRAD')
+        #print_list.append('res2a_branch2a_weights_0@GRAD')
+        #print_list.append('res2a_branch2a_weights_1@GRAD')
+        #print_list.append('res2a_branch2a_weights_2@GRAD')
+        #print_list.append('res2a_branch2a_weights_3@GRAD')
+        #print_list.append('fc_0.w_0_0@GRAD')
+        #print_list.append('fc_0.w_0_1@GRAD')
+        #print_list.append('fc_0.w_0_2@GRAD')
+        #print_list.append('fc_0.w_0_3@GRAD')
         #print_list.append('fc_0.w_0@GRAD')
         # Insert print op for debug
         for name in print_list:
             role = 2
             persistable = False
             if 'mean_0.tmp_0' == name:
-                role = 1
+                role = 0
                 persistable = False
             if 'fc_0.tmp_0' == name:
                 role = 1
@@ -4888,10 +4905,10 @@ class ModelParallelOptimizer(object):
                 role = 1
                 persistable = False
             if 'accuracy_0.tmp_0' == name:
-                role = 1
+                role = 0
                 persistable = False
             if 'accuracy_1.tmp_0' == name:
-                role = 1
+                role = 0
                 persistable = False
             if 'fc_0.w_0@GRAD' == name:
                 role = 2
@@ -4899,7 +4916,28 @@ class ModelParallelOptimizer(object):
             if 'fc_0.w_0_0@GRAD' == name:
                 role = 2
                 persistable = False
+            if 'fc_0.w_1@GRAD' == name:
+                role = 2
+                persistable = False
             if 'fc_0.w_0_2@GRAD' == name:
+                role = 2
+                persistable = False
+            if 'fc_0.w_0_3@GRAD' == name:
+                role = 2
+                persistable = False
+            if 'res2a_branch2a_weights_0@GRAD' == name:
+                role = 2
+                persistable = False
+            if 'res2a_branch2a_weights_1@GRAD' == name:
+                role = 2
+                persistable = False
+            if 'res2a_branch2a_weights_2@GRAD' == name:
+                role = 2
+                persistable = False
+            if 'res2a_branch2a_weights_3@GRAD' == name:
+                role = 2
+                persistable = False
+            if 'res2a_branch2a_weights@GRAD' == name:
                 role = 2
                 persistable = False
             if 'fc_0.w_0' == name:
@@ -4915,12 +4953,11 @@ class ModelParallelOptimizer(object):
                 persistable=persistable)
             print_var = block.var(print_var_name)
             if name == "learning_rate_0":
-                block._insert_op(
-                    0,
-                    type='print',
-                    inputs={'In': var},
-                    outputs={'Out': print_var},
-                    attrs={
+                block._insert_op(0,
+                        type='print',
+                        inputs={'In': var},
+                        outputs={'Out': print_var},
+                        attrs={
                         'first_n': -1,
                         'summarize': 40,
                         'message': "",
@@ -4931,14 +4968,13 @@ class ModelParallelOptimizer(object):
                         'op_device': 'gpu',
                         'op_device_index': device_spec.split(":")[1],
                         'op_role': int(role),
-                        'print_phase': 'BOTH'
-                    })
+                        'print_phase': 'BOTH'})
             else:
                 block.append_op(
-                    type='print',
-                    inputs={'In': var},
-                    outputs={'Out': print_var},
-                    attrs={
+                        type='print',
+                        inputs={'In': var},
+                        outputs={'Out': print_var},
+                        attrs={
                         'first_n': -1,
                         'summarize': 40,
                         'message': "",
@@ -4949,9 +4985,11 @@ class ModelParallelOptimizer(object):
                         'op_device': 'gpu',
                         'op_device_index': device_spec.split(":")[1],
                         'op_role': int(role),
-                        'print_phase': 'BOTH'
-                    })
-        place_list = sorted(place_list)
+                        'print_phase': 'BOTH'})
+        """
+        #place_list = sorted(place_list)
+        self._add_sub_blocks(main_block, program_list)
+        print(place_list, place_id_list)
         program._pipeline_opt = {
             "trainer": "ModelParallelTrainer",
             "device_worker": "ModelParallel",
