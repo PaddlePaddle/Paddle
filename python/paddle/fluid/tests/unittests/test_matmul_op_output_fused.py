@@ -69,9 +69,9 @@ class TestMatMulOpSpecialSimplestOtherDims(TestMatMulOpSpecial):
         self.x = np.random.random([bs, 12, 128, 128]).astype("float32")
         self.y = np.random.random([bs, 12, 128, 128]).astype("float32")
         self.transpose_out = [0, 2, 1, 3]
-        self.reshape_out = [0, 0, 768]
+        self.reshape_out = [0, 0, 12 * 128]
         self.out = np.matmul(self.x, self.y).transpose([0, 2, 1, 3]).reshape(
-            [bs, -1, 768])
+            [bs, -1, 12 * 128])
 
 
 if __name__ == '__main__':
