@@ -18,7 +18,6 @@ from __future__ import print_function
 import os
 import cv2
 import numpy as np
-from pycocotools.coco import COCO
 
 from paddle.io import Dataset
 
@@ -91,6 +90,7 @@ class COCODataset(Dataset):
         self._load_roidb_and_cname2cid()
 
     def _load_roidb_and_cname2cid(self):
+        from pycocotools.coco import COCO
         assert self._anno_path.endswith('.json'), \
             'invalid coco annotation file: ' + anno_path
         coco = COCO(self._anno_path)

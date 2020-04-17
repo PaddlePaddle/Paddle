@@ -137,7 +137,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
     return model
 
 
-def vgg11(pretrained=False, batch_norm=False):
+def vgg11(pretrained=False, batch_norm=False, **kwargs):
     """VGG 11-layer model
     
     Args:
@@ -147,10 +147,10 @@ def vgg11(pretrained=False, batch_norm=False):
     model_name = 'vgg11'
     if batch_norm:
         model_name += ('_bn')
-    return _vgg(model_name, 'A', batch_norm, pretrained)
+    return _vgg(model_name, 'A', batch_norm, pretrained, **kwargs)
 
 
-def vgg13(pretrained=False, batch_norm=False):
+def vgg13(pretrained=False, batch_norm=False, **kwargs):
     """VGG 13-layer model
     
     Args:
@@ -160,10 +160,10 @@ def vgg13(pretrained=False, batch_norm=False):
     model_name = 'vgg13'
     if batch_norm:
         model_name += ('_bn')
-    return _vgg(model_name, 'B', batch_norm, pretrained)
+    return _vgg(model_name, 'B', batch_norm, pretrained, **kwargs)
 
 
-def vgg16(pretrained=False, batch_norm=False):
+def vgg16(pretrained=False, batch_norm=False, **kwargs):
     """VGG 16-layer model 
     
     Args:
@@ -173,10 +173,10 @@ def vgg16(pretrained=False, batch_norm=False):
     model_name = 'vgg16'
     if batch_norm:
         model_name += ('_bn')
-    return _vgg(model_name, 'D', batch_norm, pretrained)
+    return _vgg(model_name, 'D', batch_norm, pretrained, **kwargs)
 
 
-def vgg19(pretrained=False, batch_norm=False):
+def vgg19(pretrained=False, batch_norm=False, **kwargs):
     """VGG 19-layer model 
     
     Args:
@@ -186,4 +186,4 @@ def vgg19(pretrained=False, batch_norm=False):
     model_name = 'vgg19'
     if batch_norm:
         model_name += ('_bn')
-    return _vgg(model_name, 'E', batch_norm, pretrained)
+    return _vgg(model_name, 'E', batch_norm, pretrained, **kwargs)

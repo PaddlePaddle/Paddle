@@ -799,11 +799,11 @@ class Model(fluid.dygraph.Layer):
                     format(key, list(state.shape), list(param.shape)))
             return param, state
 
-	def _strip_postfix(path):
-	    path, ext = os.path.splitext(path)
-	    assert ext in ['', '.pdparams', '.pdopt', '.pdmodel'], \
-		    "Unknown postfix {} from weights".format(ext)
-	    return path
+        def _strip_postfix(path):
+            path, ext = os.path.splitext(path)
+            assert ext in ['', '.pdparams', '.pdopt', '.pdmodel'], \
+                    "Unknown postfix {} from weights".format(ext)
+            return path
 
         path = _strip_postfix(path)
         param_state = _load_state_from_path(path + ".pdparams")
@@ -936,35 +936,35 @@ class Model(fluid.dygraph.Layer):
         Args:
             train_data (Dataset|DataLoader): An iterable data loader is used for 
                 train. An instance of paddle paddle.io.Dataset or 
-                paddle.io.Dataloader is recomended.
+                paddle.io.Dataloader is recomended. Default: None.
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation at the end of epoch. If None, will not do evaluation. 
                 An instance of paddle.io.Dataset or paddle.io.Dataloader 
-                is recomended.
+                is recomended. Default: None.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored.
-            epochs (int): Integer number. The number of epochs to train the model.
+                parameter will be ignored. Default: 1.
+            epochs (int): Integer number. The number of epochs to train the model. Default: 1.
             eval_freq (int): The frequency, in number of epochs, an evalutation
-                is performed.
+                is performed. Default: 1.
             log_freq (int): The frequency, in number of steps, the training logs
-                are printed.
+                are printed. Default: 10.
             save_dir(str|None): The directory to save checkpoint during training.
-                If None, will not save checkpoint.
-            save_freq (int): The frequency, in number of epochs, to save checkpoint.
+                If None, will not save checkpoint. Default: None.
+            save_freq (int): The frequency, in number of epochs, to save checkpoint. Default: 1.
             verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch.
+                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
             drop_last (bool): whether drop the last incomplete batch of train_data 
                 when dataset size is not divisible by the batch size. When train_data 
-                is an instance of Dataloader, this parameter will be ignored.
+                is an instance of Dataloader, this parameter will be ignored. Default: False.
             shuffle (bool): whther to shuffle train_data. When train_data is an instance 
-                of Dataloader, this parameter will be ignored.
+                of Dataloader, this parameter will be ignored. Default: True.
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored.
+                both the instance of Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
-                are automatically inserted.
+                are automatically inserted. Default: None.
         """
 
         assert train_data is not None, \
@@ -1066,18 +1066,20 @@ class Model(fluid.dygraph.Layer):
                 evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored.
+                When eval_data is the instance of Dataloader, this argument will be ignored.
+                Default: 1.
             log_freq (int): The frequency, in number of steps, the eval logs
-                are printed.
+                are printed. Default: 10.
             verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch.
+                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
             num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored.
+                both the instance of Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
-                are automatically inserted.
+                are automatically inserted. Default: None.
+        Returns:
+            dict: Result of metric.
         """
 
         if fluid.in_dygraph_mode():
@@ -1142,16 +1144,18 @@ class Model(fluid.dygraph.Layer):
                 is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored.
+                argument will be ignored. Default: 1.
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored.
+                both the instance of Dataloader, this argument will be ignored. Default: 0.
             stack_output (bool): whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
-                it is recommended set as True if outputs contains no LoDTensor. Default False
+                it is recommended set as True if outputs contains no LoDTensor. Default: False.
+        Returns:
+            list: output of models.
         """
 
         if fluid.in_dygraph_mode():
