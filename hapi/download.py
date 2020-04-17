@@ -23,6 +23,7 @@ import requests
 import tqdm
 import hashlib
 import time
+from collections import OrderedDict
 
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
@@ -35,7 +36,8 @@ WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
 DOWNLOAD_RETRY_LIMIT = 3
 
-_pretrain = (('RoBERTa-zh-base', 'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_ext_L-12_H-768_A-12.tar.gz'),
+nlp_models = OrderedDict(
+            (('RoBERTa-zh-base', 'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_ext_L-12_H-768_A-12.tar.gz'),
             ('RoBERTa-zh-large', 'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_large_ext_L-24_H-1024_A-16.tar.gz'),
             ('ERNIE-v2-en-base', 'https://ernie.bj.bcebos.com/ERNIE_Base_en_stable-2.0.0.tar.gz'),
             ('ERNIE-v2-en-large', 'https://ernie.bj.bcebos.com/ERNIE_Large_en_stable-2.0.0.tar.gz'),
@@ -52,8 +54,8 @@ _pretrain = (('RoBERTa-zh-base', 'https://bert-models.bj.bcebos.com/chinese_robe
             ('BERT-multilingual-uncased-base', 'https://bert-models.bj.bcebos.com/multilingual_L-12_H-768_A-12.tar.gz'),
             ('BERT-multilingual-cased-base', 'https://bert-models.bj.bcebos.com/multi_cased_L-12_H-768_A-12.tar.gz'),
             ('BERT-zh-base', 'https://bert-models.bj.bcebos.com/chinese_L-12_H-768_A-12.tar.gz'),)
+            )
 
-nlp_models = OrderedDict(_pretrain)
 
 def is_url(path):
     """
