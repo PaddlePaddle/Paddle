@@ -110,8 +110,8 @@ class FusionGroupPassTest2(FusionGroupPassTest):
             tmp_3 = layers.mul(tmp_1, tmp_2)
 
         self.append_gradients(tmp_3)
-        self.num_fused_ops = 2
-        self.fetch_list = [tmp_3, self.grad(tmp_1)]
+        self.num_fused_ops = 3
+        self.fetch_list = [tmp_3, self.grad(tmp_0)]
 
 
 class FusionGroupPassTestFP64(FusionGroupPassTest):

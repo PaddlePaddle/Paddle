@@ -62,10 +62,16 @@ static bool HasInput(Node* n, std::string name) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(), true,
                     platform::errors::InvalidArgument(
                         "Expected node %p to be an operator node.", n));
-  std::vector<std::string> input_names = n->Op()->InputNames();
-  std::unordered_set<std::string> input_names_set(input_names.begin(),
-                                                  input_names.end());
-  return input_names_set.find(name) != input_names_set.end();
+  const auto& op_inputs = n->Op()->Inputs();
+  return op_inputs.find(name) != op_inputs.end();
+}
+
+static bool HasOutput(Node* n, std::string name) {
+  PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(), true,
+                    platform::errors::InvalidArgument(
+                        "Expected node %p to be an operator node.", n));
+  const auto& op_outputs = n->Op()->Outputs();
+  return op_outputs.find(name) != op_outputs.end();
 }
 
 std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
@@ -81,10 +87,8 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
-      auto operation = OperationMap::Instance().Get(op->Type());
-      std::vector<std::string> input_names = operation.input_names;
-
-      for (auto& name : input_names) {
+      auto& operation = OperationMap::Instance().Get(op->Type());
+      for (auto& name : operation.input_names) {
         // Some input vars are not used in grad ops, such as
         // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
         if ((HasInput(node, name) && op->Input(name).size() >= 1U)) {
@@ -103,15 +107,21 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       // Output ids should be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
-      std::vector<std::string> output_names =
-          OperationMap::Instance().Get(op->Type()).output_names;
-
-      for (auto& name : output_names) {
-        PADDLE_ENFORCE_NE(
-            var_ids.find(op->Output(name)[0]), var_ids.end(),
-            platform::errors::InvalidArgument(
-                "Output(%s) of operation %s is not set.", name, op->Type()));
-        output_ids.push_back(var_ids[op->Output(name)[0]]);
+      for (auto& name : operation.output_names) {
+        if (HasOutput(node, name) && op->Output(name).size() >= 1U) {
+          PADDLE_ENFORCE_NE(
+              var_ids.find(op->Output(name)[0]), var_ids.end(),
+              platform::errors::InvalidArgument(
+                  "Output(%s) of operation %s is not set.", name, op->Type()));
+          output_ids.push_back(var_ids[op->Output(name)[0]]);
+        } else {
+          // For gradient operators, when stop_gradient = true is set for some
+          // operands, there is no need to compute the corresponding gradient.
+          PADDLE_ENFORCE_EQ(
+              OperationMap::Instance().Get(op->Type()).IsGradOp(), true,
+              platform::errors::InvalidArgument(
+                  "Output(%s) of operation %s is not set.", name, op->Type()));
+        }
       }
 
       std::string lhs_type = ExtractDataType(node->outputs);
