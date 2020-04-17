@@ -117,9 +117,11 @@ class RankAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Input tensor of rank_attention_Op operator.");
     AddInput("RankParam",
              "(Tensor) Input tensor of rank_attention_Op operator.");
-    AddOutput("InputHelp", "Output tensor of rank_attention_Op operator.");
+    AddOutput("InputHelp", "Output tensor of rank_attention_Op operator.")
+        .AsDispensable();
     AddOutput("Out", "Output tensor of rank_attention_Op operator.");
-    AddOutput("InsRank", "Output tensor of rank_attention_Op operator.");
+    AddOutput("InsRank", "Output tensor of rank_attention_Op operator.")
+        .AsDispensable();
     AddAttr<int>("MaxRank", "(int, default 3) max rank of rank_attention_Op")
         .SetDefault(3);
     AddAttr<int>("MaxSize", "(int, default 0) max rank of rank_attention_Op")
