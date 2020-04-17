@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -24,32 +25,75 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class ThreadLocalAllocator
-    : public Allocator,
-      public std::enable_shared_from_this<ThreadLocalAllocator> {
+class ThreadLocalAllocatorImpl;
+
+class ThreadLocalAllocation : public Allocation {
  public:
-  explicit ThreadLocalAllocator(const platform::Place& p) : place_(p) {
-    if (platform::is_gpu_place(place_)) {
-      buddy_allocator_.reset(new memory::detail::BuddyAllocator(
-          std::unique_ptr<memory::detail::SystemAllocator>(
-              new memory::detail::GPUAllocator(
-                  boost::get<platform::CUDAPlace>(place_).device)),
-          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
-    } else {
-      LOG(FATAL) << "Thread local allocator only supports CUDAPlace now.";
-    }
+  ThreadLocalAllocation(void* ptr, size_t size, platform::Place place)
+      : Allocation(ptr, size, place) {}
+
+  void SetThreadLocalAllocatorImpl(
+      std::shared_ptr<ThreadLocalAllocatorImpl> allocator) {
+    allocator_ = allocator;
   }
 
- protected:
-  Allocation* AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation* allocation) override;
+  std::shared_ptr<ThreadLocalAllocatorImpl> GetAllocator() {
+    return allocator_;
+  }
+
+ private:
+  std::shared_ptr<ThreadLocalAllocatorImpl> allocator_;
+};
+
+class ThreadLocalAllocatorImpl
+    : public std::enable_shared_from_this<ThreadLocalAllocatorImpl> {
+ public:
+  explicit ThreadLocalAllocatorImpl(const platform::Place& p);
+  ThreadLocalAllocation* AllocateImpl(size_t size);
+  void FreeImpl(ThreadLocalAllocation* allocation);
 
  private:
   std::unique_ptr<memory::detail::BuddyAllocator> buddy_allocator_;
   platform::Place place_;
 };
 
-const std::shared_ptr<Allocator>& GetThreadLocalAllocator();
+class CUDAThreadLocalAllocatorPool {
+ public:
+  static CUDAThreadLocalAllocatorPool& Instance() {
+    static thread_local CUDAThreadLocalAllocatorPool pool;
+    return pool;
+  }
+
+  std::shared_ptr<ThreadLocalAllocatorImpl> Get(int gpu_id);
+
+ private:
+  CUDAThreadLocalAllocatorPool();
+  std::vector<int> devices_;
+  std::vector<std::unique_ptr<std::once_flag>> init_flags_;
+  std::vector<std::shared_ptr<ThreadLocalAllocatorImpl>> allocators_;
+};
+
+class CUDAThreadLocalAllocator : public Allocator {
+ public:
+  explicit CUDAThreadLocalAllocator(const platform::CUDAPlace& p)
+      : gpu_id_(p.device) {}
+
+  bool IsAllocThreadSafe() const override { return true; }
+
+ protected:
+  Allocation* AllocateImpl(size_t size) override {
+    return CUDAThreadLocalAllocatorPool::Instance().Get(gpu_id_)->AllocateImpl(
+        size);
+  }
+  void FreeImpl(Allocation* allocation) override {
+    auto* tl_allocation = static_cast<ThreadLocalAllocation*>(allocation);
+    auto allocator_impl = tl_allocation->GetAllocator();
+    allocator_impl->FreeImpl(tl_allocation);
+  }
+
+ private:
+  int gpu_id_;
+};
 
 }  // namespace allocation
 }  // namespace memory

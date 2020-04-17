@@ -32,6 +32,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
@@ -133,7 +134,11 @@ class AllocatorFacadePrivate {
   }
 
   void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
+#ifndef PADDLE_ON_INFERENCE
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+#else
+    allocators_[p] = std::make_shared<CUDAThreadLocalAllocator>(p);
+#endif
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p) {
