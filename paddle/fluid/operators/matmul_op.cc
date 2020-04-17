@@ -330,10 +330,6 @@ class MatMulOp : public framework::OperatorWithKernel {
                    "Input(Y) of MatMulOp should not be null.");
     PADDLE_ENFORCE(context->HasOutput("Out"),
                    "Output(Out) of MatMulOp should not be null.");
-    auto reshape_out =
-        context->Attrs().Get<std::vector<int64_t>>("reshape_Out");
-    auto transpose_out =
-        context->Attrs().Get<std::vector<int64_t>>("transpose_Out");
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -417,6 +413,12 @@ class MatMulOp : public framework::OperatorWithKernel {
     framework::DDim ddim_out = framework::make_ddim(dim_out);
 
     //  if matmul+transpose+reshape fuse activated
+
+    auto reshape_out =
+        context->Attrs().Get<std::vector<int64_t>>("reshape_Out");
+    auto transpose_out =
+        context->Attrs().Get<std::vector<int64_t>>("transpose_Out");
+
     if (!reshape_out.empty() && !transpose_out.empty()) {
       auto reshape_out_size = reshape_out.size();
       PADDLE_ENFORCE_EQ(reshape_out_size == 3 || reshape_out_size == 4, true,

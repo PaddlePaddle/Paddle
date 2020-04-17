@@ -17,9 +17,6 @@ from __future__ import print_function
 import unittest, os
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
-from ir.inference.inference_pass_test import InferencePassTest
-
-import paddle.fluid as fluid
 
 
 @skip_check_grad_ci(reason="Tests inference only optimization.")
@@ -57,7 +54,7 @@ class TestMatMulOpSpecial(OpTest):
 
 class TestMatMulOpSpecialSimplest(TestMatMulOpSpecial):
     def generate_data(self):
-        bs = 3
+        bs = 8
         self.x = np.random.random([bs, 12, 128, 128]).astype("float32")
         self.y = np.random.random([bs, 12, 128, 64]).astype("float32")
         self.transpose_out = [0, 2, 1, 3]
@@ -66,84 +63,15 @@ class TestMatMulOpSpecialSimplest(TestMatMulOpSpecial):
             [bs, -1, 768])
 
 
-class TestMKLDNNMatmulFuseOp(InferencePassTest):
-    def setUp(self):
-        bs = 8
-        d_type = 'float32'
-        shape_x = [12, 128, 128]
-        shape_y = [12, 128, 64]
-        with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x', shape=[-1] + shape_x, dtype=d_type)
-            y = fluid.data(name='y', shape=[-1] + shape_y, dtype=d_type)
-            out = fluid.layers.matmul(x, y)
-            out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.reshape(out, [0, 0, shape_y[0] * shape_y[2]])
-            out = fluid.layers.fc(out, size=1)
-
-        self.feeds = {
-            "x": np.random.random([bs] + shape_x).astype(d_type),
-            "y": np.random.random([bs] + shape_y).astype(d_type)
-        }
-        self.fetch_list = [out]
-        self.enable_mkldnn = True
-
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
-
-
-class TestMKLDNNMatmulOtherDimsFuseOp(InferencePassTest):
-    def setUp(self):
-        bs = 8
-        d_type = 'float32'
-        shape_x = [12, 1, 1]
-        shape_y = [12, 1, 64]
-        with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x', shape=[-1] + shape_x, dtype=d_type)
-            y = fluid.data(name='y', shape=[-1] + shape_y, dtype=d_type)
-            out = fluid.layers.matmul(x, y)
-            out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.reshape(out, [0, 0, shape_y[0] * shape_y[2]])
-            out = fluid.layers.fc(out, size=1)
-
-        self.feeds = {
-            "x": np.random.random([bs] + shape_x).astype(d_type),
-            "y": np.random.random([bs] + shape_y).astype(d_type)
-        }
-        self.fetch_list = [out]
-        self.enable_mkldnn = True
-
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
-
-
-class TestMKLDNNMatmulNotFuseOp(InferencePassTest):
-    def setUp(self):
-        batch_size = 7
-        d_type = 'float32'
-        shape_x = [12, 128, 128]
-        shape_y = [12, 128, 64]
-        with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x', shape=[-1] + shape_x, dtype=d_type)
-            y = fluid.data(name='y', shape=[-1] + shape_y, dtype=d_type)
-            out = fluid.layers.matmul(x, y)
-            out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.transpose(
-                out, perm=[0, 1, 2, 3])  # breaks pattern
-            out = fluid.layers.reshape(out, [0, 0, 768])
-            out = fluid.layers.fc(out, size=1)
-
-        self.feeds = {
-            "x": np.random.random([batch_size] + shape_x).astype(d_type),
-            "y": np.random.random([batch_size] + shape_y).astype(d_type)
-        }
-        self.fetch_list = [out]
-        self.enable_mkldnn = True
-
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
+class TestMatMulOpSpecialSimplestOtherDims(TestMatMulOpSpecial):
+    def generate_data(self):
+        bs = 3
+        self.x = np.random.random([bs, 12, 128, 128]).astype("float32")
+        self.y = np.random.random([bs, 12, 128, 128]).astype("float32")
+        self.transpose_out = [0, 2, 1, 3]
+        self.reshape_out = [0, 0, 768]
+        self.out = np.matmul(self.x, self.y).transpose([0, 2, 1, 3]).reshape(
+            [bs, -1, 768])
 
 
 if __name__ == '__main__':
