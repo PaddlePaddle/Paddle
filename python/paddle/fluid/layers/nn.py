@@ -3157,7 +3157,8 @@ def data_norm(input,
               do_model_average_for_mean_and_var=True,
               slot_dim=-1,
               sync_stats=False,
-              summary_decay_rate=0.9999999):
+              summary_decay_rate=0.9999999,
+              enable_scale_and_shift=False):
     """
     **Data Normalization Layer**
 
@@ -3206,6 +3207,7 @@ def data_norm(input,
         sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
             summary messages.
         summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
+        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -3236,12 +3238,35 @@ def data_norm(input,
     batch_size_default = 1e4
     batch_sum_default = 0.0
     batch_square_sum_default = 1e4
+    scale_w_default = 1.0
+    bias_default = 0.0
 
     if param_attr and isinstance(param_attr, dict):
         batch_size_default = param_attr.get("batch_size", 1e4)
         batch_sum_default = param_attr.get("batch_sum", 0.0)
         batch_square_sum_default = param_attr.get("batch_square", 1e4)
+    if enable_scale_and_shift:
+        scale_w_default = param_attr.get("scale_w", 1.0)
+        bias_default = param_attr.get("bias", 0.0)
 
+    # create scale and shift(bias) when enable_scale_and_shift is True
+    if name == None:
+        name = "dn"
+    if enable_scale_and_shift:
+        scale_w = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.scale_w',
+                initializer=Constant(value=float(scale_w_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
+        bias = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.bias',
+                initializer=Constant(value=float(bias_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
     # create parameter
     batch_size = helper.create_parameter(
         attr=ParamAttr(
@@ -3272,14 +3297,18 @@ def data_norm(input,
 
     data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
 
+    inputs = {
+        "X": input,
+        "BatchSize": batch_size,
+        "BatchSum": batch_sum,
+        "BatchSquareSum": batch_square_sum
+    }
+    if enable_scale_and_shift:
+        inputs["scale_w"] = scale_w
+        inputs["bias"] = bias
     helper.append_op(
         type="data_norm",
-        inputs={
-            "X": input,
-            "BatchSize": batch_size,
-            "BatchSum": batch_sum,
-            "BatchSquareSum": batch_square_sum
-        },
+        inputs=inputs,
         outputs={
             "Y": data_norm_out,
             "Means": means,
@@ -3292,7 +3321,8 @@ def data_norm(input,
             "epsilon": epsilon,
             "slot_dim": slot_dim,
             "sync_stats": sync_stats,
-            "summary_decay_rate": summary_decay_rate
+            "summary_decay_rate": summary_decay_rate,
+            "enable_scale_and_shift": enable_scale_and_shift
         })
 
     return helper.append_activation(data_norm_out)
@@ -4268,14 +4298,16 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] else False
+        reduce_all = True if dim == None or dim == [] or len(dim) == len(
+            input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                    'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None or dim == [] else False
+        'reduce_all': True
+        if dim == None or dim == [] or len(dim) == len(input.shape) else False
     }
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
@@ -4343,14 +4375,16 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] else False
+        reduce_all = True if dim == None or dim == [] or len(dim) == len(
+            input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
                                     'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None or dim == [] else False
+        'reduce_all': True
+        if dim == None or dim == [] or len(dim) == len(input.shape) else False
     }
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
@@ -4420,7 +4454,8 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4481,7 +4516,8 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4543,7 +4579,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4601,7 +4638,8 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4659,7 +4697,8 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -5196,6 +5235,9 @@ def ctc_greedy_decoder(input,
                             input_length=x_pad_len)
 
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'ctc_greedy_decoder')
+
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
 
@@ -5484,7 +5526,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     """
     helper = LayerHelper('row_conv', **locals())
     dtype = helper.input_dtype()
-    filter_shape = [future_context_size + 1, input.shape[1]]
+    filter_shape = [future_context_size + 1, input.shape[-1]]
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     out = helper.create_variable_for_type_inference(dtype)
@@ -5623,8 +5665,11 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             #      [0.20541131]], dtype=float32)]
 
     """
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'smooth_l1_loss')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'smooth_l1_loss')
 
     helper = LayerHelper('smooth_l1_loss', **locals())
+
     diff = helper.create_variable_for_type_inference(dtype=x.dtype)
     loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -6673,6 +6718,8 @@ def roi_pool(input,
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
+    check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
+    check_variable_and_dtype(rois, 'rois', ['float32'], 'roi_pool')
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -8345,6 +8392,9 @@ def mean_iou(input, label, num_classes):
                                                           num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
+    check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
+                             'mean_iou')
+    check_variable_and_dtype(label, 'Labels', ['int32', 'int64'], 'mean_iou')
     dtype = helper.input_dtype()
     out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
     out_wrong = helper.create_variable_for_type_inference(dtype='int32')
@@ -10713,10 +10763,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
-    check_variable_and_dtype(
-        x, "x",
-        ['float32', 'float64', 'uint8', 'int16', 'int32', 'in64', 'uint8'],
-        "scale")
     if in_dygraph_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
@@ -10724,6 +10770,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                              float(bias), 'bias_after_scale', bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
 
+    check_variable_and_dtype(x, "x", [
+        'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64',
+        'uint8'
+    ], "scale")
     inputs = {'X': [x]}
     attrs = {
         'bias': float(bias),
@@ -11364,6 +11414,12 @@ Examples:
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+    check_variable_and_dtype(x, "x", ["bool"], op_name)
+    if y is not None:
+        check_variable_and_dtype(y, "y", ["bool"], op_name)
+    if out is not None:
+        check_variable_and_dtype(out, "out", [convert_dtype(x.dtype)], op_name)
+
     helper = LayerHelper(op_name, **locals())
 
     if binary_op:
@@ -11604,6 +11660,7 @@ def clip(x, min, max, name=None):
     """
 
     helper = LayerHelper("clip", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
 
     if name is None:
         name = unique_name.generate_with_ignorable_key(".".join(
@@ -13045,6 +13102,8 @@ def prroi_pool(input,
 
 
     """
+    check_variable_and_dtype(input, 'input', ['float32'], 'prroi_pool')
+    check_variable_and_dtype(rois, 'rois', ['float32'], 'prroi_pool')
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
     if not isinstance(spatial_scale, float):
@@ -13269,8 +13328,10 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    check_variable_and_dtype(condition, "condition", ['bool'], "where")
     helper = LayerHelper("where_index", **locals())
+
+    if in_dygraph_mode():
+        return core.ops.where_index(condition)
 
     out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)
@@ -13553,6 +13614,12 @@ def deformable_conv(input,
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
+
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'deformable_conv')
+    check_variable_and_dtype(offset, "offset", ['float32', 'float64'],
+                             'deformable_conv')
+    check_type(mask, 'mask', (Variable, type(None)), 'deformable_conv')
 
     num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."

@@ -31,10 +31,11 @@ class PReluOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     std::string mode = ctx->Attrs().Get<std::string>("mode");
     if (mode == "all") {
-      PADDLE_ENFORCE_EQ(
-          product(ctx->GetInputDim("Alpha")), 1,
-          platform::errors::InvalidArgument(
-              "For mode 'all', size of weight Alpha must be one."));
+      PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), 1,
+                        platform::errors::InvalidArgument(
+                            "For mode 'all', size of weight Alpha must be one. "
+                            "But recevied alpha's size: %d.",
+                            product(ctx->GetInputDim("Alpha"))));
     } else if (mode == "channel") {
       PADDLE_ENFORCE_EQ(product(ctx->GetInputDim("Alpha")), x_dim[1],
                         platform::errors::InvalidArgument(
@@ -67,7 +68,11 @@ class PReluOp : public framework::OperatorWithKernel {
               "x's size: %d.",
               alpha_product, x_product));
     } else {
-      PADDLE_THROW("Unkown mode %s", mode);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Attr(mode) of prelu must be one of 'all', 'channel', or 'element'. "
+          "But recevied "
+          "mode: '%s'.",
+          mode));
     }
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");

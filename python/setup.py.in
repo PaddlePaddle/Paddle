@@ -5,6 +5,7 @@ import re
 import shutil
 import sys
 import fnmatch
+import errno
 
 from contextlib import contextmanager
 from setuptools import Command
@@ -103,6 +104,34 @@ def mkl():
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
+def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
+    cnt = '''from __future__ import print_function
+
+# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+
+from paddle.fluid.incubate.fleet.base.mode import Mode
+
+BUILD_MODE=Mode.%(mode)s
+
+def is_transpiler():
+    return Mode.TRANSPILER == BUILD_MODE
+
+'''
+
+    dirname = os.path.dirname(filename)
+
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
+    with open(filename, 'w') as f:
+        f.write(cnt % {
+            'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
+        })
+
+write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
 
 packages=['paddle',
           'paddle.libs',
@@ -114,6 +143,7 @@ packages=['paddle',
           'paddle.tensor',
           'paddle.framework',
           'paddle.fluid.dygraph',
+          'paddle.tensor',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
@@ -148,7 +178,8 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.nn',
           'paddle.nn.functional',
-          'paddle.nn.layer']
+          'paddle.nn.layer',
+          'paddle.imperative']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
