@@ -18,7 +18,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorBlockingQueueHolder =

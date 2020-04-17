@@ -32,13 +32,13 @@ uint64_t ModelParallelWorker::batch_id_(0);
 
 void ModelParallelWorker::Initialize(const TrainerDesc& trainer_desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-  std::shared_ptr<framework::ProgramDesc> program;
-  program.reset(new ProgramDesc(
+  // std::shared_ptr<framework::ProgramDesc> program;
+  program_.reset(new ProgramDesc(
       trainer_desc.section_param().section_config(section_id_).program_desc()));
-  for (auto& op_desc : program->Block(0).AllOps()) {
+  for (auto& op_desc : program_->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  VLOG(3) << "program size: " << program->Size();
+  VLOG(3) << "program size: " << program_->Size();
 }
 
 void ModelParallelWorker::AutoSetCPUAffinity(bool reuse) {

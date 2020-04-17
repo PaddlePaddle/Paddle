@@ -158,11 +158,15 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     std::shared_ptr<framework::ProgramDesc> program;
     program.reset(new ProgramDesc(
         trainer_desc_.section_param().section_config(i).program_desc()));
+    // const framework::ProgramDesc& program =
+    // trainer_desc_.section_param().section_config(i).program_desc();
     VLOG(3) << "program size for section " << i << " is: " << program->Size();
+    // VLOG(3) << "program size for section " << i << " is: " << program.Size();
     macrobatch_scopes_[i].resize(num_macrobatches_);
     for (int j = 0; j < num_macrobatches_; ++j) {
       macrobatch_scopes_[i][j] = &minibatch_scope_->NewScope();
       CopyParameters(i, j, *program, _places[i]);
+      // CopyParameters(i, j, program, _places[i]);
     }
   }
   VLOG(3) << "Created all scopes.";

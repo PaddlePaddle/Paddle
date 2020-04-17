@@ -14,6 +14,7 @@
 """Defination of trainers."""
 
 import sys
+import os
 from os import path
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',

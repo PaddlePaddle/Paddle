@@ -428,6 +428,7 @@ class ModelParallelWorker : public DeviceWorker {
   static std::mutex thread_mutex;
   static std::condition_variable thread_condition;
   static bool threads_completed;
+  std::shared_ptr<framework::ProgramDesc> program_;
   // Todo: How to deal with the case that batch_id is
   // greater than the maximum number of uint64_t
   static uint64_t batch_id_;

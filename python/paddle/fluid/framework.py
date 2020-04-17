@@ -1821,6 +1821,8 @@ class Operator(object):
                     op_attrs[op_device] = _current_device
                     op_attrs[op_device_index] = _current_device_index
                 else:
+                    op_device_index = op_maker.kOpDeviceIndexAttrName()
+                    op_attrs[op_device_index] = _current_device_index
                     warnings.warn("The Op(%s) is not support to set device." %
                                   type)
                 if 'force_cpu' in op_attrs:
