@@ -70,7 +70,7 @@ def _dygraph_to_static_func_(dygraph_func):
         dygraph_func (callable): callable imperative function.
 
     Returns:
-        callable: converting imperative dygraph APIs into declarative
+        Callable: converting imperative dygraph APIs into declarative
         net-building APIs.
 
     Examples:
