@@ -470,34 +470,39 @@ class Pad2dOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad2d");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(
-        x_dim.size(), 4,
-        platform::errors::InvalidArgument(
-            "The size of Input(X)'s dimension should be equal to 4."));
+    PADDLE_ENFORCE_EQ(x_dim.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "The size of Input(X)'s dimension should be equal to "
+                          "4, but received %d. ",
+                          x_dim.size()));
 
     std::vector<int64_t> out_dims(x_dim.size());
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
     out_dims[0] = x_dim[0];
     if (ctx->HasInput("Paddings")) {
       auto paddings_dim = ctx->GetInputDim("Paddings");
-      PADDLE_ENFORCE_EQ(
-          paddings_dim.size(), 1,
-          platform::errors::InvalidArgument(
-              "Size of Input(Paddings)'s dimension should be equal to 1."));
+      PADDLE_ENFORCE_EQ(paddings_dim.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Size of Input(Paddings)'s dimension should be "
+                            "equal to 1, but received %d.",
+                            paddings_dim.size()));
       if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(
-            paddings_dim[0], 4,
-            platform::errors::InvalidArgument(
-                "Shape of Input(Paddings) should be equal to [4]."));
+        PADDLE_ENFORCE_EQ(paddings_dim[0], 4,
+                          platform::errors::InvalidArgument(
+                              "Shape of Input(Paddings) should be equal to "
+                              "[4], but received [%d].",
+                              paddings_dim[0]));
       }
       out_dims[1] = x_dim[1];
       out_dims[2] = x_dim[2];
       out_dims[3] = x_dim[3];
     } else {
       auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-      PADDLE_ENFORCE_EQ(paddings.size(), 4,
-                        platform::errors::InvalidArgument(
-                            "Size of paddings should be equal to 4."));
+      PADDLE_ENFORCE_EQ(
+          paddings.size(), 4,
+          platform::errors::InvalidArgument(
+              "Size of paddings should be equal to 4, but received %d.",
+              static_cast<int>(paddings.size())));
       if (data_format == "NCHW") {
         out_dims[1] = x_dim[1];  // channel
         out_dims[2] = ((!ctx->IsRuntime()) && (x_dim[2] < 0))
