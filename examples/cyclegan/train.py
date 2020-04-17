@@ -24,12 +24,11 @@ import time
 
 import paddle
 import paddle.fluid as fluid
+from hapi.model import Model, Input, set_device
+
 from check import check_gpu, check_version
-
-from model import Model, Input, set_device
-
-import data as data
 from cyclegan import Generator, Discriminator, GeneratorCombine, GLoss, DLoss
+import data as data
 
 step_per_epoch = 2974
 
@@ -76,12 +75,15 @@ def main():
     fake_A = Input(im_shape, 'float32', 'fake_A')
     fake_B = Input(im_shape, 'float32', 'fake_B')
 
-    g_AB.prepare(inputs=[input_A])
-    g_BA.prepare(inputs=[input_B])
+    g_AB.prepare(inputs=[input_A], device=FLAGS.device)
+    g_BA.prepare(inputs=[input_B], device=FLAGS.device)
 
-    g.prepare(g_optimizer, GLoss(), inputs=[input_A, input_B])
-    d_A.prepare(da_optimizer, DLoss(), inputs=[input_B, fake_B])
-    d_B.prepare(db_optimizer, DLoss(), inputs=[input_A, fake_A])
+    g.prepare(g_optimizer, GLoss(), inputs=[input_A, input_B],
+        device=FLAGS.device)
+    d_A.prepare(da_optimizer, DLoss(), inputs=[input_B, fake_B],
+        device=FLAGS.device)
+    d_B.prepare(db_optimizer, DLoss(), inputs=[input_A, fake_A],
+        device=FLAGS.device)
 
     if FLAGS.resume:
         g.load(FLAGS.resume)
@@ -108,14 +110,14 @@ def main():
             data_B = data_B[0][0] if not FLAGS.dynamic else data_B[0]
             start = time.time()
 
-            fake_B = g_AB.test(data_A)[0]
-            fake_A = g_BA.test(data_B)[0]
-            g_loss = g.train([data_A, data_B])[0]
+            fake_B = g_AB.test_batch(data_A)[0]
+            fake_A = g_BA.test_batch(data_B)[0]
+            g_loss = g.train_batch([data_A, data_B])[0]
             fake_pb = B_pool.get(fake_B)
-            da_loss = d_A.train([data_B, fake_pb])[0]
+            da_loss = d_A.train_batch([data_B, fake_pb])[0]
 
             fake_pa = A_pool.get(fake_A)
-            db_loss = d_B.train([data_A, fake_pa])[0]
+            db_loss = d_B.train_batch([data_A, fake_pa])[0]
 
             t = time.time() - start
             if i % 20 == 0:
@@ -128,7 +130,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("CycleGAN Training on Cityscapes")
     parser.add_argument(
-        "-d", "--dynamic", action='store_false', help="Enable dygraph mode")
+        "-d", "--dynamic", action='store_true', help="Enable dygraph mode")
     parser.add_argument(
         "-p",
         "--device",
