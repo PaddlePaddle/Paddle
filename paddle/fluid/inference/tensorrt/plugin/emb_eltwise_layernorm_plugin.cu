@@ -55,7 +55,7 @@ int EmbEltwiseLayernormPluginDynamic<T>::initialize() {
       ptr_vector[i] = tmp.data();
     }
   }
-  embs_gpu_.reserve(embs_.size());
+  embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
     cudaMalloc(&embs_gpu_[i], sizeof(T) * emb_sizes_[i]);
     cudaMemcpy(embs_gpu_[i], ptr_vector[i], emb_sizes_[i] * sizeof(T),
