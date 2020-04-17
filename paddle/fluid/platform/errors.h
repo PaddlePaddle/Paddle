@@ -33,9 +33,6 @@ class ErrorSummary {
   // Note(chenweihang): Final deprecated constructor
   //   This constructor is only used to be compatible with
   //   current existing no error message PADDLE_ENFORCE_*
-  // Note(zhouwei): PADDLE_ENFORCE_CUDA_SUCCESS error message
-  //   can be get automatically, error message from developer
-  //   is not necessary
   ErrorSummary() {
     code_ = paddle::platform::error::LEGACY;
     msg_ =

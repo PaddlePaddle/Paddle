@@ -228,10 +228,6 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 
 inline bool is_error(bool stat) { return !stat; }
 
-inline std::string build_ex_string(bool stat, const std::string& msg) {
-  return msg;
-}
-
 inline void throw_on_error(bool stat, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
@@ -292,23 +288,21 @@ struct EnforceNotMet : public std::exception {
     }                                                                        \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                                           \
-  do {                                                                      \
-    auto __cond__ = (COND);                                                 \
-    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {                 \
-      try {                                                                 \
-        ::paddle::platform::throw_on_error(                                 \
-            __cond__,                                                       \
-            ::paddle::platform::build_ex_string(                            \
-                __cond__,                                                   \
-                ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
-      } catch (...) {                                                       \
-        HANDLE_THE_ERROR                                                    \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
-                                                __FILE__, __LINE__);        \
-        END_HANDLE_THE_ERROR                                                \
-      }                                                                     \
-    }                                                                       \
+#define PADDLE_ENFORCE(COND, ...)                                         \
+  do {                                                                    \
+    auto __cond__ = (COND);                                               \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
+      try {                                                               \
+        ::paddle::platform::throw_on_error(                               \
+            __cond__,                                                     \
+            ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString());    \
+      } catch (...) {                                                     \
+        HANDLE_THE_ERROR                                                  \
+        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                                __FILE__, __LINE__);      \
+        END_HANDLE_THE_ERROR                                              \
+      }                                                                   \
+    }                                                                     \
   } while (0)
 #endif
 
@@ -474,7 +468,7 @@ struct EOFException : public std::exception {
 /** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
 #ifdef PADDLE_WITH_CUDA
 
-/** cuda ERROR **/
+/***** CUDA ERROR *****/
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
 
 inline std::string GetCudaErrorWebsite(int32_t cuda_version) {
@@ -625,7 +619,7 @@ inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
 #endif
 }
 
-/** cudnn ERROR **/
+/***** CUDNN ERROR *****/
 inline bool is_error(cudnnStatus_t stat) {
   return stat != CUDNN_STATUS_SUCCESS;
 }
@@ -643,7 +637,7 @@ inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
 #endif
 }
 
-/** cublas ERROR **/
+/***** CUBLAS ERROR *****/
 inline bool is_error(cublasStatus_t stat) {
   return stat != CUBLAS_STATUS_SUCCESS;
 }
@@ -686,7 +680,7 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
 #endif
 }
 
-/** nccl ERROR **/
+/****** NCCL ERROR ******/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
