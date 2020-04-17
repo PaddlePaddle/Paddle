@@ -269,7 +269,6 @@ std::string CodeGenerator::EmitParameters(
     }
     index++;
   }
-
   return ret.str();
 }
 
@@ -288,7 +287,6 @@ std::string CodeGenerator::EmitComputeBody(
   // Load input to temporal variables.
   std::ostringstream load;
   for (auto id : input_ids) {
-    VLOG(0) << id;
     if (output_ids.find(id) == output_ids.end() &&
         used.find(id) != used.end()) {
       load << dtypes.at(id) << " " << TmpName(id) << " = "

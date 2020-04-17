@@ -131,9 +131,12 @@ void FusionGroupPass::InsertFusionGroupOp(
   std::vector<std::string> outs_data_types;
   std::vector<Node*> output_var_without_intermediate;
   for (auto* n : output_vars_of_subgraph) {
-    auto it = find(intermediate_vars_of_subgraph.begin(),
-                   intermediate_vars_of_subgraph.end(), n);
-    if (it == intermediate_vars_of_subgraph.end()) {
+    auto it_input =
+        find(input_vars_of_subgraph.begin(), input_vars_of_subgraph.end(), n);
+    auto it_intermediate = find(intermediate_vars_of_subgraph.begin(),
+                                intermediate_vars_of_subgraph.end(), n);
+    if (it_intermediate == intermediate_vars_of_subgraph.end() &&
+        it_input == input_vars_of_subgraph.end()) {
       output_names.push_back(n->Name());
       outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
       output_var_without_intermediate.push_back(n);
