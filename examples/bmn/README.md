@@ -51,11 +51,11 @@ BMN的训练数据采用ActivityNet1.3提供的数据集，我们提供了处理
 
     bash run.sh
 
-- 若使用单卡训练，请将配置文件bmn.yaml中的batch\_size调整为16，启动方式如下:
+若使用单卡训练，请将配置文件bmn.yaml中的batch\_size调整为16，启动方式如下:
 
     python train.py
 
-- 默认使用静态图训练，若使用动态图训练只需要在运行脚本添加`-d`参数即可，如：
+默认使用静态图训练，若使用动态图训练只需要在运行脚本添加`-d`参数即可，如：
 
     python train.py -d
 
