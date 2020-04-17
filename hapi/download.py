@@ -35,6 +35,25 @@ WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
 DOWNLOAD_RETRY_LIMIT = 3
 
+_pretrain = (('RoBERTa-zh-base', 'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_ext_L-12_H-768_A-12.tar.gz'),
+            ('RoBERTa-zh-large', 'https://bert-models.bj.bcebos.com/chinese_roberta_wwm_large_ext_L-24_H-1024_A-16.tar.gz'),
+            ('ERNIE-v2-en-base', 'https://ernie.bj.bcebos.com/ERNIE_Base_en_stable-2.0.0.tar.gz'),
+            ('ERNIE-v2-en-large', 'https://ernie.bj.bcebos.com/ERNIE_Large_en_stable-2.0.0.tar.gz'),
+            ('XLNet-cased-base', 'https://xlnet.bj.bcebos.com/xlnet_cased_L-12_H-768_A-12.tgz'),
+            ('XLNet-cased-large', 'https://xlnet.bj.bcebos.com/xlnet_cased_L-24_H-1024_A-16.tgz'),
+            ('ERNIE-v1-zh-base', 'https://baidu-nlp.bj.bcebos.com/ERNIE_stable-1.0.1.tar.gz'),
+            ('ERNIE-v1-zh-base-max-len-512', 'https://ernie.bj.bcebos.com/ERNIE_1.0_max-len-512.tar.gz'),
+            ('BERT-en-uncased-large-whole-word-masking', 'https://bert-models.bj.bcebos.com/wwm_uncased_L-24_H-1024_A-16.tar.gz'),
+            ('BERT-en-cased-large-whole-word-masking', 'https://bert-models.bj.bcebos.com/wwm_cased_L-24_H-1024_A-16.tar.gz'),
+            ('BERT-en-uncased-base', 'https://bert-models.bj.bcebos.com/uncased_L-12_H-768_A-12.tar.gz'),
+            ('BERT-en-uncased-large', 'https://bert-models.bj.bcebos.com/uncased_L-24_H-1024_A-16.tar.gz'),
+            ('BERT-en-cased-base', 'https://bert-models.bj.bcebos.com/cased_L-12_H-768_A-12.tar.gz'),
+            ('BERT-en-cased-large','https://bert-models.bj.bcebos.com/cased_L-24_H-1024_A-16.tar.gz'),
+            ('BERT-multilingual-uncased-base', 'https://bert-models.bj.bcebos.com/multilingual_L-12_H-768_A-12.tar.gz'),
+            ('BERT-multilingual-cased-base', 'https://bert-models.bj.bcebos.com/multi_cased_L-12_H-768_A-12.tar.gz'),
+            ('BERT-zh-base', 'https://bert-models.bj.bcebos.com/chinese_L-12_H-768_A-12.tar.gz'),)
+
+nlp_models = OrderedDict(_pretrain)
 
 def is_url(path):
     """
