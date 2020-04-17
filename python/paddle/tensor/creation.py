@@ -573,9 +573,9 @@ def arange(start, end, step=1, dtype=None, name=None):
              import paddle
              import paddle.fluid as fluid
              with fluid.dygraph.guard():
+                 x = paddle.arange(0, 6, 2) 
                  # x: [0, 2, 4]
                  # x dtype: float32
-                 x = paddle.arange(0, 6, 2) 
              
     """
     helper = LayerHelper("range", **locals())
