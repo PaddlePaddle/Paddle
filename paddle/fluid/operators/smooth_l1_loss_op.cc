@@ -63,7 +63,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
                               "Input(X) ans Input(InsideWeight) of "
                               "SmoothL1LossOp should have the same size, but "
                               "received X dim is %s, InsideWeight dim is %s",
-                              x_dims.to_str(), dim.to_str()));
+                              x_dims.to_str(), dims.to_str()));
       }
 
       dims = ctx->GetInputDim("OutsideWeight");
@@ -78,7 +78,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
                               "Input(X) ans Input(OutsideWeight) of "
                               "SmoothL1LossOp should have the same size, but "
                               "received X dim is %s, OutsideWeight dim is %s",
-                              x_dims.to_str(), dim.to_str()));
+                              x_dims.to_str(), dims.to_str()));
       }
     }
 
