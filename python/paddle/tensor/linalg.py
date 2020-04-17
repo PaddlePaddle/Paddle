@@ -440,6 +440,11 @@ def dot(x, y, name=None):
 
     """
     op_type = 'dot'
+    # skip var type check in dygraph mode to improve efficiency
+    if in_dygraph_mode():
+        op = getattr(core.ops, op_type)
+        return op(x, y)
+
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
 
