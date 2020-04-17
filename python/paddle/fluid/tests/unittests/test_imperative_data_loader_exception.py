@@ -21,6 +21,8 @@ from paddle.fluid import core
 import paddle.compat as cpt
 from paddle.fluid.reader import set_multiprocess_queue_timeout
 
+# NOTE: for coverage ci
+set_multiprocess_queue_timeout()
 # NOTE: to shorten this unittest time cost
 set_multiprocess_queue_timeout(3)
 
