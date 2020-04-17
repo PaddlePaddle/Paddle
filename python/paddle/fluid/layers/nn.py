@@ -5781,6 +5781,8 @@ def one_hot(input, depth, allow_out_of_range=False):
         return out
 
     helper = LayerHelper("one_hot", **locals())
+    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'one_hot')
+    check_type(depth, 'depth', (six.integer_types, Variable), 'one_hot')
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
     if not isinstance(depth, Variable):
@@ -6392,6 +6394,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
         print(lrn.dtype)  # float32
     """
     helper = LayerHelper('lrn', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'lrn')
     dtype = helper.input_dtype()
     input_shape = input.shape
     dims = len(input_shape)
