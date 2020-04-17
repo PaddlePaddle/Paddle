@@ -104,14 +104,6 @@ class _DataLoaderIterBase(object):
     def __len__(self):
         return len(self._batch_sampler)
 
-    def __next__(self):
-        raise NotImplementedError("'{}' not implement in class "\
-                "{}".format('__next__', self.__class__.__name__))
-
-    # python2 compatibility
-    def next(self):
-        return self.__next__()
-
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     """
@@ -199,6 +191,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         except StopIteration:
             self._reader.reset()
             six.reraise(*sys.exc_info())
+
+    # python2 compatibility
+    def next(self):
+        return self.__next__()
 
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
@@ -524,6 +520,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._reader.reset()
             self._try_shutdown_all()
             six.reraise(*sys.exc_info())
+
+    # python2 compatibility
+    def next(self):
+        return self.__next__()
 
     def _on_output_batch(self):
         for _ in range(len(self._places)):

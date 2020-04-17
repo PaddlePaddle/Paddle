@@ -180,11 +180,9 @@ class TestStaticDataLoader(unittest.TestCase):
         places = []
         if with_cpu:
             places.append([fluid.CPUPlace()])
-            if with_data_parallel:
-                places.append([fluid.CPUPlace()] * 2)
 
         if with_gpu and fluid.core.is_compiled_with_cuda():
-            tmp = fluid.cuda_places()
+            tmp = fluid.cuda_places()[:2]
             assert len(tmp) > 0, "no gpu detected"
             if with_data_parallel:
                 places.append(tmp)
