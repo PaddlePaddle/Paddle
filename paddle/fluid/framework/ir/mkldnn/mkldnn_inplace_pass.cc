@@ -130,16 +130,17 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       auto outputs = op->Outputs();
       // Check if in-place happened
       // for variable we changed (original name)
+      //TODO(jczaja): make recursive propagation of inplace
       auto next_op_inplace_inputs = inputs[in_to_outs.begin()->first];
       if ((next_op_inplace_inputs == outputs[in_to_outs.begin()->second]) &&
           (std::find(next_op_inplace_inputs.begin(),
                      next_op_inplace_inputs.end(),
                      original_name) != next_op_inplace_inputs.end())) {
-        VLOG(3) << "MKL-DNN InPlace: Next Op is in-placed , updating its input "
+        VLOG(3) << "TODO: MKL-DNN InPlace: Next Op is in-placed , updating its input "
                    "and output var!";
-        next_op->Op()->SetOutput(
-            out_name, std::vector<std::string>({current_op_out->Name()}));
-        next_op_out->RenameVar(current_op_in->Name());
+        //next_op->Op()->SetOutput(
+        //    out_name, std::vector<std::string>({current_op_out->Name()}));
+        //next_op_out->RenameVar(current_op_in->Name());
       }
     }
 
