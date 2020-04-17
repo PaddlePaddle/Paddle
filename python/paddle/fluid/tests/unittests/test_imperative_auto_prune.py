@@ -329,9 +329,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
-            optimizer = fluid.optimizer.AdamOptimizer(
-                0.001, parameter_list=model.parameters())
             grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                0.001, parameter_list=model.parameters(), grad_clip=grad_clip)
 
             indices = fluid.dygraph.to_variable(indices)
             embed = fluid.dygraph.to_variable(embed)
@@ -339,7 +339,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
             loss = model.embed_linear0(indices)
             loss.backward()
-            _, params_grads = optimizer.minimize(loss, grad_clip=grad_clip)
+            _, params_grads = optimizer.minimize(loss)
             for items in params_grads:
                 assert items[0].name is not model.embed1.weight.name
                 assert items[0].name is not model.linear_1.weight.name
@@ -348,9 +348,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
-            optimizer = fluid.optimizer.AdamOptimizer(
-                0.001, parameter_list=model.parameters())
             grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                0.001, parameter_list=model.parameters(), grad_clip=grad_clip)
 
             indices = fluid.dygraph.to_variable(indices)
             emebd = fluid.dygraph.to_variable(embed)
@@ -358,7 +358,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
             loss = model.embed_linear0(indices)
             loss.backward()
-            optimizer.minimize(loss, grad_clip=grad_clip)
+            optimizer.minimize(loss)
             for items in params_grads:
                 assert items[0].name is not model.embed1.weight.name
                 assert items[0].name is not model.linear_1.weight.name
