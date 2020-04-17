@@ -31,7 +31,7 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers import utils
 from ..fluid.layers.tensor import fill_constant
 
-__all__ = ['randperm', 'randint']
+__all__ = ['randperm', 'randn', 'randint']
 
 
 def randint(low,
@@ -208,7 +208,7 @@ def randn(shape,
         shape(list|tuple): Shape of the generated random tensor.
         out(Variable, optional): Optional output which can be any created Variable 
             that meets the requirements to store the result of operation. If the 
-            out is `None`, a new Variable wiil be returned to store the result.
+            out is `None`, a new Variable will be returned to store the result.
             Default is None.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output 
             tensor, which can be float32, float64. if dtype is `None` , the data 
@@ -225,7 +225,7 @@ def randn(shape,
             Default is None.
 
     Returns:
-        Random tensor whose data is drawn from a Gaussian distribution, 
+        Random tensor whose data is drawn from a standard normal distribution,
         dtype: flaot32 or float64 as specified.
 
     Return type:
