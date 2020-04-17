@@ -178,9 +178,9 @@ def pow(input, exponent, out=None, name=None):
             # y_1 is x^{2.0}
 
             # example 2: argument exponent is Variable
-            exponet_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
+            exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
             res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.pow(x, exponet_tensor, out=res)
+            y_2 = paddle.pow(x, exponent_tensor, out=res)
             # y_2 is x^{3.0}
     """
     helper = LayerHelper('pow', **locals())
