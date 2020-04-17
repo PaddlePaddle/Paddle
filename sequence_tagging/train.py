@@ -154,9 +154,10 @@ class ChunkEval(Metric):
             int(math.ceil((num_labels - 1) / 2.0)), "IOB")
         self.reset()
 
-    def add_metric_op(self, pred, label, *args, **kwargs):
-        crf_decode = pred[0]
-        lengths = pred[2]
+    def add_metric_op(self, *args): 
+        crf_decode = args[0]
+        lengths = args[2]
+        label = args[3]
         (num_infer_chunks, num_label_chunks,
          num_correct_chunks) = self.chunk_eval(
              input=crf_decode, label=label, seq_length=lengths)
@@ -204,11 +205,11 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [Input([None, args.max_seq_len], 'int64', name='words'),
+    inputs = [Input([None, None], 'int64', name='words'),
               Input([None], 'int64', name='length'), 
-              Input([None, args.max_seq_len], 'int64', name='target')]
+              Input([None, None], 'int64', name='target')]
 
-    labels = [Input([None, args.max_seq_len], 'int64', name='labels')]
+    labels = [Input([None, None], 'int64', name='labels')]
 
     feed_list = None if args.dynamic else [x.forward() for x in inputs + labels]
     dataset = LacDataset(args)
@@ -343,7 +344,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print(args)
-    check_gpu(args.device)
+    use_gpu = True if args.device == "gpu" else False
+    check_gpu(use_gpu)
     check_version()
 
     main(args)

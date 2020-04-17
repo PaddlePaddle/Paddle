@@ -22,7 +22,7 @@ import sys
 if six.PY2:
     reload(sys)
     sys.setdefaultencoding('utf8')
-
+    
 import ast
 import time
 import argparse as argparse
@@ -31,8 +31,6 @@ import multiprocessing
 
 import collections
 import copy
-import six
-import sys
 from functools import partial, reduce
 
 import paddle
@@ -46,11 +44,12 @@ from paddle.fluid import layers
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.layers import BeamSearchDecoder
 
+
 __all__ = [
     'RNNCell', 'BasicLSTMCell', 'BasicGRUCell', 'RNN', 'DynamicDecode',
     'BeamSearchDecoder', 'MultiHeadAttention', 'FFN',
     'TransformerEncoderLayer', 'TransformerEncoder', 'TransformerDecoderLayer',
-    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'DynamicGRU',
+    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'GRUCell', 'GRUEncoderCell', 
     'BiGRU', 'Linear_chain_crf', 'Crf_decoding', 'SequenceTagging'
 ]
 
@@ -220,19 +219,7 @@ class BasicLSTMCell(RNNCell):
                  gate_activation=None,
                  activation=None,
                  forget_bias=1.0,
-                 dtype='float32',
-                 forget_gate_weights={"w": None,
-                                      "h": None,
-                                      "b": None},
-                 input_gate_weights={"w": None,
-                                     "h": None,
-                                     "b": None},
-                 output_gate_weights={"w": None,
-                                      "h": None,
-                                      "b": None},
-                 cell_weights={"w": None,
-                               "h": None,
-                               "b": None}):
+                 dtype='float32'):
         super(BasicLSTMCell, self).__init__()
 
         self._hidden_size = hidden_size
@@ -246,187 +233,18 @@ class BasicLSTMCell(RNNCell):
         self._dtype = dtype
         self._input_size = input_size
 
-        assert isinstance(forget_gate_weights, dict)
-        assert isinstance(input_gate_weights, dict)
-        assert isinstance(output_gate_weights, dict)
-        assert isinstance(cell_weights, dict)
+        self._weight = self.create_parameter(
+            attr=self._param_attr,
+            shape=[
+                self._input_size + self._hidden_size, 4 * self._hidden_size
+            ],
+            dtype=self._dtype)
 
-        # forgot get parameters
-        if "w" in forget_gate_weights and forget_gate_weights["w"] is not None:
-            self.fg_w = forget_gate_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_forget_gate_w"
-            else:
-                tmp_param_attr = self._param_attr
-            self.fg_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in forget_gate_weights and forget_gate_weights["h"] is not None:
-            self.fg_h = forget_gate_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_forget_gate_h"
-            else:
-                tmp_param_attr = self._param_attr
-            self.fg_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in forget_gate_weights and forget_gate_weights["b"] is not None:
-            self.fg_b = forget_gate_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_forget_gate_b"
-            else:
-                tmp_param_attr = self._bias_attr
-            self.fg_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        # input gate parameters
-        if "w" in input_gate_weights and input_gate_weights["w"] is not None:
-            self.ig_w = input_gate_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_input_gate_w"
-            else:
-                tmp_param_attr = self._param_attr
-
-            self.ig_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in input_gate_weights and input_gate_weights["h"] is not None:
-            self.ig_h = input_gate_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_input_gate_h"
-            else:
-                tmp_param_attr = self._param_attr
-
-            self.ig_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in input_gate_weights and input_gate_weights["b"] is not None:
-            self.ig_b = input_gate_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_input_gate_b"
-            else:
-                tmp_param_attr = self._bias_attr
-            self.ig_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        # output gate parameters
-        if "w" in output_gate_weights and output_gate_weights["w"] is not None:
-            self.og_w = output_gate_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_output_gate_w"
-            else:
-                tmp_param_attr = self._param_attr
-            self.og_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in output_gate_weights and output_gate_weights["h"] is not None:
-            self.og_h = output_gate_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_output_gate_h"
-            else:
-                tmp_param_attr = self._param_attr
-            self.og_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in output_gate_weights and output_gate_weights["b"] is not None:
-            self.og_b = output_gate_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_output_gate_b"
-            else:
-                tmp_param_attr = self._bias_attr
-            self.og_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        # cell parameters
-        if "w" in cell_weights and cell_weights["w"] is not None:
-            self.c_w = cell_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_cell_w"
-            else:
-                tmp_param_attr = self._param_attr
-
-            self.c_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in cell_weights and cell_weights["h"] is not None:
-            self.c_h = cell_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_cell_h"
-            else:
-                tmp_param_attr = self._param_attr
-            self.c_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in cell_weights and cell_weights["b"] is not None:
-            self.c_b = cell_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_cell_b"
-            else:
-                tmp_param_attr = self._bias_attr
-            self.c_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        # the weight is concated here in order to make the computation more efficent.
-        weight_w = fluid.layers.concat(
-            [self.ig_w, self.c_w, self.fg_w, self.og_w], axis=-1)
-        weight_h = fluid.layers.concat(
-            [self.ig_h, self.c_h, self.fg_h, self.og_h], axis=-1)
-        self._weight = fluid.layers.concat([weight_w, weight_h], axis=0)
-
-        self._bias = fluid.layers.concat(
-            [self.ig_b, self.c_b, self.fg_b, self.og_b])
+        self._bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[4 * self._hidden_size],
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input, state):
         pre_hidden, pre_cell = state
@@ -490,29 +308,15 @@ class BasicGRUCell(RNNCell):
                  bias_attr=None,
                  gate_activation=None,
                  activation=None,
-                 dtype='float32',
-                 update_gate_weights={"w": None,
-                                      "h": None,
-                                      "b": None},
-                 reset_gate_weights={"w": None,
-                                     "h": None,
-                                     "b": None},
-                 cell_weights={"w": None,
-                               "h": None,
-                               "b": None}):
-
+                 dtype='float32'):
         super(BasicGRUCell, self).__init__()
         self._input_size = input_size
-        self._hiden_size = hidden_size
+        self._hidden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
         self._dtype = dtype
-
-        assert isinstance(update_gate_weights, dict)
-        assert isinstance(reset_gate_weights, dict)
-        assert isinstance(cell_weights, dict)
 
         if self._param_attr is not None and self._param_attr.name is not None:
             gate_param_attr = copy.deepcopy(self._param_attr)
@@ -523,6 +327,16 @@ class BasicGRUCell(RNNCell):
             gate_param_attr = self._param_attr
             candidate_param_attr = self._param_attr
 
+        self._gate_weight = self.create_parameter(
+            attr=gate_param_attr,
+            shape=[self._input_size + self._hidden_size, 2 * self._hidden_size],
+            dtype=self._dtype)
+
+        self._candidate_weight = self.create_parameter(
+            attr=candidate_param_attr,
+            shape=[self._input_size + self._hidden_size, self._hidden_size],
+            dtype=self._dtype)
+
         if self._bias_attr is not None and self._bias_attr.name is not None:
             gate_bias_attr = copy.deepcopy(self._bias_attr)
             candidate_bias_attr = copy.deepcopy(self._bias_attr)
@@ -532,139 +346,16 @@ class BasicGRUCell(RNNCell):
             gate_bias_attr = self._bias_attr
             candidate_bias_attr = self._bias_attr
 
-        # create the parameters of gates in gru
-        if "w" in update_gate_weights and update_gate_weights["w"] is not None:
-            self.ug_w = update_gate_weights["w"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_update_gate_w"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.ug_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in update_gate_weights and update_gate_weights["h"] is not None:
-            self.ug_h = update_gate_weights["h"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_update_gate_h"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.ug_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in update_gate_weights and update_gate_weights["b"] is not None:
-            self.ug_b = update_gate_weights["b"]
-        else:
-            if gate_bias_attr is not None and gate_bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_bias_attr)
-                tmp_param_attr.name += "_update_gate_b"
-            else:
-                tmp_param_attr = gate_bias_attr
-            self.ug_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        # reset gate parameters
-        if "w" in reset_gate_weights and reset_gate_weights["w"] is not None:
-            self.rg_w = reset_gate_weights["w"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_reset_gate_w"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.rg_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in reset_gate_weights and reset_gate_weights["h"] is not None:
-            self.rg_h = reset_gate_weights["h"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_reset_gate_h"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.rg_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in reset_gate_weights and reset_gate_weights["b"] is not None:
-            self.rg_b = reused_params["b"]
-        else:
-            if gate_bias_attr is not None and gate_bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_bias_attr)
-                tmp_param_attr.name += "_reset_gate_b"
-            else:
-                tmp_param_attr = gate_bias_attr
-            self.rg_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        # cell parameters
-        if "w" in cell_weights and cell_weights["w"] is not None:
-            self.c_w = cell_weights["w"]
-        else:
-            if candidate_param_attr is not None and candidate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(candidate_param_attr)
-                tmp_param_attr.name += "_cell_w"
-            else:
-                tmp_param_attr = gate_param_attr
-
-            self.c_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in cell_weights and cell_weights["h"] is not None:
-            self.c_h = cell_weights["h"]
-        else:
-            if candidate_param_attr is not None and candidate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(candidate_param_attr)
-                tmp_param_attr.name += "_cell_h"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.c_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in cell_weights and cell_weights["b"] is not None:
-            self.c_b = cell_weights["b"]
-        else:
-            if candidate_bias_attr is not None and candidate_bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(candidate_bias_attr)
-                tmp_param_attr.name += "_cell_b"
-            else:
-                tmp_param_attr = gate_bias_attr
-            self.c_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
-
-        rg_weights = layers.concat([self.rg_w, self.rg_h], axis=0)
-        ug_weights = layers.concat([self.ug_w, self.ug_h], axis=0)
-        self._gate_weight = layers.concat([rg_weights, ug_weights], axis=-1)
-
-        self._candidate_weight = layers.concat([self.c_w, self.c_h], axis=0)
-
-        self._gate_bias = layers.concat([self.rg_b, self.ug_b], axis=0)
-
-        self._candidate_bias = self.c_b
+        self._gate_bias = self.create_parameter(
+            attr=gate_bias_attr,
+            shape=[2 * self._hidden_size],
+            dtype=self._dtype,
+            is_bias=True)
+        self._candidate_bias = self.create_parameter(
+            attr=candidate_bias_attr,
+            shape=[self._hidden_size],
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input, state):
         pre_hidden = state
@@ -870,7 +561,6 @@ class DynamicDecode(Layer):
                     # To confirm states.finished/finished be consistent with
                     # next_finished.
                     layers.assign(next_finished, finished)
-
                 next_sequence_lengths = layers.elementwise_add(
                     sequence_lengths,
                     layers.cast(
@@ -1010,11 +700,7 @@ class PrePostProcessLayer(Layer):
     PrePostProcessLayer
     """
 
-    def __init__(self,
-                 process_cmd,
-                 d_model,
-                 dropout_rate,
-                 reused_layer_norm=None):
+    def __init__(self, process_cmd, d_model, dropout_rate):
         super(PrePostProcessLayer, self).__init__()
         self.process_cmd = process_cmd
         self.functors = []
@@ -1022,21 +708,16 @@ class PrePostProcessLayer(Layer):
             if cmd == "a":  # add residual connection
                 self.functors.append(lambda x, y: x + y if y else x)
             elif cmd == "n":  # add layer normalization
-                if reused_layer_norm is not None:
-                    layer_norm = reused_layer_norm
-                else:
-                    layer_norm = LayerNorm(
-                        normalized_shape=d_model,
-                        param_attr=fluid.ParamAttr(
-                            initializer=fluid.initializer.Constant(1.)),
-                        bias_attr=fluid.ParamAttr(
-                            initializer=fluid.initializer.Constant(0.)))
-
                 self.functors.append(
                     self.add_sublayer(
                         "layer_norm_%d" % len(
                             self.sublayers(include_sublayers=False)),
-                        layer_norm))
+                        LayerNorm(
+                            normalized_shape=d_model,
+                            param_attr=fluid.ParamAttr(
+                                initializer=fluid.initializer.Constant(1.)),
+                            bias_attr=fluid.ParamAttr(
+                                initializer=fluid.initializer.Constant(0.)))))
             elif cmd == "d":  # add dropout
                 self.functors.append(lambda x: layers.dropout(
                     x, dropout_prob=dropout_rate, is_test=False)
@@ -1056,48 +737,21 @@ class MultiHeadAttention(Layer):
     Multi-Head Attention
     """
 
-    def __init__(self,
-                 d_key,
-                 d_value,
-                 d_model,
-                 n_head=1,
-                 dropout_rate=0.0,
-                 reused_query_fc=None,
-                 reused_key_fc=None,
-                 reused_value_fc=None,
-                 reused_proj_fc=None):
-
+    def __init__(self, d_key, d_value, d_model, n_head=1, dropout_rate=0.):
         super(MultiHeadAttention, self).__init__()
         self.n_head = n_head
         self.d_key = d_key
         self.d_value = d_value
         self.d_model = d_model
         self.dropout_rate = dropout_rate
-
-        if reused_query_fc is not None:
-            self.q_fc = reused_query_fc
-        else:
-            self.q_fc = Linear(
-                input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
-        if reused_key_fc is not None:
-            self.k_fc = reused_key_fc
-        else:
-            self.k_fc = Linear(
-                input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
-        if reused_value_fc is not None:
-            self.v_fc = reused_value_fc
-        else:
-            self.v_fc = Linear(
-                input_dim=d_model,
-                output_dim=d_value * n_head,
-                bias_attr=False)
-        if reused_proj_fc is not None:
-            self.proj_fc = reused_proj_fc
-        else:
-            self.proj_fc = Linear(
-                input_dim=d_value * n_head,
-                output_dim=d_model,
-                bias_attr=False)
+        self.q_fc = Linear(
+            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+        self.k_fc = Linear(
+            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+        self.v_fc = Linear(
+            input_dim=d_model, output_dim=d_value * n_head, bias_attr=False)
+        self.proj_fc = Linear(
+            input_dim=d_value * n_head, output_dim=d_model, bias_attr=False)
 
     def _prepare_qkv(self, queries, keys, values, cache=None):
         if keys is None:  # self-attention
@@ -1174,24 +828,12 @@ class FFN(Layer):
     Feed-Forward Network
     """
 
-    def __init__(self,
-                 d_inner_hid,
-                 d_model,
-                 dropout_rate,
-                 fc1_act="relu",
-                 reused_fc1=None,
-                 reused_fc2=None):
+    def __init__(self, d_inner_hid, d_model, dropout_rate):
         super(FFN, self).__init__()
         self.dropout_rate = dropout_rate
-        if reused_fc1 is not None:
-            self.fc1 = reused_fc1
-        else:
-            self.fc1 = Linear(
-                input_dim=d_model, output_dim=d_inner_hid, act=fc1_act)
-        if reused_fc2 is not None:
-            self.fc2 = reused_fc2
-        else:
-            self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
+        self.fc1 = Linear(
+            input_dim=d_model, output_dim=d_inner_hid, act="relu")
+        self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
 
     def forward(self, x):
         hidden = self.fc1(x)
@@ -1217,52 +859,22 @@ class TransformerEncoderLayer(Layer):
                  attention_dropout,
                  relu_dropout,
                  preprocess_cmd="n",
-                 postprocess_cmd="da",
-                 ffn_fc1_act="relu",
-                 reused_pre_selatt_layernorm=None,
-                 reused_multihead_att_weights={
-                     "reused_query_fc": None,
-                     "reused_key_fc": None,
-                     "reused_value_fc": None,
-                     "reused_proj_fc": None
-                 },
-                 reused_post_selfatt_layernorm=None,
-                 reused_pre_ffn_layernorm=None,
-                 reused_ffn_weights={"reused_fc1": None,
-                                     "reused_fc2": None},
-                 reused_post_ffn_layernorm=None):
+                 postprocess_cmd="da"):
 
         super(TransformerEncoderLayer, self).__init__()
 
         self.preprocesser1 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout,
-                                                 reused_pre_selatt_layernorm)
-        self.self_attn = MultiHeadAttention(
-            d_key,
-            d_value,
-            d_model,
-            n_head,
-            attention_dropout,
-            reused_query_fc=reused_multihead_att_weights["reused_query_fc"],
-            reused_key_fc=reused_multihead_att_weights["reused_key_fc"],
-            reused_value_fc=reused_multihead_att_weights["reused_value_fc"],
-            reused_proj_fc=reused_multihead_att_weights["reused_proj_fc"])
-        self.postprocesser1 = PrePostProcessLayer(
-            postprocess_cmd, d_model, prepostprocess_dropout,
-            reused_post_selfatt_layernorm)
+                                                 prepostprocess_dropout)
+        self.self_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
+                                            attention_dropout)
+        self.postprocesser1 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
 
         self.preprocesser2 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout,
-                                                 reused_pre_ffn_layernorm)
-        self.ffn = FFN(d_inner_hid,
-                       d_model,
-                       relu_dropout,
-                       fc1_act=ffn_fc1_act,
-                       reused_fc1=reused_ffn_weights["reused_fc1"],
-                       reused_fc2=reused_ffn_weights["reused_fc2"])
+                                                 prepostprocess_dropout)
+        self.ffn = FFN(d_inner_hid, d_model, relu_dropout)
         self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
-                                                  prepostprocess_dropout,
-                                                  reused_post_ffn_layernorm)
+                                                  prepostprocess_dropout)
 
     def forward(self, enc_input, attn_bias):
         attn_output = self.self_attn(
@@ -1290,8 +902,7 @@ class TransformerEncoder(Layer):
                  attention_dropout,
                  relu_dropout,
                  preprocess_cmd="n",
-                 postprocess_cmd="da",
-                 ffn_fc1_act="relu"):
+                 postprocess_cmd="da"):
 
         super(TransformerEncoder, self).__init__()
 
@@ -1301,17 +912,9 @@ class TransformerEncoder(Layer):
                 self.add_sublayer(
                     "layer_%d" % i,
                     TransformerEncoderLayer(
-                        n_head,
-                        d_key,
-                        d_value,
-                        d_model,
-                        d_inner_hid,
-                        prepostprocess_dropout,
-                        attention_dropout,
-                        relu_dropout,
-                        preprocess_cmd,
-                        postprocess_cmd,
-                        ffn_fc1_act=ffn_fc1_act)))
+                        n_head, d_key, d_value, d_model, d_inner_hid,
+                        prepostprocess_dropout, attention_dropout,
+                        relu_dropout, preprocess_cmd, postprocess_cmd)))
         self.processer = PrePostProcessLayer(preprocess_cmd, d_model,
                                              prepostprocess_dropout)
 
@@ -1338,79 +941,28 @@ class TransformerDecoderLayer(Layer):
                  attention_dropout,
                  relu_dropout,
                  preprocess_cmd="n",
-                 postprocess_cmd="da",
-                 reused_pre_selfatt_layernorm=None,
-                 reused_self_multihead_att_weights={
-                     "reused_query_fc": None,
-                     "reused_key_fc": None,
-                     "reused_value_fc": None,
-                     "reused_proj_fc": None
-                 },
-                 reused_post_selfatt_layernorm=None,
-                 reused_pre_crossatt_layernorm=None,
-                 reused_cross_multihead_att_weights={
-                     "reused_query_fc": None,
-                     "reused_key_fc": None,
-                     "reused_value_fc": None,
-                     "reused_proj_fc": None
-                 },
-                 reused_post_crossatt_layernorm=None,
-                 reused_pre_ffn_layernorm=None,
-                 reused_ffn_weights={"reused_fc1": None,
-                                     "reused_fc2": None},
-                 reused_post_ffn_layernorm=None):
+                 postprocess_cmd="da"):
         super(TransformerDecoderLayer, self).__init__()
 
         self.preprocesser1 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout,
-                                                 reused_pre_selfatt_layernorm)
-        self.self_attn = MultiHeadAttention(
-            d_key,
-            d_value,
-            d_model,
-            n_head,
-            attention_dropout,
-            reused_query_fc=reused_self_multihead_att_weights[
-                "reused_query_fc"],
-            reused_key_fc=reused_self_multihead_att_weights["reused_key_fc"],
-            reused_value_fc=reused_self_multihead_att_weights[
-                "reused_value_fc"],
-            reused_proj_fc=reused_self_multihead_att_weights["reused_proj_fc"])
-        self.postprocesser1 = PrePostProcessLayer(
-            postprocess_cmd, d_model, prepostprocess_dropout,
-            reused_post_selfatt_layernorm)
+                                                 prepostprocess_dropout)
+        self.self_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
+                                            attention_dropout)
+        self.postprocesser1 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
 
         self.preprocesser2 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout,
-                                                 reused_pre_crossatt_layernorm)
-        self.cross_attn = MultiHeadAttention(
-            d_key,
-            d_value,
-            d_model,
-            n_head,
-            attention_dropout,
-            reused_query_fc=reused_cross_multihead_att_weights[
-                "reused_query_fc"],
-            reused_key_fc=reused_cross_multihead_att_weights["reused_key_fc"],
-            reused_value_fc=reused_cross_multihead_att_weights[
-                "reused_value_fc"],
-            reused_proj_fc=reused_cross_multihead_att_weights[
-                "reused_proj_fc"])
-        self.postprocesser2 = PrePostProcessLayer(
-            postprocess_cmd, d_model, prepostprocess_dropout,
-            reused_post_crossatt_layernorm)
+                                                 prepostprocess_dropout)
+        self.cross_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
+                                             attention_dropout)
+        self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
 
         self.preprocesser3 = PrePostProcessLayer(preprocess_cmd, d_model,
-                                                 prepostprocess_dropout,
-                                                 reused_pre_ffn_layernorm)
-        self.ffn = FFN(d_inner_hid,
-                       d_model,
-                       relu_dropout,
-                       reused_fc1=reused_ffn_weights["reused_fc1"],
-                       reused_fc2=reused_ffn_weights["reused_fc2"])
+                                                 prepostprocess_dropout)
+        self.ffn = FFN(d_inner_hid, d_model, relu_dropout)
         self.postprocesser3 = PrePostProcessLayer(postprocess_cmd, d_model,
-                                                  prepostprocess_dropout,
-                                                  reused_post_ffn_layernorm)
+                                                  prepostprocess_dropout)
 
     def forward(self,
                 dec_input,
@@ -1479,98 +1031,99 @@ class TransformerDecoder(Layer):
         ]
 
 
-class DynamicGRU(fluid.dygraph.Layer):
+
+class GRUCell(RNNCell):
     def __init__(self,
-                 size,
-                 h_0=None,
+                 input_size,
+                 hidden_size,
                  param_attr=None,
                  bias_attr=None,
-                 is_reverse=False,
                  gate_activation='sigmoid',
                  candidate_activation='tanh',
-                 origin_mode=False,
-                 init_size=None):
-        super(DynamicGRU, self).__init__()
+                 origin_mode=False):
+        super(GRUCell, self).__init__()
+        self.hidden_size = hidden_size
+        self.fc_layer = Linear(
+            input_size,
+            hidden_size * 3,
+            param_attr=param_attr)
 
         self.gru_unit = GRUUnit(
-            size * 3,
+            hidden_size * 3,
             param_attr=param_attr,
             bias_attr=bias_attr,
             activation=candidate_activation,
             gate_activation=gate_activation,
             origin_mode=origin_mode)
 
-        self.size = size
-        self.h_0 = h_0
-        self.is_reverse = is_reverse
+    def forward(self, inputs, states):
+        # for GRUCell, `step_outputs` and `new_states` both are hidden
+        x = self.fc_layer(inputs)
+        hidden, _, _ = self.gru_unit(x, states)
+        return hidden, hidden
 
-    def forward(self, inputs):
-        hidden = self.h_0
-        res = []
+    @property
+    def state_shape(self):
+        return [self.hidden_size]
 
-        for i in range(inputs.shape[1]):
-            if self.is_reverse:
-                i = inputs.shape[1] - 1 - i
-            input_ = inputs[:, i:i + 1, :]
-            input_ = fluid.layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False)
-            hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False)
-            res.append(hidden_)
-        if self.is_reverse:
-            res = res[::-1]
-        res = fluid.layers.concat(res, axis=1)
-        return res
+
+class GRUEncoderCell(RNNCell): 
+    def __init__(self,
+                 num_layers,
+                 input_size,
+                 hidden_size,
+                 dropout_prob=0.,
+                 init_scale=0.1):
+        super(GRUEncoderCell, self).__init__()
+        self.dropout_prob = dropout_prob
+        # use add_sublayer to add multi-layers
+        self.gru_cells = []
+        for i in range(num_layers):
+            self.gru_cells.append(
+                self.add_sublayer(
+                    "gru_%d" % i,
+                    #BasicGRUCell(
+                    GRUCell(
+                        input_size=input_size if i == 0 else hidden_size,
+                        hidden_size=hidden_size,
+                        param_attr=fluid.ParamAttr(initializer=fluid.initializer.UniformInitializer(
+                             low=-init_scale, high=init_scale)))))
+
+    def forward(self, step_input, states):
+        new_states = []
+        for i, gru_cell in enumerate(self.gru_cells):
+            out, state = gru_cell(step_input, states[i])
+            step_input = layers.dropout(
+                out,
+                self.dropout_prob,
+                dropout_implementation='upscale_in_train'
+            ) if self.dropout_prob > 0 else out
+            new_states.append(step_input)
+        return step_input, new_states
+
+    @property
+    def state_shape(self):
+        return [cell.state_shape for cell in self.gru_cells]
 
 
 class BiGRU(fluid.dygraph.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
         super(BiGRU, self).__init__()
+        self.gru = RNN(GRUEncoderCell(1, input_dim,
+                                   grnn_hidden_dim, 0.0, init_bound),
+                       is_reverse=False,
+                       time_major=False)
 
-        self.pre_gru = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
+        self.gru_r = RNN(GRUEncoderCell(1, input_dim,
+                                   grnn_hidden_dim, 0.0, init_bound),
+                       is_reverse=True,
+                       time_major=False)
 
-        self.gru = DynamicGRU(
-            size=grnn_hidden_dim,
-            h_0=h_0,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
 
-        self.pre_gru_r = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
-
-        self.gru_r = DynamicGRU(
-            size=grnn_hidden_dim,
-            is_reverse=True,
-            h_0=h_0,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
-
-    def forward(self, input_feature):
-        res_pre_gru = self.pre_gru(input_feature)
-        res_gru = self.gru(res_pre_gru)
-        res_pre_gru_r = self.pre_gru_r(input_feature)
-        res_gru_r = self.gru_r(res_pre_gru_r)
-        bi_merge = fluid.layers.concat(input=[res_gru, res_gru_r], axis=-1)
+    def forward(self, input_feature): 
+        pre_gru, pre_state = self.gru(input_feature)
+        gru_r, r_state = self.gru_r(input_feature)
+        bi_merge = fluid.layers.concat(input=[pre_gru, gru_r], axis=-1)
         return bi_merge
 
 
@@ -1610,7 +1163,7 @@ class Linear_chain_crf(fluid.dygraph.Layer):
             "Transition": self._transition,
             "Label": [label]
         }
-        if length:
+        if length is not None:
             this_inputs['Length'] = [length]
         self._helper.append_op(
             type='linear_chain_crf',
@@ -1655,7 +1208,7 @@ class Crf_decoding(fluid.dygraph.Layer):
             "Transition": self._transition,
             "Label": label
         }
-        if length:
+        if length is not None:
             this_inputs['Length'] = [length]
         self._helper.append_op(
             type='crf_decoding',
@@ -1767,7 +1320,7 @@ class SequenceTagging(fluid.dygraph.Layer):
 
         emission = self.fc(bigru_output)
 
-        if target: 
+        if target is not None: 
             crf_cost = self.linear_chain_crf(
                 input=emission, label=target, length=lengths)
             avg_cost = fluid.layers.mean(x=crf_cost)
@@ -1775,5 +1328,6 @@ class SequenceTagging(fluid.dygraph.Layer):
             crf_decode = self.crf_decoding(input=emission, length=lengths)
             return crf_decode, avg_cost, lengths
         else: 
+            self.linear_chain_crf.weight = self.crf_decoding.weight
             crf_decode = self.crf_decoding(input=emission, length=lengths)
             return crf_decode, lengths

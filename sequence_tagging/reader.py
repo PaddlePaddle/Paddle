@@ -21,7 +21,7 @@ from __future__ import print_function
 import io
 import numpy as np
 
-import paddle.fluid as fluid
+import paddle
 
 
 class LacDataset(object):
@@ -120,7 +120,7 @@ class LacDataset(object):
 
         def wrapper():
             fread = io.open(filename, "r", encoding="utf-8")
-            if mode == "train" or mode == "test": 
+            if mode == "train": 
                 headline = next(fread)
                 headline = headline.strip().split('\t')
                 assert len(headline) == 2 and headline[0] == "text_a" and headline[
@@ -133,12 +133,29 @@ class LacDataset(object):
                     word_ids = self.word_to_ids(words.split("\002"))
                     label_ids = self.label_to_ids(labels.split("\002"))
                     assert len(word_ids) == len(label_ids)
+                    words_len = np.int64(len(word_ids))
+                        
                     word_ids = word_ids[0:max_seq_len]
                     words_len = np.int64(len(word_ids))
                     word_ids += [0 for _ in range(max_seq_len - words_len)]
                     label_ids = label_ids[0:max_seq_len]
                     label_ids += [0 for _ in range(max_seq_len - words_len)]
                     assert len(word_ids) == len(label_ids)
+                    yield word_ids, label_ids, words_len
+            elif mode == "test": 
+                headline = next(fread)
+                headline = headline.strip().split('\t')
+                assert len(headline) == 2 and headline[0] == "text_a" and headline[
+                           1] == "label"
+                buf = []
+                for line in fread:
+                    words, labels = line.strip("\n").split("\t")
+                    if len(words) < 1:
+                        continue
+                    word_ids = self.word_to_ids(words.split("\002"))
+                    label_ids = self.label_to_ids(labels.split("\002"))
+                    assert len(word_ids) == len(label_ids)
+                    words_len = np.int64(len(word_ids))
                     yield word_ids, label_ids, words_len
             else: 
                 for line in fread: 
@@ -157,9 +174,16 @@ class LacDataset(object):
         return wrapper
 
 
-def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
+def create_lexnet_data_generator(args, reader, file_name, place, mode="train"): 
+    def padding_data(max_len, batch_data): 
+        padding_batch_data = []
+        for data in batch_data: 
+            data += [0 for _ in range(max_len - len(data))]
+            padding_batch_data.append(data)
+        return padding_batch_data
+
     def wrapper(): 
-        if mode == "train" or mode == "test": 
+        if mode == "train": 
             batch_words, batch_labels, seq_lens = [], [], []
             for epoch in xrange(args.epoch):
                 for instance in reader.file_reader(
@@ -169,12 +193,32 @@ def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
                         batch_words.append(words)
                         batch_labels.append(labels)
                         seq_lens.append(words_len)
-                    if len(seq_lens) == args.batch_size:
+                    if len(seq_lens) == args.batch_size: 
                         yield batch_words, seq_lens, batch_labels, batch_labels
                         batch_words, batch_labels, seq_lens = [], [], []
 
             if len(seq_lens) > 0:
                 yield batch_words, seq_lens, batch_labels, batch_labels
+        elif mode == "test": 
+            batch_words, batch_labels, seq_lens, max_len = [], [], [], 0
+            for instance in reader.file_reader(
+                file_name, mode, max_seq_len=args.max_seq_len)():
+                words, labels, words_len = instance
+                max_len = words_len if words_len > max_len else max_len
+                if len(seq_lens) < args.batch_size:
+                    batch_words.append(words)
+                    seq_lens.append(words_len)
+                    batch_labels.append(labels)
+                if len(seq_lens) == args.batch_size: 
+                    padding_batch_words = padding_data(max_len, batch_words)
+                    padding_batch_labels = padding_data(max_len, batch_labels)
+                    yield padding_batch_words, seq_lens, padding_batch_labels, padding_batch_labels
+                    batch_words, batch_labels, seq_lens, max_len = [], [], [], 0
+            if len(seq_lens) > 0: 
+                padding_batch_words = padding_data(max_len, batch_words)
+                padding_batch_labels = padding_data(max_len, batch_labels)
+                yield padding_batch_words, seq_lens, padding_batch_labels, padding_batch_labels
+
         else: 
             batch_words, seq_lens, max_len = [], [], 0
             for instance in reader.file_reader(
@@ -183,20 +227,13 @@ def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
                 if len(seq_lens) < args.batch_size:
                     batch_words.append(words)
                     seq_lens.append(words_len)
-                    if words_len > max_len: 
-                        max_len = words_len
-                if len(seq_lens) == args.batch_size:
-                    padding_batch_words = []
-                    for words in batch_words: 
-                        words += [0 for _ in range(max_len - len(words))]
-		        padding_batch_words.append(words)
+                    max_len = words_len if words_len > max_len else max_len
+                if len(seq_lens) == args.batch_size: 
+                    padding_batch_words = padding_data(max_len, batch_words)
                     yield padding_batch_words, seq_lens
                     batch_words, seq_lens, max_len = [], [], 0
             if len(seq_lens) > 0: 
-                padding_batch_words = []
-                for words in batch_words:
-                    words += [0 for _ in range(max_len - len(words))]
-                    padding_batch_words.append(words)
+                padding_batch_words = padding_data(max_len, batch_words)
                 yield padding_batch_words, seq_lens
 
     return wrapper
@@ -204,13 +241,13 @@ def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
 
 def create_dataloader(generator, place, feed_list=None):
     if not feed_list:
-        data_loader = fluid.io.DataLoader.from_generator(
+        data_loader = paddle.io.DataLoader.from_generator(
             capacity=50,
             use_double_buffer=True,
             iterable=True,
             return_list=True)
     else:
-        data_loader = fluid.io.DataLoader.from_generator(
+        data_loader = paddle.io.DataLoader.from_generator(
             feed_list=feed_list,
             capacity=50,
             use_double_buffer=True,

@@ -6,7 +6,7 @@ Sequence Tagging，是一个序列标注模型，模型可用于实现，分词�
 
 |模型|Precision|Recall|F1-score|
 |:-:|:-:|:-:|:-:|
-|Lexical Analysis|89.2%|89.4%|89.3%|
+|Lexical Analysis|88.26%|89.20%|88.73%|
 
 ## 2. 快速开始
 
@@ -139,7 +139,7 @@ python predict.py \
       --init_from_checkpoint  model_baseline/params \
       --output_file predict.result  \
       --mode predict \
-      --device gpu  \
+      --device cpu  \
       -d 
   
 # -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
@@ -157,7 +157,7 @@ python eval.py \
         --label_dict_path ./conf/tag.dic  \
         --word_rep_dict_path ./conf/q2b.dic \
         --init_from_checkpoint  ./model_baseline/params \
-        --device gpu  \
+        --device cpu  \
         -d
 
 # -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
@@ -189,7 +189,10 @@ python eval.py \
 ### 模型原理介绍
 上面介绍的模型原理如下图所示：<br />
 
-![GRU-CRF-MODEL](./images/gru-crf-model.png)
+<p align="center">
+<img src="./images/gru-crf-model.png" width = "340" height = "300" /> <br />
+Overall Architecture of GRU-CRF-MODEL
+</p>
 
 ### 数据格式
 训练使用的数据可以由用户根据实际的应用场景，自己组织数据。除了第一行是 `text_a\tlabel` 固定的开头，后面的每行数据都是由两列组成，以制表符分隔，第一列是 utf-8 编码的中文文本，以 `\002` 分割，第二列是对应每个字的标注，以 `\002` 分隔。我们采用 IOB2 标注体系，即以 X-B 作为类型为 X 的词的开始，以 X-I 作为类型为 X 的词的持续，以 O 表示不关注的字（实际上，在词性、专名联合标注中，不存在 O ）。示例如下：

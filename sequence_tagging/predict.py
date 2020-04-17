@@ -42,7 +42,7 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [Input([None, args.max_seq_len], 'int64', name='words'), 
+    inputs = [Input([None, None], 'int64', name='words'), 
               Input([None], 'int64', name='length')]
 
     feed_list = None if args.dynamic else [x.forward() for x in inputs]
@@ -70,8 +70,11 @@ def main(args):
 
     f = open(args.output_file, "wb")
     for data in predict_dataset(): 
-        results, length = model.test(inputs=flatten(data))
-        #length_list = np.fromstring(length, dtype=str)
+        if len(data) == 1: 
+            input_data = data[0]
+        else: 
+            input_data = data
+        results, length = model.test(inputs=flatten(input_data))
         for i in range(len(results)): 
             word_len = length[i]
             word_ids = results[i][: word_len]
@@ -162,7 +165,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print(args)
-    check_gpu(args.device)
+    use_gpu = True if args.device == "gpu" else False
+    check_gpu(use_gpu)
     check_version()
 
     main(args)

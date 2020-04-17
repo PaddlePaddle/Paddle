@@ -25,7 +25,8 @@ from hapi.text.text import TransformerDecoderLayer as TransformerDecoderLayer
 from hapi.text.text import TransformerEncoder as TransformerEncoder
 from hapi.text.text import TransformerDecoder as TransformerDecoder
 from hapi.text.text import TransformerBeamSearchDecoder as TransformerBeamSearchDecoder
-from hapi.text.text import DynamicGRU as DynamicGRU
+from hapi.text.text import GRUCell as GRUCell
+from hapi.text.text import GRUEncoderCell as GRUEncoderCell
 from hapi.text.text import BiGRU as BiGRU
 from hapi.text.text import Linear_chain_crf as Linear_chain_crf
 from hapi.text.text import Crf_decoding as Crf_decoding

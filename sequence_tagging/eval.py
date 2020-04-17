@@ -25,8 +25,9 @@ import math
 import argparse
 import numpy as np
 
-from train import SeqTagging, Chunk_eval
+from train import SeqTagging
 from utils.check import check_gpu, check_version
+from utils.metrics import chunk_count
 from reader import LacDataset, create_lexnet_data_generator, create_dataloader
 
 work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -42,14 +43,13 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [Input([None, args.max_seq_len], 'int64', name='words'), 
-              Input([None], 'int64', name='length')]
+    inputs = [Input([None, None], 'int64', name='words'), 
+              Input([None], 'int64', name='length')] 
 
     feed_list = None if args.dynamic else [x.forward() for x in inputs]
     dataset = LacDataset(args)
     eval_path = args.test_file
 
-    chunk_eval = Chunk_eval(int(math.ceil((dataset.num_labels - 1) / 2.0)), "IOB")
     chunk_evaluator = fluid.metrics.ChunkEvaluator()
     chunk_evaluator.reset()
 
@@ -69,25 +69,23 @@ def main(args):
 
     model.mode = "test"
     model.prepare(inputs=inputs)
+    model.load(args.init_from_checkpoint, skip_mismatch=True)
 
-    model.load(args.init_from_checkpoint)
-
-    f = open(args.output_file, "wb")
-    for data in eval_dataset(): 
-        words, lens, targets, targets = data
-        crf_decode, length = model.test(inputs=flatten(data))
-        crf_decode = fluid.dygraph.to_variable(crf_decode)
-        length = fluid.dygraph.to_variable(length)
-        (num_infer_chunks, num_label_chunks, num_correct_chunks) = chunk_eval(
-            input=crf_decode,
-            label=targets,
-            seq_length=length)
-        print(num_infer_chunks.numpy(), num_label_chunks.numpy(), num_correct_chunks.numpy())
-        chunk_evaluator.update(num_infer_chunks.numpy(), num_label_chunks.numpy(), num_correct_chunks.numpy())
+    for data in eval_dataset():
+        if len(data) == 1: 
+            batch_data = data[0]
+            targets = np.array(batch_data[2])
+        else: 
+            batch_data = data
+            targets = batch_data[2].numpy()
+        inputs_data = [batch_data[0], batch_data[1]]
+        crf_decode, length = model.test(inputs=inputs_data)
+        num_infer_chunks, num_label_chunks, num_correct_chunks = chunk_count(crf_decode, targets, length, dataset.id2label_dict)
+        chunk_evaluator.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
     
     precision, recall, f1 = chunk_evaluator.eval()
     print("[test] P: %.5f, R: %.5f, F1: %.5f" % (precision, recall, f1))
-        
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("sequence tagging training")
@@ -176,7 +174,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     print(args)
-    check_gpu(args.device)
+    use_gpu = True if args.device == "gpu" else False 
+    check_gpu(use_gpu)
     check_version()
 
     main(args)
