@@ -4627,6 +4627,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4686,6 +4687,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    check_variable_and_dtype(input, 'input', ('bool'), 'reduce_any')
     helper = LayerHelper('reduce_any', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4919,8 +4921,9 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
     if len(x.shape) == 1:
         axis = 0
-    helper = LayerHelper("l2_normalize", **locals())
+    check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
 
+    helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     norm = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9951,6 +9954,11 @@ def uniform_random_batch_size_like(input,
 
 
     """
+    check_variable_and_dtype(input, 'Input', ("float32", 'float64'),
+                             'uniform_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'),
+                'uniform_random_batch_size_like')
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
     out = helper.create_variable_for_type_inference(dtype)
@@ -10634,7 +10642,7 @@ def rank(input):
             input = fluid.data(name="input", shape=[3, 100, 100], dtype="float32")
             rank = fluid.layers.rank(input) # rank=(3,)
     """
-
+    check_type(input, 'input', (Variable), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
@@ -14263,7 +14271,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'uniform_random')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
 
     def get_new_shape_tensor(list_shape):
         new_shape_tensor = []
