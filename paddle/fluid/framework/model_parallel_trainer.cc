@@ -99,6 +99,17 @@ bool ModelParallelTrainer::isPersistableVarGrad(std::string name) {
   return false;
 }
 
+bool ModelParallelTrainer::isPersistable(VarDesc* var) {
+  if (!var->Persistable()) {
+    return false;
+  }
+  auto name = var->Name();
+  if (name.find("learning_rate") != std::string::npos) {
+    return false;
+  }
+  return true;
+}
+
 void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
                                           const ProgramDesc& program,
                                           const platform::Place& place) {
@@ -106,7 +117,8 @@ void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
-    if (var->Persistable() && macrobatch_id == 0) {
+    // if (var->Persistable() && macrobatch_id == 0) {
+    if (isPersistable(var) && macrobatch_id == 0) {
       auto* ptr = root_scope_->FindVar(var->Name());
       // InitializeVariable(ptr, var->GetType());
       const LoDTensor& root_tensor = ptr->Get<LoDTensor>();

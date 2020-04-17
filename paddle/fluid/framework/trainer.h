@@ -206,6 +206,7 @@ class ModelParallelTrainer : public TrainerBase {
   void CopyParameters(int section_id, int macrobatch_id,
                       const ProgramDesc& program, const platform::Place& place);
   bool isPersistableVarGrad(std::string name);
+  bool isPersistable(VarDesc* var);
 };
 
 }  // namespace framework
