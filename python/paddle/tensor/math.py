@@ -75,7 +75,7 @@ __all__ = [
 #            'inverse',
            'log1p',
 #            'erf',
-#            'addcmul',
+           'addcmul',
            'addmm'
 ]
 # yapf: enable.
@@ -1254,4 +1254,55 @@ def log1p(x, out=None, name=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
+    """
+    Calculate the element-wise multiplication of tensor1 and tensor2,
+    then multiply the result by value, and add it to input. The shape of input,
+    tensor1, tensor2 should be broadcastable.
+    The equation is:
+
+    ..  math::
+        out = input + value * tensor1 * tensor2
+
+    Args:
+        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
+        out(Variable, Optional): The variable that specifies the output of the
+            operator, which can be Variable that has been created in the
+            program. The default value is None, and a new Variable will be
+            created to save the output. Default: None.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
+
+    Returns:
+        out(Variable): The output result. A Tensor with the same data type as input's.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
+          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
+          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
+          data = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+    """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    if convert_dtype(input.dtype) in ['float32', 'float64']:
+        check_type(value, 'value', float, 'addcmul')
+    if convert_dtype(input.dtype) in ['int32', 'int64']:
+        check_type(value, 'value', int, 'addcmul')
+
+    if out is not None:
+        layers.assign(layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value), out)
+    else:
+        out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
