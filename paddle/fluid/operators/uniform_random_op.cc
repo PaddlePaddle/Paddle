@@ -93,16 +93,24 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of UniformRandomOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "UniformRandomOp");
 
-    PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
-                      ctx->Attrs().Get<float>("max"),
-                      "uniform_random's min must less then max");
+    PADDLE_ENFORCE_LT(
+        ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max"),
+        platform::errors::InvalidArgument(
+            "The uniform_random's min must less then max. But received min = "
+            "%f great than or equal max = %f.",
+            ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max")));
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
-                      "diag_num must greater than or equal 0");
+                      platform::errors::InvalidArgument(
+                          "The uniform_random's diag_num must greater than or "
+                          "equal 0. But recevied diag_num (%d) < 0.",
+                          ctx->Attrs().Get<int>("diag_num")));
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
-                      "diag_step must greater than or equal 0");
+                      platform::errors::InvalidArgument(
+                          "The uniform_random's diag_step must greater than or "
+                          "equal 0. But recevied diag_step (%d) < 0.",
+                          ctx->Attrs().Get<int>("diag_step")));
 
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
