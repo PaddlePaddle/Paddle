@@ -412,8 +412,8 @@ class MatMulOp : public framework::OperatorWithKernel {
 
     framework::DDim ddim_out = framework::make_ddim(dim_out);
 
-    //  if matmul+transpose+reshape fuse activated
-
+#ifdef PADDLE_WITH_MKLDNN
+    //  if mkldnn matmul+transpose+reshape fuse activated
     auto reshape_out =
         context->Attrs().Get<std::vector<int64_t>>("reshape_Out");
     auto transpose_out =
@@ -432,7 +432,9 @@ class MatMulOp : public framework::OperatorWithKernel {
     } else {
       context->SetOutputDim("Out", ddim_out);
     }
-
+#else
+    context->SetOutputDim("Out", ddim_out);
+#endif
     context->ShareLoD("X", /*->*/ "Out");
   }
 
