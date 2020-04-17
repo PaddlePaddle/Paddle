@@ -14,7 +14,8 @@
 
 INCLUDE(ExternalProject)
 
-SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc")
+SET(DGC_PREFIX_DIR  "${THIRD_PARTY_PATH}/dgc")
+SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc/src/extern_dgc")
 SET(DGC_INSTALL_DIR "${THIRD_PARTY_PATH}/install/dgc")
 SET(DGC_INCLUDE_DIR "${DGC_INSTALL_DIR}/include" CACHE PATH "dgc include directory." FORCE)
 SET(DGC_LIBRARIES   "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
@@ -30,6 +31,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     "${DGC_DOWNLOAD_CMD}"
     URL_MD5         "2f67549fd5f1262383d83289abc4f88f"
+    PREFIX          "${DGC_PREFIX_DIR}"
     SOURCE_DIR      "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND make -j $(nproc)
