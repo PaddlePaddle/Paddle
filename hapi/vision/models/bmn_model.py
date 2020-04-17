@@ -14,7 +14,6 @@
 
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
-from paddle.fluid.framework import in_dygraph_mode
 import numpy as np
 import math
 
@@ -27,7 +26,7 @@ DATATYPE = 'float32'
 
 pretrain_infos = {
     'bmn': ('https://paddlemodels.bj.bcebos.com/hapi/bmn.pdparams',
-         '9286c821acc4cad46d6613b931ba468c')
+            '9286c821acc4cad46d6613b931ba468c')
 }
 
 
@@ -131,17 +130,23 @@ class BMN(Model):
     `"BMN: Boundary-Matching Network for Temporal Action Proposal Generation" <https://arxiv.org/abs/1907.09702>`_
 
     Args:
-        cfg (AttrDict): configs for BMN model
+        tscale (int): sequence length, default 100.
+        dscale (int): max duration length, default 100.
+        prop_boundary_ratio (float): ratio of expanded temporal region in proposal boundary, default 0.5. 
+        num_sample (int): number of samples betweent starting boundary and ending boundary of each propoasl, default 32.
+        num_sample_perbin (int):  number of selected points in each sample, default 3.
     """
-    def __init__(self, cfg):
+
+    def __init__(self, tscale, dscale, prop_boundary_ratio, num_sample,
+                 num_sample_perbin):
         super(BMN, self).__init__()
 
         #init config
-        self.tscale = cfg.MODEL.tscale
-        self.dscale = cfg.MODEL.dscale
-        self.prop_boundary_ratio = cfg.MODEL.prop_boundary_ratio
-        self.num_sample = cfg.MODEL.num_sample
-        self.num_sample_perbin = cfg.MODEL.num_sample_perbin
+        self.tscale = tscale
+        self.dscale = dscale
+        self.prop_boundary_ratio = prop_boundary_ratio
+        self.num_sample = num_sample
+        self.num_sample_perbin = num_sample_perbin
 
         self.hidden_dim_1d = 256
         self.hidden_dim_2d = 128
@@ -192,23 +197,17 @@ class BMN(Model):
             padding=1,
             act="relu")
 
-        # init to speed up
+        # get sample mask 
         sample_mask_array = get_interp1d_mask(
             self.tscale, self.dscale, self.prop_boundary_ratio,
             self.num_sample, self.num_sample_perbin)
-        if in_dygraph_mode(): 
-            self.sample_mask = fluid.dygraph.base.to_variable(
-                sample_mask_array)
-        else:  # static
-            self.sample_mask = fluid.layers.create_parameter(
-                shape=[
-                    self.tscale, self.num_sample * self.dscale * self.tscale
-                ],
-                dtype=DATATYPE,
-                attr=fluid.ParamAttr(
-                    name="sample_mask", trainable=False),
-                default_initializer=fluid.initializer.NumpyArrayInitializer(
-                    sample_mask_array))
+        self.sample_mask = fluid.layers.create_parameter(
+            shape=[self.tscale, self.num_sample * self.dscale * self.tscale],
+            dtype=DATATYPE,
+            attr=fluid.ParamAttr(
+                name="sample_mask", trainable=False),
+            default_initializer=fluid.initializer.NumpyArrayInitializer(
+                sample_mask_array))
 
         self.sample_mask.stop_gradient = True
 
@@ -292,23 +291,27 @@ class BmnLoss(Loss):
     """Loss for BMN model
 
     Args:
-        cfg (AttrDict): configs for BMN model
+        tscale (int): sequence length, default 100.
+        dscale (int): max duration length, default 100.
     """
-    def __init__(self, cfg):
+
+    def __init__(self, tscale, dscale):
         super(BmnLoss, self).__init__()
-        self.cfg = cfg
+        self.tscale = tscale
+        self.dscale = dscale
 
     def _get_mask(self):
-        dscale = self.cfg.MODEL.dscale
-        tscale = self.cfg.MODEL.tscale
         bm_mask = []
-        for idx in range(dscale):
-            mask_vector = [1 for i in range(tscale - idx)
+        for idx in range(self.dscale):
+            mask_vector = [1 for i in range(self.tscale - idx)
                            ] + [0 for i in range(idx)]
             bm_mask.append(mask_vector)
         bm_mask = np.array(bm_mask, dtype=np.float32)
         self_bm_mask = fluid.layers.create_global_var(
-            shape=[dscale, tscale], value=0, dtype=DATATYPE, persistable=True)
+            shape=[self.dscale, self.tscale],
+            value=0,
+            dtype=DATATYPE,
+            persistable=True)
         fluid.layers.assign(bm_mask, self_bm_mask)
         self_bm_mask.stop_gradient = True
         return self_bm_mask
@@ -437,15 +440,24 @@ class BmnLoss(Loss):
         return loss
 
 
-def bmn(cfg, pretrained=True):
+def bmn(tscale,
+        dscale,
+        prop_boundary_ratio,
+        num_sample,
+        num_sample_perbin,
+        pretrained=True):
     """BMN model
     
     Args:
-        cfg (AttrDict): configs for BMN model
-        pretrained (bool): If True, returns a model with pre-trained model
-            on COCO, default True
+        tscale (int): sequence length, default 100.
+        dscale (int): max duration length, default 100.
+        prop_boundary_ratio (float): ratio of expanded temporal region in proposal boundary, default 0.5. 
+        num_sample (int): number of samples betweent starting boundary and ending boundary of each propoasl, default 32.
+        num_sample_perbin (int):  number of selected points in each sample, default 3.
+        pretrained (bool): If True, returns a model with pre-trained model, default True.
     """
-    model = BMN(cfg)
+    model = BMN(tscale, dscale, prop_boundary_ratio, num_sample,
+                num_sample_perbin)
     if pretrained:
         weight_path = get_weights_path(*(pretrain_infos['bmn']))
         assert weight_path.endswith('.pdparams'), \

@@ -37,7 +37,6 @@ def parse_args():
     parser.add_argument(
         "-d",
         "--dynamic",
-        default=True,
         action='store_true',
         help="enable dygraph mode, only support dynamic mode at present time")
     parser.add_argument(
@@ -57,6 +56,17 @@ def parse_args():
         help='weight path, None to automatically download weights provided by Paddle.'
     )
     parser.add_argument(
+        '--output_path',
+        type=str,
+        default="output/EVAL/BMN_results",
+        help='output dir path, default to use output/EVAL/BMN_results')
+    parser.add_argument(
+        '--result_path',
+        type=str,
+        default="evaluate_results/",
+        help='output dir path after post processing, default to use ./evaluate_results/'
+    )
+    parser.add_argument(
         '--log_interval',
         type=int,
         default=1,
@@ -67,17 +77,21 @@ def parse_args():
 
 # Performance Evaluation
 def test_bmn(args):
-    # only support dynamic mode at present time
     device = set_device(args.device)
     fluid.enable_dygraph(device) if args.dynamic else None
 
+    #config setting
     config = parse_config(args.config_file)
     eval_cfg = merge_configs(config, 'test', vars(args))
-    if not os.path.isdir(config.TEST.output_path):
-        os.makedirs(config.TEST.output_path)
-    if not os.path.isdir(config.TEST.result_path):
-        os.makedirs(config.TEST.result_path)
 
+    feat_dim = config.MODEL.feat_dim
+    tscale = config.MODEL.tscale
+    dscale = config.MODEL.dscale
+    prop_boundary_ratio = config.MODEL.prop_boundary_ratio
+    num_sample = config.MODEL.num_sample
+    num_sample_perbin = config.MODEL.num_sample_perbin
+
+    #input and video index
     inputs = [
         Input(
             [None, config.MODEL.feat_dim, config.MODEL.tscale],
@@ -97,9 +111,14 @@ def test_bmn(args):
     eval_dataset = BmnDataset(eval_cfg, 'test')
 
     #model
-    model = bmn(config, pretrained=args.weights is None)
+    model = bmn(tscale,
+                dscale,
+                prop_boundary_ratio,
+                num_sample,
+                num_sample_perbin,
+                pretrained=args.weights is None)
     model.prepare(
-        loss_function=BmnLoss(config),
+        loss_function=BmnLoss(tscale, dscale),
         metrics=BmnMetric(
             config, mode='test'),
         inputs=inputs,

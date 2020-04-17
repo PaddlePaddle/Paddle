@@ -34,11 +34,7 @@ logger = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser("Paddle high level api of BMN.")
     parser.add_argument(
-        "-d",
-        "--dynamic",
-        default=True,
-        action='store_true',
-        help="enable dygraph mode")
+        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
     parser.add_argument(
         '--config_file',
         type=str,
@@ -48,7 +44,7 @@ def parse_args():
         '--batch_size',
         type=int,
         default=None,
-        help='training batch size. None to use config file setting.')
+        help='training batch size. None for read from config file.')
     parser.add_argument(
         '--learning_rate',
         type=float,
@@ -68,8 +64,8 @@ def parse_args():
     parser.add_argument(
         '--epoch',
         type=int,
-        default=9,
-        help='epoch number, 0 for read from config file')
+        default=None,
+        help='epoch number, None for read from config file')
     parser.add_argument(
         '--valid_interval',
         type=int,
@@ -113,22 +109,23 @@ def train_bmn(args):
     if not os.path.isdir(args.save_dir):
         os.makedirs(args.save_dir)
 
+    #config setting
     config = parse_config(args.config_file)
     train_cfg = merge_configs(config, 'train', vars(args))
     val_cfg = merge_configs(config, 'valid', vars(args))
 
-    inputs = [
-        Input(
-            [None, config.MODEL.feat_dim, config.MODEL.tscale],
-            'float32',
-            name='feat_input')
-    ]
-    gt_iou_map = Input(
-        [None, config.MODEL.dscale, config.MODEL.tscale],
-        'float32',
-        name='gt_iou_map')
-    gt_start = Input([None, config.MODEL.tscale], 'float32', name='gt_start')
-    gt_end = Input([None, config.MODEL.tscale], 'float32', name='gt_end')
+    feat_dim = config.MODEL.feat_dim
+    tscale = config.MODEL.tscale
+    dscale = config.MODEL.dscale
+    prop_boundary_ratio = config.MODEL.prop_boundary_ratio
+    num_sample = config.MODEL.num_sample
+    num_sample_perbin = config.MODEL.num_sample_perbin
+
+    # input and label list
+    inputs = [Input([None, feat_dim, tscale], 'float32', name='feat_input')]
+    gt_iou_map = Input([None, dscale, tscale], 'float32', name='gt_iou_map')
+    gt_start = Input([None, tscale], 'float32', name='gt_start')
+    gt_end = Input([None, tscale], 'float32', name='gt_end')
     labels = [gt_iou_map, gt_start, gt_end]
 
     # data
@@ -136,11 +133,16 @@ def train_bmn(args):
     val_dataset = BmnDataset(val_cfg, 'valid')
 
     # model
-    model = bmn(config, pretrained=False)
+    model = bmn(tscale,
+                dscale,
+                prop_boundary_ratio,
+                num_sample,
+                num_sample_perbin,
+                pretrained=False)
     optim = optimizer(config, parameter_list=model.parameters())
     model.prepare(
         optimizer=optim,
-        loss_function=BmnLoss(config),
+        loss_function=BmnLoss(tscale, dscale),
         inputs=inputs,
         labels=labels,
         device=device)
@@ -148,11 +150,10 @@ def train_bmn(args):
     # if resume weights is given, load resume weights directly
     if args.resume is not None:
         model.load(args.resume)
-
     model.fit(train_data=train_dataset,
               eval_data=val_dataset,
               batch_size=train_cfg.TRAIN.batch_size,
-              epochs=args.epoch,
+              epochs=train_cfg.TRAIN.epoch,
               eval_freq=args.valid_interval,
               log_freq=args.log_interval,
               save_dir=args.save_dir,
