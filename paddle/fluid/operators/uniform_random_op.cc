@@ -50,9 +50,9 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "uniform_random_op's output only supports SelectedRows and "
-          "LoDTensor."));
+      PADDLE_THROW(
+          "uniform_random_op's output only"
+          "supports SelectedRows and LoDTensor");
     }
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
