@@ -78,7 +78,8 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto id_names = context.InputNames("Ids");
     auto embedding_name = context.InputNames("W").front();
     auto out_names = context.OutputNames("Outputs");
-
+    auto lookup_tables =
+        ctx->Attrs().Get<std::vector<std::string>>("table_names");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
     operators::distributed::prefetchs(
@@ -102,6 +103,12 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Outputs",
               "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
+
+    AddAttr<std::vector<std::string>>(
+        "table_names",
+        "(string vector, such as emb_block0, emb_block1)"
+        "Server endpoints in the order of input variables for mapping")
+        .SetDefault({""});
 
     AddAttr<std::vector<std::string>>(
         "endpoints",
