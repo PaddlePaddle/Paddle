@@ -477,6 +477,7 @@ class ProgramTranslator(object):
 
                 prog_trans = fluid.dygraph.ProgramTranslator()
 
+                x = np.ones([1, 2])
                 main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
                 print([i.name for i in inputs])
                 # ['x_0'] the feed input variable name representing x
