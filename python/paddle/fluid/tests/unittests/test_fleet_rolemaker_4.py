@@ -35,17 +35,22 @@ class TestCloudRoleMaker(unittest.TestCase):
         import sys
         import threading
         import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.utils.http_server import KVHandler
-        from paddle.fluid.incubate.fleet.utils.http_server import KVServer
-        from paddle.fluid.incubate.fleet.utils.http_server import KVHTTPServer
+        try:
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+            from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
+            from paddle.fluid.incubate.fleet.base.role_maker import \
+                GeneralRoleMaker
+            from paddle.fluid.incubate.fleet.utils.http_server import KVHandler
+            from paddle.fluid.incubate.fleet.utils.http_server import KVServer
+            from paddle.fluid.incubate.fleet.utils.http_server import \
+                KVHTTPServer
+        except:
+            print("warning: no fleet, skip test_pslib_4")
 
         try:
             import netifaces
         except:
-            print("warning: no netifaces, skip test_pslib_1")
+            print("warning: no netifaces, skip test_pslib_4")
             return
 
         class FakeStream():
