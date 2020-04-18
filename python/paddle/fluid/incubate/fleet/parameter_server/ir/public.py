@@ -14,10 +14,15 @@
 
 from __future__ import print_function
 
+import collections
+import math
 import os
 
+import six
 from paddle.fluid import core
-from paddle.fluid.incubate.fleet.parameter.ir import vars_distributed
+from paddle.fluid.incubate.fleet.parameter.ir import vars_metatools
+from paddle.fluid.incubate.fleet.parameter.program_utils import find_op_by_output_arg
+from paddle.fluid.incubate.fleet.parameter.ir.ps_dispatcher import RoundRobin, PSDispatcher
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -50,9 +55,17 @@ class MergedVariable:
         self.ordered_vars = ordered
         self.offsets = offsets
 
+    def __str__(self):
+        ordered_varnames = ",".join([var.name for var in self.ordered_vars])
+        return "merged: {}\norderd: {}\n".format(self.merged_var.name,
+                                                 ordered_varnames)
+
 
 class CompileTimeStrategy(object):
     def __init__(self, main_program, startup_program, strategy, role_maker):
+
+        self.min_block_size = 8192
+
         self.origin_main_program = main_program
         self.origin_startup_program = startup_program
 
@@ -62,10 +75,16 @@ class CompileTimeStrategy(object):
         self.origin_sparse_pairs = []
         self.origin_dense_pairs = []
 
-        self.merged_denses = []
+        self.merged_variables_pairs = []
 
-        self.param_grad_map = {}
-        self.grad_param_map = {}
+        self.merged_variable_map = {}
+        self.param_name_to_grad_name = {}
+        self.grad_name_to_param_name = {}
+
+        self.param_grad_ep_mapping = collections.OrderedDict()
+        self.grad_param_mapping = collections.OrderedDict()
+
+        self.var_distributed = vars_metatools.VarsDistributed()
 
         self._build_var_distributed()
 
@@ -93,51 +112,241 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
+    def get_send_op_config(self):
+        class Send:
+            def __init__(self, queue, inputs):
+                self.queue = queue
+                self.inputs = inputs
+
+        sends = []
+
+        for merged in self.merged_variables_pairs:
+            grads = merged[1]
+            send = Send(grads.merged_var.name,
+                        [var.name for var in grads.ordered_vars])
+            sends.append(send)
+
+        return sends
+
+    def get_recv_op_config(self):
+        pass
+
     def get_communicator_context(self):
         pass
 
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()
 
+    def _create_vars_from_blocklist(self, block_list):
+        """
+        Create vars for each split.
+        NOTE: only grads need to be named for different trainers, use
+              add_trainer_suffix to rename the grad vars.
+        Args:
+            block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
+            add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
+        Returns:
+            var_mapping (collections.OrderedDict(varname->[new_varname_variable])):A dict mapping
+                from original var name to each var split.
+        """
+
+        # varname->[(block_id, current_block_size)]
+        block_map = collections.OrderedDict()
+        var_mapping = collections.OrderedDict()
+
+        for block_str in block_list:
+            varname, offset, size = block_str.split(":")
+            if varname not in block_map:
+                block_map[varname] = []
+            block_map[varname].append((int(offset), int(size)))
+
+        for varname, split in six.iteritems(block_map):
+            orig_var = self.merged_variable_map[varname]
+
+            if len(split) == 1:
+                var_mapping[varname] = [orig_var]
+                self.var_distributed.add_distributed_var(
+                    origin_var=orig_var,
+                    slice_var=orig_var,
+                    block_id=0,
+                    offset=0,
+                    is_slice=False,
+                    vtype="Param")
+            else:
+                var_mapping[varname] = []
+                orig_shape = orig_var.shape
+                orig_dim1_flatten = 1
+
+                if len(orig_shape) >= 2:
+                    orig_dim1_flatten = reduce(lambda x, y: x * y,
+                                               orig_shape[1:])
+
+                for i, block in enumerate(split):
+                    size = block[1]
+                    rows = size // orig_dim1_flatten
+                    splited_shape = [rows]
+                    if len(orig_shape) >= 2:
+                        splited_shape.extend(orig_shape[1:])
+
+                    new_var_name = "%s.block%d" % (varname, i)
+                    slice_var = vars_metatools.VarStruct(
+                        name=new_var_name,
+                        shape=splited_shape,
+                        dtype=orig_var.dtype,
+                        type=orig_var.type,
+                        persistable=False)
+                    var_mapping[varname].append(slice_var)
+
+                    self.var_distributed.add_distributed_var(
+                        origin_var=orig_var,
+                        slice_var=slice_var,
+                        block_id=i,
+                        offset=-1,
+                        is_slice=False,
+                        vtype="Param")
+
+        return var_mapping
+
+    def _dispatcher(self):
+        ps_dispatcher = RoundRobin(self.get_ps_endpoints())
+        ps_dispatcher.reset()
+        grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
+
+        for grad_varname, splited_vars in grad_var_mapping_items:
+            send_vars = []
+            for _, var in enumerate(splited_vars):
+                send_vars.append(var)
+
+            recv_vars = []
+            for _, var in enumerate(send_vars):
+                recv_vars.append(self.grad_param_mapping[var])
+
+            ps_dispatcher.reset()
+            eps = ps_dispatcher.dispatch(recv_vars)
+
+            for i, ep in enumerate(eps):
+                self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
+                self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+
+    def _var_slice_and_distribute(self):
+        # update these mappings for further transpile:
+        # 1. param_var_mapping: param var name -> [split params vars]
+        # 2. grad_var_mapping: grad var name -> [split grads vars]
+        # 3. grad_param_mapping: grad.blockx -> param.blockx
+        # 4. param_grad_ep_mapping: ep -> {"params": [], "grads": []}
+
+        param_list = []
+        grad_list = []
+        param_grad_set = set()
+        for p, g in self.merged_variables_pairs:
+            # todo(tangwei12) skip parameter marked not trainable
+            # if type(p) == Parameter and p.trainable == False:
+            #     continue
+            p = p.merged_var
+            g = g.merged_var
+
+            if p.name not in param_grad_set:
+                param_list.append(p)
+                param_grad_set.add(p.name)
+            if g.name not in param_grad_set:
+                grad_list.append(g)
+                param_grad_set.add(g.name)
+
+        # when we slice var up into blocks, we will slice the var according to
+        # pserver services' count. A pserver may have two or more listening ports.
+        grad_blocks = _slice_variable(grad_list,
+                                      len(self.get_ps_endpoints()),
+                                      self.min_block_size)
+        param_blocks = _slice_variable(param_list,
+                                       len(self.get_ps_endpoints()),
+                                       self.min_block_size)
+
+        assert (len(grad_blocks) == len(param_blocks))
+
+        # origin_param_name -> [splited_param_vars]
+        self.param_var_mapping = self._create_vars_from_blocklist(param_blocks)
+        self.grad_var_mapping = self._create_vars_from_blocklist(grad_blocks)
+
+        # dict(grad_splited_var -> param_splited_var)
+        self.grad_param_mapping = collections.OrderedDict()
+        for g, p in zip(grad_blocks, param_blocks):
+            g_name, g_bid, _ = g.split(":")
+            p_name, p_bid, _ = p.split(":")
+            self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_bid)]] = \
+                self.param_var_mapping[p_name][int(p_bid)]
+
+        # create mapping of endpoint -> split var to create pserver side program
+        self.param_grad_ep_mapping = collections.OrderedDict()
+        [
+            self.param_grad_ep_mapping.update({
+                ep: {
+                    "params": [],
+                    "grads": []
+                }
+            }) for ep in self.get_ps_endpoints()
+        ]
+
     def _build_var_distributed(self):
         sparse_pairs, dense_pairs = self.get_param_grads()
 
         origin_for_sparse = []
         origin_for_dense = []
-        param_grad_map = dict()
-        grad_param_map = dict()
+        param_name_grad_name = dict()
+        grad_name_to_param_name = dict()
 
         for param, grad in sparse_pairs:
-            param = vars_distributed.create_var_struct(param)
-            grad = vars_distributed.create_var_struct(grad)
+            param = vars_metatools.create_var_struct(param)
+            grad = vars_metatools.create_var_struct(grad)
             origin_for_sparse.append((param, grad))
 
         for param, grad in dense_pairs:
-            param = vars_distributed.create_var_struct(param)
-            grad = vars_distributed.create_var_struct(grad)
+            param = vars_metatools.create_var_struct(param)
+            grad = vars_metatools.create_var_struct(grad)
             origin_for_dense.append((param, grad))
 
         ordered_dense, ordered_dense_offsets, merged_param, merged_grad = self.dense_var_merge(
             origin_for_dense)
+        ordered_param = []
+        ordered_grad = []
 
-        param = MergedVariable(merged_param, ordered_dense_offsets,
-                               ordered_dense)
-        grad = MergedVariable(merged_grad, ordered_dense_offsets, ordered_dense)
+        for param, grad in ordered_dense:
+            ordered_param.append(param)
+            ordered_grad.append(grad)
 
-        self.merged_denses.append((param, grad))
+        param = MergedVariable(merged_param, ordered_param,
+                               ordered_dense_offsets)
+        grad = MergedVariable(merged_grad, ordered_grad, ordered_dense_offsets)
+
+        self.merged_variables_pairs.append((param, grad))
+
+        for sparse_pair in self.origin_sparse_pairs:
+            param, grad = sparse_pair
+
+            m_param = MergedVariable(param, [param], [0])
+            m_grad = MergedVariable(grad, [grad], [0])
+            self.merged_variables_pairs.append((m_param, m_grad))
+
+        for merged in self.merged_variables_pairs:
+            m_param, m_grad = merged
+            self.merged_variable_map[
+                m_param.merged_var.name] = m_param.merged_var
+            self.merged_variable_map[m_grad.merged_var.name] = m_grad.merged_var
 
         param_merges = []
         param_merges.extend(origin_for_sparse)
         param_merges.append((merged_param, merged_grad))
 
         for param, grad in param_merges:
-            param_grad_map[param.name] = grad.name
-            grad_param_map[grad.name] = param.name
+            param_name_grad_name[param.name] = grad.name
+            grad_name_to_param_name[grad.name] = param.name
 
         self.origin_sparse_pairs = origin_for_sparse
         self.origin_dense_pairs = origin_for_dense
-        self.param_grad_map = param_grad_map
-        self.grad_param_map = grad_param_map
+        self.param_name_to_grad_name = param_name_grad_name
+        self.grad_name_to_param_name = grad_name_to_param_name
+
+        self._var_slice_and_distribute()
+        self._dispatcher()
 
     def dense_var_merge(self, denses):
         if not denses:
@@ -159,10 +368,10 @@ class CompileTimeStrategy(object):
             ordered_dense_offsets.append(flatten_dims)
             flatten_dims += reduce(lambda x, y: x * y, param.shape)
 
-        merged_param = vars_distributed.VarStruct(
+        merged_param = vars_metatools.VarStruct(
             "merged.dense_0", (flatten_dims, ), denses[0].dtype, denses[0].type,
             denses[0].lod_level, denses[0].persistable)
-        merged_grad = vars_distributed.VarStruct(
+        merged_grad = vars_metatools.VarStruct(
             "merged.dense_0@GRAD", (flatten_dims, ), denses[0].dtype,
             denses[0].type, denses[0].lod_level, denses[0].persistable)
 
@@ -268,3 +477,49 @@ def _get_varname_parts(varname):
 def _orig_varname(varname):
     orig, _, _ = _get_varname_parts(varname)
     return orig
+
+
+def _slice_variable(var_list, slice_count, min_block_size):
+    """
+    We may need to split dense tensor to one or more blocks and put
+    them equally onto parameter server. One block is a sub-tensor
+    aligned by dim[0] of the tensor.
+
+    We need to have a minimal block size so that the calculations in
+    the parameter server side can gain better performance. By default
+    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
+
+    Args:
+        var_list (list): List of variables.
+        slice_count (int): Numel of count that variables will be sliced, which
+            could be the pserver services' count.
+        min_block_size (int): Minimum split block size.
+    Returns:
+        blocks (list[(varname, block_id, current_block_size)]): A list
+            of VarBlocks. Each VarBlock specifies a shard of the var.
+    """
+    blocks = []
+    for var in var_list:
+        split_count = slice_count
+        var_numel = reduce(lambda x, y: x * y, var.shape)
+        max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
+        if max_pserver_count == 0:
+            max_pserver_count = 1
+        if max_pserver_count < slice_count:
+            split_count = max_pserver_count
+        block_size = int(math.ceil(var_numel / float(split_count)))
+
+        if len(var.shape) >= 2:
+            # align by dim1(width)
+            dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+            remains = block_size % dim1
+            if remains != 0:
+                block_size += dim1 - remains
+        # update split_count after aligning
+        split_count = int(math.ceil(var_numel / float(block_size)))
+        for block_id in range(split_count):
+            curr_block_size = min(block_size, var_numel - (
+                (block_id) * block_size))
+            block = vars_metatools.VarBlock(var.name, block_id, curr_block_size)
+            blocks.append(str(block))
+    return blocks

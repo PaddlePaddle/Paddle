@@ -45,20 +45,6 @@ def _is_optimizer_op(op):
     return False
 
 
-def _is_opt_op_on_pserver(endpoint, op):
-    param_names = [
-        p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
-    ]
-    if op.input("Param")[0] in param_names:
-        return True
-    else:
-        for n in param_names:
-            param = op.input("Param")[0]
-            if _same_or_split_var(n, param) and n != param:
-                return True
-        return False
-
-
 def _same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
@@ -446,6 +432,19 @@ def add_recv_inputs_pass(program, config):
 
 
 def add_optimizer_pass(program, config):
+    def _is_opt_op_on_pserver(endpoint, op):
+        param_names = [
+            p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
+        ]
+        if op.input("Param")[0] in param_names:
+            return True
+        else:
+            for n in param_names:
+                param = op.input("Param")[0]
+                if _same_or_split_var(n, param) and n != param:
+                    return True
+            return False
+
     origin_program = config.get_origin_main_program
     ps_endpoint = config.get_ps_endpoint()
 

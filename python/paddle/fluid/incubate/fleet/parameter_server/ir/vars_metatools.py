@@ -84,12 +84,12 @@ class VarDistributed(object):
         """
 
         if isinstance(origin_var, Variable):
-            self.origin = self.__create_var_struct(origin_var)
+            self.origin = create_var_struct(origin_var)
         else:
             self.origin = origin_var
 
         if isinstance(slice_var, Variable):
-            self.slice = self.__create_var_struct(slice_var)
+            self.slice = create_var_struct(slice_var)
         else:
             self.slice = slice_var
 

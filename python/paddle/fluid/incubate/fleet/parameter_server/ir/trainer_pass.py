@@ -172,12 +172,10 @@ def append_send_ops_pass(program, config):
 
     dummys = []
 
-    sparse_param_grads, dense_param_grads = get_param_grads(origin_program)
+    sends = config.get_send_op_config()
 
-    for sparse_union in sparse_param_grads:
-        dummys.append(_append_send_op(sparse_union, "Q1"))
-    for dense_union in dense_param_grads:
-        dummys.append(_append_send_op(dense_union, "Q2"))
+    for send in sends:
+        dummys.append(_append_send_op(send.inputs, send.queue))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)

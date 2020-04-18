@@ -1735,6 +1735,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             grad_blocks,
             add_trainer_suffix=self.trainer_num > 1)
         # dict(grad_splited_var -> param_splited_var)
+
         self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
