@@ -29,7 +29,9 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
-from ..transpiler.distribute_transpiler import DistributedMode
+
+from ..incubate.fleet.parameter_server.mode import DistributedMode
+
 import logging
 
 __all__ = [
@@ -387,7 +389,6 @@ def _py_reader(capacity,
                name=None,
                use_double_buffer=True,
                feed_list=None):
-
     if feed_list is not None:
         if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"

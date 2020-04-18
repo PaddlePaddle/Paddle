@@ -18,8 +18,8 @@ Communicator is used for async distribute training in distribute_transpiler mode
 It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 from . import core
-from .framework import Program
-from .transpiler.distribute_transpiler import DistributedMode
+from paddle.fluid.framework import Program
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 __all__ = ['Communicator']
 

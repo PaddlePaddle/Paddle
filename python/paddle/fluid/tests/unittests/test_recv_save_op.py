@@ -29,7 +29,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.transpiler.details import VarStruct, VarsDistributed
 from dist_test_utils import *
-from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
 def run_pserver(pserver_id):

@@ -23,7 +23,7 @@ from paddle.fluid.framework import Block
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _orig_varname
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"

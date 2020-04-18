@@ -22,6 +22,7 @@ import six
 from paddle.fluid import core
 from paddle.fluid.incubate.fleet.parameter.ir import vars_metatools
 from paddle.fluid.incubate.fleet.parameter.ir.ps_dispatcher import RoundRobin, PSDispatcher
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -29,13 +30,6 @@ OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-
-
-class DistributedMode:
-    SYNC = 0
-    ASYNC = 1
-    HALF_ASYNC = 2
-    GEO = 3
 
 
 class ServerRuntimeConfig(object):

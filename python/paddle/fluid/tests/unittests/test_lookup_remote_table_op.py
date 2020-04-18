@@ -25,7 +25,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 from dist_test_utils import *
 
 

@@ -19,7 +19,8 @@ __all__ = [
 
 import os
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributedMode
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
 class TrainerRuntimeConfig(object):

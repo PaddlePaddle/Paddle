@@ -24,10 +24,8 @@ import numpy
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.communicator import Communicator
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 
@@ -118,7 +116,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import DistributedMode
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End

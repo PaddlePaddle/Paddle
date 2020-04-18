@@ -19,3 +19,10 @@ class PSMode:
     """
     TRAINSPILER = 1
     PSLIB = 2
+
+
+class DistributedMode:
+    SYNC = 0
+    ASYNC = 1
+    HALF_ASYNC = 2
+    GEO = 3
