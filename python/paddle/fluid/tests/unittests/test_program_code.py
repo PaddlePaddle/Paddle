@@ -88,6 +88,21 @@ class TestProgramToReadableCode(unittest.TestCase):
             name="W", shape=[23, 48], dtype='float32', trainable=True)
         self.op = self.block.append_op(
             type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]})
+        # add control flow op and sub block
+        self.append_cond_op(self.program)
+
+    def append_cond_op(self, program):
+        def true_func():
+            return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
+
+        def false_func():
+            return layers.fill_constant(shape=[3, 2], dtype='int32', value=-1)
+
+        with fluid.program_guard(program):
+            x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+            y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+            pred = layers.less_than(y, x)
+            out = layers.cond(pred, true_func, false_func)
 
     def test_program_code(self):
         self.var.to_readable_code()
