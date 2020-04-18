@@ -17,7 +17,7 @@ class PSMode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
-    TRAINSPILER = 1
+    TRANSPILER = 1
     PSLIB = 2
 
 

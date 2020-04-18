@@ -20,9 +20,8 @@ import os
 
 import six
 from paddle.fluid import core
-from paddle.fluid.incubate.fleet.parameter.ir import vars_metatools
-from paddle.fluid.incubate.fleet.parameter.ir.ps_dispatcher import RoundRobin, PSDispatcher
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.fluid.incubate.fleet.ps.ir import vars_metatools
+from paddle.fluid.incubate.fleet.ps.ir.ps_dispatcher import RoundRobin, PSDispatcher
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"

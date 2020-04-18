@@ -43,17 +43,17 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
-from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.details.checkport import wait_server_ready
-from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
+from paddle.fluid.incubate.fleet.ps import version
+from paddle.fluid.incubate.fleet.ps.ir.checkport import wait_server_ready
+from paddle.fluid.incubate.fleet.ps.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
-from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
+from paddle.fluid.incubate.fleet.ps.mode import PSMode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
-import paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass as worker
-import paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass as server
-import paddle.fluid.incubate.fleet.parameter_server.ir.public as public
+import paddle.fluid.incubate.fleet.ps.ir.trainer_pass as worker
+import paddle.fluid.incubate.fleet.ps.ir.pserver_pass as server
+import paddle.fluid.incubate.fleet.ps.ir.public as public
 
 
 class FleetTranspiler(Fleet):
