@@ -144,9 +144,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     loader._dataset, indices_queue, loader._data_queue,
                     loader._workers_done_event, _collate_fn, _init_fn, 0)
                 self.assertTrue(False)
-        except AssertionError as e:
-            print("TestDataLoaderWorkerLoop.run_without_worker_done",
-                  use_shared_memory, e)
+        except AssertionError:
+            pass
         except Exception:
             self.assertTrue(False)
 
@@ -186,8 +185,7 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     loader._workers_done_event, _collate_fn, _init_fn, 0)
                 self.assertTrue(True)
         except AssertionError:
-            print("TestDataLoaderWorkerLoop.run_without_worker_done",
-                  use_shared_memory, e)
+            pass
         except Exception:
             self.assertTrue(False)
 

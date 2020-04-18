@@ -30,7 +30,7 @@ from paddle.fluid.dygraph.base import to_variable
 EPOCH_NUM = 5
 BATCH_SIZE = 16
 IMAGE_SIZE = 784
-SAMPLE_NUM = 800
+SAMPLE_NUM = 400
 CLASS_NUM = 10
 
 
@@ -178,17 +178,18 @@ class TestStaticDataLoader(unittest.TestCase):
 
     def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
         places = []
-        if with_cpu:
+        # FIXME: PR_CI_Py35 may hang on Multi-CPUs with multiprocess, but it
+        #        works fine locally, this should be fixed. OTOH, multiprocessing
+        #        is not recommended when running on CPU generally
+        if with_cpu and not sys.version.startswith('3.5'):
             places.append([fluid.CPUPlace()])
             if with_data_parallel:
-                places.append(fluid.cpu_places()[:2])
+                places.append([fluid.CPUPlace()] * 2)
 
         if with_gpu and fluid.core.is_compiled_with_cuda():
             tmp = fluid.cuda_places()[:2]
             assert len(tmp) > 0, "no gpu detected"
-            # FIXME: PR_CI_Py35 may hang on Multi-GPUs, but it works fine
-            #        locally, this should be fixed
-            if with_data_parallel and not sys.version.startswith(3.5):
+            if with_data_parallel:
                 places.append(tmp)
             places.append([tmp[0]])
         return places
