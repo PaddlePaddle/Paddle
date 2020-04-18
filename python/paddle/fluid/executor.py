@@ -516,7 +516,7 @@ class Executor(object):
           #     os.environ['CPU_NUM'] = str(2)
 
           # If you don't set place and PaddlePaddle is CPU version
-          # os.environ['CPU_NUM'] = str(2)
+          os.environ['CPU_NUM'] = str(2)
 
           compiled_prog = compiler.CompiledProgram(
               train_program).with_data_parallel(
