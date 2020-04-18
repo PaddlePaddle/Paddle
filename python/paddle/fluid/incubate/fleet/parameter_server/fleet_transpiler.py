@@ -24,9 +24,8 @@ from collections import OrderedDict
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
 
-import paddle.fluid.io as io
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program

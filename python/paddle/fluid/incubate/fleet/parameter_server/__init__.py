@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
-from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.transpiler import fleet
+from paddle.fluid.incubate.fleet.parameter_server.fleet_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
-__all__ = ['TrainerRuntimeConfig', 'StrategyFactory', 'fleet']
+__all__ = [
+    'TrainerRuntimeConfig', 'StrategyFactory', 'fleet', 'DistributedMode'
+]
