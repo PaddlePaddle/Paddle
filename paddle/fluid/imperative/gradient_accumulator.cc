@@ -18,8 +18,11 @@
 #include <utility>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/op_base.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -264,13 +267,40 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
       framework::DataTypeToString(data_type)));
 }
 
+// NOTE(zhiqiu): call elementwise_add to support fp16 add cuda device.
+void TensorAddFP16(std::shared_ptr<VariableWrapper> src, VariableWrapper* dst) {
+  auto op =
+      framework::OpRegistry::CreateOp("elementwise_add", {}, {}, {}, false);
+  // NOTE(zhiqiu): do not delete dst when y is out of scope.
+  auto y = std::shared_ptr<VariableWrapper>(dst, [](VariableWrapper*) {});
+  framework::AttributeMap attrs = {{"axis", -1},
+                                   {"use_mkldnn", false},
+                                   {"x_data_format", ""},
+                                   {"y_data_format", ""}};
+  NameVarMap<VariableWrapper> ins;
+  ins["X"].emplace_back(src);
+  ins["Y"].emplace_back(y);
+
+  NameVarMap<VariableWrapper> outs;
+  outs["Out"].emplace_back(y);
+
+  OpBase::Run(*op, ins, outs, attrs,
+              src->Var().Get<framework::LoDTensor>().place());
+}
+
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
                         VariableWrapper* var_, bool unchange_input) {
   auto& src = var->Var();
   auto* dst = var_->MutableVar();
+
   if (dst->IsType<framework::LoDTensor>()) {
     if (src.IsType<framework::LoDTensor>()) {
-      TensorAdd(src, dst);
+      if (platform::is_gpu_place(src.Get<framework::LoDTensor>().place()) &&
+          var->DataType() == framework::proto::VarType::FP16) {
+        TensorAddFP16(var, var_);
+      } else {
+        TensorAdd(src, dst);
+      }
     } else if (src.IsType<framework::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
