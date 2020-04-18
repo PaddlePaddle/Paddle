@@ -47,7 +47,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("warning: no netifaces, skip test_pslib_1")
             return
-        
+
         class FakeStream():
             """
             it is a fake stream only for test.
@@ -152,15 +152,15 @@ class TestCloudRoleMaker(unittest.TestCase):
         s = TmpServer()
         h = TmpKVHander(s)
         h.do_GET()
-        h.path="a/b"
+        h.path = "a/b"
         h.do_GET()
         h.do_PUT()
         h.do_DELETE()
-        h.path="a/b/c"
+        h.path = "a/b/c"
         s.kv["b"] = {}
         s.kv["b"]["c"] = "456"
         h.do_GET()
-        h.path="a/d/e"
+        h.path = "a/d/e"
         h.do_PUT()
         h.headers['Content-Length'] = 1
         h.do_PUT()
