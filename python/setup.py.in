@@ -103,6 +103,35 @@ def mkl():
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
+def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
+    cnt = '''from __future__ import print_function
+
+# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+
+from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
+
+BUILD_MODE=PSMode.%(mode)s
+
+def is_transpiler():
+    return PSMode.TRANSPILER == BUILD_MODE
+
+'''
+
+    dirname = os.path.dirname(filename)
+
+    try:
+        os.makedirs(dirname)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
+    with open(filename, 'w') as f:
+        f.write(cnt % {
+            'mode': 'PSLIB' if '${WITH_PSLIB}' == 'ON' else 'TRANSPILER'
+        })
+
+write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
+
 
 packages=['paddle',
           'paddle.libs',
