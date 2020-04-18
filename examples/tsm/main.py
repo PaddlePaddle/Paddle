@@ -24,8 +24,8 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from hapi.model import Model, CrossEntropy, Input, set_device
 from hapi.metrics import Accuracy
-from hapi.vision.models import tsm_resnet50
 
+from modeling import tsm_resnet50
 from check import check_gpu, check_version
 from kinetics_dataset import KineticsDataset
 from transforms import *

@@ -196,7 +196,7 @@ def _tsm_resnet(num_layers, seg_num=8, num_classes=400, pretrained=True):
         weight_path = get_weights_path(*(pretrain_infos[num_layers]))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
-        model.load(weight_path[:-9])
+        model.load(weight_path)
     return model
 
 

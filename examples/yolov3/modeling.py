@@ -16,13 +16,13 @@ from __future__ import division
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D
+from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
 from hapi.model import Model, Loss
 from hapi.download import get_weights_path
-from .darknet import darknet53, ConvBNLayer
+from hapi.vision.models import darknet53
 
 __all__ = ['YoloLoss', 'YOLOv3', 'yolov3_darknet53']
 
@@ -32,6 +32,46 @@ pretrain_infos = {
          'aed7dd45124ff2e844ae3bd5ba6c91d2')
 }
 
+
+class ConvBNLayer(fluid.dygraph.Layer):
+    def __init__(self,
+                 ch_in,
+                 ch_out,
+                 filter_size=3,
+                 stride=1,
+                 groups=1,
+                 padding=0,
+                 act="leaky"):
+        super(ConvBNLayer, self).__init__()
+
+        self.conv = Conv2D(
+            num_channels=ch_in,
+            num_filters=ch_out,
+            filter_size=filter_size,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            param_attr=ParamAttr(
+                initializer=fluid.initializer.Normal(0., 0.02)),
+            bias_attr=False,
+            act=None)
+        self.batch_norm = BatchNorm(
+            num_channels=ch_out,
+            param_attr=ParamAttr(
+                initializer=fluid.initializer.Normal(0., 0.02),
+                regularizer=L2Decay(0.)),
+            bias_attr=ParamAttr(
+                initializer=fluid.initializer.Constant(0.0),
+                regularizer=L2Decay(0.)))
+
+        self.act = act
+
+    def forward(self, inputs):
+        out = self.conv(inputs)
+        out = self.batch_norm(out)
+        if self.act == 'leaky':
+            out = fluid.layers.leaky_relu(x=out, alpha=0.1)
+        return out
 
 class YoloDetectionBlock(fluid.dygraph.Layer):
     def __init__(self, ch_in, channel):
@@ -118,7 +158,7 @@ class YOLOv3(Model):
         self.nms_posk = 100
         self.draw_thresh = 0.5
 
-        self.backbone = darknet53(pretrained=False)
+        self.backbone = darknet53(pretrained=(model_mode=='train'))
         self.block_outputs = []
         self.yolo_blocks = []
         self.route_blocks = []
@@ -254,7 +294,7 @@ def _yolov3_darknet(num_layers=53, num_classes=80,
         weight_path = get_weights_path(*(pretrain_infos[num_layers]))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
-        model.load(weight_path[:-9])
+        model.load(weight_path)
     return model
 
 
