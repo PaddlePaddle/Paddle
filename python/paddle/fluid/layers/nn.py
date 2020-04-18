@@ -6265,11 +6265,9 @@ def lod_reset(x, y=None, target_lod=None):
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
-        if y.lod_level > 0:
-            check_variable_and_dtype(
-                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
-        else:
-            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
+        check_type(y, 'y', (Variable), 'lod_reset')
+        if y.lod_level == 0:
+            check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6327,6 +6325,9 @@ def lod_append(x, level):
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
         raise ValueError("Input(level) must be list, tuple or Variable.")
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_append')
+
     helper = LayerHelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -6335,6 +6336,8 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
+        if level.lod_level == 0:
+            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
     else:
         attrs['target_lod'] = level
     helper.append_op(
