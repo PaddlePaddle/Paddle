@@ -49,7 +49,8 @@ def _same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def _get_pserver_grad_param_var(var, var_dict):
+def _get_pserver_grad_param_var(var, var_dict, grad_param_name_map,
+                                param_grad_name_map):
     """
     Return pserver side grad/param variable, return None
     if the variable is not grad/param, e.g.
@@ -66,8 +67,8 @@ def _get_pserver_grad_param_var(var, var_dict):
             # skip per trainer vars
             if g.name.find(".trainer_") == -1:
                 # only param or grads have split blocks
-                if _orig_varname(g.name) in self.grad_name_to_param_name or \
-                        _orig_varname(g.name) in self.param_name_to_grad_name:
+                if _orig_varname(g.name) in grad_param_name_map or \
+                        _orig_varname(g.name) in param_grad_name_map:
                     grad_block = g
                     break
     return grad_block
@@ -154,49 +155,6 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program):
         inputs=inputs,
         outputs=outputs,
         attrs=opt_op.all_attrs())
-
-
-def _append_pserver_grad_merge_ops(optimize_block, grad_varname_for_block,
-                                   endpoint, grad_to_block_id, origin_program,
-                                   trainers, is_sync):
-    program = optimize_block.program
-    pserver_block = program.global_block()
-    grad_block = None
-    for g in self.param_grad_ep_mapping[endpoint]["grads"]:
-        if _orig_varname(g.name) == \
-                _orig_varname(grad_varname_for_block):
-            grad_block = g
-            break
-    if not grad_block:
-        # do not append this op if current endpoint
-        # is not dealing with this grad block
-        return None
-
-    orig_varname, block_name, trainer_name = _get_varname_parts(grad_block.name)
-    if block_name:
-        merged_var_name = '.'.join([orig_varname, block_name])
-    else:
-        merged_var_name = orig_varname
-
-    merged_var = pserver_block.vars[merged_var_name]
-    grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
-    if is_sync and trainers > 1:
-        vars2merge = []
-        for i in range(trainers):
-            per_trainer_name = "%s.trainer_%d" % \
-                               (merged_var_name, i)
-            vars2merge.append(pserver_block.vars[per_trainer_name])
-        optimize_block.append_op(
-            type="sum",
-            inputs={"X": vars2merge},
-            outputs={"Out": merged_var},
-            attrs={"use_mkldnn": False})
-        optimize_block.append_op(
-            type="scale",
-            inputs={"X": merged_var},
-            outputs={"Out": merged_var},
-            attrs={"scale": 1.0 / float(trainers)})
-    return merged_var
 
 
 def _clone_lr_op(program, origin_program, block, op):
@@ -340,8 +298,7 @@ def get_op_by_type(block, op_type):
     raise ValueError("add_listen_and_serv_pass must at first")
 
 
-def add_listen_and_serv_pass(program, pserver_id, endpoint, trainers,
-                             distributed_mode):
+def add_listen_and_serv_pass(program, config):
     attrs = {
         "grad_to_block_id": None,
         "sparse_grad_to_param": None,
@@ -350,10 +307,10 @@ def add_listen_and_serv_pass(program, pserver_id, endpoint, trainers,
         "sparse_optimize_blocks": None,
 
         # runtime attribute
-        "endpoint": endpoint,
-        "pserver_id": pserver_id,
-        "Fanin": trainers,
-        "distributed_mode": distributed_mode,
+        "endpoint": config.get_ps_endpoint(),
+        "pserver_id": config.get_role_id(),
+        "Fanin": config.get_trainers(),
+        "distributed_mode": config.get_distributed_mode(),
         "rpc_get_thread_num": -1,
         "rpc_send_thread_num": -1,
         "rpc_prefetch_thread_num": -1
@@ -374,7 +331,7 @@ def add_rpc_global_flags_pass(program, config):
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
 
-    if get_threads <= 1 or send_threads <= 1 or pull_threads <= 1:
+    if get_threads < 1 or send_threads < 1 or pull_threads < 1:
         raise ValueError(
             "error arguments in get_threads/send_threads/pull_threads")
 
@@ -385,7 +342,7 @@ def add_rpc_global_flags_pass(program, config):
     return program
 
 
-def _clone_var(self, block, var, persistable=True):
+def _clone_var(block, var, persistable=True):
     return block.create_var(
         name=var.name,
         shape=var.shape,
@@ -399,9 +356,9 @@ def add_recv_inputs_pass(program, config):
     mode = config.get_distributed_mode
     trainers = config.get_trainers()
 
-    for v in self.param_grad_ep_mapping[endpoint]["params"]:
-        _clone_var(pserver_program.global_block(), v)
-    for v in self.param_grad_ep_mapping[endpoint]["grads"]:
+    for v in config.param_grad_ep_mapping[config.get_ps_endpoint()]["params"]:
+        _clone_var(program.global_block(), v)
+    for v in config.param_grad_ep_mapping[config.get_ps_endpoint()]["grads"]:
         # create vars for each trainer in global scope, so
         # we don't need to create them when grad arrives.
         # change client side var name to origin name by
@@ -432,9 +389,54 @@ def add_recv_inputs_pass(program, config):
 
 
 def add_optimizer_pass(program, config):
+    def _append_pserver_grad_merge_ops(optimize_block, grad_varname_for_block,
+                                       endpoint, grad_to_block_id):
+        is_sync = config.get_distributed_mode == DistributedMode.SYNC
+        trainers = config.get_trainers()
+
+        program = optimize_block.program
+        pserver_block = program.global_block()
+        grad_block = None
+        for g in config.param_grad_ep_mapping[endpoint]["grads"]:
+            if _orig_varname(g.name) == \
+                    _orig_varname(grad_varname_for_block):
+                grad_block = g
+                break
+        if not grad_block:
+            # do not append this op if current endpoint
+            # is not dealing with this grad block
+            return None
+
+        orig_varname, block_name, trainer_name = _get_varname_parts(
+            grad_block.name)
+        if block_name:
+            merged_var_name = '.'.join([orig_varname, block_name])
+        else:
+            merged_var_name = orig_varname
+
+        merged_var = pserver_block.vars[merged_var_name]
+        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
+        if is_sync and trainers > 1:
+            vars2merge = []
+            for i in range(trainers):
+                per_trainer_name = "%s.trainer_%d" % \
+                                   (merged_var_name, i)
+                vars2merge.append(pserver_block.vars[per_trainer_name])
+            optimize_block.append_op(
+                type="sum",
+                inputs={"X": vars2merge},
+                outputs={"Out": merged_var},
+                attrs={"use_mkldnn": False})
+            optimize_block.append_op(
+                type="scale",
+                inputs={"X": merged_var},
+                outputs={"Out": merged_var},
+                attrs={"scale": 1.0 / float(trainers)})
+        return merged_var
+
     def _is_opt_op_on_pserver(endpoint, op):
         param_names = [
-            p.name for p in self.param_grad_ep_mapping[endpoint]["params"]
+            p.name for p in config.param_grad_ep_mapping[endpoint]["params"]
         ]
         if op.input("Param")[0] in param_names:
             return True
@@ -538,9 +540,10 @@ def add_optimizer_pass(program, config):
                         0] == optimize_target_param_name:
                     merged_var = _append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, ps_endpoint,
-                        grad_to_block_id, origin_program)
+                        grad_to_block_id)
                     if merged_var:
                         break  # append optimize op once then append other ops.
+
             if merged_var:
                 for _, op in enumerate(optimize_ops):
                     # optimizer is connected to itself
@@ -577,7 +580,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
     o_startup_program = config.get_origin_startup_program()
     program.random_seed = o_startup_program.random_seed
 
-    params = self.param_grad_ep_mapping[ps_endpoint]["params"]
+    params = config.param_grad_ep_mapping[ps_endpoint]["params"]
 
     def _get_splited_name_and_shape(varname):
         for idx, splited_param in enumerate(params):

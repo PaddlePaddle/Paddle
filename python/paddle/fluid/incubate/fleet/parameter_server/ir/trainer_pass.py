@@ -17,7 +17,6 @@ from __future__ import print_function
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_param_grads
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import DistributedMode
 
@@ -130,7 +129,6 @@ def distributed_ops_pass(program, config):
 
 
 def append_send_ops_pass(program, config):
-    origin_program = config.get_origin_main_program
     mode = config.get_distributed_mode
     trainer_id = config.get_role_id()
     pserver_endpoints = config.get_ps_endpoints()
