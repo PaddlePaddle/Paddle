@@ -200,11 +200,11 @@ template <typename T, int BlockDim, bool HasDx, bool HasDScale>
 __global__ void LayerNormBackwardGradientScaleOrBias(
     const T *x, const T *d_y, T *d_scale, T *d_bias, T *d_x, const T *mean,
     const T *var, const T *scale, float epsilon, int batch_size,
-    int feature_size) {
+    int feature_size, int col_offset) {
   using BlockReduce = cub::BlockReduce<T, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
-  int beg_idx = threadIdx.x * feature_size + blockIdx.x;
-  int end_idx = batch_size * feature_size + blockIdx.x;
+  int beg_idx = threadIdx.x * feature_size + blockIdx.x + col_offset;
+  int end_idx = batch_size * feature_size + blockIdx.x + col_offset;
   int stride = BlockDim * feature_size;
   T d_scale_or_d_bias_partial = 0;
 
@@ -219,7 +219,7 @@ __global__ void LayerNormBackwardGradientScaleOrBias(
 
     if (HasDx) {
       if (scale != nullptr) {
-        d_x[i] = d_y[i] * scale[blockIdx.x] / var_val;
+        d_x[i] = d_y[i] * scale[blockIdx.x + col_offset] / var_val;
       } else {
         d_x[i] = d_y[i] / var_val;
       }
@@ -231,9 +231,9 @@ __global__ void LayerNormBackwardGradientScaleOrBias(
 
   if (threadIdx.x == 0) {
     if (HasDScale) {
-      d_scale[blockIdx.x] = d_scale_or_d_bias_partial;
+      d_scale[blockIdx.x + col_offset] = d_scale_or_d_bias_partial;
     } else {
-      d_bias[blockIdx.x] = d_scale_or_d_bias_partial;
+      d_bias[blockIdx.x + col_offset] = d_scale_or_d_bias_partial;
     }
   }
 }
@@ -380,20 +380,23 @@ static void LayerNormBackward(const T *x, const T *d_y, const T *scale,
   switch (gradient_flag) {
     case 1:  // d_x == nulptr, d_scale == nullptr, d_bias != nullptr
       switch (block_dim) {
-        FIXED_BLOCK_DIM_CASE(LayerNormBackwardGradientScaleOrBias<
-                             T, kBlockDim, false,
-                             false><<<feature_size, kBlockDim, 0, stream>>>(
-            x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon, batch_size,
-            feature_size));
+        FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
+            feature_size, kMaxBlockNum,
+            LayerNormBackwardGradientScaleOrBias<
+                T, kBlockDim, false,
+                false><<<block_num, kBlockDim, 0, stream>>>(
+                x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
+                batch_size, feature_size, col_offset));
       }
       break;
     case 2:  // d_x == nullptr, d_scale != nullptr, d_bias == nullptr
       switch (block_dim) {
-        FIXED_BLOCK_DIM_CASE(LayerNormBackwardGradientScaleOrBias<
-                             T, kBlockDim, false,
-                             true><<<feature_size, kBlockDim, 0, stream>>>(
-            x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon, batch_size,
-            feature_size));
+        FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
+            feature_size, kMaxBlockNum,
+            LayerNormBackwardGradientScaleOrBias<
+                T, kBlockDim, false, true><<<block_num, kBlockDim, 0, stream>>>(
+                x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
+                batch_size, feature_size, col_offset));
       }
       break;
     case 3:  // d_x == nullptr, d_scale != nulptr, d_bias != nullptr
@@ -416,11 +419,12 @@ static void LayerNormBackward(const T *x, const T *d_y, const T *scale,
       break;
     case 5:  // d_x != nulptr, d_scale == nullptr, d_bias != nullptr
       switch (block_dim) {
-        FIXED_BLOCK_DIM_CASE(LayerNormBackwardGradientScaleOrBias<
-                             T, kBlockDim, true,
-                             false><<<feature_size, kBlockDim, 0, stream>>>(
-            x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon, batch_size,
-            feature_size));
+        FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
+            feature_size, kMaxBlockNum,
+            LayerNormBackwardGradientScaleOrBias<
+                T, kBlockDim, true, false><<<block_num, kBlockDim, 0, stream>>>(
+                x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
+                batch_size, feature_size, col_offset));
       }
       switch (GetDesiredBlockDim(feature_size)) {
         FIXED_BLOCK_DIM_CASE(
@@ -431,11 +435,12 @@ static void LayerNormBackward(const T *x, const T *d_y, const T *scale,
       break;
     case 6:  // d_x != nullptr, d_scale != nullptr, d_bias == nullptr
       switch (block_dim) {
-        FIXED_BLOCK_DIM_CASE(LayerNormBackwardGradientScaleOrBias<
-                             T, kBlockDim, true,
-                             true><<<feature_size, kBlockDim, 0, stream>>>(
-            x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon, batch_size,
-            feature_size));
+        FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE(
+            feature_size, kMaxBlockNum,
+            LayerNormBackwardGradientScaleOrBias<
+                T, kBlockDim, true, true><<<block_num, kBlockDim, 0, stream>>>(
+                x, d_y, d_scale, d_bias, d_x, mean, var, scale, epsilon,
+                batch_size, feature_size, col_offset));
       }
       switch (GetDesiredBlockDim(feature_size)) {
         FIXED_BLOCK_DIM_CASE(
@@ -574,6 +579,8 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
   }
 };
 template class LayerNormDirectCUDAFunctor<float>;
+#undef FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE_BASE
+#undef FIXED_BLOCK_DIM_FIXED_BLOCK_NUM_CASE
 #undef FIXED_BLOCK_DIM_CASE_BASE
 #undef FIXED_BLOCK_DIM_CASE
 }  // namespace operators
