@@ -798,6 +798,15 @@ void MultiSlotInMemoryDataFeed::Init(
     }
   }
   feed_vec_.resize(use_slots_.size());
+  for (size_t i = 0; i < all_slot_num; i++) {
+    batch_float_feasigns.push_back(std::vector<float>());
+    batch_uint64_feasigns.push_back(std::vector<uint64_t>());
+    batch_float_feasigns[i].reserve(default_batch_size_ * 5);
+    batch_uint64_feasigns[i].reserve(default_batch_size_ * 5);
+    offset.push_back(std::vector<size_t>());
+    offset[i].reserve(default_batch_size_ + 1);
+  }
+  visit.resize(all_slot_num, false);
   pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
 }
@@ -989,13 +998,12 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
 #ifdef _LINUX
-  std::vector<std::vector<float>> batch_float_feasigns(use_slots_.size(),
-                                                       std::vector<float>());
-  std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
-      use_slots_.size(), std::vector<uint64_t>());
-  std::vector<std::vector<size_t>> offset(use_slots_.size(),
-                                          std::vector<size_t>{0});
-  std::vector<bool> visit(use_slots_.size(), false);
+  for (size_t i = 0; i < batch_float_feasigns.size(); ++i) {
+    batch_float_feasigns[i].clear();
+    batch_uint64_feasigns[i].clear();
+    offset[i].clear();
+    offset[i].push_back(0);
+  }
   ins_content_vec_.clear();
   ins_content_vec_.reserve(ins_vec.size());
   ins_id_vec_.clear();
@@ -1427,21 +1435,14 @@ int PaddleBoxDataFeed::GetCurrentPhase() {
 
 void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
 #ifdef _LINUX
-  std::vector<std::vector<float>> batch_float_feasigns(use_slots_.size(),
-                                                       std::vector<float>());
-  std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
-      use_slots_.size(), std::vector<uint64_t>());
-  std::vector<std::vector<size_t>> offset(use_slots_.size(),
-                                          std::vector<size_t>{0});
-  std::vector<bool> visit(use_slots_.size(), false);
-  ins_content_vec_.clear();
-  ins_content_vec_.reserve(ins_vec.size());
-  ins_id_vec_.clear();
-  ins_id_vec_.reserve(ins_vec.size());
+  for (size_t i = 0; i < batch_float_feasigns.size(); ++i) {
+    batch_float_feasigns[i].clear();
+    batch_uint64_feasigns[i].clear();
+    offset[i].clear();
+    offset[i].push_back(0);
+  }
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto r = ins_vec[i];
-    ins_id_vec_.push_back(r->ins_id_);
-    ins_content_vec_.push_back(r->content_);
     for (auto& item : r->float_feasigns_) {
       batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
       visit[item.slot()] = true;
