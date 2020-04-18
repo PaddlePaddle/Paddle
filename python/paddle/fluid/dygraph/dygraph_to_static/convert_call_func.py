@@ -139,7 +139,7 @@ def convert_call(func):
                 func_self = func
             except Exception:
                 # NOTE:
-                # If `func` if a class which is being initialized, for example `convert_call(Foo)()`,
+                # If `func` is a class which is being initialized, for example `convert_call(Foo)()`,
                 # it doesn't need to be transformed
                 func_self = None if func_self else func_self
 
