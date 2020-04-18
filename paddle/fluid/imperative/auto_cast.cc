@@ -117,13 +117,16 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   auto out = std::shared_ptr<imperative::VarBase>(
       new imperative::VarBase(tracer->GenerateUniqueName()));
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
-  tracer->SetEnableAutoCast(false);
-  tracer->TraceOp("cast", ins, outs, std::move(attrs));
-  tracer->SetEnableAutoCast(true);
+
+  {
+    AutoCastGuard guard(tracer, false);
+    tracer->TraceOp("cast", ins, outs, std::move(attrs));
+  }
+
   return out;
 }
 
-std::shared_ptr<imperative::VarBase> CastToFP16(
+static inline std::shared_ptr<imperative::VarBase> CastToFP16(
     const std::shared_ptr<VarBase>& var) {
   auto dst_type = framework::proto::VarType::FP16;
   if (NeedCast(var) && (var->DataType() != dst_type)) {
@@ -132,7 +135,7 @@ std::shared_ptr<imperative::VarBase> CastToFP16(
   return var;
 }
 
-std::shared_ptr<imperative::VarBase> CastToFP32(
+static inline std::shared_ptr<imperative::VarBase> CastToFP32(
     const std::shared_ptr<VarBase>& var) {
   auto dst_type = framework::proto::VarType::FP32;
   if (NeedCast(var) && (var->DataType() != dst_type)) {
@@ -141,7 +144,8 @@ std::shared_ptr<imperative::VarBase> CastToFP32(
   return var;
 }
 
-framework::proto::VarType::Type PromoteType(const NameVarBaseMap& ins) {
+static inline framework::proto::VarType::Type GetPromoteType(
+    const NameVarBaseMap& ins) {
   auto dst_type = framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
     for (const auto& op : pair.second) {
@@ -177,7 +181,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     }
     return new_ins;
   } else if (gray_ops.count(op_type)) {
-    auto dst_type = PromoteType(ins);
+    auto dst_type = GetPromoteType(ins);
 
     for (const auto& pair : ins) {
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
