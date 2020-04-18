@@ -21,7 +21,6 @@ import os
 import six
 from paddle.fluid import core
 from paddle.fluid.incubate.fleet.parameter.ir import vars_metatools
-from paddle.fluid.incubate.fleet.parameter.program_utils import find_op_by_output_arg
 from paddle.fluid.incubate.fleet.parameter.ir.ps_dispatcher import RoundRobin, PSDispatcher
 
 OP_NAME_SCOPE = "op_namescope"
@@ -194,6 +193,7 @@ class CompileTimeStrategy(object):
                         shape=splited_shape,
                         dtype=orig_var.dtype,
                         type=orig_var.type,
+                        lod_level=orig_var.lod_level,
                         persistable=False)
                     var_mapping[varname].append(slice_var)
 
@@ -228,6 +228,53 @@ class CompileTimeStrategy(object):
                 self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
                 self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
+    def _slice_variable(self, var_list, slice_count, min_block_size):
+        """
+        We may need to split dense tensor to one or more blocks and put
+        them equally onto parameter server. One block is a sub-tensor
+        aligned by dim[0] of the tensor.
+
+        We need to have a minimal block size so that the calculations in
+        the parameter server side can gain better performance. By default
+        minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
+
+        Args:
+            var_list (list): List of variables.
+            slice_count (int): Numel of count that variables will be sliced, which
+                could be the pserver services' count.
+            min_block_size (int): Minimum split block size.
+        Returns:
+            blocks (list[(varname, block_id, current_block_size)]): A list
+                of VarBlocks. Each VarBlock specifies a shard of the var.
+        """
+        blocks = []
+        for var in var_list:
+            split_count = slice_count
+            var_numel = reduce(lambda x, y: x * y, var.shape)
+            max_pserver_count = int(
+                math.floor(var_numel / float(min_block_size)))
+            if max_pserver_count == 0:
+                max_pserver_count = 1
+            if max_pserver_count < slice_count:
+                split_count = max_pserver_count
+            block_size = int(math.ceil(var_numel / float(split_count)))
+
+            if len(var.shape) >= 2:
+                # align by dim1(width)
+                dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                remains = block_size % dim1
+                if remains != 0:
+                    block_size += dim1 - remains
+            # update split_count after aligning
+            split_count = int(math.ceil(var_numel / float(block_size)))
+            for block_id in range(split_count):
+                curr_block_size = min(block_size, var_numel - (
+                    (block_id) * block_size))
+                block = vars_metatools.VarBlock(var.name, block_id,
+                                                curr_block_size)
+                blocks.append(str(block))
+        return blocks
+
     def _var_slice_and_distribute(self):
         # update these mappings for further transpile:
         # 1. param_var_mapping: param var name -> [split params vars]
@@ -254,12 +301,12 @@ class CompileTimeStrategy(object):
 
         # when we slice var up into blocks, we will slice the var according to
         # pserver services' count. A pserver may have two or more listening ports.
-        grad_blocks = _slice_variable(grad_list,
-                                      len(self.get_ps_endpoints()),
-                                      self.min_block_size)
-        param_blocks = _slice_variable(param_list,
-                                       len(self.get_ps_endpoints()),
-                                       self.min_block_size)
+        grad_blocks = self._slice_variable(grad_list,
+                                           len(self.get_ps_endpoints()),
+                                           self.min_block_size)
+        param_blocks = self._slice_variable(param_list,
+                                            len(self.get_ps_endpoints()),
+                                            self.min_block_size)
 
         assert (len(grad_blocks) == len(param_blocks))
 
@@ -274,6 +321,10 @@ class CompileTimeStrategy(object):
             p_name, p_bid, _ = p.split(":")
             self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_bid)]] = \
                 self.param_var_mapping[p_name][int(p_bid)]
+
+        print_maps = {}
+        for k, v in self.grad_param_mapping.items():
+            print_maps[str(k)] = str(v)
 
         # create mapping of endpoint -> split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
@@ -345,6 +396,12 @@ class CompileTimeStrategy(object):
         self.param_name_to_grad_name = param_name_grad_name
         self.grad_name_to_param_name = grad_name_to_param_name
 
+        sparse_pair_map = collections.OrderedDict()
+        for pair in self.origin_sparse_pairs + self.origin_dense_pairs:
+            param, grad = pair
+            sparse_pair_map[param.name] = str(param)
+            sparse_pair_map[grad.name] = str(grad)
+
         self._var_slice_and_distribute()
         self._dispatcher()
 
@@ -368,12 +425,14 @@ class CompileTimeStrategy(object):
             ordered_dense_offsets.append(flatten_dims)
             flatten_dims += reduce(lambda x, y: x * y, param.shape)
 
+        param, grad = denses[0]
+
         merged_param = vars_metatools.VarStruct(
-            "merged.dense_0", (flatten_dims, ), denses[0].dtype, denses[0].type,
-            denses[0].lod_level, denses[0].persistable)
+            "merged.dense_0", (flatten_dims, ), param.dtype, param.type,
+            param.lod_level, param.persistable)
         merged_grad = vars_metatools.VarStruct(
-            "merged.dense_0@GRAD", (flatten_dims, ), denses[0].dtype,
-            denses[0].type, denses[0].lod_level, denses[0].persistable)
+            "merged.dense_0@GRAD", (flatten_dims, ), grad.dtype, grad.type,
+            grad.lod_level, grad.persistable)
 
         return ordered_dense, ordered_dense_offsets, merged_param, merged_grad
 
@@ -477,49 +536,3 @@ def _get_varname_parts(varname):
 def _orig_varname(varname):
     orig, _, _ = _get_varname_parts(varname)
     return orig
-
-
-def _slice_variable(var_list, slice_count, min_block_size):
-    """
-    We may need to split dense tensor to one or more blocks and put
-    them equally onto parameter server. One block is a sub-tensor
-    aligned by dim[0] of the tensor.
-
-    We need to have a minimal block size so that the calculations in
-    the parameter server side can gain better performance. By default
-    minimum block size 8K elements (maybe 16bit or 32bit or 64bit).
-
-    Args:
-        var_list (list): List of variables.
-        slice_count (int): Numel of count that variables will be sliced, which
-            could be the pserver services' count.
-        min_block_size (int): Minimum split block size.
-    Returns:
-        blocks (list[(varname, block_id, current_block_size)]): A list
-            of VarBlocks. Each VarBlock specifies a shard of the var.
-    """
-    blocks = []
-    for var in var_list:
-        split_count = slice_count
-        var_numel = reduce(lambda x, y: x * y, var.shape)
-        max_pserver_count = int(math.floor(var_numel / float(min_block_size)))
-        if max_pserver_count == 0:
-            max_pserver_count = 1
-        if max_pserver_count < slice_count:
-            split_count = max_pserver_count
-        block_size = int(math.ceil(var_numel / float(split_count)))
-
-        if len(var.shape) >= 2:
-            # align by dim1(width)
-            dim1 = reduce(lambda x, y: x * y, var.shape[1:])
-            remains = block_size % dim1
-            if remains != 0:
-                block_size += dim1 - remains
-        # update split_count after aligning
-        split_count = int(math.ceil(var_numel / float(block_size)))
-        for block_id in range(split_count):
-            curr_block_size = min(block_size, var_numel - (
-                (block_id) * block_size))
-            block = vars_metatools.VarBlock(var.name, block_id, curr_block_size)
-            blocks.append(str(block))
-    return blocks

@@ -28,6 +28,11 @@ class VarStruct(object):
         self.lod_level = lod_level
         self.persistable = persistable
 
+    def __str__(self):
+        return "N: {}, S: {}, D: {}, T: {}, L: {}, P: {}".format(
+            self.name, self.shape, self.dtype, self.type, self.lod_level,
+            self.persistable)
+
 
 class VarDistributed(object):
     """
