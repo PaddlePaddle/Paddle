@@ -202,7 +202,7 @@ class TestDistRunnerBase(object):
 
         if args.save_model:
             model_save_dir = "/tmp"
-            if fleet.worker_index() == 0:
+            if fleet.worker_id() == 0:
                 model_save_dir_fluid = os.path.join(model_save_dir,
                                                     "fluid_persistables")
                 model_save_dir_fleet = os.path.join(model_save_dir,

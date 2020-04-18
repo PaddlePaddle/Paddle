@@ -31,7 +31,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
         None
     """
 
-    def __init__(self, optimizer, strategy, mode=PSMode.TRAINSPILER):
+    def __init__(self, optimizer, strategy, mode=PSMode.TRANSPILER):
         super(ParameterServerOptimizer, self).__init__(optimizer, strategy)
         self._mode = mode
         if self._mode == PSMode.PSLIB:
@@ -82,7 +82,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
                 parameter_list,
                 no_grad_set,
                 self._strategy)
-        opt_info["mpi_rank"] = fleet.worker_index()
+        opt_info["mpi_rank"] = fleet.worker_id()
         opt_info["mpi_size"] = fleet.worker_num()
 
         fleet._set_opt_info(opt_info)

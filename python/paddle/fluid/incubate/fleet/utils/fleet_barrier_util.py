@@ -20,7 +20,7 @@ import time
 
 def check_all_trainers_ready(ready_path, epoch):
     trainer_num = fleet.worker_num()
-    trainer_id = fleet.worker_index()
+    trainer_id = fleet.worker_id()
 
     hadoop_home = os.getenv("HADOOP_HOME")
     configs = {

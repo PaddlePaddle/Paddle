@@ -18,7 +18,7 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.ps.ir.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
-from paddle.fluid.incubate.fleet.ps.ir.public import DistributedMode
+from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"

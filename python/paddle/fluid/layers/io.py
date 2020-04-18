@@ -30,7 +30,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
-from ..incubate.fleet.parameter_server.mode import DistributedMode
+from ..incubate.fleet.ps.mode import DistributedMode
 
 import logging
 

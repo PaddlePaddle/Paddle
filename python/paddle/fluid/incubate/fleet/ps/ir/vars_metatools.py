@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import print_function
 from paddle.fluid.framework import Variable
+from paddle.fluid import core
 
 
 class VarBlock:
@@ -39,7 +40,14 @@ class CommContext(object):
 
 
 def create_var_struct(var):
-    return VarStruct(var.name, var.shape, var.dtype, var.type, var.lod_level,
+    if var.type == core.VarDesc.VarType.SELECTED_ROWS:
+        lod_level = None
+    elif var.type == core.VarDesc.VarType.LOD_TENSOR:
+        lod_level = var.lod_level
+    else:
+        raise ValueError("can only support SELECTED_ROWS/LOD_TENSOR now")
+
+    return VarStruct(var.name, var.shape, var.dtype, var.type, lod_level,
                      var.persistable)
 
 

@@ -61,14 +61,14 @@ class Fleet(object):
         """
         return self._role_maker.is_first_worker()
 
-    def worker_index(self):
+    def worker_id(self):
         """
         Get current worker index.
 
         Returns:
             int: node id
         """
-        return self._role_maker.worker_index()
+        return self._role_maker.worker_id()
 
     def worker_num(self):
         """
@@ -111,14 +111,14 @@ class Fleet(object):
         """
         return len(self._role_maker.get_pserver_endpoints())
 
-    def server_index(self):
+    def server_id(self):
         """
         Get current server index.
 
         Returns:
             int: node id
         """
-        return self._role_maker.server_index()
+        return self._role_maker.server_id()
 
     def server_endpoints(self, to_string=False):
         """
@@ -160,7 +160,7 @@ class Fleet(object):
         if not isinstance(files, list):
             raise TypeError("files should be a list of file need to be read.")
 
-        trainer_id = self.worker_index()
+        trainer_id = self.worker_id()
         trainers = self.worker_num()
 
         remainder = len(files) % trainers

@@ -42,5 +42,5 @@ elif fleet.is_worker():
         cost_val = exe.run(program=fleet.main_program,
                            feed=gen_data(),
                            fetch_list=[cost.name])
-        print("worker_index: %d, step%d cost = %f" %
-              (fleet.worker_index(), i, cost_val[0]))
+        print("worker_id: %d, step%d cost = %f" %
+              (fleet.worker_id(), i, cost_val[0]))

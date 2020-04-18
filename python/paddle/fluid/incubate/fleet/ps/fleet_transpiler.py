@@ -64,12 +64,17 @@ class FleetTranspiler(Fleet):
     def __init__(self):
         super(FleetTranspiler, self).__init__(Mode.PS)
 
-        self._inner_mode = PSMode.TRAINSPILER if version.is_transpiler(
-        ) else PSMode.PSLIB
+        self._inner_mode = None
+
+        if version.is_transpiler():
+            self._inner_mode = PSMode.TRANSPILER
+        else:
+            self._inner_mode = PSMode.PSLIB
 
         self._strategy = None
         self._transpiler = None
         self._origin_main_program = None
+        self._origin_startup_program = None
         self._communicator = None
         self.startup_program = None
         self.main_program = None
@@ -112,7 +117,7 @@ class FleetTranspiler(Fleet):
             kwargs = {}
             kwargs[
                 "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
-            kwargs["trainer_id"] = self._role_maker.worker_index()
+            kwargs["trainer_id"] = self._role_maker.worker_id()
             return kwargs
 
         # if MPISymetricRoleMaker is defined
@@ -156,10 +161,10 @@ class FleetTranspiler(Fleet):
         # barrier_all for init_server, wait for server starts
         self._role_maker._barrier_all()
         self.all_ips_ = self._role_maker._all_gather(self._local_ip)
-        # worker_index * 2 is for compatible with older versions of pslib
+        # worker_id * 2 is for compatible with older versions of pslib
         self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                     self._role_maker._get_size(),
-                                    self._role_maker.worker_index() * 2)
+                                    self._role_maker.worker_id() * 2)
         # barrier_all for init_worker
         self._role_maker._barrier_all()
         # prepare for client to client communication
@@ -214,7 +219,7 @@ class FleetTranspiler(Fleet):
         Returns:
             None
         """
-        if self._inner_mode == PSMode.TRAINSPILER:
+        if self._inner_mode == PSMode.TRANSPILER:
             self._init_transpiler_worker()
         else:
             self._init_pslib_worker()
@@ -231,7 +236,8 @@ class FleetTranspiler(Fleet):
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
-            io.load_persistables(self._executor, model_dir, self.main_program)
+            fluid.io.load_persistables(self._executor, model_dir,
+                                       self.main_program)
 
     def _init_pslib_server(self, model_dir=None, **kwargs):
         mode = kwargs.get("mode", 0)
@@ -253,7 +259,7 @@ class FleetTranspiler(Fleet):
             None
         """
 
-        if self._inner_mode == PSMode.TRAINSPILER:
+        if self._inner_mode == PSMode.TRANSPILER:
             self._init_transpiler_server(model_dir)
         else:
             self._init_pslib_server(model_dir, **kwargs)
@@ -266,7 +272,7 @@ class FleetTranspiler(Fleet):
             None
         """
 
-        if self._inner_mode == PSMode.TRAINSPILER:
+        if self._inner_mode == PSMode.TRANSPILER:
             if not self.main_program:
                 raise ValueError(
                     "main_program is None, need invoke DistributedOptimizer.minimize first"
@@ -286,9 +292,9 @@ class FleetTranspiler(Fleet):
                 else:
                     raise Exception(
                         "You should run DistributedOptimizer.minimize() first")
-                # server_index * 2 is for compatible with older versions of pslib
+                # server_id * 2 is for compatible with older versions of pslib
                 self._fleet_ptr.init_server(self._dist_desc_str,
-                                            self._role_maker.server_index() * 2)
+                                            self._role_maker.server_id() * 2)
                 if isinstance(self._role_maker, MPISymetricRoleMaker):
                     self._local_ip = self._fleet_ptr.run_server()
                 else:
@@ -320,7 +326,7 @@ class FleetTranspiler(Fleet):
             None
         """
 
-        if self._inner_mode == PSMode.TRAINSPILER:
+        if self._inner_mode == PSMode.TRANSPILER:
             self._communicator.stop()
             if isinstance(self._role_maker, MPISymetricRoleMaker):
                 self._role_maker._finalize()
@@ -427,13 +433,14 @@ class FleetTranspiler(Fleet):
                 raise TypeError(
                     "in fleet.save_inference_model() function, main_program must be as Program type, CompiledProgram is not allowed"
                 )
-            io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, main_program, None, None,
-                                    export_for_deployment)
+            fluid.io.save_inference_model(dirname, feeded_var_names,
+                                          target_vars, executor, main_program,
+                                          None, None, export_for_deployment)
         else:
-            io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, self._origin_main_program, None,
-                                    None, export_for_deployment, True)
+            fluid.io.save_inference_model(dirname, feeded_var_names,
+                                          target_vars, executor,
+                                          self._origin_main_program, None, None,
+                                          export_for_deployment, True)
 
             model_basename = "__model__"
             model_filename = os.path.join(dirname, model_basename)
@@ -488,7 +495,7 @@ class FleetTranspiler(Fleet):
             raise ValueError(
                 "main_program is for local, may not use fleet.save_persistables")
 
-        io.save_persistables(executor, dirname, main_program, None)
+        fluid.io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
         program_config = self._strategy.get_program_config()
@@ -508,7 +515,7 @@ class FleetTranspiler(Fleet):
 
         if self.is_worker():
             self._transpiler.transpile(
-                trainer_id=fleet.worker_index(),
+                trainer_id=fleet.worker_id(),
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
                 sync_mode=program_config.sync_mode)
@@ -525,14 +532,14 @@ class FleetTranspiler(Fleet):
                 self.startup_program = self._transpiler.trainer_startup_program
         else:
             self._transpiler.transpile(
-                trainer_id=fleet.worker_index(),
+                trainer_id=fleet.worker_id(),
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
                 sync_mode=program_config.sync_mode,
-                current_endpoint=self.server_endpoints()[self.server_index()])
+                current_endpoint=self.server_endpoints()[self.server_id()])
             self.main_program, self.startup_program = \
                 self._transpiler.get_pserver_programs(
-                    self.server_endpoints()[self.server_index()])
+                    self.server_endpoints()[self.server_id()])
 
     def _set_opt_info(self, opt_info):
         """
@@ -800,7 +807,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
         None
     """
 
-    def __init__(self, optimizer, strategy, mode=PSMode.TRAINSPILER):
+    def __init__(self, optimizer, strategy, mode=PSMode.TRANSPILER):
         super(ParameterServerOptimizer, self).__init__(optimizer, strategy)
         self._mode = mode
         if self._mode == PSMode.PSLIB:
@@ -836,7 +843,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
     def _build_trainer_programs(self, compiled_config):
         _main = fleet._origin_main_program.clone()
-        _startup = fluid.default_startup_program().clone()
+        _startup = fleet._origin_startup_program.clone()
 
         # for main program
         _main = worker.delete_optimizer_pass(_main, compiled_config)
@@ -874,6 +881,11 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
         self._optimizer.minimize(losses, startup_programs, parameter_list,
                                  no_grad_set)
+
+        fleet._origin_main_program = default_main_program().clone(
+            for_test=False)
+        fleet._origin_startup_program = default_startup_program().clone(
+            for_test=False)
 
         compiled_config = public.CompileTimeStrategy(
             fleet._origin_main_program, fleet._origin_startup_program,

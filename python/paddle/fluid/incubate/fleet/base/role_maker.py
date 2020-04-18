@@ -74,7 +74,10 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def worker_index(self):
+    def role_id(self):
+        return self.worker_id() if self.is_worker() else self.server_id()
+
+    def worker_id(self):
         """
         Get current worker id.
 
@@ -83,7 +86,7 @@ class RoleMakerBase(object):
         """
         raise NotImplementedError("Please implement this method in child class")
 
-    def server_index(self):
+    def server_id(self):
         """
         Get current server id.
 
@@ -297,7 +300,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return whether current process is the first worker assigned by role maker
         """
         if self._check_role_generation():
-            return self.is_worker() and 0 == self.worker_index()
+            return self.is_worker() and 0 == self.worker_id()
         return False
 
     def get_pserver_endpoints(self):
@@ -357,7 +360,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             self.generate_role()
             return self._get_size() / self._proc_per_node
 
-    def worker_index(self):
+    def worker_id(self):
         """
         return the index of worker
         """
@@ -367,7 +370,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             self.generate_role()
             return self._get_size() / 2
 
-    def server_index(self):
+    def server_id(self):
         """
         return the index of server
         """
@@ -523,12 +526,12 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._role == Role.WORKER and self._current_id == 0
 
-    def worker_index(self):
+    def worker_id(self):
         if not self._role_is_generated:
             self.generate_role()
         return self._current_id
 
-    def server_index(self):
+    def server_id(self):
         if not self._role_is_generated:
             self.generate_role()
         return self._current_id
@@ -708,7 +711,7 @@ class GeneralRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._role == Role.WORKER and self._current_id == 0
 
-    def worker_index(self):
+    def worker_id(self):
         """
         get index of current worker
         """
@@ -716,7 +719,7 @@ class GeneralRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._current_id
 
-    def server_index(self):
+    def server_id(self):
         """
         get index of current server
         """
@@ -939,10 +942,10 @@ class UserDefinedRoleMaker(RoleMakerBase):
     def is_first_worker(self):
         return self._role == Role.WORKER and self._current_id == 0
 
-    def worker_index(self):
+    def worker_id(self):
         return self._current_id
 
-    def server_index(self):
+    def server_id(self):
         return self._current_id
 
     def worker_num(self):
@@ -996,7 +999,7 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
     def is_first_worker(self):
         return self._current_id == 0
 
-    def worker_index(self):
+    def worker_id(self):
         return self._current_id
 
     def worker_num(self):

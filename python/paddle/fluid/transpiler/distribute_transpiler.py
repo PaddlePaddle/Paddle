@@ -1356,12 +1356,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # process distributed lookup_table
         prefetch_var_name_to_block_id = []
         if self.has_distributed_lookup_table:
-            pserver_index = self.pserver_endpoints.index(endpoint)
+            pserver_id = self.pserver_endpoints.index(endpoint)
             table_opt_block = self._create_table_optimize_block(
-                pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
+                pserver_id, pserver_program, pre_block_idx, grad_to_block_id)
             optimize_blocks.append(table_opt_block)
             lookup_table_var_name_to_block_id = self._create_prefetch_block(
-                pserver_index, pserver_program, table_opt_block)
+                pserver_id, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(
                 pserver_program, table_opt_block.idx)
 
@@ -1877,19 +1877,19 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     })
                 break
 
-    def _create_prefetch_block(self, pserver_index, pserver_program,
+    def _create_prefetch_block(self, pserver_id, pserver_program,
                                optimize_block):
         # STEP: create prefetch block
         table_var = pserver_program.global_block().vars[self.table_name]
         prefetch_var_name_to_block_id = []
         prefetch_block = pserver_program._create_block(optimize_block.idx)
-        trainer_ids = self.all_prefetch_input_vars[pserver_index]
+        trainer_ids = self.all_prefetch_input_vars[pserver_id]
         pserver_ids = pserver_program.global_block().create_var(
             name=trainer_ids.name,
             type=trainer_ids.type,
             shape=trainer_ids.shape,
             dtype=trainer_ids.dtype)
-        trainer_out = self.all_prefetch_output_vars[pserver_index]
+        trainer_out = self.all_prefetch_output_vars[pserver_id]
         pserver_out = pserver_program.global_block().create_var(
             name=trainer_out.name,
             type=trainer_out.type,
@@ -1909,7 +1909,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             prefetch_block.idx))
         return prefetch_var_name_to_block_id
 
-    def _create_table_optimize_block(self, pserver_index, pserver_program,
+    def _create_table_optimize_block(self, pserver_id, pserver_program,
                                      pre_block_idx, grad_to_block_id):
         # STEP: create table optimize block
         table_opt_block = pserver_program._create_block(pre_block_idx)
@@ -1953,7 +1953,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             pserver_side_table_grad_list = [
                 pserver_program.global_block().create_var(
                     name="%s.trainer_%d.pserver_%d" %
-                    (table_grad_var.name, index, pserver_index),
+                    (table_grad_var.name, index, pserver_id),
                     type=table_grad_var.type,
                     shape=table_grad_var.shape,
                     dtype=table_grad_var.dtype)
@@ -1970,7 +1970,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             # in async_mode, for table gradient, it also need to be split to each parameter server
             origin_grad_name = grad_var.name
             splited_grad_name = self.trainer_side_table_grad_list[
-                pserver_index].name
+                pserver_id].name
             if not splited_grad_name.startswith(origin_grad_name):
                 raise ValueError("origin_grad_var: " + splited_grad_name +
                                  " grad_var:" + grad_var.name)
