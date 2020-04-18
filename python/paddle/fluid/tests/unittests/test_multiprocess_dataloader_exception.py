@@ -144,8 +144,9 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     loader._dataset, indices_queue, loader._data_queue,
                     loader._workers_done_event, _collate_fn, _init_fn, 0)
                 self.assertTrue(False)
-        except AssertionError:
-            pass
+        except AssertionError as e:
+            print("TestDataLoaderWorkerLoop.run_without_worker_done",
+                  use_shared_memory, e)
         except Exception:
             self.assertTrue(False)
 
@@ -176,6 +177,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()
+                for i in range(10):
+                    indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 loader._workers_done_event.set()
                 loader._worker_loop(
@@ -183,7 +186,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     loader._workers_done_event, _collate_fn, _init_fn, 0)
                 self.assertTrue(True)
         except AssertionError:
-            pass
+            print("TestDataLoaderWorkerLoop.run_without_worker_done",
+                  use_shared_memory, e)
         except Exception:
             self.assertTrue(False)
 

@@ -299,15 +299,15 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def _try_shutdown_all(self):
         if not self._shutdown:
             try:
+                self._exit_thread_expectedly()
+                self._clear_and_remove_data_queue()
+
                 # set _workers_done_event should be set before put None
                 # to indices_queue, workers wll exit on reading None from
                 # indices_queue
                 self._workers_done_event.set()
                 for i in range(self._num_workers):
                     self._shutdown_worker(i)
-
-                self._exit_thread_expectedly()
-                self._clear_and_remove_data_queue()
 
                 for w in self._workers:
                     w.join()
@@ -391,9 +391,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         finally:
             if self._use_shared_memory:
                 _cleanup_mmap()
-
-        if self._workers_done_event.is_set():
-            self._clear_and_remove_data_queue()
 
     def _thread_loop(self):
         while not self._thread_done_event.is_set():
