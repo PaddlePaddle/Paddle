@@ -48,7 +48,7 @@ from . import static_runner
 from .static_runner import StaticModelRunner
 
 from . import dygraph_to_static
-from .dygraph_to_static import *
+from .dygraph_to_static import ProgramTranslator
 
 __all__ = []
 __all__ += layers.__all__
@@ -60,4 +60,4 @@ __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += backward_strategy.__all__
 __all__ += jit.__all__
-__all__ += dygraph_to_static.__all__
+__all__ += ['ProgramTranslator']
