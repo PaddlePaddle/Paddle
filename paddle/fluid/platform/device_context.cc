@@ -176,15 +176,26 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
   void* scratchpad() const override {
     if (scratch_ == NULL) {
+// windows use an old version of eigen that uses kCudaScratchSize,
+// once windows updates eigen to a recent version, the following code
+// can use kGpuScratchSize uniformly
+#ifdef _WIN32
       scratch_ = allocate(Eigen::kCudaScratchSize + sizeof(unsigned int));
+#else
+      scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
+#endif
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
     if (semaphore_ == NULL) {
+#ifdef _WIN32
       char* scratch =
           static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
+#else
+      char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
+#endif
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
@@ -211,6 +222,33 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
+thread_local std::unordered_map<const CUDADeviceContext*,
+                                std::shared_ptr<CUDAContext>>
+    CUDADeviceContext::thread_ctx_;
+thread_local std::mutex CUDADeviceContext::ctx_mtx_;
+
+void CUDAContext::InitEigenContext() {
+  eigen_stream_.reset(new EigenCudaStreamDevice());
+  eigen_stream_->Reinitialize(&RawStream(), place_);
+  eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
+}
+
+CUDAContext::CUDAContext(const CUDAPlace& place,
+                         const enum stream::Priority& priority) {
+  place_ = place;
+  CUDADeviceGuard guard(place_.device);
+  stream_.reset(new stream::CUDAStream(place, priority));
+  InitEigenContext();
+  InitCuBlasContext();
+  InitCuDNNContext();
+}
+
+CUDAContext::~CUDAContext() {
+  CUDADeviceGuard guard(place_.device);
+  DestoryCuDNNContext();
+  DestoryCuBlasContext();
+}
+
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
@@ -218,18 +256,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
   max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
-  eigen_stream_.reset(new EigenCudaStreamDevice());
-  eigen_stream_->Reinitialize(&stream_, place);
-  eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  cublas_handle_.reset(new CublasHandleHolder(stream_, CUBLAS_DEFAULT_MATH));
-
-  if (TensorCoreAvailable()) {
-#if CUDA_VERSION >= 9000
-    cublas_tensor_core_handle_.reset(
-        new CublasHandleHolder(stream_, CUBLAS_TENSOR_OP_MATH));
-#endif
-  }
 
   driver_version_ = GetCUDADriverVersion(place_.device);
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
@@ -263,44 +289,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
           << "Please recompile or reinstall Paddle with compatible CUDA "
              "version.";
     }
-
-    if (dynload::HasCUDNN()) {
-      auto local_cudnn_version = cudnn_dso_ver / 100;
-      auto compile_cudnn_version = CUDNN_VERSION / 100;
-      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
-        LOG_FIRST_N(WARNING, 1)
-            << "WARNING: device: " << place_.device
-            << ". The installed Paddle is compiled with CUDNN "
-            << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
-            << ", but CUDNN version in your machine is "
-            << local_cudnn_version / 10 << "." << local_cudnn_version % 10
-            << ", which may cause serious incompatible bug. "
-            << "Please recompile or reinstall Paddle with compatible CUDNN "
-               "version.";
-      }
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnSetStream(cudnn_handle_, stream_));
-    } else {
-      cudnn_handle_ = nullptr;
-    }
   }
-
-  callback_manager_.reset(new StreamCallbackManager(stream_));
+  default_ctx_.reset(new CUDAContext(place_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
-  Wait();
-  WaitStreamCallback();
-  cublas_handle_.reset();
-  cublas_tensor_core_handle_.reset();
-  eigen_stream_.reset();
-  eigen_device_.reset();
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
-  if (cudnn_handle_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
-  }
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
@@ -310,19 +304,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-void CUDADeviceContext::Wait() const {
-  cudaError_t e_sync = cudaSuccess;
-#if !defined(_WIN32)
-  e_sync = cudaStreamSynchronize(stream_);
-#else
-  while (e_sync = cudaStreamQuery(stream_)) {
-    if (e_sync == cudaErrorNotReady) continue;
-    break;
-  }
-#endif
-
-  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
-}
+void CUDADeviceContext::Wait() const { context()->Stream()->Wait(); }
 
 int CUDADeviceContext::GetComputeCapability() const {
   return compute_capability_;
@@ -339,24 +321,28 @@ int CUDADeviceContext::GetMaxThreadsPerBlock() const {
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
-  return eigen_device_.get();
+  return context()->EigenDevice().get();
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
-  return cublas_tensor_core_handle_ != nullptr;
+  return context()->CublasTensorCoreHandle() != nullptr;
 }
 
 dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
   return max_grid_dim_size_;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
+  return context()->CudnnHandle();
+}
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
-cudaStream_t CUDADeviceContext::stream() const { return stream_; }
+cudaStream_t CUDADeviceContext::stream() const {
+  return context()->RawStream();
+}
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
