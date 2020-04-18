@@ -140,8 +140,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet',
           'paddle.fluid.incubate.fleet.base',
           'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.fluid.incubate.fleet.parameter_server.pslib',
+          'paddle.fluid.incubate.fleet.parameter_server.ir',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils']
 

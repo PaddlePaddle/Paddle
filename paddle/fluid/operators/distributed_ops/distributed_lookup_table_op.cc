@@ -78,12 +78,11 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto id_names = context.InputNames("Ids");
     auto embedding_name = context.InputNames("W").front();
     auto out_names = context.OutputNames("Outputs");
-    auto lookup_tables =
-        context->Attrs().Get<std::vector<std::string>>("table_names");
+    auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
     operators::distributed::prefetchs(id_names, out_names, embedding_name,
-                                      false, lookup_tables, endpoints, [],
+                                      false, lookup_tables, endpoints, {},
                                       context, context.scope());
   }
 };
