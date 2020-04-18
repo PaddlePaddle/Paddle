@@ -281,8 +281,6 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorInvalidValue, "Cuda error"));
   EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorMemoryAllocation, "Cuda error"));
 
-  int count;
-  PADDLE_ENFORCE(cudaGetDeviceCount(&count));
   EXPECT_TRUE(CheckCudaStatusSuccess(CURAND_STATUS_SUCCESS));
   EXPECT_TRUE(
       CheckCudaStatusFailure(CURAND_STATUS_VERSION_MISMATCH, "Curand error"));
