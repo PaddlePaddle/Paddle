@@ -111,6 +111,12 @@ class TestProgramToReadableCode(unittest.TestCase):
         self.block.to_readable_code()
         self.program.to_readable_code()
 
+    def test_program_print(self):
+        print(self.var)
+        print(self.op)
+        print(self.block)
+        print(self.program)
+
 
 if __name__ == "__main__":
     unittest.main()
