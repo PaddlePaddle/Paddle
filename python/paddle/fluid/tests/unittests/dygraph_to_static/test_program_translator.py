@@ -69,8 +69,10 @@ class StaticCode1():
             return x_v
 
         x_v = fluid.layers.cond(
-            fluid.layers.mean(x_v)[0] > 5, lambda: true_fn_0(x_v),
-            lambda: false_fn_0(x_v))
+            fluid.layers.mean(x_v)[0] > 5,
+            lambda: fluid.dygraph.dygraph_to_static.convert_call(true_fn_0)(x_v),
+            lambda: fluid.dygraph.dygraph_to_static.convert_call(false_fn_0)(x_v)
+        )
         if label is not None:
             loss = fluid.layers.cross_entropy(x_v, label)
             return loss
@@ -88,9 +90,10 @@ class StaticCode2():
             return x_v
 
         x_v = fluid.layers.cond(
-            fluid.layers.mean(x_v)[0] > 5, lambda: true_fn_1(x_v),
-            lambda: false_fn_1(x_v))
-
+            fluid.layers.mean(x_v)[0] > 5,
+            lambda: fluid.dygraph.dygraph_to_static.convert_call(true_fn_1)(x_v),
+            lambda: fluid.dygraph.dygraph_to_static.convert_call(false_fn_1)(x_v)
+        )
         if label is not None:
             loss = fluid.layers.cross_entropy(x_v, label)
             return loss
