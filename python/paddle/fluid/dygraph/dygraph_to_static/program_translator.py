@@ -250,7 +250,7 @@ class ProgramTranslator(object):
     of this class is a singleton.
 
     Examples:
-        .. code-block:: python:
+        .. code-block:: python
 
         import paddle.fluid as fluid
 
@@ -313,7 +313,7 @@ class ProgramTranslator(object):
             None
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
             import paddle.fluid as fluid
             import numpy as np
@@ -355,7 +355,7 @@ class ProgramTranslator(object):
                 result.
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle.fluid as fluid
                 import numpy as np
@@ -412,7 +412,7 @@ class ProgramTranslator(object):
             net-building APIs.
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle.fluid as fluid
                 import numpy as np
@@ -462,7 +462,7 @@ class ProgramTranslator(object):
             outputs: list of output Variables which users can fetch.
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
                 import paddle.fluid as fluid
                 import numpy as np
@@ -511,7 +511,7 @@ class ProgramTranslator(object):
             str: the string code of translated static function
 
         Examples:
-            .. code-block:: python:
+            .. code-block:: python
 
             import paddle.fluid as fluid
             import numpy as np
@@ -630,6 +630,7 @@ class ProgramTranslator(object):
 
         Examples:
             .. code-block:: python
+
                 import paddle.fluid as fluid
                 import numpy as np
 
