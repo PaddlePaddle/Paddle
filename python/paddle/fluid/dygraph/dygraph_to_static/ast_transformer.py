@@ -37,9 +37,10 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
 from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -96,9 +97,24 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.generic_visit(node)
         # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
-            decorator_list = [
-                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
-            ]
+            decorator_list = []
+            for d in node.decorator_list:
+                if isinstance(d, gast.Name) and d.id not in DECORATOR_NAMES:
+                    raise NotImplementedError(
+                        "ProgramTranslator hasn't implemented multiple decorators. Please remove "
+                        + d.id + " in " + self.decorate_func_name)
+                if isinstance(d, gast.Attribute):
+                    full_attribute_name = get_attribute_full_name(d)
+                    has_translate_decorator = False
+                    for deco in DECORATOR_NAMES:
+                        if deco in full_attribute_name:
+                            has_translate_decorator = True
+                            break
+                    if not has_translate_decorator:
+                        raise NotImplementedError(
+                            "ProgramTranslator hasn't implemented multiple decorators. Please remove "
+                            + full_attribute_name + " in " +
+                            self.decorate_func_name)
             node.decorator_list = decorator_list
         return node
 
