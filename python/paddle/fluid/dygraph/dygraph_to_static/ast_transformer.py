@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTran
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
@@ -88,6 +89,10 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).transform()
+
+        # Transform all python print statement
+        # print(astor.dump_tree(self.root))
+        PrintTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:

@@ -211,6 +211,7 @@ def Print(input,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
+          print_tensor_layout=True,
           print_tensor_lod=True,
           print_phase='both'):
     '''
@@ -284,6 +285,7 @@ def Print(input,
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
+            'print_tensor_layout': print_tensor_layout,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })

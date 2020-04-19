@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include <algorithm>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/assign_op.h"
@@ -43,8 +44,9 @@ class LogGuard {
 struct Formater {
   std::string message;
   std::string name;
-  std::vector<int> dims;
+  std::string dims;
   std::type_index dtype{typeid(const char)};
+  std::string layout;
   framework::LoD lod;
   int summarize;
   void *data{nullptr};
@@ -52,50 +54,62 @@ struct Formater {
   std::stringstream logs;
 
   void operator()(size_t size) {
-    PrintMessage();
-    PrintPlaceInfo();
     PrintName();
-    PrintDims();
-    PrintDtype();
+    PrintMessage();
     PrintLod();
+    PrintPlace();
+    PrintDims();
+    PrintLayout();
+    PrintDtype();
     PrintData(size);
     LogGuard guard;
     CLOG << logs.str();
   }
 
  private:
-  void PrintPlaceInfo() { logs << "The place is:" << place << std::endl; }
-  void PrintMessage() { logs << std::time(nullptr) << "\t" << message << "\t"; }
+  void PrintPlace() { logs << "  - place: " << place << std::endl; }
+  void PrintMessage() {
+    if (!message.empty()) {
+      logs << "  - message: " << message << std::endl;
+    }
+  }
   void PrintName() {
     if (!name.empty()) {
-      logs << "Tensor[" << name << "]" << std::endl;
+      logs << "Variable: " << name << std::endl;
     }
   }
   void PrintDims() {
     if (!dims.empty()) {
-      logs << "\tshape: [";
-      for (auto i : dims) {
-        logs << i << ",";
-      }
-      logs << "]" << std::endl;
+      logs << "  - shape: " << dims << std::endl;
     }
   }
   void PrintDtype() {
     if (!framework::IsType<const char>(dtype)) {
-      logs << "\tdtype: " << dtype.name() << std::endl;
+      logs << "  - dtype: " << platform::demangle(dtype.name()) << std::endl;
+    }
+  }
+  void PrintLayout() {
+    if (!layout.empty()) {
+      logs << "  - layout: " << layout << std::endl;
     }
   }
   void PrintLod() {
     if (!lod.empty()) {
-      logs << "\tLoD: [";
+      logs << "  - lod: {";
       for (auto level : lod) {
-        logs << "[ ";
+        logs << "{";
+        bool is_first = true;
         for (auto i : level) {
-          logs << i << ",";
+          if (is_first) {
+            logs << i;
+            is_first = false;
+          } else {
+            logs << ", " << i;
+          }
         }
-        logs << " ]";
+        logs << "}";
       }
-      logs << "]" << std::endl;
+      logs << "}" << std::endl;
     }
   }
 
@@ -113,25 +127,31 @@ struct Formater {
     } else if (framework::IsType<const bool>(dtype)) {
       Display<bool>(size);
     } else {
-      logs << "\tdata: unprintable type: " << dtype.name() << std::endl;
+      logs << "  - data: unprintable type: " << dtype.name() << std::endl;
     }
   }
 
   template <typename T>
   void Display(size_t size) {
     auto *d = reinterpret_cast<T *>(data);
-    logs << "\tdata: ";
+    logs << "  - data: [";
     if (summarize != -1) {
       summarize = std::min(size, (size_t)summarize);
-      for (int i = 0; i < summarize; i++) {
-        logs << d[i] << ",";
+      if (summarize > 0) {
+        logs << d[0];
+        for (int i = 1; i < summarize; i++) {
+          logs << " " << d[i];
+        }
       }
     } else {
-      for (size_t i = 0; i < size; i++) {
-        logs << d[i] << ",";
+      if (size > 0) {
+        logs << d[0];
+        for (size_t i = 1; i < size; i++) {
+          logs << " " << d[i];
+        }
       }
     }
-    logs << std::endl;
+    logs << "]" << std::endl;
   }
 };
 
@@ -201,12 +221,13 @@ class PrintOp : public framework::OperatorBase {
       formater.dtype = framework::ToTypeIndex(printed_tensor.type());
     }
     if (Attr<bool>("print_tensor_shape")) {
-      auto &dims = printed_tensor.dims();
-      formater.dims.resize(dims.size());
-      for (int i = 0; i < dims.size(); ++i) formater.dims[i] = dims[i];
+      formater.dims = printed_tensor.dims().to_str();
     }
     if (Attr<bool>("print_tensor_lod")) {
       formater.lod = printed_tensor.lod();
+    }
+    if (Attr<bool>("print_tensor_layout")) {
+      formater.layout = framework::DataLayoutToString(printed_tensor.layout());
     }
     formater.summarize = Attr<int>("summarize");
     formater.data = reinterpret_cast<void *>(printed_tensor.data<void>());
@@ -228,6 +249,8 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.");
     AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
     AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");
+    AddAttr<bool>("print_tensor_layout",
+                  "Whether to print the tensor's layout.");
     AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.");
     AddAttr<std::string>("print_phase",
                          "(string, default 'FORWARD') Which phase to display "

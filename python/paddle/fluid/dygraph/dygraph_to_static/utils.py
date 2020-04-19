@@ -212,6 +212,16 @@ def to_assign_node(node):
     return node
 
 
+def to_print_node(node):
+    """
+    Transform a python print node to `fluid.layers.Print` node.
+    """
+    assert isinstance(node, gast.Call)
+    print_api = gast.parse('fluid.layers.Print').body[0].value
+    node.func = print_api
+    return node
+
+
 def update_args_of_func(node, dygraph_node, method_name):
     assert isinstance(node, gast.Call)
     if method_name not in ["__init__", "forward"]:

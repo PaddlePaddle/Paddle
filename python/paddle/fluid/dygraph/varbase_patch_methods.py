@@ -198,11 +198,9 @@ def monkey_patch_varbase():
             # TODO(panyx0718): add more dygraph debug info.
             tensor = self.value().get_tensor()
             if tensor._is_initialized():
-                return 'name %s, dtype: %s shape: %s %s' % (
-                    self.name, self.dtype, self.shape, str(tensor))
+                return 'Variable: %s\n%s' % (self.name, str(tensor))
             else:
-                return 'name %s, shape: %s, not inited' % (self.name,
-                                                           self.shape)
+                return 'Variable: %s, not inited' % (self.name)
 
     def __nonzero__(self):
         numel = np.prod(self.shape)
