@@ -66,18 +66,20 @@ class TestBCELoss(unittest.TestCase):
                 self.assertTrue(np.allclose(dy_result, expected))
 
     def test_BCELoss_weight(self):
-        input_np = np.random.random(size=(20, 30)).astype(np.float64)
-        label_np = np.random.random(size=(20, 30)).astype(np.float64)
-        weight_np = np.random.random(size=(20, 30)).astype(np.float64)
+        input_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
+        label_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
+        weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
-            input = fluid.data(name='input', shape=[None, 30], dtype='float64')
-            label = fluid.data(name='label', shape=[None, 30], dtype='float64')
+            input = fluid.data(
+                name='input', shape=[None, 3, 4, 10], dtype='float64')
+            label = fluid.data(
+                name='label', shape=[None, 3, 4, 10], dtype='float64')
             weight = fluid.data(
-                name='weight', shape=[None, 30], dtype='float64')
+                name='weight', shape=[3, 4, 10], dtype='float64')
             bce_loss = paddle.nn.loss.BCELoss(weight=weight)
             res = bce_loss(input, label)
 
