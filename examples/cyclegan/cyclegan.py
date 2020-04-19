@@ -18,9 +18,10 @@ from __future__ import print_function
 
 import numpy as np
 
-from layers import ConvBN, DeConvBN
 import paddle.fluid as fluid
-from model import Model, Loss
+from hapi.model import Model, Loss
+
+from layers import ConvBN, DeConvBN
 
 
 class ResnetBlock(fluid.dygraph.Layer):
