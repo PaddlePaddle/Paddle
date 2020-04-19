@@ -17,9 +17,6 @@ from __future__ import print_function
 from paddle.fluid.layers import data
 from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid.executor import Executor
-import numpy as np
-#import paddle.fluid.core as core, program_guard
-import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard, core
 import numpy
 import unittest
@@ -47,7 +44,7 @@ class TestLoDRankTable(unittest.TestCase):
 class TestLoDRankTableError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = np.random.random((2, 4)).astype("float32")
+            x = numpy.random.random((2, 4)).astype("float32")
 
             def test_Variable():
                 rank_table = lod_rank_table(x=x, level=1)
@@ -59,8 +56,7 @@ class TestLoDRankTableError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_list_Variable)
 
-            x = fluid.layers.data(
-                name='x', shape=[10], dtype='float32', lod_level=1)
+            x = data(name='x', shape=[10], dtype='float32', lod_level=1)
             out = lod_rank_table(x=x, level=0)
 
 
