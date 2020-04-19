@@ -18,6 +18,8 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
+from paddle.fluid.dygraph.jit import declarative
+
 
 @fluid.dygraph.declarative
 def dygraph_decorated_func(x):
@@ -39,15 +41,41 @@ def jit_decorated_func(x):
     return x_v
 
 
+@fluid.dygraph.declarative
+def decorated_call_decorated(x):
+    return jit_decorated_func(x)
+
+
+class DoubleDecorated(object):
+    @classmethod
+    @declarative
+    def double_decorated_func1(self, x):
+        return dygraph_decorated_func(x)
+
+    @classmethod
+    @fluid.dygraph.declarative
+    def double_decorated_func2(self, x):
+        return jit_decorated_func(x)
+
+
 class TestFullNameDecorator(unittest.TestCase):
     def test_run_success(self):
-        x = np.ones([1, 2])
-        answer = np.zeros([1, 2])
+        x = np.ones([1, 2]).astype("float32")
+        answer = np.zeros([1, 2]).astype("float32")
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             self.assertTrue(
                 np.allclose(dygraph_decorated_func(x).numpy(), answer))
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             self.assertTrue(np.allclose(jit_decorated_func(x).numpy(), answer))
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            self.assertTrue(
+                np.allclose(decorated_call_decorated(x).numpy(), answer))
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with self.assertRaises(NotImplementedError):
+                DoubleDecorated().double_decorated_func1(x)
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with self.assertRaises(NotImplementedError):
+                DoubleDecorated().double_decorated_func2(x)
 
 
 class TestImportProgramTranslator(unittest.TestCase):
