@@ -28,9 +28,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -171,7 +171,7 @@ inline void MergeVars(const std::string& var_name,
   }
 }
 
-using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
+using RpcCtxMap = std::unordered_map<std::string, CommContext>;
 
 class Communicator {
  public:

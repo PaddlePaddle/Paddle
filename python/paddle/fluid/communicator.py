@@ -49,9 +49,6 @@ class Communicator(object):
         """
         # set all recv op to not_run mode
         assert isinstance(program, Program)
-        for op in program.block(0).ops:
-            if op.type == "recv":
-                op._set_attr('do_not_run', True)
 
         if mode == DistributedMode.GEO:
             push_vars = kwargs["push_vars"]

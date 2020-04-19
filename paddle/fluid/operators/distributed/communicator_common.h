@@ -22,13 +22,13 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-struct RpcContext {
-  RpcContext() = default;
+struct CommContext {
+  CommContext() = default;
 
-  RpcContext(const std::string &name, const std::vector<std::string> &names,
-             const std::vector<std::string> &emap,
-             const std::vector<int64_t> &sections, int id,
-             bool merge_add_ = true, bool use_send_handler_ = true)
+  CommContext(const std::string &name, const std::vector<std::string> &names,
+              const std::vector<std::string> &emap,
+              const std::vector<int64_t> &sections, int id,
+              bool merge_add_ = true, bool use_send_handler_ = true)
       : var_name(name),
         splited_var_names(names),
         epmap(emap),
@@ -37,7 +37,7 @@ struct RpcContext {
         merge_add(merge_add_),
         use_send_handler(use_send_handler_) {}
 
-  RpcContext(const RpcContext &ctx) {
+  CommContext(const CommContext &ctx) {
     var_name = ctx.var_name;
     splited_var_names = ctx.splited_var_names;
     epmap = ctx.epmap;
@@ -56,7 +56,7 @@ struct RpcContext {
   bool use_send_handler;
 };
 
-inline std::ostream &operator<<(std::ostream &os, const RpcContext &rpc_ctx) {
+inline std::ostream &operator<<(std::ostream &os, const CommContext &rpc_ctx) {
   os << "{";
   os << "var_name: " << rpc_ctx.var_name << "\n";
 

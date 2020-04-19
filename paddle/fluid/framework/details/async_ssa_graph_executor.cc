@@ -42,7 +42,7 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
   }
 }
 
-// get RpcContext and remote send and recv op
+// get CommContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   using RpcCtxMap = operators::distributed::RpcCtxMap;
@@ -69,9 +69,10 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
         }
         auto use_send_handler =
             boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
-        send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-            send_var_name, send_varnames, epmap, height_section, trainer_id,
-            merge_add, use_send_handler);
+        send_varname_to_ctx[send_var_name] =
+            operators::distributed::CommContext(
+                send_var_name, send_varnames, epmap, height_section, trainer_id,
+                merge_add, use_send_handler);
         VLOG(3) << "find and init an send op: "
                 << send_varname_to_ctx[send_var_name];
       }

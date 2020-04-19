@@ -109,7 +109,7 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       }
       auto use_send_handler =
           boost::get<bool>(op->GetNullableAttr("use_send_handler"));
-      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+      send_varname_to_ctx[send_var_name] = operators::distributed::CommContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id,
           merge_add, use_send_handler);
       VLOG(3) << "find and init an send op: "
@@ -125,7 +125,7 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto epmap =
           boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+      recv_varname_to_ctx[recv_var_name] = operators::distributed::CommContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
     }
   }
@@ -356,9 +356,9 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
     }
 
     var_list_[var_name] = is_sparse;
-    send_varname_to_ctx_[send_var_name] = operators::distributed::RpcContext(
+    send_varname_to_ctx_[send_var_name] = operators::distributed::CommContext(
         send_var_name, send_var_names, endpoints, vars_sections_int, 0);
-    recv_varname_to_ctx_[var_name] = operators::distributed::RpcContext(
+    recv_varname_to_ctx_[var_name] = operators::distributed::CommContext(
         var_name, split_varnames, endpoints, vars_sections_int, 0);
 
     absolute_section_[var_name] = operators::ToAbsoluteSection(
@@ -988,7 +988,7 @@ void HalfAsyncCommunicator::InitImpl(
       auto height_section =
           boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+      send_varname_to_ctx[send_var_name] = operators::distributed::CommContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
@@ -1003,7 +1003,7 @@ void HalfAsyncCommunicator::InitImpl(
       auto epmap =
           boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+      recv_varname_to_ctx[recv_var_name] = operators::distributed::CommContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
       VLOG(3) << "find and init an recv op: "
               << recv_varname_to_ctx[recv_var_name];

@@ -19,9 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -60,8 +60,8 @@ class RecvOp : public framework::OperatorBase {
 
     if (recv_varnames.size() > 0) {
       auto recv_functor = distributed::ParameterRecv<float>();
-      auto rpc_ctx = distributed::RpcContext(outs[0], recv_varnames, epmap, {},
-                                             trainer_id);
+      auto rpc_ctx = distributed::CommContext(outs[0], recv_varnames, epmap, {},
+                                              trainer_id);
       recv_functor(rpc_ctx, scope);
     } else {
       std::vector<distributed::VarHandlePtr> rets;

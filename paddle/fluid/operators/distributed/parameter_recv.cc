@@ -40,7 +40,7 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
+void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope) {
   VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();

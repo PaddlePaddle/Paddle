@@ -41,8 +41,9 @@ using DDim = framework::DDim;
 
 typedef std::vector<std::pair<std::string, std::string>> EP_SPLIT_TABLE_PAIRS;
 
-inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
-    const RpcContext &rpc_ctx, const framework::Scope &scope, int multi_parts) {
+inline EP_SPLIT_TABLE_PAIRS GetMultiFieldCommContext(
+    const CommContext &rpc_ctx, const framework::Scope &scope,
+    int multi_parts) {
   EP_SPLIT_TABLE_PAIRS table_pairs;
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
@@ -65,16 +66,16 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
     }
 
   } else if (send_var->IsType<framework::LoDTensor>()) {
-    PADDLE_THROW("GetMultiFieldRpcContext can not support LoDTensor current!");
+    PADDLE_THROW("GetMultiFieldCommContext can not support LoDTensor current!");
   } else {
-    PADDLE_THROW("GetMultiFieldRpcContext unsupported var type!");
+    PADDLE_THROW("GetMultiFieldCommContext unsupported var type!");
   }
 
   return table_pairs;
 }  // namespace distributed
 
 template <typename T>
-void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
+void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync,
                                   int multi_parts) {
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
@@ -174,7 +175,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     std::vector<std::vector<size_t>> outs_rows_idx;
     std::vector<std::vector<size_t>> outs_dense_idx;
 
-    auto table_pairs = GetMultiFieldRpcContext(rpc_ctx, scope, multi_parts);
+    auto table_pairs = GetMultiFieldCommContext(rpc_ctx, scope, multi_parts);
 
     outs_rows_idx.resize(table_pairs.size());
     outs_dense_idx.resize(table_pairs.size());

@@ -26,9 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
-#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
