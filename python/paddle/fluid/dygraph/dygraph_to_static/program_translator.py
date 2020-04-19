@@ -563,7 +563,7 @@ class ProgramTranslator(object):
         """
         Supports to set or update the optimizer used to minimize loss.
 
-        Note: this method is a experimental API and may be changed in the near
+        Note: this method is an experimental API and may be changed in the near
         future.
 
         Parameters:
