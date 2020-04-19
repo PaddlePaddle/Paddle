@@ -54,7 +54,7 @@ python downloads.py dataset
 我们开源了在自建数据集上训练的词法分析模型，可供用户直接使用，可通过下述链接进行下载:
 ```bash
 # download baseline model
-python downloads.py lac
+python downloads.py model
 ```
 
 ### 模型训练
@@ -66,65 +66,36 @@ GPU上单卡训练
 export CUDA_VISIBLE_DEVICES=0
 
 python -u train.py \
-          --train_file ./data/train.tsv \
-          --test_file ./data/test.tsv \
-          --word_dict_path ./conf/word.dic \
-          --label_dict_path ./conf/tag.dic \ 
-          --word_rep_dict_path ./conf/q2b.dic \
           --device gpu \
-          --grnn_hidden_dim 128 \
-          --word_emb_dim 128 \
-          --bigru_num 2 \
-          --base_learning_rate 1e-3 \
-          --batch_size 300 \
-          --epoch 10 \
-          --save_dir   ./model \
-          --num_devices 1 \
-          -d
+          --dynamic False
 
-# -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
+# --device: 使用gpu设备还是cpu设备
+# --dynamic： 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
 ```
+
 GPU上多卡训练
+
 ```
 # setting visible devices for training
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3  train.py \
-          --train_file ./data/train.tsv \
-          --test_file  ./data/test.tsv \
-          --word_dict_path ./conf/word.dic \
-          --label_dict_path ./conf/tag.dic \ 
-          --word_rep_dict_path ./conf/q2b.dic \
           --device gpu \
-          --grnn_hidden_dim 128 \
-          --word_emb_dim 128 \
-          --bigru_num 2 \
-          --base_learning_rate 1e-3 \
-          --batch_size 300 \
-          --epoch 10 \
-          --save_dir   ./model \
-          -d
+          --dynamic False
 
-# -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
+# --device: 使用gpu设备还是cpu设备
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
 ```
+
 CPU上训练
+
 ```
 python -u train.py \
-          --train_file ./data/train.tsv \
-          --test_file ./data/test.tsv \
-          --word_dict_path ./conf/word.dic \
-          --label_dict_path ./conf/tag.dic \ 
-          --word_rep_dict_path ./conf/q2b.dic \
           --device cpu \
-          --grnn_hidden_dim 128 \
-          --word_emb_dim 128 \
-          --bigru_num 2 \
-          --base_learning_rate 1e-3 \
-          --batch_size 300 \
-          --epoch 10 \
-          --save_dir   ./model \
-          -d
+          --dynamic False
 
+# --device: 使用gpu设备还是cpu设备
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
 ```
 
 ### 模型预测
@@ -132,18 +103,17 @@ python -u train.py \
 加载已有的模型，对未知的数据进行预测
 ```bash
 python predict.py \
-      --predict_file ./data/infer.tsv \
-      --word_dict_path ./conf/word.dic \
-      --label_dict_path ./conf/tag.dic \
-      --word_rep_dict_path ./conf/q2b.dic \
       --init_from_checkpoint  model_baseline/params \
       --output_file predict.result  \
       --mode predict \
       --device cpu  \
-      -d 
-  
-# -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
+      --dynamic False
 
+# --init_from_checkpoint: 初始化模型
+# --output_file: 预测结果文件
+# --device: 使用gpu还是cpu设备
+# --mode: 开启模式, 设置为train时，进行训练，设置为predict时进行预测
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
 ```
 
 ### 模型评估
@@ -152,15 +122,15 @@ python predict.py \
 ```bash
 # baseline model
 python eval.py \
-        --test_file  ./data/test.tsv \
-        --word_dict_path ./conf/word.dic  \
-        --label_dict_path ./conf/tag.dic  \
-        --word_rep_dict_path ./conf/q2b.dic \
         --init_from_checkpoint  ./model_baseline/params \
+        --mode predict \
         --device cpu  \
-        -d
+        --dynamic False
 
-# -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
+# --init_from_checkpoint: 初始化模型
+# --device: 使用gpu还是cpu设备
+# --mode: 开启模式, 设置为train时，进行训练，设置为predict时进行预测
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
 ```
 
 

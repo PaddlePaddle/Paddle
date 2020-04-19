@@ -33,19 +33,19 @@ FILE_INFO = {
         'name': 'lexical_analysis-dataset-2.0.0.tar.gz',
         'md5': '71e4a9a36d0f0177929a1bccedca7dba'
     },
-    'LAC_MODEL': {
-        'name': 'lexical_analysis-2.0.0.tar.gz',
-        'md5': "fc1daef00de9564083c7dc7b600504ca"
+    'MODEL': {
+        'name': 'sequence_tagging_dy.tar.gz',
+        'md5': "1125d374c03c8218b6e47325dcf607e3"
     },
 }
 
 
 def usage():
-    desc = ("\nDownload datasets and pretrained models for LAC.\n"
+    desc = ("\nDownload datasets and pretrained models for sequence tagging.\n"
             "Usage:\n"
             "   1. python download.py all\n"
             "   2. python download.py dataset\n"
-            "   3. python download.py lac\n")
+            "   3. python download.py model\n")
     print(desc)
 
 
@@ -136,13 +136,13 @@ if __name__ == '__main__':
 
     if sys.argv[1] == 'all':
         download('DATA', pwd)
-        download('LAC_MODEL', pwd)
+        download('MODEL', pwd)
 
     if sys.argv[1] == "dataset":
         download('DATA', pwd)
 
-    elif sys.argv[1] == "lac":
-        download('LAC_MODEL', pwd)
+    elif sys.argv[1] == "model":
+        download('MODEL', pwd)
 
     else:
         usage()
