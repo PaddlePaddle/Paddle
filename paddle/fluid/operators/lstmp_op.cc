@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstmp_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -45,6 +46,7 @@ class LSTMPOp : public framework::OperatorWithKernel {
                    "Output(BatchHidden) of LSTMP operator should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
+
     PADDLE_ENFORCE_EQ(in_dims.size(), 2,
                       "Input(X)'s rank of LSTMP operator must be 2.");
 
@@ -73,12 +75,6 @@ class LSTMPOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(ctx->HasInput("C0"),
                      "Input(C0) of LSTMP operator should not be null after "
                      "Input(H0) provided.");
-      auto h_dims = ctx->GetInputDim("H0");
-      auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE(h_dims == c_dims,
-                     "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
-      ctx->SetOutputDim("OrderedP0", {h_dims[0], proj_dims[1]});
     }
 
     auto b_dims = ctx->GetInputDim("Bias");
@@ -113,7 +109,8 @@ class LSTMPOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -180,19 +177,24 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
               "This LoDTensor is obtained in the forward and used in the "
               "backward.")
         .AsIntermediate();
-    AddOutput("OrderedP0",
-              "(Tensor) the projection of the initial hidden state "
-              "H0. This is a tensor with shape (N x P), where N is the "
-              "batch size and P is the hidden size.")
-        .AsIntermediate();
     AddAttr<bool>("use_peepholes",
-                  "(bool, defalut: True) "
+                  "(bool, default: True) "
                   "whether to enable diagonal/peephole connections.")
         .SetDefault(true);
     AddAttr<bool>("is_reverse",
-                  "(bool, defalut: False) "
+                  "(bool, default: False) "
                   "whether to compute reversed LSTMP.")
         .SetDefault(false);
+    AddAttr<float>("cell_clip",
+                   "(float, default: 0.0) "
+                   "Clip for Tensor for cell state tensor when clip value is "
+                   "greater than 0.0")
+        .SetDefault(0.0);
+    AddAttr<float>("proj_clip",
+                   "(float, default: 0.0) "
+                   "Clip for Tensor for projection tensor when clip value is "
+                   "greater than 0.0")
+        .SetDefault(0.0);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"
@@ -202,7 +204,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("cell_activation",
                          "(string, default: tanh)"
-                         "The activation for cell output, `tanh` by defalut.")
+                         "The activation for cell output, `tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("candidate_activation",
@@ -214,7 +216,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("proj_activation",
                          "(string, default: tanh)"
                          "The activation for projection output, "
-                         "`tanh` by defalut.")
+                         "`tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddComment(R"DOC(
@@ -247,7 +249,7 @@ $$
 where the W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
 of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
 are diagonal weight matrices for peephole connections. In our implementation,
-we use vectors to reprenset these diagonal weight matrices. The b terms
+we use vectors to represent these diagonal weight matrices. The b terms
 denote bias vectors ($b_i$ is the input gate bias vector), $\sigma$
 is the activation, such as logistic sigmoid function, and
 $i, f, o$ and $c$ are the input gate, forget gate, output gate,
@@ -270,13 +272,48 @@ Users can choose to use fully-connected operator before LSTMP operator.
   }
 };
 
+template <typename T>
+class LSTMPGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("lstmp_grad");
+    grad_op->SetInput("Weight", this->Input("Weight"));
+    grad_op->SetInput("ProjWeight", this->Input("ProjWeight"));
+    grad_op->SetInput("Bias", this->Input("Bias"));
+
+    grad_op->SetInput("Projection", this->Output("Projection"));
+    grad_op->SetInput("Cell", this->Output("Cell"));
+    grad_op->SetInput("BatchGate", this->Output("BatchGate"));
+    grad_op->SetInput("BatchCellPreAct", this->Output("BatchCellPreAct"));
+    grad_op->SetInput("BatchHidden", this->Output("BatchHidden"));
+    grad_op->SetInput("H0", this->Input("H0"));
+    grad_op->SetInput("C0", this->Input("C0"));
+
+    grad_op->SetInput(framework::GradVarName("Projection"),
+                      this->OutputGrad("Projection"));
+
+    grad_op->SetOutput(framework::GradVarName("Input"),
+                       this->InputGrad("Input"));
+    grad_op->SetOutput(framework::GradVarName("Weight"),
+                       this->InputGrad("Weight"));
+    grad_op->SetOutput(framework::GradVarName("ProjWeight"),
+                       this->InputGrad("ProjWeight"));
+    grad_op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    grad_op->SetOutput(framework::GradVarName("H0"), this->InputGrad("H0"));
+    grad_op->SetOutput(framework::GradVarName("C0"), this->InputGrad("C0"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 class LSTMPGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Projection"),
                    "Input(Projection) of LSTMP operator should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cell"),
@@ -299,7 +336,8 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
         ctx->SetOutputDim(g_name, ctx->GetInputDim(name));
     };
 
-    SetOutGradDim("Input");
+    ctx->SetOutputDim(framework::GradVarName("Input"),
+                      ctx->GetInputDim("BatchGate"));
     SetOutGradDim("Weight");
     SetOutGradDim("ProjWeight");
     SetOutGradDim("Bias");
@@ -311,7 +349,8 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "BatchGate"),
+        ctx.device_context());
   }
 };
 
@@ -320,7 +359,8 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LSTMPGradMaker<paddle::framework::OpDesc>,
+                  ops::LSTMPGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstmp, ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,

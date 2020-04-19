@@ -15,6 +15,7 @@
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/assign_op.h"
 
 namespace paddle {
 namespace operators {
@@ -26,6 +27,19 @@ const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 const char kBoth[] = "BOTH";
 
+class LogGuard {
+ public:
+  inline LogGuard() { LogMutex().lock(); }
+
+  inline ~LogGuard() { LogMutex().unlock(); }
+
+ private:
+  static std::mutex &LogMutex() {
+    static std::mutex mtx;
+    return mtx;
+  }
+};
+
 struct Formater {
   std::string message;
   std::string name;
@@ -34,48 +48,54 @@ struct Formater {
   framework::LoD lod;
   int summarize;
   void *data{nullptr};
+  platform::Place place;
+  std::stringstream logs;
 
   void operator()(size_t size) {
     PrintMessage();
+    PrintPlaceInfo();
     PrintName();
     PrintDims();
     PrintDtype();
     PrintLod();
     PrintData(size);
+    LogGuard guard;
+    CLOG << logs.str();
   }
 
  private:
-  void PrintMessage() { CLOG << std::time(nullptr) << "\t" << message << "\t"; }
+  void PrintPlaceInfo() { logs << "The place is:" << place << std::endl; }
+  void PrintMessage() { logs << std::time(nullptr) << "\t" << message << "\t"; }
   void PrintName() {
     if (!name.empty()) {
-      CLOG << "Tensor[" << name << "]" << std::endl;
+      logs << "Tensor[" << name << "]" << std::endl;
     }
   }
   void PrintDims() {
     if (!dims.empty()) {
-      CLOG << "\tshape: [";
+      logs << "\tshape: [";
       for (auto i : dims) {
-        CLOG << i << ",";
+        logs << i << ",";
       }
-      CLOG << "]" << std::endl;
+      logs << "]" << std::endl;
     }
   }
   void PrintDtype() {
     if (!framework::IsType<const char>(dtype)) {
-      CLOG << "\tdtype: " << dtype.name() << std::endl;
+      logs << "\tdtype: " << dtype.name() << std::endl;
     }
   }
   void PrintLod() {
     if (!lod.empty()) {
-      CLOG << "\tLoD: [";
+      logs << "\tLoD: [";
       for (auto level : lod) {
-        CLOG << "[ ";
+        logs << "[ ";
         for (auto i : level) {
-          CLOG << i << ",";
+          logs << i << ",";
         }
-        CLOG << " ]";
+        logs << " ]";
       }
-      CLOG << "]" << std::endl;
+      logs << "]" << std::endl;
     }
   }
 
@@ -93,56 +113,61 @@ struct Formater {
     } else if (framework::IsType<const bool>(dtype)) {
       Display<bool>(size);
     } else {
-      CLOG << "\tdata: unprintable type: " << dtype.name() << std::endl;
+      logs << "\tdata: unprintable type: " << dtype.name() << std::endl;
     }
   }
 
   template <typename T>
   void Display(size_t size) {
     auto *d = reinterpret_cast<T *>(data);
-    CLOG << "\tdata: ";
+    logs << "\tdata: ";
     if (summarize != -1) {
       summarize = std::min(size, (size_t)summarize);
       for (int i = 0; i < summarize; i++) {
-        CLOG << d[i] << ",";
+        logs << d[i] << ",";
       }
     } else {
       for (size_t i = 0; i < size; i++) {
-        CLOG << d[i] << ",";
+        logs << d[i] << ",";
       }
     }
-    CLOG << std::endl;
+    logs << std::endl;
   }
 };
 
 // TODO(ChunweiYan) there should be some other printers for TensorArray
-class TensorPrintOp : public framework::OperatorBase {
+class PrintOp : public framework::OperatorBase {
  public:
-  TensorPrintOp(const std::string &type,
-                const framework::VariableNameMap &inputs,
-                const framework::VariableNameMap &outputs,
-                const framework::AttributeMap &attrs)
+  PrintOp(const std::string &type, const framework::VariableNameMap &inputs,
+          const framework::VariableNameMap &outputs,
+          const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
-
-  TensorPrintOp(const TensorPrintOp &o)
-      : framework::OperatorBase(
-            static_cast<const framework::OperatorBase &>(o)) {
-    PADDLE_THROW("Not implemented.");
-  }
 
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    const framework::Variable *in_var_ptr = nullptr;
-    std::string printed_var_name = "";
+    const auto in_var = scope.FindVar(Input("In"));
+    auto out_var = scope.FindVar(Output("Out"));
 
-    in_var_ptr = scope.FindVar(Input("In"));
-    printed_var_name = Inputs("In").front();
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var, platform::errors::NotFound("The input:%s not found in scope",
+                                           Input("In")));
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, platform::errors::NotFound("The output:%s not found in scope",
+                                            Output("Out")));
 
-    PADDLE_ENFORCE_NOT_NULL(in_var_ptr);
+    auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    framework::LoDTensor *out_tensor =
+        out_var->GetMutable<framework::LoDTensor>();
 
-    auto &in_tensor = in_var_ptr->Get<framework::LoDTensor>();
+    PrintValue(place, Inputs("In").front(), in_tensor);
+    framework::TensorCopy(in_tensor, place, out_tensor);
+    out_tensor->set_lod(in_tensor.lod());
+  }
 
+  void PrintValue(const platform::Place &place,
+                  const std::string &printed_var_name,
+                  const framework::LoDTensor &in_tensor) const {
     std::string print_phase = Attr<std::string>("print_phase");
     bool is_forward = Attr<bool>("is_forward");
 
@@ -158,15 +183,16 @@ class TensorPrintOp : public framework::OperatorBase {
     printed_tensor.set_lod(in_tensor.lod());
     printed_tensor.Resize(in_tensor.dims());
 
-    if (platform::is_cpu_place(in_tensor.place())) {
+    if (is_cpu_place(in_tensor.place())) {
       printed_tensor.ShareDataWith(in_tensor);
     } else {
       // copy data to cpu to print
       platform::CPUPlace place;
-      framework::TensorCopy(in_tensor, place, &printed_tensor);
+      TensorCopy(in_tensor, place, &printed_tensor);
     }
 
     Formater formater;
+    formater.place = place;
     formater.message = Attr<std::string>("message");
     if (Attr<bool>("print_tensor_name")) {
       formater.name = printed_var_name;
@@ -195,6 +221,7 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("In", "Input tensor to be displayed.");
+    AddOutput("Out", "The output tensor.");
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
     AddAttr<int>("summarize", "Number of elements printed.");
@@ -219,24 +246,37 @@ tensor `t`.)DOC");
   }
 };
 
-class InferShapeForward : public framework::InferShapeBase {
+class PrintOpInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("In"), "Input(In) should not be null.");
+  void operator()(framework::InferShapeContext *ctx) const override {
+    VLOG(10) << "PrintOpInferShape";
+    OP_INOUT_CHECK(ctx->HasInput("In"), "Input", "In", "Print");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Print");
+    ctx->ShareDim("In", /*->*/ "Out");
+    ctx->ShareLoD("In", /*->*/ "Out");
   }
 };
 
-class PrintOpGradientMaker : public framework::SingleGradOpDescMaker {
+class PrintOpVarTypeInference : public framework::VarTypeInference {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto input_type = ctx->GetType(ctx->Input("In")[0]);
+    auto out_name = ctx->Output("Out").front();
+    ctx->SetType(out_name, input_type);
+  }
+};
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op_desc_ptr = new framework::OpDesc();
+template <typename T>
+class PrintOpGradientMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("print");
-    op_desc_ptr->SetInput("In", InputGrad("In"));
-    op_desc_ptr->SetAttrMap(Attrs());
+    op_desc_ptr->SetInput("In", this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput("Out", this->InputGrad("In"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
     op_desc_ptr->SetAttr("is_forward", false);
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
   }
 };
 
@@ -245,5 +285,7 @@ class PrintOpGradientMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(print, ops::TensorPrintOp, ops::PrintOpProtoAndCheckMaker,
-                  ops::PrintOpGradientMaker, ops::InferShapeForward);
+REGISTER_OPERATOR(print, ops::PrintOp, ops::PrintOpProtoAndCheckMaker,
+                  ops::PrintOpGradientMaker<paddle::framework::OpDesc>,
+                  ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
+                  ops::PrintOpInferShape, ops::PrintOpVarTypeInference);

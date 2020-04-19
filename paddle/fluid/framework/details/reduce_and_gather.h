@@ -53,44 +53,84 @@ struct ReduceLoDTensor {
   }
 };
 
-inline void GatherLocalSelectedRows(
-    const std::vector<const SelectedRows *> &src_selecte_rows_,
-    const std::vector<platform::Place> &in_places,
-    const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
-    const platform::Place &out_place, SelectedRows *dst_selecte_rows) {
-  PADDLE_ENFORCE(!src_selecte_rows_.empty());
+struct ReduceBufferData {
+  const std::vector<const void *> &src_data_;
+  void *dst_data_;
+  int64_t numel_;
 
-  std::vector<Tensor> in_tensors;
-  std::vector<int64_t> out_rows;
+  ReduceBufferData(const std::vector<const void *> &src, void *dst,
+                   int64_t numel)
+      : src_data_(src), dst_data_(dst), numel_(numel) {}
 
-  for (auto in_sr_ptr : src_selecte_rows_) {
-    auto &in_sr = *in_sr_ptr;
-    in_tensors.emplace_back(in_sr.value());
-    out_rows.insert(out_rows.end(), in_sr.rows().begin(), in_sr.rows().end());
+  template <typename T>
+  void apply() const {
+    T *dst_data = reinterpret_cast<T *>(dst_data_);
+    for (size_t i = 0; i < src_data_.size(); ++i) {
+      auto srd_data = reinterpret_cast<const T *>(src_data_[i]);
+      VLOG(10) << "dst: " << dst_data_ << ", " << srd_data;
+      if (srd_data == dst_data_) {
+        continue;
+      }
+
+      std::transform(srd_data, srd_data + numel_, dst_data, dst_data,
+                     [](T a, T b) -> T { return a + b; });
+    }
+  }
+};
+
+struct GatherLocalSelectedRowsFunctor {
+  GatherLocalSelectedRowsFunctor(
+      const std::vector<const SelectedRows *> &src_selected_rows,
+      const std::vector<platform::Place> &in_places,
+      const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes,
+      const platform::Place &out_place, SelectedRows *dst_selected_rows)
+      : dev_ctxes_(dev_ctxes),
+        in_places_(in_places),
+        out_place_(out_place),
+        dst_selected_rows_(dst_selected_rows) {
+    PADDLE_ENFORCE_EQ(src_selected_rows.empty(), false);
+
+    std::vector<int64_t> out_rows;
+
+    for (auto in_sr_ptr : src_selected_rows) {
+      auto &in_sr = *in_sr_ptr;
+      in_tensors_.emplace_back(in_sr.value());
+      out_rows.insert(out_rows.end(), in_sr.rows().begin(), in_sr.rows().end());
+    }
+
+    auto &pre_in = src_selected_rows[0];
+
+    auto &dst_tensor = *dst_selected_rows_;
+    dst_tensor.set_height(pre_in->height());
+    dst_tensor.set_rows(out_rows);
+    size_t rows = out_rows.size();
+    DDim out_dim = pre_in->GetCompleteDims();
+    out_dim[0] = static_cast<int64_t>(rows);
+    dst_tensor.mutable_value()->Resize(out_dim);
+    dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
   }
 
-  auto &pre_in = src_selecte_rows_[0];
-
-  auto &dst_tensor = *dst_selecte_rows;
-  dst_tensor.set_height(pre_in->height());
-  dst_tensor.set_rows(out_rows);
-  size_t rows = out_rows.size();
-  DDim out_dim = pre_in->GetCompleteDims();
-  out_dim[0] = static_cast<int64_t>(rows);
-  dst_tensor.mutable_value()->Resize(out_dim);
-  dst_tensor.mutable_value()->mutable_data(out_place, pre_in->value().type());
-  Tensor *out_tensor = dst_tensor.mutable_value();
-
-  // copy
-  int s = 0, e = 0;
-  for (size_t j = 0; j < in_tensors.size(); ++j) {
-    e += in_tensors[j].dims()[0];
-    auto sub_out = out_tensor->Slice(s, e);
-    paddle::framework::TensorCopy(in_tensors[j], out_place,
-                                  *(dev_ctxes.at(in_places[j])), &sub_out);
-    s = e;
+  void operator()() {
+    auto *out_tensor = dst_selected_rows_->mutable_value();
+    // copy
+    int s = 0, e = 0;
+    for (size_t j = 0; j < in_tensors_.size(); ++j) {
+      e += in_tensors_[j].dims()[0];
+      auto sub_out = out_tensor->Slice(s, e);
+      paddle::framework::TensorCopy(in_tensors_[j], out_place_,
+                                    *(dev_ctxes_.at(in_places_[j])), &sub_out);
+      s = e;
+    }
   }
-}
+
+ private:
+  const std::map<platform::Place, platform::DeviceContext *> &dev_ctxes_;
+  std::vector<platform::Place> in_places_;
+  std::vector<Tensor> in_tensors_;
+
+  platform::Place out_place_;
+  SelectedRows *dst_selected_rows_;
+};
 
 }  // namespace details
 }  // namespace framework

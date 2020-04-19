@@ -35,13 +35,13 @@ import paddle.compat as cpt
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info',
-    'convert'
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
-URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+#URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
@@ -224,7 +224,7 @@ def max_job_id():
 
 def movie_categories():
     """
-    Get movie categoriges dictionary.
+    Get movie categories dictionary.
     """
     __initialize_meta_info__()
     return CATEGORIES_DICT
@@ -257,14 +257,6 @@ def unittest():
 
 def fetch():
     paddle.dataset.common.download(URL, "movielens", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train(), 1000, "movielens_train")
-    paddle.dataset.common.convert(path, test(), 1000, "movielens_test")
 
 
 if __name__ == '__main__':

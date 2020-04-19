@@ -63,6 +63,30 @@ void SetAttr<std::vector<std::string>>(framework::proto::OpDesc *op,
   }
 }
 
+template <>
+void SetAttr<std::vector<int>>(framework::proto::OpDesc *op,
+                               const std::string &name,
+                               const std::vector<int> &data) {
+  auto *attr = op->add_attrs();
+  attr->set_name(name);
+  attr->set_type(paddle::framework::proto::AttrType::INTS);
+  for (const auto i : data) {
+    attr->add_ints(i);
+  }
+}
+
+template <>
+void SetAttr<std::vector<int64_t>>(framework::proto::OpDesc *op,
+                                   const std::string &name,
+                                   const std::vector<int64_t> &data) {
+  auto *attr = op->add_attrs();
+  attr->set_name(name);
+  attr->set_type(paddle::framework::proto::AttrType::LONGS);
+  for (const auto i : data) {
+    attr->add_longs(i);
+  }
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

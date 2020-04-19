@@ -22,6 +22,7 @@ import paddle.compat as cpt
 from op_test import OpTest
 from math import sqrt
 from math import floor
+from paddle import fluid
 
 
 def gt_e(a, b):
@@ -87,10 +88,10 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     estimated_height = (len2 + len4) / 2.0
     estimated_width = (len1 + len3) / 2.0
 
-    normalized_height = transformed_height
+    normalized_height = max(2, transformed_height)
     normalized_width = round(estimated_width *
                              (normalized_height - 1) / estimated_height) + 1
-    normalized_width = min(normalized_width, transformed_width)
+    normalized_width = max(2, min(normalized_width, transformed_width))
 
     dx1 = x1 - x2
     dx2 = x3 - x2
@@ -99,9 +100,9 @@ def get_transform_matrix(transformed_width, transformed_height, roi_x, roi_y):
     dy2 = y3 - y2
     dy3 = y0 - y1 + y2 - y3
     matrix = np.zeros([9])
-    matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) / (
+    matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 + 1e-5) / (
         normalized_width - 1)
-    matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) / (
+    matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 + 1e-5) / (
         normalized_height - 1)
     matrix[8] = 1
 
@@ -135,13 +136,13 @@ def bilinear_interpolate(in_data, in_n, in_c, in_w, in_h):
     height = in_data.shape[2]
     width = in_data.shape[3]
 
-    if gt(-0.5, in_w) or gt(in_w, width - 0.5) or gt(-0.5, in_h) or gt(
+    if gt_e(-0.5, in_w) or gt_e(in_w, width - 0.5) or gt_e(-0.5, in_h) or gt_e(
             in_h, height - 0.5):
         return 0.0
 
-    if gt(0, in_w):
+    if gt_e(0, in_w):
         in_w = 0
-    if gt(0, in_h):
+    if gt_e(0, in_h):
         in_h = 0
 
     in_w_floor = floor(in_w)
@@ -198,7 +199,9 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
             roi2image[j] = i
 
     out = np.zeros([rois_num, channels, transformed_height, transformed_width])
-
+    mask = np.zeros(
+        [rois_num, 1, transformed_height, transformed_width]).astype('int')
+    matrix = np.zeros([rois_num, 9], dtype=in_data.dtype)
     for n in range(rois_num):
         roi_x = []
         roi_y = []
@@ -208,20 +211,22 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
         image_id = roi2image[n]
         transform_matrix = get_transform_matrix(
             transformed_width, transformed_height, roi_x, roi_y)
-
+        matrix[n] = transform_matrix
         for c in range(channels):
             for out_h in range(transformed_height):
                 for out_w in range(transformed_width):
                     in_w, in_h = get_source_coords(transform_matrix, out_w,
                                                    out_h)
-                    if in_quad(in_w, in_h, roi_x, roi_y) and gt_e(
-                            in_w, -0.5) and lt_e(in_w, in_width - 0.5) and gt_e(
-                                in_h, -0.5) and lt_e(in_h, in_height - 0.5):
+                    if in_quad(in_w, in_h, roi_x, roi_y) and gt(
+                            in_w, -0.5) and gt(in_width - 0.5, in_w) and gt(
+                                in_h, -0.5) and gt(in_height - 0.5, in_h):
                         out[n][c][out_h][out_w] = bilinear_interpolate(
                             in_data, image_id, c, in_w, in_h)
+                        mask[n][0][out_h][out_w] = 1
                     else:
                         out[n][c][out_h][out_w] = 0.0
-    return out.astype("float32")
+                        mask[n][0][out_h][out_w] = 0
+    return out.astype("float32"), mask, matrix
 
 
 class TestROIPoolOp(OpTest):
@@ -236,10 +241,14 @@ class TestROIPoolOp(OpTest):
             'transformed_height': self.transformed_height,
             'transformed_width': self.transformed_width
         }
-        out = roi_transform(self.x, self.rois, self.rois_lod,
-                            self.transformed_height, self.transformed_width,
-                            self.spatial_scale)
-        self.outputs = {'Out': out}
+        out, mask, transform_matrix = roi_transform(
+            self.x, self.rois, self.rois_lod, self.transformed_height,
+            self.transformed_width, self.spatial_scale)
+        self.outputs = {
+            'Out': out,
+            'Mask': mask,
+            'TransformMatrix': transform_matrix
+        }
 
     def init_test_case(self):
         self.batch_size = 2
@@ -299,7 +308,48 @@ class TestROIPoolOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+        self.outputs['Out2InIdx'] = np.zeros(
+            [np.product(self.outputs['Out'].shape), 4]).astype("int32")
+        self.outputs['Out2InWeights'] = np.zeros(
+            [np.product(self.outputs['Out'].shape), 4]).astype("float32")
         self.check_grad(['X'], 'Out')
+
+    def test_errors(self):
+        x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
+        rois = fluid.data(
+            name='rois', shape=[None, 8], lod_level=1, dtype='float32')
+
+        x_int = fluid.data(
+            name='x_int', shape=[100, 256, 28, 28], dtype='int32')
+        rois_int = fluid.data(
+            name='rois_int', shape=[None, 8], lod_level=1, dtype='int32')
+        x_tmp = [1, 2]
+        rois_tmp = [1, 2]
+
+        # type of intput and rois must be variable
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
+                          x_tmp, rois, 7, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois_tmp, 7, 7)
+
+        # dtype of intput and rois must be float32
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform,
+                          x_int, rois, 7, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois_int, 7, 7)
+
+        height = 7.5
+        width = 7.5
+        # type of transformed_height and transformed_width must be int
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, height, 7)
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, 7, width)
+
+        scale = int(2)
+        # type of spatial_scale must be float
+        self.assertRaises(TypeError, fluid.layers.roi_perspective_transform, x,
+                          rois, 7, 7, scale)
 
 
 if __name__ == '__main__':

@@ -22,98 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/version.h"
 
-// Cast boost::variant for PyBind.
-// Copy from
-// https://github.com/pybind/pybind11/issues/576#issuecomment-269563199
-namespace pybind11 {
-namespace detail {
-
-#if !defined(PYBIND11_HIDDEN)
-#ifdef _WIN32
-#define PYBIND11_HIDDEN __declspec(dllexport)
-#else
-#define PYBIND11_HIDDEN __attribute__((visibility("hidden")))
-#endif
-#endif
-
-// Can be replaced by a generic lambda in C++14
-struct PYBIND11_HIDDEN paddle_variant_caster_visitor
-    : public boost::static_visitor<handle> {
-  return_value_policy policy;
-  handle parent;
-
-  paddle_variant_caster_visitor(return_value_policy policy, handle parent)
-      : policy(policy), parent(parent) {}
-
-  template <class T>
-  handle operator()(T const &src) const {
-    return make_caster<T>::cast(src, policy, parent);
-  }
-};
-
-template <class Variant>
-struct paddle_variant_caster;
-
-template <template <class...> class V, class... Ts>
-struct paddle_variant_caster<V<Ts...>> {
-  using Type = V<Ts...>;
-
-  template <typename T>
-  typename std::enable_if<
-      !std::is_same<T, boost::detail::variant::void_>::value, bool>::type
-  try_load(handle src, bool convert) {
-    auto caster = make_caster<T>();
-    if (!load_success_ && caster.load(src, convert)) {
-      load_success_ = true;
-
-      if (std::is_same<T, std::vector<float>>::value) {
-        auto caster_ints = make_caster<std::vector<int64_t>>();
-        if (caster_ints.load(src, convert)) {
-          VLOG(4) << "This value are floats and int64_ts satisfy "
-                     "simultaneously, will set it's type to "
-                     "std::vector<int64_t>";
-          value = cast_op<std::vector<int64_t>>(caster_ints);
-          return true;
-        }
-      }
-
-      value = cast_op<T>(caster);
-      return true;
-    }
-    return false;
-  }
-
-  template <typename T>
-  typename std::enable_if<std::is_same<T, boost::detail::variant::void_>::value,
-                          bool>::type
-  try_load(handle src, bool convert) {
-    return false;
-  }
-
-  bool load(handle src, bool convert) {
-    auto unused = {false, try_load<Ts>(src, convert)...};
-    (void)(unused);
-    return load_success_;
-  }
-
-  static handle cast(Type const &src, return_value_policy policy,
-                     handle parent) {
-    paddle_variant_caster_visitor visitor(policy, parent);
-    return boost::apply_visitor(visitor, src);
-  }
-
-  PYBIND11_TYPE_CASTER(Type, _("Variant"));
-  bool load_success_{false};
-};
-
-// Add specialization for concrete variant type
-template <class... Args>
-struct type_caster<boost::variant<Args...>>
-    : paddle_variant_caster<boost::variant<Args...>> {};
-
-}  // namespace detail
-}  // namespace pybind11
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {
 namespace pybind {
@@ -125,8 +36,9 @@ static pybind11::bytes SerializeMessage(
     T &self) {  // NOLINT due to pybind11 convention.
   // Check IsInitialized in Python
   std::string retv;
-  PADDLE_ENFORCE(self.Proto()->SerializePartialToString(&retv),
-                 "Cannot serialize message");
+  PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv), true,
+                    platform::errors::InvalidArgument(
+                        "Failed to serialize input Desc to string."));
   return retv;
 }
 
@@ -155,13 +67,18 @@ void BindProgramDesc(pybind11::module *m) {
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
              pd::proto::ProgramDesc *desc = program_desc.Proto();
-             PADDLE_ENFORCE(desc->ParseFromString(data),
-                            "Fail to parse ProgramDesc from string. This could "
-                            "be a bug of Paddle.");
+             PADDLE_ENFORCE_EQ(
+                 desc->ParseFromString(data), true,
+                 platform::errors::InvalidArgument(
+                     "Failed to parse ProgramDesc from binary string."));
            })
-      .def("_version", [](pd::ProgramDesc &self) -> int64_t {
-        return self.Proto()->version().version();
-      });
+      .def("_set_version",
+           [](pd::ProgramDesc &self, int64_t version) {
+             return self.SetVersion(version);
+           },
+           pybind11::arg("version") = pd::kCurProgramVersion)
+      .def("_version",
+           [](pd::ProgramDesc &self) -> int64_t { return self.Version(); });
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -233,6 +150,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_name", &pd::VarDesc::SetName)
       .def("set_shape", &pd::VarDesc::SetShape)
       .def("set_shapes", &pd::VarDesc::SetShapes)
+      .def("get_shape", &pd::VarDesc::GetShape)
       .def("set_dtype", &pd::VarDesc::SetDataType)
       .def("set_dtypes", &pd::VarDesc::SetDataTypes)
       .def("shape", &pd::VarDesc::GetShape,
@@ -252,7 +170,9 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_type", &pd::VarDesc::SetType)
       .def("serialize_to_string", SerializeMessage<pd::VarDesc>)
       .def("persistable", &pd::VarDesc::Persistable)
-      .def("set_persistable", &pd::VarDesc::SetPersistable);
+      .def("set_persistable", &pd::VarDesc::SetPersistable)
+      .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
+      .def("set_need_check_feed", &pd::VarDesc::SetNeedCheckFeed);
 
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)
@@ -302,8 +222,16 @@ void BindOpDesc(pybind11::module *m) {
       .def("input_names", &pd::OpDesc::InputNames)
       .def("output", &pd::OpDesc::Output)
       .def("output_names", &pd::OpDesc::OutputNames)
-      .def("set_input", &pd::OpDesc::SetInput)
-      .def("set_output", &pd::OpDesc::SetOutput)
+      .def("set_input",
+           [](pd::OpDesc &self, const std::string &name,
+              const std::vector<std::string> &vec_var_name) {
+             self.SetInput(name, vec_var_name);
+           })
+      .def("set_output",
+           [](pd::OpDesc &self, const std::string &name,
+              const std::vector<std::string> &vec_var_name) {
+             self.SetOutput(name, vec_var_name);
+           })
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)
@@ -312,6 +240,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("attr_type", &pd::OpDesc::GetAttrType)
       .def("attr_names", &pd::OpDesc::AttrNames)
       .def("_set_attr", &pd::OpDesc::SetAttr)
+      .def("remove_attr", &pd::OpDesc::RemoveAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
@@ -329,7 +258,9 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", [](pd::OpDesc &self) { return self.Block(); },
-           pybind11::return_value_policy::reference);
+           pybind11::return_value_policy::reference)
+      .def("inputs", &pd::OpDesc::Inputs)
+      .def("outputs", &pd::OpDesc::Outputs);
 }
 
 }  // namespace pybind

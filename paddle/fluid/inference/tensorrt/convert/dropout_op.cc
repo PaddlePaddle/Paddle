@@ -31,6 +31,20 @@ class DropoutOpConverter : public OpConverter {
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     float dropout_prob = boost::get<float>(op_desc.GetAttr("dropout_prob"));
 
+    std::string downgrade_in_infer = "";
+    if (op_desc.HasAttr("dropout_implementation")) {
+      downgrade_in_infer =
+          boost::get<std::string>(op_desc.GetAttr("dropout_implementation"));
+    }
+
+    if (!downgrade_in_infer.empty() &&
+        downgrade_in_infer == "upscale_in_train") {
+      auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
+      auto output_name = op_desc.Output("Out")[0];
+      RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+      return;
+    }
+
     platform::CPUPlace cpu_place;
     std::unique_ptr<framework::LoDTensor> weight_tensor(
         new framework::LoDTensor());
@@ -52,14 +66,11 @@ class DropoutOpConverter : public OpConverter {
         nvinfer1::ScaleMode::kUNIFORM, shift_weights.get(), scale_weights.get(),
         power_weights.get());
 
-    engine_->weight_map[op_desc.Output("Out").front() + "_dropout"] =
-        std::move(weight_tensor);
+    engine_->SetWeights(op_desc.Output("Out").front() + "_dropout",
+                        std::move(weight_tensor));
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName(("dropout (Output: " + output_name + ")").c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
+
+    RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
   }
 };
 

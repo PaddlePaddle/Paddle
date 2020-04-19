@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lookup_table_op.h"
+
+#include <memory>
+
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -23,20 +27,28 @@ class LookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(W) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of LookupTableOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+                      "Input(W) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
+                      "Input(Ids) of LookupTableOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of LookupTableOp should not be null.");
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     int ids_rank = ids_dims.size();
-
-    PADDLE_ENFORCE_EQ(table_dims.size(), 2);
-    PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
-                      "The last dimension of the 'Ids' tensor must be 1.");
+    VLOG(5) << "ids rank is " << ids_rank << std::endl;
+    PADDLE_ENFORCE_EQ(
+        table_dims.size(), 2,
+        "ShapeError: The dimensions of the 'lookup table' must be 2. "
+        "But received lookup table's dimensions = %d, "
+        "lookup table's shape = [%s].",
+        table_dims.size(), table_dims);
+    PADDLE_ENFORCE_EQ(
+        ids_dims[ids_rank - 1], 1,
+        "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
+        "But received Ids's last dimensions = %d, Ids's shape = [%s].",
+        ids_dims[ids_rank - 1], ids_dims);
 
     auto output_dims =
         framework::vectorize(framework::slice_ddim(ids_dims, 0, ids_rank - 1));
@@ -52,7 +64,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -64,7 +76,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int32 or int64 "
+             "An input with type int64 "
              "contains the ids to be looked up in W. "
              "The last dimension size must be 1.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
@@ -91,9 +103,9 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<int>>("height_sections",
-                              "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int>({}));
+    AddAttr<std::vector<int64_t>>("height_sections",
+                                  "Height for each output SelectedRows.")
+        .SetDefault(std::vector<int64_t>({}));
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
@@ -101,7 +113,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -119,13 +131,25 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class LookupTableOpGradDescMaker
-    : public framework::DefaultGradOpDescMaker<true> {
-  using ::paddle::framework::DefaultGradOpDescMaker<
-      true>::DefaultGradOpDescMaker;
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableGradOpNoBuffer, "W");
+
+template <typename T>
+class LookupTableGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  virtual std::string GradOpType() const { return "lookup_table_grad"; }
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("lookup_table_grad");
+
+    op->SetInput("W", this->Input("W"));
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+
+    op->SetAttrMap(this->Attrs());
+  }
 };
 
 class LookupTableOpGrad : public framework::OperatorWithKernel {
@@ -140,29 +164,28 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Out"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
 class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
-    auto attr = op_desc.GetAttr("is_sparse");
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      block->Var(out_var_name)
-          ->SetType(framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetType(out_var_name, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
+      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
+    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("W")[0]));
   }
 };
 
@@ -170,12 +193,16 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_table, ops::LookupTableOp,
-                  ops::LookupTableOpGradDescMaker, ops::LookupTableOpMaker);
+REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
+                  ops::LookupTableGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LookupTableGradOpMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
+                  ops::LookupTableGradOpNoBuffer,
                   ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
-                       ops::LookupTableKernel<double>);
+                       ops::LookupTableKernel<double>,
+                       ops::LookupTableKernel<int8_t>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>);

@@ -76,16 +76,26 @@ struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
 };
 
-typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
+class Place : public boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> {
+ private:
+  using PlaceBase = boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace>;
+
+ public:
+  Place() = default;
+  Place(const CPUPlace &cpu_place) : PlaceBase(cpu_place) {}     // NOLINT
+  Place(const CUDAPlace &cuda_place) : PlaceBase(cuda_place) {}  // NOLINT
+  Place(const CUDAPinnedPlace &cuda_pinned_place)                // NOLINT
+      : PlaceBase(cuda_pinned_place) {}
+
+  bool operator<(const Place &place) const {
+    return PlaceBase::operator<(static_cast<const PlaceBase &>(place));
+  }
+  bool operator==(const Place &place) const {
+    return PlaceBase::operator==(static_cast<const PlaceBase &>(place));
+  }
+};
 
 using PlaceList = std::vector<Place>;
-
-void set_place(const Place &);
-const Place &get_place();
-
-const CUDAPlace default_gpu();
-const CPUPlace default_cpu();
-const CUDAPinnedPlace default_cuda_pinned();
 
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
@@ -109,7 +119,8 @@ struct PlaceVisitorWrapper
 #ifdef PADDLE_WITH_CUDA
     return visitor_(cuda);
 #else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit cuda device"));
     return typename Visitor::result_type();
 #endif
   }
@@ -119,7 +130,8 @@ struct PlaceVisitorWrapper
 #ifdef PADDLE_WITH_CUDA
     return visitor_(cuda_pinned);
 #else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
     return typename Visitor::result_type();
 #endif
   }

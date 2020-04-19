@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_LIBMCT})
-  return()
-ENDIF(NOT ${WITH_LIBMCT})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with LIBMCT in Paddle yet."
-        "Force WITH_LIBMCT=OFF")
-    SET(WITH_LIBMCT OFF CACHE STRING "Disable LIBMCT package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(LIBMCT_PROJECT       "extern_libmct")
@@ -31,7 +19,7 @@ IF((NOT DEFINED LIBMCT_VER) OR (NOT DEFINED LIBMCT_URL))
   MESSAGE(STATUS "use pre defined download url")
   SET(LIBMCT_VER "0.1.0" CACHE STRING "" FORCE)
   SET(LIBMCT_NAME "libmct" CACHE STRING "" FORCE)
-  SET(LIBMCT_URL "https://raw.githubusercontent.com/PaddlePaddle/Fleet/release/${LIBMCT_VER}/${LIBMCT_NAME}.tar.gz" CACHE STRING "" FORCE) 
+  SET(LIBMCT_URL "https://pslib.bj.bcebos.com/libmct.tar.gz" CACHE STRING "" FORCE) 
 ENDIF()
 MESSAGE(STATUS "LIBMCT_NAME: ${LIBMCT_NAME}, LIBMCT_URL: ${LIBMCT_URL}")
 SET(LIBMCT_SOURCE_DIR    "${THIRD_PARTY_PATH}/libmct")

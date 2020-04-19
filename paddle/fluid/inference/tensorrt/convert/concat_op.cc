@@ -39,16 +39,12 @@ class ConcatOpConverter : public OpConverter {
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
                                        itensors.size());
-    axis = axis - 1;  // Remove batch dim
+    if (!engine_->with_dynamic_shape()) {
+      axis = axis - 1;  // Remove batch dim
+    }
     layer->setAxis(axis);
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName(("concat (Output: " + output_name + ")").c_str());
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {  // the test framework can not determine which is the
-                      // output, so place the declaration inside.
-      engine_->DeclareOutput(output_name);
-    }
+    RreplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);
   }
 };
 

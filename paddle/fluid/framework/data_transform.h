@@ -39,6 +39,5 @@ void TransformData(const OpKernelType &expected_kernel_type,
  */
 void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
                          Variable *out_var);
-
 }  // namespace framework
 }  // namespace paddle

@@ -83,12 +83,12 @@ class MergeIdsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("Ids"),
-                   "MergeIdsOp must has multi input Ids.");
+                   "MergeIdsOp must have multi input Ids.");
     PADDLE_ENFORCE(ctx->HasInputs("Rows"),
-                   "MergeIdsOp must has multi input Rows.");
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must has multi input X.");
+                   "MergeIdsOp must have multi input Rows.");
+    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must have multi input X.");
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "MergeIdsOp must has multi output Out.");
+                   "MergeIdsOp must have multi output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
@@ -108,17 +108,16 @@ class MergeIdsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        ctx.MultiInput<framework::Tensor>("X").front()->type(), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
 class MergeIdsOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto *input_var = block->Var(op_desc.Input("Ids")[0]);
-    for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(input_var->GetType());
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto input_type = ctx->GetType(ctx->Input("Ids")[0]);
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, input_type);
     }
   }
 };

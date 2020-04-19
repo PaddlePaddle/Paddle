@@ -15,17 +15,45 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace paddle {
 namespace imperative {
 
+class VariableWrapper;
+class SavedVariableWrapperList;
 class VarBase;
 class OpBase;
+class GradOpNode;
+class Tracer;
 
-typedef std::map<std::string, std::vector<VarBase*>> VarBasePtrMap;
-typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
+using WeakNameVarBaseMap =
+    std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;
+
+namespace details {
+template <typename T>
+struct NameVarMapTrait {};
+
+template <>
+struct NameVarMapTrait<VarBase> {
+  using Type = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
+};
+
+template <>
+struct NameVarMapTrait<VariableWrapper> {
+  using Type = std::map<std::string, SavedVariableWrapperList>;
+};
+}  // namespace details
+
+template <typename T>
+using NameVarMap = typename details::NameVarMapTrait<T>::Type;
+
+using NameVarBaseMap = NameVarMap<VarBase>;
+using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
+
+using VariableWrapperList = std::vector<std::shared_ptr<VariableWrapper>>;
 
 }  // namespace imperative
 }  // namespace paddle

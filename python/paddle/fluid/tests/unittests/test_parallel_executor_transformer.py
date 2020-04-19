@@ -23,8 +23,9 @@ import paddle
 import paddle.fluid.core as core
 import paddle.dataset.wmt16 as wmt16
 import os
+from feed_data_reader import FeedDataReader
 
-WMT16_RECORDIO_FILE = os.environ.get('RECORDIO_FILENAME', '/tmp/wmt16.recordio')
+os.environ['CPU_NUM'] = str(4)
 
 
 class ModelHyperParams(object):
@@ -65,7 +66,9 @@ class ModelHyperParams(object):
     # number of head used in multi-head attention.
     n_head = 8
     # number of sub-layers to be stacked in the encoder and decoder.
-    n_layer = 6
+    # NOTE(zcd): the origin number of layer is 6, to make this unit test faster,
+    # we should reduce the layer number to 4.
+    n_layer = 4
     # dropout rate used by all dropout layers.
     dropout = 0.1
 
@@ -138,6 +141,9 @@ def prepare_batch_input(insts, src_pad_idx, trg_pad_idx, n_head):
     ]
 
 
+feed_data_reader = None
+
+
 def transformer(use_feed):
     assert not use_feed, "transfomer doesn't support feed yet"
     return transformer_model.transformer(
@@ -150,32 +156,53 @@ def transformer(use_feed):
         ModelHyperParams.trg_pad_idx, ModelHyperParams.pos_pad_idx)
 
 
+def get_feed_data_reader():
+    global feed_data_reader
+    if feed_data_reader is not None:
+        return feed_data_reader
+
+    reader = paddle.batch(
+        wmt16.train(ModelHyperParams.src_vocab_size,
+                    ModelHyperParams.trg_vocab_size),
+        batch_size=transformer_model.batch_size)
+    all_batch_tensors = []
+    for batch in reader():
+        tensors = []
+        for tensor in prepare_batch_input(batch, ModelHyperParams.src_pad_idx,
+                                          ModelHyperParams.trg_pad_idx,
+                                          ModelHyperParams.n_head):
+            tensors.append(np.array(tensor))
+        all_batch_tensors.append(tensors)
+
+    def __reader__():
+        for t in all_batch_tensors:
+            yield t
+
+    feed_data_reader = FeedDataReader(
+        feed_list=transformer_model.build_inputs(
+            ModelHyperParams.max_length + 1, ModelHyperParams.n_head),
+        reader=__reader__)
+
+    return feed_data_reader
+
+
 class TestTransformer(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
-        reader = paddle.batch(
-            wmt16.train(ModelHyperParams.src_vocab_size,
-                        ModelHyperParams.trg_vocab_size),
-            batch_size=transformer_model.batch_size)
-
-        with fluid.recordio_writer.create_recordio_writer(
-                WMT16_RECORDIO_FILE) as writer:
-            for batch in reader():
-                for tensor in prepare_batch_input(
-                        batch, ModelHyperParams.src_pad_idx,
-                        ModelHyperParams.trg_pad_idx, ModelHyperParams.n_head):
-                    t = fluid.LoDTensor()
-                    t.set(tensor, fluid.CPUPlace())
-                    writer.append_tensor(t)
-                writer.complete_append_tensor()
-
     def test_main(self):
         if core.is_compiled_with_cuda():
-            self.check_network_convergence(transformer, use_cuda=True)
             self.check_network_convergence(
-                transformer, use_cuda=True, enable_sequential_execution=True)
-        self.check_network_convergence(transformer, use_cuda=False, iter=5)
+                transformer,
+                use_cuda=True,
+                feed_data_reader=get_feed_data_reader())
+            self.check_network_convergence(
+                transformer,
+                use_cuda=True,
+                enable_sequential_execution=True,
+                feed_data_reader=get_feed_data_reader())
+        self.check_network_convergence(
+            transformer,
+            use_cuda=False,
+            iter=2,
+            feed_data_reader=get_feed_data_reader())
 
 
 if __name__ == '__main__':

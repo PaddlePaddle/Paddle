@@ -29,19 +29,31 @@ namespace ir {
 class ConvBNFusePass : public FusePassBase {
  public:
   virtual ~ConvBNFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_bn_fuse"};
 };
 
 class ConvEltwiseAddBNFusePass : public FusePassBase {
  public:
   virtual ~ConvEltwiseAddBNFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_eltwiseadd_bn_fuse"};
+};
+
+class ConvTransposeBNFusePass : public ConvBNFusePass {
+ public:
+  std::string conv_type() const { return "conv2d_transpose"; }
+};
+
+class ConvTransposeEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
+ public:
+  std::string conv_type() const { return "conv2d_transpose"; }
 };
 
 }  // namespace ir

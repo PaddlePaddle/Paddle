@@ -55,11 +55,11 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
     auto* in1_data = in1_value.data<T>();
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE(platform::is_gpu_place(in1_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true);
     auto in2_place = input2.place();
-    PADDLE_ENFORCE(platform::is_gpu_place(in2_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(in2_place), true);
     auto out_place = context.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(out_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_place), true);
 
     memory::Copy(boost::get<platform::CUDAPlace>(out_place), out_data,
                  boost::get<platform::CUDAPlace>(in1_place), in1_data,
@@ -162,9 +162,9 @@ struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
     }
 
     auto in1_place = input1.place();
-    PADDLE_ENFORCE(platform::is_gpu_place(in1_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(in1_place), true);
     auto in2_place = input2->place();
-    PADDLE_ENFORCE(platform::is_gpu_place(in2_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(in2_place), true);
 
     auto* in1_data = in1_value.data<T>();
     auto* in2_data = in2_value->data<T>();

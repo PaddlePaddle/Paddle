@@ -27,9 +27,8 @@ class OverflowOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of OverflowOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "isfinite");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "isfinite");
 
     ctx->SetOutputDim("Out", {1});
   }
@@ -84,25 +83,28 @@ If X contains both Inf/Nan, it will return the first indicator it meeted.
 
 namespace ops = paddle::operators;
 
-#define REGISTER_OP_MAKER(op_type, comment)             \
-  namespace paddle {                                    \
-  namespace operators {                                 \
-  class _##op_type##OverflowOpMaker                     \
-      : public ::paddle::operators::OverflowOpMaker {   \
-   protected:                                           \
-    std::string GetName() const { return #op_type; }    \
-    std::string GetComments() const { return comment; } \
-  };                                                    \
-  }                                                     \
-  }                                                     \
-  REGISTER_OPERATOR(op_type, ops::OverflowOp,           \
-                    ops::_##op_type##OverflowOpMaker,   \
-                    paddle::framework::EmptyGradOpMaker)
+#define REGISTER_OP_MAKER(op_type, comment)                           \
+  namespace paddle {                                                  \
+  namespace operators {                                               \
+  class _##op_type##OverflowOpMaker                                   \
+      : public ::paddle::operators::OverflowOpMaker {                 \
+   protected:                                                         \
+    std::string GetName() const { return #op_type; }                  \
+    std::string GetComments() const { return comment; }               \
+  };                                                                  \
+  }                                                                   \
+  }                                                                   \
+  REGISTER_OPERATOR(                                                  \
+      op_type, ops::OverflowOp, ops::_##op_type##OverflowOpMaker,     \
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
+      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 #define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                      \
   REGISTER_OP_CPU_KERNEL(                                                   \
       op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int, \
                                    ops::functor>,                           \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,      \
+                          ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,        \
                           ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \

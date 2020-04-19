@@ -36,19 +36,31 @@ class ActivationOpConverter : public OpConverter {
 
     auto op_pair = ops.find(op_type_);
     if (op_pair == ops.end()) {
-      PADDLE_THROW("Wrong activation op type!");
+      PADDLE_THROW(platform::errors::Fatal(
+          "Wrong activation op type, the trt do not support the %s act type.",
+          op_type_));
     }
 
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
         engine_, Activation, *const_cast<nvinfer1::ITensor*>(input_tensor),
         op_pair->second);
+
+#if IS_TRT_VERSION_GE(5130)
+    // max(alpha, min(beta, x))
+    if (op_type_ == "relu6") {
+      layer->setAlpha(0.);
+      layer->setBeta(6.);
+    }
+#endif
+
     auto output_name = op_desc.Output("Out")[0];
-    layer->setName((op_type_ + " (Output: " + output_name + ")").c_str());
-    layer->getOutput(0)->setName(output_name.c_str());
-    engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {  // the test framework can not determine which is the
-                      // output, so place the declaration inside.
-      engine_->DeclareOutput(output_name);
+
+    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    if (op_desc.HasAttr("out_scale")) {
+#if IS_TRT_VERSION_GE(5130)
+      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
+      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+#endif
     }
   }
 
@@ -62,6 +74,9 @@ const std::unordered_map<std::string, nvinfer1::ActivationType>
         {"relu", nvinfer1::ActivationType::kRELU},
         {"sigmoid", nvinfer1::ActivationType::kSIGMOID},
         {"tanh", nvinfer1::ActivationType::kTANH},
+#if IS_TRT_VERSION_GE(5130)
+        {"relu6", nvinfer1::ActivationType::kCLIP},
+#endif
 };
 
 class ReluOpConverter : public ActivationOpConverter {
@@ -79,6 +94,11 @@ class TanhOpConverter : public ActivationOpConverter {
   TanhOpConverter() { op_type_ = "tanh"; }
 };
 
+class Relu6OpConverter : public ActivationOpConverter {
+ public:
+  Relu6OpConverter() { op_type_ = "relu6"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -86,3 +106,4 @@ class TanhOpConverter : public ActivationOpConverter {
 REGISTER_TRT_OP_CONVERTER(relu, ReluOpConverter);
 REGISTER_TRT_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_TRT_OP_CONVERTER(tanh, TanhOpConverter);
+REGISTER_TRT_OP_CONVERTER(relu6, Relu6OpConverter);

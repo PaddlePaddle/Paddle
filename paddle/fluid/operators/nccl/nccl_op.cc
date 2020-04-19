@@ -60,12 +60,9 @@ class NCCLInitOp : public framework::OperatorBase {
 
 class NCCLInitOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto out_var_name = op_desc.Output("Communicator").front();
-    auto &out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    auto var_type = framework::proto::VarType::RAW;
-    out_var.SetType(var_type);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto out_var_name = ctx->Output("Communicator").front();
+    ctx->SetType(out_var_name, framework::proto::VarType::RAW);
   }
 };
 
@@ -233,10 +230,12 @@ Bcast the tensors.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ncclInit, ops::NCCLInitOp,
-                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker,
-                  ops::NCCLInitOpVarTypeInference,
-                  ops::NCCLInitOpShapeInference);
+REGISTER_OPERATOR(
+    ncclInit, ops::NCCLInitOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::NCCLInitOpMaker, ops::NCCLInitOpVarTypeInference,
+    ops::NCCLInitOpShapeInference);
 
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);

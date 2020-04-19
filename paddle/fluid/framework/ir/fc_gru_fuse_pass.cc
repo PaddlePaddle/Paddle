@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/fc_gru_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -32,14 +33,13 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   PDNode* x =
       pattern->NewNode(patterns::UniqueKey("x"))->assert_var_not_persistable();
 
-  auto* fc_out = fc_pattern(x, with_fc_bias);
+  auto* fc_out = fc_pattern(x, with_fc_bias, /* with_relu */ false);
   fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
   gru_pattern(fc_out);
 
   // Create New OpDesc
   auto gru_creater = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
                          Node* bias, Node* hidden, Node* fc_bias) {
-
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 
@@ -69,16 +69,15 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     auto* op = graph->CreateOpNode(&op_desc);
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
-    PADDLE_ENFORCE(scope);
+    auto& scope = graph->Get<Scope>(kParamScopeAttr);
     if (with_fc_bias) {
       // Fusion GRU bias = fcbias + grubias
-      auto* fusion_bias_var = scope->Var(NEW_NAME(bias) + bias->Name());
+      auto* fusion_bias_var = scope.Var(NEW_NAME(bias) + bias->Name());
       auto* out_bias_tensor =
           fusion_bias_var->GetMutable<framework::LoDTensor>();
       PADDLE_ENFORCE(fusion_bias_var);
-      auto* gru_bias_var = scope->FindVar(bias->Name());
-      auto* fc_bias_var = scope->FindVar(fc_bias->Name());
+      auto* gru_bias_var = scope.FindVar(bias->Name());
+      auto* fc_bias_var = scope.FindVar(fc_bias->Name());
       PADDLE_ENFORCE(gru_bias_var);
       PADDLE_ENFORCE(fc_bias_var);
       const auto& gru_bias_tenosr = gru_bias_var->Get<framework::LoDTensor>();
@@ -93,8 +92,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     }
 #undef GET_NODE
 
-#define NEW_IMTERMEDIATE_OUT(key) \
-  scope->Var(NEW_NAME(key))->GetMutable<framework::LoDTensor>()
+#define NEW_IMTERMEDIATE_OUT(key)                \
+  VarDesc key(NEW_NAME(key));                    \
+  key.SetPersistable(false);                     \
+  auto* key##_node = graph->CreateVarNode(&key); \
+  IR_NODE_LINK_TO(op, key##_node);
+
     NEW_IMTERMEDIATE_OUT(ReorderedH0);
     NEW_IMTERMEDIATE_OUT(XX);
     NEW_IMTERMEDIATE_OUT(BatchedInput);
@@ -117,15 +120,16 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     auto* x_n = subgraph.at(x);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru, gru, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Hidden, Hidden, gru_pattern);
     // nodes need be removed
     GET_IR_NODE_FROM_SUBGRAPH(BatchGate, BatchGate, gru_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(BatchResetHiddenPrev, BatchGate, gru_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchGate, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchResetHiddenPrev, BatchResetHiddenPrev,
+                              gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchHidden, gru_pattern);
 
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
@@ -135,7 +139,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       gru_creater(gru, x_n, w, Weight, Bias, Hidden, fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul, gru, elementwise_add, fc_bias, fc_out, mul_out, BatchGate,
+          {mul, gru, elementwise_add, fc_out, mul_out, BatchGate,
            BatchResetHiddenPrev, BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
@@ -155,26 +159,22 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> MulGRUFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void MulGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 false /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), false /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
-std::unique_ptr<ir::Graph> FCGRUFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void FCGRUFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 true /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
 }  // namespace ir

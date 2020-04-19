@@ -17,7 +17,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -33,10 +32,10 @@ class MKLDNNActivationKernel
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE(context.Input<framework::Tensor>("X") != nullptr,
                    "Cannot get input tensor X, variable name = %s",
-                   context.op().Input("X"));
+                   context.InputName("X"));
     PADDLE_ENFORCE(context.Output<framework::Tensor>("Out") != nullptr,
                    "Cannot find output tensor Out, variable name = %s",
-                   context.op().Output("Out"));
+                   context.OutputName("Out"));
     Functor functor;
 
     auto attrs = functor.GetAttrs();

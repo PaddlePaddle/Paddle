@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -85,10 +84,10 @@ class CreateCustomReaderOpMaker : public DecoratedReaderMakerBase {
     AddComment(R"DOC(
       CreateCustomReader Operator
 
-      A custom reader can be used for input data preprocessing. 
-      A custom reader holds its own sub-block, which will be executed in CPU 
-      in its 'ReadNext()' function. Users can configurate their own 
-      preprocessing pipelines by inserting operators into custom reader's 
+      A custom reader can be used for input data preprocessing.
+      A custom reader holds its own sub-block, which will be executed in CPU
+      in its 'ReadNext()' function. Users can configurate their own
+      preprocessing pipelines by inserting operators into custom reader's
       sub-block.
     )DOC");
   }
@@ -123,23 +122,22 @@ class CustomReaderInferShape : public framework::InferShapeBase {
 
 class CustomReaderInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    framework::VarDesc* out_reader = block->FindVar(op_desc.Output("Out")[0]);
-    PADDLE_ENFORCE_NOT_NULL(out_reader);
-    out_reader->SetType(framework::proto::VarType::READER);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& out_var_name = ctx->Output("Out")[0];
+    PADDLE_ENFORCE(ctx->HasVar(out_var_name));
+    ctx->SetType(out_var_name, framework::proto::VarType::READER);
 
     auto sink_var_names =
-        boost::get<std::vector<std::string>>(op_desc.GetAttr("sink_var_names"));
+        boost::get<std::vector<std::string>>(ctx->GetAttr("sink_var_names"));
     const auto* sub_block =
-        boost::get<framework::BlockDesc*>(op_desc.GetAttr("sub_block"));
+        boost::get<framework::BlockDesc*>(ctx->GetAttr("sub_block"));
     std::vector<framework::proto::VarType::Type> res_data_types;
     for (const std::string& var_name : sink_var_names) {
       framework::VarDesc* var = sub_block->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(var);
       res_data_types.emplace_back(var->GetDataType());
     }
-    out_reader->SetDataTypes(res_data_types);
+    ctx->SetDataTypes(out_var_name, res_data_types);
   }
 };
 
@@ -168,12 +166,15 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
     tensor->set_lod(underlying_outs[i].lod());
   }
   // 2. Run the sub-block.
-  exe_.Run(program_, exe_scope, sub_block_id_, false, true);
+  exe_.Run(program_, exe_scope, sub_block_id_, false, true, {}, true);
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
-    const auto& tensor = detail::Ref(exe_scope->FindVar(sink_var_names_[i]))
-                             .Get<framework::LoDTensor>();
+    auto* var = exe_scope->FindVar(sink_var_names_[i]);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                     "The variable %s is not in current scope.",
+                                     sink_var_names_[i]));
+    const auto& tensor = var->Get<framework::LoDTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);
@@ -184,7 +185,9 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
 }  // namespace paddle
 
 namespace ops = paddle::operators::reader;
-REGISTER_OPERATOR(create_custom_reader, ops::CreateCustomReaderOp,
-                  ops::CreateCustomReaderOpMaker, ops::CustomReaderInferShape,
-                  ops::CustomReaderInferVarType,
-                  paddle::framework::EmptyGradOpMaker)
+REGISTER_OPERATOR(
+    create_custom_reader, ops::CreateCustomReaderOp,
+    ops::CreateCustomReaderOpMaker, ops::CustomReaderInferShape,
+    ops::CustomReaderInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)

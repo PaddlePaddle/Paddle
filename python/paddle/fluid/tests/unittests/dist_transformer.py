@@ -223,7 +223,7 @@ input_descs = {
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_word": [(batch_size * seq_len, long_type(1)), "int64"],
-    # This input is used to mask out the loss of paddding tokens.
+    # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_weight": [(batch_size * seq_len, long_type(1)), "float32"],
@@ -272,7 +272,7 @@ class LearningRateScheduler(object):
     """
     Wrapper for learning rate scheduling as described in the Transformer paper.
     LearningRateScheduler adapts the learning rate externally and the adapted
-    learning rate will be feeded into the main_program as input data.
+    learning rate will be fed into the main_program as input data.
     """
 
     def __init__(self,
@@ -972,7 +972,7 @@ def multi_head_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs: quries, keys and values should all be 3-D tensors.")
+            "Inputs: queries, keys and values should all be 3-D tensors.")
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
         """
@@ -997,7 +997,7 @@ def multi_head_attention(queries,
 
     def __split_heads(x, n_head):
         """
-        Reshape the last dimension of inpunt tensor x so that it becomes two
+        Reshape the last dimension of input tensor x so that it becomes two
         dimensions and then transpose. Specifically, input a tensor with shape
         [bs, max_sequence_length, n_head * hidden_dim] then output a tensor
         with shape [bs, n_head, max_sequence_length, hidden_dim].
@@ -1011,13 +1011,13 @@ def multi_head_attention(queries,
         reshaped = layers.reshape(
             x=x, shape=[0, 0, n_head, hidden_size // n_head])
 
-        # permuate the dimensions into:
+        # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
-        Transpose and then reshape the last two dimensions of inpunt tensor x
+        Transpose and then reshape the last two dimensions of input tensor x
         so that it becomes one dimension, which is reverse to __split_heads.
         """
         if len(x.shape) == 3: return x
@@ -1563,7 +1563,7 @@ def fast_decode(
             } for cache in caches]
             pre_pos = layers.elementwise_mul(
                 x=layers.fill_constant_batch_size_like(
-                    input=pre_enc_output,  # cann't use pre_ids here since it has lod
+                    input=pre_enc_output,  # can't use pre_ids here since it has lod
                     value=1,
                     shape=[-1, 1, 1],
                     dtype=pre_ids.dtype),

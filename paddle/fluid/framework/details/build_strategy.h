@@ -14,16 +14,19 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -57,43 +60,85 @@ struct BuildStrategy {
   enum class GradientScaleStrategy {
     kCoeffNumDevice = 0,
     kOne = 1,
+    // user can customize gradient scale to use, and just feed
+    // it into exe.run().
     kCustomized = 2,
-  };
-
-  enum class OptimizeStrategy {
-    // To be Implemented,bruteforce, recursive compute unused var names.
-    kBruteForce = 0,
-    kControlFlowGraph = 1,  // use cfg_graph algorithm, faster speed.
   };
 
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
-  OptimizeStrategy strategy_{OptimizeStrategy::kControlFlowGraph};
 
   std::string debug_graphviz_path_{""};
 
-  bool fuse_elewise_add_act_ops_{false};
-
-  bool fuse_relu_depthwise_conv_{false};
-
-  bool memory_optimize_{false};
-  // TODO(dzhwinter):
-  // make enable_inplace, memory_optimize_
-  // memory_early_delete_ true by default
-  bool enable_inplace_{false};
-
+  // Add dependency between backward ops and optimization ops, make sure that
+  // all the backward ops are finished before running the optimization ops.
+  // It might make the training speed of data parallelism faster.
+  bool enable_backward_optimizer_op_deps_{true};
+  // TODO(dev-paddle): enable_sequential_execution depends on
+  // kStaleProgramOpDescs, it is not appropriate, because kStaleProgramOpDescs
+  // will be removed in the near future.
   bool enable_sequential_execution_{false};
+  bool remove_unnecessary_lock_{true};
+  // TODO(dev-paddle): cache_runtime_context may cause some models to hang up
+  // while running.
+  bool cache_runtime_context_{false};
 
-  bool fuse_broadcast_op_{false};
+  // Operator fusion
+  // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
+  // cycle.
+  bool fuse_bn_act_ops_{false};
+  bool fuse_elewise_add_act_ops_{false};
+  bool enable_auto_fusion_{false};
+  // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
+  // should not be sparse types
+  boost::optional<bool> fuse_all_optimizer_ops_{false};
+  boost::optional<bool> fuse_all_reduce_ops_{boost::none};
+  // fuse_relu_depthwise_conv can fuse the `relu ->
+  // depthwise_conv`
+  bool fuse_relu_depthwise_conv_{false};
+  // NOTE(zcd): In reduce mode, fusing broadcast ops may make the program
+  // faster. Because fusing broadcast OP equals delaying the execution of all
+  // broadcast Ops, in this case, all nccl streams are used only for reduce
+  // operations for a period of time.
+  boost::optional<bool> fuse_broadcast_ops_{boost::none};
+  // replace batch_norm with sync_batch_norm.
+  bool sync_batch_norm_{false};
+
+  // mkldnn_enabled_op_types specify the operator type list to
+  // use MKLDNN acceleration. It is null in default, means
+  // that all the operators supported by MKLDNN will be
+  // accelerated. And it should not be set when
+  // FLAGS_use_mkldnn=false
+  std::unordered_set<std::string> mkldnn_enabled_op_types_;
+
+  // By default, memory_optimize would be opened if gc is disabled, and
+  // be closed if gc is enabled.
+  // Users can forcely enable/disable memory_optimize by setting True/False.
+  boost::optional<bool> memory_optimize_{boost::none};
+
+  // Turn on inplace by default.
+  bool enable_inplace_{true};
 
   // FIXME(zcd): is_distribution_ is a temporary field, because in pserver mode,
   // num_trainers is 1, so the current fields of build_strategy doesn't tell if
   // it's distributed model.
   bool is_distribution_{false};
+  bool async_mode_{false};
   int num_trainers_{1};
   int trainer_id_{0};
   std::vector<std::string> trainers_endpoints_;
-  bool remove_unnecessary_lock_{true};
+
+  // NCCL config
+  size_t nccl_comm_num_{1};
+  // The picture is here:
+  // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+  bool use_hierarchical_allreduce_{false};
+  // Nccl ranks in a node when use hierarchical allreduce, it's set to gpu
+  // cards' number in most cases.
+  size_t hierarchical_allreduce_inter_nranks_{0};
+  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's set to
+  // nodes number.
+  size_t hierarchical_allreduce_exter_nranks_{0};
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
@@ -114,16 +159,15 @@ struct BuildStrategy {
 
   // Apply the passes built by the pass_builder_. The passes will be
   // applied to the Program and output an ir::Graph.
-  std::unique_ptr<ir::Graph> Apply(const ProgramDesc &main_program,
-                                   const std::vector<platform::Place> &places,
-                                   const std::string &loss_var_name,
-                                   const std::vector<Scope *> &local_scopes,
-                                   const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-                                   const bool use_cuda,
-                                   platform::NCCLContextMap *nccl_ctxs) const;
+  ir::Graph *Apply(ir::Graph *graph, const std::vector<platform::Place> &places,
+                   const std::string &loss_var_name,
+                   const std::vector<Scope *> &local_scopes,
+                   const size_t &nranks,
+#if defined(PADDLE_WITH_NCCL)
+                   const bool use_cuda,
+                   platform::NCCLCommunicator *nccl_ctxs) const;
 #else
-                                   const bool use_cuda) const;
+                   const bool use_cuda) const;
 #endif
 
   // If set true, ParallelExecutor would build the main_program into multiple

@@ -99,6 +99,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnDestroy);                                  \
   __macro(cudnnSetStream);                                \
   __macro(cudnnActivationForward);                        \
+  __macro(cudnnActivationBackward);                       \
   __macro(cudnnConvolutionForward);                       \
   __macro(cudnnConvolutionBackwardBias);                  \
   __macro(cudnnGetConvolutionForwardWorkspaceSize);       \
@@ -125,7 +126,8 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnRNNBackwardWeights);                       \
   __macro(cudnnRNNForwardInference);                      \
   __macro(cudnnDestroyDropoutDescriptor);                 \
-  __macro(cudnnDestroyRNNDescriptor);
+  __macro(cudnnDestroyRNNDescriptor);                     \
+  __macro(cudnnSetTensorNdDescriptorEx);
 
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 
@@ -171,19 +173,31 @@ CUDNN_DNN_ROUTINE_EACH_R6(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 7001
-#define CUDNN_DNN_ROUTINE_EACH_R7(__macro)        \
-  __macro(cudnnSetConvolutionGroupCount);         \
-  __macro(cudnnSetConvolutionMathType);           \
-  __macro(cudnnConvolutionBiasActivationForward); \
-  __macro(cudnnCreateCTCLossDescriptor);          \
-  __macro(cudnnDestroyCTCLossDescriptor);         \
-  __macro(cudnnGetCTCLossDescriptor);             \
-  __macro(cudnnSetCTCLossDescriptor);             \
-  __macro(cudnnGetCTCLossWorkspaceSize);          \
-  __macro(cudnnCTCLoss);
+#define CUDNN_DNN_ROUTINE_EACH_R7(__macro)                \
+  __macro(cudnnSetConvolutionGroupCount);                 \
+  __macro(cudnnSetConvolutionMathType);                   \
+  __macro(cudnnConvolutionBiasActivationForward);         \
+  __macro(cudnnCreateCTCLossDescriptor);                  \
+  __macro(cudnnDestroyCTCLossDescriptor);                 \
+  __macro(cudnnGetCTCLossDescriptor);                     \
+  __macro(cudnnSetCTCLossDescriptor);                     \
+  __macro(cudnnGetCTCLossWorkspaceSize);                  \
+  __macro(cudnnCTCLoss);                                  \
+  __macro(cudnnGetConvolutionBackwardDataAlgorithm_v7);   \
+  __macro(cudnnGetConvolutionBackwardFilterAlgorithm_v7); \
+  __macro(cudnnGetConvolutionForwardAlgorithm_v7);
 CUDNN_DNN_ROUTINE_EACH_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
+#if CUDNN_VERSION >= 7401
+#define CUDNN_DNN_ROUTINE_EACH_AFTER_R7(__macro)                     \
+  __macro(cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize); \
+  __macro(cudnnBatchNormalizationForwardTrainingEx);                 \
+  __macro(cudnnGetBatchNormalizationBackwardExWorkspaceSize);        \
+  __macro(cudnnBatchNormalizationBackwardEx);                        \
+  __macro(cudnnGetBatchNormalizationTrainingExReserveSpaceSize);
+CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
+#endif
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

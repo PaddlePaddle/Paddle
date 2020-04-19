@@ -28,6 +28,10 @@ int PaddleDtypeSize(PaddleDType dtype) {
       return sizeof(float);
     case PaddleDType::INT64:
       return sizeof(int64_t);
+    case PaddleDType::INT32:
+      return sizeof(int32_t);
+    case PaddleDType::UINT8:
+      return sizeof(uint8_t);
     default:
       assert(false);
       return -1;
@@ -52,7 +56,15 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
     memory_owned_ = other.memory_owned_;
   } else {
     Resize(other.length());
-    memcpy(data_, other.data(), other.length());
+    // if other.length() == 0 or other.data() == nullptr, then the memcpy
+    // behavior is undefined
+    if (other.length() && other.data())
+      memcpy(data_, other.data(), other.length());
+    else if (other.length())
+      PADDLE_THROW(
+          "Invalid argument, null pointer data with length %u is passed",
+          other.length());
+
     length_ = other.length();
     memory_owned_ = true;
   }
@@ -75,7 +87,7 @@ void PaddleBuf::Resize(size_t length) {
   if (length_ >= length) return;
   if (memory_owned_) {
     Free();
-    data_ = malloc(length);
+    data_ = new char[length];
     length_ = length;
     memory_owned_ = true;
   } else {
@@ -93,7 +105,7 @@ void PaddleBuf::Reset(void *data, size_t length) {
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
     PADDLE_ENFORCE_GT(length_, 0UL);
-    free(static_cast<char *>(data_));
+    delete[] static_cast<char *>(data_);
     data_ = nullptr;
     length_ = 0;
   }

@@ -62,7 +62,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
       // multi-devices before the first running.
       // use parent scope to make cache persistable
       auto *scope = const_cast<framework::Scope *>(ctx.scope().parent());
-      auto cache_var_name = ctx.Inputs("Cache")[0];
+      auto cache_var_name = ctx.InputNames("Cache")[0];
       cache_var = scope->Var(cache_var_name);
     }
     CudnnRNNCache *cudnn_rnn_cache = nullptr;
@@ -91,7 +91,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 
     if (is_test) {
       // for inference
-      CUDNN_ENFORCE(platform::dynload::cudnnRNNForwardInference(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardInference(
           handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
           cudnn_rnn_cache->x_desc_, x_data, cudnn_rnn_cache->hx_desc_,
           init_h_data, cudnn_rnn_cache->cx_desc_, init_c_data,
@@ -101,7 +101,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
           cudnn_rnn_cache->workspace_size_));
     } else {
       // for train
-      CUDNN_ENFORCE(platform::dynload::cudnnRNNForwardTraining(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNForwardTraining(
           handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
           cudnn_rnn_cache->x_desc_, x_data, cudnn_rnn_cache->hx_desc_,
           init_h_data, cudnn_rnn_cache->cx_desc_, init_c_data,
@@ -230,7 +230,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto run_seq_len = input_dims[0];
     PADDLE_ENFORCE_LE((size_t)run_seq_len, cudnn_rnn_cache->max_length_,
                       "cudnn running seq_len CAN not greater max_lengh");
-    CUDNN_ENFORCE(platform::dynload::cudnnRNNBackwardData(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardData(
         handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
         cudnn_rnn_cache->y_desc_, out_data, cudnn_rnn_cache->dy_desc_,
         out_grad_data, cudnn_rnn_cache->dhy_desc_, last_h_grad_data,
@@ -242,7 +242,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
         cudnn_rnn_cache->workspace_size_, reserve_data,
         cudnn_rnn_cache->reserve_size_));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnRNNBackwardWeights(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
         handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
         cudnn_rnn_cache->x_desc_, input->data<T>(), cudnn_rnn_cache->hx_desc_,
         init_h->data<T>(), cudnn_rnn_cache->y_desc_, out->data<T>(),

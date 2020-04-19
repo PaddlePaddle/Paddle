@@ -30,18 +30,31 @@ class SequencePoolKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<Tensor>("Out");
+    auto* out = context.Output<LoDTensor>("Out");
     std::string pooltype = context.Attr<std::string>("pooltype");
+    T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto dims = in->dims();
     auto lod = in->lod();
+    auto lod_level = lod.size();
     // InferShape by lod
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
+    PADDLE_ENFORCE_GT(lod_level, 0, platform::errors::InvalidArgument(
+                                        "Input(X) Tensor of SequencePoolOp "
+                                        "does not contain LoD information."));
+    PADDLE_ENFORCE_LE(lod_level, 2UL,
+                      "The lod level of input shall be no more than 2.");
     PADDLE_ENFORCE_GE(
         dims[0],
-        /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
+        /*batch size = */ static_cast<int64_t>(lod[lod_level - 1].size() - 1),
         "The first dimension of Input(X) must be large than batch size.");
-    dims[0] = lod[0].size() - 1;
+    if (lod_level > 1UL) {
+      PADDLE_ENFORCE_EQ(lod[0][lod[0].size() - 1], lod[1].size() - 1,
+                        "The input lod information is illegal.");
+      framework::LoD out_lod;
+      out_lod.push_back(lod[0]);
+      out->set_lod(out_lod);
+    }
+    dims[0] = lod[lod_level - 1].size() - 1;
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
     Tensor* index = nullptr;
@@ -58,8 +71,8 @@ class SequencePoolKernel : public framework::OpKernel<T> {
       index->mutable_data<int>(context.GetPlace());
     }
     math::SequencePoolFunctor<DeviceContext, T> pool;
-    pool(context.template device_context<DeviceContext>(), pooltype, *in, out,
-         is_test, index);
+    pool(context.template device_context<DeviceContext>(), pooltype, pad_value,
+         *in, out, is_test, index);
   }
 };
 
@@ -67,7 +80,7 @@ template <typename DeviceContext, typename T>
 class SequencePoolGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out_g = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     std::string pooltype = context.Attr<std::string>("pooltype");
     const Tensor* index = nullptr;

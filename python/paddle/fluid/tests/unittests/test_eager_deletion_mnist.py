@@ -14,7 +14,9 @@
 
 import os
 import unittest
-os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
+import paddle.fluid as fluid
+
+fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 # FIXME(zjl): It seems that this unittest fails randomly 
 # when comparing all reduce last loss and reduce last loss

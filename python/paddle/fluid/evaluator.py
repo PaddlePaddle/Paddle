@@ -22,6 +22,7 @@ from .framework import Program, Variable, program_guard
 from . import unique_name
 from .layer_helper import LayerHelper
 from .initializer import Constant
+from .layers import detection
 
 __all__ = [
     'ChunkEvaluator',
@@ -223,7 +224,7 @@ class EditDistance(Evaluator):
 
     Args:
         input: the sequences predicted by network.
-        label: the target sequences which must has same sequence count
+        label: the target sequences which must have same sequence count
         with input.
         ignored_tokens(list of int): Tokens that should be removed before
         calculating edit distance.
@@ -262,7 +263,7 @@ class EditDistance(Evaluator):
 
         zero = layers.fill_constant(shape=[1], value=0.0, dtype='float32')
         compare_result = layers.equal(distances, zero)
-        compare_result_int = layers.cast(x=compare_result, dtype='int')
+        compare_result_int = layers.cast(x=compare_result, dtype='int64')
         seq_right_count = layers.reduce_sum(compare_result_int)
         instance_error_count = layers.elementwise_sub(
             x=seq_num, y=seq_right_count)
@@ -323,11 +324,11 @@ class DetectionMAP(Evaluator):
         class_num (int): The class number.
         background_label (int): The index of background label, the background
             label will be ignored. If set to -1, then all categories will be
-            considered, 0 by defalut.
+            considered, 0 by default.
         overlap_threshold (float): The threshold for deciding true/false
-            positive, 0.5 by defalut.
+            positive, 0.5 by default.
         evaluate_difficult (bool): Whether to consider difficult ground truth
-            for evaluation, True by defalut. This argument does not work when
+            for evaluation, True by default. This argument does not work when
             gt_difficult is None.
         ap_version (string): The average precision calculation ways, it must be
             'integral' or '11point'. Please check
@@ -374,7 +375,7 @@ class DetectionMAP(Evaluator):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
-        map = layers.detection_map(
+        map = detection.detection_map(
             input,
             label,
             class_num,
@@ -396,7 +397,7 @@ class DetectionMAP(Evaluator):
         self.has_state = var
 
         # calculate accumulative mAP
-        accum_map = layers.detection_map(
+        accum_map = detection.detection_map(
             input,
             label,
             class_num,

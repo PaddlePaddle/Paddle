@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -23,14 +24,25 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequencePoolOp should not be null.");
+
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      auto in_lod_level = ctx->GetLoDLevel("X");
+      PADDLE_ENFORCE_GT(
+          in_lod_level, 0,
+          "The LoD level Input(X) of sequence_pool should be larger than 0.");
+      ctx->SetLoDLevel("Out", in_lod_level - 1);
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-      PADDLE_ENFORCE(ctx->HasOutput("MaxIndex"),
-                     "Output(MaxIndex) of SequencePoolOp should not be null.");
+      PADDLE_ENFORCE_EQ(
+          ctx->HasOutput("MaxIndex"), true,
+          "Output(MaxIndex) of SequencePoolOp should not be null.");
       ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
     }
   }
@@ -42,7 +54,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
               "(Tensor) The output of SequencePoolOp does not contain LoD "
-              "infomation.");
+              "information.");
     AddOutput("MaxIndex",
               "(Tensor<int>) This tensor is used for the sequence max-pooling "
               "to record the max indexes.")
@@ -56,6 +68,9 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE")
         .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
+    AddAttr<float>("pad_value",
+                   "(float, default 0.0) The value to pad for empty sequence.")
+        .SetDefault(0.0);
     AddComment(R"DOC(
 Sequence Pool Operator.
 
@@ -68,6 +83,8 @@ It supports six pooling types:
 5. FIRST:   Out[i] = first instance in i-th sequence X[i]
 6. MAX:     $$Out[i] = max(X_i)$$
 
+and for the empty sequence Out[i] = attr(pad_value).
+
 The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
 containing 2, 3, and 2 time-steps:
@@ -76,7 +93,7 @@ Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-Thus, Out is a [3,1,1] Tensor without LoD infomation.
+Thus, Out is a [3,1,1] Tensor without LoD information.
 And for different pooltype, the value of Out is as follows:
 
 - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -96,9 +113,10 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Gradient of Out should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "The input X should not be null.");
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
@@ -114,37 +132,43 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
   }
 };
 
-class SequencePoolGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    if (boost::get<std::string>(GetAttr("pooltype")) == "MAX") {
-      op_desc_ptr->SetInput("MaxIndex", Output("MaxIndex"));
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    if (boost::get<std::string>(this->GetAttr("pooltype")) == "MAX") {
+      op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
     }
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
-                  ops::SequencePoolGradOpMaker);
-REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp);
+                  ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
+                  ops::SequencePoolGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_pool,
     ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>);

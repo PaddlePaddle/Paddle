@@ -74,7 +74,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     else:
         # Avoid sorting possibly large arrays;
         # First partition to get top K unsorted
-        # and then sort just thoes
+        # and then sort just those
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
@@ -281,7 +281,9 @@ class TestGenerateProposalsOp(OpTest):
 
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.lod]),
-            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod]),
+            'RpnRoisLod': (np.asarray(
+                self.lod, dtype=np.int32))
         }
 
     def test_check_output(self):

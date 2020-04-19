@@ -17,6 +17,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
+import sys
 import threading
 
 from ..data_feeder import DataFeeder
@@ -28,11 +29,13 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+from ..transpiler.distribute_transpiler import DistributedMode
+import logging
+from ..data_feeder import check_dtype, check_type
 
 __all__ = [
-    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'py_reader', 'create_py_reader_by_data',
-    'Preprocessor', 'load'
+    'data', 'read_file', 'double_buffer', 'py_reader',
+    'create_py_reader_by_data', 'load'
 ]
 
 
@@ -46,39 +49,69 @@ def data(name,
     """
     **Data Layer**
 
-    This function takes in the input and based on whether data has
-    to be returned back as a minibatch, it creates the global variable by using
-    the helper functions. The global variables can be accessed by all the
-    following operators in the graph.
+    This operator creates the global variable. The global variables can be
+    accessed by all the following operators in the graph.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Note: 
+        :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
+        a later version. Please use :code:`paddle.fluid.data` .
+
+        This :code:`paddle.fluid.layers.data` set shape and dtype at compile
+        time but does NOT check the shape or the dtype of fed data, the
+        :code:`paddle.fluid.data` checks the shape and the dtype of data fed 
+        by Executor or ParallelExecutor during run time.
+
+        To feed variable size inputs, users can feed variable size inputs
+        directly to this :code:`paddle.fluid.layers.data` and PaddlePaddle will
+        fit the size accordingly. Or set -1 on the variable dimension when using
+        :code:`paddle.fluid.data` .
+
+        The default :code:`stop_gradient` attribute of the Variable created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
 
     Args:
-       name(str): The name/alias of the function
-       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
-                    True and there is no -1 inside :code:`shape`, it should be 
-                    considered as the shape of the each sample. Otherwise, it
-                    should be considered as the shape of the batched data.  
+       name(str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
+       shape(list|tuple): Tuple declaring the shape. If :code:`append_batch_size` is
+            True and there is no -1 inside :code:`shape`, it should be 
+            considered as the shape of the each sample. Otherwise, it should
+            be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
-            For example if shape=[1], the resulting shape is [-1, 1].
-          2. If shape contains -1, such as shape=[1, -1],
-            append_batch_size will be enforced to be be False (ineffective).
-       dtype(basestring): The type of data : float32, float_16, int etc
-       type(VarType): The output type. By default it is LOD_TENSOR.
+            For example if shape=[1], the resulting shape is [-1, 1]. This will 
+            be useful to set different batch size at run time.
+          2. If shape contains -1, such as shape=[1, -1].
+            append_batch_size will be enforced to be be False (ineffective)
+            because PaddlePaddle cannot set more than 1 unknown number on the
+            shape.
+       dtype(np.dtype|VarType|str): The type of the data. Supported dtype: bool,
+            float16, float32, float64, int8, int16, int32, int64, uint8.
+       type(VarType): The output type. Supported dtype: VarType.LOD_TENSOR,
+            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR. 
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
+            Default: 0.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
+            Default: True. 
 
     Returns:
-        Variable: The global variable that gives access to the data.
+        The global variable that gives access to the data.
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
 
+          import paddle.fluid as fluid
           data = fluid.layers.data(name='x', shape=[784], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
+
+    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
     shape = list(shape)
     for i in six.moves.range(len(shape)):
         if shape[i] is None:
@@ -139,6 +172,7 @@ class ListenAndServ(object):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             with fluid.program_guard(main):
                 serv = layers.ListenAndServ(
                     "127.0.0.1:6170", ["X"], optimizer_mode=False)
@@ -212,7 +246,8 @@ class ListenAndServ(object):
                 'optimize_blocks': [
                     current_block
                 ],  # did not support multiple optimize blocks in layers
-                'sync_mode': True,  # did not support async now in layers
+                'distributed_mode':
+                DistributedMode.SYNC,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
 
@@ -223,7 +258,7 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
     side when server have finished running server side program.
 
     Args:
-        endpoints (str): comma seperated IP:PORT pairs in the order
+        endpoints (str): comma separated IP:PORT pairs in the order
                    of send_vars to send
         send_vars (list): variables to send to server
         sync (bool): whether to wait the request finish
@@ -266,7 +301,7 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     Receive variables from server side
 
     Args:
-        endpoints (str): comma seperated IP:PORT pairs in the order
+        endpoints (str): comma separated IP:PORT pairs in the order
                    of send_vars to send
         get_vars (list): vars to get from server after send completes.
         sync (bool): whether to wait the request finish
@@ -350,136 +385,6 @@ def _copy_reader_create_op_(block, op):
     return new_op
 
 
-@templatedoc(op_type='create_recordio_file_reader')
-def open_recordio_file(filename,
-                       shapes,
-                       lod_levels,
-                       dtypes,
-                       pass_num=1,
-                       for_parallel=True):
-    """
-    ${comment}
-
-    Args:
-       filename(${filename_type}): ${filename_comment}.
-       shapes(list): List of tuples which declaring data shapes.
-       lod_levels(${lod_levels_type}): ${lod_levels_comment}.
-       dtypes(list): List of strs which declaring data type.
-       pass_num(int): Number of passes to run.
-       for_parallel(Bool): Set it as True if you are going to run
-            subsequent operators in parallel.
-
-    Returns:
-       ${out_comment}.
-
-    Examples:
-
-        >>> import paddle.fluid as fluid
-        >>> reader = fluid.layers.io.open_recordio_file(
-        >>>                               filename='./data.recordio',
-        >>>                               shapes=[(3,224,224), (1)],
-        >>>                               lod_levels=[0, 0],
-        >>>                               dtypes=['float32', 'int64'])
-        >>> # Via the reader, we can use 'read_file' layer to get data:
-        >>> image, label = fluid.layers.io.read_file(reader)
-    """
-    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
-    shape_concat = []
-    ranks = []
-
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
-
-    var_name = unique_name('open_recordio_file')
-
-    startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
-        type='create_recordio_file_reader',
-        outputs={'Out': [startup_var]},
-        attrs={
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'filename': filename,
-            'ranks': ranks
-        })
-
-    startup_var.desc.set_dtypes(dtypes)
-    startup_var.persistable = True
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
-
-    if pass_num > 1:
-        main_prog_var = multi_pass(reader=main_prog_var, pass_num=pass_num)
-
-    return monkey_patch_reader_methods(main_prog_var)
-
-
-def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
-    """
-    Create a uniform random data generator
-
-    This layer returns a Reader Variable.
-    Instead of opening a file and reading data from it, this
-    Reader Variable generates float uniform random data by itself.
-    It can be used as a dummy reader to test a network without
-    opening a real file.
-
-    Args:
-       low(float): The lower bound of data's uniform distribution.
-       high(float): The upper bound of data's uniform distribution.
-       shapes(list): List of tuples which declaring data shapes.
-       lod_levels(list): List of ints which declaring data lod_level.
-       for_parallel(Bool): Set it as True if you are going to run
-            subsequent operators in parallel.
-
-    Returns:
-       Variable: A Reader Variable from which we can get random data.
-
-    Examples:
-
-        .. code-block:: python
-
-            reader = fluid.layers.random_data_generator(
-                                             low=0.0,
-                                             high=1.0,
-                                             shapes=[[3,224,224], [1]],
-                                             lod_levels=[0, 0])
-            # Via the reader, we can use 'read_file' layer to get data:
-            image, label = fluid.layers.read_file(reader)
-    """
-    dtypes = [core.VarDesc.VarType.FP32] * len(shapes)
-    shape_concat = []
-    ranks = []
-
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
-
-    var_name = unique_name('random_data_generator')
-
-    startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=var_name)
-    startup_blk.append_op(
-        type='create_random_data_generator',
-        outputs={'Out': [startup_var]},
-        attrs={
-            'low': low,
-            'high': high,
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'ranks': ranks
-        })
-
-    startup_var.desc.set_dtypes(dtypes)
-    startup_var.persistable = True
-    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
-                                      startup_var)
-
-    return monkey_patch_reader_methods(main_prog_var)
-
-
 def _py_reader(capacity,
                shapes,
                dtypes,
@@ -497,6 +402,7 @@ def _py_reader(capacity,
         shape_concat = []
         ranks = []
         shapes = []
+        need_check_feed = []
 
         for feed_data in feed_list:
             dtypes.append(feed_data.dtype)
@@ -504,8 +410,10 @@ def _py_reader(capacity,
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
             lod_levels.append(feed_data.lod_level)
+            need_check_feed.append(int(feed_data.desc.need_check_feed()))
     else:
         dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+        need_check_feed = [0 for dt in dtypes]
         shape_concat = []
         ranks = []
 
@@ -515,7 +423,7 @@ def _py_reader(capacity,
 
         if lod_levels is None:
             lod_levels = [0] * len(shapes)
-
+    dtype_int = [int(t) for t in dtypes]
     if name is None:
         queue_name = unique_name('lod_tensor_blocking_queue')
         reader_name = unique_name('create_py_reader')
@@ -526,7 +434,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, False)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -537,6 +445,8 @@ def _py_reader(capacity,
         attrs={
             'shape_concat': shape_concat,
             'lod_levels': lod_levels,
+            'dtypes': dtype_int,
+            'need_check_feed': need_check_feed,
             'ranks': ranks
         })
 
@@ -563,22 +473,27 @@ def _py_reader(capacity,
 
     def start_provide_thread(func):
         def __provider_thread__():
-            for tensors in func():
-                array = core.LoDTensorArray()
-                for item in tensors:
-                    if not isinstance(item, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        tmp.set(item, core.CPUPlace())
-                        item = tmp
+            try:
+                for tensors in func():
+                    array = core.LoDTensorArray()
+                    for item in tensors:
+                        if not isinstance(item, core.LoDTensor):
+                            tmp = core.LoDTensor()
+                            tmp.set(item, core.CPUPlace())
+                            item = tmp
 
-                    array.append(item)
+                        array.append(item)
 
-                if reader.exited:
-                    break
-                feed_queue.push(array)
-                if reader.exited:
-                    break
-            feed_queue.close()
+                    if reader.exited:
+                        break
+                    feed_queue.push(array)
+                    if reader.exited:
+                        break
+                feed_queue.close()
+            except Exception as ex:
+                feed_queue.kill()
+                logging.warn('Your decorated reader has raised an exception!')
+                six.reraise(*sys.exc_info())
 
         reader.thread = threading.Thread(target=__provider_thread__)
         reader.thread.daemon = True
@@ -628,6 +543,9 @@ def _py_reader(capacity,
     reader.reset = __reset__
     reader.decorate_tensor_provider = __set_tensor_provider__
     reader.decorate_paddle_reader = __set_paddle_reader__
+
+    reader.decorate_batch_generator = __set_tensor_provider__
+    reader.decorate_sample_list_generator = __set_paddle_reader__
     reader.start = __start__
 
     return reader
@@ -642,121 +560,157 @@ def py_reader(capacity,
     """
     Create a Python reader for data feeding in Python
 
-    This layer returns a Reader Variable.
+    This operator returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source in Python side. When :code:`Executor::Run()` is invoked in C++
-    side, the data from the generator would be read automatically. Unlike
-    :code:`DataFeeder.feed()`, the data reading process and
-    :code:`Executor::Run()` process can run in parallel using
-    :code:`py_reader`. The :code:`start()` method of the Reader should be
-    called when each pass begins, while the :code:`reset()` method should be
-    called when the pass ends and :code:`fluid.core.EOFException` raises.
-    Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
+    source and feed the data from the data source to the Reader Variable. 
+    When :code:`Executor::Run()` is invoked in C++ side, the data from the 
+    generator would be read automatically. Unlike :code:`DataFeeder.feed()`,
+    the data reading process and :code:`Executor::Run()` process can run in 
+    parallel using :code:`py_reader`. The :code:`start()` method of the Reader
+    should be called when each pass begins, while the :code:`reset()` method 
+    should be called when the pass ends and :code:`fluid.core.EOFException` raises.
+
+    Note:
+       :code:`Program.clone()` method cannot clone :code:`py_reader`. You can 
+       refer to :ref:`api_fluid_Program` for more details.
+       
+       The :code:`read_file` call needs to be in the program block of :code:`py_reader`.
+       You can refer to :ref:`api_fluid_layers_read_file` for more details.
 
     Args:
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       shapes(list|tuple): List of tuples which declaring data shapes.
-       dtypes(list|tuple): List of strs which declaring data type.
+       shapes(list|tuple): List of tuples which declaring data shapes. shapes[i] 
+            represents the i-th data shape.
+       dtypes(list|tuple): List of strings which declaring data type. Supported dtype:
+            bool, float16, float32, float64, int8, int16, int32, int64, uint8.
        lod_levels(list|tuple): List of ints which declaring data lod_level.
-       name(basestring): The prefix Python queue name and Reader name. None will
-            be generated automatically.
-       use_double_buffer(bool): Whether use double buffer or not.
+       name(basestring): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+       use_double_buffer(bool): Whether use double buffer or not. The double buffer is 
+            for pre-reading the data of the next batch and copy the data asynchronously 
+            from CPU to GPU. Default is True.
 
     Returns:
-       Variable: A Reader from which we can get feeding data.
+       A Reader from which we can get feeding data.
+
+    Return Type:
+       Variable
 
     Examples:
+       1. The basic usage of :code:`py_reader` is as follows:
+       
+       .. code-block:: python
+    
+         import paddle
+         import paddle.fluid as fluid
+         import paddle.dataset.mnist as mnist
 
-        1. The basic usage of :code:`py_reader` is as follows:
+         def network(image, label):
+             # user defined network, here a softmax regession example
+             predict = fluid.layers.fc(input=image, size=10, act='softmax')
+             return fluid.layers.cross_entropy(input=predict, label=label)
 
-        >>> import paddle.fluid as fluid
-        >>> import paddle.dataset.mnist as mnist
-        >>>
-        >>> reader = fluid.layers.py_reader(capacity=64,
-        >>>                                 shapes=[(-1,3,224,224), (-1,1)],
-        >>>                                 dtypes=['float32', 'int64'])
-        >>> reader.decorate_paddle_reader(
-        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
-        >>>
-        >>> img, label = fluid.layers.read_file(reader)
-        >>> loss = network(img, label) # some network definition
-        >>>
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
-        >>>
-        >>> exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-        >>> for epoch_id in range(10):
-        >>>     reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             exe.run(fetch_list=[loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         reader.reset()
+         reader = fluid.layers.py_reader(capacity=64,
+                                         shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                         dtypes=['float32', 'int64'])
+         reader.decorate_paddle_reader(
+             paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                   buf_size=1000))
 
-        2. When training and testing are both performed, two different
-        :code:`py_reader` should be created with different names, e.g.:
+         img, label = fluid.layers.read_file(reader)
+         loss = network(img, label)
 
-        >>> import paddle.fluid as fluid
-        >>> import paddle.dataset.mnist as mnist
-        >>>
-        >>> def network(reader):
-        >>>     img, label = fluid.layers.read_file(reader)
-        >>>     # Here, we omitted the network definition
-        >>>     return loss
-        >>>
-        >>> train_reader = fluid.layers.py_reader(capacity=64,
-        >>>                                       shapes=[(-1,3,224,224), (-1,1)],
-        >>>                                       dtypes=['float32', 'int64'],
-        >>>                                       name='train_reader')
-        >>> train_reader.decorate_paddle_reader(
-        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
-        >>>
-        >>> test_reader = fluid.layers.py_reader(capacity=32,
-        >>>                                      shapes=[(-1,3,224,224), (-1,1)],
-        >>>                                      dtypes=['float32', 'int64'],
-        >>>                                      name='test_reader')
-        >>> test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
-        >>>
-        >>> # Create train_main_prog and train_startup_prog
-        >>> train_main_prog = fluid.Program()
-        >>> train_startup_prog = fluid.Program()
-        >>> with fluid.program_guard(train_main_prog, train_startup_prog):
-        >>>     # Use fluid.unique_name.guard() to share parameters with test program
-        >>>     with fluid.unique_name.guard():
-        >>>         train_loss = network(train_reader) # some network definition
-        >>>         adam = fluid.optimizer.Adam(learning_rate=0.01)
-        >>>         adam.minimize(loss)
-        >>>
-        >>> # Create test_main_prog and test_startup_prog
-        >>> test_main_prog = fluid.Program()
-        >>> test_startup_prog = fluid.Program()
-        >>> with fluid.program_guard(test_main_prog, test_startup_prog):
-        >>>     # Use fluid.unique_name.guard() to share parameters with train program
-        >>>     with fluid.unique_name.guard():
-        >>>         test_loss = network(test_reader)
-        >>>
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(train_startup_prog)
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(test_startup_prog)
-        >>>
-        >>> train_exe = fluid.ParallelExecutor(use_cuda=True,
-        >>>                 loss_name=train_loss.name, main_program=train_main_prog)
-        >>> test_exe = fluid.ParallelExecutor(use_cuda=True,
-        >>>                 loss_name=test_loss.name, main_program=test_main_prog)
-        >>> for epoch_id in range(10):
-        >>>     train_reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             train_exe.run(fetch_list=[train_loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         train_reader.reset()
-        >>>
-        >>>     test_reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             test_exe.run(fetch_list=[test_loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         test_reader.reset()
+         fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+         exe = fluid.ParallelExecutor(use_cuda=True)
+         for epoch_id in range(10):
+             reader.start()
+             try:
+                 while True:
+                     exe.run(fetch_list=[loss.name])
+             except fluid.core.EOFException:
+                 reader.reset()
+
+         fluid.io.save_inference_model(dirname='./model',
+                                       feeded_var_names=[img.name, label.name],
+                                       target_vars=[loss],
+                                       executor=fluid.Executor(fluid.CUDAPlace(0)))
+
+       2. When training and testing are both performed, two different
+       :code:`py_reader` should be created with different names, e.g.:
+
+       .. code-block:: python
+    
+         import paddle
+         import paddle.fluid as fluid
+         import paddle.dataset.mnist as mnist
+
+         def network(reader):
+             img, label = fluid.layers.read_file(reader)
+             # User defined network. Here a simple regression as example
+             predict = fluid.layers.fc(input=img, size=10, act='softmax')
+             loss = fluid.layers.cross_entropy(input=predict, label=label)
+             return fluid.layers.mean(loss)
+
+         # Create train_main_prog and train_startup_prog
+         train_main_prog = fluid.Program()
+         train_startup_prog = fluid.Program()
+         with fluid.program_guard(train_main_prog, train_startup_prog):
+             # Use fluid.unique_name.guard() to share parameters with test program
+             with fluid.unique_name.guard():
+                 train_reader = fluid.layers.py_reader(capacity=64,
+                                                       shapes=[(-1, 1, 28, 28),
+                                                               (-1, 1)],
+                                                       dtypes=['float32', 'int64'],
+                                                       name='train_reader')
+                 train_reader.decorate_paddle_reader(
+                     paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
+                                           buf_size=500))
+                 train_loss = network(train_reader)  # some network definition
+                 adam = fluid.optimizer.Adam(learning_rate=0.01)
+                 adam.minimize(train_loss)
+
+         # Create test_main_prog and test_startup_prog
+         test_main_prog = fluid.Program()
+         test_startup_prog = fluid.Program()
+         with fluid.program_guard(test_main_prog, test_startup_prog):
+             # Use fluid.unique_name.guard() to share parameters with train program
+             with fluid.unique_name.guard():
+                 test_reader = fluid.layers.py_reader(capacity=32,
+                                                      shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                                      dtypes=['float32', 'int64'],
+                                                      name='test_reader')
+                 test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
+                 test_loss = network(test_reader)
+
+         fluid.Executor(fluid.CUDAPlace(0)).run(train_startup_prog)
+         fluid.Executor(fluid.CUDAPlace(0)).run(test_startup_prog)
+
+         train_exe = fluid.ParallelExecutor(use_cuda=True,
+                                            loss_name=train_loss.name,
+                                            main_program=train_main_prog)
+         test_exe = fluid.ParallelExecutor(use_cuda=True,
+                                           loss_name=test_loss.name,
+                                           main_program=test_main_prog)
+         for epoch_id in range(10):
+             train_reader.start()
+             try:
+                 while True:
+                    train_exe.run(fetch_list=[train_loss.name])
+             except fluid.core.EOFException:
+                 train_reader.reset()
+
+         test_reader.start()
+         try:
+             while True:
+                 test_exe.run(fetch_list=[test_loss.name])
+         except fluid.core.EOFException:
+             test_reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -771,50 +725,72 @@ def create_py_reader_by_data(capacity,
                              name=None,
                              use_double_buffer=True):
     """
-    Create a Python reader for data feeding in Python
+    The OP creates a Python reader for data feeding in Python, it is similar
+    to :ref:`api_fluid_layers_py_reader` except that it can read data from
+    the list of feed variables.
 
-    This layer returns a Reader Variable.
-
-    Works much like py_reader except that it's input is feed_list
-    instead of shapes, dtypes and lod_levels
-
-    Args:
-       capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       feed_list(list(Variable)): The data feed list.
-       name(basestring): The prefix Python queue name and Reader name. None will
-            be generated automatically.
-       use_double_buffer(bool): Whether use double buffer or not.
+    Parameters:
+        capacity (int): The buffer capacity maintained by :code:`py_reader`. Its unit
+            is batch number. Set larger :attr:`capacity` if the reader is fast.
+        feed_list (list(Variable)): The feed variables, are usually created by
+            :code:`fluid.data()`.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`. Default: None.
+        use_double_buffer (bool, optional): Whether use double buffer. If it's True,
+            the OP would prefetch next batch data asynchronously. Default: True.
 
     Returns:
-       Variable: A Reader from which we can get feeding data.
+        Reader: A Reader for data feeding. The data types of read data are the same as the data types of variables of :attr:`feed_list`.
 
     Examples:
+        .. code-block:: python
 
-        1. The basic usage of :code:`py_reader` is as follows:
+          import paddle
+          import paddle.fluid as fluid
+          import paddle.dataset.mnist as mnist
 
-        >>> import paddle.fluid as fluid
-        >>> import paddle.dataset.mnist as mnist
-        >>>
-        >>> image = fluid.layers.data(name='image', shape=[3,224,224], dtypes='float32')
-        >>> label = fluid.layers.data(name='label', shape=[1], dtypes='int64')
-        >>> reader = fluid.layers.create_py_reader_by_data(capacity=64, feed_list=[image, label])
-        >>> reader.decorate_paddle_reader(
-        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
-        >>>
-        >>> img, label = fluid.layers.read_file(reader)
-        >>> loss = network(img, label) # some network definition
-        >>>
-        >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
-        >>>
-        >>> exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
-        >>> for epoch_id in range(10):
-        >>>     reader.start()
-        >>>     try:
-        >>>         while True:
-        >>>             exe.run(fetch_list=[loss.name])
-        >>>     except fluid.core.EOFException:
-        >>>         reader.reset()
+          def network(img, label):
+              # User defined network. Here a simple regression as example
+              predict = fluid.layers.fc(input=img, size=10, act='softmax')
+              loss = fluid.layers.cross_entropy(input=predict, label=label)
+              return fluid.layers.mean(loss)
+
+          MEMORY_OPT = False
+          USE_CUDA = False
+
+          image = fluid.data(name='image', shape=[None, 1, 28, 28], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+          reader = fluid.layers.create_py_reader_by_data(capacity=64,
+                                                         feed_list=[image, label])
+          reader.decorate_paddle_reader(
+              paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5), buf_size=500))
+          img, label = fluid.layers.read_file(reader)
+          loss = network(img, label) # The definition of custom network and the loss function
+
+          place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
+          exe = fluid.Executor(place)
+          exe.run(fluid.default_startup_program())
+
+          build_strategy = fluid.BuildStrategy()
+          build_strategy.memory_optimize = True if MEMORY_OPT else False
+          exec_strategy = fluid.ExecutionStrategy()
+          compiled_prog = fluid.compiler.CompiledProgram(
+          fluid.default_main_program()).with_data_parallel(
+              loss_name=loss.name,
+              build_strategy=build_strategy,
+              exec_strategy=exec_strategy)
+
+          for epoch_id in range(2):
+          reader.start()
+          try:
+              while True:
+                  exe.run(compiled_prog, fetch_list=[loss.name])
+          except fluid.core.EOFException:
+              reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=None,
@@ -823,97 +799,6 @@ def create_py_reader_by_data(capacity,
         name=name,
         use_double_buffer=use_double_buffer,
         feed_list=feed_list)
-
-
-def open_files(filenames,
-               shapes,
-               lod_levels,
-               dtypes,
-               thread_num=None,
-               buffer_size=None,
-               pass_num=1,
-               is_test=None):
-    """
-    Open files
-
-    This layer takes a list of files to read from and returns a Reader Variable.
-    Via the Reader Variable, we can get data from given files. All files must
-    have name suffixs to indicate their formats, e.g., '*.recordio'.
-
-    Args:
-       filenames(list): The list of file names.
-       shapes(list): List of tuples which declaring data shapes.
-       lod_levels(list): List of ints which declaring data lod_level.
-       dtypes(list): List of strs which declaring data type.
-       thread_num(None): The number of thread to read files.
-            Default: min(len(filenames), cpu_number).
-       buffer_size(None): The buffer size of reader. Default: 3 * thread_num
-       pass_num(int): Number of passes to run.
-       is_test(bool|None): Whether `open_files` used for testing or not. If it
-            is used for testing, the order of data generated is same as the file
-            order. Otherwise, it is not guaranteed the order of data is same
-            between every epoch. [Default: False].
-
-    Returns:
-       Variable: A Reader Variable via which we can get file data.
-
-    Examples:
-       .. code-block:: python
-
-         reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
-                                                     './data2.recordio'],
-                                             shapes=[(3,224,224), (1)],
-                                             lod_levels=[0, 0],
-                                             dtypes=['float32', 'int64'])
-
-         # Via the reader, we can use 'read_file' layer to get data:
-         image, label = fluid.layers.io.read_file(reader)
-    """
-    if thread_num is None:
-        thread_num = min(len(filenames), multiprocessing.cpu_count())
-    else:
-        thread_num = int(thread_num)
-
-    if buffer_size is None:
-        buffer_size = 3 * thread_num
-    else:
-        buffer_size = int(buffer_size)
-
-    if isinstance(filenames, six.string_types):
-        filenames = [filenames]
-    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
-    shape_concat = []
-    ranks = []
-
-    for shape in shapes:
-        shape_concat.extend(shape)
-        ranks.append(len(shape))
-
-    multi_file_reader_name = unique_name('multi_file_reader')
-    startup_blk = default_startup_program().current_block()
-    startup_reader = startup_blk.create_var(name=multi_file_reader_name)
-    attrs = {
-        'shape_concat': shape_concat,
-        'lod_levels': lod_levels,
-        'ranks': ranks,
-        'file_names': filenames,
-        'thread_num': thread_num,
-        'buffer_size': buffer_size
-    }
-    if is_test is not None:
-        attrs['is_test'] = is_test
-    startup_blk.append_op(
-        type='open_files', outputs={'Out': [startup_reader]}, attrs=attrs)
-
-    startup_reader.desc.set_dtypes(dtypes)
-    startup_reader.persistable = True
-    main_prog_reader = _copy_reader_var_(default_main_program().current_block(),
-                                         startup_reader)
-    if pass_num > 1:
-        main_prog_reader = multi_pass(
-            reader=main_prog_reader, pass_num=pass_num)
-
-    return monkey_patch_reader_methods(main_prog_reader)
 
 
 def __create_shared_decorated_reader__(op_type, reader, attrs):
@@ -944,87 +829,29 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
     return monkey_patch_reader_methods(new_reader)
 
 
-def shuffle(reader, buffer_size):
-    """
-    Creates a data reader whose data output is shuffled.
-    Output from the iterator that created by original reader will be
-    buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
-    is determined by argument buf_size.
-
-    Args:
-        reader(callable): the original reader whose output will be shuffled.
-        buf_size(int): shuffle buffer size.
-
-    Returns:
-        callable: the new reader whose output is shuffled.
-    """
-    return __create_unshared_decorated_reader__(
-        'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
-
-
-def batch(reader, batch_size):
-    """
-    This layer is a reader decorator. It takes a reader and adds
-    'batching' decoration on it. When reading with the result
-    decorated reader, output data will be automatically organized
-    to the form of batches.
-
-    Args:
-        reader(Variable): The reader to be decorated with 'batching'.
-        batch_size(int): The batch size.
-
-    Returns:
-        Variable: The reader which has been decorated with 'batching'.
-
-    Examples:
-        .. code-block:: python
-
-            raw_reader = fluid.layers.io.open_files(filenames=['./data1.recordio',
-                                                           './data2.recordio'],
-                                                    shapes=[(3,224,224), (1)],
-                                                    lod_levels=[0, 0],
-                                                    dtypes=['float32', 'int64'],
-                                                    thread_num=2,
-                                                    buffer_size=2)
-            batch_reader = fluid.layers.batch(reader=raw_reader, batch_size=5)
-
-            # If we read data with the raw_reader:
-            #     data = fluid.layers.read_file(raw_reader)
-            # We can only get data instance by instance.
-            #
-            # However, if we read data with the batch_reader:
-            #     data = fluid.layers.read_file(batch_reader)
-            # Each 5 adjacent instances will be automatically combined together
-            # to become a batch. So what we get('data') is a batch data instead
-            # of an instance.
-    """
-    return __create_unshared_decorated_reader__(
-        'create_batch_reader', reader, {'batch_size': int(batch_size)})
-
-
 def double_buffer(reader, place=None, name=None):
     """
-    Wrap a double buffer reader. The data will copy to target place with a
-    double buffer queue. If the target place is None, the place that executor
-    perform on will be used.
+    Wrap a double buffer reader. The class Reader contains DecoratedReader and FileReader. Moreover, the DecoratedReader is inherited by CustomReader and BufferedReader. This function is related to BufferedReader. The data will copy to target place with a double buffer queue. If the target place is None, the place that executor perform on will be used.
+
 
     Args:
-        reader(Variable): the reader variable need to be wrapped.
-        place(Place): the place of target data. Default is the sample place of
-            executor perform.
-
-        name(str): Variable name. None if the user does not care.
+        reader (Variable): The Reader Variable need to be wrapped.
+        place (Place, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+        name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:
-        wrapped reader with double buffer.
+        Variable(Reader): wrapped reader with double buffer.
 
     Examples:
-
-        >>> reader = fluid.layers.open_files(filenames=['somefile'],
-        >>>                                  shapes=[[-1, 784], [-1, 1]],
-        >>>                                  dtypes=['float32', 'int64'])
-        >>> reader = fluid.layers.double_buffer(reader)
-        >>> img, label = fluid.layers.read_file(reader)
+        ..  code-block:: python
+          
+            import paddle.fluid as fluid
+            reader = fluid.layers.py_reader(capacity=64,
+                                            shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=False)
+            reader = fluid.layers.double_buffer(reader)
+            image, label = fluid.layers.read_file(reader)
     """
     attrs = dict()
     if place is not None:
@@ -1033,37 +860,29 @@ def double_buffer(reader, place=None, name=None):
         'create_double_buffer_reader', reader, attrs, name=name)
 
 
-def multi_pass(reader, pass_num):
-    return __create_shared_decorated_reader__(
-        'create_multi_pass_reader', reader, {'pass_num': int(pass_num)})
-
-
 def read_file(reader):
     """
     Execute the given reader and get data via it.
 
     A reader is also a Variable. It can be a raw reader generated by
     `fluid.layers.open_files()` or a decorated one generated by
-    `fluid.layers.double_buffer()` and so on.
+    `fluid.layers.double_buffer()` .
 
     Args:
 
         reader(Variable): The reader to execute.
 
     Returns:
-        Tuple[Variable]: Data read via the given reader.
+        Tuple[Variable]: Data read from the given reader.
 
     Examples:
         .. code-block:: python
-
-           data_file = fluid.layers.open_files(
-                filenames=['mnist.recordio'],
-                shapes=[(-1, 748), (-1, 1)],
-                lod_levels=[0, 0],
-                dtypes=["float32", "int64"])
-            data_file = fluid.layers.double_buffer(
-                fluid.layers.batch(data_file, batch_size=64))
-            input, label = fluid.layers.read_file(data_file)
+          
+           import paddle.fluid as fluid
+           reader = fluid.layers.py_reader(capacity=64,
+                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                           dtypes=['float32', 'int64'])
+           image, label = fluid.layers.read_file(reader)
     """
     helper = LayerHelper('read_file')
     out = [
@@ -1079,126 +898,28 @@ def read_file(reader):
         return out
 
 
-class Preprocessor(object):
-    """
-    A block for data pre-processing in reader.
-
-    Args:
-        reader (Variable): A reader variable.
-        name (str, default None): The name of the reader.
-
-    Examples:
-          .. code-block:: python
-
-            preprocessor = fluid.layers.io.Preprocessor(reader=reader)
-            with preprocessor.block():
-                img, lbl = preprocessor.inputs()
-                img_out = img / 2
-                lbl_out = lbl + 1
-                preprocessor.outputs(img_out, lbl_out)
-
-            data_file = fluid.layers.io.double_buffer(preprocessor())
-
-    """
-    BEFORE_SUB_BLOCK = 0
-    IN_SUB_BLOCK = 1
-    AFTER_SUB_BLOCK = 2
-
-    def __init__(self, reader, name=None):
-        self.underlying_reader = reader
-        new_reader_name = name if name is not None else unique_name(
-            "create_custom_reader")
-        self.main_prog = default_main_program()
-        self.reader = self.main_prog.current_block().create_var(
-            name=new_reader_name)
-        self.sub_block = None
-        self.source_var_names = None
-        self.sink_var_names = None
-        self.status = Preprocessor.BEFORE_SUB_BLOCK
-
-    def _is_completed(self):
-        return self.sub_block and self.source_var_names and self.sink_var_names
-
-    @signature_safe_contextmanager
-    def block(self):
-        self.status = Preprocessor.IN_SUB_BLOCK
-        self.sub_block = self.main_prog._create_block()
-        yield
-        self.main_prog._rollback()
-        self.status = Preprocessor.AFTER_SUB_BLOCK
-        if not self._is_completed():
-            raise RuntimeError(
-                "The definition of preprocessor is incompleted! "
-                "Please make sure that you have set input and output "
-                "variables by invoking 'inputs' and 'outputs' in "
-                "Preprocessor's sub-block.")
-
-    def inputs(self):
-        if self.status != Preprocessor.IN_SUB_BLOCK:
-            raise RuntimeError(
-                "Preprocessor.inputs() can only be invoked inside the sub-block."
-            )
-
-        source_shapes = self.underlying_reader.desc.shapes()
-        source_dtypes = self.underlying_reader.desc.dtypes()
-        source_lod_levels = self.underlying_reader.desc.lod_levels()
-        self.source_var_names = [
-            unique_name("preprocessor_source")
-            for _ in six.moves.range(len(source_shapes))
-        ]
-        source_vars = []
-        for var_name, shape, dtype, lod_level in zip(
-                self.source_var_names, source_shapes, source_dtypes,
-                source_lod_levels):
-            source_vars.append(self.main_prog.current_block().create_var(
-                name=var_name, shape=shape, dtype=dtype, lod_level=lod_level))
-        return source_vars
-
-    def outputs(self, *outs):
-        if self.status != Preprocessor.IN_SUB_BLOCK:
-            raise RuntimeError(
-                "Preprocessor.outputs() can only be invoked inside the sub-block."
-            )
-        self.sink_var_names = [var.name for var in outs]
-
-    def __call__(self, *args, **kwargs):
-        if self.status != Preprocessor.AFTER_SUB_BLOCK:
-            raise RuntimeError(
-                "Preprocessor output can only be retrieved after rnn block.")
-
-        self.main_prog.current_block().append_op(
-            type="create_custom_reader",
-            inputs={'UnderlyingReader': self.underlying_reader},
-            outputs={'Out': [self.reader]},
-            attrs={
-                "sub_block": self.sub_block,
-                "source_var_names": self.source_var_names,
-                "sink_var_names": self.sink_var_names
-            })
-        return monkey_patch_reader_methods(self.reader)
-
-
-@templatedoc()
 def load(out, file_path, load_as_fp16=None):
     """
-    ${comment}
-
-    >>> import paddle.fluid as fluid
-    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
-    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
+    Load operator will load a LoDTensor / SelectedRows variable from disk file.
 
     Args:
-        out(${out_type}): ${out_comment}.
+        out(Variable): The LoDTensor / SelectedRows need to be loaded..
 
-        file_path(${file_path_type}): ${file_path_comment}.
+        file_path(STRING): Variable will be loaded from "file_path".
 
-        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
-
+        load_as_fp16(BOOLEAN): If true, the tensor will be first loaded and then converted to float16 data type. Otherwise, the tensor will be directly loaded without data type conversion. Default is false..
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+            fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
     """
     helper = LayerHelper("load", **locals())
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, args=attrs)
+    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)

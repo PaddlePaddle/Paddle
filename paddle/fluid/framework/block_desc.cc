@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/block_desc.h"
+
 #include <queue>
+#include <unordered_set>
+#include <utility>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -155,6 +159,16 @@ void BlockDesc::RemoveOp(size_t s, size_t e) {
   ops_.erase(ops_.begin() + s, ops_.begin() + e);
 }
 
+void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
+  // TODO(minqiyang): make this faster
+  for (auto it = ops_.begin(); it != ops_.end(); ++it) {
+    if (it->get() == op_desc) {
+      ops_.erase(it);
+      break;
+    }
+  }
+}
+
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
   for (const auto &op : ops_) {
@@ -214,9 +228,11 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
 }
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
-  PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
-                 "Parent block ID has been set to %d. Cannot set to %d",
-                 desc_->forward_block_idx(), forward_block_id);
+  PADDLE_ENFORCE_EQ(
+      desc_->has_forward_block_idx(), false,
+      platform::errors::PreconditionNotMet(
+          "Block %d's parent block ID has been set to %d, cannot be set to %d.",
+          desc_->idx(), desc_->forward_block_idx(), forward_block_id));
   desc_->set_forward_block_idx(forward_block_id);
 }
 

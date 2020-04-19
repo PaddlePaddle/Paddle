@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
+#include <memory>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -69,6 +71,12 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("Y", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -131,7 +139,6 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");
 
@@ -143,16 +150,47 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", x_grad_name);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+  }
 };
+
+template <typename T>
+class SequenceExpandAsOpGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("sequence_expand_as_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandAsOpNoNeedBufferVarsInference,
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    SequenceExpandAsGradOpNoNeedBufferVarsInference, "X", "Y");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_expand_as, ops::SequenceExpandAsOp,
-                  ops::SequenceExpandAsOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(sequence_expand_as_grad, ops::SequenceExpandAsOpGrad);
+REGISTER_OPERATOR(
+    sequence_expand_as, ops::SequenceExpandAsOp, ops::SequenceExpandAsOpMaker,
+    ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
+    ops::SequenceExpandAsOpGradOpMaker<paddle::imperative::OpBase>,
+    ops::SequenceExpandAsOpNoNeedBufferVarsInference);
+REGISTER_OPERATOR(sequence_expand_as_grad, ops::SequenceExpandAsOpGrad,
+                  ops::SequenceExpandAsGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     sequence_expand_as,
     ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, float>,

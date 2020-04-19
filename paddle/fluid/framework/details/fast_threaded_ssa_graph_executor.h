@@ -14,7 +14,9 @@
 
 #pragma once
 #include <ThreadPool.h>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
@@ -31,24 +33,41 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   FastThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                                const std::vector<Scope *> &local_scopes,
+                               const std::vector<Scope *> &local_exec_scopes,
                                const std::vector<platform::Place> &places,
-                               std::unique_ptr<ir::Graph> &&graph);
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+                               ir::Graph *graph);
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
   const ir::Graph &Graph() const override;
 
  private:
+  // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
+  // be destroyed first.
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> local_exec_scopes_;
   std::vector<platform::Place> places_;
-  std::unique_ptr<ir::Graph> graph_;
+  ir::Graph *graph_;
 
   std::unordered_map<OpHandleBase *, int> op_deps_;
   std::vector<OpHandleBase *> bootstrap_ops_;
 
-  ::ThreadPool pool_;
-  ::ThreadPool prepare_pool_;
   platform::DeviceContextPool fetch_ctxs_;
   std::atomic<int> remaining_;
+
+  std::future<
+      std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>>
+      atomic_op_deps_;
+  ExceptionHolder exception_;
+
+  ::ThreadPool pool_;
+  ::ThreadPool prepare_pool_;
+
+  std::vector<OpHandleBase *> traced_ops_;
+
+  bool RunOp(OpHandleBase *op,
+             const std::shared_ptr<BlockingQueue<size_t>> &complete_q,
+             size_t *complete);
 
   void RunOpAsync(std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
                   OpHandleBase *op,
@@ -56,10 +75,21 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   void PrepareAtomicOpDeps();
 
-  std::future<
-      std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>>
-      atomic_op_deps_;
-  ExceptionHolder exception_;
+  inline void RecordOps(OpHandleBase *op);
+
+  inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
+
+  inline bool RunOpSync(OpHandleBase *op);
+
+  bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
+
+  void InsertFetchOps(
+      const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
+      std::unordered_map<std::string, std::vector<VarHandleBase *>>
+          *fetched_vars,
+      std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
+      std::vector<OpHandleBase *> *fetch_ops,
+      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
 };
 }  // namespace details
 }  // namespace framework

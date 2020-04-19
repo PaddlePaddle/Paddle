@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/squared_l2_norm_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -24,10 +26,28 @@ class SquaredL2NormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SquaredL2NormOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SquaredL2NormOp");
 
     ctx->SetOutputDim("Out", {1});
+  }
+};
+
+template <typename T>
+class SquaredL2NormGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("squared_l2_norm_grad");
+
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -36,11 +56,11 @@ class SquaredL2NormGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SquaredL2NormGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "SquaredL2NormGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@GRAD", "SquaredL2NormGradOp");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -68,7 +88,8 @@ $$Out = \sum_{i} X_{i}^2$$
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(squared_l2_norm, ops::SquaredL2NormOp,
                   ops::SquaredL2NormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SquaredL2NormGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SquaredL2NormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(squared_l2_norm_grad, ops::SquaredL2NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_norm,

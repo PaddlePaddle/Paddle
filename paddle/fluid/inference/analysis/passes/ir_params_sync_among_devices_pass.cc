@@ -31,6 +31,13 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   // The parameters are on the cpu, therefore, synchronization is not necessary.
   if (!argument->use_gpu()) return;
 
+  auto &graph = argument->main_graph();
+  std::vector<std::string> repetitive_params;
+
+  if (graph.Has(framework::ir::kRepetitiveParamAttr))
+    repetitive_params = graph.Get<std::vector<std::string>>(
+        framework::ir::kRepetitiveParamAttr);
+
   LOG(INFO) << "Sync params from CPU to GPU";
 
   PADDLE_ENFORCE(argument->gpu_device_id_valid());
@@ -43,6 +50,11 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
   // Because there exists the case that new parameter variables are not added to
   // the program in the analysis pass.
   for (auto &var_name : all_vars) {
+    if (std::count(repetitive_params.begin(), repetitive_params.end(),
+                   var_name)) {
+      scope->EraseVars({var_name});
+      continue;
+    }
     auto *var = scope->FindLocalVar(var_name);
     PADDLE_ENFORCE(var != nullptr);
     if (var->IsType<framework::LoDTensor>() ||
@@ -57,7 +69,7 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       // Copy the parameter data to a tmp tensor.
       TensorCopySync(*t, cpu_place, &temp_tensor);
       // Reallocation the space on GPU
-      t->mutable_data<float>(place);
+      t->clear();
 
       // Copy parameter data to newly allocated GPU space.
       TensorCopySync(temp_tensor, place, t);

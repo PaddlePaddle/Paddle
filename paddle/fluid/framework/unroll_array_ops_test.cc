@@ -74,34 +74,9 @@ TEST(unroll_ops, compare) {
   EXPECT_FALSE(UnrollCompare<1>::Run(a, b));
 }
 
-TEST(unroll_ops, add) {
-  int a[] = {2, 3, 4};
-  int b[] = {5, 10, 102};
-  int c[] = {0, 0, 0};
-  UnrollAdd<2>::Run(a, b, c);
-  EXPECT_EQ(a[0] + b[0], c[0]);
-  EXPECT_EQ(a[1] + b[1], c[1]);
-  EXPECT_EQ(c[2], 0);
-}
-
-TEST(unroll_ops, mul) {
-  int a[] = {2, 3, 4};
-  int b[] = {5, 10, 102};
-  int c[] = {0, 0, 0};
-  UnrollMul<2>::Run(a, b, c);
-  EXPECT_EQ(a[0] * b[0], c[0]);
-  EXPECT_EQ(a[1] * b[1], c[1]);
-  EXPECT_EQ(c[2], 0);
-}
-
 TEST(unroll_ops, product) {
   int a[] = {2, 3, 4};
-  int b[] = {5, 10, 102};
-
   EXPECT_EQ(UnrollProduct<3>::Run(a), a[0] * a[1] * a[2]);
-
-  EXPECT_EQ(UnrollProduct<3>::Run(a, b),
-            a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
 }
 
 }  // namespace framework

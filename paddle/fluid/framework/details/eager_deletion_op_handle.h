@@ -15,38 +15,61 @@
 #pragma once
 
 #include <deque>
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/reference_count_pass_helper.h"
+#include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 
 namespace paddle {
 namespace framework {
 class Scope;
 
+namespace ir {
+class MemOptVarInfo;
+}  // namespace ir
+
 namespace details {
 
 class EagerDeletionOpHandle : public OpHandleBase {
  public:
-  EagerDeletionOpHandle(ir::Node *node, const Scope *scope,
+  EagerDeletionOpHandle(ir::Node *node, Scope *scope, size_t scope_idx,
                         const platform::Place &place,
-                        const std::unordered_set<std::string> &var_names,
-                        GarbageCollector *gc,
-                        AtomicReferenceCountMap *ref_cnts);
+                        const std::unordered_set<ir::MemOptVarInfo *> &vars,
+                        GarbageCollector *gc);
 
   ~EagerDeletionOpHandle();
 
   std::string Name() const override;
 
+  /**
+   * Currently, EagerDeletionOpHandle has the highest priority.
+   * This priority settings speed up gc 15% in Transformer
+   * V100 8-GPU model.
+   */
+  Priority GetPriority() const override { return kHighest; }
+
+  size_t GetScopeIdx() const { return scope_idx_; }
+
  protected:
   void RunImpl() override;
+
+  void InitCUDA() override;
+
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
 
  private:
   void ClearGarbages(std::deque<std::shared_ptr<memory::Allocation>> *garbages);
 
-  const Scope *scope_;
-  std::unordered_set<std::string> var_names_;
-  GarbageCollector *gc_;               // not own
-  AtomicReferenceCountMap *ref_cnts_;  // not own
+  void CallOnce();
+
+  Scope *scope_;
+  size_t scope_idx_;
+  platform::Place place_;
+  std::vector<ir::MemOptVarInfo *> var_infos_;  // not own
+  GarbageCollector *gc_;                        // not own
+  std::vector<Variable *> vars_;
 #ifdef PADDLE_WITH_CUDA
   platform::CUDADeviceContext *dev_ctx_{nullptr};
   cudaEvent_t event_{nullptr};

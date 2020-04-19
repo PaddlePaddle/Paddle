@@ -16,10 +16,14 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -52,7 +56,7 @@ class OpConverter {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
       std::string Y = op_desc.Input("Y")[0];
       if (parameters.count(Y)) {
-        it = Registry<OpConverter>::Lookup("fc");
+        it = Registry<OpConverter>::Global().Lookup("fc");
       }
     }
     if (op_desc.Type().find("elementwise") != std::string::npos) {
@@ -69,28 +73,28 @@ class OpConverter {
       if (parameters.count(Y)) {
         PADDLE_ENFORCE(add_weight_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
-        it =
-            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_weight");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_weight");
         PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                                 op_desc.Type());
       } else {
         PADDLE_ENFORCE(add_tensor_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
-        it =
-            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_tensor");
+        it = Registry<OpConverter>::Global().Lookup("elementwise_" + op_type +
+                                                    "_tensor");
       }
       PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                               op_desc.Type());
     }
 
     if (op_desc.Type() == "depthwise_conv2d") {
-      it = Registry<OpConverter>::Lookup("conv2d");
+      it = Registry<OpConverter>::Global().Lookup("conv2d");
       PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                               op_desc.Type());
     }
 
     if (!it) {
-      it = Registry<OpConverter>::Lookup(op_desc.Type());
+      it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
@@ -110,6 +114,76 @@ class OpConverter {
     }
   }
 
+  // The scope  here should be inited with the parameter vars.
+  void ConvertBlockToTRTEngine(
+      framework::BlockDesc* block_desc, const framework::Scope& scope,
+      const std::vector<std::string>& inputs,
+      const std::unordered_set<std::string>& parameters,
+      const std::vector<std::string>& outputs, TensorRTEngine* engine) {
+    engine->InitNetwork();
+    for (auto& input : inputs) {
+      if (parameters.count(input)) continue;
+      auto* var = block_desc->FindVar(input);
+      PADDLE_ENFORCE(var, "no variable called %s", input);
+      PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
+                        "TensorRT engine only takes LoDTensor as input");
+      auto var_shape = var->GetShape();
+      if (engine->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+        auto min_input_shape = engine->min_input_shape()[input];
+        auto max_input_shape = engine->max_input_shape()[input];
+        auto optim_input_shape = engine->optim_input_shape()[input];
+        size_t ranks = min_input_shape.size();
+        std::vector<int64_t> input_shape;
+        input_shape.push_back(-1);
+        for (size_t i = 1; i < ranks; i++) {
+          if (min_input_shape[i] != max_input_shape[i]) {
+            input_shape.push_back(-1);
+          } else {
+            input_shape.push_back(min_input_shape[i]);
+            // the i dimension should be same.
+            PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i],
+                              platform::errors::InvalidArgument(
+                                  "The dim (%d) of the min_input_shape and "
+                                  "optim_input_shape should be same."));
+          }
+        }
+        engine->DeclareInput(
+            input, FluidDataType2TRT(
+                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            Vec2TRT_Dims(input_shape, input, true));
+#endif
+      } else {
+        engine->DeclareInput(
+            input, FluidDataType2TRT(
+                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            Vec2TRT_Dims(var_shape, input));
+      }
+    }
+    framework::proto::BlockDesc* block_proto = block_desc->Proto();
+    ConvertBlock(*block_proto, parameters, scope, engine);
+    for (auto& output : outputs) {
+      engine->DeclareOutput(output);
+    }
+    engine->FreezeNetwork();
+    engine->ClearWeights();
+  }
+
+  void RreplenishLayerAndOutput(
+      nvinfer1::ILayer* layer, const std::string& layer_type,
+      const std::vector<std::string>& output_tensor_names,
+      bool test_mode = false) {
+    size_t num_out = output_tensor_names.size();
+    for (size_t i = 0; i < num_out; i++) {
+      layer->getOutput(i)->setName(output_tensor_names[i].c_str());
+      engine_->SetITensor(output_tensor_names[i], layer->getOutput(i));
+      if (test_mode) {
+        engine_->DeclareOutput(output_tensor_names[i]);
+      }
+    }
+    layer->setName(
+        (layer_type + " (Output: " + output_tensor_names[0] + ")").c_str());
+  }
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
 
   virtual ~OpConverter() {}
@@ -136,9 +210,9 @@ class OpConverter {
 #define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)                      \
   struct trt_##op_type__##_converter : public ::paddle::framework::Registrar { \
     trt_##op_type__##_converter() {                                            \
-      ::paddle::inference::                                                    \
-          Registry<paddle::inference::tensorrt::OpConverter>::Register<        \
-              ::paddle::inference::tensorrt::Converter__>(#op_type__);         \
+      ::paddle::inference::Registry<                                           \
+          paddle::inference::tensorrt::OpConverter>::Global()                  \
+          .Register<::paddle::inference::tensorrt::Converter__>(#op_type__);   \
     }                                                                          \
   };                                                                           \
   trt_##op_type__##_converter trt_##op_type__##_converter__;                   \
@@ -147,7 +221,7 @@ class OpConverter {
     return 0;                                                                  \
   }
 
-#define USE_TRT_CONVERTER(op_type__)                                    \
-  extern int TouchConverterRegister_##op_type__();                      \
-  static int use_op_converter_trt_##op_type__ __attribute__((unused)) = \
+#define USE_TRT_CONVERTER(op_type__)                   \
+  extern int TouchConverterRegister_##op_type__();     \
+  static int use_op_converter_trt_##op_type__ UNUSED = \
       TouchConverterRegister_##op_type__();

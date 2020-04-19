@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -34,7 +34,7 @@ namespace details {
 
 struct BroadcastOpHandle : public OpHandleBase {
  public:
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   BroadcastOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *nccl_ctxs)
@@ -57,18 +57,20 @@ struct BroadcastOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
-  bool IsMultiDeviceTransfer() override { return false; };
+  bool IsMultiDeviceTransfer() override { return true; };
 
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
   void BroadcastOneVar(const VarHandle &in_var_handle,
                        const std::vector<VarHandle *> &out_var_handles,
-                       const std::vector<const Scope *> &var_scopes);
+                       const std::vector<Scope *> &var_scopes);
 
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   const platform::NCCLContextMap *nccl_ctxs_;
 #endif
 

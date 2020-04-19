@@ -59,10 +59,12 @@ yum -y install bzip2 make git patch unzip bison yasm diffutils \
 # /bin/sh cmake-3.8.1-Linux-x86_64.sh --prefix=/usr/local --skip-license
 # rm cmake-3.8.1-Linux-x86_64.sh
 
-wget -q https://cmake.org/files/v3.5/cmake-3.5.2.tar.gz && tar xzf cmake-3.5.2.tar.gz && \
-cd cmake-3.5.2 && ./bootstrap && \
-make -j8 && make install && cd .. && rm cmake-3.5.2.tar.gz
-
+wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz
+tar -zxvf cmake-3.16.0.tar.gz && rm cmake-3.16.0.tar.gz
+cd cmake-3.16.0 && ./bootstrap
+make -j `nproc` && make install
+ln -s /usr/local/bin/cmake /usr/bin/cmake
+PATH=/usr/local/bin:$PATH
 
 # Install newest autoconf
 build_autoconf $AUTOCONF_ROOT $AUTOCONF_HASH
@@ -153,3 +155,9 @@ done
 
 # Restore LD_LIBRARY_PATH
 LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}"
+
+# According to ar issues: https://lists.gnu.org/archive/html/bug-binutils/2016-05/msg00211.html
+# we should install new version ar with 64-bit supported here
+wget https://ftp.gnu.org/gnu/binutils/binutils-2.27.tar.gz
+tar xzf binutils-2.27.tar.gz && cd binutils-2.27
+./configure --prefix=/opt/rh/devtoolset-2/root/usr/ --enable-64-bit-archive && make -j `nproc` && make install

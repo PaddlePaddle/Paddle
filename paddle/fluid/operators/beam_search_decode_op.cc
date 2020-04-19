@@ -178,10 +178,10 @@ Beam Search Decode Operator. This Operator constructs the full hypotheses for
 each source sentence by walking back along the LoDTensorArray Input(ids)
 whose lods can be used to restore the path in the beam search tree.
 
-The Output(SentenceIds) and Output(SentenceScores) separately contain the 
-generated id sequences and the corresponding scores. The shapes and lods of the 
-two LodTensor are same. The lod level is 2 and the two levels separately 
-indicate how many hypotheses each source sentence has and how many ids each 
+The Output(SentenceIds) and Output(SentenceScores) separately contain the
+generated id sequences and the corresponding scores. The shapes and lods of the
+two LodTensor are same. The lod level is 2 and the two levels separately
+indicate how many hypotheses each source sentence has and how many ids each
 hypothesis has.
 )DOC");
   }
@@ -191,27 +191,24 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
     PADDLE_ENFORCE(context->HasInput("Ids"),
-                   "BeamSearchDecodeOp must has input Ids");
+                   "BeamSearchDecodeOp must have input Ids");
     PADDLE_ENFORCE(context->HasInput("Scores"),
-                   "BeamSearchDecodeOp must has input Scores");
+                   "BeamSearchDecodeOp must have input Scores");
     PADDLE_ENFORCE(context->HasOutput("SentenceIds"),
-                   "BeamSearchDecodeOp must has output SentenceIds");
+                   "BeamSearchDecodeOp must have output SentenceIds");
     PADDLE_ENFORCE(context->HasOutput("SentenceScores"),
-                   "BeamSearchDecodeOp must has output SentenceScores");
+                   "BeamSearchDecodeOp must have output SentenceScores");
   }
 };
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    for (auto& o : op_desc.Output("SentenceIds")) {
-      auto& sentence_ids = block->FindRecursiveOrCreateVar(o);
-      sentence_ids.SetType(framework::proto::VarType::LOD_TENSOR);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    for (auto& o : ctx->Output("SentenceIds")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
-    for (auto& o : op_desc.Output("SentenceScores")) {
-      auto& sentence_scores = block->FindRecursiveOrCreateVar(o);
-      sentence_scores.SetType(framework::proto::VarType::LOD_TENSOR);
+    for (auto& o : ctx->Output("SentenceScores")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
     }
   }
 };
@@ -219,8 +216,10 @@ class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(beam_search_decode, paddle::operators::BeamSearchDecodeOp,
-                  paddle::operators::BeamSearchDecodeOpProtoMaker,
-                  paddle::operators::BeamSearchDecodeInferShape,
-                  paddle::operators::BeamSearchDecodeInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    beam_search_decode, paddle::operators::BeamSearchDecodeOp,
+    paddle::operators::BeamSearchDecodeOpProtoMaker,
+    paddle::operators::BeamSearchDecodeInferShape,
+    paddle::operators::BeamSearchDecodeInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

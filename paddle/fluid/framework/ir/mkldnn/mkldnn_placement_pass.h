@@ -14,16 +14,26 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/pass.h"
+#include <string>
+#include <unordered_set>
+#include "paddle/fluid/framework/ir/placement_pass_base.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class MKLDNNPlacementPass : public Pass {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+/*
+ * Specifies which operators should use MKLDNN.
+ */
+class MKLDNNPlacementPass : public PlacementPassBase {
+ private:
+  const std::string GetPlacementName() const override { return "MKLDNN"; }
+
+  const std::string GetAttrName() const override { return "use_mkldnn"; }
+
+  const std::unordered_set<std::string> GetOpTypesList() const override {
+    return Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
+  }
 };
 
 }  // namespace ir

@@ -41,7 +41,7 @@ class TestUnpoolOp(OpTest):
     def setUp(self):
         self.op_type = "unpool"
         self.init_test_case()
-        pre_input = np.random.random(self.shape).astype("float32")
+        pre_input = np.random.random(self.shape).astype("float64")
         nsize, csize, hsize, wsize = pre_input.shape
         hsize_out = (hsize - self.ksize[0] + 2 * self.paddings[0]) // \
                 self.strides[0] + 1
@@ -67,9 +67,9 @@ class TestUnpoolOp(OpTest):
                                 (r_start + arg // self.ksize[1]) * wsize + \
                                 c_start + arg % self.ksize[1]
         output = self.unpool2d_forward_naive(input, indices, self.ksize, \
-                self.strides, self.paddings).astype("float32")
+                self.strides, self.paddings).astype("float64")
         self.inputs = {
-            'X': input.astype('float32'),
+            'X': input.astype('float64'),
             'Indices': indices.astype('int32')
         }
         self.attrs = {
@@ -78,7 +78,7 @@ class TestUnpoolOp(OpTest):
             'ksize': self.ksize,
             'unpooling_type': self.unpooling_type,
         }
-        self.outputs = {'Out': output.astype('float32')}
+        self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
         self.check_output()
@@ -89,7 +89,7 @@ class TestUnpoolOp(OpTest):
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
-        self.shape = [6, 4, 5, 5]
+        self.shape = [6, 4, 7, 7]
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]

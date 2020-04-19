@@ -35,7 +35,5 @@ static size_t CombineHash(size_t seed, size_t a) {
 Scope* TryCreateTransferScope(OpKernelType type0, OpKernelType type1,
                               const Scope* scope);
 
-void RemoveKidsFromTransferScopeCache(Scope* scope);
-
 }  // namespace framework
 }  // namespace paddle

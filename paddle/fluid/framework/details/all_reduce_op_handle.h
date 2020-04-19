@@ -20,7 +20,8 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
+#include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -28,12 +29,15 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-struct AllReduceOpHandle : public OpHandleBase {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
+class AllReduceOpHandle : public NCCLOpHandleBase {
+ public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
-                    const platform::NCCLContextMap *ctxs);
+                    const platform::NCCLCommunicator *ctxs);
 #else
+class AllReduceOpHandle : public OpHandleBase {
+ public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places);
 #endif
@@ -46,12 +50,30 @@ struct AllReduceOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
- private:
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
   std::vector<Scope *> local_scopes_;
+
+#ifndef PADDLE_WITH_NCCL
+  // NCCLOpHandleBase already have these attributes.
+  // Will polish it by class inheritance framework.
   std::vector<platform::Place> places_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  const platform::NCCLContextMap *nccl_ctxs_;
 #endif
+
+#if defined(PADDLE_WITH_NCCL)
+  void NCCLAllReduceFunc(
+      const std::vector<std::function<void()>> &all_reduce_calls);
+
+  void SyncNCCLAllReduce();
+#endif
+
+  void AllReduceImpl(const std::vector<VarHandle *> &in_var_handles,
+                     const std::vector<VarHandle *> &out_var_handles);
+
+  void AllReduceFunc(std::vector<const void *> lod_tensor_data,
+                     const framework::proto::VarType::Type &dtype,
+                     int64_t numel, const std::vector<platform::Place> &places,
+                     const std::vector<std::string> &out_var_handles);
 };
 
 }  // namespace details

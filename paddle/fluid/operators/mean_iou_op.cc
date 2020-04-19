@@ -22,16 +22,14 @@ class MeanIoUOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predictions"),
-                   "Input (Predictions) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input (labels) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutMeanIou"),
-                   "Output (OutMeanIou) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutWrong"),
-                   "Output (OutWrong) of MeanIoU op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutCorrect"),
-                   "Output (OutWrong) of MeanIoU op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Predictions"), "Input", "Predictions",
+                   "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasOutput("OutMeanIou"), "Output", "OutMeanIou",
+                   "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasOutput("OutWrong"), "Output", "OutWrong", "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasOutput("OutCorrect"), "Output", "OutCorrect",
+                   "MeanIoU");
 
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
@@ -44,8 +42,9 @@ class MeanIoUOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Predictions")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Predictions"),
+        ctx.GetPlace());
   }
 };
 
@@ -102,8 +101,10 @@ is based on area of rectangle.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mean_iou, ops::MeanIoUOp, ops::MeanIoUOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    mean_iou, ops::MeanIoUOp, ops::MeanIoUOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(mean_iou, ops::MeanIoUKernel<int>,
                        ops::MeanIoUKernel<int32_t>,
                        ops::MeanIoUKernel<int64_t>);

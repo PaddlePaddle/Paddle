@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #pragma once
+#include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
 namespace inference {
@@ -28,7 +31,8 @@ namespace tensorrt {
  */
 struct Teller {
   virtual bool operator()(const std::string& op_type,
-                          const framework::OpDesc& desc) = 0;
+                          const framework::OpDesc& desc,
+                          bool use_no_calib_int8) = 0;
 
   virtual ~Teller() = default;
 };
@@ -54,7 +58,8 @@ class OpTeller {
     return *x;
   }
 
-  bool Tell(const std::string& op_type, const framework::OpDesc& desc);
+  bool Tell(const std::string& op_type, const framework::OpDesc& desc,
+            bool use_no_calib_int8 = false);
 
  private:
   OpTeller();

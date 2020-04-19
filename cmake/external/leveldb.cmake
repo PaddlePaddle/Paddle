@@ -23,8 +23,9 @@ INCLUDE_DIRECTORIES(${LEVELDB_INCLUDE_DIR})
 ExternalProject_Add(
     extern_leveldb
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     PREFIX ${LEVELDB_SOURCES_DIR}
-    GIT_REPOSITORY "https://github.com/google/leveldb"
+    GIT_REPOSITORY "https://github.com/google/leveldb.git"
     GIT_TAG v1.18
     CONFIGURE_COMMAND ""
     BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
@@ -33,8 +34,6 @@ ExternalProject_Add(
         && cp -r ${LEVELDB_SOURCES_DIR}/src/extern_leveldb/include ${LEVELDB_INSTALL_DIR}/
     BUILD_IN_SOURCE 1
 )
-
-ADD_DEPENDENCIES(extern_leveldb snappy)
 
 ADD_LIBRARY(leveldb STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET leveldb PROPERTY IMPORTED_LOCATION ${LEVELDB_LIBRARIES})

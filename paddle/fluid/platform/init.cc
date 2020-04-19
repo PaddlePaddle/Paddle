@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <string.h>  // for strdup
 #include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 
@@ -29,8 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
-DEFINE_int32(paddle_num_threads, 1,
-             "Number of threads for each paddle instance.");
+DECLARE_int32(paddle_num_threads);
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "Multiple of the CUPTI device buffer size. If the timestamps have "
              "been dropped when you are profiling, try increasing this value.");
@@ -38,12 +41,23 @@ DEFINE_int32(multiple_of_cupti_buffer_size, 1,
 namespace paddle {
 namespace framework {
 
+#ifdef _WIN32
+#define strdup _strdup
+#endif
+
 std::once_flag gflags_init_flag;
+std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
+std::once_flag glog_warning_once_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
+    // NOTE(zhiqiu): dummy is needed, since the function
+    // ParseNewCommandLineFlags in gflags.cc starts processing
+    // commandline strings from idx 1.
+    // The reason is, it assumes that the first one (idx 0) is
+    // the filename of executable file.
     argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
@@ -53,8 +67,10 @@ void InitGflags(std::vector<std::string> argv) {
       line += argv[i];
       line += ' ';
     }
+    VLOG(1) << "Before Parse: argc is " << argc
+            << ", Init commandline: " << line;
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
+    VLOG(1) << "After Parse: argc is " << argc;
   });
 }
 
@@ -139,7 +155,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
-  platform::DeviceTemporaryAllocator::Init();
+
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
@@ -191,13 +207,40 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #endif
 }
 
-void InitGLOG(const std::string &prog_name) {
-  // glog will not hold the ARGV[0] inside.
-  // Use strdup to alloc a new string.
-  google::InitGoogleLogging(strdup(prog_name.c_str()));
 #ifndef _WIN32
-  google::InstallFailureSignalHandler();
+void SignalHandle(const char *data, int size) {
+  auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
+  try {
+    // The signal is coming line by line but we print general guide just once
+    std::call_once(glog_warning_once_flag, [&]() {
+      LOG(WARNING) << "Warning: PaddlePaddle catches a failure signal, it may "
+                      "not work properly\n";
+      LOG(WARNING) << "You could check whether you killed PaddlePaddle "
+                      "thread/process accidentally or report the case to "
+                      "PaddlePaddle\n";
+      LOG(WARNING) << "The detail failure signal is:\n\n";
+    });
+
+    LOG(WARNING) << std::string(data, size);
+    std::ofstream dump_info;
+    dump_info.open(file_path, std::ios::app);
+    dump_info << std::string(data, size);
+    dump_info.close();
+  } catch (...) {
+  }
+}
 #endif
+
+void InitGLOG(const std::string &prog_name) {
+  std::call_once(glog_init_flag, [&]() {
+    // glog will not hold the ARGV[0] inside.
+    // Use strdup to alloc a new string.
+    google::InitGoogleLogging(strdup(prog_name.c_str()));
+#ifndef _WIN32
+    google::InstallFailureSignalHandler();
+    google::InstallFailureWriter(&SignalHandle);
+#endif
+  });
 }
 
 }  // namespace framework

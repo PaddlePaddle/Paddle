@@ -17,12 +17,23 @@
 #include <NvInfer.h>
 #include <cuda.h>
 #include <glog/logging.h>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/platform/dynload/tensorrt.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+#define IS_TRT_VERSION_GE(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
+
+#define TRT_VERSION                                    \
+  NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
 
 namespace dy = paddle::platform::dynload;
 
@@ -73,6 +84,40 @@ class NaiveLogger : public nvinfer1::ILogger {
 
   ~NaiveLogger() override {}
 };
+
+class NaiveProfiler : public nvinfer1::IProfiler {
+ public:
+  typedef std::pair<std::string, float> Record;
+  std::vector<Record> mProfile;
+
+  virtual void reportLayerTime(const char* layerName, float ms) {
+    auto record =
+        std::find_if(mProfile.begin(), mProfile.end(),
+                     [&](const Record& r) { return r.first == layerName; });
+    if (record == mProfile.end())
+      mProfile.push_back(std::make_pair(layerName, ms));
+    else
+      record->second += ms;
+  }
+
+  void printLayerTimes() {
+    float totalTime = 0;
+    for (size_t i = 0; i < mProfile.size(); i++) {
+      printf("%-40.40s %4.3fms\n", mProfile[i].first.c_str(),
+             mProfile[i].second);
+      totalTime += mProfile[i].second;
+    }
+    printf("Time over all layers: %4.3f\n", totalTime);
+  }
+};
+
+inline size_t ProductDim(const nvinfer1::Dims& dims) {
+  size_t v = 1;
+  for (int i = 0; i < dims.nbDims; i++) {
+    v *= dims.d[i];
+  }
+  return v;
+}
 
 }  // namespace tensorrt
 }  // namespace inference

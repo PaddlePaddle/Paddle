@@ -18,21 +18,13 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 using LoDTensor = framework::LoDTensor;
-
-static constexpr char kStepBlock[] = "sub_block";
-static constexpr char kCondition[] = "Condition";
-static constexpr char kStepScopes[] = "StepScopes";
-static constexpr char kX[] = "X";
-static constexpr char kXGRAD[] = "X@GRAD";
-static constexpr char kOutputs[] = "Out";
-static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -57,9 +49,17 @@ class WhileOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
+    PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)),
+                            platform::errors::NotFound(
+                                "Input(Condition) of WhileOp is not found."));
+
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(cond.dims(), paddle::framework::make_ddim({1}));
+    PADDLE_ENFORCE_EQ(
+        cond.dims(), paddle::framework::make_ddim({1}),
+        platform::errors::InvalidArgument(
+            "The shape of Input(Condition) of WhileOp must be 1. But now "
+            "the Condition's shape is ",
+            cond.dims().to_str(), ".\n"));
 
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
@@ -69,21 +69,58 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
-                   "Condition of while op must in CPU memory.");
+    if (step_scopes->size() > 0) {
+      platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+      for (auto &s : *step_scopes) {
+        if (scope.HasKid(s)) {
+          scope.DeleteScope(s);
+        }
+      }
+      step_scopes->clear();
+    }
 
+    PADDLE_ENFORCE_EQ(step_scopes->size(), 0,
+                      platform::errors::PreconditionNotMet(
+                          "The Output(StepScope) of WhileOp should be empty."));
+
+    bool cond_data = GetCondData(cond);
     bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
-    while (cond.data<bool>()[0]) {
-      auto &current_scope = scope.NewScope();
-      step_scopes->push_back(&current_scope);
-      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
-      if (is_test) {
-        scope.DeleteScope(&current_scope);
+    if (!is_test) {
+      while (cond_data) {
+        auto &current_scope = scope.NewScope();
+        step_scopes->push_back(&current_scope);
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
+                                    true);
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
+    } else {
+      auto &current_scope = scope.NewScope();
+      executor.CreateVariables(*program, &current_scope, block->ID());
+      while (cond_data) {
+        for (auto &name : current_scope.LocalVarNames()) {
+          auto *var = current_scope.Var(name);
+          if (var->IsType<framework::LoDTensor>()) {
+            // Clear all lod information for all lod_tensors.
+            auto *t = var->GetMutable<framework::LoDTensor>();
+            framework::LoD empty_lod;
+            t->set_lod(empty_lod);
+          } else if (var->IsType<framework::LoDTensorArray>()) {
+            // Clear elements of all tensor arrays.
+            auto *t = var->GetMutable<framework::LoDTensorArray>();
+            t->clear();
+          }
+        }
+        executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
+                                    false);
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
+      }
+      scope.DeleteScope(&current_scope);
     }
   }
 };
@@ -132,8 +169,10 @@ class WhileGradOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    PADDLE_ENFORCE(!Attr<bool>("is_test"),
-                   "GradOp is only callable when is_test is false");
+    PADDLE_ENFORCE_EQ(
+        Attr<bool>("is_test"), false,
+        platform::errors::InvalidArgument(
+            "WhileGradOp is only callable when is_test is false."));
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
@@ -152,7 +191,14 @@ class WhileGradOp : public framework::OperatorBase {
     auto inside_og_names =
         Attr<std::vector<std::string>>("original_output_grad");
 
-    PADDLE_ENFORCE_EQ(outside_og_names.size(), inside_og_names.size());
+    PADDLE_ENFORCE_EQ(outside_og_names.size(), inside_og_names.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of original output gradient names "
+                          "does not match the number of backward input "
+                          "gradient names. The number of Backward input "
+                          "names is %d and the numbers of original output "
+                          "gradient names is %d.",
+                          outside_og_names.size(), inside_og_names.size()));
 
     for (auto cur_scope_iter = step_scopes->rbegin();
          cur_scope_iter != step_scopes->rend(); ++cur_scope_iter) {
@@ -169,36 +215,43 @@ class WhileGradOp : public framework::OperatorBase {
           continue;
         }
 
-        auto &og_outside =
-            detail::Ref(scope.FindVar(outside_og_name),
-                        "Cannot find Outside Gradient %s", outside_og_name);
-        auto &og_inside =
-            detail::Ref(cur_scope.Var(inside_og_name),
-                        "Cannot find inside gradient %s", inside_og_name);
+        auto &og_outside = *scope.FindVar(outside_og_name);
+        auto &og_inside = *cur_scope.Var(inside_og_name);
         if (og_outside.IsType<framework::LoDTensor>()) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
-          auto &inside_tensor =
-              detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
+          auto &inside_tensor = *og_inside.GetMutable<framework::LoDTensor>();
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
-          auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
+          auto outside_array =
+              og_outside.GetMutable<framework::LoDTensorArray>();
           auto &inside_array =
-              detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
-          VLOG(8) << outside_og_name << " size = " << outside_array.size();
-          inside_array.resize(outside_array.size());
+              *og_inside.GetMutable<framework::LoDTensorArray>();
+          inside_array.clear();
+          inside_array.resize(outside_array->size());
+          VLOG(8) << outside_og_name << " size = " << outside_array->size();
 
           for (size_t j = 0; j < inside_array.size(); ++j) {
-            VLOG(8) << j << " " << outside_array[j].numel();
-            if (outside_array[j].numel() != 0) {
-              inside_array[j].set_lod(outside_array[j].lod());
-              inside_array[j].ShareDataWith(outside_array[j]);
+            if (!outside_array->at(j).IsInitialized()) {
+              outside_array->at(j).Resize({0});
+            }
+            VLOG(8) << j << " " << outside_array->at(j).numel();
+            if (outside_array->at(j).numel() != 0) {
+              inside_array[j].set_lod(outside_array->at(j).lod());
+              inside_array[j].ShareDataWith(outside_array->at(j));
             } else {
-              PADDLE_ENFORCE_EQ(inside_array[j].numel(), 0);
+              PADDLE_ENFORCE_EQ(
+                  inside_array[j].numel(), 0,
+                  platform::errors::InvalidArgument(
+                      "The numel of %d-th element of var %s (LoDTensorArray) "
+                      "in while block must be 0, but received its numel is %d.",
+                      j, inside_og_name, inside_array[j].numel()));
             }
           }
         } else {
-          PADDLE_THROW("Currently only support LoDTensor and LoDTensorArray.");
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "Currently only support LoDTensor and LoDTensorArray in "
+              "WhileGradOp."));
         }
       }
       executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false, true,
@@ -208,7 +261,13 @@ class WhileGradOp : public framework::OperatorBase {
       // and inputs.
       auto &pg_ig_names = Outputs(kXGRAD);
       auto &p_names = Inputs(kX);
-      PADDLE_ENFORCE_EQ(pg_ig_names.size(), p_names.size());
+      PADDLE_ENFORCE_EQ(pg_ig_names.size(), p_names.size(),
+                        platform::errors::PreconditionNotMet(
+                            "The number of names in Outputs(X@GRAD) does not "
+                            "match the number of names in Inputs(X). The "
+                            "number of names in Outputs(X@GRAD) is %d and "
+                            "the number of names in Inputs(X) is %d.",
+                            pg_ig_names.size(), p_names.size()));
       for (size_t param_id = 0; param_id < pg_ig_names.size(); ++param_id) {
         if (pg_ig_names[param_id] == framework::kEmptyVarName) {
           continue;  // parameter doesn't have gradient
@@ -219,7 +278,9 @@ class WhileGradOp : public framework::OperatorBase {
         // for example lookup_table_grad_op, the input(Idx) doesn't have
         // gradient.
         auto pg_ig_var = cur_scope.FindVar(inside_grad_name);
-        PADDLE_ENFORCE(pg_ig_var != nullptr);
+        PADDLE_ENFORCE_NOT_NULL(
+            pg_ig_var, platform::errors::NotFound("Variable %s is not found.",
+                                                  inside_grad_name));
         if (pg_ig_var->IsType<framework::LoDTensorArray>()) {
           auto pg_ig_lod_t_arr =
               pg_ig_var->GetMutable<framework::LoDTensorArray>();
@@ -249,19 +310,22 @@ class WhileGradOp : public framework::OperatorBase {
         // zero gradient variable in step 0
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
-          PADDLE_ENFORCE_NOT_NULL(var, "Can not find var %s", inside_grad_name);
-          PADDLE_ENFORCE(
+          PADDLE_ENFORCE_NOT_NULL(
+              var, platform::errors::NotFound("Variable %s is not found.",
+                                              inside_grad_name));
+          PADDLE_ENFORCE_EQ(
               var->IsType<framework::LoDTensorArray>() ||
                   var->IsType<LoDTensor>(),
-              "Currently the type of var only can be LoDTensorArray, "
-              "or LoDTensor, but the received var[%s] is %s.",
-              inside_grad_name, framework::ToTypeName(var->Type()));
+              true, platform::errors::InvalidArgument(
+                        "Currently the type of var only can be LoDTensorArray, "
+                        "or LoDTensor, but the received var[%s] is %s.",
+                        inside_grad_name, framework::ToTypeName(var->Type())));
 
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] = inside_tensor.type();
-            attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
+            attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];
@@ -285,20 +349,21 @@ class WhileGradOp : public framework::OperatorBase {
       dev_ctx.Wait();
       const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
     }
+    step_scopes->clear();
   }
 };
 
-class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *while_grad = new framework::OpDesc();
+  void Apply(GradOpPtr<T> while_grad) const override {
     while_grad->SetType("while_grad");
-    while_grad->SetInput(kX, Input(kX));
-    while_grad->SetInput(kOutputs, Output(kOutputs));
-    while_grad->SetInput(kStepScopes, Output(kStepScopes));
+    while_grad->SetInput(kX, this->Input(kX));
+    while_grad->SetInput(kOutputs, this->Output(kOutputs));
+    while_grad->SetInput(kStepScopes, this->Output(kStepScopes));
 
     auto *grad_block = this->grad_block_[0];
     auto *fwd_block = grad_block->ForwardBlock();
@@ -312,7 +377,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
         inner_op_outputs.insert(oname);
       }
     }
-    auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
+    auto igs = this->InputGrad(kX, /*do not drop empty gradient*/ false);
+
     for (auto &each_ig : igs) {
       if (inner_op_outputs.find(each_ig) == inner_op_outputs.end()) {
         VLOG(8) << "Ignore " << each_ig;
@@ -324,11 +390,11 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // OG should be re-calculated by step blocks, since many outputs of while op
     // do not need to calculate gradients.
     std::unordered_set<std::string> block_ins;
-    block_ins.reserve(Input(kX).size() + Output(kOutputs).size());
-    for (auto &p : Input(kX)) {
+    block_ins.reserve(this->Input(kX).size() + this->Output(kOutputs).size());
+    for (auto &p : this->Input(kX)) {
       block_ins.insert(p);
     }
-    for (auto &o : Output(kOutputs)) {
+    for (auto &o : this->Output(kOutputs)) {
       block_ins.insert(o);
     }
     std::unordered_set<std::string> output_grads;
@@ -365,26 +431,21 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     while_grad->SetAttr("original_output_grad", output_grads_list);
 
     while_grad->SetAttr(kSkipEagerDeletionVars, std::vector<std::string>());
-
-    return std::unique_ptr<framework::OpDesc>(while_grad);
   }
 };
 
 class WhileGradOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto p_names = op_desc.Input(kX);
-    auto pg_ig_names = op_desc.Output(framework::GradVarName(kX));
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto p_names = ctx->Input(kX);
+    auto pg_ig_names = ctx->Output(framework::GradVarName(kX));
 
     for (size_t i = 0; i < p_names.size(); ++i) {
-      auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
-      auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
-      if (g_var != nullptr) {  // Gradient could be @EMPTY@
+      if (ctx->HasVar(pg_ig_names[i])) {
         VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                << " type: " << p_var.GetType();
-        g_var->SetType(p_var.GetType());
-        g_var->SetDataType(p_var.GetDataType());
+                << " type: " << ctx->GetType(p_names[i]);
+        ctx->SetType(pg_ig_names[i], ctx->GetType(p_names[i]));
+        ctx->SetDataType(pg_ig_names[i], ctx->GetDataType(p_names[i]));
       }
     }
   }
@@ -397,41 +458,24 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasOutputs(framework::GradVarName(kX));
     ctx->HasInputs(kOutputs);
     ctx->HasInputs(framework::GradVarName(kOutputs));
-
     auto pg_ig_names = ctx->Outputs(kXGRAD);
     std::vector<framework::InferShapeVarPtr> in_var_ptrs =
         ctx->GetInputVarPtrs(kX);
     std::vector<framework::InferShapeVarPtr> out_var_ptrs =
         ctx->GetOutputVarPtrs(kXGRAD);
-    PADDLE_ENFORCE(in_var_ptrs.size() == out_var_ptrs.size());
+    PADDLE_ENFORCE_EQ(in_var_ptrs.size(), out_var_ptrs.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of Inputs(X) must be the same as "
+                          "the size of Outputs(X@GRAD)."));
 
     for (size_t i = 0; i < in_var_ptrs.size(); ++i) {
       if (pg_ig_names[i] == framework::kEmptyVarName) {
         continue;
       }
-      if (ctx->IsRuntime()) {
-        framework::Variable *in_var =
-            boost::get<framework::Variable *>(in_var_ptrs[i]);
-        framework::Variable *out_var =
-            boost::get<framework::Variable *>(out_var_ptrs[i]);
-
-        auto type = framework::ToVarType(in_var->Type());
-        if (type == framework::proto::VarType::LOD_TENSOR) {
-          out_var->GetMutable<LoDTensor>()->Resize(
-              in_var->Get<framework::LoDTensor>().dims());
-        } else if (type == framework::proto::VarType::SELECTED_ROWS) {
-          out_var->GetMutable<framework::SelectedRows>()->set_height(
-              in_var->Get<framework::SelectedRows>().GetCompleteDims()[0]);
-        } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
-          PADDLE_THROW("WhileGradOp doesn't support type %d",
-                       static_cast<int>(type));
-        }
-      } else {
-        framework::VarDesc *in_var =
-            boost::get<framework::VarDesc *>(in_var_ptrs[i]);
-        boost::get<framework::VarDesc *>(out_var_ptrs[i])
-            ->SetShape(in_var->GetShape());
-      }
+      framework::VarDesc *in_var =
+          boost::get<framework::VarDesc *>(in_var_ptrs[i]);
+      boost::get<framework::VarDesc *>(out_var_ptrs[i])
+          ->SetShape(in_var->GetShape());
     }
   }
 };
@@ -439,9 +483,9 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(while, paddle::operators::WhileOp,
-                  paddle::operators::WhileOpMaker,
-                  paddle::operators::WhileGradOpDescMaker);
+REGISTER_OPERATOR(
+    while, paddle::operators::WhileOp, paddle::operators::WhileOpMaker,
+    paddle::operators::WhileGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(while_grad, paddle::operators::WhileGradOp,
                   paddle::operators::WhileGradOpShapeInference,
                   paddle::operators::WhileGradOpVarTypeInference);

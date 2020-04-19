@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
@@ -140,21 +143,6 @@ struct DivAndSqrtFunctor {
 };
 
 template <typename T>
-struct MulFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a * b; }
-};
-
-template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
-};
-
-template <typename T>
-struct SubFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a - b; }
-};
-
-template <typename T>
 struct MulInvVarFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
     return a * std::sqrt(1.0 / b);
@@ -164,6 +152,17 @@ struct MulInvVarFunctor {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class LayerNormDirectCUDAFunctor {
+ public:
+  void operator()(cudaStream_t stream, const T* input,
+                  std::vector<int> input_shape, const T* bias, const T* scale,
+                  T* output, T* mean, T* variance, int begin_norm_axis,
+                  float eps);
+};
+#endif
 
 template <typename DeviceContext, typename T>
 class LayerNormKernel : public framework::OpKernel<T> {
@@ -224,17 +223,35 @@ class LayerNormKernel : public framework::OpKernel<T> {
           ctx, &out, bias, /*axis*/ 1, AddFunctor<T>(), &out);
     }
 #else
-    PADDLE_ENFORCE_EQ(mean->numel(), left);
-    PADDLE_ENFORCE_EQ(var->numel(), left);
-    PADDLE_ENFORCE_EQ(scale->numel(), right);
-    PADDLE_ENFORCE_EQ(bias->numel(), right);
+    PADDLE_ENFORCE_EQ(mean->numel(), left,
+                      platform::errors::InvalidArgument(
+                          "mean's length (%d) is not equal with expected (%d).",
+                          mean->numel(), left));
+    PADDLE_ENFORCE_EQ(var->numel(), left,
+                      platform::errors::InvalidArgument(
+                          "var's length (%d) is not equal with expected (%d).",
+                          var->numel(), left));
+    if (scale) {
+      PADDLE_ENFORCE_EQ(
+          scale->numel(), right,
+          platform::errors::InvalidArgument(
+              "scale's length (%d) is not equal with expected (%d).",
+              scale->numel(), right));
+    }
+    if (bias) {
+      PADDLE_ENFORCE_EQ(
+          bias->numel(), right,
+          platform::errors::InvalidArgument(
+              "bias's length (%d) is not equal with expected (%d).",
+              bias->numel(), right));
+    }
 
     auto ker =
-        jit::Get<jit::kLayerNorm, jit::LayerNormTuples<T>, platform::CPUPlace>(
-            right);
+        jit::KernelFuncs<jit::LayerNormTuple<T>, platform::CPUPlace>::Cache()
+            .At(right);
     ker(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
-        scale->data<T>(), bias->data<T>(), static_cast<int>(left),
-        static_cast<const float>(epsilon), right);
+        scale ? scale->data<T>() : nullptr, bias ? bias->data<T>() : nullptr,
+        static_cast<int>(left), static_cast<const float>(epsilon), right);
 #endif
   }
 };
@@ -245,11 +262,9 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
     auto x = *ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* var = ctx.Input<Tensor>("Variance");
     auto* scale = ctx.Input<Tensor>("Scale");
-    auto* bias = ctx.Input<Tensor>("Bias");
     auto d_y = *ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
 
@@ -275,18 +290,13 @@ class LayerNormGradKernel : public framework::OpKernel<T> {
       x.Resize(matrix_shape);
       temp.mutable_data<T>(matrix_shape, ctx.GetPlace());
 
-      if (!(bias && scale)) {
-        temp_norm.ShareDataWith(*y);
-        temp_norm.Resize(matrix_shape);
-      } else {
-        temp_norm.mutable_data<T>(matrix_shape, ctx.GetPlace());
-        // get x_norm
-        ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-            ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &temp_norm);
-        ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
-            ctx, &temp_norm, var, /*axis*/ 0,
-            DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &temp_norm);
-      }
+      temp_norm.mutable_data<T>(matrix_shape, ctx.GetPlace());
+      // get x_norm
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          ctx, &x, mean, /*axis*/ 0, SubFunctor<T>(), &temp_norm);
+      ElementwiseComputeEx<DivAndSqrtFunctor<T>, DeviceContext, T>(
+          ctx, &temp_norm, var, /*axis*/ 0,
+          DivAndSqrtFunctor<T>(static_cast<T>(epsilon)), &temp_norm);
     }
 
     if (d_bias) {

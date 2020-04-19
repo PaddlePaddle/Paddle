@@ -67,6 +67,8 @@ class VarDesc {
 
   proto::VarDesc *Proto() { return &desc_; }
 
+  const proto::VarDesc *Proto() const { return &desc_; }
+
   std::string Name() const { return desc_.name(); }
 
   void SetName(std::string name) { desc_.set_name(name); }
@@ -108,6 +110,12 @@ class VarDesc {
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
+  bool NeedCheckFeed() const { return desc_.need_check_feed(); }
+
+  void SetNeedCheckFeed(bool need_check_feed) {
+    desc_.set_need_check_feed(need_check_feed);
+  }
+
  private:
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
@@ -116,5 +124,7 @@ class VarDesc {
 
   proto::VarDesc desc_;
 };
+
+bool operator==(const VarDesc &left, const VarDesc &right);
 }  // namespace framework
 }  // namespace paddle

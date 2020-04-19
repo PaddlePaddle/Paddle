@@ -31,11 +31,6 @@ void FusedBroadcastOpHandle::RunImpl() {
 
   WaitInputVarGenerated();
 
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
-
   size_t place_num = places_.size();
   PADDLE_ENFORCE_EQ(in_var_handles.size() * place_num, out_var_handles.size());
 
@@ -44,7 +39,7 @@ void FusedBroadcastOpHandle::RunImpl() {
         *in_var_handles[i],
         std::vector<VarHandle *>(out_var_handles.begin() + i * place_num,
                                  out_var_handles.begin() + (i + 1) * place_num),
-        var_scopes);
+        local_exec_scopes_);
   }
 }
 

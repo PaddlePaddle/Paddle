@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -60,8 +59,9 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Anchors")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
+        ctx.device_context());
   }
 };
 
@@ -292,12 +292,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
-                               "Cannot find input Anchors(%s) in scope",
-                               context.Inputs("Anchors")[0]);
-    auto variances = detail::Ref(context.Input<Tensor>("Variances"),
-                                 "Cannot find input Variances(%s) in scope",
-                                 context.Inputs("Variances")[0]);
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
+                                   "Anchors", "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input", "Variances", "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -343,6 +341,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     lod0.push_back(0);
     anchors.Resize({anchors.numel() / 4, 4});
     variances.Resize({variances.numel() / 4, 4});
+    std::vector<int64_t> tmp_lod;
 
     int64_t num_proposals = 0;
     for (int64_t i = 0; i < num; ++i) {
@@ -364,6 +363,16 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
+      tmp_lod.push_back(num_proposals);
+    }
+    if (context.HasOutput("RpnRoisLod")) {
+      auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
+      rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
+      int64_t *lod_data = rpn_rois_lod->data<int64_t>();
+      for (int i = 0; i < num; i++) {
+        lod_data[i] = tmp_lod[i];
+      }
+      rpn_rois_lod->Resize({num, 1});
     }
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
@@ -466,6 +475,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor), Output proposals with shape (rois_num, 4).");
     AddOutput("RpnRoiProbs",
               "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
+    AddOutput("RpnRoisLod", "(Tensor), rpn rois's lod info").AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "
                  "applying NMS.");
@@ -493,8 +503,9 @@ boxes.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
-                  ops::GenerateProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposals, ops::GenerateProposalsOp, ops::GenerateProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);

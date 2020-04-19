@@ -210,7 +210,7 @@ def infer(use_cuda, save_dirname=None):
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
+        # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,
@@ -221,31 +221,16 @@ def infer(use_cuda, save_dirname=None):
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 
-        # Use inference_transpiler to speedup
-        inference_transpiler_program = inference_program.clone()
-        t = fluid.transpiler.InferenceTranspiler()
-        t.transpile(inference_transpiler_program, place)
-
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
 
-        transpiler_results = exe.run(inference_transpiler_program,
-                                     feed={feed_target_names[0]: tensor_img},
-                                     fetch_list=fetch_targets)
-
-        assert len(results[0]) == len(transpiler_results[0])
-        for i in range(len(results[0])):
-            np.testing.assert_almost_equal(
-                results[0][i], transpiler_results[0][i], decimal=4)
-
         print("infer results: ", results[0])
 
         fluid.io.save_inference_model(save_dirname, feed_target_names,
-                                      fetch_targets, exe,
-                                      inference_transpiler_program)
+                                      fetch_targets, exe, inference_program)
 
 
 def main(net_type, use_cuda, is_local=True):

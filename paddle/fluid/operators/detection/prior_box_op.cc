@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -31,12 +35,6 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE(image_dims.size() == 4, "The layout of image is NCHW.");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
-
-    PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
-                      "The height of input must smaller than image.");
-
-    PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
-                      "The width of input must smaller than image.");
 
     auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
     auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
@@ -71,8 +69,31 @@ class PriorBoxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>("Input")->type(), ctx.device_context());
+    auto input_input_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+      auto input_image_type = ctx.Input<framework::Tensor>("Image")->type();
+      int customized_type_value =
+          framework::OpKernelType::kDefaultCustomizedTypeValue;
+      if (input_image_type == framework::DataTypeTrait<float>::DataType()) {
+        customized_type_value = kPriorBoxFLOAT;
+      } else if (input_image_type ==
+                 framework::DataTypeTrait<double>::DataType()) {
+        customized_type_value = kPriorBoxDOUBLE;
+      }
+      return framework::OpKernelType(input_input_type, ctx.GetPlace(), layout_,
+                                     library_, customized_type_value);
+    }
+#endif
+    return framework::OpKernelType(input_input_type, ctx.GetPlace(), layout_,
+                                   library_);
   }
 };
 
@@ -155,6 +176,15 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Please note, this order affects the weights order of convolution layer"
         "followed by and does not affect the final detection results.")
         .SetDefault(false);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Prior box operator
 Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
@@ -173,8 +203,40 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(prior_box, ops::PriorBoxOpKernel<float>,
-                       ops::PriorBoxOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(prior_box, ops::PriorBoxOpKernel<float, float>,
+                       ops::PriorBoxOpKernel<double, double>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box, MKLDNN,
+                                    ::paddle::platform::CPUPlace, FF,
+                                    ops::kPriorBoxFLOAT,
+                                    ops::PriorBoxOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box, MKLDNN,
+                                    ::paddle::platform::CPUPlace, DD,
+                                    ops::kPriorBoxDOUBLE,
+                                    ops::PriorBoxOpKernel<double, double>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8F,
+                                    ops::kPriorBoxFLOAT,
+                                    ops::PriorBoxOpKernel<uint8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8F,
+                                    ops::kPriorBoxFLOAT,
+                                    ops::PriorBoxOpKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8D,
+                                    ops::kPriorBoxDOUBLE,
+                                    ops::PriorBoxOpKernel<uint8_t, double>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(prior_box, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8D,
+                                    ops::kPriorBoxDOUBLE,
+                                    ops::PriorBoxOpKernel<int8_t, double>);

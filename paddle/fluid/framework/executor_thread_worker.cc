@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor_thread_worker.h"
 #include <algorithm>
+#include <utility>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -142,7 +143,9 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   auto& block = program.Block(0);
 
   PADDLE_ENFORCE_NOT_NULL(
-      root_scope_, "root_scope should be set before creating thread scope");
+      root_scope_,
+      platform::errors::PreconditionNotMet(
+          "root_scope should be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {
@@ -244,6 +247,7 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
   platform::SetNumThreads(1);
   SetDevice();
   thread_reader_->Start();
+
   std::vector<double> op_total_time;
   std::vector<std::string> op_name;
   for (auto& op : ops_) {
@@ -273,7 +277,7 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
     ++batch_cnt;
     thread_scope_->DropKids();
     if (thread_id_ == 0) {
-      if (batch_cnt > 0 && batch_cnt % 1000 == 0) {
+      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         for (size_t i = 0; i < ops_.size(); ++i) {
           fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
                   op_name[i].c_str(), op_total_time[i] / batch_cnt);
@@ -283,6 +287,7 @@ void ExecutorThreadWorker::TrainFilesWithTimer() {
         for (int i = 0; i < fetch_var_num; ++i) {
           print_fetch_var(thread_scope_, fetch_var_names_[i]);
         }
+        fprintf(stderr, "IO percent: %f\n", read_time / total_time);
       }
     }
     timeline.Start();
@@ -293,7 +298,7 @@ void ExecutorThreadWorker::TrainFiles() {
   platform::SetNumThreads(1);
 
   // todo: configurable
-  SetDevice();
+  // SetDevice();
 
   int fetch_var_num = fetch_var_names_.size();
   fetch_values_.clear();
@@ -513,7 +518,6 @@ void AsyncExecutorThreadWorker::PullSparse(int table_id) {
 
   auto& push_g = _feature_push_value[table_id];
   check_pull_push_memory(features, &push_g, fea_dim);
-
   collect_feasign_info(table_id);
 }
 

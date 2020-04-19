@@ -18,21 +18,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-bool to_skip_merging_optimize(TensorRTEngine* engine,
-                              const std::vector<int>& filters,
-                              const std::vector<int>& strides,
-                              const std::vector<int>& paddings,
-                              std::string input_name) {
-  if (engine->itensor_quote_num[input_name] > 0) {
-    return true;
-  }
-  if (filters[0] == 1 && filters[1] == 1 && strides[0] == 1 &&
-      strides[1] == 1 && paddings[0] == 0 && paddings[1] == 0)
-    engine->itensor_quote_num[input_name] += 1;
-
-  return false;
-}
-
 template <typename RegistFunc, typename SetDilationFunc>
 void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                    const framework::Scope& scope, bool test_mode,
@@ -41,31 +26,53 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1);  // Y is a weight
-  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL,
+                    platform::errors::InvalidArgument(
+                        "TRT Conv2d expect 1 input, but got %d input.",
+                        op_desc.Input("Input").size()));
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL,
+                    platform::errors::InvalidArgument(
+                        "TRT Conv2d expect 1 filter, but got %d filter.",
+                        op_desc.Input("Filter").size()));
+  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL,
+                    platform::errors::InvalidArgument(
+                        "TRT Conv2d expect 1 output, but got %d output.",
+                        op_desc.Output("Output").size()));
 
-  PADDLE_ENFORCE(engine != nullptr);
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
-
-  // Declare weights
-  auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
-  PADDLE_ENFORCE_NOT_NULL(Y_v);
+  std::string filter_var_name = op_desc.Input("Filter").front();
+  auto* Y_v = scope.FindVar(filter_var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      Y_v, platform::errors::NotFound(
+               "Can not find %s presistale var in scope.", filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+  float* weight_data = nullptr;
+  bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
 
-  platform::CPUPlace cpu_place;
-  std::unique_ptr<framework::LoDTensor> weight_tensor(
-      new framework::LoDTensor());
-  weight_tensor->Resize(Y_t->dims());
-  TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
+  if (enable_int8) {
+#if IS_TRT_VERSION_GE(5000)
+    CHECK(op_desc.HasAttr("Input_scale"));
+    float in_scale = boost::get<float>(op_desc.GetAttr("Input_scale"));
+    auto weight_scale =
+        boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+    weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
+                                           true, weight_scale);
+    engine->SetTensorDynamicRange(X, in_scale);
+#endif
+  } else {
+    weight_data =
+        engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
+  }
 
-  auto* weight_data = weight_tensor->mutable_data<float>(platform::CPUPlace());
+  PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL,
+                    platform::errors::InvalidArgument(
+                        "The conv2d filter's dims size should be 4, but got %d",
+                        Y_t->dims().size()));
 
-  PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
-  const int n_output = weight_tensor->dims()[0];
-  const int n_input = weight_tensor->dims()[1];
-  const int filter_h = weight_tensor->dims()[2];
-  const int filter_w = weight_tensor->dims()[3];
+  const int n_output = Y_t->dims()[0];
+  const int n_input = Y_t->dims()[1];
+  const int filter_h = Y_t->dims()[2];
+  const int filter_w = Y_t->dims()[3];
   const int groups = boost::get<int>(op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
       boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
@@ -81,7 +88,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                 static_cast<void*>(weight_data),
-                                static_cast<size_t>(weight_tensor->numel())};
+                                static_cast<size_t>(Y_t->numel())};
 
   TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
   auto* layer = fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output, n_input,
@@ -95,14 +102,10 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   auto output_name = op_desc.Output("Output").front();
   layer->setName((name + " (Output: " + output_name + ")").c_str());
-  engine->weight_map[op_desc.Input("Filter").front()] =
-      std::move(weight_tensor);
   layer->getOutput(0)->setName(output_name.c_str());
   engine->SetITensor(output_name, layer->getOutput(0));
 
-  if (test_mode ||
-      to_skip_merging_optimize(engine, {filter_h, filter_w}, strides, paddings,
-                               op_desc.Input("Input").front())) {
+  if (test_mode) {
     engine->DeclareOutput(output_name);
   }
 }
@@ -145,10 +148,14 @@ class Deconv2dOpConverter : public OpConverter {
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          PADDLE_ENFORCE(
-              dilations.d[0] == 1 && dilations.d[1] == 1,
-              "Dilations must be (1, 1) for tensorRT, but given (%d, %d)",
-              dilations.d[0], dilations.d[1]);
+          // In trt Deconv, dilation should be 1, ohter values are not
+          // supported.
+          bool condition = (dilations.d[0] == 1 && dilations.d[1] == 1);
+          PADDLE_ENFORCE_EQ(condition, true,
+                            platform::errors::InvalidArgument(
+                                "In Deconv, Dilations must be (1, 1) for "
+                                "tensorRT, but given (%d, %d)",
+                                dilations.d[0], dilations.d[1]));
         },
         "conv2d_transpose");
   }

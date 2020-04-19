@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <map>
 #include <set>
@@ -131,6 +132,19 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
+#ifndef PADDLE_ON_INFERENCE
+  LOG_FIRST_N(WARNING, 5) << "The NaiveExecutor can not work properly if the "
+                             "cmake flag ON_INFER is not set.";
+  LOG_FIRST_N(WARNING, 5) << "Unlike the training phase, all the scopes and "
+                             "variables will be reused to save the allocation "
+                             "overhead.";
+  LOG_FIRST_N(WARNING, 5) << "Please re-compile the inference library by "
+                             "setting the cmake flag ON_INFER=ON if you are "
+                             "running Paddle Inference";
+#endif  // PADDLE_ON_INFERENCE
+  if (UNLIKELY(config_.cpu_math_library_num_threads() > 1)) {
+    paddle::platform::SetNumThreads(config_.cpu_math_library_num_threads());
+  }
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
@@ -166,6 +180,7 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
   std::unique_ptr<PaddlePredictor> cls(new NativePaddlePredictor(config_));
   // Hot fix the bug that result diff in multi-thread.
   // TODO(Superjomn) re-implement a real clone here.
+  PADDLE_ENFORCE_NOT_NULL(dynamic_cast<NativePaddlePredictor *>(cls.get()));
   if (!dynamic_cast<NativePaddlePredictor *>(cls.get())->Init(nullptr)) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
@@ -200,11 +215,15 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
       input_ptr = input.mutable_data<float>(ddim, place_);
+    } else if (inputs[i].dtype == PaddleDType::INT32) {
+      input_ptr = input.mutable_data<int32_t>(ddim, place_);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
+    PADDLE_ENFORCE_NOT_NULL(input_ptr);
+    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
     if (platform::is_cpu_place(place_)) {
       // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
       std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
@@ -267,19 +286,23 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
-    framework::LoDTensor &fetch =
+    framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+    auto fetch = boost::get<framework::LoDTensor>(fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];
-    if (type == framework::DataTypeTrait<float>::DataType) {
+    if (type == framework::DataTypeTrait<float>::DataType()) {
       GetFetchOne<float>(fetch, output);
       output->dtype = PaddleDType::FLOAT32;
-    } else if (type == framework::DataTypeTrait<int64_t>::DataType) {
+    } else if (type == framework::DataTypeTrait<int64_t>::DataType()) {
       GetFetchOne<int64_t>(fetch, output);
       output->dtype = PaddleDType::INT64;
+    } else if (type == framework::DataTypeTrait<int32_t>::DataType()) {
+      GetFetchOne<int32_t>(fetch, output);
+      output->dtype = PaddleDType::INT32;
     } else {
-      LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+      LOG(ERROR) << "unknown type, only support float32, int64 and int32 now.";
     }
   }
   return true;
@@ -290,7 +313,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
-    // 1. GPU memeroy
+    // 1. GPU memory
     PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
@@ -308,6 +331,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
+  PADDLE_ENFORCE_NOT_NULL(
+      dynamic_cast<NativePaddlePredictor *>(predictor.get()));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }

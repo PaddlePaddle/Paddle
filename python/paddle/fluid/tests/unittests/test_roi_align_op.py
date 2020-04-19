@@ -26,7 +26,11 @@ class TestROIAlignOp(OpTest):
         self.init_test_case()
         self.make_rois()
         self.calc_roi_align()
-        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+        }
         self.attrs = {
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
@@ -50,16 +54,16 @@ class TestROIAlignOp(OpTest):
         self.pooled_width = 2
         self.sampling_ratio = -1
 
-        self.x = np.random.random(self.x_dim).astype('float32')
+        self.x = np.random.random(self.x_dim).astype('float64')
 
     def pre_calc(self, x_i, roi_xmin, roi_ymin, roi_bin_grid_h, roi_bin_grid_w,
                  bin_size_h, bin_size_w):
         count = roi_bin_grid_h * roi_bin_grid_w
         bilinear_pos = np.zeros(
             [self.channels, self.pooled_height, self.pooled_width, count, 4],
-            np.float32)
+            np.float64)
         bilinear_w = np.zeros(
-            [self.pooled_height, self.pooled_width, count, 4], np.float32)
+            [self.pooled_height, self.pooled_width, count, 4], np.float64)
         for ph in range(self.pooled_width):
             for pw in range(self.pooled_height):
                 c = 0
@@ -109,7 +113,7 @@ class TestROIAlignOp(OpTest):
     def calc_roi_align(self):
         self.out_data = np.zeros(
             (self.rois_num, self.channels, self.pooled_height,
-             self.pooled_width)).astype('float32')
+             self.pooled_width)).astype('float64')
 
         for i in range(self.rois_num):
             roi = self.rois[i]
@@ -157,7 +161,7 @@ class TestROIAlignOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("float32")
+        self.rois = np.array(rois).astype("float64")
 
     def setUp(self):
         self.op_type = "roi_align"
@@ -168,3 +172,36 @@ class TestROIAlignOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestROIAlignInLodOp(TestROIAlignOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_align()
+
+        seq_len = self.rois_lod[0]
+        cur_len = 0
+        lod = [cur_len]
+        for l in seq_len:
+            cur_len += l
+            lod.append(cur_len)
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisLod': np.asarray(lod).astype('int64')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width,
+            'sampling_ratio': self.sampling_ratio
+        }
+
+        self.outputs = {'Out': self.out_data}
+
+
+if __name__ == '__main__':
+    unittest.main()

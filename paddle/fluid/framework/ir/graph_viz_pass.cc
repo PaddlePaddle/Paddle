@@ -12,10 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
+#include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/string/printf.h"
@@ -25,8 +26,6 @@ namespace framework {
 namespace ir {
 using inference::analysis::Dot;
 namespace {
-const char kGraphVizPath[] = "graph_viz_path";
-
 std::string FormatName(const Node* node) {
   if (!node->IsOp() || !node->Op() ||
       !node->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
@@ -38,9 +37,8 @@ std::string FormatName(const Node* node) {
 }
 }  // namespace
 
-std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
+void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
+  const std::string& graph_viz_path = Get<std::string>(kGraphvizPath);
   VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE(fout->good());
@@ -82,7 +80,7 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
       {Dot::Attr("style", "filled,rounded"), Dot::Attr("shape", "box"),
        Dot::Attr("fillcolor", "yellow")});
 
-  auto marked_nodes = ConsumeMarkedNodes(graph.get());
+  auto marked_nodes = ConsumeMarkedNodes(graph);
   // Create nodes
   for (const Node* n : graph->Nodes()) {
     std::string node_id = FormatName(n) + "(" + std::to_string(n->id()) + ")";
@@ -91,6 +89,17 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
       dot.AddNode(node_id, attr, node_id);
     } else if (n->IsVar()) {
+      if (n->Var() && n->Var()->GetType() == proto::VarType::LOD_TENSOR) {
+        bool is_first = true;
+        for (int64_t length : n->Var()->GetShape()) {
+          if (is_first) {
+            node_id += "\n" + std::to_string(length);
+            is_first = false;
+          } else {
+            node_id += "," + std::to_string(length);
+          }
+        }
+      }
       decltype(op_attrs)* attr;
       if (marked_nodes.count(n)) {
         attr = &marked_var_attrs;
@@ -115,8 +124,6 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
   }
 
   sout << dot.Build();
-
-  return graph;
 }
 
 GraphVizPass::marked_nodes_t GraphVizPass::ConsumeMarkedNodes(
@@ -135,4 +142,4 @@ GraphVizPass::marked_nodes_t GraphVizPass::ConsumeMarkedNodes(
 }  // namespace paddle
 
 REGISTER_PASS(graph_viz_pass, paddle::framework::ir::GraphVizPass)
-    .RequirePassAttr(paddle::framework::ir::kGraphVizPath);
+    .RequirePassAttr(paddle::framework::ir::kGraphvizPath);

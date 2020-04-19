@@ -31,7 +31,7 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-// refer do not need useme, it would be the last one.
+// refer do not need CanBeUsed, it would be the last one.
 void GenBase::dumpCode(const unsigned char* code) const {
   if (code) {
     static int counter = 0;

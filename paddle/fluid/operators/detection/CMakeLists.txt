@@ -20,7 +20,6 @@ detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op.cu)
 detection_library(iou_similarity_op SRCS iou_similarity_op.cc
 iou_similarity_op.cu)
 detection_library(mine_hard_examples_op SRCS mine_hard_examples_op.cc)
-detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc poly_util.cc gpc.cc)
 detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op.cu)
 detection_library(density_prior_box_op SRCS density_prior_box_op.cc density_prior_box_op.cu)
 detection_library(anchor_generator_op SRCS anchor_generator_op.cc
@@ -31,23 +30,30 @@ detection_library(polygon_box_transform_op SRCS polygon_box_transform_op.cc
 polygon_box_transform_op.cu)
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 detection_library(generate_proposal_labels_op SRCS generate_proposal_labels_op.cc)
+detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS gpc)
+detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
+detection_library(yolo_box_op SRCS yolo_box_op.cc yolo_box_op.cu)
+detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc box_decoder_and_assign_op.cu)
+detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc sigmoid_focal_loss_op.cu)
+detection_library(retinanet_detection_output_op SRCS retinanet_detection_output_op.cc)
 
 if(WITH_GPU)
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc generate_proposals_op.cu DEPS memory cub)
+  detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc distribute_fpn_proposals_op.cu DEPS memory cub)
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc collect_fpn_proposals_op.cu DEPS memory cub)
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
+  detection_library(distribute_fpn_proposals_op SRCS distribute_fpn_proposals_op.cc)
+  detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)
 endif()
 
 detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op.cc roi_perspective_transform_op.cu)
 #Export local libraries to parent
 # set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
 
-foreach(src ${LOCAL_DETECTION_LIBS})
-    set(OP_LIBRARY ${src} ${OP_LIBRARY} CACHE INTERNAL "op libs")
-endforeach()
-
 cc_library(mask_util SRCS mask_util.cc DEPS memory)
 cc_test(mask_util_test SRCS mask_util_test.cc DEPS memory mask_util)
+cc_library(gpc SRCS gpc.cc DEPS op_registry)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS mask_util)

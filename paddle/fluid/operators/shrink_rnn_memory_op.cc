@@ -31,11 +31,16 @@ class ShrinkRNNMemoryOp : public ArrayOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto *x_var = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x_var != nullptr, "Input X must be set");
+    PADDLE_ENFORCE_NOT_NULL(x_var,
+                            platform::errors::NotFound(
+                                "Input(X) of ShrinkRNNMemoryOp is not found."));
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
     size_t offset = this->GetOffset(scope, place);
     auto *rank_table_var = scope.FindVar(Input("RankTable"));
-    PADDLE_ENFORCE(rank_table_var != nullptr, "RankTable must be set");
+    PADDLE_ENFORCE_NOT_NULL(
+        rank_table_var,
+        platform::errors::NotFound(
+            "Input(RankTable) of ShrinkRNNMemoryOp is not found."));
     auto &rank_table = rank_table_var->Get<framework::LoDRankTable>();
 
     auto &rank_items = rank_table.items();
@@ -46,7 +51,9 @@ class ShrinkRNNMemoryOp : public ArrayOp {
         rank_items.begin();
 
     auto *out_var = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE(out_var != nullptr, "Output(Out) must be set.");
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, platform::errors::NotFound(
+                     "Output(Out) of ShrinkRNNMemoryOp is not found."));
     auto &out_tensor = *out_var->GetMutable<framework::LoDTensor>();
 
     size_t height = dst_num_rows;
@@ -73,12 +80,12 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The RNN step memory to be shrinked.");
+    AddInput("X", "(LoDTensor) The RNN step memory to be shrank.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
     AddInput("I",
              "(LoDTensor) The step index. The RNN step memory 'X' will be "
-             "shrinked to match the size of the input of the index'th step.");
-    AddOutput("Out", "(LoDTensor) The shrinked RNN step memory.");
+             "shrank to match the size of the input of the index'th step.");
+    AddOutput("Out", "(LoDTensor) The shrank RNN step memory.");
     AddComment(R"DOC(
 This operator is used to shrink output batch of memory defined in dynamic RNN.
 
@@ -96,12 +103,15 @@ batch size for the next time step.
 class ShrinkRNNMemoryInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"));
-    PADDLE_ENFORCE(context->HasInput("I"));
-    PADDLE_ENFORCE(context->HasInput("RankTable"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "ShrinkRNNMemory");
+    OP_INOUT_CHECK(context->HasInput("I"), "Input", "I", "ShrinkRNNMemory");
+    OP_INOUT_CHECK(context->HasInput("RankTable"), "Input", "RankTable",
+                   "ShrinkRNNMemory");
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    // For runtime, output's lod is computed according to input's lod, but
+    // remove the finished sequence. It is set in detail kernel implementation.
     if (!context->IsRuntime()) {
-      context->DecreaseLoDLevel("X", /*->*/ "Out");
+      context->ShareLoD("X", /*->*/ "Out");
     }
   }
 };
@@ -119,10 +129,13 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
                const platform::Place &place) const override {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
-    PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");
+    PADDLE_ENFORCE_NOT_NULL(
+        dx_var, platform::errors::NotFound(
+                    "Input(X@GRAD) of ShrinkRNNMemoryGradOp is not found."));
     auto *x_var = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x_var != nullptr);
-
+    PADDLE_ENFORCE_NOT_NULL(
+        x_var, platform::errors::NotFound(
+                   "Input(x) of ShrinkRNNMemoryGradOp is not found."));
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
     auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
     dx_tensor.Resize(x_tensor.dims());
@@ -152,27 +165,27 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
 class ShrinkRNNMemoryGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"));
-    PADDLE_ENFORCE(context->HasOutput(framework::GradVarName("X")));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "ShrinkRNNMemoryGrad");
+    OP_INOUT_CHECK(context->HasOutput(framework::GradVarName("X")), "Output",
+                   "X", "ShrinkRNNMemoryGrad");
 
     context->ShareDim("X", /*->*/ framework::GradVarName("X"));
     context->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 };
 
-class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ShrinkRNNGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("shrink_rnn_memory_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -182,6 +195,8 @@ class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(shrink_rnn_memory, ops::ShrinkRNNMemoryOp,
                   ops::ShrinkRNNMemoryInferShape,
-                  ops::ShrinkRNNMemoryOpProtoMaker, ops::ShrinkRNNGradOpMaker);
+                  ops::ShrinkRNNMemoryOpProtoMaker,
+                  ops::ShrinkRNNGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ShrinkRNNGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(shrink_rnn_memory_grad, ops::ShrinkRNNMemoryGradOp,
                   ops::ShrinkRNNMemoryGradInferShape);

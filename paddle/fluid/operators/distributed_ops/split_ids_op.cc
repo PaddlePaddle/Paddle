@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed_ops/split_ids_op.h"
 
+#include <memory>
+
 namespace paddle {
 namespace operators {
 
@@ -50,8 +52,8 @@ class SplitIdsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("Ids"), "SplitIdsOp must has input Ids.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"), "SplitIdsOp must has output Out.");
+    PADDLE_ENFORCE(ctx->HasInputs("Ids"), "SplitIdsOp must have input Ids.");
+    PADDLE_ENFORCE(ctx->HasOutputs("Out"), "SplitIdsOp must have output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
@@ -64,34 +66,17 @@ class SplitIdsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("Ids").front()),
-        ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Ids"), ctx.GetPlace());
   }
 };
 
 class SplitIdsOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto *input_var = block->Var(op_desc.Input("Ids")[0]);
-    for (auto &out_var : op_desc.Output("Out")) {
-      block->Var(out_var)->SetType(input_var->GetType());
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto input_type = ctx->GetType(ctx->Input("Ids")[0]);
+    for (auto &out_var : ctx->Output("Out")) {
+      ctx->SetType(out_var, input_type);
     }
-  }
-};
-
-class SplitIdsOpGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto grad = new framework::OpDesc();
-    grad->SetType("concat");
-    grad->SetInput("X", OutputGrad("Out"));
-    grad->SetOutput("Out", InputGrad("Ids"));
-    grad->SetAttr("axis", 0);
-    return std::unique_ptr<framework::OpDesc>(grad);
   }
 };
 
@@ -100,7 +85,7 @@ class SplitIdsOpGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(split_ids, ops::SplitIdsOp, ops::SplitIdsOpMaker,
-                  ops::SplitIdsOpGradMaker, ops::SplitIdsOpInferVarType);
+                  ops::SplitIdsOpInferVarType);
 
 REGISTER_OP_CPU_KERNEL(
     split_ids, ops::SplitIdsOpKernel<paddle::platform::CPUPlace, int64_t>,

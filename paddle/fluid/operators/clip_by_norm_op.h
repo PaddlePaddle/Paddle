@@ -67,7 +67,10 @@ class ClipByNormKernel : public framework::OpKernel<T> {
                    framework::ToTypeName(in_var->Type()));
     }
 
-    PADDLE_ENFORCE_NOT_NULL(input);
+    PADDLE_ENFORCE_NOT_NULL(input,
+                            platform::errors::InvalidArgument(
+                                "Input(X) of ClipByNormOp should not be null. "
+                                "Please check if it is created correctly."));
 
     auto x = EigenVector<T>::Flatten(*input);
     auto out = EigenVector<T>::Flatten(*output);
@@ -75,11 +78,65 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto temp = (x_norm <= max_norm).template cast<T>().eval();
+    auto temp = (x_norm <= max_norm).template cast<T>();
     auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
     Eigen::array<int, 1> one_dim{{1}};
     Eigen::DSizes<int, 1> m_dsize(input->numel());
     out.device(place) = x * scaling.reshape(one_dim).broadcast(m_dsize);
+  }
+};
+
+class ClipByNormOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ClipByNormOp should not be null. Please "
+                          "check if it is created correctly."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ClipByNormOp should not be null. "
+                          "Please check if it is created correctly."));
+    auto max_norm = ctx->Attrs().Get<float>("max_norm");
+    PADDLE_ENFORCE_GT(max_norm, 0, platform::errors::InvalidArgument(
+                                       "max_norm should be greater than 0. "
+                                       "Received max_norm is %f.",
+                                       max_norm));
+    auto x_dims = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "(Tensor) The input of clip_by_norm op and data type is float32."
+             "The number of dimensions must be between [1, 9].");
+    AddOutput("Out",
+              "(Tensor) The output of clip_by_norm op with shape as input(X)"
+              "The data type is float32.");
+    AddAttr<float>("max_norm", "(float) The maximum norm value.");
+    AddComment(R"DOC(
+ClipByNorm Operator.
+
+This operator limits the L2 norm of the input $X$ within $max\_norm$.
+If the L2 norm of $X$ is less than or equal to $max\_norm$, $Out$ will be
+the same as $X$. If the L2 norm of $X$ is greater than $max\_norm$, $X$ will
+be linearly scaled to make the L2 norm of $Out$ equal to $max\_norm$, as
+shown in the following formula:
+
+$$
+Out = \\frac{max\\_norm * X}{norm(X)},
+$$
+
+where $norm(X)$ represents the L2 norm of $X$.
+
+)DOC");
   }
 };
 

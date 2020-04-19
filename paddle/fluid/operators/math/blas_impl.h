@@ -24,6 +24,14 @@ namespace math {
 template <typename T>
 struct CBlas;
 
+template <>
+struct CBlas<int8_t> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW("Blas VCOPY don't support int8_t");
+  }
+};
+
 #ifdef PADDLE_WITH_MKLML
 template <>
 struct CBlas<float> {
@@ -100,8 +108,18 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vsSub(args...);
+  }
+
+  template <typename... ARGS>
   static void VMUL(ARGS... args) {
     platform::dynload::vsMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vsDiv(args...);
   }
 
   template <typename... ARGS>
@@ -123,6 +141,17 @@ struct CBlas<float> {
   static void VINV(ARGS... args) {
     platform::dynload::vsInv(args...);
   }
+
+  template <typename... ARGS>
+  static void VMERF(ARGS... args) {
+    platform::dynload::vmsErf(args...);
+  }
+#if !defined(_WIN32)
+  template <typename... ARGS>
+  static void CSRMM(ARGS... args) {
+    platform::dynload::mkl_scsrmm(args...);
+  }
+#endif
 };
 
 template <>
@@ -200,8 +229,18 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vdSub(args...);
+  }
+
+  template <typename... ARGS>
   static void VMUL(ARGS... args) {
     platform::dynload::vdMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vdDiv(args...);
   }
 
   template <typename... ARGS>
@@ -223,6 +262,17 @@ struct CBlas<double> {
   static void VINV(ARGS... args) {
     platform::dynload::vdInv(args...);
   }
+
+  template <typename... ARGS>
+  static void VMERF(ARGS... args) {
+    platform::dynload::vmdErf(args...);
+  }
+#if !defined(_WIN32)
+  template <typename... ARGS>
+  static void CSRMM(ARGS... args) {
+    platform::dynload::mkl_dcsrmm(args...);
+  }
+#endif
 };
 
 #else
@@ -412,8 +462,26 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::VADD(n, x, y, z);
 #else
-  this->template VCOPY<T>(n, y, z);
-  this->template AXPY<T>(n, 1., x, z);
+  if (x == z) {
+    this->template AXPY<T>(n, 1., y, z);
+  } else {
+    this->template VCOPY<T>(n, y, z);
+    this->template AXPY<T>(n, 1., x, z);
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VSUB(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSUB(n, x, y, z);
+#else
+  // try to find if openblas support vsub
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
 #endif
 }
 
@@ -427,6 +495,20 @@ void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
   // try to find if openblas support vmul
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] * y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VDIV(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VDIV(n, x, y, z);
+#else
+  // try to find if openblas support vdiv
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] / y[i];
   }
 #endif
 }
@@ -553,6 +635,72 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
 #endif
 }
 
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::BatchedGEMMWithHead(
+    CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int W1, int H1, int W2,
+    int H2, T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
+    int64_t strideA, int64_t strideB, int64_t head_number,
+    bool split_b_vertical) const {
+  int lda = (transA == CblasNoTrans) ? W1 : H1;
+  int ldb = (transB == CblasNoTrans) ? W2 : H2;
+  auto a_array = std::vector<const T *>(batchCount);
+  auto b_array = std::vector<const T *>(batchCount);
+  auto c_array = std::vector<T *>(batchCount);
+
+  if (split_b_vertical) {
+    int ldc = W2;
+    int sub_width = W2 / head_number;
+
+    for (int i = 0; i < head_number; i++) {
+      int sub_matA_offset = (transA == CblasNoTrans)
+                                ? i * (W1 / head_number)
+                                : i * (W1 / head_number) * H1;
+      int sub_matB_offset = (transB == CblasNoTrans)
+                                ? i * (W2 / head_number)
+                                : i * (W2 / head_number) * H2;
+      int sub_matC_offset = i * W2 / head_number;
+      for (int k = 0; k < batchCount; ++k) {
+        a_array[k] = &A[k * strideA] + sub_matA_offset;
+        b_array[k] = &B[k * strideB] + sub_matB_offset;
+        c_array[k] = &C[k * H1 * W2] + sub_matC_offset;
+      }
+
+      CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &H1, &sub_width,
+                           &H2, &alpha, a_array.data(), &lda, b_array.data(),
+                           &ldb, &beta, c_array.data(), &ldc,
+                           1 /* group_count */, &batchCount);
+    }
+
+  } else {
+    PADDLE_ENFORCE_EQ(W1, H2);
+    int ldc = W2 * head_number;
+    int sub_width = W1 / head_number;
+
+    for (int i = 0; i < head_number; i++) {
+      int sub_matA_offset = (transA == CblasNoTrans)
+                                ? i * (W1 / head_number)
+                                : i * (W1 / head_number) * H1;
+      int sub_matB_offset = (transB == CblasNoTrans)
+                                ? i * (W1 / head_number) * W2
+                                : i * (W1 / head_number);
+      int sub_matC_offset = i * W2;
+      for (int k = 0; k < batchCount; ++k) {
+        a_array[k] = &A[k * strideA] + sub_matA_offset;
+        b_array[k] = &B[k * strideB] + sub_matB_offset;
+        c_array[k] = &C[k * H1 * head_number * W2] + sub_matC_offset;
+      }
+
+      CBlas<T>::GEMM_BATCH(CblasRowMajor, &transA, &transB, &H1, &W2,
+                           &sub_width, &alpha, a_array.data(), &lda,
+                           b_array.data(), &ldb, &beta, c_array.data(), &ldc,
+                           1 /* group_count */, &batchCount);
+    }
+  }
+}
+#endif
+
 template <typename DeviceContext>
 template <typename T>
 void Blas<DeviceContext>::MatMul(const int M, const int N, const int K,
@@ -605,7 +753,11 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
                            mat_b.data<T>(), beta, mat_out->data<T>());
   } else {
     PADDLE_ENFORCE(dim_a.batch_size_ == dim_b.batch_size_ ||
-                   dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0);
+                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0,
+                   "dim_a.batch_size should be equal to dim_b.batch_size, or "
+                   "one of dim_a.batch_size and dim_b.batch_size should be 0. "
+                   "But got dim_a.batch_size = %d, dim_b.batch_size = %d.",
+                   dim_a.batch_size_, dim_b.batch_size_);
     this->template BatchedGEMM<T>(
         transA, transB, dim_a.height_, dim_b.width_, dim_a.width_, alpha,
         mat_a.data<T>(), mat_b.data<T>(), beta, mat_out->data<T>(),
@@ -613,6 +765,102 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
         dim_a.stride_, dim_b.stride_);
   }
 }
+
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+/*
+ * Multiple two matrixes with multiple heads
+ *
+ * A new parameter, i.e head_number is added compared to normal MatMul.
+ * The head_number describes the number of heads a matrix is vertically
+ * split.
+ *
+ * When user calls this API, the multiplication of two big matrixes is split
+ * into multiplication of several (head_number_) small matrixes. e.g. if Mat A
+ * is [3, 24] and Mat B is [24, 4], when multiple A and B with head_number as
+ * 4, Mat A will be split as 4 matrix of [3, 6] and Mat B will be
+ * (horizontally) split as 4 matrix of [6, 4]. The result of final matrix
+ * will be 4 matrix of [3, 4], i.e. [3, 16].
+ * Another example is A is [3, 8], B is [2, 16], head_number is 4. In this
+ * case, A will be split as [3, 2], B will be (vertically) split as
+ * [2, 4]. The final result will be 4 matrix of 4 matrix of [3,4], i.e. [3, 16]
+ */
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMulWithHead(const framework::Tensor &mat_a,
+                                         const MatDescriptor &dim_a,
+                                         const framework::Tensor &mat_b,
+                                         const MatDescriptor &dim_b, T alpha,
+                                         int head_number,
+                                         framework::Tensor *mat_out, T beta,
+                                         bool mat_b_split_vertical) const {
+  PADDLE_ENFORCE_EQ(dim_a.width_ % head_number, 0);
+  PADDLE_ENFORCE_GE(head_number, 1);
+  PADDLE_ENFORCE_LE(head_number, dim_a.width_);
+  CBLAS_TRANSPOSE transA = !dim_a.trans_ ? CblasNoTrans : CblasTrans;
+  CBLAS_TRANSPOSE transB = !dim_b.trans_ ? CblasNoTrans : CblasTrans;
+
+  if (mat_b_split_vertical) {
+    PADDLE_ENFORCE_EQ(dim_b.height_, dim_a.width_ / head_number);
+    PADDLE_ENFORCE_EQ(dim_b.width_ % head_number, 0);
+  }
+
+  if (dim_a.batch_size_ == 0 && dim_b.batch_size_ == 0) {
+    int lda = !dim_a.trans_ ? dim_a.width_ : dim_a.height_;
+    int ldb = !dim_b.trans_ ? dim_b.width_ : dim_b.height_;
+    int sub_matA_offset;
+    int sub_matB_offset;
+    int sub_matC_offset;
+    int sub_mat_M = dim_a.height_;
+    int sub_mat_N;
+    int sub_mat_K;
+    int ldc;
+
+    for (int i = 0; i < head_number; i++) {
+      sub_matA_offset = dim_a.trans_
+                            ? i * (dim_a.width_ / head_number) * dim_a.height_
+                            : i * (dim_a.width_ / head_number);
+      if (mat_b_split_vertical) {
+        sub_matB_offset = dim_b.trans_
+                              ? i * (dim_b.width_ / head_number) * dim_b.height_
+                              : i * (dim_b.width_ / head_number);
+        sub_matC_offset = i * dim_b.width_ / head_number;
+
+        sub_mat_N = dim_b.width_ / head_number;
+        sub_mat_K = dim_b.height_;
+
+        ldc = dim_b.width_;
+      } else {
+        sub_matB_offset =
+            dim_b.trans_ ? i * (dim_b.height_ / head_number)
+                         : i * (dim_b.height_ / head_number) * dim_b.width_;
+        sub_matC_offset = i * dim_b.width_;
+
+        sub_mat_N = dim_b.width_;
+        sub_mat_K = dim_a.width_ / head_number;
+
+        ldc = head_number * dim_b.width_;
+      }
+
+      this->template GEMM<T>(transA, transB, sub_mat_M, sub_mat_N, sub_mat_K,
+                             alpha, mat_a.data<T>() + sub_matA_offset, lda,
+                             mat_b.data<T>() + sub_matB_offset, ldb, beta,
+                             mat_out->data<T>() + sub_matC_offset, ldc);
+    }
+  } else {
+    PADDLE_ENFORCE_EQ((dim_a.batch_size_ == dim_b.batch_size_ ||
+                       dim_a.batch_size_ == 0 || dim_b.batch_size_ == 0),
+                      true);
+
+    this->template BatchedGEMMWithHead<T>(
+        transA, transB, dim_a.width_, dim_a.height_, dim_b.width_,
+        dim_b.height_, alpha, mat_a.data<T>(), mat_b.data<T>(), beta,
+        mat_out->data<T>(),
+        dim_a.batch_size_ == 0 ? dim_b.batch_size_ : dim_a.batch_size_,
+        dim_a.stride_, dim_b.stride_, head_number, mat_b_split_vertical);
+  }
+}
+#endif
+
 template <typename DeviceContext>
 template <typename T>
 void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
@@ -624,6 +872,32 @@ void Blas<DeviceContext>::VINV(int n, const T *a, T *y) const {
   }
 #endif
 }
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VMERF(int n, const T *a, T *y,
+                                             int64_t mode) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMERF(n, a, y, mode);
+#else
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::erf(a[i]);
+  }
+#endif
+}
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::CSRMM(
+    const char *transa, const int *m, const int *n, const int *k,
+    const T *alpha, const char *matdescra, const T *val, const int *indx,
+    const int *pntrb, const int *pntre, const T *b, const int *ldb,
+    const T *beta, T *c, const int *ldc) const {
+  CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
+                  ldb, beta, c, ldc);
+}
+#endif
 
 }  // namespace math
 }  // namespace operators

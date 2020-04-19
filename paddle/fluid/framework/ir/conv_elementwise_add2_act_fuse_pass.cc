@@ -33,7 +33,7 @@ namespace ir {
   GET_IR_NODE(act_op);                 \
   GET_IR_NODE(act_out);
 
-// Inherient the basic infomation from `base_desc`, and modify some fields.
+// Inherient the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc, const std::string& bias,
     const std::string& bias1, const std::string& activation,
@@ -51,10 +51,9 @@ framework::proto::OpDesc PrepareOpDesc(
   return *desc.Proto();
 }
 
-std::unique_ptr<ir::Graph> ConvElementwiseAdd2ActFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
   const std::string pattern_name = "conv_elementwise_add2_act_fuse";
-  FusePassBase::Init(pattern_name, graph.get());
+  FusePassBase::Init(pattern_name, graph);
 
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()->NewNode("x")->AsInput()->assert_is_op_input(
@@ -72,6 +71,17 @@ std::unique_ptr<ir::Graph> ConvElementwiseAdd2ActFusePass::ApplyImpl(
     std::string bias1_name = elementwise_add_in_y_1->Name();
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
+
+    auto elementwise_add_out_shape = elementwise_add_out->Var()->GetShape();
+    auto add_in_y_1_shape = elementwise_add_in_y_1->Var()->GetShape();
+
+    if (elementwise_add_out_shape != add_in_y_1_shape) {
+      VLOG(3)
+          << "The inputs X and Y's shapes of elementwise_add op are different.";
+      VLOG(3) << "conv_elementwise_add2_act_fuse_pass doesn't support this "
+                 "pattern. Fusion will not apply.";
+      return;
+    }
 
     auto new_op_proto = PrepareOpDesc(base_op_desc, bias_name, bias1_name,
                                       act_op_type, act_op_out);
@@ -92,12 +102,10 @@ std::unique_ptr<ir::Graph> ConvElementwiseAdd2ActFusePass::ApplyImpl(
 
     // Delete the unneeded nodes.
     GraphSafeRemoveNodes(
-        graph.get(),
-        {conv_op, conv_out, elementwise_add_op, elementwise_add_op_1,
-         elementwise_add_out, elementwise_add_out_1, act_op});
+        graph, {conv_op, conv_out, elementwise_add_op, elementwise_add_op_1,
+                elementwise_add_out, elementwise_add_out_1, act_op});
   };
-  gpd(graph.get(), handler);
-  return graph;
+  gpd(graph, handler);
 }
 
 }  // namespace ir

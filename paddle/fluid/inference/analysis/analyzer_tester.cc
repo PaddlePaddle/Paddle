@@ -29,8 +29,9 @@ using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
   Argument argument;
+  argument.SetDisableLogs(false);
   argument.SetModelDir(FLAGS_inference_model_dir);
-  argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
+  argument.SetEnableAnalysisOptim(false);
   argument.SetUseGPU(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});
@@ -41,10 +42,11 @@ TEST(Analyzer, analysis_without_tensorrt) {
 
 TEST(Analyzer, analysis_with_tensorrt) {
   Argument argument;
+  argument.SetDisableLogs(false);
+  argument.SetEnableAnalysisOptim(false);
   argument.SetTensorRtMaxBatchSize(3);
   argument.SetTensorRtWorkspaceSize(1 << 20);
   argument.SetModelDir(FLAGS_inference_model_dir);
-  argument.SetIrAnalysisPasses({"infer_clean_graph_pass"});
   argument.SetUseGPU(false);
   argument.SetAnalysisPasses({"ir_graph_build_pass", "ir_analysis_pass",
                               "ir_params_sync_among_devices_pass"});

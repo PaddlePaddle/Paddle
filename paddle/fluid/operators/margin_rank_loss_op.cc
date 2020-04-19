@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/margin_rank_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -94,8 +95,6 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X1"), "Input(X1) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X2"), "Input(X2) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("Activated"),
@@ -106,13 +105,31 @@ class MarginRankLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class MarginRankLossGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("margin_rank_loss_grad");
+    op->SetInput("Activated", this->Output("Activated"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetOutput(framework::GradVarName("X1"), this->InputGrad("X1"));
+    op->SetOutput(framework::GradVarName("X2"), this->InputGrad("X2"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(margin_rank_loss, ops::MarginRankLossOp,
                   ops::MarginRankLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::MarginRankLossGradMaker<paddle::framework::OpDesc>,
+                  ops::MarginRankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(margin_rank_loss_grad, ops::MarginRankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     margin_rank_loss,

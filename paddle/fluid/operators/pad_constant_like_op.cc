@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pad_constant_like_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -35,11 +36,19 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
     auto y_dim = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dim.size(), y_dim.size(),
-                      "The dimention of X and Y should be the same.");
+                      "The dimension of X and Y should be the same.");
 
     for (int i = 0; i < x_dim.size(); ++i) {
-      PADDLE_ENFORCE_GE(x_dim[i], y_dim[i]);
+      if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
+        continue;
+      } else {
+        PADDLE_ENFORCE_GE(
+            x_dim[i], y_dim[i],
+            "expected X_dim[i] >= Y_dim[i], but received %d < %d for dim %d",
+            x_dim[i], y_dim[i], i);
+      }
     }
+
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -47,8 +56,9 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Y")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Y"),
+        ctx.device_context());
   }
 };
 
@@ -154,7 +164,7 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(dout_dim.size(), y_dim.size(),
-                      "The dimention of X and Y should be the same.");
+                      "The dimension of X and Y should be the same.");
 
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {
@@ -162,7 +172,14 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
       ctx->ShareLoD("Y", /*->*/ y_grad_name);
 
       for (int i = 0; i < y_dim.size(); ++i) {
-        PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i]);
+        if ((!ctx->IsRuntime()) && ((dout_dim[i] == -1) || (y_dim[i] == -1))) {
+          continue;
+        } else {
+          PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i],
+                            "expected Out_dim[i] >= Y_dim[i], but received %d "
+                            "< %d for dim %d",
+                            dout_dim[i], y_dim[i], i);
+        }
       }
     }
   }
@@ -170,24 +187,24 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Y")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Y"),
+        ctx.device_context());
   }
 };
 
-class PadConstantLikeOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PadConstantLikeOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *bind = new framework::OpDesc();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetType("pad_constant_like_grad");
-    bind->SetInput("Y", Input("Y"));
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    bind->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(bind);
+    bind->SetInput("Y", this->Input("Y"));
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    bind->SetAttrMap(this->Attrs());
   }
 };
 
@@ -197,14 +214,21 @@ class PadConstantLikeOpGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(pad_constant_like, ops::PadConstantLikeOp,
-                  ops::PadConstantLikeOpMaker, ops::PadConstantLikeOpGradMaker);
+                  ops::PadConstantLikeOpMaker,
+                  ops::PadConstantLikeOpGradMaker<paddle::framework::OpDesc>,
+                  ops::PadConstantLikeOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_constant_like_grad, ops::PadConstantLikeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pad_constant_like,
     ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PadConstantLikeKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     pad_constant_like_grad,
     ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PadConstantLikeGradKernel<paddle::platform::CPUDeviceContext,
+                                   int64_t>);

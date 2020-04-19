@@ -16,11 +16,24 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/blas.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
+
+/**
+ * Printing shape information into a string is easy to use.
+ */
+inline static std::string DumpMatrixShape(const math::MatDescriptor &desc) {
+  std::stringstream buffer;
+  buffer << "[" << desc.batch_size_ << ", " << desc.height_ << ", "
+         << desc.width_ << "]";
+  return buffer.str();
+}
+
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
  * original x_dim is returned.
@@ -47,10 +60,10 @@ template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &x =
-        detail::Ref(context.Input<framework::Tensor>("X"), "Cannot find X");
-    auto &y =
-        detail::Ref(context.Input<framework::Tensor>("Y"), "Cannot find Y");
+    auto &x = GET_DATA_SAFELY(context.Input<framework::Tensor>("X"), "Input",
+                              "X", "MatMul");
+    auto &y = GET_DATA_SAFELY(context.Input<framework::Tensor>("Y"), "Input",
+                              "Y", "MatMul");
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
@@ -60,7 +73,33 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
+
+    int head_number = 1;
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    head_number = context.Attr<int>("head_number");
+#endif
+
+    const auto &x_dims = x.dims();
+    const auto &y_dims = y.dims();
+    if (head_number <= 1 && x_dims.size() == 3 && y_dims.size() <= 2) {
+      // the transpose_X must be false, if is true, the transpose cost much time
+      if (!context.Attr<bool>("transpose_X")) {
+        mat_dim_a.height_ *= mat_dim_a.batch_size_;
+        mat_dim_a.batch_size_ = 0;
+      }
+    }
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
+
+    if (head_number > 1) {
+      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
+                          T(0), split_vertical_y);
+    } else {
+      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    }
+#else
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+#endif
   }
 };
 
@@ -186,6 +225,19 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+
+    int head_number = 1;
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    head_number = context.Attr<int>("head_number");
+#endif
+
+    if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
+      // the transpose_X must be false, if is true, the transpose cost much time
+      if (!trans_a) {
+        mat_dim_a.height_ *= mat_dim_a.batch_size_;
+        mat_dim_a.batch_size_ = 0;
+      }
+    }
     blas.MatMul(a, mat_dim_a, b, mat_dim_b,
                 static_cast<T>(context.Attr<float>("alpha")), out, T(0));
   }
@@ -272,12 +324,9 @@ class MatMulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of MatMulOp should not be null.");
-    PADDLE_ENFORCE(context->HasInput("Y"),
-                   "Input(Y) of MatMulOp should not be null.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of MatMulOp should not be null.");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -289,20 +338,61 @@ class MatMulOp : public framework::OperatorWithKernel {
         math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
                                      context->Attrs().Get<bool>("transpose_Y"));
 
-    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_);
-    PADDLE_ENFORCE(mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
-                   mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0);
+    if (mat_dim_x.width_ == -1) {
+      mat_dim_x.width_ = mat_dim_y.height_;
+    }
+    if (mat_dim_y.height_ == -1) {
+      mat_dim_y.height_ = mat_dim_x.width_;
+    }
+
+    if (context->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
+              mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
+          true, platform::errors::InvalidArgument(
+                    "The batch size of the two matrices should be equal, or "
+                    "at least one is zero.\n"
+                    "But received X's shape: %s, Y's shape: %s.",
+                    DumpMatrixShape(mat_dim_x).c_str(),
+                    DumpMatrixShape(mat_dim_y).c_str()));
+    }
+    int64_t dim_out_y = mat_dim_y.width_;
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    int head_number = context->Attrs().Get<int>("head_number");
+    bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
+    if (context->IsRuntime()) {
+      PADDLE_ENFORCE_LE(
+          head_number, mat_dim_x.width_,
+          platform::errors::InvalidArgument(
+              "Unsatisfied mkl acceleration library requirements: "
+              "The number of heads "
+              "(%d) must be equal to X's width. But received X's shape: %s.",
+              head_number, DumpMatrixShape(mat_dim_x).c_str()));
+
+      if (!split_vertical_y && head_number > 0) {
+        dim_out_y = head_number * mat_dim_y.width_;
+      }
+    }
+#else
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
+                      platform::errors::InvalidArgument(
+                          "Input X's width should be equal to the Y's height, "
+                          "but received X's shape: [%s],"
+                          "Y's shape: [%s].",
+                          dim_x, dim_y));
+#endif
+
     std::vector<int64_t> dim_out;
     if (mat_dim_x.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+      dim_out[dim_out.size() - 1] = dim_out_y;
     } else if (mat_dim_y.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_y);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
-      dim_out[dim_out.size() - 1] = mat_dim_y.width_;
+      dim_out[dim_out.size() - 1] = dim_out_y;
     } else {
-      dim_out = {mat_dim_x.height_, mat_dim_y.width_};
+      dim_out = {mat_dim_x.height_, dim_out_y};
     }
 
     if (dim_x.size() == 1 && dim_out[dim_out.size() - 2] == 1) {
@@ -319,6 +409,21 @@ class MatMulOp : public framework::OperatorWithKernel {
     }
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
     context->ShareLoD("X", /*->*/ "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using mkldnn::memory;
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -337,6 +442,34 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false);
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
+    AddAttr<bool>("force_fp32_output",
+                  "(bool, default false) Force INT8 kernel output FP32, only "
+                  "used in MKL-DNN INT8")
+        .SetDefault(false);
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    AddAttr<int>("head_number", "The number of heads of the matrix")
+        .SetDefault(1);
+#endif
     AddComment(R"DOC(
 MatMul Operator.
 
@@ -358,6 +491,9 @@ Examples without transpose:
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 - X: [B, ..., M, K], Y: [B, ..., K, N] => Out: [B, ..., M, N]
 
+Example of matrix multiplication with head_number of H
+- X: [B, M, K], Y: [B, K, N] => Out: [B, M, H * N]
+
 The behavior is designed to be similar to the `numpy.matmul` function.
 The differences are:
 - When the rank of the input data is less than or equal to 3, it
@@ -365,6 +501,9 @@ The differences are:
 - When the rank of the input is greater than 3, the rank of X and
   Y must be equal, and the first `rank - 2` dimensions must be equal.
 - We add `transpose_X` and `transpose_Y` flags.
+- We add `head_number` attribute, which is used to multiple two matrixes head
+  by head, and eventually concatenates the output of several (head_number)
+  small matrixes multiplication.
 
 Both the input `X` and `Y` can carry the LoD (Level of Details) information,
 or not. But the output only shares the LoD information with input `X`.
@@ -379,10 +518,10 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(context->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "matmul");
     auto x_dims = context->GetInputDim("X");
     auto y_dims = context->GetInputDim("Y");
 
@@ -398,21 +537,20 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class MatMulOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MatMulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *retv = new framework::OpDesc();
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("matmul_grad");
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    retv->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    retv->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(retv);
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 }  // namespace operators
@@ -420,19 +558,16 @@ class MatMulOpGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
-                  ops::MatMulOpGradMaker);
+                  ops::MatMulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::MatMulOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>);
+    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::float16>);
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(

@@ -23,8 +23,9 @@ template <typename DeviceContext, typename T>
 class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::errors::InvalidArgument("It must use CUDAPlace."));
     auto* in = ctx.Input<Tensor>("Input");
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
@@ -56,18 +57,23 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("Input"),
-        "Input (Input) of polygon_box transform op should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Output"),
-        "Output (Output) of polygon_box transform op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
+                   "polygon_box_transform");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output",
+                   "polygon_box_transform");
 
     auto in_dim = ctx->GetInputDim("Input");
 
-    PADDLE_ENFORCE_EQ(in_dim.size(), 4, "input's rank must be 4.");
+    PADDLE_ENFORCE_EQ(
+        in_dim.size(), 4,
+        platform::errors::InvalidArgument(
+            "input's rank must be 4. But received: Input rank is [%d]",
+            in_dim.size()));
     PADDLE_ENFORCE_EQ(in_dim[1] % 2, 0,
-                      "input's second dimension must be even.");
+                      platform::errors::InvalidArgument(
+                          "input's second dimension must be even. But "
+                          "received: Input 2nd dimension is [%d]",
+                          in_dim[1]));
 
     ctx->SetOutputDim("Output", in_dim);
   }
@@ -98,9 +104,11 @@ the geometry output contains 2*n channels.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(polygon_box_transform, ops::PolygonBoxTransformOp,
-                  ops::PolygonBoxTransformOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    polygon_box_transform, ops::PolygonBoxTransformOp,
+    ops::PolygonBoxTransformOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     polygon_box_transform,
     ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, float>,

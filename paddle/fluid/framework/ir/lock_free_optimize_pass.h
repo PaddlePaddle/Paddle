@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_
-#define PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_
+#pragma once
 
 #include <string>
 #include <vector>
@@ -60,7 +59,7 @@ class LockFreeOptimizePass : public Pass {
   virtual ~LockFreeOptimizePass() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void ApplyImpl(ir::Graph* graph) const override;
 
  private:
   // Create a new sgd node via current optimizer node
@@ -126,5 +125,3 @@ class LockFreeOptimizePass : public Pass {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-
-#endif  // PADDLE_FLUID_FRAMEWORK_IR_LOCK_FREE_OPTIMIZE_PASS_H_

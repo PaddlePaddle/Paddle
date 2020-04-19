@@ -48,66 +48,14 @@ bool DDim::operator==(const DDim& d) const {
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
 
-struct DDimPlusVisitor {
-  explicit DDimPlusVisitor(const int64_t* d1, const int64_t* d2)
-      : d1_(d1), d2_(d2) {}
+std::string DDim::to_str() const {
+  std::stringstream ss;
+  ss << '[';
+  if (rank_ > 0) ss << dim_[0];
 
-  template <int D>
-  inline void operator()(Dim<D>& self) const {
-    UnrollAdd<D>::Run(d1_, d2_, self.GetMutable());
-  }
-
-  const int64_t* d1_;
-  const int64_t* d2_;
-};
-
-DDim DDim::operator+(const DDim& d) const {
-  PADDLE_ENFORCE(size() == d.size());
-  DDim ret;
-  ret.rank_ = rank_;
-  ret.apply_visitor(DDimPlusVisitor(Get(), d.Get()));
-  return ret;
-}
-
-struct DDimMulVisitor {
-  explicit DDimMulVisitor(const int64_t* d1, const int64_t* d2)
-      : d1_(d1), d2_(d2) {}
-
-  template <int D>
-  inline void operator()(Dim<D>& self) const {
-    UnrollMul<D>::Run(d1_, d2_, self.GetMutable());
-  }
-
-  const int64_t* d1_;
-  const int64_t* d2_;
-};
-
-DDim DDim::operator*(const DDim& d) const {
-  PADDLE_ENFORCE(size() == d.size());
-  DDim ret;
-  ret.rank_ = rank_;
-  ret.apply_visitor(DDimMulVisitor(Get(), d.Get()));
-  return ret;
-}
-
-int64_t get(const DDim& ddim, int idx) { return ddim[idx]; }
-
-void set(DDim& ddim, int idx, int value) { ddim[idx] = value; }  // NOLINT
-
-std::vector<int64_t> vectorize(const DDim& ddim) {
-  std::vector<int64_t> result(DDim::kMaxRank);
-  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
-  result.resize(ddim.size());
-  return result;
-}
-
-// NOTE: framework::vectorize converts to type int64_t
-//       which does not fit cudnn inputs.
-std::vector<int> vectorize2int(const DDim& ddim) {
-  std::vector<int> result(DDim::kMaxRank);
-  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
-  result.resize(ddim.size());
-  return result;
+  for (int i = 1; i < rank_; ++i) ss << ", " << dim_[i];
+  ss << ']';
+  return ss.str();
 }
 
 struct ProductVisitor {
@@ -119,6 +67,16 @@ struct ProductVisitor {
 
 int64_t product(const DDim& ddim) {
   return ddim.apply_visitor(ProductVisitor());
+}
+
+bool contain_unknown_dim(const DDim& ddim) {
+  for (int i = 0; i < ddim.size(); ++i) {
+    if (ddim[i] < 0) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 DDim slice_ddim(const DDim& dim, int begin, int end) {

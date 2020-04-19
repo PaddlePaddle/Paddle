@@ -2,11 +2,20 @@ if(NOT WITH_GPU)
     return()
 endif()
 
-set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
-set(paddle_known_gpu_archs7 "30 35 50 52")
-set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
-set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
-set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
+
+if (WITH_NV_JETSON)
+  set(paddle_known_gpu_archs "53 62 72")
+  set(paddle_known_gpu_archs7 "53")
+  set(paddle_known_gpu_archs8 "53 62")
+  set(paddle_known_gpu_archs9 "53 62")
+  set(paddle_known_gpu_archs10 "53 62 72")
+else()
+  set(paddle_known_gpu_archs "30 35 50 52 60 61 70")
+  set(paddle_known_gpu_archs7 "30 35 50 52")
+  set(paddle_known_gpu_archs8 "30 35 50 52 60 61")
+  set(paddle_known_gpu_archs9 "30 35 50 52 60 61 70")
+  set(paddle_known_gpu_archs10 "30 35 50 52 60 61 70 75")
+endif()
 
 ######################################################################################
 # A function for automatic detection of GPUs installed  (if autodetection is enabled)
@@ -62,7 +71,7 @@ endfunction()
 function(select_nvcc_arch_flags out_variable)
   # List of arch names
   set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
-  set(archs_name_default "All")
+  set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
 
   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
@@ -73,7 +82,7 @@ function(select_nvcc_arch_flags out_variable)
   # verify CUDA_ARCH_NAME value
   if(NOT ";${archs_names};" MATCHES ";${CUDA_ARCH_NAME};")
     string(REPLACE ";" ", " archs_names "${archs_names}")
-    message(FATAL_ERROR "Only ${archs_names} architeture names are supported.")
+    message(FATAL_ERROR "Only ${archs_names} architectures names are supported.")
   endif()
 
   if(${CUDA_ARCH_NAME} STREQUAL "Manual")
@@ -92,12 +101,24 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Pascal")
     set(cuda_arch_bin "60 61")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
+    if (NOT ${CUDA_VERSION} LESS 10.0)
+      add_definitions("-DSUPPORTS_CUDA_FP16")
+    endif()
     set(cuda_arch_bin "70")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
+    if (NOT ${CUDA_VERSION} LESS 10.0)
+      add_definitions("-DSUPPORTS_CUDA_FP16")
+    endif()
     set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
+    message(STATUS "WARNING: This is just a warning for publishing release.
+      You are building GPU version without supporting different architectures.
+      So the wheel package may fail on other GPU architectures.
+      You can add -DCUDA_ARCH_NAME=All in cmake command
+      to get a full wheel package to resolve this warning.
+      While, this version will still work on local GPU architecture.")
     detect_installed_gpus(cuda_arch_bin)
   else()  # (${CUDA_ARCH_NAME} STREQUAL "Manual")
     set(cuda_arch_bin ${CUDA_ARCH_BIN})
@@ -141,12 +162,10 @@ endfunction()
 message(STATUS "CUDA detected: " ${CUDA_VERSION})
 if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
-  add_definitions("-DPADDLE_CUDA_BINVER=\"60\"")
 elseif (${CUDA_VERSION} LESS 8.0) # CUDA 7.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"70\"")
 elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
@@ -154,18 +173,16 @@ elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
   # warning for now.
   list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"80\"")
 elseif (${CUDA_VERSION} LESS 10.0) # CUDA 9.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"90\"")
 elseif (${CUDA_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
   list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
   list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
-  add_definitions("-DPADDLE_CUDA_BINVER=\"100\"")
 endif()
+add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
 
 include_directories(${CUDA_INCLUDE_DIRS})
 if(NOT WITH_DSO)
@@ -190,10 +207,6 @@ list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
-if(WITH_FAST_MATH)
-  # Make use of fast math library. https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
-  list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
-endif()
 # in cuda9, suppress cuda warning on eigen 
 list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings

@@ -24,8 +24,8 @@ class TestPadOp(OpTest):
         self.initTestCase()
         self.op_type = "pad_constant_like"
         self.inputs = {
-            'X': np.random.random(self.x_shape).astype("float32"),
-            'Y': np.random.random(self.y_shape).astype("float32")
+            'X': np.random.random(self.x_shape).astype("float64"),
+            'Y': np.random.random(self.y_shape).astype("float64")
         }
         self.attrs = {}
         self.attrs['pad_value'] = self.pad_value
@@ -40,27 +40,27 @@ class TestPadOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Y'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Y'], 'Out')
 
     def initTestCase(self):
-        self.x_shape = (16, 16)
-        self.y_shape = (3, 16)
+        self.x_shape = (16, 40)
+        self.y_shape = (3, 40)
         self.pad_value = 0.1
         self.paddings = [(0, 13), (0, 0)]
 
 
 class TestCase1(TestPadOp):
     def initTestCase(self):
-        self.x_shape = (4, 3, 4, 4)
-        self.y_shape = (2, 3, 4, 4)
+        self.x_shape = (4, 3, 4, 5)
+        self.y_shape = (2, 3, 4, 5)
         self.paddings = [(0, 2), (0, 0), (0, 0), (0, 0)]
         self.pad_value = 0.5
 
 
 class TestCase2(TestPadOp):
     def initTestCase(self):
-        self.x_shape = (4, 3, 4, 4)
-        self.y_shape = (2, 3, 2, 4)
+        self.x_shape = (4, 3, 4, 10)
+        self.y_shape = (2, 3, 2, 10)
         self.paddings = [(0, 2), (0, 0), (0, 2), (0, 0)]
         self.pad_value = 0.5
 

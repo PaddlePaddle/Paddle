@@ -60,13 +60,14 @@ class VariableResponse {
                    bool create_scope = false)
       : scope_(scope), dev_ctx_(dev_ctx), create_scope_(create_scope) {
     if (create_scope) {
-      local_scope_ = &scope->NewScope();
+      local_scope_ = scope->NewTmpScope().release();
     }
   }
 
   virtual ~VariableResponse() {
-    if (create_scope_) {
-      scope_->DeleteScope(local_scope_);
+    if (local_scope_) {
+      delete local_scope_;
+      local_scope_ = nullptr;
     }
   }
 

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/bpr_loss_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -31,10 +32,14 @@ class BprLossOp : public framework::OperatorWithKernel {
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(rank, label_dims.size(),
                       "Input(X) and Input(Label) shall have the same rank.");
-    PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                      framework::slice_ddim(label_dims, 0, rank - 1),
-                      "Input(X) and Input(Label) shall have the same shape "
-                      "except the last dimension.");
+
+    if (ctx->IsRuntime() || (framework::product(x_dims) > 0 &&
+                             framework::product(label_dims) > 0)) {
+      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
+                        framework::slice_ddim(label_dims, 0, rank - 1),
+                        "Input(X) and Input(Label) shall have the same shape "
+                        "except the last dimension.");
+    }
 
     auto y_dims = x_dims;
     y_dims[rank - 1] = 1;
@@ -47,8 +52,9 @@ class BprLossOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -93,8 +99,9 @@ class BprLossGradientOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -127,6 +134,22 @@ neural networks>(https://arxiv.org/abs/1511.06939)
 )DOC");
   }
 };
+
+template <typename T>
+class BprLossGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("bpr_loss_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -134,7 +157,8 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(bpr_loss, ops::BprLossOp, ops::BprLossOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::BprLossGradMaker<paddle::framework::OpDesc>,
+                  ops::BprLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bpr_loss_grad, ops::BprLossGradientOp);
 REGISTER_OP_CPU_KERNEL(bpr_loss, ops::BprLossOpKernel<CPUCtx, float>,
                        ops::BprLossOpKernel<CPUCtx, double>);

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HDFS Utils"""
+"""hdfs_utils.py will move to fluid/incubate/fleet/utils/hdfs.py"""
 
 import os
 import sys
@@ -24,12 +24,12 @@ import copy
 import errno
 
 import logging
+from paddle.fluid.log_helper import get_logger
 
 __all__ = ["HDFSClient", "multi_download", "multi_upload"]
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
-_logger = logging.getLogger("hdfs_utils")
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class HDFSClient(object):
@@ -62,7 +62,7 @@ class HDFSClient(object):
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
+        for k, v in configs.items():
             config_command = '-D%s=%s' % (k, v)
             self.pre_commands.append(config_command)
 
@@ -312,9 +312,9 @@ class HDFSClient(object):
     @staticmethod
     def make_local_dirs(local_path):
         """
-        create a directiory local, is same to mkdir
+        create a directory local, is same to mkdir
         Args:
-            local_path: local path that wants to create a directiory.
+            local_path: local path that wants to create a directory.
         """
         try:
             os.makedirs(local_path)

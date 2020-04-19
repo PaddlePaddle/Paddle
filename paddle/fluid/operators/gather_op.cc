@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gather_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
@@ -42,8 +45,9 @@ class GatherOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -59,7 +63,8 @@ class GatherGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
                                    ctx.device_context());
   }
 };
@@ -70,6 +75,13 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of gather op");
+    AddAttr<bool>(
+        "overwrite",
+        "(bool, default: False) "
+        "In backward process, calc the grad when has same index,"
+        "If true, update the grad using the overwrite mode in same index,"
+        "If false, using the accumulate mode in same index.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Gather Operator.
 
@@ -94,13 +106,34 @@ Out = [[3, 4],
 )DOC");
   }
 };
+
+template <typename T>
+class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("gather_grad");
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherGradNoNeedBufferVarInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(gather_grad, ops::GatherGradOp);
+                  ops::GatherGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GatherGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
+                  ops::GatherGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
                        ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
                        ops::GatherOpKernel<uint8_t>,

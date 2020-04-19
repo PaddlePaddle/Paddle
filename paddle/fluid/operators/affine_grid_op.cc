@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/affine_grid_op.h"
+#include <memory>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -78,7 +80,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
       library = framework::LibraryType::kCUDNN;
     }
 #endif
-    auto data_type = ctx.Input<Tensor>("Theta")->type();
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
     return framework::OpKernelType(data_type, ctx.GetPlace(),
                                    framework::DataLayout::kAnyLayout, library);
   }
@@ -173,9 +175,10 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto theta_dims = ctx->GetInputDim("Theta");
     if (ctx->HasOutput(framework::GradVarName("Theta"))) {
-      ctx->SetOutputDim(framework::GradVarName("Theta"), theta_dims);
+      auto output_dims = ctx->GetInputDim(framework::GradVarName("Output"));
+      ctx->SetOutputDim(framework::GradVarName("Theta"),
+                        {output_dims[0], 2, 3});
     }
   }
 
@@ -188,28 +191,27 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("Theta")->type(),
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Output")),
                                    ctx.GetPlace(),
                                    framework::DataLayout::kAnyLayout, library_);
   }
 };
 
-class AffineGridGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("affine_grid_grad");
-    op->SetInput("Theta", Input("Theta"));
-    op->SetInput("OutputShape", Input("OutputShape"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("OutputShape", this->Input("OutputShape"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("Theta"), InputGrad("Theta"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("Theta"), this->InputGrad("Theta"));
   }
 };
 
@@ -218,7 +220,8 @@ class AffineGridGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(affine_grid, ops::AffineGridOp, ops::AffineGridOpMaker,
-                  ops::AffineGridGradMaker);
+                  ops::AffineGridGradMaker<paddle::framework::OpDesc>,
+                  ops::AffineGridGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

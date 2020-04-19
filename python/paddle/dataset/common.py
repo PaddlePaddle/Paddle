@@ -32,7 +32,6 @@ __all__ = [
     'md5file',
     'split',
     'cluster_files_reader',
-    'convert',
 ]
 
 DATA_HOME = os.path.expanduser('~/.cache/paddle/dataset')
@@ -73,18 +72,22 @@ def download(url, module_name, md5sum, save_name=None):
                             url.split('/')[-1]
                             if save_name is None else save_name)
 
+    if os.path.exists(filename) and md5file(filename) == md5sum:
+        return filename
+
     retry = 0
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
         if os.path.exists(filename):
-            sys.stderr.write("file %s  md5 %s" % (md5file(filename), md5sum))
+            sys.stderr.write("file %s  md5 %s\n" % (md5file(filename), md5sum))
         if retry < retry_limit:
             retry += 1
         else:
             raise RuntimeError("Cannot download {0} within retry limit {1}".
                                format(url, retry_limit))
-        sys.stderr.write("Cache file %s not found, downloading %s" %
+        sys.stderr.write("Cache file %s not found, downloading %s \n" %
                          (filename, url))
+        sys.stderr.write("Begin to download\n")
         r = requests.get(url, stream=True)
         total_length = r.headers.get('content-length')
 
@@ -93,18 +96,20 @@ def download(url, module_name, md5sum, save_name=None):
                 shutil.copyfileobj(r.raw, f)
         else:
             with open(filename, 'wb') as f:
-                dl = 0
+                chunk_size = 4096
                 total_length = int(total_length)
-                for data in r.iter_content(chunk_size=4096):
+                total_iter = total_length / chunk_size + 1
+                log_interval = total_iter / 20 if total_iter > 20 else 1
+                log_index = 0
+                for data in r.iter_content(chunk_size=chunk_size):
                     if six.PY2:
                         data = six.b(data)
-                    dl += len(data)
                     f.write(data)
-                    done = int(50 * dl / total_length)
-                    sys.stderr.write("\r[%s%s]" % ('=' * done,
-                                                   ' ' * (50 - done)))
+                    log_index += 1
+                    if log_index % log_interval == 0:
+                        sys.stderr.write(".")
                     sys.stdout.flush()
-    sys.stderr.write("\n")
+    sys.stderr.write("\nDownload finished\n")
     sys.stdout.flush()
     return filename
 
@@ -118,20 +123,6 @@ def fetch_all():
             getattr(
                 importlib.import_module("paddle.dataset.%s" % module_name),
                 "fetch")()
-
-
-def fetch_all_recordio(path):
-    for module_name in [
-            x for x in dir(paddle.dataset) if not x.startswith("__")
-    ]:
-        if "convert" in dir(
-                importlib.import_module("paddle.dataset.%s" % module_name)) and \
-                not module_name == "common":
-            ds_path = os.path.join(path, module_name)
-            must_mkdirs(ds_path)
-            getattr(
-                importlib.import_module("paddle.dataset.%s" % module_name),
-                "convert")(ds_path)
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
@@ -205,40 +196,3 @@ def cluster_files_reader(files_pattern,
                     yield line
 
     return reader
-
-
-def convert(output_path, reader, line_count, name_prefix):
-    import recordio
-    """
-    Convert data from reader to recordio format files.
-
-    :param output_path: directory in which output files will be saved.
-    :param reader: a data reader, from which the convert program will read
-                   data instances.
-    :param name_prefix: the name prefix of generated files.
-    :param max_lines_to_shuffle: the max lines numbers to shuffle before
-                                 writing.
-    """
-
-    assert line_count >= 1
-    indx_f = 0
-
-    def write_data(indx_f, lines):
-        filename = "%s/%s-%05d" % (output_path, name_prefix, indx_f)
-        writer = recordio.writer(filename)
-        for l in lines:
-            # FIXME(Yancey1989):
-            # dumps with protocol: pickle.HIGHEST_PROTOCOL
-            writer.write(pickle.dumps(l))
-        writer.close()
-
-    lines = []
-    for i, d in enumerate(reader()):
-        lines.append(d)
-        if i % line_count == 0 and i >= line_count:
-            write_data(indx_f, lines)
-            lines = []
-            indx_f += 1
-            continue
-
-    write_data(indx_f, lines)

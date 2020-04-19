@@ -102,11 +102,17 @@ TEST(TensorRTEngineOp, manual) {
   engine_op_desc.SetAttr("workspace_size", static_cast<int>(1 << 20));
   engine_op_desc.SetAttr("parameters", std::vector<std::string>({}));
   engine_op_desc.SetAttr("engine_key", std::string("a_engine"));
+  engine_op_desc.SetAttr("predictor_id", 1);
   engine_op_desc.SetAttr("calibration_data", std::string(""));
   engine_op_desc.SetAttr("enable_int8", static_cast<bool>(false));
+  engine_op_desc.SetAttr("enable_fp16", static_cast<bool>(false));
+  engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z0"}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
+  engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
+  int device_id = 0;
+  engine_op_desc.SetAttr("gpu_id", device_id);
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -197,11 +203,17 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("parameters",
                          std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   engine_op_desc.SetAttr("engine_key", std::string("b_engine"));
+  engine_op_desc.SetAttr("predictor_id", 1);
   engine_op_desc.SetAttr("calibration_data", std::string(""));
   engine_op_desc.SetAttr("enable_int8", static_cast<bool>(false));
+  engine_op_desc.SetAttr("enable_fp16", static_cast<bool>(false));
+  engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z3"}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
+  engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
+  int device_id = 0;
+  engine_op_desc.SetAttr("gpu_id", device_id);
 
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
 

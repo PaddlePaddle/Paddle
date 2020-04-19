@@ -53,7 +53,9 @@ TEST(Scope, FindScope) {
   Variable* v = s.Var("a");
 
   EXPECT_EQ(&s, s.FindScope(v));
+  EXPECT_EQ(&s, s.FindScope("a"));
   EXPECT_EQ(&s, ss.FindScope(v));
+  EXPECT_EQ(&s, ss.FindScope("a"));
 }
 
 TEST(Scope, GetAllNames) {

@@ -15,4 +15,13 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     elementwise_pow,
     ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwisePowKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    elementwise_pow_grad,
+    ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::ElementwisePowGradKernel<paddle::platform::CUDADeviceContext,
+                                  int64_t>);

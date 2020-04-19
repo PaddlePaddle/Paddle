@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 
 #ifdef PADDLE_WITH_MKLDNN
+#include <algorithm>
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -42,23 +43,25 @@ void TransformData(const OpKernelType &expected_kernel_type,
 
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
+#ifdef PADDLE_WITH_MKLDNN
     if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE(
           !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
           "No layout transform needed between two MKLDNN OPKernels");
 
       if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
-#ifdef PADDLE_WITH_MKLDNN
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
         auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
                                                         ToMKLDNNFormat(lin));
-
         out.ShareDataWith(input_tensor);
+        // For NHWC data we need reshape of tensors as MKL-DNN
+        // is expecting NHWC dims description order
+        platform::MatchShapeToLayout(&out, lin, lout);
+        paddle::platform::set_cur_paddle_data_layout(lin);
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
-#endif
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
@@ -69,6 +72,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
       // Case3 - transfrom between Non-MKLDNN OPKernels
       TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     }
+#else
+    // Case3 - transfrom between Non-MKLDNN OPKernels
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+#endif
     transformed = true;
     PassTensorData(&out, &in);
   }

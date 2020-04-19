@@ -13,10 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <memory>
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 
@@ -61,7 +66,17 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       var->outputs.push_back(node);
     }
     // For output args, always create a new var.
+    std::unordered_set<std::string> out_arg_set;
     for (auto &each_var_name : op->OutputArgumentNames()) {
+      if (each_var_name != kEmptyVarName) {
+        PADDLE_ENFORCE_EQ(out_arg_set.count(each_var_name), 0,
+                          platform::errors::InvalidArgument(
+                              "The input Program is invalid. Variable %s occurs"
+                              " in output of %s multiple times.",
+                              each_var_name, op->Type()));
+        out_arg_set.insert(each_var_name);
+      }
+
       ir::Node *var = nullptr;
       if (all_vars.count(each_var_name) != 0) {
         var = CreateVarNode(all_vars.at(each_var_name));
@@ -76,6 +91,9 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       var->inputs.push_back(node);
     }
   }
+  Set<const std::vector<OpDesc *>>(
+      details::kStaleProgramOpDescs,
+      new std::vector<OpDesc *>(program.Block(0).AllOps()));
   return var_nodes;
 }
 
@@ -104,10 +122,10 @@ void Graph::ResolveHazard(
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
 
-      PADDLE_ENFORCE(
-          write_op,
-          string::Sprintf("The write_op of var %s should not be empty.",
-                          (*it_new)->Name()));
+      PADDLE_ENFORCE_NOT_NULL(
+          write_op, platform::errors::NotFound(
+                        "The generate operator of variable %s is null.",
+                        (*it_new)->Name()));
 
       // Add write after write dependence
       ir::Node *upstream_op =
@@ -117,6 +135,7 @@ void Graph::ResolveHazard(
         ir::Node *dep_var = CreateControlDepVar();
         write_op->inputs.push_back(dep_var);
         upstream_op->outputs.push_back(dep_var);
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         dep_var->outputs.push_back(write_op);
         dep_var->inputs.push_back(upstream_op);
       }
@@ -140,6 +159,7 @@ void Graph::ResolveHazard(
         if (has_dep) continue;
 
         ir::Node *dep_var = CreateControlDepVar();
+        VLOG(10) << "add dep_var:" << dep_var->Name();
         read_op->outputs.push_back(dep_var);
         dep_var->inputs.push_back(read_op);
         write_op->inputs.push_back(dep_var);
@@ -147,6 +167,41 @@ void Graph::ResolveHazard(
       }
     }
   }
+}
+
+std::shared_ptr<Graph> Graph::Clone() {
+  auto cloned_graph = std::make_shared<Graph>(this->program_);
+  cloned_graph->ReleaseNodes();
+  cloned_graph->num_node_created_ = 0;
+  std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
+  for (auto *n : this->node_set_) {
+    PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
+                                   "The node to be cloned is nullptr."));
+    ir::Node *cloned_node = nullptr;
+    if (n->IsCtrlVar()) {
+      cloned_node = cloned_graph->CreateControlDepVar();
+    } else if (!n->var_desc_ && !n->op_desc_) {  // empty node
+      cloned_node = cloned_graph->CreateEmptyNode(n->Name(), n->NodeType());
+    } else if (n->IsVar()) {
+      cloned_node = cloned_graph->CreateVarNode(n->Var());
+    } else if (n->IsOp()) {
+      cloned_node = cloned_graph->CreateOpNode(n->Op());
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        cloned_node,
+        platform::errors::InvalidArgument(
+            "Failed to clone new node from original node in graph."));
+    origin_to_cloned[n] = cloned_node;
+  }
+  for (auto *n : this->node_set_) {
+    for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {
+      origin_to_cloned[n]->inputs.push_back(origin_to_cloned[*it]);
+    }
+    for (auto it = n->outputs.begin(); it != n->outputs.end(); it++) {
+      origin_to_cloned[n]->outputs.push_back(origin_to_cloned[*it]);
+    }
+  }
+  return cloned_graph;
 }
 
 bool IsControlDepVar(const ir::Node &var) {

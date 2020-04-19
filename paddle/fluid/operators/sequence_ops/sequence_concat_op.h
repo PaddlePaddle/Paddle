@@ -14,9 +14,10 @@
 
 #pragma once
 
+#include <utility>
 #include <vector>
+#include "boost/optional.hpp"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 
 namespace paddle {
@@ -34,7 +35,9 @@ inline framework::LoD ConcatLoD(const Container &xs,
     for (size_t j = 0; j < xs.size(); ++j) {
       auto &x_lod = xs[j].get().lod()[0];
       const framework::Tensor &tensor = xs[j].get();
-      xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
+      if (x_lod[i - 1] < x_lod[i]) {
+        xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
+      }
       sum += x_lod[i];
     }
     result[i] = sum;
@@ -43,20 +46,35 @@ inline framework::LoD ConcatLoD(const Container &xs,
   lod.emplace_back(result);
   return lod;
 }
+
+template <typename T, typename... ARGS>
+inline std::vector<std::reference_wrapper<T>> GetDataVectorSafely(
+    const std::vector<T *> &vec, ARGS &&... args) {
+  std::vector<std::reference_wrapper<T>> result;
+  result.reserve(vec.size());
+  for (auto *ptr : vec) {
+    PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::InvalidArgument(
+                                     "The input variable X contains nullptr."));
+    result.emplace_back(*ptr);
+  }
+  return result;
+}
 }  // namespace detail
 
 template <typename DeviceContext, typename T>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = detail::VectorRef(context.MultiInput<framework::LoDTensor>("X"),
-                                "Cannot find multiple input X");
-    auto &out = detail::Ref(context.Output<framework::LoDTensor>("Out"),
-                            "Cannot find output");
+    auto xs = detail::GetDataVectorSafely(
+        context.MultiInput<framework::LoDTensor>("X"));
+    auto &out = *context.Output<framework::LoDTensor>("Out");
 
     size_t lod_size = 0;
     for (auto &x : xs) {
       if (lod_size == 0) {
+        PADDLE_ENFORCE_EQ(x.get().lod().empty(), false,
+                          "Input(X) Tensor of SequenceConcatOp does not "
+                          "contain LoD information.");
         lod_size = x.get().lod()[0].size();
       } else {
         PADDLE_ENFORCE_EQ(
@@ -89,41 +107,54 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         dxs[i]->mutable_data<T>(context.GetPlace());
       }
     }
+
     std::vector<framework::Tensor> sliced_x;
-    std::vector<boost::variant<boost::blank, framework::Tensor>> sliced_dx;
+    std::vector<boost::optional<framework::Tensor>> sliced_dx;
 
     for (size_t i = 1; i < xs[0]->lod()[0].size(); ++i) {
       for (size_t j = 0; j < xs.size(); ++j) {
         const framework::LoDTensor *x = xs[j];
+        framework::DDim x_dims = x->dims();
+
         framework::LoDTensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
-        sliced_x.emplace_back(x->Slice(x_lod[i - 1], x_lod[i]));
-        if (dx != nullptr) {
-          sliced_dx.emplace_back(dx->Slice(x_lod[i - 1], x_lod[i]));
+        if (x_lod[i - 1] == x_lod[i]) continue;
+
+        auto prev_lod = x_lod[i - 1];
+        auto next_lod = x_lod[i];
+
+        x_dims[0] = next_lod - prev_lod;
+
+        sliced_x.emplace_back();
+        sliced_x.back().Resize(x_dims);
+
+        if (dx) {
+          sliced_dx.emplace_back(dx->Slice(prev_lod, next_lod));
         } else {
-          sliced_dx.emplace_back(boost::blank());
+          sliced_dx.emplace_back(boost::none);
         }
       }
     }
 
-    math::SplitFunctor<DeviceContext, T> functor;
     std::vector<const framework::Tensor *> sliced_x_ptr;
-    std::vector<framework::Tensor *> sliced_dx_ptr;
+    sliced_x_ptr.reserve(sliced_x.size());
     for (auto &x : sliced_x) {
       sliced_x_ptr.emplace_back(&x);
     }
 
+    std::vector<framework::Tensor *> sliced_dx_ptr;
+    sliced_dx_ptr.reserve(sliced_dx.size());
     for (auto &dx : sliced_dx) {
-      try {
-        sliced_dx_ptr.emplace_back(&boost::get<framework::Tensor>(dx));
-      } catch (boost::bad_get &) {
-        sliced_dx_ptr.emplace_back(nullptr);
+      if (dx) {
+        sliced_dx_ptr.emplace_back(&dx.get());
       }
     }
+
+    math::SplitFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(),
-            detail::Ref(
+            GET_DATA_SAFELY(
                 context.Input<framework::Tensor>(framework::GradVarName("Out")),
-                "Sequence Concat OG must be set"),
+                "Input", framework::GradVarName("Out"), "SeqConcatGrad"),
             sliced_x_ptr, 0, &sliced_dx_ptr);
   }
 };

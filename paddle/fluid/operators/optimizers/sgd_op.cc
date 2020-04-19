@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
-
+#include <string>
 namespace paddle {
 namespace operators {
 
@@ -32,38 +32,60 @@ class SGDOp : public framework::OperatorWithKernel {
                    "Output(ParamOut) of SGDOp should not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+                      "Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
-    // TODO(qijun): check dimensions of Param and Grad at compile
-    // and runtime.
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Grad"),
+          platform::errors::InvalidArgument(
+              "SGD Operator's input Param and Grad dimensions do not match. "
+              "The Param %s shape is [%s], but the Grad %s shape is [%s].",
+              ctx->Inputs("Param")[0], param_dim, ctx->Inputs("Grad")[0],
+              ctx->GetInputDim("Grad")));
+    }
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(data_type, ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+    if (var_name == "LearningRate") {
+      return framework::OpKernelType(tensor.type(), tensor.place(),
+                                     tensor.layout());
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
 class SGDOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto input_var_n = op_desc.Input("Param")[0];
-    auto in_var_type = block->FindRecursiveOrCreateVar(input_var_n).GetType();
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto &input_var_n = ctx->Input("Param")[0];
+    auto in_var_type = ctx->GetType(input_var_n);
     PADDLE_ENFORCE(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
                        in_var_type == framework::proto::VarType::LOD_TENSOR,
                    "The input Var's type should be LoDtensor or SelectedRows,"
                    " but the received var(%s)'s type is %s",
                    input_var_n, in_var_type);
 
-    for (auto &out_var_n : op_desc.Output("ParamOut")) {
-      auto &out_var = block->FindRecursiveOrCreateVar(out_var_n);
-      if (out_var.GetType() != in_var_type) {
-        out_var.SetType(in_var_type);
+    for (auto &out_var_n : ctx->Output("ParamOut")) {
+      if (ctx->GetType(out_var_n) != in_var_type) {
+        ctx->SetType(out_var_n, in_var_type);
       }
     }
   }
@@ -94,6 +116,11 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sgd, ops::SGDOp, ops::SGDOpMaker,
-                  paddle::framework::EmptyGradOpMaker, ops::SGDOpInferVarType);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<float>, ops::SGDOpKernel<double>);
+REGISTER_OPERATOR(
+    sgd, ops::SGDOp, ops::SGDOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SGDOpInferVarType);
+REGISTER_OP_CPU_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

@@ -18,22 +18,32 @@ limitations under the License. */
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
+DECLARE_bool(check_nan_inf);
+DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+DEFINE_bool(fast_check_nan_inf, false,
+            "Fast checking NAN/INF after each operation. It will be a little"
+            "bit slow, much faster than check_nan_inf");
 
 namespace paddle {
 namespace framework {
@@ -45,18 +55,8 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().type();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-}
-
-static DDim GetDims(const Scope& scope, const std::string& name,
-                    bool get_actual_dim = false) {
+static DDim GetDimsDebug(const Scope& scope, const std::string& name,
+                         bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
     return DDim({-1});
@@ -64,9 +64,6 @@ static DDim GetDims(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return DDim({-1});
-    }
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
@@ -122,7 +119,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   return -1;
 }
 
-static LoD GetLoD(const Scope& scope, const std::string& name) {
+static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
 
@@ -132,9 +129,6 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return default_lod;
-    }
     return tensor.lod();
   } else {
     return default_lod;
@@ -172,40 +166,29 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
     }
 
-    // The profile has a process-wide mutex, results in serious performance
-    // issue
-    // in concurrency scenerio. Here use an `if` to fix this issue.
-    // Please not remove the `if`, ask @Superjomn if there are any concern.
-    if (platform::IsProfileEnabled()) {
-      platform::RecordEvent record_event(Type());
+    {
+      // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
+      // in order to record different op type cost time
+      // and different op name cost time,we set two event.
+      platform::RecordEvent op_type_record_event(Type());
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
-    } else {
-      RunImpl(scope, place);
     }
 
-    VLOG(3) << place << " " << DebugStringEx(&scope);
-  } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw;
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-
-    if (callstack.empty()) {
-      throw;
-    }
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
-    throw;
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
+  } catch (platform::EnforceNotMet& exception) {
+    framework::InsertCallStackInfo(Type(), Attrs(), &exception);
+    throw std::move(exception);
+  } catch (platform::EOFException&) {
+    std::rethrow_exception(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    std::rethrow_exception(std::current_exception());
   } catch (...) {
+    LOG(WARNING) << Type() << " raises an unknown exception";
     std::rethrow_exception(std::current_exception());
   }
 }
@@ -216,9 +199,11 @@ bool OperatorBase::HasInputs(const std::string& name) const {
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    type_, name);
+  PADDLE_ENFORCE_LE(
+      ins.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.", type_,
+          name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
@@ -257,8 +242,18 @@ const std::vector<std::string>& OperatorBase::Outputs(
 std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
+
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
+  if (info_ && info_->NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars =
+        &(Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
+  }
+
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -271,10 +266,12 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           if (row_size >= 0) {
             ss << "[row_size=" << row_size << "]";
           }
-          std::string dtype = GetDtype(*scope, var_name);
+          std::string dtype = is_no_need_buffer_var
+                                  ? "unknown_dtype"
+                                  : GetDtype(*scope, var_name);
           ss << ":" << dtype;
-          ss << "[" << GetDims(*scope, var_name, true) << "]";
-          ss << "(" << GetLoD(*scope, var_name) << ")";
+          ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+          ss << "(" << GetLoDDebug(*scope, var_name) << ")";
         }
       }
       if (i != input.second.size() - 1) {
@@ -304,8 +301,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           }
           std::string dtype = GetDtype(*scope, output.second[i]);
           ss << ":" << dtype;
-          ss << "[" << GetDims(*scope, var_name, true) << "]";
-          ss << "(" << GetLoD(*scope, var_name) << ")";
+          ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
+          ss << "(" << GetLoDDebug(*scope, var_name) << ")";
         }
       }
       if (i != output.second.size() - 1) {
@@ -326,9 +323,20 @@ OperatorBase::OperatorBase(const std::string& type,
                            const VariableNameMap& inputs,
                            const VariableNameMap& outputs,
                            const AttributeMap& attrs)
-    : type_(type), inputs_(inputs), outputs_(outputs), attrs_(attrs) {
-  GenerateTemporaryNames();
-  CheckAllInputOutputSet();
+    : type_(type),
+      inputs_(inputs),
+      outputs_(outputs),
+      attrs_(attrs),
+      // NOTE(zjl): why op_info may be nullptr?
+      info_(OpInfoMap::Instance().GetNullable(type)) {
+  // In dygraph mode, all the OperatorBase will be constructed by function:
+  // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+  // Inputs, outputs and attrs will be set to empty map
+  // to improve the execution efficiency of dygraph.
+  if (inputs_.size() > 0 || outputs_.size() > 0) {
+    GenerateTemporaryNames();
+    CheckAllInputOutputSet();
+  }
 }
 
 std::vector<std::string> OperatorBase::InputVars() const {
@@ -350,7 +358,7 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
     }
     return ret_val;
   }
-  auto& info = OpInfoMap::Instance().Get(Type());
+  auto& info = Info();
 
   // get all OpProto::Var for outputs
   for (auto& o : info.Proto().outputs()) {
@@ -366,18 +374,16 @@ std::vector<std::string> OperatorBase::OutputVars(bool has_intermediate) const {
 }
 
 void OperatorBase::CheckAllInputOutputSet() const {
-  auto& info_map = OpInfoMap::Instance();
-  auto* op_info = info_map.GetNullable(Type());
-  if (op_info == nullptr || op_info->proto_ == nullptr) return;
+  if (info_ == nullptr || info_->proto_ == nullptr) return;
 
-  for (auto& in : op_info->Proto().inputs()) {
+  for (auto& in : info_->Proto().inputs()) {
     if (!in.dispensable()) {
       PADDLE_ENFORCE(inputs_.find(in.name()) != inputs_.end(),
                      "Operator %s's input, %s, is not set", Type(), in.name());
     }
   }
 
-  for (auto& out : op_info->Proto().outputs()) {
+  for (auto& out : info_->Proto().outputs()) {
     if (!out.dispensable()) {
       PADDLE_ENFORCE(outputs_.find(out.name()) != outputs_.end(),
                      "Operator %s's output, %s, is not set", Type(),
@@ -426,51 +432,27 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
 }
 
 bool ExecutionContext::HasInput(const std::string& name) const {
-  if (!op_.HasInputs(name)) {
-    return false;
-  }
-  auto& ins = Inputs(name);
-  size_t length = ins.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input %s should not have more than one inputs", name);
-  auto arg = ins[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = InputVar(name);
   return var != nullptr;
 }
 
 bool ExecutionContext::HasOutput(const std::string& name) const {
-  if (!op_.HasOutputs(name)) {
-    return false;
-  }
-  auto& outs = Outputs(name);
-  size_t length = outs.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Output %s should not have more than one inputs", name);
-  auto arg = outs[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = OutputVar(name);
   return var != nullptr;
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
-  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    op_.Type(), name);
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.",
+          op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
-}
-
-const Variable* ExecutionContext::LegacyInputVar(
-    const std::string& name) const {
-  auto ipt = op_.Input(name);
-  return ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
 }
 
 Variable* ExecutionContext::OutputVar(const std::string& name) const {
@@ -483,34 +465,24 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   return it->second.empty() ? nullptr : it->second[0];
 }
 
-Variable* ExecutionContext::LegacyOutputVar(const std::string& name) const {
-  auto opt = op_.Output(name);
-  return opt == kEmptyVarName ? nullptr : scope_.FindVar(opt);
-}
-
 template <>
 const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   return Input<LoDTensor>(name);
 }
 
 template <>
-const Tensor* ExecutionContext::LegacyInput<Tensor>(
-    const std::string& name) const {
-  return LegacyInput<LoDTensor>(name);
-}
-
-template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.inputs.find(name);
-  if (it == ctx_.inputs.end()) {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
+  auto vars = MultiInputVar(name);
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<const Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
-                 [&](Variable* var) -> const Tensor* {
+                 [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
@@ -522,42 +494,18 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
 }
 
 template <>
-const std::vector<const Tensor*> ExecutionContext::LegacyMultiInput<Tensor>(
-    const std::string& name) const {
-  auto names = op().Inputs(name);
-  std::vector<const Tensor*> res;
-  res.reserve(names.size());
-  std::transform(names.begin(), names.end(), std::back_inserter(res),
-                 [&](const std::string& sub_name) -> const Tensor* {
-                   auto var = scope_.FindVar(sub_name);
-                   if (var == nullptr) return nullptr;
-                   PADDLE_ENFORCE(
-                       var->IsType<LoDTensor>(),
-                       "%s should be LoDTensor, but the received type is %s",
-                       sub_name, ToTypeName(var->Type()));
-                   return &(var->Get<LoDTensor>());
-                 });
-  return res;
-}
-
-template <>
 Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
   return Output<LoDTensor>(name);
 }
 
 template <>
-Tensor* ExecutionContext::LegacyOutput<Tensor>(const std::string& name) const {
-  return LegacyOutput<LoDTensor>(name);
-}
-
-template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.outputs.find(name);
-  if (it == ctx_.outputs.end()) {
+  auto vars = MultiOutputVar(name);
+
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
@@ -585,8 +533,7 @@ bool OpSupportGPU(const std::string& op_type) {
 
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
-                           const RuntimeContext& ctx)
+  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx)
       : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
@@ -649,13 +596,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
+  std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
   }
 
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
+  std::vector<std::string> Outputs(const std::string& name) const override {
     return op_.Outputs(name);
   }
 
@@ -691,6 +636,51 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  void ShareAllLoD(const std::string& in,
+                   const std::string& out) const override {
+    auto in_it = ctx_.inputs.find(in);
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+                      platform::errors::NotFound(
+                          "Input [%s] found error in Op [%s]", in, op_.Type()));
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
+                                   op_.Type()));
+
+    auto& in_var_list = in_it->second;
+    auto& out_var_list = out_it->second;
+
+    PADDLE_ENFORCE_EQ(
+        in_var_list.size(), out_var_list.size(),
+        platform::errors::PreconditionNotMet(
+            "Op [%s]: Input var size should be equal with output var size",
+            op_.Type()));
+
+    auto& out_var_names = op_.Outputs(out);
+
+    for (size_t i = 0; i < in_var_list.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      Variable* in_var = in_var_list[i];
+      if (!in_var->IsType<LoDTensor>()) return;
+      Variable* out_var = out_var_list[i];
+      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+                        platform::errors::PreconditionNotMet(
+                            "The %d-th output of Output(%s) must be LoDTensor.",
+                            i, out_var_names[i]));
+      auto& in_tensor = in_var->Get<LoDTensor>();
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
+      out_tensor->set_lod(in_tensor.lod());
+#ifdef PADDLE_WITH_MKLDNN
+      if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+        out_tensor->set_layout(in_tensor.layout());
+    }
+  }
+
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
     auto in_it = ctx_.inputs.find(in);
@@ -705,7 +695,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
+    auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
@@ -730,9 +720,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
+    PADDLE_THROW(
+        "GetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void SetLoDLevel(const std::string& out, int32_t lod_level,
+                   size_t j = 0) const override {
+    PADDLE_THROW(
+        "SetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   bool IsRuntime() const override { return true; }
@@ -882,7 +882,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
-static void CheckTensorNANOrInf(const std::string& name,
+static void CheckTensorNANOrInf(const std::string& op_type,
+                                const std::string& name,
                                 const framework::Tensor& tensor) {
   if (tensor.memory_size() == 0) {
     return;
@@ -892,21 +893,145 @@ static void CheckTensorNANOrInf(const std::string& name,
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
+                 "Operator %s output Tensor %s contains Inf", op_type, name);
   PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
+                 "Operator %s output Tensor %s contains NAN", op_type, name);
 }
 
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
+  RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
   this->InferShape(&infer_shape_ctx);
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  RuntimeContext ctx(Inputs(), Outputs(), scope);
+  // To reduce the elapsed time of HasAttr, we use bool variable to record the
+  // result of HasAttr.
+  if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
+    enable_cache_runtime_context_ = true;
+  if (!all_kernels_must_compute_runtime_shape_ &&
+      HasAttr(kAllKernelsMustComputeRuntimeShape))
+    all_kernels_must_compute_runtime_shape_ = true;
+  const Scope* cur_scope = &scope;
+  if (!enable_cache_runtime_context_) {
+    RuntimeContext ctx(Inputs(), Outputs(), scope);
+    RunImpl(scope, place, &ctx);
+    pre_scope_ = cur_scope;
+  } else {
+    if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+      std::lock_guard<std::mutex> lock(cache_update_mutex_);
+      if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
+        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        pre_scope_ = cur_scope;
+      }
+    }
+    RunImpl(scope, place, runtime_ctx_.get());
+  }
+}
+
+void OperatorWithKernel::RunImpl(const Scope& scope,
+                                 const platform::Place& place,
+                                 RuntimeContext* runtime_ctx) const {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(place);
+
+  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+    ChooseKernel(*runtime_ctx, scope, place);
+  }
+
+  // do data transformScope &transfer_scope;
+  std::vector<std::string> transfered_inplace_vars;
+  Scope* transfer_scope = nullptr;
+  {
+    platform::RecordEvent record_event("prepare_data",
+                                       platform::EventRole::kInnerOp);
+    if (need_prepare_data_) {
+      transfer_scope = PrepareData(scope, *kernel_type_,
+                                   &transfered_inplace_vars, runtime_ctx);
+    }
+  }
+  // exec scope is the scope that kernel actually executed on.
+  const Scope& exec_scope =
+      (transfer_scope == nullptr ? scope : *transfer_scope);
+
+  if (!(kernel_type_->place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(kernel_type_->place_);
+  }
+
+  if (!all_kernels_must_compute_runtime_shape_) {
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::EventRole::kInnerOp);
+    RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
+    this->InferShape(&infer_shape_ctx);
+  }
+
+  if (FLAGS_enable_unused_var_check) {
+    GetThreadLocalUsedVarNameSet()->clear();
+  }
+
+  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+  // not Scope. Imperative mode only pass inputs and get outputs.
+  {
+    platform::RecordEvent record_event("compute",
+                                       platform::EventRole::kInnerOp);
+    (*kernel_func_)(
+        ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+  }
+
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transferred.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+  if (FLAGS_enable_unused_var_check) {
+    // skip op that uses mkldnn because it has different memory reuse strategy.
+    // use attr here because some GradMakers (like ActivationGradOpMaker) add
+    // input when use_mkldnn=true;
+    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
+      CheckUnusedVar(*this, scope);
+    }
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    dev_ctx->Wait();
+  }
+
+  if (FLAGS_fast_check_nan_inf) {
+    for (auto& vname : OutputVars(true)) {
+      // only check inserted vars,
+      // please see executor.py for details of fast_check_nan_inf
+      if (vname.rfind("debug_var") == 0) {
+        VLOG(3) << "debugging nan/inf in var " << vname;
+
+        auto* var = exec_scope.FindVar(vname);
+        if (var == nullptr) continue;
+        if (var->IsType<framework::LoDTensor>()) {
+          CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+        } else if (var->IsType<framework::SelectedRows>()) {
+          CheckTensorNANOrInf(type_, vname,
+                              var->Get<framework::SelectedRows>().value());
+        }
+      }
+    }
+  }
+
+  if (FLAGS_check_nan_inf) {
+    framework::details::CheckOpHasNanOrInf(*this, exec_scope, place);
+  }
+
+  // To solve issue #15032, have a discussion with @Luotao for cpu inference,
+  // do not cache transfer scope, hence in this case delete transfer scope
+  // after run to avoid memory leak
+  if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
+    scope.DeleteScope(transfer_scope);
+  }
+}
+
+void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
+                                      const Scope& scope,
+                                      const platform::Place& place) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -922,6 +1047,22 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto expected_kernel_key = this->GetExpectedKernelType(
       ExecutionContext(*this, scope, *dev_ctx, ctx));
+  if (HasAttr("op_device")) {
+    if (Attr<std::string>("op_device") == "cpu") {
+      expected_kernel_key.place_ = platform::CPUPlace();
+    } else if (Attr<std::string>("op_device") == "gpu") {
+      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
+      // will be executed and a warning will be given at the same time.
+      if (SupportGPU()) {
+        expected_kernel_key.place_ = dev_ctx->GetPlace();
+      } else {
+        expected_kernel_key.place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+    }
+  }
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -940,45 +1081,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, expected_kernel_key, &transfered_inplace_vars, &ctx);
-
-  // exec scope is the scope that kernel actually executed on.
-  const Scope& exec_scope =
-      (transfer_scope == nullptr ? scope : *transfer_scope);
-
-  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
-    dev_ctx = pool.Get(expected_kernel_key.place_);
-  }
-
-  RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, ctx);
-  this->InferShape(&infer_shape_ctx);
-  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
-  // not Scope. Imperative mode only pass inputs and get outputs.
-  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx, ctx));
-
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
-  }
-
-  /*For profiling/benchmark only*/
-  if (FLAGS_benchmark) {
-    dev_ctx->Wait();
-  }
-
-  if (FLAGS_check_nan_inf) {
-    for (auto& vname : OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
-      } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
-      }
-    }
+  std::lock_guard<std::mutex> lock(cache_update_mutex_);
+  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+    kernel_type_.reset(new OpKernelType(expected_kernel_key));
+    kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
   }
 }
 
@@ -996,7 +1102,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
                             var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
+    original_tensor->Resize(original_dims);
   }
 }
 
@@ -1005,7 +1113,21 @@ Scope* OperatorWithKernel::PrepareData(
     std::vector<std::string>* transfered_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
+
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
+  if (info_) {
+    auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
+    // Some op may not register NoNeedBufferVarsInferer
+    if (no_buffer_inferer) {
+      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
+      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
+    }
+  }
+
   for (auto& var_name_item : Inputs()) {
+    bool should_skip_input =
+        no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
+
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -1018,6 +1140,44 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+
+      // When no_buffer_ins then checking of Tensor::holder_ is
+      // not a thread safe. And for infershape scenario checks
+      // to be omitted are not really needed
+      if (should_skip_input == true) {
+#ifdef PADDLE_WITH_MKLDNN
+        // Var without buffer may be needed
+        // for some situation like InferShape().
+        // In this situation We cannot skip Var analysis, as
+        // MKL-DNN shape of Var may differ from kNHWC Var
+        // In such situation corressponding resized Var
+        // has to be created and registered
+        if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+            (var->IsType<LoDTensor>() == true) &&
+            (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+            (paddle::platform::get_cur_paddle_data_layout() ==
+             DataLayout::kNHWC)) {
+          // Mixed execution : MKL-DNN and GPU is not supported!
+          if (!new_scope) {
+            new_scope = &scope.NewScope();
+          }
+          auto* trans_var = new_scope->Var(var_name);
+          input_vars[i] = trans_var;
+          auto out = trans_var->GetMutable<LoDTensor>();
+          out->Resize(tensor_in->dims());
+          platform::MatchShapeToLayout(out, tensor_in->layout(),
+                                       DataLayout::kNHWC);
+          VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
+                     "but kNHWC layout"
+                  << var_name_item.first << " in Operator " << type_;
+        } else {
+          VLOG(7) << "Skip scanning input " << var_name_item.first
+                  << " in Operator " << type_;
+        }
+#endif
+        continue;
+      }
+
       if (!tensor_in->IsInitialized()) {
         continue;
       }
@@ -1050,24 +1210,96 @@ Scope* OperatorWithKernel::PrepareData(
       // If this op is not called by an Executor or ParallelExecutor, it should
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
-      if (!run_by_executor_) {
+      //
+      // To solve issue #15032, have a discussion with @Luotao for cpu
+      // inference, for all cpu kernels cases without GPU participation, here
+      // not do transfer scope caching, and cpu inference performance is not
+      // impacted by test.
+      enable_cache_transfer_scope_ = false;
+      if (!run_by_executor_ &&
+          (platform::is_gpu_place(kernel_type_for_var.place_) ||
+           platform::is_gpu_place(expected_kernel_key.place_))) {
         new_scope = TryCreateTransferScope(kernel_type_for_var,
                                            expected_kernel_key, &scope);
+        enable_cache_transfer_scope_ = true;
       }
       if (!new_scope) {
         new_scope = &scope.NewScope();
       }
-
+      // For inference, if a gpu model has an op which could only run on CPU,
+      // each result of different input will be the same with the first one.
+      // The reason is that if a gpu tensor is the input of a cpu kernel,
+      // we will create a new cpu tensor in new scope.
+      // However, if enable_cache_runtime_context_, we get the cpu tensor each
+      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
+      // to trigger `new RuntimeContext()` in RunImpl().
+      if (enable_cache_runtime_context_) {
+        pre_scope_ = nullptr;
+      }
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
-
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If pre_scope = &scope, it means that scope is cached and the op is not in
+  // while block. If new_scope = nullptr, it means that for each input of this
+  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
+  // the rest iterations to save the elapsed time.
+  // We do not support skipping PrepareData in while block, because the Op's
+  // input may be changed by subsequent Ops, which may cause an error.
+  if (pre_scope_ == &scope && new_scope == nullptr) {
+    need_prepare_data_ = false;
+  }
 
   return new_scope;
+}
+
+void OperatorWithKernel::ParseInputDataType(
+    const ExecutionContext& ctx, const std::string& name,
+    proto::VarType::Type* data_type) const {
+  proto::VarType::Type default_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  const std::vector<Variable*> vars = ctx.MultiInputVar(name);
+  for (size_t i = 0; i < vars.size(); ++i) {
+    const Variable* var = vars[i];
+    if (var != nullptr) {
+      const Tensor* t = nullptr;
+      if (var->IsType<Tensor>()) {
+        t = &var->Get<Tensor>();
+      } else if (var->IsType<LoDTensor>()) {
+        t = &var->Get<LoDTensor>();
+      } else if (var->IsType<SelectedRows>()) {
+        t = &(var->Get<SelectedRows>().value());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto t_arr = var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr.size(); j++) {
+          if (t_arr[j].IsInitialized()) {
+            t = &(t_arr[j]);
+          }
+        }
+      }
+      if (t != nullptr) {
+        PADDLE_ENFORCE_EQ(
+            t->IsInitialized(), true,
+            platform::errors::InvalidArgument(
+                "The Tensor in the %s Op's Input Variable %s(%s) is "
+                "not initialized.",
+                Type(), name, ctx.InputNames(name).at(i)));
+        proto::VarType::Type tmp = t->type();
+        PADDLE_ENFORCE(
+            tmp == *data_type || *data_type == default_data_type,
+            platform::errors::InvalidArgument(
+                "The DataType of %s Op's duplicable Variable %s must be "
+                "consistent. The current variable type is (%s), but the "
+                "previous variable type is (%s).",
+                Type(), name, DataTypeToString(tmp),
+                DataTypeToString(*data_type)));
+        *data_type = tmp;
+      }
+    }
+  }
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
@@ -1075,34 +1307,27 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
-    for (size_t i = 0; i < vars.size(); ++i) {
-      const Variable* var = vars[i];
-      if (var != nullptr) {
-        const Tensor* t = nullptr;
-        if (var->IsType<Tensor>()) {
-          t = &var->Get<Tensor>();
-        } else if (var->IsType<LoDTensor>()) {
-          t = &var->Get<LoDTensor>();
-        } else if (var->IsType<SelectedRows>()) {
-          t = &(var->Get<SelectedRows>().value());
-        }
-        if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu)is not initialized",
-                         input.first, i);
-          proto::VarType::Type tmp = t->type();
-          PADDLE_ENFORCE(
-              tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s must be the same. Get (%d) != (%d)",
-              Type(), DataTypeToString(data_type), DataTypeToString(tmp));
-          data_type = tmp;
-        }
-      }
-    }
+  for (auto& input : ctx.InNameList()) {
+    ParseInputDataType(ctx, input, &data_type);
   }
-  PADDLE_ENFORCE(data_type != dafault_data_type,
-                 "DataType should be indicated by input");
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
+  return data_type;
+}
+
+proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
+    const ExecutionContext& ctx, const std::string& name) const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  ParseInputDataType(ctx, name, &data_type);
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      "The Input Variable(%s) of %s Op used to determine kernel data type "
+      "is empty or not LoDTensor or SelectedRows.",
+      name, Type());
   return data_type;
 }
 

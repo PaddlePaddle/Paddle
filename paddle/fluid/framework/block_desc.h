@@ -93,6 +93,8 @@ class BlockDesc {
    */
   void RemoveOp(size_t s, size_t e);
 
+  void RemoveOpInternal(const OpDesc *op_desc);
+
   void RemoveVar(const std::string &name) { vars_.erase(name); }
 
   std::vector<OpDesc *> AllOps() const;

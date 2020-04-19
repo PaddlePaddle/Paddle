@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <map>
 #include <memory>  // for unique_ptr
 #include <string>
 #include <unordered_map>
+#include <utility>  // for move
 #include <vector>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
@@ -27,23 +29,33 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+extern std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap();
+
 template <KernelType KT>
 class JitCodePool {
   typedef std::unique_ptr<GenBase> GenBasePtr;
-  typedef std::unordered_map<size_t, GenBasePtr> JitCodeMap;
+  typedef std::unordered_map<int64_t, GenBasePtr> JitCodeMap;
 
  public:
   JitCodePool() = default;
   static JitCodePool& Instance() {
-    static thread_local JitCodePool<KT> g_jit_codes;
-    return g_jit_codes;
+    auto& jit_codes_map = GetJITCodesMap();
+    auto key = typeid(JitCodePool<KT>).hash_code();
+    auto iter = jit_codes_map.find(key);
+    if (iter != jit_codes_map.end()) {
+      return *(JitCodePool<KT>*)(iter->second.get());
+    } else {
+      std::shared_ptr<void> cache = std::make_shared<JitCodePool<KT>>();
+      jit_codes_map.emplace(key, cache);
+      return *(JitCodePool<KT>*)(cache.get());
+    }
   }
 
   const JitCodeMap& AllKernels() { return codes_; }
 
-  bool Has(size_t key) const { return codes_.find(key) != codes_.end(); }
+  bool Has(int64_t key) const { return codes_.find(key) != codes_.end(); }
 
-  void Insert(size_t key, GenBasePtr value) {
+  void Insert(int64_t key, GenBasePtr value) {
     codes_.emplace(key, std::move(value));
   }
 

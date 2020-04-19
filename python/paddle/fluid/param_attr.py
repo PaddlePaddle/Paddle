@@ -15,9 +15,12 @@
 from __future__ import print_function
 
 import six
+import warnings
+import sys
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
+from paddle.fluid.data_feeder import check_type
 
 __all__ = [
     'ParamAttr',
@@ -27,32 +30,45 @@ __all__ = [
 
 class ParamAttr(object):
     """
-    Parameter attributes object. To fine-tuning network training process, user
-    can set parameter's attributes to control training details. Such as learning rate,
-    regularization, trainable, do_model_average and the method to initialize param.
+    Create a object to represent the attribute of parameter. The attributes are:
+    name, initializer, learning rate, regularizer, trainable, gradient clip,
+    and model average.
+    
+    Note:
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        It is recommended to set ``grad_clip`` in ``optimizer`` to clip gradient. 
+        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
+        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
 
-
-    Args:
-        name(str): The parameter's name. Default None.
-        initializer(Initializer): The method to initial this parameter. Default None.
-        learning_rate(float): The parameter's learning rate. The learning rate when
-            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
-            Default 1.0.
-        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
-        trainable(bool): Whether this parameter is trainable. Default True.
-        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
-            gradient. Default None.
-        do_model_average(bool): Whether this parameter should do model average.
-            Default False.
+    Parameters:
+        name (str, optional): The parameter's name. Default None, meaning that the name
+                would be created automatically.
+        initializer (Initializer, optional): The method to initial this parameter. Default
+                None, meaning that the weight parameter is initialized by Xavier initializer,
+                and the bias parameter is initialized by 0.
+        learning_rate (float): The parameter's learning rate. The learning rate when
+                optimize is the global learning rates times the parameter's learning rate times
+                the factor of learning rate scheduler. Default 1.0.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+                :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If 
+                regularizer is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), 
+                that regularizer setting in optimizer will be ignored. Default None, meaning there is 
+                no regularization.
+        trainable (bool): Whether this parameter is trainable. Default True.
+        do_model_average (bool): Whether this parameter should do model average
+                when model average is enabled. Default False.
 
     Examples:
         .. code-block:: python
+
+            import paddle.fluid as fluid
 
             w_param_attrs = fluid.ParamAttr(name="fc_weight",
                                             learning_rate=0.5,
                                             regularizer=fluid.regularizer.L2Decay(1.0),
                                             trainable=True)
-	    x = fluid.layers.data(name='X', shape=[1], dtype='float32')
+            print(w_param_attrs.name) # "fc_weight"
+            x = fluid.data(name='X', shape=[None, 1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=10, param_attr=w_param_attrs)
     """
 
@@ -62,15 +78,25 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None,
-                 do_model_average=False):
+                 do_model_average=True):
+
+        if sys.version_info.major == 2:
+            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
+        else:
+            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
+        check_type(trainable, "trainable", (bool), "ParamAttr")
+        check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+
         self.name = name
+        if self.name == "":
+            raise ValueError("name of ParamAttr can not be empty str")
+
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.gradient_clip = gradient_clip
-        self.model_average = do_model_average
+        self.do_model_average = do_model_average
 
     def _set_default_initializer(self, initializer):
         """
@@ -167,8 +193,7 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'gradient_clip_attr': self.gradient_clip,
-            'model_average': self.model_average
+            'do_model_average': self.do_model_average
         }
         if with_initializer:
             kwargs['initializer'] = self.initializer
@@ -177,36 +202,56 @@ class ParamAttr(object):
 
 class WeightNormParamAttr(ParamAttr):
     """
-    Used for weight Norm. Weight Norm is a reparameterization of the weight vectors
-    in a neural network that decouples the length of those weight vectors from
+    Parameter of weight Norm. Weight Norm is a reparameterization of the weight vectors
+    in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this
     paper: `Weight Normalization: A Simple Reparameterization to Accelerate
     Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
+      
+    Note:
+        ``gradient_clip`` of ``WeightNormParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
+        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
+        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
 
     Args:
-        dim(list): The parameter's name. Default None.
-        name(str): The parameter's name. Default None.
-        initializer(Initializer): The method to initial this parameter. Default None.
-        learning_rate(float): The parameter's learning rate. The learning rate when
-            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
+        dim(int): Dimension over which to compute the norm. Dim is a non-negative
+            number which is less than the rank of weight Tensor. For Example, dim can
+            be chosen from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
+            and rank is 4. Default None, meaning that all elements will be normalized.
+        name(str, optional): The parameter's name. Default None, meaning that the name would
+            be created automatically. Please refer to :ref:`api_guide_Name` for more details.
+        initializer(Initializer): The method to initialize this parameter, such as
+            ``initializer = fluid.initializer.ConstantInitializer(1.0)``. Default None,
+            meaning that the weight parameter is initialized by Xavier initializer, and
+            the bias parameter is initialized by 0.
+        learning_rate(float32): The parameter's learning rate when
+            optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
-        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
-        trainable(bool): Whether this parameter is trainable. Default True.
-        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
-            gradient. Default None.
-        do_model_average(bool): Whether this parameter should do model average.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+            :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If regularizer 
+            is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), that regularizer 
+            setting in optimizer will be ignored. Default None, meaning there is no regularization.
+        trainable(bool, optional): Whether this parameter is trainable. Default True.
+        do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
 
     Examples:
         .. code-block:: python
-
+            
+            import paddle.fluid as fluid
             data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=data,
                                  size=1000,
-                                 param_attr=WeightNormParamAttr(
-                                      dim=None,
-                                      name='weight_norm_param'))
+                                 param_attr=fluid.WeightNormParamAttr(
+                                          dim=None,
+                                          name='weight_norm_param',
+                                          initializer=fluid.initializer.ConstantInitializer(1.0),
+                                          learning_rate=1.0,
+                                          regularizer=fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1),
+                                          trainable=True,
+                                          do_model_average=False))
 
     """
     # List to record the parameters reparameterized by weight normalization.
@@ -222,7 +267,6 @@ class WeightNormParamAttr(ParamAttr):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None,
                  do_model_average=False):
         super(WeightNormParamAttr, self).__init__(
             name=name,
@@ -230,6 +274,5 @@ class WeightNormParamAttr(ParamAttr):
             learning_rate=learning_rate,
             regularizer=regularizer,
             trainable=trainable,
-            gradient_clip=gradient_clip,
             do_model_average=do_model_average)
         self.dim = dim

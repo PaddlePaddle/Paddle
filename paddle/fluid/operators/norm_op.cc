@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/norm_op.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -51,10 +55,8 @@ class NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of NormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of NormOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NormOp");
     auto xdim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", xdim);
     int axis = ctx->Attrs().Get<int>("axis");
@@ -68,12 +70,29 @@ class NormOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOpGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
+                   "X@GRAD", "NormOpGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
+
+template <typename T>
+class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("norm_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Norm", this->Output("Norm"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -81,7 +100,8 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
+                  ops::NormOpGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(norm, ops::NormKernel<CPU, float>,
                        ops::NormKernel<CPU, double>);

@@ -27,10 +27,11 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
                const float* scale, const float* bias, int height,
                const float epsilon, int right);
 
-class LayerNormKernel : public KernelMore<LayerNormTuples<float>> {
+class LayerNormKernel : public KernelMore<LayerNormTuple<float>> {
  public:
   LayerNormKernel() { this->func = LayerNorm; }
-  bool UseMe(const typename LayerNormTuples<float>::attr_type&) const override;
+  bool CanBeUsed(
+      const typename LayerNormTuple<float>::attr_type&) const override;
   const char* ImplType() const override { return "Intrinsic"; }
 };
 

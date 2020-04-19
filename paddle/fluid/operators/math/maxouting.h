@@ -26,7 +26,8 @@ template <typename DeviceContext, typename T>
 class MaxOutFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  framework::Tensor* output, int groups);
+                  framework::Tensor* output, const int groups,
+                  const int axis = 1);
 };
 
 template <typename DeviceContext, class T>
@@ -35,7 +36,8 @@ class MaxOutGradFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   framework::Tensor* input_grad,
                   const framework::Tensor& output,
-                  const framework::Tensor& output_grad, int groups);
+                  const framework::Tensor& output_grad, const int groups,
+                  const int axis = 1);
 };
 }  // namespace math
 }  // namespace operators

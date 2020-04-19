@@ -25,7 +25,8 @@ namespace math {
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ASSERT(std::is_floating_point<T>::value);
+    PADDLE_ENFORCE(std::is_floating_point<T>::value,
+                   "TolerableValue should be float in cross_entropy.");
     const T kApproInf = 1e20;
 
     if (x == INFINITY) return kApproInf;
@@ -60,7 +61,7 @@ class CrossEntropyFunctor {
   void operator()(const DeviceContext& context, framework::Tensor* out,
                   const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel,
-                  const int ignore_index);
+                  const int ignore_index, const int axis_dim);
 };
 }  // namespace math
 }  // namespace operators

@@ -29,8 +29,13 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel,
-                  const int ignore_index) {
+                  const int ignore_index, const int axis_dim) {
     const int batch_size = prob->dims()[0];
+    const int num_classes = prob->dims()[1];
+    const int num_remain = num_classes / axis_dim;
+
+    Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
+
     if (softLabel) {
       auto in = EigenMatrix<T>::From(*prob);
       auto lbl = EigenMatrix<T>::From(*labels);
@@ -38,24 +43,38 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
 
       loss.device(*ctx.eigen_device()) =
           -((lbl * in.log().unaryExpr(math::TolerableValue<T>()))
-                .sum(Eigen::DSizes<int, 1>(1))
-                .reshape(Eigen::DSizes<int, 2>(batch_size, 1)));
+                .reshape(batch_axis_remain)
+                .sum(Eigen::DSizes<int, 1>(1)));
     } else {
-      const int class_num = prob->dims()[1];
       const T* prob_data = prob->data<T>();
       T* loss_data = out->data<T>();
 
       const int64_t* label_data = labels->data<int64_t>();
       for (int i = 0; i < batch_size; ++i) {
-        int lbl = label_data[i];
-        PADDLE_ENFORCE_GE(lbl, 0);
-        PADDLE_ENFORCE_LT(lbl, class_num);
-        PADDLE_ENFORCE((lbl >= 0 && lbl < class_num) || lbl == ignore_index);
-        int index = i * class_num + lbl;
-        loss_data[i] =
-            lbl == ignore_index
-                ? 0
-                : -math::TolerableValue<T>()(std::log(prob_data[index]));
+        for (int j = 0; j < num_remain; j++) {
+          int lbl = label_data[i * num_remain + j];
+          if (lbl != ignore_index) {
+            PADDLE_ENFORCE_GE(lbl, 0,
+                              platform::errors::OutOfRange(
+                                  "label value should >= 0 when label "
+                                  "value(%f) not equal to ignore_index(%f)",
+                                  lbl, ignore_index));
+            PADDLE_ENFORCE_LT(
+                lbl, axis_dim,
+                platform::errors::OutOfRange(
+                    "label value should less than the shape of axis dimension "
+                    "when label value(%f) not equal to ignore_index(%f), But "
+                    "received label value as %ld and shape of axis dimension "
+                    "is %d",
+                    lbl, ignore_index, lbl, axis_dim));
+          }
+          int index = i * num_classes + lbl * num_remain + j;
+          int loss_idx = i * num_remain + j;
+          loss_data[loss_idx] =
+              lbl == ignore_index
+                  ? 0
+                  : -math::TolerableValue<T>()(std::log(prob_data[index]));
+        }
       }
     }
   }

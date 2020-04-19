@@ -30,10 +30,14 @@ inline void im2col_common(const framework::Tensor& im,
                           const std::vector<int>& dilation,
                           const std::vector<int>& stride,
                           const std::vector<int>& padding,
-                          framework::Tensor* col) {
-  int im_channels = im.dims()[0];
-  int im_height = im.dims()[1];
-  int im_width = im.dims()[2];
+                          framework::Tensor* col,
+                          const DataLayout data_layout = DataLayout::kNCHW) {
+  int im_channels =
+      (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
+  int im_height =
+      (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
+  int im_width =
+      (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
   int filter_height = col->dims()[1];
   int filter_width = col->dims()[2];
   int output_height = col->dims()[3];
@@ -50,8 +54,14 @@ inline void im2col_common(const framework::Tensor& im,
       int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
       for (int w = 0; w < output_width; ++w) {
         int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
+        int im_idx;
+        if (data_layout != DataLayout::kNHWC) {
+          im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
+        } else {
+          im_idx = (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
+        }
         int col_idx = (c * output_height + h) * output_width + w;
-        int im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
+
         col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
                              im_col_idx < 0 || im_col_idx >= im_width)
                                 ? static_cast<T>(0)
@@ -65,11 +75,15 @@ inline void im2col_common(const framework::Tensor& im,
  * im2col algorithm with strides == 1, dilations == 1, paddings == 0
  */
 template <typename T>
-inline void im2col_sh1sw1dh1dw1ph0pw0(const framework::Tensor& im,
-                                      framework::Tensor* col) {
-  int im_channels = im.dims()[0];
-  int im_height = im.dims()[1];
-  int im_width = im.dims()[2];
+inline void im2col_sh1sw1dh1dw1ph0pw0(
+    const framework::Tensor& im, framework::Tensor* col,
+    const DataLayout data_layout = DataLayout::kNCHW) {
+  int im_channels =
+      (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
+  int im_height =
+      (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
+  int im_width =
+      (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
   int filter_height = col->dims()[1];
   int filter_width = col->dims()[2];
   int output_height = col->dims()[3];
@@ -89,7 +103,14 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(const framework::Tensor& im,
       const T* src_data = src_data_ic;
       for (int kh = 0; kh < filter_height; ++kh) {
         for (int kw = 0; kw < filter_width; ++kw) {
-          std::memcpy(dst_data, src_data + kw, copy_size);
+          if (data_layout != DataLayout::kNHWC) {
+            std::memcpy(dst_data, src_data + kw, copy_size);
+          } else {
+            for (int kow = 0; kow < output_width; ++kow) {
+              dst_data[kow] =
+                  im_data[((oh + kh) * im_width + kw + kow) * im_channels + ic];
+            }
+          }
           dst_data = dst_data + col_matrix_width;
         }
         src_data = src_data + im_width;
@@ -107,10 +128,14 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(const framework::Tensor& im,
  */
 template <typename T>
 inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
-                                      framework::Tensor* col) {
-  int im_channels = im.dims()[0];
-  int im_height = im.dims()[1];
-  int im_width = im.dims()[2];
+                                      framework::Tensor* col,
+                                      const DataLayout data_layout) {
+  int im_channels =
+      (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
+  int im_height =
+      (data_layout != DataLayout::kNHWC ? im.dims()[1] : im.dims()[0]);
+  int im_width =
+      (data_layout != DataLayout::kNHWC ? im.dims()[2] : im.dims()[1]);
   int filter_height = col->dims()[1];
   int filter_width = col->dims()[2];
   int output_height = col->dims()[3];
@@ -180,7 +205,17 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
             dst_data = dst_data + col_matrix_width;
             continue;
           }
-          std::memcpy(dst_data + plw, src_data, copy_size);
+          if (data_layout != DataLayout::kNHWC) {
+            std::memcpy(dst_data + plw, src_data, copy_size);
+          } else {
+            for (int kow = 0; kow < output_width - plw - prw; ++kow) {
+              dst_data[plw + kow] =
+                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
+                           kow) *
+                              im_channels +
+                          ic];
+            }
+          }
           dst_data = dst_data + col_matrix_width;
           src_data = src_data + im_width;
         }
@@ -226,19 +261,49 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
         // TODO(TJ): reuse plw-kw outside this for
         // try to unify
         for (int kw = 0; kw < plw; ++kw) {
-          std::memcpy(dst_data + (plw - kw), src_data,
-                      sizeof(T) * (output_width - (plw - kw)));
+          if (data_layout != DataLayout::kNHWC) {
+            std::memcpy(dst_data + (plw - kw), src_data,
+                        sizeof(T) * (output_width - (plw - kw)));
+          } else {
+            for (int kow = 0; kow < output_width - (plw - kw); ++kow) {
+              dst_data[plw - kw + kow] =
+                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
+                           kow) *
+                              im_channels +
+                          ic];
+            }
+          }
           dst_data = dst_data + col_matrix_width;
         }
         for (int kw = plw; kw < filter_width - prw; ++kw) {
-          std::memcpy(dst_data, src_data + (kw - plw),
-                      sizeof(T) * output_width);
+          if (data_layout != DataLayout::kNHWC) {
+            std::memcpy(dst_data, src_data + (kw - plw),
+                        sizeof(T) * output_width);
+          } else {
+            for (int kow = 0; kow < output_width; ++kow) {
+              dst_data[kow] =
+                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
+                           kw - plw + kow) *
+                              im_channels +
+                          ic];
+            }
+          }
           dst_data = dst_data + col_matrix_width;
         }
         int i = 1;
         for (int kw = filter_width - prw; kw < filter_width; ++kw, ++i) {
-          std::memcpy(dst_data, src_data + (kw - plw),
-                      sizeof(T) * (output_width - i));
+          if (data_layout != DataLayout::kNHWC) {
+            std::memcpy(dst_data, src_data + (kw - plw),
+                        sizeof(T) * (output_width - i));
+          } else {
+            for (int kow = 0; kow < output_width - i; ++kow) {
+              dst_data[kow] =
+                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
+                           kw - plw + kow) *
+                              im_channels +
+                          ic];
+            }
+          }
           dst_data = dst_data + col_matrix_width;
         }
         src_data = src_data + im_width;

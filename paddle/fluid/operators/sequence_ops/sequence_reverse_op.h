@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -106,10 +107,12 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto &x = *ctx.Input<LoDTensor>("X");
     auto *y = ctx.Output<LoDTensor>("Y");
 
+    PADDLE_ENFORCE_EQ(x.lod().empty(), false,
+                      "Input(X) Tensor of SequenceReverseOp does not contain "
+                      "LoD information.");
     PADDLE_ENFORCE_EQ(x.lod().size(), 1,
                       "SequenceReverse Op only support one level lod.");
 
-    auto &dev_ctx = ctx.template device_context<DeviceContext>();
     const size_t *lod;
     size_t lod_count = x.lod()[0].size();
 
@@ -131,25 +134,38 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_NE(x_data, y_data,
                       "SequenceReverse Op does not support in-place operation");
 
-    SequenceReverseFunctor<T> functor(x_data, y_data, lod, lod_count,
-                                      row_numel);
-    platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
-    for_range(functor);
+    if (platform::is_cpu_place(ctx.GetPlace())) {
+      for (size_t idx = 0; idx < lod_count - 1; idx++) {
+        auto start_pos = lod[idx];
+        auto end_pos = lod[idx + 1];
+        for (auto pos = start_pos; pos < end_pos; pos++) {
+          auto cur_pos = end_pos - pos - 1 + start_pos;
+          std::memcpy(y_data + pos * row_numel, x_data + cur_pos * row_numel,
+                      row_numel * sizeof(T));
+        }
+      }
+    } else {
+      auto &dev_ctx = ctx.template device_context<DeviceContext>();
+
+      SequenceReverseFunctor<T> functor(x_data, y_data, lod, lod_count,
+                                        row_numel);
+      platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
+      for_range(functor);
+    }
   }
 };
 
-class SequenceReverseGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceReverseGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_reverse");
-    op->SetInput("X", OutputGrad("Y"));
-    op->SetOutput("Y", InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->OutputGrad("Y"));
+    op->SetOutput("Y", this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 

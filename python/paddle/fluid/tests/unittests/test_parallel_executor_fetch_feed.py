@@ -38,7 +38,16 @@ def Lenet(data, class_dim):
 
 
 class TestFetchAndFeed(unittest.TestCase):
-    def parallel_exe(self, use_cuda, run_parallel_exe, seed=1):
+    @classmethod
+    def setUpClass(cls):
+        os.environ['CPU_NUM'] = str(4)
+
+    def parallel_exe(self,
+                     use_cuda,
+                     run_parallel_exe,
+                     use_faster_executor=False,
+                     num_threads=4,
+                     seed=1):
         main_program = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = seed
@@ -59,8 +68,17 @@ class TestFetchAndFeed(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup)
 
+        #FIXME force disable enable_inplace and memory_optimize to pass the unittest
+        build_strategy = fluid.BuildStrategy()
+        build_strategy.enable_inplace = False
+        build_strategy.memory_optimize = False
+        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy.use_experimental_executor = use_faster_executor
+        exec_strategy.num_threads = num_threads
         train_cp = compiler.CompiledProgram(main_program).with_data_parallel(
-            loss_name=loss.name)
+            loss_name=loss.name,
+            build_strategy=build_strategy,
+            exec_strategy=exec_strategy)
 
         run_parallel_exe(train_cp, exe, use_cuda, data, label, loss)
 
@@ -75,10 +93,6 @@ class TestFetchAndFeed(unittest.TestCase):
                      10).astype(np.int64)
                 yield img, l
 
-        # TODO(zcd): I found that onece the memory optimizer is open,
-        # parallel_exe doesn't fetch some variable, such as conv2d_0.b_0@GRAD,
-        # conv2d_1.b_0@GRAD. Those variables should not be pruned.
-        # fluid.memory_optimize(main)
         fetch_list = []
         all_vars = compiled_program._program.global_block().vars
 
@@ -127,17 +141,27 @@ class TestFetchAndFeed(unittest.TestCase):
             if batch_id == 2:
                 break
 
-    def test_fetch(self):
-        os.environ['CPU_NUM'] = str(4)
+    def check_executor(self, use_faster_executor=False, num_threads=4):
         if core.is_compiled_with_cuda():
             self.parallel_exe(
                 use_cuda=True,
-                run_parallel_exe=self.run_parallel_exe_with_fetch)
+                run_parallel_exe=self.run_parallel_exe_with_fetch,
+                use_faster_executor=use_faster_executor,
+                num_threads=num_threads)
         self.parallel_exe(
-            use_cuda=False, run_parallel_exe=self.run_parallel_exe_with_fetch)
+            use_cuda=False,
+            run_parallel_exe=self.run_parallel_exe_with_fetch,
+            use_faster_executor=use_faster_executor,
+            num_threads=num_threads)
+
+    def test_fetch(self):
+        for use_faster_executor in {True, False}:
+            self.check_executor(
+                use_faster_executor=use_faster_executor, num_threads=4)
+            self.check_executor(
+                use_faster_executor=use_faster_executor, num_threads=1)
 
     def test_feed(self):
-        os.environ['CPU_NUM'] = str(4)
         if core.is_compiled_with_cuda():
             self.parallel_exe(
                 use_cuda=True, run_parallel_exe=self.run_parallel_exe_with_feed)

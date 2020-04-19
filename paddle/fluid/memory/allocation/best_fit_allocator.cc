@@ -109,7 +109,7 @@ size_t BestFitAllocator::NumFreeChunks() const {
   }
   return num;
 }
-void BestFitAllocator::Free(Allocation* allocation) {
+void BestFitAllocator::FreeImpl(Allocation* allocation) {
   auto* bf_allocation = dynamic_cast<BestFitAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(bf_allocation,
                           "The input allocation is not BestFitAllocation.");
@@ -140,7 +140,7 @@ void BestFitAllocator::Free(Allocation* allocation) {
   InsertFreeNode(chunk_it);
   delete allocation;
 }
-Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+Allocation* BestFitAllocator::AllocateImpl(size_t size) {
   auto highest_set_bit = static_cast<size_t>(HighestBitPos(size));
   MapIt map_it;
   for (; highest_set_bit < free_chunks_.size(); ++highest_set_bit) {
@@ -150,8 +150,8 @@ Allocation* BestFitAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
     }
   }
   if (UNLIKELY(highest_set_bit == free_chunks_.size())) {
-    throw BadAlloc(string::Sprintf(
-        "Cannot allocate %d, All fragments size is %d", size, FreeSize()));
+    PADDLE_THROW_BAD_ALLOC("Cannot allocate %d, All fragments size is %d", size,
+                           FreeSize());
   }
   auto chunk_it = SplitChunk(size, highest_set_bit, map_it);
   return new BestFitAllocation(this, chunk_it);

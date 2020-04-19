@@ -16,7 +16,6 @@
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #ifdef PADDLE_WITH_CUDA
@@ -60,7 +59,16 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-    PADDLE_ASSERT(x_stride == 1 && out_stride == 1);
+    PADDLE_ENFORCE(x_stride == 1,
+                   "When i:%d == rank:%d - 1, x_stride of random_crop_op "
+                   "expected to be 1, but got %ld. Please check input "
+                   "value.",
+                   i, rank, x_stride);
+    PADDLE_ENFORCE(out_stride == 1,
+                   "When i:%d == rank:%d - 1, out_stride of random_crop_op "
+                   "expected to be 1, but got %ld. Please check input "
+                   "value.",
+                   i, rank, out_stride);
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
@@ -143,10 +151,11 @@ class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     int64_t seed = 0;
-    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
+    auto& seed_tensor = GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("Seed"),
+                                        "Input", "Seed", "RandomCrop");
     if (seed_tensor.IsInitialized()) {
       if (platform::is_cpu_place(seed_tensor.place())) {
-        seed = *seed_tensor.data<int64_t>();
+        seed = *seed_tensor.template data<int64_t>();
       } else {
         LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
                         "your program";
@@ -160,13 +169,15 @@ class RandomCropKernel : public framework::OpKernel<T> {
       seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    auto& x = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
-    auto& out = detail::Ref(ctx.Output<framework::LoDTensor>("Out"));
+    auto& x = GET_DATA_SAFELY(ctx.Input<framework::LoDTensor>("X"), "Input",
+                              "X", "RandomCrop");
+    auto& out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
+                                "Output", "Out", "RandomCrop");
 
     int num_batchsize_dims = x.dims().size() - shape.size();
     RandomCropFunctor<DeviceContext, T> functor(
-        x.data<T>(), out.mutable_data<T>(ctx.GetPlace()), x.dims(), out.dims(),
-        num_batchsize_dims, seed);
+        x.template data<T>(), out.template mutable_data<T>(ctx.GetPlace()),
+        x.dims(), out.dims(), num_batchsize_dims, seed);
     platform::ForRange<DeviceContext> for_range(
         ctx.template device_context<DeviceContext>(),
         functor.prod_batchsize_dims_);

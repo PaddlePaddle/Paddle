@@ -13,8 +13,73 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
+#include <memory>
+#include <string>
 
-REGISTER_REDUCE_OP(reduce_sum);
+namespace paddle {
+namespace operators {
+
+// NOTE: Input(Out) is unnecessary in reduce_sum_grad, and Input(X) needs no
+// buffer
+
+template <typename T>
+class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("reduce_sum_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    if (in_dtype >= 0) {
+      return framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          ctx.GetPlace());
+    }
+    return framework::OpKernelType(
+        framework::OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("Out")),
+        ctx.GetPlace());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
+class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
+ public:
+  void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
+    auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
+        boost::get<int>(ctx->GetAttr("out_dtype")));
+    if (data_type >= 0) {
+      auto& out_var_name = ctx->Output("Out").front();
+      ctx->SetDataType(out_var_name, data_type);
+    }
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+class ReduceSumOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_sum"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
+};
+
+REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+                  ops::ReduceSumVarTypeInference,
+                  ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
+                  ops::ReduceSumGradNoNeedBufferVarInference);
+
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
                                   ops::SumFunctor>,
@@ -23,13 +88,13 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::SumFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum_grad,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, float,
-                             ops::SumGradFunctor>,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, double,
-                             ops::SumGradFunctor>,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, int,
-                             ops::SumGradFunctor>,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, int64_t,
-                             ops::SumGradFunctor>);
+
+template <typename T>
+using CPUReduceSumGradKernel =
+    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
+                             ops::SumGradFunctor, true>;
+
+REGISTER_OP_CPU_KERNEL(reduce_sum_grad, CPUReduceSumGradKernel<float>,
+                       CPUReduceSumGradKernel<double>,
+                       CPUReduceSumGradKernel<int>,
+                       CPUReduceSumGradKernel<int64_t>);

@@ -54,199 +54,84 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
     auto in_vars = ctx.MultiInputVar("X");
-
-    const int N = in_vars.size();
     auto out_var = ctx.OutputVar("Out");
+
+    PADDLE_ENFORCE_NE(in_vars.empty(), true, platform::errors::InvalidArgument(
+                                                 "Input variable is empty."));
     bool in_place = out_var == in_vars[0];
 
-    if (out_var->IsType<framework::LoDTensor>()) {
-      LoDTensor* output = ctx.Output<LoDTensor>("Out");
-      T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    LoDTensor* output = ctx.Output<LoDTensor>("Out");
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-      std::vector<int> dst_tz = framework::vectorize2int(output->dims());
-      auto src_tz = dst_tz;
-      memory::format output_format{memory::format::format_undef};
-      std::vector<float> scales;
-      std::vector<memory::primitive_desc> srcs_mpd;
-      std::vector<mkldnn::memory> srcs_mem;
+    auto dst_tz = framework::vectorize<int64_t>(output->dims());
+    auto src_tz = dst_tz;
+    MKLDNNMemoryFormat output_format{MKLDNNMemoryFormat::undef};
+    std::vector<float> scales;
+    std::vector<memory::desc> srcs_md;
+    std::vector<mkldnn::memory> srcs_mem;
 
-      PADDLE_ENFORCE(in_vars[0]->IsType<LoDTensor>(),
-                     "Input[0] must be LoDTensors");
-      auto& input0 = in_vars[0]->Get<LoDTensor>();
-      PADDLE_ENFORCE(input0.layout() == DataLayout::kMKLDNN &&
-                         input0.format() != memory::format::format_undef,
-                     "Wrong layout/format for inputs[0]");
+    auto& input0 = in_vars[0]->Get<LoDTensor>();
+    in_place = (input0.numel() > 0) && (input0.data<T>() == output_data);
 
-      memory::format input_format = input0.format();
+    MKLDNNMemoryFormat input_format = input0.format();
 
-      if (src_tz.size() == 1 && (input_format == memory::format::nchw ||
-                                 input_format == memory::format::nhwc)) {
-        input_format = memory::format::x;
-      }
-      if (src_tz.size() == 2 && (input_format == memory::format::nchw ||
-                                 input_format == memory::format::nhwc)) {
-        input_format = memory::format::nc;
+    for (size_t i = 0; i < in_vars.size(); i++) {
+      auto& input_it = in_vars[i]->Get<LoDTensor>();
+      if (input_it.numel() == 0) {
+        continue;
       }
 
-      for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
-                       "all inputs must be all LoDTensors");
-        auto& input = in_vars[i]->Get<LoDTensor>();
-        PADDLE_ENFORCE(input.layout() == DataLayout::kMKLDNN &&
-                           input.format() != memory::format::format_undef,
-                       "Wrong layout/format for inputs");
+      const T* input_data = input_it.data<T>();
 
-        if (input.numel() == 0) {
-          continue;
-        }
-
-        const T* input_data = input.data<T>();
-
-        auto src_md =
-            memory::desc(src_tz, memory::data_type::f32, input_format);
-        auto src_mpd = memory::primitive_desc(src_md, mkldnn_engine);
-        auto src_mem = memory(src_mpd, to_void_cast(input_data));
-        srcs_mpd.push_back(src_mpd);
-        srcs_mem.push_back(src_mem);
-        scales.push_back(1.0);
-      }
-
-      auto dst_md =
-          memory::desc(dst_tz, memory::data_type::f32, memory::format::any);
-
-      auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_mpd);
-
-      std::shared_ptr<memory> dst_mem;
-      if (in_place) {
-        dst_mem.reset(new memory(sum_pd.dst_primitive_desc()));
-      } else {
-        dst_mem.reset(new memory(sum_pd.dst_primitive_desc(), output_data));
-      }
-      std::vector<mkldnn::primitive::at> inputs;
-      for (size_t i = 0; i < srcs_mem.size(); ++i) {
-        inputs.push_back(srcs_mem[i]);
-      }
-
-      auto sum_prim = mkldnn::sum(sum_pd, inputs, *dst_mem);
-      output_format = (memory::format)platform::GetMKLDNNFormat(sum_pd);
-
-      primitive reorder_prim;
-      std::shared_ptr<memory> target_mem;
-      if (in_place) {
-        output_format = input_format;
-        target_mem.reset(new memory(
-            {{{src_tz}, memory::data_type::f32, output_format}, mkldnn_engine},
-            output_data));
-        reorder_prim = reorder(*dst_mem, *target_mem);
-      }
-
-      std::vector<primitive> pipeline;
-      pipeline.push_back(sum_prim);
-      if (in_place) pipeline.push_back(reorder_prim);
-      stream(stream::kind::eager).submit(pipeline).wait();
-
-      output->set_layout(DataLayout::kMKLDNN);
-      output->set_format(output_format);
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      // TODO(@mozga-intel) Add MKLDNN SelectedRows support
-      std::unique_ptr<framework::SelectedRows> in0;
-      if (in_place) {
-        // If is in_place, we store the input[0] to in0
-        auto& in_sel0 = in_vars[0]->Get<SelectedRows>();
-        auto& rows = in_sel0.rows();
-        in0.reset(new framework::SelectedRows(rows, in_sel0.height()));
-        in0->mutable_value()->ShareDataWith(in_sel0.value());
-      }
-
-      auto get_selected_row = [&](size_t i) -> const SelectedRows& {
-        if (i == 0 && in0) {
-          return *in0.get();
-        } else {
-          return in_vars[i]->Get<SelectedRows>();
-        }
-      };
-      auto* out = ctx.Output<SelectedRows>("Out");
-      out->mutable_rows()->clear();
-      auto* out_value = out->mutable_value();
-
-      // Runtime InferShape
-      size_t first_dim = 0;
-      for (int i = 0; i < N; i++) {
-        auto& sel_row = get_selected_row(i);
-        first_dim += sel_row.rows().size();
-      }
-
-      std::vector<int64_t> in_dim;
-      for (int i = 0; i < N; i++) {
-        auto& sel_row = get_selected_row(i);
-        if (sel_row.rows().size() > 0) {
-          in_dim = framework::vectorize(sel_row.value().dims());
-          break;
-        }
-      }
-
-      if (in_dim.empty()) {
-        VLOG(3) << "WARNING: all the inputs are empty";
-        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
-      } else {
-        in_dim[0] = static_cast<int64_t>(first_dim);
-      }
-
-      in_dim[0] = static_cast<int64_t>(first_dim);
-
-      out_value->Resize(framework::make_ddim(in_dim));
-
-      out_value->mutable_data<T>(ctx.GetPlace());
-
-      // if all the input sparse vars are empty, no need to
-      // merge these vars.
-      if (first_dim == 0UL) {
-        return;
-      }
-
-      math::SelectedRowsAddTo<CPUDeviceContext, T> functor;
-      int64_t offset = 0;
-      for (int i = 0; i < N; i++) {
-        auto& sel_row = get_selected_row(i);
-        if (sel_row.rows().size() == 0) {
-          continue;
-        }
-        PADDLE_ENFORCE_EQ(out->height(), sel_row.height());
-        functor(ctx.template device_context<CPUDeviceContext>(), sel_row,
-                offset, out);
-        offset += sel_row.value().numel();
-      }
-    } else if (out_var->IsType<framework::LoDTensorArray>()) {
-      // TODO(@mozga-intel) Add MKLDNN LoDTensorArray support
-      auto& out_array = *out_var->GetMutable<framework::LoDTensorArray>();
-      for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensorArray>(),
-                       "Only support all inputs are TensorArray");
-        auto& in_array = in_vars[i]->Get<framework::LoDTensorArray>();
-
-        for (size_t i = 0; i < in_array.size(); ++i) {
-          if (in_array[i].numel() != 0) {
-            if (i >= out_array.size()) {
-              out_array.resize(i + 1);
-            }
-            if (out_array[i].numel() == 0) {
-              framework::TensorCopy(in_array[i], in_array[i].place(),
-                                    ctx.device_context(), &out_array[i]);
-              out_array[i].set_lod(in_array[i].lod());
-            } else {
-              PADDLE_ENFORCE(out_array[i].lod() == in_array[i].lod());
-              auto in = EigenVector<T>::Flatten(in_array[i]);
-              auto result = EigenVector<T>::Flatten(out_array[i]);
-              result.device(*ctx.template device_context<MKLDNNDeviceContext>()
-                                 .eigen_device()) = result + in;
-            }
-          }
-        }
-      }
-    } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(out_var->Type()));
+      auto src_md = memory::desc(src_tz, memory::data_type::f32, input_format);
+      auto src_mem = memory(src_md, mkldnn_engine, to_void_cast(input_data));
+      srcs_md.push_back(src_md);
+      srcs_mem.push_back(src_mem);
+      scales.push_back(1.0);
     }
+
+    auto dst_md =
+        memory::desc(dst_tz, memory::data_type::f32, MKLDNNMemoryFormat::any);
+
+    auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_md, mkldnn_engine);
+
+    std::shared_ptr<memory> dst_mem;
+    if (in_place) {
+      dst_mem.reset(new memory(sum_pd.dst_desc(), mkldnn_engine));
+    } else {
+      dst_mem.reset(new memory(sum_pd.dst_desc(), mkldnn_engine, output_data));
+    }
+
+    auto sum_prim = mkldnn::sum(sum_pd);
+    output_format = platform::GetMKLDNNFormat(sum_pd.dst_desc());
+
+    std::shared_ptr<mkldnn::reorder> reorder_p;
+    std::shared_ptr<memory> target_mem;
+    if (in_place) {
+      output_format = input_format;
+      target_mem.reset(
+          new memory({{src_tz}, memory::data_type::f32, output_format},
+                     mkldnn_engine, output_data));
+      reorder_p = std::make_shared<reorder>(*dst_mem, *target_mem);
+    }
+
+    mkldnn::stream astream(mkldnn_engine);
+    std::unordered_map<int, memory> args;
+    for (size_t i = 0; i < srcs_mem.size(); ++i) {
+      args.insert({MKLDNN_ARG_MULTIPLE_SRC + i, srcs_mem.at(i)});
+    }
+    args.insert({MKLDNN_ARG_DST, *dst_mem});
+
+    sum_prim.execute(astream, args);
+    astream.wait();
+
+    if (in_place) {
+      reorder_p->execute(astream, *dst_mem, *target_mem);
+      astream.wait();
+    }
+
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(output_format);
   }
 };
 

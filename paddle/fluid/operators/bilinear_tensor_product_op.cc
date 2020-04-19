@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/bilinear_tensor_product_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -38,9 +41,11 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(y_dims.size(), 2UL, "The input(Y) must be a 2D Tensor.");
     PADDLE_ENFORCE_EQ(weight_dims.size(), 3UL,
                       "The input(Weight) must be a 3D tensor.");
-    PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                      "The first dimension(batch_size) of input(X) must be "
-                      "equal to the first dimension of the input(Y).");
+    if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0)) {
+      PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
+                        "The first dimension(batch_size) of input(X) must be "
+                        "equal to the first dimension of the input(Y).");
+    }
     PADDLE_ENFORCE_EQ(x_dims[1], weight_dims[1],
                       "The second dimension of input(X) must be equal to "
                       "the second dimension of the input(Weight).");
@@ -121,15 +126,9 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
         "The second dimension of input(Out@GRAD) must be equal to "
         "the third dimension of the Input(Weight).");
 
-    if (ctx->HasInput("Bias")) {
-      auto bias_dims = ctx->GetInputDim("Bias");
-      PADDLE_ENFORCE_EQ(
-          bias_dims[1], out_dims[1],
-          "The second dimension of input(Out@GRAD) must be equal to "
-          "the second dimension of the Input(Bias).");
-      auto bias_grad_name = framework::GradVarName("Bias");
-      if (ctx->HasOutput(bias_grad_name))
-        ctx->SetOutputDim(bias_grad_name, bias_dims);
+    auto bias_grad_name = framework::GradVarName("Bias");
+    if (ctx->HasOutput(bias_grad_name)) {
+      ctx->SetOutputDim(bias_grad_name, {1, out_dims[1]});
     }
 
     auto x_grad_name = framework::GradVarName("X");
@@ -148,13 +147,39 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class BilinearTensorProductGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("bilinear_tensor_product_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("Weight", this->Input("Weight"));
+    if (this->HasInput("Bias")) {
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    }
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bilinear_tensor_product, ops::BilinearTensorProductOp,
-                  ops::BilinearTensorProductOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    bilinear_tensor_product, ops::BilinearTensorProductOp,
+    ops::BilinearTensorProductOpMaker,
+    ops::BilinearTensorProductGradOpMaker<paddle::framework::OpDesc>,
+    ops::BilinearTensorProductGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_tensor_product_grad,
                   ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(

@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -25,8 +27,22 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+// Compare nodes via node id.
+struct NodeComp {
+  bool operator()(ir::Node *const &node1, ir::Node *const &node2) const {
+    return node1->id() < node2->id();
+  }
+};
+
 // Test if the graph contains circle.
 bool HasCircle(const Graph &graph);
+
+// Check if the var desc of node is consistency.
+// The graph may have the same name node, for example, parameter
+// is the input of operator and it also is the output of optimizer.
+// For the persistable variable, the var_desc of the nodes with
+// the same node name should be equal.
+bool VarDescIsConsistency(const Graph &graph);
 
 // Find All Circles for debugging,
 // store all subgraph in circles.
@@ -57,8 +73,8 @@ std::vector<Node *> TopologyVarientSort(const Graph &graph, SortKind sort_kind);
 void CleanIndividualNodes(Graph *graph);
 
 // Build an adjacency list of operations for the `graph`.
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
-    const Graph &graph);
+std::map<ir::Node *, std::set<ir::Node *, ir::NodeComp>, ir::NodeComp>
+BuildOperationAdjList(const Graph &graph);
 
 template <typename T>
 std::vector<T *> FilterByNodeWrapper(const Graph &graph) {

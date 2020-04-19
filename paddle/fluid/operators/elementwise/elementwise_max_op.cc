@@ -13,9 +13,65 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
+#include <memory>
+#include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+
+namespace paddle {
+namespace operators {
+
+class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Max"; }
+  std::string GetEquation() const override { return "Out = max(X, Y)"; }
+
+  void AddInputX() override {
+    AddInput(
+        "X",
+        "(Variable), The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() override {
+    AddInput(
+        "Y",
+        "(Variable), The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise maxima.";
+  }
+};
+
+template <typename T>
+class ElementwiseMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elementwise_max_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_OP(elementwise_max, "Max", "Out = max(X, Y)");
+
+REGISTER_OPERATOR(elementwise_max, ops::ElementwiseOp,
+                  ops::ElementwiseMaxOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseMaxGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     elementwise_max,
     ops::ElementwiseMaxKernel<paddle::platform::CPUDeviceContext, float>,

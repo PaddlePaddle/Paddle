@@ -42,12 +42,6 @@ repos:
         entry: bash ./tools/codestyle/pylint_pre_commit.hook
         language: system
         files: \.(py)$
--   repo: https://github.com/PaddlePaddle/pre-commit-golang
-    sha: 8337620115c25ff8333f1b1a493bd031049bd7c0
-    hooks:
-    -   id: go-fmt
-        types:
-        - go
 -   repo: local
     hooks:
     -   id: copyright_checker

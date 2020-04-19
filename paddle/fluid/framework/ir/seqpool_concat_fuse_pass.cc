@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/seqpool_concat_fuse_pass.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 
@@ -141,7 +142,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     PADDLE_ENFORCE(subgraph.count(pat.RetrieveNode(name)),
                    "pattern has no Node called %s", name.c_str());
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, "subgraph has no node %s", name.c_str());
+    PADDLE_ENFORCE_NOT_NULL(
+        p, platform::errors::NotFound("subgraph has no node %s", name.c_str()));
     return p;
   };
 
@@ -194,17 +196,14 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> SeqPoolConcatFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void SeqPoolConcatFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
   int fusion_count = 0;
   for (int i = MAX_CONCAT_INPUTS; i > 0; --i) {
     fusion_count +=
-        BuildFusion(graph.get(), name_scope_ + "/" + std::to_string(i), i);
+        BuildFusion(graph, name_scope_ + "/" + std::to_string(i), i);
   }
   AddStatis(fusion_count);
-
-  return graph;
 }
 
 }  // namespace ir

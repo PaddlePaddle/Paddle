@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/im2sequence_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -33,11 +34,17 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
                       "Input(X) format must be 4D tensor, eg., NCHW.");
-    int img_channels = in_dim[1];
+    auto img_channels = in_dim[1];
 
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    if (!ctx->IsRuntime()) {
+      // set lod level for compile-time
+      framework::VarDesc* out_desc =
+          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      out_desc->SetLoDLevel(1);
+    }
 
     ctx->SetOutputDim("Out",
                       {in_dim[0], img_channels * kernels[0] * kernels[1]});
@@ -146,12 +153,28 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class Im2SequenceGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("im2sequence_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::Im2SequenceGradMaker<paddle::framework::OpDesc>,
+                  ops::Im2SequenceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 REGISTER_OP_CPU_KERNEL(
     im2sequence,

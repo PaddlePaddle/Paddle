@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -44,7 +45,11 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
 
-    ctx->SetOutputDim("Out", ctx->GetInputDim("Input"));
+    auto out_dims = in_dims;
+    auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
+    out_dims[2] = hidden_size;
+
+    ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("last_h", ctx->GetInputDim("InitH"));
     ctx->SetOutputDim("last_c", ctx->GetInputDim("InitC"));
   }
@@ -114,7 +119,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.0);
     AddAttr<bool>("is_bidirec",
                   "is_bidirec"
-                  "if it is bidirection rnn"
+                  "if it is bidirectional rnn"
                   "The will affect the shape of the Out, last_h, and last_c")
         .SetDefault(false);
     AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(10);
@@ -170,11 +175,6 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("last_h"),
-                   "Input(last_h) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("last_c"),
-                   "Input(last_c) of LSTM should not be null.");
-
     PADDLE_ENFORCE(ctx->HasInput("Cache"),
                    "Input(last_c) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitH"),
@@ -198,6 +198,34 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
+class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("cudnn_lstm_grad");
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("InitH", this->Input("InitH"));
+    op->SetInput("InitC", this->Input("InitC"));
+    op->SetInput("W", this->Input("W"));
+    if (this->HasInput("Cache")) {
+      op->SetInput("Cache", this->Input("Cache"));
+    }
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput(framework::GradVarName("last_c"), this->OutputGrad("last_c"));
+    op->SetInput(framework::GradVarName("last_h"), this->OutputGrad("last_h"));
+
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
+    op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+template <typename T>
 class NotImpleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -211,7 +239,8 @@ class NotImpleKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cudnn_lstm, ops::CudnnLSTMOp, ops::CudnnLSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::CudnnLSTMGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
 REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);

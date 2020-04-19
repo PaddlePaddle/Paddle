@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/layer_norm_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -45,11 +46,18 @@ class LayerNormOp : public framework::OperatorWithKernel {
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right);
+
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right,
+                          "scale should with right");
+      }
     }
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right);
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right,
+                          "bias should with right");
+      }
     }
 
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
@@ -133,7 +141,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasOutput(framework::GradVarName("Bias"))) {
       ctx->SetOutputDim(framework::GradVarName("Bias"),
-                        ctx->GetInputDim("Bias"));
+                        ctx->GetInputDim("Scale"));
     }
   }
 
@@ -157,12 +165,39 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("layer_norm_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Mean", this->Output("Mean"));
+    op->SetInput("Variance", this->Output("Variance"));
+    if (this->HasInput("Scale")) {
+      op->SetInput("Scale", this->Input("Scale"));
+      op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+    }
+
+    if (this->HasInput("Bias")) {
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    }
+
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,

@@ -29,15 +29,6 @@ DEFINE_bool(
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
 
-DEFINE_double(
-    eager_delete_tensor_gb, -1.0,
-    "Memory size threshold (GB) when the garbage collector clear tensors."
-    "Disabled when this value is less than 0");
-
-DEFINE_bool(fast_eager_deletion_mode, false,
-            "Fast eager deletion mode. If enabled, memory would release "
-            "immediately without waiting GPU kernel ends.");
-
 // When in inference scenario, the scopes will not be written by two threads in
 // a mean time, but a scope may be read by multiple threads concurrently, and
 // the mutex will cause serious performance issue.
@@ -57,15 +48,6 @@ DEFINE_bool(fast_eager_deletion_mode, false,
 namespace paddle {
 namespace framework {
 
-int64_t GetEagerDeletionThreshold() {
-  return FLAGS_eager_delete_tensor_gb < 0
-             ? -1
-             : static_cast<int64_t>(FLAGS_eager_delete_tensor_gb *
-                                    (static_cast<int64_t>(1) << 30));
-}
-
-bool IsFastEagerDeletionModeEnabled() { return FLAGS_fast_eager_deletion_mode; }
-
 Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
@@ -75,6 +57,10 @@ Scope& Scope::NewScope() const {
     kids_.push_back(child);
   }
   return *child;
+}
+
+std::unique_ptr<Scope> Scope::NewTmpScope() const {
+  return std::unique_ptr<Scope>(new Scope(this));
 }
 
 Variable* Scope::Var(const std::string& name) {
@@ -107,6 +93,11 @@ const Scope* Scope::FindScope(const Variable* var) const {
   return FindScopeInternal(var);
 }
 
+const Scope* Scope::FindScope(const std::string& name) const {
+  SCOPE_VARS_READER_LOCK
+  return FindScopeInternal(name);
+}
+
 void Scope::DropKids() {
   SCOPE_KIDS_WRITER_LOCK
   for (Scope* s : kids_) delete s;
@@ -134,8 +125,9 @@ std::vector<std::string> Scope::LocalVarNames() const {
 void Scope::DeleteScope(Scope* scope) const {
   SCOPE_KIDS_WRITER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-  PADDLE_ENFORCE(it != this->kids_.end(), "%p Cannot find %p as kid scope",
-                 this, scope);
+  PADDLE_ENFORCE_NE(it, this->kids_.end(),
+                    platform::errors::NotFound(
+                        "%p is not found in %p as kid scope", scope, this));
   this->kids_.erase(it);
   // When making memory benchmark on Fluid, we have to delete scope sync.
   if (FLAGS_benchmark || FLAGS_eager_delete_scope) {
@@ -188,14 +180,26 @@ const Scope* Scope::FindScopeInternal(const Variable* var) const {
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
 
+const Scope* Scope::FindScopeInternal(const std::string& name) const {
+  if (vars_.find(name) != vars_.end()) {
+    return this;
+  }
+  return (parent_ == nullptr) ? nullptr : parent_->FindScope(name);
+}
+
 void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
-  PADDLE_ENFORCE(origin_it != vars_.end(),
-                 "Cannot find original variable with name %s", origin_name);
+  PADDLE_ENFORCE_NE(
+      origin_it, vars_.end(),
+      platform::errors::NotFound(
+          "Original variable with name %s is not found in the scope.",
+          origin_name));
   auto new_it = vars_.find(new_name);
-  PADDLE_ENFORCE(new_it == vars_.end(),
-                 "The variable with name %s is already in the scope", new_name);
+  PADDLE_ENFORCE_EQ(
+      new_it, vars_.end(),
+      platform::errors::AlreadyExists(
+          "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
 }
@@ -210,8 +214,21 @@ Variable* Scope::FindVarInternal(const std::string& name) const {
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
   auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second.get();
+  if (it != vars_.end()) {
+    return it->second.get();
+  }
   return nullptr;
+}
+
+void Scope::EraseVarsExcept(const std::unordered_set<Variable*>& vars) {
+  SCOPE_VARS_WRITER_LOCK
+  for (auto iter = vars_.begin(); iter != vars_.end();) {
+    if (vars.count(iter->second.get()) != 0) {
+      ++iter;
+    } else {
+      vars_.erase(iter++);
+    }
+  }
 }
 
 std::string GenScopeTreeDebugInfo(Scope* root) {

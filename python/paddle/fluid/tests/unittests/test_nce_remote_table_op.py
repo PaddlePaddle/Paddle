@@ -25,6 +25,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
+from dist_test_utils import *
+from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,
@@ -67,6 +69,7 @@ def nce(input, weight, bias, sample_weight, labels, num_classes,
 
 
 def run_pserver(pserver_id, use_cuda, sync_mode):
+    remove_ps_flag(os.getpid())
     scope = fluid.core.Scope()
     program = Program()
     with fluid.scope_guard(scope):
@@ -90,7 +93,7 @@ def run_pserver(pserver_id, use_cuda, sync_mode):
                     "optimize_blocks": [optimize_block],
                     "endpoint": '127.0.0.1:0',
                     "Fanin": 1,
-                    "sync_mode": True,
+                    "distributed_mode": DistributedMode.SYNC,
                     "grad_to_block_id": []
                 })
 
@@ -205,9 +208,9 @@ class TestListenAndServOp(unittest.TestCase):
                 out = nce(x_array, param_array, bias_array, sample_weight,
                           label_array, 5, 2)
 
-                self.assertAlmostEqual(o_cost.all(), out[0].all(), delta=1e-6)
-                self.assertAlmostEqual(o_logits.all(), out[1].all(), delta=1e-6)
-                self.assertAlmostEqual(o_labels.all(), out[2].all(), delta=1e-6)
+                np.testing.assert_almost_equal(o_cost, out[0], decimal=6)
+                np.testing.assert_almost_equal(o_logits, out[1], decimal=6)
+                np.testing.assert_almost_equal(o_labels, out[2], decimal=6)
 
     def test_nce_op_remote(self):
         os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"

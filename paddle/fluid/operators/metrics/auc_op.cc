@@ -28,12 +28,18 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input of Label should not be null.");
     auto predict_width = ctx->GetInputDim("Predict")[1];
-    PADDLE_ENFORCE_EQ(predict_width, 2, "Only support binary classification");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_LE(predict_width, 2,
+                        "Only support binary classification,"
+                        "prediction dims[1] should be 1 or 2");
+    }
     auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
 
-    PADDLE_ENFORCE_EQ(predict_height, label_height,
-                      "Out and Label should have same height.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(predict_height, label_height,
+                        "Out and Label should have same height.");
+    }
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
     int slide_steps = ctx->Attrs().Get<int>("slide_steps");
@@ -43,16 +49,23 @@ class AucOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("AUC", {1});
 
-    slide_steps = slide_steps == 0 ? 1 : slide_steps;
-    ctx->SetOutputDim("StatPosOut", {slide_steps, num_pred_buckets});
-    ctx->SetOutputDim("StatNegOut", {slide_steps, num_pred_buckets});
+    if (slide_steps) {
+      ctx->SetOutputDim("StatPosOut",
+                        {(1 + slide_steps) * num_pred_buckets + 1});
+      ctx->SetOutputDim("StatNegOut",
+                        {(1 + slide_steps) * num_pred_buckets + 1});
+    } else {
+      ctx->SetOutputDim("StatPosOut", {1, num_pred_buckets});
+      ctx->SetOutputDim("StatNegOut", {1, num_pred_buckets});
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Predict")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Predict"),
+        ctx.device_context());
   }
 };
 

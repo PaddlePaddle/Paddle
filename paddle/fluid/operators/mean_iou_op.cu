@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/mean_iou_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -116,9 +117,7 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Temporary memory
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    auto tmp_ious_data = allocator.Allocate(num_classes * sizeof(float));
+    auto tmp_ious_data = memory::Alloc(dev_ctx, num_classes * sizeof(float));
     float* ious_data = static_cast<float*>(tmp_ious_data->ptr());
 
     // Init out_wrong, out_correct and out_mean_iou

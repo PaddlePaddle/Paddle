@@ -16,6 +16,9 @@ from . import pruner
 from .pruner import *
 from . import prune_strategy
 from .prune_strategy import *
+from . import auto_prune_strategy
+from .auto_prune_strategy import *
 
 __all__ = pruner.__all__
 __all__ += prune_strategy.__all__
+__all__ += auto_prune_strategy.__all__

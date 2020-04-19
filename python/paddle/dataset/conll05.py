@@ -29,7 +29,7 @@ import paddle.dataset.common
 import paddle.compat as cpt
 from six.moves import zip, range
 
-__all__ = ['test, get_dict', 'get_embedding', 'convert']
+__all__ = ['test, get_dict', 'get_embedding']
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
@@ -248,11 +248,3 @@ def fetch():
     paddle.dataset.common.download(TRGDICT_URL, 'conll05st', TRGDICT_MD5)
     paddle.dataset.common.download(EMB_URL, 'conll05st', EMB_MD5)
     paddle.dataset.common.download(DATA_URL, 'conll05st', DATA_MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, test(), 1000, "conl105_train")
-    paddle.dataset.common.convert(path, test(), 1000, "conl105_test")

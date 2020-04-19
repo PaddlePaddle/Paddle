@@ -20,8 +20,12 @@ from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from functools import reduce
+from op_test import _set_use_system_allocator
+from paddle.fluid import Program, program_guard
 
 np.random.random(123)
+
+_set_use_system_allocator(True)
 
 
 def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
@@ -71,7 +75,10 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     return grad_x, d_scale, d_bias
 
 
-class TestLayerNormdOp(unittest.TestCase):
+class TestLayerNormOp(unittest.TestCase):
+    def setUp(self):
+        self.use_cudnn = True
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
@@ -142,6 +149,8 @@ class TestLayerNormdOp(unittest.TestCase):
                     grad_var = block.desc.find_var(arg.encode("ascii"))
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
+                program._sync_with_cpp()
+
                 exe = fluid.Executor(place)
                 out = exe.run(program,
                               feed={
@@ -160,7 +169,8 @@ class TestLayerNormdOp(unittest.TestCase):
                 self.__assert_close(bias_grad, out[5], "bias_grad")
 
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -169,6 +179,53 @@ class TestLayerNormdOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+
+
+class TestLayerNormAPI(unittest.TestCase):
+    def test_case(self):
+        x = fluid.layers.data(
+            name='x',
+            shape=[64, 32, 256],
+            dtype='float32',
+            append_batch_size=False)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=True,
+            shift=True,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr="scale",
+            bias_attr="shift")
+
+
+class TestDygraphLayerNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            layer_norm = fluid.LayerNorm([32, 32])
+            # the input of LayerNorm must be Variable.
+            x1 = np.random.random((3, 32, 32)).astype('float32')
+            self.assertRaises(TypeError, layer_norm, x1)
+
+            # the input dtype of LayerNorm must be float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
+            self.assertRaises(TypeError, layer_norm, x2)
 
 
 if __name__ == '__main__':

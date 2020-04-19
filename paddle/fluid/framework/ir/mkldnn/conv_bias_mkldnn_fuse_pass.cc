@@ -38,24 +38,21 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
   return vec_y;
 }
 
-std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init(name_scope_, graph.get());
+void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE(graph);
+  FusePassBase::Init(name_scope_, graph);
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
-
-  std::string type = is_conv3d() ? "conv3d" : "conv2d";
 
   GraphPatternDetector gpd;
   auto* conv_input =
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input(type, "Input");
+          ->assert_is_op_input(type(), "Input");
   patterns::ConvBias conv_bias_pattern(gpd.mutable_pattern(), name_scope_);
-  conv_bias_pattern(conv_input, is_conv3d());
+  conv_bias_pattern(conv_input, type());
   int found_conv_bias_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
@@ -76,7 +73,7 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
     // check if fuse can be done and if MKL-DNN should be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
     if (fuse_option == DO_NOT_FUSE || fuse_option == FUSE_NATIVE) {
-      VLOG(3) << "do not perform conv+bias fuse";
+      VLOG(3) << "do not perform " + type() + "+bias fuse";
       return;
     }
 
@@ -99,7 +96,7 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({eltwise_out->Name()}));
 
-      GraphSafeRemoveNodes(graph.get(), {eltwise, conv_out});
+      GraphSafeRemoveNodes(graph, {eltwise, conv_out});
 
       IR_NODE_LINK_TO(conv, eltwise_out);
     } else {
@@ -111,7 +108,7 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
       desc.SetInput("Filter", std::vector<std::string>({conv_weight->Name()}));
       desc.SetInput("Bias", std::vector<std::string>({eltwise_bias->Name()}));
       desc.SetOutput("Output", std::vector<std::string>({eltwise_out->Name()}));
-      desc.SetType(type);
+      desc.SetType(type());
 
       for (auto& attr : conv->Op()->GetAttrMap()) {
         desc.SetAttr(attr.first, attr.second);
@@ -123,19 +120,20 @@ std::unique_ptr<ir::Graph> ConvBiasFusePass::ApplyImpl(
       IR_NODE_LINK_TO(eltwise_bias, conv_bias_node);
       IR_NODE_LINK_TO(conv_bias_node, eltwise_out);
 
-      GraphSafeRemoveNodes(graph.get(), {conv, eltwise, conv_out});
+      GraphSafeRemoveNodes(graph, {conv, eltwise, conv_out});
     }
 
     found_conv_bias_count++;
   };
-  gpd(graph.get(), handler);
+  gpd(graph, handler);
   AddStatis(found_conv_bias_count);
-  return graph;
 }
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 REGISTER_PASS(conv_bias_mkldnn_fuse_pass,
               paddle::framework::ir::ConvBiasFusePass);
+REGISTER_PASS(conv_transpose_bias_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DTransposeBiasFusePass);
 REGISTER_PASS(conv3d_bias_mkldnn_fuse_pass,
               paddle::framework::ir::Conv3DBiasFusePass);

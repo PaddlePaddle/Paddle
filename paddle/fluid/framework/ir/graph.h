@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
@@ -31,7 +32,7 @@ namespace details {
 
 // This attr is not recommended, because the graph should not dependence
 // the program once it is built.
-constexpr char kAllOpDescs[] = "all_op_descs";
+constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
 }  //  namespace details
 
 namespace ir {
@@ -85,23 +86,36 @@ class Graph {
   }
 
   template <typename AttrType>
+  AttrType &GetOrInit(const std::string &attr_name) {
+    if (!Has(attr_name)) {
+      Set(attr_name, new AttrType);
+    }
+    return Get<AttrType>(attr_name);
+  }
+
+  template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
-    PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
-                   attr_name);
+    PADDLE_ENFORCE_EQ(
+        Has(attr_name), true,
+        platform::errors::PreconditionNotMet(
+            "%s attribute not registered for current graph.", attr_name));
     try {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
-      PADDLE_THROW(
-          "Invalid attribute type of %s error, expected: %s, actual: %s",
-          attr_name, typeid(AttrType *).name(),
-          attrs_.at(attr_name).type().name());
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid attribute type of %s, expected: %s, received: %s.",
+          attr_name, platform::demangle(typeid(AttrType *).name()),  // NOLINT
+          platform::demangle(attrs_.at(attr_name).type().name())));
     }
   }
 
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
-                   attr_name);
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists(
+            "The attribute %s to be set already exists in the graph.",
+            attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -111,15 +125,21 @@ class Graph {
 
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
-                   attr_name);
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists("The attribute %s to be set(not owned) "
+                                        "already exists in the graph.",
+                                        attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = []() {};
   }
 
   void Erase(const std::string &attr_name) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) != 0, "%s not set in the graph",
-                   attr_name);
+    PADDLE_ENFORCE_NE(
+        attrs_.count(attr_name), 0,
+        platform::errors::NotFound(
+            "The attribute %s to be erased does not exist in the graph.",
+            attr_name));
     attr_dels_[attr_name]();
     attrs_.erase(attr_name);
     attr_dels_.erase(attr_name);
@@ -129,7 +149,9 @@ class Graph {
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
-    PADDLE_ENFORCE(var_desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        var_desc, platform::errors::InvalidArgument(
+                      "The VarDesc used to create variable node is null."));
     auto *x = AddNode(new ir::Node(var_desc));
     x->SetId(num_node_created_++);
     return x;
@@ -137,7 +159,9 @@ class Graph {
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
-    PADDLE_ENFORCE(op_desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_desc, platform::errors::InvalidArgument(
+                     "The OpDesc used to create operator node is null."));
     auto *x = AddNode(new ir::Node(op_desc));
     x->SetId(num_node_created_++);
     return x;
@@ -177,7 +201,9 @@ class Graph {
   }
 
   std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
+    PADDLE_ENFORCE_EQ(node_set_.find(node) != node_set_.end(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The node to be removed does not exist."));
     std::unique_ptr<ir::Node> ret;
     ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
@@ -195,9 +221,17 @@ class Graph {
     return nullptr;
   }
 
+  // Returns reference to the original program.
+  // WARN: After a series of passes, the current graph can be quite
+  // different from OriginProgram. Caller shouldn't assume much from
+  // the returned OriginProgram.
+  const ProgramDesc &OriginProgram() const { return program_; }
+
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
+    PADDLE_ENFORCE_EQ(node_set_.find(node) == node_set_.end(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The node to be added already exists."));
     nodes_[node].reset(node);
     node_set_.insert(node);
     return node;
@@ -205,6 +239,10 @@ class Graph {
 
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+  // Create a new and duplicated graph.
+  // WARN: The method only clones the graph structure, not its attributes.
+  std::shared_ptr<Graph> Clone();
 
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(

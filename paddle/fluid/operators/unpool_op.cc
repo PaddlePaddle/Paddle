@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unpool_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 namespace paddle {
@@ -46,7 +47,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
                               "strides (height, width) of unpooling operator.")
         .SetDefault({1, 1});
     AddAttr<std::vector<int>>("paddings",
-                              "(vector defalut:{0,0}), "
+                              "(vector default:{0,0}), "
                               "paddings (height, width) of unpooling operator.")
         .SetDefault({0, 0});
     AddAttr<std::string>(
@@ -74,21 +75,23 @@ class UnpoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UnpoolOp"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Indices"),
-                   "Input(Indices) of UnpoolOp"
-                   "should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UnpoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of UnpoolOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Indices"), true,
+        platform::errors::NotFound("Input(Indices) of UnpoolOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of UnpoolOp is not found."));
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Indices");
     std::string unpooling_type =
@@ -96,15 +99,38 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
     std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
-    PADDLE_ENFORCE(in_x_dims.size() == 4,
-                   "Unpooling intput must be of 4-dimensional.");
+    PADDLE_ENFORCE_EQ(in_x_dims.size() == 4, true,
+                      platform::errors::InvalidArgument(
+                          "Unpooling intput(X) must be of 4-dimensional, but "
+                          "received X's dimension is %d.",
+                          in_x_dims.size()));
     PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
+
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {
-      output_shape.push_back(UnpoolOutputSize(in_x_dims[i + 2], ksize[i],
-                                              paddings[i], strides[i]));
+      if (!ctx->IsRuntime() && in_x_dims[i + 2] <= 0) {
+        output_shape.push_back(-1);
+      } else {
+        output_shape.push_back(UnpoolOutputSize(in_x_dims[i + 2], ksize[i],
+                                                paddings[i], strides[i]));
+      }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
+  }
+};
+
+template <typename T>
+class UnpoolOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Indices", this->Input("Indices"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -112,16 +138,20 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of UnpoolOpGradOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::NotFound(
+                          "Input(X@GRAD) of UnpoolOpGradOp is not found."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
@@ -130,7 +160,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::UnpoolOpGradMaker<paddle::framework::OpDesc>,
+                  ops::UnpoolOpGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
     unpool, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,

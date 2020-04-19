@@ -12,9 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
@@ -23,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/port.h"
 
 DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
+DEFINE_int32(rpc_retry_bind_port, 3,
+             "Retry to bind the address if address is already used.");
 
 namespace paddle {
 namespace operators {
@@ -39,8 +42,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
     platform::CUDAPinnedPlace cuda_pinned;
-    auto result = memory::AllocShared(
-        cuda_pinned, copy_size, memory::allocation::Allocator::kCrossDevice);
+    auto result = memory::AllocShared(cuda_pinned, copy_size);
 
     memory::Copy(cuda_pinned, result->ptr(),
                  boost::get<platform::CUDAPlace>(tensor.place()),

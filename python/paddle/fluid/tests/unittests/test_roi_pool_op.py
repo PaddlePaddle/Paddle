@@ -20,6 +20,7 @@ import math
 import sys
 import paddle.compat as cpt
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 class TestROIPoolOp(OpTest):
@@ -28,7 +29,10 @@ class TestROIPoolOp(OpTest):
         self.make_rois()
         self.calc_roi_pool()
 
-        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+        }
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
@@ -51,7 +55,7 @@ class TestROIPoolOp(OpTest):
         self.pooled_height = 2
         self.pooled_width = 2
 
-        self.x = np.random.random(self.x_dim).astype('float32')
+        self.x = np.random.random(self.x_dim).astype('float64')
 
     def calc_roi_pool(self):
         out_data = np.zeros((self.rois_num, self.channels, self.pooled_height,
@@ -103,7 +107,7 @@ class TestROIPoolOp(OpTest):
                                     argmax_data[i, c, ph,
                                                 pw] = h * self.width + w
 
-        self.outs = out_data.astype('float32')
+        self.outs = out_data.astype('float64')
         self.argmaxes = argmax_data.astype('int64')
 
     def make_rois(self):
@@ -112,20 +116,20 @@ class TestROIPoolOp(OpTest):
         for bno in range(self.batch_size):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
-                x1 = np.random.random_integers(
+                x1 = np.random.randint(
                     0, self.width // self.spatial_scale - self.pooled_width)
-                y1 = np.random.random_integers(
+                y1 = np.random.randint(
                     0, self.height // self.spatial_scale - self.pooled_height)
 
-                x2 = np.random.random_integers(x1 + self.pooled_width,
-                                               self.width // self.spatial_scale)
-                y2 = np.random.random_integers(
-                    y1 + self.pooled_height, self.height // self.spatial_scale)
+                x2 = np.random.randint(x1 + self.pooled_width,
+                                       self.width // self.spatial_scale)
+                y2 = np.random.randint(y1 + self.pooled_height,
+                                       self.height // self.spatial_scale)
 
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("float32")
+        self.rois = np.array(rois).astype("float64")
 
     def setUp(self):
         self.op_type = "roi_pool"
@@ -136,6 +140,59 @@ class TestROIPoolOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class BadInputTestRoiPool(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                x = fluid.layers.data(
+                    name='data1', shape=[2, 1, 4, 4], dtype='int64')
+                label = fluid.layers.data(
+                    name='label', shape=[2, 4], dtype='float32', lod_level=1)
+                output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
+
+            self.assertRaises(TypeError, test_bad_x)
+
+            def test_bad_y():
+                x = fluid.layers.data(
+                    name='data2',
+                    shape=[2, 1, 4, 4],
+                    dtype='float32',
+                    append_batch_size=False)
+                label = [[1, 2, 3, 4], [2, 3, 4, 5]]
+                output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
+
+            self.assertRaises(TypeError, test_bad_y)
+
+
+class TestROIPoolInLodOp(TestROIPoolOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_pool()
+
+        seq_len = self.rois_lod[0]
+        cur_len = 0
+        lod = [cur_len]
+        for l in seq_len:
+            cur_len += l
+            lod.append(cur_len)
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisLod': np.asarray(lod).astype('int64')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width
+        }
+
+        self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
 
 
 if __name__ == '__main__':

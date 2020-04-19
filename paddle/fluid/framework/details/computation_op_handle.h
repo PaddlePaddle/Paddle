@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,9 +32,15 @@ class ComputationOpHandle : public OpHandleBase {
   ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
                       size_t scope_idx);
 
+  OperatorBase *GetOp() { return op_.get(); }
+
+  const OperatorBase *GetOp() const { return op_.get(); }
+
   std::string Name() const override;
 
   const Scope *GetScope() const { return scope_; }
+
+  Scope *GetScope() { return scope_; }
 
   const platform::Place &GetPlace() const { return place_; }
 
@@ -45,6 +52,8 @@ class ComputationOpHandle : public OpHandleBase {
   void RunImpl() override;
 
   bool NeedWait(VarHandleBase *in_var) override;
+
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
 
  private:
   std::unique_ptr<OperatorBase> op_;

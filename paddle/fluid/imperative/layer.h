@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,254 +13,219 @@
 // limitations under the License.
 
 #pragma once
-
-// clang-format off
-#include "paddle/fluid/framework/python_headers.h"
-// clang-format on
-
-#include <map>     // NOLINT
-#include <string>  // NOLINT
-#include <vector>  // NOLINT
-#include <memory>  // NOLINT
-
-#include "paddle/fluid/framework/op_desc.h"
+#include <algorithm>
+#include <cstdint>
+#include <list>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/operators/math/math_function.h"
-
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/flags.h"
+#include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/variable_wrapper.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
 
-class VarBase;
-
-namespace py = ::pybind11;
-
-class PreparedOp {
- public:
-  PreparedOp(const framework::OperatorBase& op,
-             const framework::RuntimeContext& ctx,
-             framework::OperatorWithKernel::OpKernelFunc func,
-             platform::DeviceContext* dev_ctx)
-      : op(op), ctx(ctx), func(func), dev_ctx(dev_ctx) {}
-
-  static PreparedOp Prepare(const framework::RuntimeContext& ctx,
-                            const framework::OperatorWithKernel& op,
-                            const platform::Place& place) {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place);
-
-    // check if op[type] has kernel registered.
-    auto& all_op_kernels = op.AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(op.Type());
-    if (kernels_iter == all_op_kernels.end()) {
-      PADDLE_THROW(
-          "There are no kernels which are registered in the %s operator.",
-          op.Type());
-    }
-
-    framework::OperatorWithKernel::OpKernelMap& kernels = kernels_iter->second;
-
-    auto expected_kernel_key = op.GetExpectedKernelType(
-        framework::ExecutionContext(op, framework::Scope(), *dev_ctx, ctx));
-    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
-
-    auto kernel_iter = kernels.find(expected_kernel_key);
-#ifdef PADDLE_WITH_MKLDNN
-    // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
-    if (kernel_iter == kernels.end() &&
-        expected_kernel_key.library_type_ == framework::LibraryType::kMKLDNN) {
-      VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
-      expected_kernel_key.library_type_ = framework::LibraryType::kPlain;
-      expected_kernel_key.data_layout_ = framework::DataLayout::kAnyLayout;
-      kernel_iter = kernels.find(expected_kernel_key);
-    }
-#endif
-    if (kernel_iter == kernels.end()) {
-      PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
-                   KernelTypeToString(expected_kernel_key));
-    }
-    return PreparedOp(op, ctx, kernel_iter->second, dev_ctx);
-  }
-
-  inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx; }
-
-  const framework::OperatorBase& op;
-  const framework::RuntimeContext& ctx;
-  framework::OperatorWithKernel::OpKernelFunc func;
-  platform::DeviceContext* dev_ctx;
-};
-
 class OpBase;
 
-/* The wrapper for Variable which holds a Variable and a VarBase of its
- * gradient. This object should be managed totally by Python intepreter.
- *
- * Nearly all interface should be implemented in C++.
- */
-class VarBase {
+class ThreadSafeNameSet {
  public:
-  VarBase() : VarBase(new framework::Variable(), new VarBase(true)) {}
+  void Insert(const std::string& name);
 
-  // Owns `var` and `grad`
-  VarBase(framework::Variable* var, VarBase* grad)
-      : var_desc_(nullptr),
-        var_(var),
-        grads_(grad),
-        stop_gradient_(false),
-        pre_op_(nullptr),
-        pre_op_out_idx_(-1) {}
+  void Remove(const std::string& name);
 
-  explicit VarBase(bool stop_gradient)
-      : var_desc_(nullptr),
-        var_(new framework::Variable()),
-        grads_(stop_gradient ? nullptr : new VarBase(true)),
-        stop_gradient_(stop_gradient),
-        pre_op_(nullptr),
-        pre_op_out_idx_(-1) {}
-
-  virtual ~VarBase() {
-    if (var_) {
-      delete var_;
-    }
-
-    if (grads_) {
-      delete grads_;
-    }
-  }
-
-  OpBase* PreOp() const { return pre_op_; }
-  int PreOpOutIdx() const { return pre_op_out_idx_; }
-
-  void SetStopGradient(bool stop_gradient) { stop_gradient_ = stop_gradient; }
-  bool IsStopGradient() const { return stop_gradient_; }
-
-  void RunBackward();
-
-  void TrackPreOp(OpBase* pre_op, const std::string& pre_op_out_name,
-                  int pre_op_out_idx, bool pre_op_stop_gradient) {
-    pre_op_ = pre_op;
-    pre_op_out_name_ = pre_op_out_name;
-    pre_op_out_idx_ = pre_op_out_idx;
-    if (pre_op_stop_gradient) {
-      stop_gradient_ = pre_op_stop_gradient;
-    }
-  }
-
-  void ClearGradient() {
-    VLOG(1) << "clear gradient of " << var_desc_->Name();
-    if (grads_ && grads_->var_ && grads_->var_->IsInitialized()) {
-      auto grads_t = grads_->var_->GetMutable<framework::LoDTensor>();
-      operators::math::set_constant(
-          *(platform::DeviceContextPool::Instance().Get(
-              grads_->var_->Get<framework::LoDTensor>().place())),
-          grads_t, 0.0);
-    }
-  }
-
-  framework::LoDTensor& GradValue();
-
-  std::unique_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
-                                      const bool blocking) const;
-
-  inline std::string GradName() const {
-    PADDLE_ENFORCE(
-        var_desc_,
-        "Couldn't get gradient variable's name, please call backward() first");
-    return string::Sprintf("%s@IGrad", var_desc_->Name());
-  }
-
-  framework::VarDesc* var_desc_;
-
-  framework::Variable* var_;
-  VarBase* grads_;
+  std::vector<std::string> Names() const;
 
  private:
-  bool stop_gradient_;
-  OpBase* pre_op_;
-  std::string pre_op_out_name_;
-  int pre_op_out_idx_;
+  std::multiset<std::string> set_;
+  mutable std::mutex mtx_;
 };
 
-/* The wrapper for OpDesc which holds a OpDesc and a OpDesc of its
- * gradient. This object should be managed totally by Python intepreter.
- */
-class OpBase {
- public:
-  OpBase()
-      : op_desc_(nullptr),
-        forward_id_(-1),
-        backward_id_(-1),
-        place_(platform::CPUPlace()) {}
+class VarBase {
+  DISABLE_COPY_AND_ASSIGN(VarBase);
 
-  virtual ~OpBase() {
-    for (framework::OpDesc* desc : grad_op_descs_) {
-      delete desc;
+ public:
+  static std::vector<std::string> AliveVarNames();
+
+ public:
+  explicit VarBase(bool has_grad, const std::string& name)
+      : var_(std::make_shared<VariableWrapper>(name)),
+        grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
+    if (has_grad) {
+      var_->SetGradVar(grad_var_->var_);
+    }
+
+    if (IsDebugEnabled()) {
+      VLOG(10) << "Construct VarBase: " << Name();
+      name_set_.Insert(Name());
     }
   }
 
-  std::map<std::string, std::vector<VarBase*>> ApplyGrad();
+  explicit VarBase(const std::string& name) : VarBase(true, name) {}
 
-  // One of `op_desc_` or `forward_id_` is set, not both.
-  // For pure python PyLayer, use `forward_id_`, otherwise, use op_desc_.
-  framework::OpDesc* op_desc_;
-  int forward_id_;
+  // NOTE(zengjinle): be careful when you use this constructor!!!
+  // Unpack VarBase from VariableWrapper.
+  explicit VarBase(const std::shared_ptr<VariableWrapper>& var);
 
-  // When has backward, one of `grad_op_descs_` or `backward_id_` is set,
-  // not both.
-  // Note: each fwd op corresponds to a vector of bwd ops.
-  std::vector<framework::OpDesc*> grad_op_descs_;
-  int backward_id_;
+  ~VarBase() {
+    VLOG(10) << "Destruct VarBase: " << Name();
+    if (IsDebugEnabled()) {
+      name_set_.Remove(Name());
+    }
+  }
 
-  platform::Place place_;
+  const std::shared_ptr<VariableWrapper>& SharedVar() const { return var_; }
 
-  VarBasePtrMap input_vars_;
-  VarBasePtrMap output_vars_;
-  OpBasePtrMap pre_ops_;
-  std::map<std::string, std::vector<int>> pre_ops_out_idx_;
+  const framework::Variable& Var() const { return var_->Var(); }
 
-  // Inputs to a vector of bwd ops.
-  std::vector<framework::VariableValueMap> grad_input_vars_;
-  // Outputs to a vector of bwd ops.
-  std::vector<framework::VariableValueMap> grad_output_vars_;
+  framework::Variable* MutableVar() { return var_->MutableVar(); }
 
-  framework::BlockDesc* block_;
+  bool HasGradVar() const { return grad_var_ != nullptr; }
+
+  const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
+
+  void ClearGradVarBase() { grad_var_ = nullptr; }
+
+  const std::shared_ptr<VarBase>& MutableGradVarBase() {
+    if (grad_var_ == nullptr) {
+      if (auto grad_var_wrapper = var_->GetGradVar()) {
+        grad_var_ = std::make_shared<VarBase>(grad_var_wrapper);
+      } else {
+        grad_var_ = std::make_shared<VarBase>(false, GradVarName());
+        var_->SetGradVar(grad_var_->var_);
+        grad_var_->var_->SetGradNode(grad_var_->grad_node_);
+      }
+      // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property
+      // same as fwd varbase
+      grad_var_->SetOverridedStopGradient(var_->InnerOverridedStopGradient());
+    }
+    return grad_var_;
+  }
+
+  const framework::Variable& GradVar() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_var_,
+        platform::errors::NotFound("Gradient of %s does not exist", Name()));
+    return grad_var_->Var();
+  }
+
+  framework::Variable* MutableGradVar() {
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_var_,
+        platform::errors::NotFound("Gradient of %s does not exist", Name()));
+    return grad_var_->MutableVar();
+  }
+
+  void SetOverridedStopGradient(bool stop_gradient) {
+    var_->SetOverridedStopGradient(stop_gradient);
+    if (grad_var_) {
+      grad_var_->SetOverridedStopGradient(stop_gradient);
+    }
+  }
+
+  bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
+
+  void InnerSetOverridedStopGradient(bool stop_gradient) {
+    if (var_->InnerOverridedStopGradient() == -1) {
+      var_->InnerSetOverridedStopGradient(stop_gradient);
+      if (grad_var_) {
+        grad_var_->InnerSetOverridedStopGradient(stop_gradient);
+      }
+    }
+  }
+
+  void SetPersistable(bool persistable) { var_->SetPersistable(persistable); }
+
+  bool Persistable() const { return var_->Persistable(); }
+
+  // Only grad var is allowed to call these 2 methods
+  void SetGradNode(const std::shared_ptr<GradOpNode>& node) {
+    grad_node_ = node;
+    var_->SetGradNode(node);
+  }
+
+  size_t GradOpNum() const;
+
+  const std::shared_ptr<GradOpNode>& GradNode() const { return grad_node_; }
+
+  void ClearGradNode() { SetGradNode(nullptr); }
+
+  const std::string& Name() const { return var_->Name(); }
+
+  void SetName(const std::string& name) {
+    var_->SetName(name);
+    if (grad_var_) {
+      grad_var_->SetName(GradVarName());
+    }
+  }
+
+  std::string GradVarName() { return framework::GradVarName(Name()); }
+
+  void SetType(framework::proto::VarType::Type type) { var_->SetType(type); }
+
+  framework::proto::VarType::Type Type() const { return var_->Type(); }
+
+  void SetDataType(framework::proto::VarType::Type data_type) {
+    var_->SetDataType(data_type);
+    if (grad_var_) {
+      grad_var_->SetDataType(data_type);
+    }
+  }
+
+  framework::proto::VarType::Type DataType() const { return var_->DataType(); }
+
+  void ClearGradient();
+
+  std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
+                                      const bool blocking) const;
+
+ private:
+  /**
+   * NOTE(zengjinle): never remove the const qualifier of `var_` if you are
+   * not very familiar with the autograd idea (including the higher order
+   * derivative).
+   */
+  const std::shared_ptr<VariableWrapper> var_;
+
+  std::shared_ptr<VarBase> grad_var_;
+
+  /**
+   * NOTE(zengjinle): should consider whether to implement an inlined vector
+   * or other things like that.
+   */
+  std::shared_ptr<GradOpNode> grad_node_;
+
+  mutable size_t copied_counter_ = 0;
+
+  static ThreadSafeNameSet name_set_;
 };
 
 class Layer {
  public:
   virtual ~Layer() {}
 
-  virtual std::vector<VarBase> Forward(const std::vector<VarBase>& inputs) {
-    std::vector<VarBase> vars;
-    return vars;
+  virtual std::vector<std::shared_ptr<VarBase>> Forward(
+      const std::vector<std::shared_ptr<VarBase>>& inputs) {
+    return {};
   }
 };
 
-class PyLayer {
- public:
-  virtual ~PyLayer() {}
-
-  static const char* kFwdInp;
-  static const char* kFwdOut;
-
-  static void RegisterFunc(int func_id, const py::object& py_func);
-
-  static int NumFuncs();
-
-  static std::vector<VarBase*> Apply(int func_id,
-                                     const std::vector<VarBase*>& inputs);
-
-  static std::vector<framework::Variable*> ApplyGrad(
-      int func_id, const std::vector<framework::Variable*>& inputs);
-
- private:
-  static std::vector<framework::Variable*> CallPythonFunc(
-      const py::object& callable, const std::vector<framework::Variable*>& ins);
-};
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const platform::Place& place);
 
 }  // namespace imperative
 }  // namespace paddle

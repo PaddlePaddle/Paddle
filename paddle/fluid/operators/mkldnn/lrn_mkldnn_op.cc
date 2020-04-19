@@ -14,37 +14,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/lrn_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
 
 using paddle::framework::Tensor;
 using paddle::platform::MKLDNNDeviceContext;
-
-namespace {
-template <typename T, typename... Args>
-std::shared_ptr<T> insert_to_context(const std::string& key,
-                                     const MKLDNNDeviceContext& dev_ctx,
-                                     Args&&... args) {
-  auto p = std::static_pointer_cast<T, void>(dev_ctx.GetBlob(key));
-
-  if (!p) {
-    p = std::make_shared<T>(args...);
-    dev_ctx.SetBlob(key, std::static_pointer_cast<void, T>(p));
-  }
-
-  return p;
-}
-
-template <typename... Args>
-void run_primitive(Args&&... args) {
-  auto forward_op = mkldnn::lrn_forward{args...};
-
-  std::vector<mkldnn::primitive> pipeline = {forward_op};
-  mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
-}
-}  // namespace
 
 template <typename T>
 class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
@@ -56,15 +32,10 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "MKLDNN LRN must use CPUPlace.");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto x = ctx.Input<Tensor>("X");
     auto out = ctx.Output<Tensor>("Out");
     auto mid = ctx.Output<Tensor>("MidOut");
-
-    auto input_data = x->data<T>();
-    auto output_data = out->mutable_data<T>(ctx.GetPlace());
-    mid->mutable_data<T>(ctx.GetPlace());
 
     const int n = ctx.Attr<int>("n");
     // MKL-DNN implements LRN in a caffe way:
@@ -76,66 +47,44 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
     const float beta = ctx.Attr<float>("beta");
     const float k = ctx.Attr<float>("k");
-    const bool is_test = ctx.Attr<bool>("is_test");
+    bool is_test = ctx.Attr<bool>("is_test");
 
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    e_mid = e_mid.constant(k);
+    auto dims = paddle::framework::vectorize<int64_t>(x->dims());
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
+                                          is_test, dev_ctx, ctx.GetPlace(),
+                                          ctx.OutputName("Out"));
 
-    auto src_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, x->format());
+    auto src_memory = handler.AcquireSrcMemory(x);
+    auto dst_memory = handler.AcquireDstMemory(out);
 
-    auto forward_desc = mkldnn::lrn_forward::desc{mkldnn::prop_kind::forward,
-                                                  mkldnn::lrn_across_channels,
-                                                  src_md,
-                                                  n,
-                                                  alpha,
-                                                  beta,
-                                                  k};
+    auto lrn_p = handler.AcquireForwardPrimitive();
 
-    auto src_memory_pd = mkldnn::memory::primitive_desc{src_md, mkldnn_engine};
+    auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
+    mid->set_layout(framework::DataLayout::kMKLDNN);
 
-    if (!is_test) {
-      const std::string key = ctx.op().Output("Out");
-      const std::string key_src_memory = key + "@lrn_src_memory";
-      const std::string key_pd = key + "@lrn_pd";
-      const std::string key_workspace_memory = key + "@lrn_workspace_memory";
-
-      auto forward_pd = insert_to_context<mkldnn::lrn_forward::primitive_desc>(
-          key_pd, dev_ctx, forward_desc, mkldnn_engine);
-
-      auto src_memory = insert_to_context<mkldnn::memory>(
-          key_src_memory, dev_ctx, src_memory_pd);
-
-      src_memory->set_data_handle(
-          static_cast<void*>(const_cast<T*>(input_data)));
-
-      auto dst_memory = mkldnn::memory(forward_pd->dst_primitive_desc(),
-                                       static_cast<void*>(output_data));
-      auto workspace_memory = insert_to_context<mkldnn::memory>(
-          key_workspace_memory, dev_ctx,
-          forward_pd->workspace_primitive_desc());
-
-      run_primitive(*forward_pd, *src_memory, *workspace_memory, dst_memory);
-
-      out->set_layout(framework::DataLayout::kMKLDNN);
-      out->set_format(platform::GetMKLDNNFormat(dst_memory));
+    mkldnn::stream astream(dev_ctx.GetEngine());
+    if (!workspace_memory->get_desc().is_zero()) {
+      mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
+      lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DST, *dst_memory},
+                               {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
     } else {
-      auto forward_pd =
-          mkldnn::lrn_forward::primitive_desc{forward_desc, mkldnn_engine};
-      auto src_memory = mkldnn::memory{
-          src_memory_pd, static_cast<void*>(const_cast<T*>(input_data))};
-      auto workspace_memory =
-          mkldnn::memory{forward_pd.workspace_primitive_desc()};
-      auto dst_memory = mkldnn::memory(forward_pd.dst_primitive_desc(),
-                                       static_cast<void*>(output_data));
+      // mid has to be allocated and filled
+      // k to pass LRN unit tests
+      // TODO(jczaja): Disable checking mid in unit tests (Require API change)
+      mid->mutable_data<T>(ctx.GetPlace());
+      auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+      e_mid = e_mid.constant(k);
+      mid->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
-      run_primitive(forward_pd, src_memory, workspace_memory, dst_memory);
-
-      out->set_layout(framework::DataLayout::kMKLDNN);
-      out->set_format(platform::GetMKLDNNFormat(dst_memory));
+      lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DST, *dst_memory}});
     }
+    astream.wait();
+
+    out->set_layout(framework::DataLayout::kMKLDNN);
+    out->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
 
@@ -152,14 +101,10 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         "is_test attribute should be set to False in training phase.");
 
     auto x = ctx.Input<Tensor>("X");
+    auto mid = ctx.Input<Tensor>("MidOut");
 
     auto out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-
-    const std::string key = ctx.op().Input("Out");
-    const std::string key_src_memory = key + "@lrn_src_memory";
-    const std::string key_pd = key + "@lrn_pd";
-    const std::string key_workspace_memory = key + "@lrn_workspace_memory";
 
     const int n = ctx.Attr<int>("n");
     const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
@@ -167,49 +112,29 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const float k = ctx.Attr<float>("k");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto x_grad_data = x_grad->mutable_data<T>(ctx.GetPlace());
-    auto out_grad_data = out_grad->data<T>();
+    auto dims = paddle::framework::vectorize<int64_t>(x->dims());
 
-    auto dims = paddle::framework::vectorize2int(x->dims());
+    platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
+                                          out_grad->format(), dev_ctx,
+                                          ctx.GetPlace(), ctx.InputName("Out"));
 
-    auto src_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+    auto src_memory = handler.AcquireSrcMemory(x);
+    auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);
+    auto diff_dst_memory = handler.AcquireDiffDstMemory(out_grad);
+    auto diff_src_memory = handler.AcquireDiffSrcMemory(x_grad);
 
-    auto diff_src_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+    auto lrn_bwd = handler.AcquireBackwardPrimitive();
 
-    auto diff_dst_md = paddle::platform::MKLDNNMemDesc(
-        dims, mkldnn::memory::data_type::f32, mkldnn::memory::format::nchw);
+    mkldnn::stream astream(dev_ctx.GetEngine());
+    lrn_bwd->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
+                               {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
+                               {MKLDNN_ARG_WORKSPACE, *workspace}});
+    astream.wait();
 
-    auto diff_dst_memory =
-        mkldnn::memory{{diff_dst_md, mkldnn_engine},
-                       static_cast<void*>(const_cast<float*>(out_grad_data))};
-
-    auto diff_src_memory = mkldnn::memory{{diff_src_md, mkldnn_engine},
-                                          static_cast<void*>(x_grad_data)};
-
-    auto backward_desc = mkldnn::lrn_backward::desc{
-        mkldnn::lrn_across_channels, src_md, diff_src_md, n, alpha, beta, k};
-
-    auto forward_pd = dev_ctx.GetBlob(key_pd);
-
-    auto backward_pd = mkldnn::lrn_backward::primitive_desc{
-        backward_desc, mkldnn_engine,
-        *static_cast<mkldnn::lrn_forward::primitive_desc*>(forward_pd.get())};
-
-    std::shared_ptr<void> workspace_memory =
-        dev_ctx.GetBlob(key_workspace_memory);
-
-    auto src_memory = dev_ctx.GetBlob(key_src_memory);
-    auto backward_op = mkldnn::lrn_backward{
-        backward_pd, *static_cast<mkldnn::memory*>(src_memory.get()),
-        diff_dst_memory, *static_cast<mkldnn::memory*>(workspace_memory.get()),
-        diff_src_memory};
-
-    std::vector<mkldnn::primitive> pipeline = {backward_op};
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    x_grad->set_layout(framework::DataLayout::kMKLDNN);
+    x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
   }
 };
 }  // namespace operators

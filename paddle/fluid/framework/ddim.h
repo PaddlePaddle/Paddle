@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <initializer_list>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/dim.h"
 
@@ -117,15 +118,13 @@ class DDim {
 
   bool operator!=(const DDim& d) const;
 
-  DDim operator+(const DDim& d) const;
-
-  DDim operator*(const DDim& d) const;
-
   inline const int64_t* Get() const { return dim_.Get(); }
 
   inline int64_t* GetMutable() { return dim_.GetMutable(); }
 
   inline int size() const { return rank_; }
+
+  std::string to_str() const;
 
  private:
   template <int D>
@@ -174,13 +173,17 @@ DDim make_ddim(const std::vector<int>& dims);
  */
 DDim make_ddim(std::initializer_list<int64_t> dims);
 
-int64_t get(const DDim& dim, int idx);
-void set(DDim& dim, int idx, int val);  // NOLINT
-
-std::vector<int64_t> vectorize(const DDim& ddim);
-std::vector<int> vectorize2int(const DDim& ddim);
+template <typename T = int64_t>
+std::vector<T> vectorize(const DDim& ddim) {
+  std::vector<T> result(DDim::kMaxRank);
+  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
+  result.resize(ddim.size());
+  return result;
+}
 
 int64_t product(const DDim& ddim);
+
+bool contain_unknown_dim(const DDim& ddim);
 
 /**
  * \brief Slice a ddim

@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
+#include <memory>
 #include <string>
+#include <utility>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -39,7 +41,7 @@ void BuildCircleGraph(Graph* g) {
 
 class TestPass : public Pass {
  protected:
-  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+  void ApplyImpl(ir::Graph* graph) const {
     graph->Set<int>("copy_test_pass_attr", new int);
     graph->Set<int>("copy_test_graph_attr", new int);
 
@@ -48,7 +50,6 @@ class TestPass : public Pass {
 
     int test_graph_attr = graph->Get<int>("test_graph_attr");
     graph->Get<int>("copy_test_graph_attr") = test_graph_attr + 1;
-    return graph;
   }
 };
 
@@ -58,34 +59,54 @@ TEST(PassTest, TestPassAttrCheck) {
   std::unique_ptr<Graph> graph(new Graph(prog));
   std::string exception;
   try {
-    graph = pass->Apply(std::move(graph));
-  } catch (paddle::platform::EnforceNotMet e) {
+    graph.reset(pass->Apply(graph.release()));
+  } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("test_pass_attr not set") != exception.npos);
+  ASSERT_TRUE(exception.find("Required atrribute test_pass_attr for pass < "
+                             "test_pass > is not set") != exception.npos);
 
   int val = 1;
   graph.reset(new Graph(prog));
   pass->SetNotOwned<int>("test_pass_attr", &val);
 
+  for (std::string try_type : {"bool", "const int", "std::string"}) {
+    try {
+      if (try_type == "bool") {
+        pass->Get<bool>("test_pass_attr");
+      } else if (try_type == "const int") {
+        pass->Get<const int>("test_pass_attr");
+      } else if (try_type == "std::string") {
+        pass->Get<std::string>("test_pass_attr");
+      }
+    } catch (paddle::platform::EnforceNotMet& e) {
+      exception = std::string(e.what());
+    }
+    std::string msg = "Invalid type for attritube test_pass_attr, expected: " +
+                      try_type + ", actual: int";
+    ASSERT_TRUE(exception.find(msg) != exception.npos);
+  }
+
   try {
-    graph = pass->Apply(std::move(graph));
-  } catch (paddle::platform::EnforceNotMet e) {
+    graph.reset(pass->Apply(graph.release()));
+  } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("test_graph_attr not set") != exception.npos);
+  ASSERT_TRUE(exception.find(
+                  "Required atrribute test_graph_attr for graph is not set") !=
+              exception.npos);
 
   graph.reset(new Graph(prog));
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 1;
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
   ASSERT_EQ(graph->Get<int>("copy_test_pass_attr"), 2);
   ASSERT_EQ(graph->Get<int>("copy_test_graph_attr"), 2);
 
   // Allow apply more than once.
   graph.reset(new Graph(prog));
   graph->Set<int>("test_graph_attr", new int);
-  graph = pass->Apply(std::move(graph));
+  graph.reset(pass->Apply(graph.release()));
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->SetNotOwned<int>("test_pass_attr", &val);
@@ -94,11 +115,55 @@ TEST(PassTest, TestPassAttrCheck) {
   graph->Set<int>("test_graph_attr", new int);
   graph->Get<int>("test_graph_attr") = 2;
   try {
-    auto tmp = pass->Apply(std::move(graph));
-  } catch (paddle::platform::EnforceNotMet e) {
+    pass->Apply(graph.release());
+  } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("shouldn't has cycle") != exception.npos);
+  ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);
+
+  pass = PassRegistry::Instance().Get("test_pass");
+  pass->Set<int>("test_pass_attr", new int);
+  try {
+    pass->Set<int>("test_pass_attr", new int);
+  } catch (paddle::platform::EnforceNotMet& e) {
+    exception = std::string(e.what());
+  }
+  ASSERT_TRUE(
+      exception.find("Attribute test_pass_attr already set in the pass") !=
+      exception.npos);
+}
+
+class TestPassWithDefault : public Pass {
+ protected:
+  void ApplyImpl(ir::Graph* graph) const {
+    graph->Set<int>("copy_default_attr", new int);
+
+    int test_pass_attr = this->Get<int>("default_attr");
+    graph->Get<int>("copy_default_attr") = test_pass_attr + 1;
+  }
+};
+
+TEST(PassTest, TestPassDefaultAttrCheck) {
+  ProgramDesc prog;
+  // check if default value is set
+  auto pass = PassRegistry::Instance().Get("test_pass_default_attr");
+  std::unique_ptr<Graph> graph(new Graph(prog));
+  ASSERT_EQ(pass->Get<int>("default_attr"), 1);
+  graph.reset(pass->Apply(graph.release()));
+  ASSERT_EQ(graph->Get<int>("copy_default_attr"), 2);
+
+  // check if new value overrides default value
+  pass = PassRegistry::Instance().Get("test_pass_default_attr");
+  pass->Set<int>("default_attr", new int{3});
+  ASSERT_EQ(pass->Get<int>("default_attr"), 3);
+}
+
+TEST(PassTest, TestPassRegistrarDeconstructor) {
+  auto pass_registrary =
+      new PassRegistrar<paddle::framework::ir::TestPassWithDefault>(
+          "test_deconstructor");
+  pass_registrary->DefaultPassAttr("deconstructor_attr", new int{1});
+  pass_registrary->~PassRegistrar();
 }
 
 }  // namespace ir
@@ -108,3 +173,7 @@ TEST(PassTest, TestPassAttrCheck) {
 REGISTER_PASS(test_pass, paddle::framework::ir::TestPass)
     .RequirePassAttr("test_pass_attr")
     .RequireGraphAttr("test_graph_attr");
+
+REGISTER_PASS(test_pass_default_attr,
+              paddle::framework::ir::TestPassWithDefault)
+    .DefaultPassAttr("default_attr", new int{1});

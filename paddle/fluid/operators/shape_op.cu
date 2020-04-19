@@ -16,5 +16,6 @@ limitations under the License. */
 
 REGISTER_OP_CUDA_KERNEL(shape, paddle::operators::ShapeKernel<int>,
                         paddle::operators::ShapeKernel<int32_t>,
+                        paddle::operators::ShapeKernel<int64_t>,
                         paddle::operators::ShapeKernel<float>,
                         paddle::operators::ShapeKernel<double>);

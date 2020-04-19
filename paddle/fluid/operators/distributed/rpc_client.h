@@ -15,6 +15,7 @@
 #pragma once
 
 #include <condition_variable>  // NOLINT
+#include <memory>
 #include <string>
 #include "gflags/gflags.h"
 
@@ -24,6 +25,7 @@
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
+DECLARE_int32(rpc_retry_times);
 
 namespace paddle {
 namespace operators {
@@ -44,6 +46,7 @@ class RPCClient {
                                    const framework::Scope& scope,
                                    const std::string& var_name,
                                    const std::string& out_varname,
+                                   const std::string& table_name = "",
                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncGetVarNoBarrier(
@@ -77,6 +80,11 @@ class RPCClient {
       const std::string& ep, const std::string& dir,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
+  virtual VarHandlePtr AsyncDistributeNotify(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
   virtual VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
@@ -96,6 +104,7 @@ class RPCClient {
   // Init is called by GetInstance.
   template <typename T>
   static void Init(int trainer_id) {
+    VLOG(1) << "init rpc client with trainer_id " << trainer_id;
     trainer_id_ = trainer_id;
     if (rpc_client_.get() == nullptr) {
       rpc_client_.reset(new T());

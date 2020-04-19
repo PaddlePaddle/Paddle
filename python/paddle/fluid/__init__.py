@@ -14,6 +14,23 @@
 
 from __future__ import print_function
 import os
+import sys
+
+# The legacy core need to be removed before "import core",
+# in case of users installing paddlepadde without -U option
+core_suffix = 'so'
+if os.name == 'nt':
+    core_suffix = 'pyd'
+
+legacy_core = os.path.abspath(os.path.dirname(
+    __file__)) + os.sep + 'core.' + core_suffix
+if os.path.exists(legacy_core):
+    sys.stderr.write('Deleting legacy file ' + legacy_core + '\n')
+    try:
+        os.remove(legacy_core)
+    except Exception as e:
+        raise e
+
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
@@ -24,53 +41,70 @@ from .executor import *
 from . import data_feed_desc
 from .data_feed_desc import *
 
-from . import async_executor
-from .async_executor import *
+from . import dataset
+from .dataset import *
 
-from . import trainer
+from .data import *
+
+from . import trainer_desc
 from . import inferencer
 
 from . import io
 from . import evaluator
 from . import initializer
 from . import layers
-from . import imperative
+from . import dygraph
 from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
+from .backward import gradients
 from . import regularizer
 from . import average
 from . import metrics
 from . import transpiler
+from . import incubate
+from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .incubate import fleet
+from .incubate import data_generator
 from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler
 from . import unique_name
-from . import recordio_writer
 from . import parallel_executor
 from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-
+from . import install_check
+from .dygraph.nn import *
+from .dygraph.layers import *
+from .dygraph.base import enable_dygraph, disable_dygraph
+from .io import save, load, load_program_state, set_program_state
+from .dygraph.checkpoint import save_dygraph, load_dygraph
+from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + async_executor.__all__ + compiler.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
         'io',
         'initializer',
+        'embedding',
+        'one_hot',
         'layers',
         'contrib',
-        'imperative',
+        'data',
+        'dygraph',
+        'enable_dygraph',
+        'disable_dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -89,8 +123,11 @@ __all__ = framework.__all__ + executor.__all__ + \
         'clip',
         'profiler',
         'unique_name',
-        'recordio_writer',
         'Scope',
+        'install_check',
+        'save',
+        'load',
+        'VarBase'
     ]
 
 
@@ -125,14 +162,17 @@ def __bootstrap__():
     os.environ['OMP_NUM_THREADS'] = str(num_threads)
     sysstr = platform.system()
     read_env_flags = [
-        'check_nan_inf', 'benchmark', 'eager_delete_scope', 'use_mkldnn',
-        'use_ngraph', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
-        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
+        'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
+        'eager_delete_scope', 'fraction_of_cpu_memory_to_use',
+        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'paddle_num_threads',
+        'dist_threadpool_size', 'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
         'allocator_strategy', 'reader_queue_speed_test_mode',
-        'print_sub_graph_dir', 'pe_profile_fname', 'warpctc_dir',
-        'inner_op_parallelism', 'enable_parallel_graph',
-        'multiple_of_cupti_buffer_size'
+        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
+        'enable_parallel_graph', 'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
+        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
+        'enable_unused_var_check', 'free_idle_chunk', 'free_when_no_cache_hit'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -140,14 +180,23 @@ def __bootstrap__():
     if os.name != 'nt':
         read_env_flags.append('cpu_deterministic')
 
+    if core.is_compiled_with_mkldnn():
+        read_env_flags.append('use_mkldnn')
+
     if core.is_compiled_with_dist():
+        #env for rpc
         read_env_flags.append('rpc_deadline')
+        read_env_flags.append('rpc_retry_times')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
         read_env_flags.append('rpc_send_thread_num')
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        read_env_flags.append('rpc_retry_bind_port')
+
+        read_env_flags.append('worker_update_interval_secs')
+
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
@@ -155,15 +204,14 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'cudnn_deterministic',
+            'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'memory_optimize_debug', 'selected_gpus',
-            'sync_nccl_allreduce', 'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation',
-            'enable_inplace_whitelist'
+            'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
+            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
+            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
         ]
-    core.init_gflags([sys.argv[0]] +
-                     ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices(not in_test)
@@ -173,3 +221,4 @@ def __bootstrap__():
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
 __bootstrap__()
+monkey_patch_varbase()

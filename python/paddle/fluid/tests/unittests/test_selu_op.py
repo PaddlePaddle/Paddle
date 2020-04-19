@@ -18,13 +18,15 @@ import unittest
 import numpy as np
 import six
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class SeluTest(OpTest):
     def setUp(self):
         self.op_type = "selu"
         self.x_shape = [3, 5, 5, 10]
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_x_shape()
         self.init_dtype()
 
@@ -65,6 +67,19 @@ class SeluTest(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestSeluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.selu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.selu, x_int32)
+            # support the input dtype is float32
+            x_fp32 = fluid.data(name='x_fp32', shape=[12, 10], dtype='float32')
+            fluid.layers.selu(x_fp32)
 
 
 if __name__ == "__main__":

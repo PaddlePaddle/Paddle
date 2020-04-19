@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/compound_functors.h"
 #include "paddle/fluid/operators/math/functors.h"
@@ -255,6 +254,27 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                              paddle::operators::math::ScaleFunctor<T>>(
         ctx, paddle::operators::math::MulFunctor<T>(),
         paddle::operators::math::ScaleFunctor<T>(scale), in_x, in_y, outputs);
+  } else if (funcs_str == "tanh,elementwise_add") {
+    // Z = Unary(Binary(X, Y))
+    RunUnaryCompoundFunctors<DeviceContext, T,
+                             paddle::operators::math::TanhFunctor<T>,
+                             paddle::operators::math::AddFunctor<T>>(
+        ctx, paddle::operators::math::TanhFunctor<T>(),
+        paddle::operators::math::AddFunctor<T>(), in_x, in_y, outputs);
+  } else if (funcs_str == "elementwise_mul,tanh") {
+    // Z = Binary(X, Unary(Y))
+    RunBinaryCompoundFunctor<DeviceContext, T,
+                             paddle::operators::math::MulFunctor<T>,
+                             paddle::operators::math::TanhFunctor<T>>(
+        ctx, paddle::operators::math::MulFunctor<T>(),
+        paddle::operators::math::TanhFunctor<T>(), in_x, in_y, outputs);
+  } else if (funcs_str == "elementwise_mul,sigmoid") {
+    // Z = Binary(X, Unary(Y))
+    RunBinaryCompoundFunctor<DeviceContext, T,
+                             paddle::operators::math::MulFunctor<T>,
+                             paddle::operators::math::SigmoidFunctor<T>>(
+        ctx, paddle::operators::math::MulFunctor<T>(),
+        paddle::operators::math::SigmoidFunctor<T>(), in_x, in_y, outputs);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
@@ -293,6 +313,7 @@ static void RunGradFunctors(
         paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "elementwise_add_grad,relu_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
     RunBinaryCompoundGradFunctors<
         DeviceContext, T, paddle::operators::math::AddGradFunctor<T>,
         paddle::operators::math::ReluFunctor<T>,
@@ -302,6 +323,7 @@ static void RunGradFunctors(
         paddle::operators::math::ReluGradFunctor<T>(), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else if (funcs_str == "relu_grad,elementwise_add_grad") {
+    // The backward of Z = Unary(Binary(X, Y))
     RunUnaryCompoundGradFunctors<
         DeviceContext, T, paddle::operators::math::ReluGradFunctor<T>,
         paddle::operators::math::AddFunctor<T>,
@@ -321,6 +343,36 @@ static void RunGradFunctors(
         paddle::operators::math::ScaleFunctor<T>(scale),
         paddle::operators::math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
         in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "tanh_grad,elementwise_add_grad") {
+    // The backward of Z = Unary(Binary(X, Y))
+    RunUnaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::TanhGradFunctor<T>,
+        paddle::operators::math::AddFunctor<T>,
+        paddle::operators::math::AddGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::TanhGradFunctor<T>(),
+        paddle::operators::math::AddFunctor<T>(),
+        paddle::operators::math::AddGradFunctor<T>(), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "elementwise_mul_grad,tanh_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
+    RunBinaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
+        paddle::operators::math::TanhFunctor<T>,
+        paddle::operators::math::TanhGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::MulGradFunctor<T>(),
+        paddle::operators::math::TanhFunctor<T>(),
+        paddle::operators::math::TanhGradFunctor<T>(), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
+  } else if (funcs_str == "elementwise_mul_grad,sigmoid_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
+    RunBinaryCompoundGradFunctors<
+        DeviceContext, T, paddle::operators::math::MulGradFunctor<T>,
+        paddle::operators::math::SigmoidFunctor<T>,
+        paddle::operators::math::SigmoidGradFunctor<T>, InPlace>(
+        ctx, paddle::operators::math::MulGradFunctor<T>(),
+        paddle::operators::math::SigmoidFunctor<T>(),
+        paddle::operators::math::SigmoidGradFunctor<T>(), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad, d_intermediate_out);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
@@ -330,12 +382,10 @@ template <typename DeviceContext, typename T>
 class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &in_x = detail::Ref(ctx.Input<framework::Tensor>("X"),
-                             "Cannot get input tensor %s, variable name = %s",
-                             "X", ctx.op().Input("X"));
-    auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
-                             "Cannot get input tensor %s, variable name = %s",
-                             "Y", ctx.op().Input("Y"));
+    auto &in_x = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("X"), "Input",
+                                 "X", "FusedElemwiseActivation");
+    auto &in_y = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Y"), "Input",
+                                 "Y", "FusedElemwiseActivation");
     PADDLE_ENFORCE(ctx.HasOutput("Out"), "The output(Out) should not be empty");
     auto output = ctx.Output<framework::Tensor>("Out");
 

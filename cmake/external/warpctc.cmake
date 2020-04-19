@@ -14,8 +14,11 @@
 
 INCLUDE(ExternalProject)
 
-SET(WARPCTC_SOURCES_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
+set(WARPCTC_REPOSITORY  https://github.com/baidu-research/warp-ctc.git)
+set(WARPCTC_TAG         bc29dcfff07ced1c7a19a4ecee48e5ad583cef8e)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -29,18 +32,20 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-IF(WIN32)
-    SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
-ELSE()
-    SET(WARPCTC_REPOSITORY "https://github.com/dzhwinter/warp-ctc.git")
-ENDIF()
+cache_third_party(extern_warpctc
+    REPOSITORY   ${WARPCTC_REPOSITORY}
+    TAG          ${WARPCTC_TAG}
+    DIR          WARPCTC_SOURCE_DIR)
 
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY ${WARPCTC_REPOSITORY}
-    PREFIX          ${WARPCTC_SOURCES_DIR}
+    ${SHALLOW_CLONE}
+    "${WARPCTC_DOWNLOAD_CMD}"
+    PREFIX          ${WARPCTC_PREFIX_DIR}
+    SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
     UPDATE_COMMAND  ""
+    PATCH_COMMAND   ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -64,12 +69,7 @@ ExternalProject_Add(
                      -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
 )
 IF(WIN32)
-    IF(NOT EXISTS "${WARPCTC_INSTALL_DIR}/lib/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}")
-        add_custom_command(TARGET extern_warpctc POST_BUILD
-                COMMAND cmake -E copy ${WARPCTC_INSTALL_DIR}/bin/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX} ${WARPCTC_INSTALL_DIR}/lib/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}
-                )
-    ENDIF()
-    SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/lib/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/bin/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
             CACHE FILEPATH "Warp-ctc Library" FORCE)
 else(WIN32)
     SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/lib/libwarpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
@@ -77,8 +77,8 @@ else(WIN32)
 ENDIF(WIN32)
 
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
+get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
-INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})

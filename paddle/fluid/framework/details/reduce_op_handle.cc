@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+#include <memory>
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
@@ -65,8 +66,11 @@ void ReduceOpHandle::GatherSelectedRows(
   auto gathered_var_mid = scope->Var(gathered_var_name);
   auto gathered_select_rows =
       gathered_var_mid->GetMutable<framework::SelectedRows>();
-  GatherLocalSelectedRows(src_selected_rows, in_places, dev_ctxes, out_place,
-                          gathered_select_rows);
+  GatherLocalSelectedRowsFunctor functor(
+      src_selected_rows, in_places, dev_ctxes, out_place, gathered_select_rows);
+  WaitInputVarGenerated();
+  functor();
+
   // FIXME(gongwb): remove this Wait.
   Wait(dev_ctxes);
 
@@ -160,17 +164,11 @@ void ReduceOpHandle::RunImpl() {
 
   auto in_0_handle = in_var_handles[0];
 
-  std::vector<const Scope *> var_scopes;
-  for (auto *s : local_scopes_) {
-    var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
-  }
+  auto &var_scopes = local_exec_scopes_;
 
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
   PADDLE_ENFORCE_NOT_NULL(pre_in_var);
-
-  // Wait input done, this Wait is asynchronous operation
-  WaitInputVarGenerated();
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
@@ -211,9 +209,11 @@ void ReduceOpHandle::RunImpl() {
       // TODO(gongwb): add cpu support
       if (collective_context.endpoints_.size() <= 1 ||
           is_cpu_place(in_places[0]) || is_cpu_place(t_out_p)) {
-        GatherLocalSelectedRows(in_selected_rows, in_places, dev_ctxes_,
-                                t_out_p,
-                                out_var->GetMutable<framework::SelectedRows>());
+        GatherLocalSelectedRowsFunctor functor(
+            in_selected_rows, in_places, dev_ctxes_, t_out_p,
+            out_var->GetMutable<framework::SelectedRows>());
+        WaitInputVarGenerated();
+        functor();
         return;
       }
 
@@ -238,6 +238,7 @@ void ReduceOpHandle::RunImpl() {
         GetInputValues<LoDTensor>(in_var_handles, var_scopes);
 
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
+      WaitInputVarGenerated();
       this->RunAndRecordEvent([&] {
         // FIXME(zcd): The order of summing is important,
         // especially when the type of data is float or double.
@@ -250,9 +251,7 @@ void ReduceOpHandle::RunImpl() {
         } else {
           // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
-          auto &reduce_sum_trg = *this->local_scopes_[0]
-                                      ->FindVar(kLocalExecScopeName)
-                                      ->Get<Scope *>()
+          auto &reduce_sum_trg = *this->local_exec_scopes_[0]
                                       ->FindVar(out_var_handle->name())
                                       ->GetMutable<framework::LoDTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
@@ -265,7 +264,7 @@ void ReduceOpHandle::RunImpl() {
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
@@ -299,6 +298,7 @@ void ReduceOpHandle::RunImpl() {
             });
       }
 
+      WaitInputVarGenerated();
       this->RunAndRecordEvent([&] {
         platform::NCCLGroupGuard guard;
         for (auto &call : all_reduce_calls) {
@@ -317,7 +317,7 @@ void ReduceOpHandle::RunImpl() {
 template <typename T>
 std::vector<const T *> ReduceOpHandle::GetInputValues(
     const std::vector<VarHandle *> &in_var_handles,
-    const std::vector<const Scope *> &var_scopes) const {
+    const std::vector<Scope *> &var_scopes) const {
   std::vector<const T *> in_selected_rows;
   for (auto *in_handle : in_var_handles) {
     auto &in_sr = var_scopes.at(in_handle->scope_idx())

@@ -15,9 +15,13 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard, core
+
+SEED = 2020
 
 
-def fc_refer(matrix, with_bias):
+def fc_refer(matrix, with_bias, with_relu=False):
     in_n, in_c, in_h, in_w = matrix.input.shape
     w_i, w_o = matrix.weights.shape
 
@@ -31,22 +35,32 @@ def fc_refer(matrix, with_bias):
     else:
         result = np.dot(x_data, w_data)
 
-    return result
+    if with_relu:
+        return np.maximum(result, 0)
+    else:
+        return result
 
 
 class MatrixGenerate:
-    def __init__(self, mb, ic, oc, h, w):
+    def __init__(self, mb, ic, oc, h, w, bias_dims=2):
         self.input = np.random.random((mb, ic, h, w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
-        self.bias = np.random.random((1, oc)).astype("float32")
+        if bias_dims == 2:
+            self.bias = np.random.random((1, oc)).astype("float32")
+        else:
+            self.bias = np.random.random((oc)).astype("float32")
 
 
 class TestFCOp(OpTest):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
+
     def setUp(self):
         self.op_type = "fc"
-        self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
+        self.config()
 
-        self.with_bias = True
         if self.with_bias:
             self.inputs = {
                 'Input': self.matrix.input,
@@ -56,54 +70,125 @@ class TestFCOp(OpTest):
         else:
             self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
 
-        self.attrs = {'use_mkldnn': False}
+        if self.with_relu:
+            activation_type = "relu"
+        else:
+            activation_type = ""
+        self.attrs = {'use_mkldnn': False, 'activation_type': activation_type}
 
-        self.outputs = {'Out': fc_refer(self.matrix, self.with_bias)}
+        self.outputs = {
+            'Out': fc_refer(self.matrix, self.with_bias, self.with_relu)
+        }
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestFCOpNoBias(TestFCOp):
-    def init_shapes(self, mb, ic, oc, h, w):
+class TestFCOpNoBias1(TestFCOp):
+    def config(self):
         self.with_bias = False
-        self.matrix = MatrixGenerate(mb, ic, oc, h, w)
+        self.with_relu = False
+        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
 
 
-class TestFCOpWithBias(TestFCOp):
-    def init_shapes(self, mb, ic, oc, h, w):
+class TestFCOpNoBias2(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
+
+
+class TestFCOpNoBias4(TestFCOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.matrix = MatrixGenerate(1, 32, 64, 3, 3, 1)
+
+
+class TestFCOpWithBias1(TestFCOp):
+    def config(self):
         self.with_bias = True
-        self.matrix = MatrixGenerate(mb, ic, oc, h, w)
+        self.with_relu = False
+        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
 
 
-class TestFCOp1(TestFCOpNoBias):
-    def init_op_type(self):
-        self.init_shapes(2, 8, 10, 1, 1)
+class TestFCOpWithBias2(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
 
 
-class TestFCOp2(TestFCOpNoBias):
-    def init_op_type(self):
-        self.init_shapes(4, 5, 6, 2, 2)
+class TestFCOpWithBias3(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
 
 
-class TestFCOp4(TestFCOpNoBias):
-    def init_op_type(self):
-        self.init_shapes(1, 32, 64, 3, 3)
+class TestFCOpWithPadding(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
 
 
-class TestFCOpWithBias1(TestFCOpWithBias):
-    def init_op_type(self):
-        self.init_shapes(3, 8, 10, 2, 1)
+class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
+    def test_api(self):
+        startup_program = Program()
+        main_program = Program()
+        startup_program.random_seed = SEED
+        main_program.random_seed = SEED
+
+        with program_guard(main_program, startup_program):
+            input = np.random.random([2, 2, 25]).astype("float32")
+            x = fluid.layers.data(
+                name="x",
+                shape=[2, 2, 25],
+                append_batch_size=False,
+                dtype="float32")
+
+            out_1 = fluid.layers.fc(input=x, size=1, num_flatten_dims=-1)
+            out_2 = fluid.layers.fc(input=x, size=1, num_flatten_dims=2)
+
+        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+        exe = fluid.Executor(place=place)
+        exe.run(startup_program)
+        res_1, res_2 = exe.run(main_program,
+                               feed={"x": input},
+                               fetch_list=[out_1, out_2])
+
+        assert np.array_equal(res_1, res_2)
 
 
-class TestFCOpWithBias2(TestFCOpWithBias):
-    def init_op_type(self):
-        self.init_shapes(4, 5, 6, 2, 2)
+class TestFCOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 4)).astype("float32")
 
+            def test_Variable():
+                # the input type must be Variable
+                fluid.layers.fc(input=input_data, size=1)
 
-class TestFCOpWithBias3(TestFCOpWithBias):
-    def init_op_type(self):
-        self.init_shapes(1, 64, 32, 3, 3)
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_input_list():
+                # each of input(list) must be Variable
+                fluid.layers.fc(input=[input_data], size=1)
+
+            self.assertRaises(TypeError, test_input_list)
+
+            def test_type():
+                # dtype must be float32 or float64
+                x2 = fluid.layers.data(name='x2', shape=[4], dtype='int32')
+                fluid.layers.fc(input=x2, size=1)
+
+            self.assertRaises(TypeError, test_type)
+
+            # The input dtype of fc can be float16 in GPU, test for warning
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype='float16')
+            fluid.layers.fc(input=x3, size=1)
 
 
 if __name__ == "__main__":

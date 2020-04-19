@@ -60,8 +60,9 @@ CPU and the length of LoDTensorArray should be used as control variables.
 class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"));
-    PADDLE_ENFORCE(context->HasOutput("Out"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "LDArrayLength");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
+                   "LoDArrayLength");
     context->SetOutputDim("Out", {1});
   }
 };
@@ -70,6 +71,8 @@ class LoDArrayLengthInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lod_array_length, ops::LoDArrayLengthOp,
-                  ops::LoDArrayLengthInferShape, ops::LoDArrayLengthProtoMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    lod_array_length, ops::LoDArrayLengthOp, ops::LoDArrayLengthInferShape,
+    ops::LoDArrayLengthProtoMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
