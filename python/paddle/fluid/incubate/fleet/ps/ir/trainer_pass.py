@@ -67,8 +67,7 @@ def distributed_ops_pass(program, config):
         for op in _program.global_block().ops:
             if op.type in op_types.keys() \
                     and op.attr('remote_prefetch') is True:
-                param_name = op.input(op.input_names[op_types[op.type]])[0]
-
+                param_name = op.input(op_types[op.type])[0]
                 ops = pull_sparse_ops.get(param_name, [])
                 ops.append(op)
                 pull_sparse_ops[param_name] = ops
@@ -151,6 +150,7 @@ def append_send_ops_pass(program, config):
                 "send_varnames": [queue],
                 "merge_add": True,
                 "use_send_handler": False,
+                "endpoints": pserver_endpoints,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
