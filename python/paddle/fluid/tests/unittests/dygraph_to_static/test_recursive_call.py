@@ -25,6 +25,8 @@ SEED = 2020
 np.random.seed(SEED)
 
 
+# Use a decorator to test exception
+@dygraph_to_static_func
 def dyfunc_with_if(x_v):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -91,6 +93,7 @@ class MyConvLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
+    @dygraph_to_static_func
     def forward(self, inputs):
         y = dyfunc_with_if(inputs)
         y = lambda_fun(y)
@@ -99,6 +102,7 @@ class MyConvLayer(fluid.dygraph.Layer):
 
     @dygraph_to_static_func
     def dymethod(self, x_v):
+        x_v = fluid.layers.assign(x_v)
         return x_v
 
 
