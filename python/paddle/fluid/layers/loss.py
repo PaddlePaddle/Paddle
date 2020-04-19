@@ -101,6 +101,10 @@ def center_loss(input,
     """
     helper = LayerHelper('center_loss', **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'center_loss')
+    check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'center_loss')
+
     centers_shape = [num_classes, input.shape[1]]
     centers_param = helper.create_parameter(
         attr=param_attr, shape=centers_shape, dtype=dtype)
@@ -108,6 +112,8 @@ def center_loss(input,
 
     if isinstance(alpha, Variable):
         alpha_param = alpha
+        check_variable_and_dtype(alpha, 'alpha', ['float32', 'float64'],
+                                 'center_loss')
     else:
         assert isinstance(alpha, float)
         alpha_param = helper.create_variable(
@@ -334,6 +340,10 @@ def square_error_cost(input, label):
 	        
 	        # [0.04000002]
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'square_error_cost')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+                             'square_error_cost')
     helper = LayerHelper('square_error_cost', **locals())
     minus_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -1481,6 +1491,11 @@ def teacher_student_sigmoid_loss(input,
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
 
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'teacher_student_sigmoid_loss')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+                             'teacher_student_sigmoid_loss')
+
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
     out = helper.create_variable(dtype=input.dtype)
     helper.append_op(
@@ -1510,8 +1525,8 @@ def huber_loss(input, label, delta):
 
 
     Args:
-        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
-        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
+        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
+        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
         delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type should be float32.
 
     Returns:
@@ -1540,6 +1555,10 @@ def huber_loss(input, label, delta):
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     helper = LayerHelper('huber_loss', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'huber_loss')
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'huber_loss')
     residual = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -1715,4 +1734,6 @@ def mse_loss(input, label):
 	        # [0.04000002]
 
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
     return nn.reduce_mean(square_error_cost(input, label))

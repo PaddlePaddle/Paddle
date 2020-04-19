@@ -165,11 +165,11 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     to merge the output if True block and False Block.
 
     Args:
-        in_true(tuple|list|None): The True branch to be merged.
-        in_false(tuple|list|None): The False branch to be merged.
-        x(tuple|list|None): The input tensor that contains complete
+        in_true(Variable|tuple|list|None): The True branch to be merged.
+        in_false(Variable|tuple|list|None): The False branch to be merged.
+        x(Variable|tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to merge.
 
     Returns:
@@ -192,6 +192,13 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
+    check_type(x, 'x', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
+    check_type(in_true, 'in_true', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(in_false, 'in_false', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
     out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
@@ -882,14 +889,10 @@ class While(object):
     def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
-        if not isinstance(cond, Variable):
-            raise TypeError("condition should be a variable")
-        assert isinstance(cond, Variable)
-        if cond.dtype != core.VarDesc.VarType.BOOL:
-            raise TypeError("condition should be a boolean variable")
+        check_variable_and_dtype(cond, 'cond', ['bool'], 'fluid.layers.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [], but given shape as {0}.".
+                "condition expected shape as [1], but given shape as {0}.".
                 format(list(cond.shape)))
         self.cond_var = cond
         self.is_test = is_test
@@ -999,19 +1002,16 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise TypeError("cond in while_loop should be callable")
     if not callable(body):
         raise TypeError("body in while_loop should be callable")
-    if not isinstance(loop_vars, (list, tuple)):
-        raise TypeError("loop_vars in while_loop should be a list or tuple")
+    check_type(loop_vars, 'loop_vars', (list, tuple), 'fluid.layers.while_loop')
     if len(loop_vars) == 0:
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    if not isinstance(pre_cond, Variable):
-        raise TypeError("cond in while_loop should return a variable")
-    if pre_cond.dtype != core.VarDesc.VarType.BOOL:
-        raise TypeError("cond in while_loop should return a boolean variable")
+    check_variable_and_dtype(pre_cond, 'var of cond returned', ['bool'],
+                             'fluid.layers.while_loop')
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
-            "the shape of the variable returned by cond should be [],"
+            "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
     if in_dygraph_mode():
@@ -1169,6 +1169,16 @@ def lod_tensor_to_array(x, table):
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
     """
+    check_type(x, 'x', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
+    check_type(table, 'table', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name.generate("lod_tensor_to_array"),
@@ -1204,6 +1214,17 @@ def array_to_lod_tensor(x, table):
           array = fluid.layers.lod_tensor_to_array(x, table)
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
+    check_type(x, 'x', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+    check_type(table, 'table', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -1387,8 +1408,9 @@ def less_than(x, y, force_cpu=None, cond=None):
         x(${x_type}): ${x_comment}.
         y(${y_type}): ${y_comment}.
         force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Variable|None): Optional output variable to store the result of *less_than*
-
+        cond(Variable, optional): Optional output which can be any created Variable
+            that meets the requirements to store the result of *less_than*.
+            if cond is None, a new Varibale will be created to store the result.
     Returns:
         ${out_comment}.
 
@@ -1415,6 +1437,15 @@ def less_than(x, y, force_cpu=None, cond=None):
           result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(result_value) # [[True, False], [False, False]]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_than")
+    if force_cpu != None:
+        check_type(force_cpu, "force_cpu", bool, "less_than")
+
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1441,12 +1472,11 @@ def less_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
-            this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
-            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *less_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1459,6 +1489,13 @@ def less_equal(x, y, cond=None):
           out1 = label<= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_equal")
+
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1483,12 +1520,11 @@ def greater_than(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
-            tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
-            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_than*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
@@ -1500,6 +1536,13 @@ def greater_than(x, y, cond=None):
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "greater_than")
+
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1524,12 +1567,11 @@ def greater_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
-            tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
-            type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1543,6 +1585,13 @@ def greater_equal(x, y, cond=None):
           out_1 = label >= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "greater_equal")
+
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1586,6 +1635,13 @@ def equal(x, y, cond=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "equal")
+
     helper = LayerHelper("equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1604,12 +1660,11 @@ def not_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
-             tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
-             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *not_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1620,6 +1675,13 @@ def not_equal(x, y, cond=None):
           limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "not_equal")
+
     helper = LayerHelper("not_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1746,6 +1808,9 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
+    check_type(x, 'x', Variable, 'shrink_memory')
+    check_type(i, 'i', Variable, 'shrink_memory')
+    check_type(table, 'table', Variable, 'shrink_memory')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
@@ -2833,9 +2898,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("step_input")
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "step_input() can only take a Variable as its input.")
+        check_type(x, 'x', Variable, 'fluid.layers.DynamicRNN.step_input()')
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -3002,9 +3065,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "static_input() can only take a Variable as its input")
+        check_type(x, 'x', Variable, 'fluid.layers.DynamicRNN.static_input()')
         if self.lod_rank_table is None:
             raise RuntimeError(
                 "static_input() must be called after step_input().")
@@ -3169,10 +3230,12 @@ class DynamicRNN(object):
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
+        if shape is not None:
+            check_type(shape, 'shape', (list, tuple),
+                       'fluid.layers.DynamicRNN.memory()')
         if init is not None:
-            if not isinstance(init, Variable):
-                raise TypeError(
-                    "The input arg `init` of memory() must be a Variable")
+            check_type(init, 'init', Variable,
+                       'fluid.layers.DynamicRNN.memory()')
             parent_block = self._parent_block_()
             init_tensor = init
             if need_reorder == True:
@@ -3253,12 +3316,10 @@ class DynamicRNN(object):
             ValueError: When :code:`update_memory()` is called before :code:`step_input()` .
         """
         self._assert_in_rnn_block_('update_memory')
-        if not isinstance(ex_mem, Variable):
-            raise TypeError("The input arg `ex_mem` of update_memory() must "
-                            "be a Variable")
-        if not isinstance(new_mem, Variable):
-            raise TypeError("The input arg `new_mem` of update_memory() must "
-                            "be a Variable")
+        check_type(ex_mem, 'ex_mem', Variable,
+                   'fluid.layers.DynamicRNN.update_memory()')
+        check_type(new_mem, 'new_mem', Variable,
+                   'fluid.layers.DynamicRNN.update_memory()')
 
         mem_array = self.mem_dict.get(ex_mem.name, None)
         if mem_array is None:
@@ -3285,6 +3346,8 @@ class DynamicRNN(object):
         self._assert_in_rnn_block_('output')
         parent_block = self._parent_block_()
         for each in outputs:
+            check_type(each, "outputs", Variable,
+                       "fluid.layers.DynamicRNN.output")
             outside_array = parent_block.create_var(
                 name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, "output_array", each.name])),

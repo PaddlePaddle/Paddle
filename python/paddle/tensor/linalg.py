@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
@@ -23,10 +24,11 @@ __all__ = [
     'norm',
     #  'transpose',
     'dist',
-    #  't',
-    #  'cross',
+    't',
+    'cross',
     #  'cholesky',
-    #  'tensordot'
+    #  'tensordot',
+    'bmm'
 ]
 
 
@@ -440,6 +442,11 @@ def dot(x, y, name=None):
 
     """
     op_type = 'dot'
+    # skip var type check in dygraph mode to improve efficiency
+    if in_dygraph_mode():
+        op = getattr(core.ops, op_type)
+        return op(x, y)
+
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
 
@@ -457,4 +464,184 @@ def dot(x, y, name=None):
     helper.append_op(
         type="dot", inputs={'X': x,
                             'Y': y}, attrs={}, outputs={"Out": out})
+    return out
+
+
+def t(input, name=None):
+    """
+    Transpose <=2-D tensor. 
+    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
+    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    
+    Args:
+        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+    
+    For Example:
+        .. code-block:: text
+        # Example 1 (0-D tensor)
+         x = tensor([0.79])
+         paddle.t(x) = tensor([0.79])
+         # Example 2 (1-D tensor)
+         x = tensor([0.79, 0.84, 0.32])
+         paddle.t(x) = tensor([0.79, 0.84, 0.32])
+        
+         # Example 3 (2-D tensor)
+         x = tensor([0.79, 0.84, 0.32],
+                    [0.64, 0.14, 0.57])
+         paddle.t(x) = tensor([0.79, 0.64],
+                              [0.84, 0.14],
+                              [0.32, 0.57])
+    
+     Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[2, 3],
+                            dtype='float32')
+            x_transposed = paddle.t(x)
+            print x_transposed.shape
+            #(3L, 2L)
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape))
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out, _ = core.ops.transpose2(input, 'axis', perm)
+        return out
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'transpose')
+
+    helper = LayerHelper('t', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    input_shape = helper.create_variable_for_type_inference(input.dtype)
+    if len(input.shape) == 1:
+        out = input
+    else:
+        helper.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [out],
+                     'XShape': [input_shape]},
+            attrs={'axis': [1, 0]})
+    return out
+
+
+def cross(input, other, dim=None):
+    """
+    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
+    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
+    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    
+    Args:
+        input (Variable): The first input tensor variable.
+        other (Variable): The second input tensor variable.
+        dim (int): The dimension to take the cross-product in.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data_x = np.array([[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0],
+                               [3.0, 3.0, 3.0]])
+            data_y = np.array([[1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0]])
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_x)
+                y = fluid.dygraph.to_variable(data_y)
+                out_z1 = paddle.cross(x, y)
+                print(out_z1.numpy())
+                #[[-1. -1. -1.]
+                # [ 2.  2.  2.]
+                # [-1. -1. -1.]]
+                out_z2 = paddle.cross(x, y, dim=1)
+                print(out_z2.numpy())
+                #[[0. 0. 0.]
+                # [0. 0. 0.]
+                # [0. 0. 0.]]
+    """
+    helper = LayerHelper("cross", **locals())
+    if in_dygraph_mode():
+        if dim:
+            return core.ops.cross(input, other, 'dim', dim)
+        else:
+            return core.ops.cross(input, other)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+    attrs = dict()
+    if dim:
+        attrs['dim'] = dim
+
+    helper.append_op(
+        type='cross',
+        inputs={'X': input,
+                'Y': other},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
+def bmm(x, y, name=None):
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both of the two input tensors must be three-dementional and share the same batch size.
+
+    if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+
+    Examples:
+        import paddle
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
+        out = paddle.bmm(x, y)
+    
+        # In dygraph mode:
+        # size input1: (2, 2, 3) and input2: (2, 3, 2)
+        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+    """
+
+    helper = LayerHelper('bmm', **locals())
+    if in_dygraph_mode():
+        return core.ops.bmm(x, y)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out

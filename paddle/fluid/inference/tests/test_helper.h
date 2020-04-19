@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
@@ -142,7 +143,7 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
-                   const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
+                   const std::vector<paddle::framework::FetchType*>& cpu_fetchs,
                    const int repeat = 1, const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
@@ -194,7 +195,7 @@ void TestInference(const std::string& dirname,
   }
 
   // 5. Define Tensor to get the outputs: set up maps for fetch targets
-  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+  std::map<std::string, paddle::framework::FetchType*> fetch_targets;
   for (size_t i = 0; i < fetch_target_names.size(); ++i) {
     fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
   }

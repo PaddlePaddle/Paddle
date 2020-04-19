@@ -65,8 +65,10 @@ class DistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     const int num_level = max_level - min_level + 1;
 
     // check that the fpn_rois is not empty
-    PADDLE_ENFORCE_EQ(fpn_rois->lod().size(), 1UL,
-                      "DistributeFpnProposalsOp need 1 level of LoD");
+    PADDLE_ENFORCE_EQ(
+        fpn_rois->lod().size(), 1UL,
+        platform::errors::InvalidArgument("DistributeFpnProposalsOp needs LoD "
+                                          "with one level."));
 
     auto fpn_rois_lod = fpn_rois->lod().back();
     int fpn_rois_num = fpn_rois_lod[fpn_rois_lod.size() - 1];
