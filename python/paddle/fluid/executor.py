@@ -931,14 +931,14 @@ class Executor(object):
             return_merged(bool): This parameter indicates whether fetched variables (the variables
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
-                of :code:`Tensor` ( :code:`return_numpy` is False) or a two-dimensional list of
-                :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
-                the type of the return value is an one-dimensional list of :code:`Tensor` ( :code:`return_numpy`
-                is False) or an one-dimensional list of :code:`numpy.ndarray` ( :code:`return_numpy` is True).
-                Please see Examples 2 for more details. If the lengths of fetched results are variant, please
-                set :code:`return_merged` as False, which denotes that the fetched results will not be merged.
-                The default is True, but it is just for the compatibility, and may use False as default value
-                in the future version.
+                of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
+                list of :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
+                the type of the return value is an one-dimensional list of :code:`Tensor` / :code:`LoDTensorArray`
+                ( :code:`return_numpy` is False) or an one-dimensional list of :code:`numpy.ndarray`
+                ( :code:`return_numpy` is True). Please see Examples 2 for more details. If the lengths of fetched
+                results are variant, please set :code:`return_merged` as False, which denotes that the fetched
+                results will not be merged. The default is True, but it is just for the compatibility, and may
+                use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not 
@@ -980,13 +980,17 @@ class Executor(object):
               loss = fluid.layers.mean(hidden)
               adam = fluid.optimizer.Adam()
               adam.minimize(loss)
+              i = fluid.layers.zeros(shape=[1], dtype='int64')
+              array = fluid.layers.array_write(x=loss, i=i)
 
               # Run the startup program once and only once.
               exe.run(fluid.default_startup_program())
 
               x = numpy.random.random(size=(10, 1)).astype('float32')
-              outs = exe.run(feed={'X': x},
-                             fetch_list=[loss.name])
+              loss_val, array_val = exe.run(feed={'X': x},
+                                            fetch_list=[loss.name, array.name])
+              print(array_val)
+              # [array([0.02153828], dtype=float32)]
 
         Examples 2:
             .. code-block:: python
@@ -1226,7 +1230,7 @@ class Executor(object):
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        arr = scope.find_var(fetch_var_name).get_fetch_list()
         tensors = arr._move_to_list()
         if return_numpy:
             return as_numpy(tensors)
