@@ -14,15 +14,16 @@
 
 import logging
 import math
-import numpy as np
 import time
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
 
 SEED = 2020
 np.random.seed(SEED)
@@ -98,7 +99,6 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._batch_norm = BatchNorm(num_filters, act=act)
 
-    @dygraph_to_static_func
     def forward(self, inputs):
         y = self._conv(inputs)
         y = self._batch_norm(y)
@@ -127,7 +127,6 @@ class SqueezeExcitation(fluid.dygraph.Layer):
                 initializer=fluid.initializer.Uniform(-stdv, stdv)),
             act='sigmoid')
 
-    @dygraph_to_static_func
     def forward(self, input):
         y = self._pool(input)
         y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
@@ -179,7 +178,6 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
         self._num_channels_out = num_filters * 2
 
-    @dygraph_to_static_func
     def forward(self, inputs):
         y = self.conv0(inputs)
         conv1 = self.conv1(y)
@@ -301,6 +299,7 @@ class SeResNeXt(fluid.dygraph.Layer):
 
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
+
         y = self.pool2d_avg(y)
         y = fluid.layers.dropout(y, dropout_prob=0.5, seed=100)
         y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])

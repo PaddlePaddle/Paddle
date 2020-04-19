@@ -18,14 +18,14 @@ __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
 import logging
 
-from ..wrapped_decorator import wrap_decorator
-from .base import program_desc_tracing_guard, switch_to_static_graph
-from .layers import Layer
 from paddle.fluid import core
-from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
-from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.executor import Executor, scope_guard
+from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.wrapped_decorator import wrap_decorator
 
 logger = logging.getLogger("fluid")
 
