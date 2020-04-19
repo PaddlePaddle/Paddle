@@ -249,6 +249,12 @@ class ProgramTranslator(object):
     Class to translate dygraph function into static graph function. The object
     of this class is a singleton.
 
+    Args:
+        None.
+
+    Returns:
+        ProgramTranslator: the singleton object.
+
     Examples:
         .. code-block:: python
 
@@ -307,10 +313,10 @@ class ProgramTranslator(object):
         ProgramTranslator globally.
 
         Args:
-            enable_declarative (bool): True or False to enable or disable declarative
+            enable_declarative (bool): True or False to enable or disable declarative.
 
         Returns:
-            None
+            None.
 
         Examples:
             .. code-block:: python
@@ -508,7 +514,7 @@ class ProgramTranslator(object):
             dygraph_func (callable): the dygraph function.
 
         Returns:
-            str: the string code of translated static function
+            str: the string code of translated static function.
 
         Examples:
             .. code-block:: python
