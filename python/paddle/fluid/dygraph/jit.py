@@ -107,7 +107,7 @@ def _dygraph_to_static_func_(dygraph_func):
         if in_dygraph_mode() or not program_translator.enable_declarative:
             logger.info(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode or set enable_declarative_function to False. "
+                "dygraph mode or set ProgramTranslator.enable to False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
         static_func = program_translator.get_func(dygraph_func)
@@ -159,7 +159,7 @@ def _declarative_(dygraph_func):
         if in_dygraph_mode() or not program_translator.enable_declarative:
             logger.info(
                 "The decorator 'declarative' doesn't work in dygraph "
-                "mode or set enable_declarative_function to False. We will "
+                "mode or set ProgramTranslator.enable to False. We will "
                 "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
         program_translator = ProgramTranslator()
