@@ -31,7 +31,6 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers import uniform_random, utils
 from ..fluid.layers.tensor import fill_constant
 
-
 __all__ = ['randperm', 'randn', 'randint', 'rand']
 
 
