@@ -36,6 +36,7 @@ inline proto::VarType::Type ToVarType(int type) {
     case proto::VarType::SELECTED_ROWS:
     case proto::VarType::LOD_RANK_TABLE:
     case proto::VarType::LOD_TENSOR_ARRAY:
+    case proto::VarType::FETCH_LIST:
     case proto::VarType::READER:
       return static_cast<proto::VarType::Type>(type);
     default:
@@ -60,6 +61,9 @@ inline void VisitVarType(const framework::Variable& var, Visitor visitor) {
       return;
     case proto::VarType::READER:
       visitor(var.Get<ReaderHolder>());
+      return;
+    case proto::VarType::FETCH_LIST:
+      visitor(var.Get<FetchList>());
       return;
     default:
       PADDLE_THROW("Not supported visit type, %s", ToTypeName(var.Type()));

@@ -95,11 +95,12 @@ PreparedOp PrepareOpImpl(const NameVarMap<VarType>& ins,
   // check if op[type] has kernel registered.
   auto& all_op_kernels = op.AllOpKernels();
   auto kernels_iter = all_op_kernels.find(op.Type());
-  if (kernels_iter == all_op_kernels.end()) {
-    PADDLE_THROW(
-        "There are no kernels which are registered in the %s operator.",
-        op.Type());
-  }
+
+  PADDLE_ENFORCE_NE(
+      kernels_iter, all_op_kernels.end(),
+      platform::errors::NotFound(
+          "There are no kernels which are registered in the %s operator.",
+          op.Type()));
 
   auto& kernels = kernels_iter->second;
 
@@ -111,10 +112,10 @@ PreparedOp PrepareOpImpl(const NameVarMap<VarType>& ins,
 
   auto kernel_iter = kernels.find(expected_kernel_key);
   // TODO(jiabin): Add operator.cc's line 1000 part back when we need that case
-  if (kernel_iter == kernels.end()) {
-    PADDLE_THROW("op %s does not have kernel for %s", op.Type(),
-                 KernelTypeToString(expected_kernel_key));
-  }
+  PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                    platform::errors::NotFound(
+                        "Operator %s does not have kernel for %s.", op.Type(),
+                        KernelTypeToString(expected_kernel_key)));
 
   if (!(expected_kernel_key.place_ == place)) {
     dev_ctx = pool.Get(expected_kernel_key.place_);
