@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/stream_callback_manager.h"
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -81,6 +81,149 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 class EigenCudaStreamDevice;
 class CudnnWorkspaceHandle;
 
+class CUDAContext {
+ public:
+  CUDAContext() = default;
+  explicit CUDAContext(
+      const CUDAPlace& place,
+      const enum stream::Priority& priority = stream::Priority::kNormal);
+
+  ~CUDAContext();
+
+  const CUDAPlace& Place() const { return place_; }
+
+  const std::unique_ptr<Eigen::GpuDevice>& EigenDevice() const {
+    return eigen_device_;
+  }
+
+  const std::unique_ptr<EigenCudaStreamDevice>& EigenStream() const {
+    return eigen_stream_;
+  }
+
+  const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
+
+  const cudaStream_t& RawStream() { return stream_->raw_stream(); }
+
+  const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
+
+  const cusolverDnHandle_t& CusolverDnHandle() const {
+    return cusolver_dn_handle_;
+  }
+
+  const std::unique_ptr<CublasHandleHolder>& CublasHandle() const {
+    return cublas_handle_;
+  }
+
+  const std::unique_ptr<CublasHandleHolder>& CublasTensorCoreHandle() const {
+    return cublas_tensor_core_handle_;
+  }
+
+  /*! \brief  Call cublas function safely. */
+  template <typename Callback>
+  inline void CublasCall(Callback&& callback) const {
+    cublas_handle_->Call(std::forward<Callback>(callback));
+  }
+
+  /*! \brief  Check whether tensor core is supported */
+  bool tensor_core_available() const;
+
+  /*! \brief  Call cublas function with Tensor Core safely. If
+      Tensor Core is not available, use DEFAULT_MATH instead. */
+  template <typename Callback>
+  inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
+    if (cublas_tensor_core_handle_) {
+      cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
+    } else {
+      cublas_handle_->Call(std::forward<Callback>(callback));
+    }
+  }
+
+ private:
+  void InitEigenContext();
+
+  void InitCuBlasContext() {
+    cublas_handle_.reset(
+        new CublasHandleHolder(RawStream(), CUBLAS_DEFAULT_MATH));
+    if (TensorCoreAvailable()) {
+#if CUDA_VERSION >= 9000
+      cublas_tensor_core_handle_.reset(
+          new CublasHandleHolder(RawStream(), CUBLAS_TENSOR_OP_MATH));
+#endif
+    }
+  }
+
+  void InitCuDNNContext() {
+    if (dynload::HasCUDNN()) {
+      auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
+      auto compile_cudnn_version = CUDNN_VERSION / 100;
+      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
+        LOG_FIRST_N(WARNING, 1)
+            << "WARNING: device: " << place_.device
+            << ". The installed Paddle is compiled with CUDNN "
+            << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
+            << ", but CUDNN version in your machine is "
+            << local_cudnn_version / 10 << "." << local_cudnn_version % 10
+            << ", which may cause serious incompatible bug. "
+            << "Please recompile or reinstall Paddle with compatible CUDNN "
+               "version.";
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnCreate(&cudnn_handle_),
+          platform::errors::Fatal(
+              "Failed to create Cudnn handle in DeviceContext"));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnSetStream(cudnn_handle_, RawStream()),
+          platform::errors::Fatal(
+              "Failed to set stream for Cudnn handle in DeviceContext"));
+    } else {
+      cudnn_handle_ = nullptr;
+    }
+  }
+
+  void InitCuSolverContext() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnCreate(&cusolver_dn_handle_),
+        platform::errors::Fatal(
+            "Failed to create Cusolver dn handle in DeviceContext"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnSetStream(cusolver_dn_handle_, stream_),
+        platform::errors::Fatal(
+            "Failed to set stream for Cusolver dn handle in DeviceContext"));
+  }
+
+  void DestoryCuDNNContext() {
+    if (cudnn_handle_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnDestroy(cudnn_handle_),
+          platform::errors::Fatal("Failed to destory Cudnn handle"));
+    }
+    cudnn_handle_ = nullptr;
+  }
+
+  void DestoryCuBlasContext() {
+    cublas_handle_.reset();
+    cublas_tensor_core_handle_.reset();
+  }
+
+  void DestoryCuSolverContext() {
+    if (cusolver_dn_handle_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cusolverDnDestroy(cusolver_dn_handle_),
+          platform::errors::Fatal("Failed to destory Cusolver dn handle"));
+    }
+  }
+
+  CUDAPlace place_;
+  std::unique_ptr<Eigen::GpuDevice> eigen_device_;
+  std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
+  std::unique_ptr<stream::CUDAStream> stream_;
+  cudnnHandle_t cudnn_handle_;
+  std::unique_ptr<CublasHandleHolder> cublas_handle_;
+  std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  cusolverDnHandle_t cusolver_dn_handle_;
+  DISABLE_COPY_AND_ASSIGN(CUDAContext);
+};
+
 class CUDADeviceContext : public DeviceContext {
  public:
   explicit CUDADeviceContext(CUDAPlace place);
@@ -113,7 +256,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    cublas_handle_->Call(std::forward<Callback>(callback));
+    return context()->CublasCall(callback);
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -123,11 +266,7 @@ class CUDADeviceContext : public DeviceContext {
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    if (cublas_tensor_core_handle_) {
-      cublas_tensor_core_handle_->Call(std::forward<Callback>(callback));
-    } else {
-      cublas_handle_->Call(std::forward<Callback>(callback));
-    }
+    return context()->TensorCoreCublasCallIfAvailable(callback);
   }
 
   /*! \brief  Return cudnn  handle in the device context. */
@@ -156,34 +295,47 @@ class CUDADeviceContext : public DeviceContext {
 #endif
 
   template <typename Callback>
-  void RecordEvent(cudaEvent_t ev, Callback callback) {
-    callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+    return context()->Stream()->RecordEvent(ev, callback);
   }
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
-    callback_manager_->AddCallback(callback);
+    return context()->Stream()->AddCallback(callback);
   }
 
-  void WaitStreamCallback() const { callback_manager_->Wait(); }
+  void WaitStreamCallback() const {
+    return context()->Stream()->WaitCallback();
+  }
+
+  void ResetDefaultContext(const enum stream::Priority& priority) {
+    default_ctx_.reset(new CUDAContext(place_, priority));
+  }
+
+  void ResetThreadContext(const enum stream::Priority& priority) {
+    std::lock_guard<std::mutex> guard(ctx_mtx_);
+    thread_ctx_[this].reset(new CUDAContext(place_, priority));
+  }
+
+  std::shared_ptr<CUDAContext> context() const {
+    if (!thread_ctx_.count(this)) {
+      return default_ctx_;
+    }
+    return thread_ctx_.at(this);
+  }
 
  private:
   CUDAPlace place_;
+  std::shared_ptr<CUDAContext> default_ctx_;
 
-  mutable std::once_flag init_cudnn_;
+  // The thread_local static variable will be released before the
+  // global static variable, so avoid using it in dtor.
+  static thread_local std::unordered_map<const CUDADeviceContext*,
+                                         std::shared_ptr<CUDAContext>>
+      thread_ctx_;
+  static thread_local std::mutex ctx_mtx_;
 
-  std::unique_ptr<Eigen::GpuDevice> eigen_device_;
-  std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-  cudaStream_t stream_;
-
-  cudnnHandle_t cudnn_handle_;
   mutable std::mutex cudnn_handle_mtx_;
-
-  std::unique_ptr<CublasHandleHolder> cublas_handle_;
-  std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
-
-  cusolverDnHandle_t cusolver_dn_handle_;
 
 #if defined(PADDLE_WITH_NCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
@@ -201,9 +353,6 @@ class CUDADeviceContext : public DeviceContext {
   int max_threads_per_mp_;
   int max_threads_per_block_;
   dim3 max_grid_dim_size_;
-
-  // StreamCallbackManager is thread-safe
-  std::unique_ptr<StreamCallbackManager> callback_manager_;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };

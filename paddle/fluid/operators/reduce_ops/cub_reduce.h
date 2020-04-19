@@ -43,7 +43,11 @@ struct Array {
 
   template <typename VectorLikeType>
   static inline Array<T, ElementCount> From(const VectorLikeType& vec) {
-    PADDLE_ENFORCE_EQ(vec.size(), ElementCount, "size not match");
+    PADDLE_ENFORCE_EQ(vec.size(), ElementCount,
+                      platform::errors::InvalidArgument(
+                          "Cub reduce Array: size not match. Received "
+                          "vec.size() %d !=  ElementCount %d.",
+                          vec.size(), ElementCount));
     size_t n = static_cast<size_t>(vec.size());
     Array<T, ElementCount> ret;
     for (size_t i = 0; i < n; ++i) ret[i] = vec[i];
@@ -159,13 +163,20 @@ static inline int GetDesiredBlockDim(int block_dim) {
 
 static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
-    PADDLE_ENFORCE_EQ(reduce_rank, rank / 2);
+    PADDLE_ENFORCE_EQ(reduce_rank, rank / 2,
+                      platform::errors::InvalidArgument(
+                          "ReduceOp: invalid reduce rank. When rank = %d, "
+                          "reduce_rank must be %d, but got %d.",
+                          rank, rank / 2, reduce_rank));
   } else {
     auto lower_rank = (rank - 1) / 2;
     auto upper_rank = (rank + 1) / 2;
-    PADDLE_ENFORCE(reduce_rank == lower_rank || reduce_rank == upper_rank,
-                   "When rank = %d, reduce_rank must be %d or %d, but got %d",
-                   rank, lower_rank, upper_rank, reduce_rank);
+    PADDLE_ENFORCE_EQ(
+        reduce_rank == lower_rank || reduce_rank == upper_rank, true,
+        platform::errors::InvalidArgument(
+            "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
+            "must be %d or %d, but got %d.",
+            rank, lower_rank, upper_rank, reduce_rank));
   }
 }
 
