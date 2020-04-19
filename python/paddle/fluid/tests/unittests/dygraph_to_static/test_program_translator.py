@@ -123,11 +123,11 @@ class TestEnableDeclarative(unittest.TestCase):
         program_translator = ProgramTranslator()
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable_declarative_function(True)
+            program_translator.enable(True)
             static_output = program_translator.get_output(simple_func, x,
                                                           weight)
 
-        program_translator.enable_declarative_function(False)
+        program_translator.enable(False)
         with fluid.dygraph.guard():
             dygraph_output = program_translator.get_output(simple_func, x,
                                                            weight)
@@ -141,13 +141,13 @@ class TestEnableDeclarative(unittest.TestCase):
         program_translator = ProgramTranslator()
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable_declarative_function(True)
+            program_translator.enable(True)
             static_func = program_translator.get_func(simple_func)
             self.assertTrue(callable(static_func))
             static_output = static_func(x, weight)
             self.assertTrue(isinstance(static_output, fluid.Variable))
 
-        program_translator.enable_declarative_function(False)
+        program_translator.enable(False)
         with fluid.dygraph.guard():
             dygraph_func = program_translator.get_func(simple_func)
             self.assertTrue(callable(dygraph_func))
@@ -160,7 +160,7 @@ class TestEnableDeclarative(unittest.TestCase):
         program_translator = ProgramTranslator()
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable_declarative_function(True)
+            program_translator.enable(True)
             static_output = program_translator.get_program(simple_func, x,
                                                            weight)
             self.assertTrue(isinstance(static_output, tuple))
@@ -168,7 +168,7 @@ class TestEnableDeclarative(unittest.TestCase):
             self.assertTrue(isinstance(static_output[0], fluid.Program))
             self.assertTrue(isinstance(static_output[1], fluid.Program))
 
-        program_translator.enable_declarative_function(False)
+        program_translator.enable(False)
         with fluid.dygraph.guard():
             dygraph_output = program_translator.get_program(simple_func, x,
                                                             weight)
@@ -180,10 +180,10 @@ class TestEnableDeclarative(unittest.TestCase):
         program_translator = ProgramTranslator()
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable_declarative_function(True)
+            program_translator.enable(True)
             static_output = decorated_simple_func(x, weight)
 
-        program_translator.enable_declarative_function(False)
+        program_translator.enable(False)
         with fluid.dygraph.guard():
             dygraph_output = decorated_simple_func(x, weight)
             self.assertTrue(
