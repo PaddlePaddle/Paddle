@@ -307,7 +307,7 @@ class ProgramTranslator(object):
         self._prev_startup = None
         self.enable_declarative = True
 
-    def enable_declarative_function(self, enable_declarative):
+    def enable(self, enable_declarative):
         """
         Enable or disable the converting from imperative to declarative by
         ProgramTranslator globally.
@@ -334,7 +334,7 @@ class ProgramTranslator(object):
                 return x_v
 
             prog_trans = fluid.dygraph.ProgramTranslator()
-            prog_trans.enable_declarative_function(False)
+            prog_trans.enable(False)
 
             x = np.ones([1, 2])
             # The declarative is disabled so the func is run in dygraph 
@@ -343,7 +343,7 @@ class ProgramTranslator(object):
         
         """
         check_type(enable_declarative, "enable_declarative", bool,
-                   "ProgramTranslator.enable_declarative_function")
+                   "ProgramTranslator.enable")
         self.enable_declarative = enable_declarative
 
     def get_output(self, dygraph_func, *args, **kwargs):
@@ -387,7 +387,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode() or not self.enable_declarative:
             logger.info(
                 "The ProgramTranslator.get_output doesn't work in dygraph "
-                "mode or set enable_declarative_function to False. We will "
+                "mode or set ProgramTranslator.enable to False. We will "
                 "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
@@ -443,7 +443,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode() or not self.enable_declarative:
             logger.info(
                 "The ProgramTranslator.get_func doesn't work in dygraph "
-                "mode or set enable_declarative_function to False. We will "
+                "mode or set ProgramTranslator.enable to False. We will "
                 "just return dygraph output.")
             return dygraph_func
 
@@ -497,7 +497,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode() or not self.enable_declarative:
             logger.info(
                 "The ProgramTranslator.get_program doesn't work in dygraph "
-                "mode or set enable_declarative_function to False. We will "
+                "mode or set ProgramTranslator.enable to False. We will "
                 "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
