@@ -31,6 +31,41 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 
+def pretty_print_envs(envs, header=None):
+    spacing = 5
+    max_k = 45
+    max_v = 20
+
+    for k, v in envs.items():
+        max_k = max(max_k, len(k))
+        max_v = max(max_v, len(str(v)))
+
+    h_format = "{{:^{}s}}{}{{:<{}s}}\n".format(max_k, " " * spacing, max_v)
+    l_format = "{{:<{}s}}{{}}{{:<{}s}}\n".format(max_k, max_v)
+    length = max_k + max_v + spacing
+
+    border = "".join(["="] * length)
+    line = "".join(["-"] * length)
+
+    draws = ""
+    draws += border + "\n"
+
+    if header and isinstance(header, tuple):
+        draws += h_format.format(header[0], header[1])
+    else:
+        draws += h_format.format("Global Envs", "Value")
+
+    draws += line + "\n"
+
+    for k, v in envs.items():
+        draws += l_format.format(k, " " * spacing, str(v))
+
+    draws += border
+
+    _str = "\n{}\n".format(draws)
+    return _str
+
+
 class ServerRuntimeConfig(object):
     def __init__(self):
         self._rpc_send_thread_num = int(
@@ -128,6 +163,28 @@ class CompileTimeStrategy(object):
 
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()
+
+    def display(self):
+        header = ("Fleet Compiled Config", "Value")
+        maps = {}
+
+        for ep, pairs in self.param_grad_ep_mapping.items():
+
+            vs = []
+
+            params, grads = pairs
+
+            vs.append("P: ")
+            for p in params:
+                vs.append(p.name)
+
+            vs.append(", G: ")
+            for g in grads:
+                vs.append(g.name)
+
+            maps[ep] = " ".join(vs)
+
+        pretty_print_envs(maps, header)
 
     def _create_vars_from_blocklist(self, block_list):
         """
@@ -363,7 +420,7 @@ class CompileTimeStrategy(object):
 
         self.merged_variables_pairs.append((param, grad))
 
-        for sparse_pair in self.origin_sparse_pairs:
+        for sparse_pair in origin_for_sparse:
             param, grad = sparse_pair
 
             m_param = MergedVariable(param, [param], [0])

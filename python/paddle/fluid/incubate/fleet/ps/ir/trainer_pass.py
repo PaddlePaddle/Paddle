@@ -46,7 +46,7 @@ def delete_optimizer_pass(program, config):
                 optimize_need_delete_vars.append(var)
         need_delete_optimize_vars = list(set(optimize_need_delete_vars))
 
-        delete_ops(_program, optimize_ops)
+        delete_ops(_program.global_block(), optimize_ops)
         for var in need_delete_optimize_vars:
             if _program.global_block().has_var(var):
                 _program.global_block()._remove_var(var)
@@ -148,7 +148,7 @@ def append_send_ops_pass(program, config):
             inputs={"X": send_input_vars},
             outputs={"Out": dummy_output},
             attrs={
-                "queue": queue,
+                "send_varnames": [queue],
                 "merge_add": True,
                 "use_send_handler": False,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -182,21 +182,26 @@ def append_send_ops_pass(program, config):
 
 
 def lr_decay_pass(program, config):
-    pass
+    import warnings
+    warnings.warn("lr_decay_pass need implement later")
+    return program
 
 
 def init_from_server_pass(program, config):
-    excludes = config.get_exclueds_vars()
-
-    program.global_block().append_op(
-        type="recv",
-        inputs={"X": []},
-        outputs={"Out": []},
-        attrs={
-            "communicator": True,
-            "exclude_vars": excludes,
-            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-        })
+    # excludes = config.get_exclueds_vars()
+    #
+    # program.global_block().append_op(
+    #     type="recv",
+    #     inputs={"X": []},
+    #     outputs={"Out": []},
+    #     attrs={
+    #         "communicator": True,
+    #         "exclude_vars": excludes,
+    #         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+    #     })
+    import warnings
+    warnings.warn("init_from_server_pass need implement later")
+    return program
 
 
 def fake_init_ops_pass(program, config):
@@ -235,5 +240,39 @@ def fake_init_ops_pass(program, config):
 
     sparse_tables = _get_sparse_table_names()
     _fake_init_sparsetable(sparse_tables)
+
+    return program
+
+
+def delet_extra_optimizes_pass(program, config):
+    optimize_vars = []
+    optimize_op_role_vars = []
+    optimize_need_delete_vars = []
+
+    origin_program = config.get_origin_main_program()
+    for op in _get_optimize_ops(origin_program):
+        optimize_vars.extend(op.input_arg_names)
+        optimize_op_role_vars.extend(op.attr("op_role_var"))
+
+    optimize_vars = list(set(optimize_vars))
+    optimize_op_role_vars = list(set(optimize_op_role_vars))
+
+    for var in optimize_vars:
+        if var not in optimize_op_role_vars:
+            optimize_need_delete_vars.append(var)
+    need_delete_optimize_vars = list(set(optimize_need_delete_vars))
+
+    init_ops = []
+    for var in need_delete_optimize_vars:
+        param_init_op = []
+        for op in program.global_block().ops:
+            if var in op.output_arg_names:
+                param_init_op.append(op)
+        init_ops.extend(param_init_op)
+    delete_ops(program.global_block(), init_ops)
+
+    for var in need_delete_optimize_vars:
+        if program.global_block().has_var(var):
+            program.global_block()._remove_var(var)
 
     return program

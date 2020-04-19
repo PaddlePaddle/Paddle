@@ -40,7 +40,7 @@ class SendOp : public framework::OperatorBase {
                const platform::Place& place) const override {
     auto ins = Inputs("X");
 
-    auto epmap = Attr<std::vector<std::string>>("epmap");
+    auto epmap = Attr<std::vector<std::string>>("endpoints");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
@@ -103,7 +103,7 @@ Send operator
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
-    AddAttr<std::vector<std::string>>("epmap",
+    AddAttr<std::vector<std::string>>("endpoints",
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints in the order of input "
                                       "variables for mapping")
