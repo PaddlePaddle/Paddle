@@ -13,7 +13,9 @@
 # limitations under the License.
 
 # TODO: define pooling functions
-# __all__ = ['pool2d',
-#            'pool3d',
-#            'adaptive_pool2d',
-#            'adaptive_pool3d']
+from ...paddle.fluid.layers import pool2d  #DEFINE_ALIAS
+from ...paddle.fluid.layers import pool3d  #DEFINE_ALIAS
+from ...paddle.fluid.layers import adaptive_pool2d  #DEFINE_ALIAS
+from ...paddle.fluid.layers import adaptive_pool3d  #DEFINE_ALIAS
+
+__all__ = ['pool2d', 'pool3d', 'adaptive_pool2d', 'adaptive_pool3d']

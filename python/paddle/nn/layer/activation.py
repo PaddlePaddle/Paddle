@@ -13,11 +13,12 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
+
 __all__ = [
-    # 'PReLU',
+    #       'PReLU',
     'ReLU',
     'Sigmoid',
-    # 'Softmax',
+    #       'Softmax',
     'LogSoftmax',
     'HSigmoid'
 ]

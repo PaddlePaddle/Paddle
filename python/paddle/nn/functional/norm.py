@@ -13,11 +13,16 @@
 # limitations under the License.
 
 # TODO: define normalization api  
-# __all__ = ['batch_norm',
-#            'data_norm',
-#            'group_norm',
-#            'instance_norm',
-#            'l2_normalize',
-#            'layer_norm',
-#            'lrn',
-#            'spectral_norm']
+from ...paddle.fluid.layers import l2_normalize  #DEFINE_ALIAS
+from ...paddle.fluid.layers import lrn  #DEFINE_ALIAS
+
+__all__ = [
+    #       'batch_norm',
+    #       'data_norm',
+    #       'group_norm',
+    #       'instance_norm',
+    'l2_normalize',
+    #       'layer_norm',
+    'lrn',
+    #       'spectral_norm'
+]

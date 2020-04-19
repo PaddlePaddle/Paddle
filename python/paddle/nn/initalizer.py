@@ -13,10 +13,13 @@
 # limitations under the License.
 
 # TODO: define the initializers to create a Parameter in neural network
-# __all__ = ['Bilinear',
-#            'Constant',
-#            'MSRA',
-#            'Normal',
-#            'TruncatedNormal',
-#            'Uniform',
-#            'Xavier']
+
+__all__ = [
+    #       'Bilinear',
+    #       'Constant',
+    #       'MSRA',
+    #       'Normal',
+    #       'TruncatedNormal',
+    #       'Uniform',
+    #       'Xavier'
+]

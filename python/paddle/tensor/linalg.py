@@ -17,17 +17,19 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode
 
+from ..paddle.fluid.layers import transpose  #DEFINE_ALIAS
+
 __all__ = [
     'matmul',
     'dot',
-    #  'einsum',
+    #       'einsum',
     'norm',
-    #  'transpose',
+    'transpose',
     'dist',
     't',
     'cross',
-    #  'cholesky',
-    #  'tensordot',
+    #       'cholesky',
+    #       'tensordot',
     'bmm'
 ]
 

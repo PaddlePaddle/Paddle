@@ -13,4 +13,7 @@
 # limitations under the License.
 
 # TODO: define functions to get tensor attributes  
-# __all__ = ['rank', 'shape']
+from ..paddle.fluid.layers import rank  #DEFINE_ALIAS
+from ..paddle.fluid.layers import shape  #DEFINE_ALIAS
+
+__all__ = ['rank', 'shape']

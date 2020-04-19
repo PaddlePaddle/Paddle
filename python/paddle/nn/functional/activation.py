@@ -13,33 +13,55 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
+from ...paddle.fluid.layers import brelu  #DEFINE_ALIAS
+from ...paddle.fluid.layers import elu  #DEFINE_ALIAS
+from ...paddle.fluid.layers import erf  #DEFINE_ALIAS
+from ...paddle.fluid.layers import gelu  #DEFINE_ALIAS
+from ...paddle.fluid.layers import hard_shrink  #DEFINE_ALIAS
+from ...paddle.fluid.layers import hard_sigmoid  #DEFINE_ALIAS
+from ...paddle.fluid.layers import hard_swish  #DEFINE_ALIAS
+from ...paddle.fluid.layers import leaky_relu  #DEFINE_ALIAS
+from ...paddle.fluid.layers import logsigmoid  #DEFINE_ALIAS
+from ...paddle.fluid.layers import maxout  #DEFINE_ALIAS
+from ...paddle.fluid.layers import relu6  #DEFINE_ALIAS
+from ...paddle.fluid.layers import selu  #DEFINE_ALIAS
+from ...paddle.fluid.layers import soft_relu  #DEFINE_ALIAS
+from ...paddle.fluid.layers import softmax  #DEFINE_ALIAS
+from ...paddle.fluid.layers import softplus  #DEFINE_ALIAS
+from ...paddle.fluid.layers import softshrink  #DEFINE_ALIAS
+from ...paddle.fluid.layers import softsign  #DEFINE_ALIAS
+from ...paddle.fluid.layers import swish  #DEFINE_ALIAS
+from ...paddle.fluid.layers import tanh_shrink  #DEFINE_ALIAS
+from ...paddle.fluid.layers import thresholded_relu  #DEFINE_ALIAS
+
 __all__ = [
-    #             'brelu',
-    #            'elu',
-    #            'erf',
-    #            'gelu',
-    #            'hard_shrink',
-    #            'hard_sigmoid',
-    #            'hard_swish',
+    'brelu',
+    'elu',
+    'erf',
+    'gelu',
+    'hard_shrink',
+    'hard_sigmoid',
+    'hard_swish',
     'hsigmoid',
-    #            'leaky_relu',
-    #            'logsigmoid',
-    #            'maxout',
-    #            'prelu',
+    'leaky_relu',
+    'logsigmoid',
+    'maxout',
+    #       'prelu',
     'relu',
-    #            'relu6',
-    #            'selu',
+    'relu6',
+    'selu',
     'sigmoid',
-    #            'soft_relu',
-    #            'softmax',
-    #            'softplus',
-    #            'softshrink',
-    #            'softsign',
-    #            'swish',
-    #            'tanh_shrink',
-    #            'thresholded_relu',
+    'soft_relu',
+    'softmax',
+    'softplus',
+    'softshrink',
+    'softsign',
+    'swish',
+    'tanh_shrink',
+    'thresholded_relu',
     'log_softmax'
 ]
+
 import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_

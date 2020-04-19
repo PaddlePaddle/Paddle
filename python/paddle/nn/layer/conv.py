@@ -13,13 +13,14 @@
 # limitations under the License.
 
 # TODO: define classes of convolutional neural network
+
 __all__ = [
     'Conv2D',
     'Conv2DTranspose',
     'Conv3D',
     'Conv3DTranspose',
-    #    'TreeConv',
-    #    'Conv1D'
+    #       'TreeConv',
+    #       'Conv1D'
 ]
 
 import numpy as np

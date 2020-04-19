@@ -13,23 +13,28 @@
 # limitations under the License.
 
 # TODO: define the extention functions
+from ...paddle.fluid.layers import add_position_encoding  #DEFINE_ALIAS
+from ...paddle.fluid.layers import multiclass_nms  #DEFINE_ALIAS
+from ...paddle.fluid.layers import target_assign  #DEFINE_ALIAS
+from ...paddle.fluid.layers import temporal_shift  #DEFINE_ALIAS
+
 __all__ = [
-    #            'add_position_encoding',
-    #            'autoincreased_step_counter',
-    #            'continuous_value_model',
-    #            'filter_by_instag',
-    #            'linear_chain_crf',
-    #            'merge_selected_rows',
-    #            'multiclass_nms',
-    #            'polygon_box_transform',
-    #            'random_crop',
+    'add_position_encoding',
+    #       'autoincreased_step_counter',
+    #       'continuous_value_model',
+    #       'filter_by_instag',
+    #       'linear_chain_crf',
+    #       'merge_selected_rows',
+    'multiclass_nms',
+    #       'polygon_box_transform',
+    #       'random_crop',
     'row_conv',
-    #            'rpn_target_assign',
-    #            'similarity_focus',
-    #            'target_assign',
-    #            'temporal_shift',
-    #            'warpctc',
-    #            'diag_embed'
+    #       'rpn_target_assign',
+    #       'similarity_focus',
+    'target_assign',
+    'temporal_shift',
+    #       'warpctc',
+    #       'diag_embed'
 ]
 
 from ...fluid import core, dygraph_utils

@@ -24,60 +24,93 @@ from ..fluid.layers.layer_function_generator import _generate_doc_string_
 
 # TODO: define math functions
 # yapf: disable
+from ..paddle.fluid.layers import abs    #DEFINE_ALIAS
+from ..paddle.fluid.layers import acos    #DEFINE_ALIAS
+from ..paddle.fluid.layers import asin    #DEFINE_ALIAS
+from ..paddle.fluid.layers import ceil    #DEFINE_ALIAS
+from ..paddle.fluid.layers import cos    #DEFINE_ALIAS
+from ..paddle.fluid.layers import cumsum    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_add    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_div    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_max    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_min    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_mod    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_mul    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_pow    #DEFINE_ALIAS
+from ..paddle.fluid.layers import elementwise_sub    #DEFINE_ALIAS
+from ..paddle.fluid.layers import exp    #DEFINE_ALIAS
+from ..paddle.fluid.layers import floor    #DEFINE_ALIAS
+from ..paddle.fluid.layers import log    #DEFINE_ALIAS
+from ..paddle.fluid.layers import reciprocal    #DEFINE_ALIAS
+from ..paddle.fluid.layers import reduce_max    #DEFINE_ALIAS
+from ..paddle.fluid.layers import reduce_min    #DEFINE_ALIAS
+from ..paddle.fluid.layers import reduce_prod    #DEFINE_ALIAS
+from ..paddle.fluid.layers import reduce_sum    #DEFINE_ALIAS
+from ..paddle.fluid.layers import round    #DEFINE_ALIAS
+from ..paddle.fluid.layers import rsqrt    #DEFINE_ALIAS
+from ..paddle.fluid.layers import scale    #DEFINE_ALIAS
+from ..paddle.fluid.layers import sign    #DEFINE_ALIAS
+from ..paddle.fluid.layers import square    #DEFINE_ALIAS
+from ..paddle.fluid.layers import stanh    #DEFINE_ALIAS
+from ..paddle.fluid.layers import atan    #DEFINE_ALIAS
+from ..paddle.fluid.layers import erf    #DEFINE_ALIAS
+
 __all__ = [
-#            'abs',
-#            'acos',
-#            'asin',
-           'atan',
-#            'ceil',
-#            'cos',
-#            'cumsum',
-#            'elementwise_add',
-#            'elementwise_div',
-#            'elementwise_floordiv',
-#            'elementwise_max',
-#            'elementwise_min',
-#            'elementwise_mod',
-#            'elementwise_mul',
-#            'elementwise_pow',
-#            'elementwise_sub',
-#            'exp',
-#            'floor',
-#            'increment',
-#            'log',
-           'mul',
-#            'multiplex',
-           'pow',
-#            'reciprocal',
-#            'reduce_max',
-#            'reduce_min',
-#            'reduce_prod',
-#            'reduce_sum',
-#            'round',
-#            'rsqrt',
-#            'scale',
-#            'sign',
-           'sin',
-           'sqrt',
-#            'square',
-#            'stanh',
-           'sum',
-#            'sums',
-           'tanh',
-           'elementwise_sum',
-           'max',
-           'min',
-           'mm',
-           'div',
-           'add',
-#            'atan',
-           'logsumexp',
-#            'inverse',
-           'log1p',
-#            'erf',
-           'addcmul',
-           'addmm'
+        'abs',
+        'acos',
+        'asin',
+        'atan',
+        'ceil',
+        'cos',
+        'cumsum',
+        'elementwise_add',
+        'elementwise_div',
+        'elementwise_floordiv',
+        'elementwise_max',
+        'elementwise_min',
+        'elementwise_mod',
+        'elementwise_mul',
+        'elementwise_pow',
+        'elementwise_sub',
+        'exp',
+        'floor',
+#       'increment',
+        'log',
+        'mul',
+#       'multiplex',
+        'pow',
+        'reciprocal',
+        'reduce_max',
+        'reduce_min',
+        'reduce_prod',
+        'reduce_sum',
+        'round',
+        'rsqrt',
+        'scale',
+        'sign',
+        'sin',
+        'sqrt',
+        'square',
+        'stanh',
+        'sum',
+#       'sums',
+        'tanh',
+        'elementwise_sum',
+        'max',
+        'min',
+        'mm',
+        'div',
+        'add',
+        'atan',
+        'logsumexp',
+#       'inverse',
+        'log1p',
+        'erf',
+        'addcmul',
+        'addmm'
 ]
+
 # yapf: enable.
 
 

@@ -17,20 +17,28 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant
 
 # TODO: define the common functions to build a neural network  
-# __all__ = ['dropout',
-#            'embedding',
-#            'fc',
-#            'label_smooth',
-#            'one_hot',
-#            'pad',
-#            'pad_constant_like',
-#            'pad2d',
-#            'unfold',
-#            'bilinear_tensor_product',
-#            'assign',
-#            'interpolate']
+from ...paddle.fluid.layers import dropout  #DEFINE_ALIAS
+from ...paddle.fluid.layers import label_smooth  #DEFINE_ALIAS
+from ...paddle.fluid import one_hot  #DEFINE_ALIAS
+from ...paddle.fluid.layers import pad  #DEFINE_ALIAS
+from ...paddle.fluid.layers import pad2d  #DEFINE_ALIAS
+from ...paddle.fluid.layers import unfold  #DEFINE_ALIAS
+from ...paddle.fluid.layers import assign  #DEFINE_ALIAS
 
-__all__ = ['interpolate']
+__all__ = [
+    'dropout',
+    #       'embedding',
+    #       'fc',
+    'label_smooth',
+    'one_hot',
+    'pad',
+    #       'pad_constant_like',
+    'pad2d',
+    'unfold',
+    #       'bilinear_tensor_product',
+    'assign',
+    'interpolate'
+]
 
 
 def interpolate(input,

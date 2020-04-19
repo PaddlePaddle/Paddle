@@ -13,25 +13,45 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network  
-# __all__ = ['bpr_loss',
-#            'center_loss',
-#            'cross_entropy',
-#            'dice_loss',
-#            'edit_distance',
-#            'huber_loss',
-#            'iou_similarity',
-#            'kldiv_loss',
-#            'log_loss',
-#            'margin_rank_loss',
-#            'mse_loss',
-#            'nce',
-#            'npair_loss',
-#            'rank_loss',
-#            'sampled_softmax_with_cross_entropy',
-#            'sigmoid_cross_entropy_with_logits',
-#            'sigmoid_focal_loss',
-#            'smooth_l1',
-#            'softmax_with_cross_entropy',
-#            'square_error_cost',
-#            'ssd_loss',
-#            'teacher_student_sigmoid_loss']
+from ...paddle.fluid.layers import bpr_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import center_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import cross_entropy  #DEFINE_ALIAS
+from ...paddle.fluid.layers import dice_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import iou_similarity  #DEFINE_ALIAS
+from ...paddle.fluid.layers import kldiv_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import log_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import mse_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import npair_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import rank_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
+from ...paddle.fluid.layers import sigmoid_focal_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import smooth_l1  #DEFINE_ALIAS
+from ...paddle.fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
+from ...paddle.fluid.layers import square_error_cost  #DEFINE_ALIAS
+from ...paddle.fluid.layers import ssd_loss  #DEFINE_ALIAS
+from ...paddle.fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
+
+__all__ = [
+    'bpr_loss',
+    'center_loss',
+    'cross_entropy',
+    'dice_loss',
+    #       'edit_distance',
+    #       'huber_loss',
+    'iou_similarity',
+    'kldiv_loss',
+    'log_loss',
+    #       'margin_rank_loss',
+    'mse_loss',
+    #       'nce',
+    'npair_loss',
+    'rank_loss',
+    #       'sampled_softmax_with_cross_entropy',
+    'sigmoid_cross_entropy_with_logits',
+    'sigmoid_focal_loss',
+    'smooth_l1',
+    'softmax_with_cross_entropy',
+    'square_error_cost',
+    'ssd_loss',
+    'teacher_student_sigmoid_loss'
+]

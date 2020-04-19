@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["RowConv"]
+__all__ = ['RowConv']
 
 from ...fluid.dygraph import layers
 from .. import functional as F

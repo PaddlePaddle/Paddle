@@ -13,11 +13,16 @@
 # limitations under the License.
 
 # TODO: define api to implement decoding algorithm  
-# __all__ = ['BeamSearchDecoder',
-#            'Decoder',
-#            'beam_search',
-#            'beam_search_decode',
-#            'crf_decoding',
-#            'ctc_greedy_decoder',
-#            'dynamic_decode',
-#            'gather_tree']
+from ..paddle.fluid.layers import beam_search  #DEFINE_ALIAS
+from ..paddle.fluid.layers import beam_search_decode  #DEFINE_ALIAS
+
+__all__ = [
+    #       'BeamSearchDecoder',
+    #       'Decoder',
+    'beam_search',
+    'beam_search_decode',
+    #       'crf_decoding',
+    #       'ctc_greedy_decoder',
+    #       'dynamic_decode',
+    #       'gather_tree'
+]

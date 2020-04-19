@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # TODO: define statistical functions of a tensor  
-__all__ = [  #'mean', 
-    #'reduce_mean', 
-    'std',
-    'var'
-]
+from ..paddle.fluid.layers import mean  #DEFINE_ALIAS
+from ..paddle.fluid.layers import reduce_mean  #DEFINE_ALIAS
+
+__all__ = ['mean', 'reduce_mean', 'std', 'var']
+
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import in_dygraph_mode

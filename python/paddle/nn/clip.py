@@ -13,10 +13,17 @@
 # limitations under the License.
 
 # TODO: define the functions to clip gradient of parameter  
-# __all__ = ['ErrorClipByValue',
-#            'GradientClipByGlobalNorm',
-#            'GradientClipByNorm',
-#            'GradientClipByValue',
-#            'set_gradient_clip',
-#            'clip',
-#            'clip_by_norm']
+from ..paddle.fluid.clip import GradientClipByGlobalNorm  #DEFINE_ALIAS
+from ..paddle.fluid.clip import GradientClipByNorm  #DEFINE_ALIAS
+from ..paddle.fluid.clip import GradientClipByValue  #DEFINE_ALIAS
+from ..paddle.fluid.layers import clip  #DEFINE_ALIAS
+
+__all__ = [
+    #       'ErrorClipByValue',
+    'GradientClipByGlobalNorm',
+    'GradientClipByNorm',
+    'GradientClipByValue',
+    #       'set_gradient_clip',
+    'clip',
+    #       'clip_by_norm'
+]
