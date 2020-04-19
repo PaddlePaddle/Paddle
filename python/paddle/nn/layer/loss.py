@@ -224,40 +224,55 @@ class L1Loss(fluid.dygraph.Layer):
 
 class BCELoss(fluid.dygraph.Layer):
     """
-    This op accepts input predictions and target label and returns binary 
-    cross entropy error.
-    For predictions label, and target label, the loss is calculated as follows.
+    This op measures the binary cross entropy between input predictions and target label. 
+    The BCELoss layer calculates the binary cross entropy loss as follows.
+
     If :attr:`weight` is set, the loss is:
+
+    .. math::
         Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
     If :attr:`weight` is None, the loss is:
+
+    .. math::
         Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
 
     If :attr:`reduction` set to ``'none'``, the unreduced loss is:
+
     .. math::
         Out = Out
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
     .. math::
         Out = MEAN(Out)
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
     .. math::
         Out = SUM(Out)
+
     Parameters:
         input (Variable): Input tensor, the data type is float32,
-            float64. Input must in (0, 1).
+            float64. Input must be in [0, 1].
         label (Variable): Label tensor, has the same shape with input, 
-            the data type is float32, float64.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight given
-            to each class. It has the same dimensions as class number and the data type
-            is float32, float64, int32, int64. Default is ``'None'``.
+            the data type is float32, float64. Note that the label should be numbers
+            between 0 and 1.
+        weight (Variable, optional): Weight tensor, a manual rescaling weight given 
+            to the loss of each batch element. If given, has to be a Variable of size 
+            nbatch and the data type is float32, float64, int32, int64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
+
     Returns:
         The tensor variable storing the bce_loss of input and label.
+
     Return type: Variable.
+
     Examples:
         .. code-block:: python
+
             # declarative mode
             import paddle.fluid as fluid
             import numpy as np
@@ -318,7 +333,7 @@ class BCELoss(fluid.dygraph.Layer):
         if self.weight is not None:
             if isinstance(self.weight, fluid.framework.Variable):
                 w = self.weight
-                out = fluid.layers.elementwise_mul(out, w, axis=0)
+                out = fluid.layers.elementwise_mul(out, w, axis=-1)
             else:
                 raise ValueError(
                     "The weight is not a Variable, please convert to Variable.")
