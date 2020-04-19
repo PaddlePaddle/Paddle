@@ -101,7 +101,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
             for d in node.decorator_list:
                 if isinstance(d, gast.Name) and d.id not in DECORATOR_NAMES:
                     raise NotImplementedError(
-                        "ProgramTranslator hasn't implement multiple decorator. Please remove "
+                        "ProgramTranslator hasn't implemented multiple decorators. Please remove "
                         + d.id + " in " + self.decorate_func_name)
                 if isinstance(d, gast.Attribute):
                     full_attribute_name = get_attribute_full_name(d)
@@ -112,7 +112,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
                             break
                     if not has_translate_decorator:
                         raise NotImplementedError(
-                            "ProgramTranslator hasn't implement multiple decorator. Please remove "
+                            "ProgramTranslator hasn't implemented multiple decorators. Please remove "
                             + full_attribute_name + " in " +
                             self.decorate_func_name)
             node.decorator_list = decorator_list
