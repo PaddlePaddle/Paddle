@@ -10592,7 +10592,6 @@ def rank(input):
             input = fluid.data(name="input", shape=[3, 100, 100], dtype="float32")
             rank = fluid.layers.rank(input) # rank=(3,)
     """
-    check_type(input, 'input', (Variable), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
