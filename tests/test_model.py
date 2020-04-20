@@ -190,7 +190,8 @@ class TestModel(unittest.TestCase):
 
         eval_result = model.evaluate(val_dataset, batch_size=batch_size)
 
-        output = model.predict(test_dataset, batch_size=batch_size)
+        output = model.predict(
+            test_dataset, batch_size=batch_size, stack_outputs=True)
 
         np.testing.assert_equal(output[0].shape[0], len(test_dataset))
 

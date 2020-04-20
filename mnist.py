@@ -24,10 +24,10 @@ import numpy as np
 from paddle import fluid
 from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from vision.datasets import MNIST as MnistDataset
+from hapi.datasets.mnist import MNIST as MnistDataset
 
-from model import Model, CrossEntropy, Input, set_device
-from metrics import Accuracy
+from hapi.model import Model, CrossEntropy, Input, set_device
+from hapi.metrics import Accuracy
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):

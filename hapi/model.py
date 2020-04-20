@@ -1135,7 +1135,7 @@ class Model(fluid.dygraph.Layer):
                 test_data,
                 batch_size=1,
                 num_workers=0,
-                stack_outputs=True):
+                stack_outputs=False):
         """
         FIXME: add more comments and usage
         Args:
@@ -1183,20 +1183,34 @@ class Model(fluid.dygraph.Layer):
             loader = test_loader()
 
         outputs = []
-        for data in tqdm.tqdm(loader):
+        count = 0
+        for i, data in tqdm.tqdm(enumerate(loader)):
             data = flatten(data)
-            outputs.append(self.test(data[:len(self._inputs)]))
+            out = to_list(self.test(data[:len(self._inputs)]))
+            outputs.append(out)
+            count += out[0].shape[0]
+
+        if test_loader is not None and self._adapter._nranks > 1 \
+                    and isinstance(test_loader, DataLoader) \
+                    and count > len(test_loader.dataset):
+            size = outputs[-1][0].shape[0] - (count - len(test_loader.dataset))
+            outputs[-1] = [o[:size] for o in outputs[-1]]
 
         # NOTE: for lod tensor output, we should not stack outputs
         # for stacking may loss its detail info
-        outputs = list(zip(*outputs))
+
         if stack_outputs:
-            outputs = [np.stack(outs, axis=0) for outs in outputs]
+            stack_outs = []
+            for i in range(len(outputs[0])):
+                split_outs = []
+                for out in outputs:
+                    split_outs.append(out[i])
+                stack_outs.append(np.vstack(split_outs))
+
+            outputs = stack_outs
 
         self._test_dataloader = None
-        if test_loader is not None and self._adapter._nranks > 1 \
-                    and isinstance(test_loader, DataLoader):
-            outputs = [o[:len(test_loader.dataset)] for o in outputs]
+
         return outputs
 
     def set_eval_data(self, eval_data):
