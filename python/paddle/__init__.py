@@ -155,7 +155,7 @@ from .tensor.linalg import norm  #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
 from .tensor.linalg import dist  #DEFINE_ALIAS
 from .tensor.linalg import t  #DEFINE_ALIAS
-# from .tensor.linalg import cross   #DEFINE_ALIAS
+from .tensor.linalg import cross  #DEFINE_ALIAS
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS
 # from .tensor.manipulation import cast   #DEFINE_ALIAS
@@ -183,7 +183,7 @@ from .tensor.linalg import t  #DEFINE_ALIAS
 # from .tensor.manipulation import unstack   #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.manipulation import unbind   #DEFINE_ALIAS
-# from .tensor.manipulation import roll   #DEFINE_ALIAS
+from .tensor.manipulation import roll  #DEFINE_ALIAS
 from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import argmin   #DEFINE_ALIAS
 # from .tensor.search import argsort   #DEFINE_ALIAS
@@ -192,9 +192,9 @@ from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import masked_select   #DEFINE_ALIAS
 # from .tensor.search import topk   #DEFINE_ALIAS
 # from .tensor.search import where   #DEFINE_ALIAS
-# from .tensor.search import index_select   #DEFINE_ALIAS
+from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import index_sample  #DEFINE_ALIAS
-# from .tensor.search import nonzero   #DEFINE_ALIAS
+from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
 # from .framework.framework import get_default_dtype   #DEFINE_ALIAS
