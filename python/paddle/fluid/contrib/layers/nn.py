@@ -1355,7 +1355,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     pre_act = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="batch_fc",
-        inputs={"Input": input_var,
+        inputs={"Input": input,
                 "W": w,
                 "Bias": b},
         outputs={"Out": pre_act})
