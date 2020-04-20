@@ -30,15 +30,15 @@ __global__ void WhereCUDAKernel(const int N, const bool* cond, const T* x,
 }
 
 template <typename T>
-__global__ void WhereGradCUDAKernel(const int N, const T* out, const bool* cond,
-                                    T* x, T* y) {
+__global__ void WhereGradCUDAKernel(const int N, const T* dout,
+                                    const bool* cond, T* dx, T* dy) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
-    if (x != nullptr) {
-      x[idx] = out[idx] * (cond[idx] ? 1. : 0.);
+    if (dx != nullptr) {
+      dx[idx] = cond[idx] ? dout[idx] : 0.;
     }
-    if (y != nullptr) {
-      y[idx] = out[idx] * (cond[idx] ? 0. : 1.);
+    if (dy != nullptr) {
+      dy[idx] = cond[idx] ? 0. : dout[idx];
     }
   }
 }
@@ -48,9 +48,6 @@ class WhereKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::PermissionDenied("It must use CUDAPlace."));
     auto* condition = context.Input<framework::Tensor>("Condition");
     auto* X = context.Input<framework::Tensor>("X");
     auto* Y = context.Input<framework::Tensor>("Y");
@@ -78,10 +75,6 @@ class WhereGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::PermissionDenied("It must use CUDAPlace."));
-
     auto* condition = context.Input<framework::Tensor>("Condition");
     const bool* cond_data = condition->data<bool>();
     auto numel = condition->numel();

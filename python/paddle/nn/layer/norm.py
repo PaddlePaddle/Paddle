@@ -17,3 +17,6 @@
 #            'GroupNorm',
 #            'LayerNorm',
 #            'SpectralNorm']
+__all__ = ['InstanceNorm']
+
+from ...fluid.dygraph.nn import InstanceNorm
