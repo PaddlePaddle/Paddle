@@ -27,6 +27,8 @@ function(detect_installed_gpus out_variable)
 
     file(WRITE ${cufile} ""
       "#include <cstdio>\n"
+      "#include \"cuda.h\"\n"
+      "#include \"cuda_runtime.h\"\n"
       "int main() {\n"
       "  int count = 0;\n"
       "  if (cudaSuccess != cudaGetDeviceCount(&count)) return -1;\n"
