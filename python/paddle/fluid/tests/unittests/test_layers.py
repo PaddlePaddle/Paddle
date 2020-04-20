@@ -3195,6 +3195,14 @@ class TestBook(LayerTest):
                 [x, y], start_index=0, length=2)
             return (sum)
 
+    def test_batched_gemm(self):
+        with self.static_graph():
+            x = fluid.data(name="x", shape=[16, 2, 3], dtype="float32")
+            y = fluid.data(name="y", shape=[16, 3, 5], dtype="float32")
+            out = fluid.contrib.layers.batched_gemm(
+                x=x, y=y, batch_count=16, mat_m=2, mat_n=5, mat_k=3)
+            return (out)
+
     def test_rank_attention(self):
         with self.static_graph():
             input = fluid.data(name="input", shape=[None, 2], dtype="float32")
