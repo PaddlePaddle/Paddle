@@ -25,6 +25,7 @@ import paddle.fluid.profiler as profiler
 import paddle.fluid as fluid
 
 from hapi.model import Input, set_device
+from hapi.vision.transforms import BatchCompose
 
 from utility import add_arguments, print_arguments
 from utility import SeqAccuracy, MyProgBarLogger
@@ -97,7 +98,7 @@ def main(FLAGS):
         labels=labels)
 
     train_dataset = data.train()
-    train_collate_fn = data.BatchCompose(
+    train_collate_fn = BatchCompose(
         [data.Resize(), data.Normalize(), data.PadTarget()])
     train_sampler = data.MyBatchSampler(
         train_dataset, batch_size=FLAGS.batch_size, shuffle=True)
@@ -109,7 +110,7 @@ def main(FLAGS):
         return_list=True,
         collate_fn=train_collate_fn)
     test_dataset = data.test()
-    test_collate_fn = data.BatchCompose(
+    test_collate_fn = BatchCompose(
         [data.Resize(), data.Normalize(), data.PadTarget()])
     test_sampler = data.MyBatchSampler(
         test_dataset,

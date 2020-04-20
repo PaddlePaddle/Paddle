@@ -27,6 +27,7 @@ import paddle.fluid as fluid
 
 from hapi.model import Input, set_device
 from hapi.datasets.folder import ImageFolder
+from hapi.vision.transforms import BatchCompose
 
 from utility import add_arguments, print_arguments
 from utility import postprocess, index2word
@@ -67,7 +68,7 @@ def main(FLAGS):
 
     fn = lambda p: Image.open(p).convert('L')
     test_dataset = ImageFolder(FLAGS.image_path, loader=fn)
-    test_collate_fn = data.BatchCompose([data.Resize(), data.Normalize()])
+    test_collate_fn = BatchCompose([data.Resize(), data.Normalize()])
     test_loader = fluid.io.DataLoader(
         test_dataset,
         places=device,

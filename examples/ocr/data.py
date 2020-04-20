@@ -29,40 +29,6 @@ TRAIN_LIST_FILE_NAME = "train.list"
 TEST_LIST_FILE_NAME = "test.list"
 
 
-class BatchCompose(object):
-    def __init__(self, transforms=[]):
-        self.transforms = transforms
-
-    def __call__(self, data):
-        for f in self.transforms:
-            try:
-                data = f(data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                logger.info("fail to perform batch transform [{}] with error: "
-                            "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
-        # sample list to batch data
-        batch = list(zip(*data))
-        return batch
-
-
-class Compose(object):
-    def __init__(self, transforms=[]):
-        self.transforms = transforms
-
-    def __call__(self, *data):
-        for f in self.transforms:
-            try:
-                data = f(*data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                logger.info("fail to perform transform [{}] with error: "
-                            "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
-        return data
-
-
 class Resize(object):
     def __init__(self, height=48):
         self.interp = Image.NEAREST  # Image.ANTIALIAS
