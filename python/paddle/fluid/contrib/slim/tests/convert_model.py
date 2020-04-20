@@ -36,12 +36,12 @@ def parse_args():
         '--model_save_path',
         type=str,
         default='',
-        help='A path to a saved model.')
+        help='A path to the converted model.')
     parser.add_argument(
         '--file_name',
         type=str,
         default='',
-        help='A name to a dot file. Default model name from path will be used')
+        help='A name to save file. Default - name from model path will be used')
     parser.add_argument(
         '--pdf',
         type=bool,
@@ -52,7 +52,7 @@ def parse_args():
     return test_args, sys.argv[:1] + args
 
 
-def save_model_to_dot_file(original_path, save_path, file_name, to_pdf):
+def convert_model(original_path, save_path, file_name, to_pdf):
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     inference_scope = fluid.executor.global_scope()
@@ -81,5 +81,5 @@ def save_model_to_dot_file(original_path, save_path, file_name, to_pdf):
 if __name__ == '__main__':
     global test_args
     test_args, remaining_args = parse_args()
-    save_model_to_dot_file(test_args.model_path, test_args.model_save_path,
-                           test_args.file_name, test_args.pdf)
+    convert_model(test_args.model_path, test_args.model_save_path,
+                  test_args.file_name, test_args.pdf)

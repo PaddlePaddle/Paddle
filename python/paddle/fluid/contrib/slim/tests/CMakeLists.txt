@@ -100,6 +100,14 @@ function(save_qat_model_test target qat_model_dir fp32_model_save_path int8_mode
 		 --quantized_ops ${quantized_ops})
 endfunction()
 
+function(convert_model_test target model_path model_save_path file_name pdf)
+    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/convert_model.py
+            ARGS --model_path ${model_path}
+	         --model_save_path ${model_save_path}
+	         --file_name ${file_name}
+			 --pdf ${pdf})
+endfunction()
+
 if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_light_nas)
     list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
@@ -242,6 +250,10 @@ if(LINUX AND WITH_MKLDNN)
 	set(QAT2_INT8_ERNIE_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_int8")
 	set(QAT2_FP32_ERNIE_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_fp32")
 	save_qat_model_test(save_qat2_model_ernie ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QAT2_FP32_ERNIE_SAVE_PATH} ${QAT2_INT8_ERNIE_SAVE_PATH} ${QAT2_NLP_QUANTIZED_OPS})
+
+	# Convert QAT2 model to dot and pdf files 
+	set(QAT2_INT8_ERNIE_DOT_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_int8_dot_file")
+	convert_model_test(convert_model_ernie ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QAT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_qat2_int8" True)
 
 endif()
 
