@@ -60,7 +60,7 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
                   "device [default true].")
-        .SetDefault(false);
+        .SetDefault(true);
     AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
                                      comment.equation));
     AddComment(string::Sprintf(R"DOC(
