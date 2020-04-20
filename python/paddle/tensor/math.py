@@ -1012,38 +1012,52 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
 def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
     """
-This operator calculates the log of the sum of exponentials of the input Tensor.
+    This operator calculates the log of the sum of exponentials of the input Tensor.
 
-.. math::
-   logsumexp(x) = \log\sum exp(x)
-
-
-Parameters:
-   x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
-   dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`, 
-     sum all elements of :attr:`input` and return a Tensor variable with a single element, 
-     otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
-     the dimension to reduce is :math:`rank + dim[i]`.
-   keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. 
-     The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim` 
-     is true, default value is False.
-   name (str, optional): The default value is None.  Normally there is no need for user to 
-     set this property.  For more information, please refer to :ref:`api_guide_Name`
+    .. math::
+       logsumexp(x) = \log\sum exp(x)
 
 
-Examples:
+    Parameters:
+       x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+       dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`,
+         sum all elements of :attr:`input` and return a Tensor variable with a single element,
+         otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+         the dimension to reduce is :math:`rank + dim[i]`.
+       keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor.
+         The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim`
+         is true, default value is False.
+       out (Variable), optional):  Enable user to explicitly specify an output variable to save result.
+       name (str, optional): The default value is None.  Normally there is no need for user to
+         set this property.  For more information, please refer to :ref:`api_guide_Name`
 
-.. code-block:: python
+    Returns:
+       Variable: The calcuated result Tensor/LoDTensor.
 
-    import paddle
-    import paddle.fluid as fluid
-    import numpy as np
-    
-    with fluid.dygraph.guard():
-      np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-      x = fluid.dygraph.to_variable(np_x)
-      print(paddle.logsumexp(x).numpy())
+    Examples:
 
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+          np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+          x = fluid.dygraph.to_variable(np_x)
+          print(paddle.logsumexp(x).numpy())
+
+    ..  code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
+            x = fluid.dygraph.to_variable(np_x)
+            print(paddle.logsumexp(x, dim=1).numpy())
+            print(paddle.logsumexp(x, dim=[0, 2]).numpy())
 
     """
     op_type = 'logsumexp'
