@@ -25,7 +25,7 @@ namespace details {
 FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                              std::vector<Scope *> *local_scopes,
                              std::vector<Scope *> *local_exec_scopes,
-                             StreamExecutor *exec)
+                             GPUStreamExecutor *exec)
     : OpHandleBase(node),
       data_(data),
       offset_(offset),
@@ -70,7 +70,7 @@ void FetchOpHandle::RunImpl() {
 #ifdef PADDLE_WITH_CUDA
         if (exec_ && exec_->GetD2HStream()) {
           // If have d2h stream, we make a callback function.
-          auto CopyFinished = [this]() { this->WaitAndMergeCPUTensors(); };
+          // auto CopyFinished = [this]() { this->WaitAndMergeCPUTensors(); };
           LOG(INFO) << "++++fetch var:" << var_handle->name();
           TensorCopyD2H(t, cpu_pinned, &tensors_[i], exec_->GetD2HStream(),
                         exec_->GetMainStream());

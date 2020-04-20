@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/stream_executor_impl.h"
+#include "paddle/fluid/framework/details/stream_executor_gpu.h"
 
 namespace paddle {
 namespace framework {
