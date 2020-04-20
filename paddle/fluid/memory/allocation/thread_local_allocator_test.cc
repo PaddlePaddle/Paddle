@@ -20,9 +20,11 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {
@@ -30,19 +32,17 @@ namespace allocation {
 
 TEST(ThreadLocalAllocator, cross_scope_release) {
   FLAGS_fraction_of_gpu_memory_to_use = 0.1;
+  FLAGS_allocator_strategy = "thread_local";
 
   const size_t thread_num = 5;
   const std::vector<int> devices = platform::GetSelectedDevices();
 
   std::vector<std::vector<void *>> allocator_addresses(devices.size());
   std::vector<std::vector<AllocationPtr>> thread_allocations(devices.size());
-  static std::vector<std::shared_ptr<Allocator>> allocators(devices.size());
 
   for (size_t i = 0; i < devices.size(); ++i) {
     allocator_addresses[i].resize(thread_num);
     thread_allocations[i].resize(thread_num);
-    allocators[i] = std::make_shared<CUDAThreadLocalAllocator>(
-        platform::CUDAPlace(devices[i]));
   }
 
   std::vector<std::thread> threads(thread_num);
@@ -57,10 +57,11 @@ TEST(ThreadLocalAllocator, cross_scope_release) {
         cv.wait(lock, [&] { return flag; });
       }
       for (size_t j = 0; j < devices.size(); ++j) {
+        thread_allocations[j][i] =
+            memory::Alloc(platform::CUDAPlace(devices[j]), 10);
         auto tl_allocator_impl =
-            CUDAThreadLocalAllocatorPool::Instance().Get(devices[j]);
+            ThreadLocalCUDAAllocatorPool::Instance().Get(devices[j]);
         allocator_addresses[j][i] = tl_allocator_impl.get();
-        thread_allocations[j][i] = std::move(allocators[j]->Allocate(10));
       }
     });
   }
