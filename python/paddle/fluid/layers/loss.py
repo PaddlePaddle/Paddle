@@ -1551,6 +1551,7 @@ def huber_loss(input, label, delta):
     helper = LayerHelper('huber_loss', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'huber_loss')
+    assert 1 == 2, 'huber loss validation'
     check_variable_and_dtype(label, 'label', ['float32', 'float64'],
                              'huber_loss')
     residual = helper.create_variable_for_type_inference(
