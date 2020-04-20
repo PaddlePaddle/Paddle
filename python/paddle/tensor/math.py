@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core
+from ..fluid.framework import core, _varbase_creator
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 
 # TODO: define math functions
@@ -902,7 +902,10 @@ def mm(input, mat2, out=None, name=None):
             out = paddle.mm(x, mat2) # out shape is [2, 2]
     """
     if in_dygraph_mode():
-        return core.ops.matmul(input, mat2)
+        if out is None:
+            out = _varbase_creator(dtype=input.dtype)
+        core.ops.matmul(input, mat2, out)
+        return out
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
