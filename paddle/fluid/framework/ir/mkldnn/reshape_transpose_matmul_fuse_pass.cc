@@ -65,8 +65,8 @@ void ReshapeTransposeMatmulFusePass::Fuse(Graph *graph,
 
     auto UpdateMatmul = [&](std::string matmul_input_name) {
       matmul_desc->SetInput(matmul_input_name, {(reshape_in)->Name()});
-      matmul_desc->SetAttr("shape_" + matmul_input_name, reshape_shape);
-      matmul_desc->SetAttr("axis_" + matmul_input_name, transpose_axis);
+      matmul_desc->SetAttr("fused_reshape_" + matmul_input_name, reshape_shape);
+      matmul_desc->SetAttr("fused_transpose_" + matmul_input_name, transpose_axis);
     };
     if (matmul_desc->Inputs().at("X").at(0) == input_var_name) {
       UpdateMatmul("X");

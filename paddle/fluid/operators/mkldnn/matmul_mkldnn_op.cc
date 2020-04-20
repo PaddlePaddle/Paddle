@@ -122,8 +122,8 @@ class MatMulFactory {
 
   std::pair<math::MatDescriptor, memory::dims> GetInputDimsAndStrides(
       const ExecutionContext& ctx, std::string input_name) {
-    auto shape = ctx.Attr<std::vector<int>>("shape_" + input_name);
-    auto axis = ctx.Attr<std::vector<int>>("axis_" + input_name);
+    auto shape = ctx.Attr<std::vector<int>>("fused_reshape_" + input_name);
+    auto axis = ctx.Attr<std::vector<int>>("fused_transpose_" + input_name);
     auto input_dims = ctx.Input<Tensor>(input_name)->dims();
     auto new_dims = input_dims;
     if (!shape.empty() && !axis.empty()) {
@@ -180,8 +180,8 @@ class MatMulFactory {
     batch_size_ = 1;
     auto b = BS;
     if (BS > 1 &&
-        !(ctx.Attr<std::vector<int>>("shape_X").empty() &&
-          ctx.Attr<std::vector<int>>("shape_Y").empty())) {
+        !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
+          ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())) {
       batch_size_ = ctx.Input<Tensor>("X")->dims()[0];
       b = BS / batch_size_;
     }
@@ -302,13 +302,11 @@ class MatMulFactory {
 template <typename XT, typename YT, typename OT>
 static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
     const ExecutionContext& ctx) {
-  const auto x_dims = framework::vectorize<int>(ctx.Input<Tensor>("X")->dims());
-  const auto y_dims = framework::vectorize<int>(ctx.Input<Tensor>("Y")->dims());
   const auto& out_name = ctx.OutputName("Out");
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
   const std::string key =
-      platform::CreateKey(platform::ThreadIDasStr(), x_dims, y_dims, out_name);
+      platform::CreateKey(platform::ThreadIDasStr(), out_name);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));

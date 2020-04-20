@@ -320,8 +320,8 @@ class MatMulGradKernel : public framework::OpKernel<T> {
 
 framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
                                std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("shape_" + input_name);
-  auto axis = ctx.Attrs().Get<std::vector<int>>("axis_" + input_name);
+  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis = ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
   auto dim = ctx.GetInputDim(input_name);
   if (!shape.empty() && !axis.empty()) {
     PADDLE_ENFORCE_GE(
@@ -336,6 +336,11 @@ framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
             "shape_%s attribute of MatMulOp was implemented for 2, 3 "
             "or 4 dimensions.",
             input_name));
+    PADDLE_ENFORCE_EQ(shape.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
+            "must be equal.",
+            input_name, input_name));
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -470,6 +475,18 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              R"DOC(Shape of fused reshape of `X` input.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              R"DOC(Axis of fused transpose of `X` input.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
+        .SetDefault({});
     /* int8 parameters */
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
@@ -490,18 +507,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
-    AddAttr<std::vector<int>>(
-        "shape_X", "Reshape's shape before reshape-transpose-matmul fuse.")
-        .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "shape_Y", "Reshape's shape before reshape-transpose-matmul fuse.")
-        .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "axis_X", "Transpose's axis before reshape-transpose-matmul fuse.")
-        .SetDefault({});
-    AddAttr<std::vector<int>>(
-        "axis_Y", "Transpose's axis before reshape-transpose-matmul fuse.")
-        .SetDefault({});
+
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);

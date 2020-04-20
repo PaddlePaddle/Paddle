@@ -108,10 +108,10 @@ void TestMain(bool with_xshapes) {
   auto* matmul_op_desc = GetOpNodes(graph, "matmul").at(0)->Op();
 
   auto check = [&matmul_op_desc](std::string a) {
-    std::string shape_str = "shape_" + a;
+    std::string shape_str = "fused_reshape_" + a;
     EXPECT_THAT(matmul_op_desc->GetAttrIfExists<std::vector<int>>(shape_str),
                 testing::ElementsAre(0, 0, 12, 64));
-    std::string axis_str = "axis_" + a;
+    std::string axis_str = "fused_transpose_" + a;
     EXPECT_THAT(matmul_op_desc->GetAttrIfExists<std::vector<int>>(axis_str),
                 testing::ElementsAre(0, 2, 1, 3));
   };
