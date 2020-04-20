@@ -31,18 +31,35 @@ DEFINE_bool(use_gpu, false, "Whether use gpu.");
 namespace paddle {
 namespace demo {
 
-void Main(bool use_gpu) {
+namespace {
+std::unique_ptr<PaddlePredictor> create_predictor(const std::string& dir,
+                                                  bool use_gpu,
+                                                  bool use_analysis,
+                                                  bool thread_stream) {
+  AnalysisConfig config;
+  config.SetModel(dir);
+  if (use_gpu) {
+    config.EnableUseGpu(100);
+  }
+  if (thread_stream) {
+    CHECK_EQ(use_gpu, true);
+    config.BindGpuStreamToThread();
+  }
+  if (!use_analysis) {
+    return CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
+  }
+  return CreatePaddlePredictor<AnalysisConfig>(config);
+}
+}  // namespace
+
+void Main(bool use_gpu, bool use_analysis = false) {
   //# 1. Create PaddlePredictor with a config.
-  NativeConfig config;
   if (FLAGS_dirname.empty()) {
     LOG(INFO) << "Usage: ./simple_on_word2vec --dirname=path/to/your/model";
     exit(1);
   }
-  config.model_dir = FLAGS_dirname;
-  config.use_gpu = use_gpu;
-  config.fraction_of_gpu_memory = 0.15;
-  config.device = 0;
-  auto predictor = CreatePaddlePredictor<NativeConfig>(config);
+  auto predictor =
+      create_predictor(FLAGS_dirname, use_gpu, use_analysis, false);
 
   for (int batch_id = 0; batch_id < 3; batch_id++) {
     //# 2. Prepare input.
@@ -76,15 +93,12 @@ void Main(bool use_gpu) {
   }
 }
 
-void MainThreads(int num_threads, bool use_gpu) {
+void MainThreads(int num_threads, bool use_gpu, bool use_analysis = false,
+                 bool thread_stream = false) {
   // Multi-threads only support on CPU
   // 0. Create PaddlePredictor with a config.
-  NativeConfig config;
-  config.model_dir = FLAGS_dirname;
-  config.use_gpu = use_gpu;
-  config.fraction_of_gpu_memory = 0.15;
-  config.device = 0;
-  auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
+  auto main_predictor =
+      create_predictor(FLAGS_dirname, use_gpu, use_analysis, thread_stream);
 
   std::vector<std::thread> threads;
   for (int tid = 0; tid < num_threads; ++tid) {
@@ -132,13 +146,17 @@ void MainThreads(int num_threads, bool use_gpu) {
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  paddle::demo::Main(false /* use_gpu*/);
-  paddle::demo::MainThreads(1, false /* use_gpu*/);
-  paddle::demo::MainThreads(4, false /* use_gpu*/);
   if (FLAGS_use_gpu) {
+    paddle::demo::MainThreads(4, true /*use_gpu*/, true /*use_analysis*/,
+                              true /*thread_stream*/);
     paddle::demo::Main(true /*use_gpu*/);
     paddle::demo::MainThreads(1, true /*use_gpu*/);
     paddle::demo::MainThreads(4, true /*use_gpu*/);
+    paddle::demo::MainThreads(4, true /*use_gpu*/, true /*use_analysis*/);
   }
+  paddle::demo::Main(false /* use_gpu*/);
+  paddle::demo::MainThreads(1, false /* use_gpu*/);
+  paddle::demo::MainThreads(4, false /* use_gpu*/);
+  paddle::demo::MainThreads(4, false /* use_gpu*/, true /*use_analysis*/);
   return 0;
 }
