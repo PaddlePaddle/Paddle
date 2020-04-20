@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ def main(FLAGS):
     test_dataset = data.test()
     test_collate_fn = BatchCompose(
         [data.Resize(), data.Normalize(), data.PadTarget()])
-    test_sampler = data.MyBatchSampler(
+    test_sampler = data.BatchSampler(
         test_dataset,
         batch_size=FLAGS.batch_size,
         drop_last=False,
@@ -125,7 +125,7 @@ def beam_search(FLAGS):
     test_dataset = data.test()
     test_collate_fn = BatchCompose(
         [data.Resize(), data.Normalize(), data.PadTarget()])
-    test_sampler = data.MyBatchSampler(
+    test_sampler = data.BatchSampler(
         test_dataset,
         batch_size=FLAGS.batch_size,
         drop_last=False,

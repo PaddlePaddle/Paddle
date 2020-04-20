@@ -97,7 +97,7 @@ class PadTarget(object):
         return samples
 
 
-class MyBatchSampler(fluid.io.BatchSampler):
+class BatchSampler(fluid.io.BatchSampler):
     def __init__(self,
                  dataset,
                  batch_size,
@@ -178,8 +178,6 @@ class OCRDataset(paddle.io.Dataset):
                 h, w = int(h), int(w)
                 labels = [int(c) for c in labels.split(',')]
                 self._sample_infos.append(SampleInfo(i, h, w, im_name, labels))
-        #self._sample_infos = sorted(self._sample_infos,
-        #    key=lambda x: x.w)
 
     def __getitem__(self, idx):
         info = self._sample_infos[idx]
