@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from . import folder
+from . import mnist
+from . import flowers
+
 from .folder import *
 from .mnist import *
 from .flowers import *
-from .coco import *
+
+__all__ = folder.__all__ \
+        + mnist.__all__ \
+        + flowers.__all__

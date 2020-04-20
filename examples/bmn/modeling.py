@@ -26,7 +26,7 @@ DATATYPE = 'float32'
 
 pretrain_infos = {
     'bmn': ('https://paddlemodels.bj.bcebos.com/hapi/bmn.pdparams',
-            '9286c821acc4cad46d6613b931ba468c')
+            'aa84e3386e1fbd117fb96fa572feeb94')
 }
 
 
@@ -462,5 +462,5 @@ def bmn(tscale,
         weight_path = get_weights_path(*(pretrain_infos['bmn']))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
-        model.load(weight_path[:-9])
+        model.load(weight_path)
     return model
