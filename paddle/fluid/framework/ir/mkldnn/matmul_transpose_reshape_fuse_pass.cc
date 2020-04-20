@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void MatmulTransposeReshapePass::ApplyImpl(ir::Graph *graph) const {
+void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -52,8 +52,8 @@ void MatmulTransposeReshapePass::ApplyImpl(ir::Graph *graph) const {
 
     OpDesc *matmul_desc = matmul_op->Op();
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
-    matmul_desc->SetAttr("reshape_Out", reshape_shape);
-    matmul_desc->SetAttr("transpose_Out", transpose_axis);
+    matmul_desc->SetAttr("fused_reshape_Out", reshape_shape);
+    matmul_desc->SetAttr("fused_transpose_Out", transpose_axis);
 
     GraphSafeRemoveNodes(graph,
                          {matmul_out, transpose_op, transpose_out, reshape_op,
@@ -76,4 +76,4 @@ void MatmulTransposeReshapePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace paddle
 
 REGISTER_PASS(matmul_transpose_reshape_fuse_pass,
-              paddle::framework::ir::MatmulTransposeReshapePass);
+              paddle::framework::ir::MatmulTransposeReshapeMKLDNNPass);

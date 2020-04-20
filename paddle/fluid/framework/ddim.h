@@ -130,7 +130,7 @@ class DDim {
   DDim reshape(const std::vector<T>& shape) const {
     const int64_t copy_dim_val = 0;
     const DDim& in_dims = *this;
-    framework::DDim out_dims;
+    DDim out_dims;
     out_dims.rank_ = shape.size();
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] == copy_dim_val) {
@@ -150,25 +150,25 @@ class DDim {
   template <typename T>
   DDim transpose(const std::vector<T>& axis) const {
     const DDim& in_dims = *this;
-    size_t x_rank = in_dims.size();
+    size_t in_rank = in_dims.size();
     size_t axis_size = axis.size();
 
     PADDLE_ENFORCE_EQ(
-        x_rank, axis_size,
+        in_rank, axis_size,
         platform::errors::InvalidArgument("The input dimension's size "
                                           "should be equal to the axis's size. "
                                           "But received dimension is %d, "
                                           "axis's size is %d",
-                                          x_rank, axis_size));
+                                          in_rank, axis_size));
 
     std::vector<T> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
       PADDLE_ENFORCE_LT(axis[i], static_cast<T>(axis_size),
                         platform::errors::InvalidArgument(
-                            "ValueError: Each element of axis should "
-                            "be a unique value range from 0 to (dims - 1), "
+                            "ValueError: Each element of axis must appear "
+                            "exactly once in the range from 0 to (dims - 1), "
                             "where the dims is the axis's size, "
-                            "But received axis[%d] is %d, axis_size is %d",
+                            "but received axis[%d] is %d, axis_size is %d",
                             i, axis[i], axis_size));
       PADDLE_ENFORCE_EQ(
           ++count[axis[i]], 1,
@@ -181,7 +181,7 @@ class DDim {
               i, count[axis[i]]));
     }
 
-    framework::DDim out_dims(in_dims);
+    DDim out_dims(in_dims);
     for (size_t i = 0; i < axis_size; i++) {
       out_dims[i] = in_dims[axis[i]];
     }

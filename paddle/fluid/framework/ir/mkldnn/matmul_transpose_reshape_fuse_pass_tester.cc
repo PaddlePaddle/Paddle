@@ -27,19 +27,17 @@ void SetOp(ProgramDesc *prog, const std::string &type,
   op->SetInput("X", {inputs[0]});
   op->SetOutput("Out", {outputs[0]});
   if (type == "transpose2") {
-    op->SetAttr("axis", std::vector<int>({0, 2, 1}));
+    op->SetAttr("axis", std::vector<int>({0, 2, 1, 3}));
     op->SetOutput("XShape", {outputs[1]});
   }
   if (type == "reshape2") {
-    op->SetAttr("shape", std::vector<int>({0, 2, 1}));
+    op->SetAttr("shape", std::vector<int>({4, 5, 6}));
     op->SetOutput("XShape", {outputs[1]});
   }
 
   if (type == "matmul") {
     op->SetInput("Y", {inputs[1]});
     op->SetAttr("use_mkldnn", true);
-    op->SetAttr("reshape_Out", std::vector<int64_t>({1, 2, 3}));
-    op->SetAttr("transpose_Out", std::vector<int64_t>({0, 2, 1}));
   }
 }
 
@@ -75,8 +73,10 @@ void MainTest(const ProgramDesc &prog) {
     if (node->IsOp()) {
       auto *op = node->Op();
       if (op->Type() == "matmul") {
-        ASSERT_TRUE(op->HasAttr("reshape_Out"));
-        ASSERT_TRUE(op->HasAttr("transpose_Out"));
+        EXPECT_EQ(op->GetAttrIfExists<std::vector<int>>("fused_reshape_Out"),
+                  std::vector<int>({4, 5, 6}));
+        EXPECT_EQ(op->GetAttrIfExists<std::vector<int>>("fused_transpose_Out"),
+                  std::vector<int>({0, 2, 1, 3}));
       }
     }
   }

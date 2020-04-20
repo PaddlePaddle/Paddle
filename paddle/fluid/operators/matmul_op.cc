@@ -415,17 +415,23 @@ class MatMulOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul+transpose+reshape fuse activated
     auto reshape_out =
-        context->Attrs().Get<std::vector<int64_t>>("reshape_Out");
+        context->Attrs().Get<std::vector<int64_t>>("fused_reshape_Out");
     auto transpose_out =
-        context->Attrs().Get<std::vector<int64_t>>("transpose_Out");
+        context->Attrs().Get<std::vector<int64_t>>("fused_transpose_Out");
 
     if (!reshape_out.empty() && !transpose_out.empty()) {
       auto reshape_out_size = reshape_out.size();
-      PADDLE_ENFORCE_EQ(reshape_out_size == 3 || reshape_out_size == 4, true,
+      auto transpose_out_size = transpose_out.size();
+      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
                         platform::errors::InvalidArgument(
-                            "reshape_out supported rank is 3 and 4, "
+                            "transpose_out_size supported rank is 4, "
                             "received %d",
-                            reshape_out_size));
+                            transpose_out_size));
+      PADDLE_ENFORCE_EQ(
+          reshape_out_size, 3,
+          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
+                                            "received %d",
+                                            reshape_out_size));
       framework::DDim shape_out =
           ddim_out.transpose(transpose_out).reshape(reshape_out);
       context->SetOutputDim("Out", shape_out);
@@ -493,9 +499,11 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
-    AddAttr<std::vector<int64_t>>("reshape_Out", "Shape of fused reshape.")
+    AddAttr<std::vector<int64_t>>("fused_reshape_Out",
+                                  "Shape of fused reshape.")
         .SetDefault({});
-    AddAttr<std::vector<int64_t>>("transpose_Out", "Axis of fused transpose.")
+    AddAttr<std::vector<int64_t>>("fused_transpose_Out",
+                                  "Axis of fused transpose.")
         .SetDefault({});
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)

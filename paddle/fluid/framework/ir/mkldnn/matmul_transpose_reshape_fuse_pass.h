@@ -22,9 +22,9 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-class MatmulTransposeReshapePass : public FusePassBase {
+class MatmulTransposeReshapeMKLDNNPass : public FusePassBase {
  public:
-  virtual ~MatmulTransposeReshapePass() {}
+  virtual ~MatmulTransposeReshapeMKLDNNPass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;

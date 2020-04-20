@@ -82,9 +82,11 @@ class MatMulFactory {
   }
 
   bool IsOutputFused(const ExecutionContext& ctx) const {
-    auto& reshape_Out = ctx.Attr<std::vector<int64_t>>("reshape_Out");
-    auto& transpose_Out = ctx.Attr<std::vector<int64_t>>("transpose_Out");
-    return !reshape_Out.empty() && !transpose_Out.empty();
+    auto& fused_reshape_Out =
+        ctx.Attr<std::vector<int64_t>>("fused_reshape_Out");
+    auto& fused_transpose_Out =
+        ctx.Attr<std::vector<int64_t>>("fused_transpose_Out");
+    return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
   }
 
   void correctStridesWhenOutputFused(const ExecutionContext& ctx,
@@ -247,17 +249,11 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
     const ExecutionContext& ctx) {
   const auto x_dims = framework::vectorize<int>(ctx.Input<Tensor>("X")->dims());
   const auto y_dims = framework::vectorize<int>(ctx.Input<Tensor>("Y")->dims());
-  const auto out_dims =
-      framework::vectorize<int>(ctx.Output<Tensor>("Out")->dims());
-  const auto& reshape_Out = ctx.Attr<std::vector<int64_t>>("reshape_Out");
-  const auto& transpose_Out = ctx.Attr<std::vector<int64_t>>("transpose_Out");
   const auto& out_name = ctx.OutputName("Out");
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-  auto src_dt = MKLDNNGetDataType<XT>();
-  auto out_dt = MKLDNNGetDataType<OT>();
-  const std::string key = platform::CreateKey(
-      platform::ThreadIDasStr(), src_dt, out_dt, x_dims, y_dims, out_dims,
-      reshape_Out, transpose_Out, out_name);
+
+  const std::string key =
+      platform::CreateKey(platform::ThreadIDasStr(), x_dims, y_dims, out_name);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
