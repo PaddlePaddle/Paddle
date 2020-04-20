@@ -2741,7 +2741,7 @@ def generate_proposals(scores,
                        min_size=0.1,
                        eta=1.0,
                        name=None,
-                       return_lod=False):
+                       return_rois_num=False):
     """
     **Generate proposal Faster-RCNN**
 
@@ -2788,7 +2788,10 @@ def generate_proposals(scores,
             width < min_size. The data type must be float32. `0.1` by default.
         eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
             `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes rois's 
+            num of every batch. The N represents the batch size. For example, the tensor has values [4,5,6] that represents
+            the batch 1 has 4 rois, the batch 2 has 4 rois and the batch 3 has 6 rois. It only used in dygraph rcnn model. 
+            'False' by default. 
     Returns:
         tuple:
         A tuple with format ``(rpn_rois, rpn_roi_probs)``.
