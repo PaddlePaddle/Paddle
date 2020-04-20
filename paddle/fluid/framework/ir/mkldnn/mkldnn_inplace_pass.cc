@@ -139,9 +139,14 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
         VLOG(3) << "TODO: MKL-DNN InPlace: Next Op is in-placed , updating its "
                    "input "
                    "and output var!";
-        // next_op->Op()->SetOutput(
-        //    out_name, std::vector<std::string>({current_op_out->Name()}));
-        // next_op_out->RenameVar(current_op_in->Name());
+        next_op->Op()->SetOutput(
+            out_name, std::vector<std::string>({current_op_out->Name()}));
+        next_op_out->RenameVar(current_op_in->Name());
+        // Get ops that next_op_out is linked to and update their input
+        auto next_op_out_consumers = next_op_out->outputs; // Has to be ops
+        for (auto& c : next_op_out_consumers) {
+          c->Op()->RenameInput(original_name, current_op_out->Name());
+        }
       }
     }
 
