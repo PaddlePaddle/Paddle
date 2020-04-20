@@ -14,13 +14,6 @@
 
 # TODO: define random functions  
 
-# __all__ = ['gaussin', 
-#            'uniform', 
-#            'shuffle',
-#            'randn',
-#            'rand',
-#            'randint']
-
 import numpy as np
 
 from ..fluid import core
@@ -31,7 +24,17 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers import utils
 from ..fluid.layers.tensor import fill_constant
 
-__all__ = ['randperm', 'randn', 'randint']
+from ..fluid.io import shuffle  #DEFINE_ALIAS
+
+__all__ = [
+    #       'gaussin',
+    #       'uniform',
+    'shuffle',
+    'randn',
+    #       'rand',
+    'randint',
+    'randperm'
+]
 
 
 def randint(low,

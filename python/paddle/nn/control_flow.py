@@ -13,10 +13,16 @@
 # limitations under the License.
 
 # TODO: define the control flow api  
-# __all__ = ['case',
-#            'cond',
-#            'DynamicRNN',
-#            'StaticRNN',
-#            'switch_case',
-#            'while_loop',
-#            'rnn']
+from ..fluid.layers import case  #DEFINE_ALIAS
+from ..fluid.layers import cond  #DEFINE_ALIAS
+from ..fluid.layers import while_loop  #DEFINE_ALIAS
+
+__all__ = [
+    'case',
+    'cond',
+    #       'DynamicRNN',
+    #       'StaticRNN',
+    #       'switch_case',
+    'while_loop',
+    #       'rnn'
+]

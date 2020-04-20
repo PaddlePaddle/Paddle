@@ -17,24 +17,38 @@ from ..fluid.data_feeder import check_type
 from ..fluid.layers.layer_function_generator import templatedoc
 
 # TODO: define logic functions of a tensor  
+from ..fluid.layers import greater_equal  #DEFINE_ALIAS
+from ..fluid.layers import greater_than  #DEFINE_ALIAS
+from ..fluid.layers import is_empty  #DEFINE_ALIAS
+from ..fluid.layers import isfinite  #DEFINE_ALIAS
+from ..fluid.layers import less_equal  #DEFINE_ALIAS
+from ..fluid.layers import less_than  #DEFINE_ALIAS
+from ..fluid.layers import logical_and  #DEFINE_ALIAS
+from ..fluid.layers import logical_not  #DEFINE_ALIAS
+from ..fluid.layers import logical_or  #DEFINE_ALIAS
+from ..fluid.layers import logical_xor  #DEFINE_ALIAS
+from ..fluid.layers import not_equal  #DEFINE_ALIAS
+from ..fluid.layers import reduce_all  #DEFINE_ALIAS
+from ..fluid.layers import reduce_any  #DEFINE_ALIAS
+
 __all__ = [
     'equal',
-    #            'greater_equal',
-    #            'greater_than',
-    #            'is_empty',
-    #            'isfinite',
-    #            'less_equal',
-    #            'less_than',
-    #            'logical_and',
-    #            'logical_not',
-    #            'logical_or',
-    #            'logical_xor',
-    #            'not_equal',
-    #            'reduce_all',
-    #            'reduce_any',
+    'greater_equal',
+    'greater_than',
+    'is_empty',
+    'isfinite',
+    'less_equal',
+    'less_than',
+    'logical_and',
+    'logical_not',
+    'logical_or',
+    'logical_xor',
+    'not_equal',
+    'reduce_all',
+    'reduce_any',
     'allclose',
     'elementwise_equal',
-    #            'isnan'
+    #       'isnan'
 ]
 
 
