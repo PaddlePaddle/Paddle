@@ -247,6 +247,8 @@ class GreedyEmbeddingHelper(fluid.layers.GreedyEmbeddingHelper):
             self.start_token_value = start_tokens
         super(GreedyEmbeddingHelper, self).__init__(embedding_fn, start_tokens,
                                                     end_token)
+        self.end_token = fluid.layers.create_global_var(
+            shape=[1], dtype="int64", value=end_token, persistable=True)
 
     def initialize(self, batch_ref=None):
         if getattr(self, "need_convert_start_tokens", False):
@@ -319,7 +321,7 @@ class AttentionGreedyInferModel(AttentionModel):
         encoder_padding_mask = (src_mask - 1.0) * 1e9
         encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
 
-        # dynamic decoding with beam search
+        # dynamic decoding with greedy search
         rs, _ = self.greedy_search_decoder(
             inits=decoder_initial_states,
             encoder_output=encoder_output,

@@ -168,6 +168,7 @@ class SampleInfo(object):
     def __init__(self, i, lens):
         self.i = i
         self.lens = lens
+        self.max_len = lens[0]
 
     def get_ranges(self, min_length=None, max_length=None, truncate=False):
         ranges = []

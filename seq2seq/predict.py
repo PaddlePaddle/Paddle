@@ -113,7 +113,7 @@ def do_predict(args):
         for data in data_loader():
             finished_seq = model.test(inputs=flatten(data))[0]
             finished_seq = finished_seq[:, :, np.newaxis] if len(
-                finished_seq.shape == 2) else finished_seq
+                finished_seq.shape) == 2 else finished_seq
             finished_seq = np.transpose(finished_seq, [0, 2, 1])
             for ins in finished_seq:
                 for beam_idx, beam in enumerate(ins):
