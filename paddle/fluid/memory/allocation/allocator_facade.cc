@@ -81,6 +81,18 @@ class AllocatorFacadePrivate {
         break;
       }
 
+      case AllocatorStrategy::kThreadLocal: {
+        InitNaiveBestFitCPUAllocator();
+#ifdef PADDLE_WITH_CUDA
+        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+             ++dev_id) {
+          InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+        break;
+      }
+
       default: {
         PADDLE_THROW("Unsupported allocator strategy: %d",
                      static_cast<int>(strategy));
@@ -134,11 +146,11 @@ class AllocatorFacadePrivate {
   }
 
   void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
-#ifndef PADDLE_ON_INFERENCE
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
-#else
-    allocators_[p] = std::make_shared<CUDAThreadLocalAllocator>(p);
-#endif
+  }
+
+  void InitThreadLocalCUDAAllocator(platform::CUDAPlace p) {
+    allocators_[p] = std::make_shared<ThreadLocalCUDAAllocator>(p);
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p) {

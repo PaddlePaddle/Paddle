@@ -57,32 +57,32 @@ class ThreadLocalAllocatorImpl
   platform::Place place_;
 };
 
-class CUDAThreadLocalAllocatorPool {
+class ThreadLocalCUDAAllocatorPool {
  public:
-  static CUDAThreadLocalAllocatorPool& Instance() {
-    static thread_local CUDAThreadLocalAllocatorPool pool;
+  static ThreadLocalCUDAAllocatorPool& Instance() {
+    static thread_local ThreadLocalCUDAAllocatorPool pool;
     return pool;
   }
 
   std::shared_ptr<ThreadLocalAllocatorImpl> Get(int gpu_id);
 
  private:
-  CUDAThreadLocalAllocatorPool();
+  ThreadLocalCUDAAllocatorPool();
   std::vector<int> devices_;
   std::vector<std::unique_ptr<std::once_flag>> init_flags_;
   std::vector<std::shared_ptr<ThreadLocalAllocatorImpl>> allocators_;
 };
 
-class CUDAThreadLocalAllocator : public Allocator {
+class ThreadLocalCUDAAllocator : public Allocator {
  public:
-  explicit CUDAThreadLocalAllocator(const platform::CUDAPlace& p)
+  explicit ThreadLocalCUDAAllocator(const platform::CUDAPlace& p)
       : gpu_id_(p.device) {}
 
   bool IsAllocThreadSafe() const override { return true; }
 
  protected:
   Allocation* AllocateImpl(size_t size) override {
-    return CUDAThreadLocalAllocatorPool::Instance().Get(gpu_id_)->AllocateImpl(
+    return ThreadLocalCUDAAllocatorPool::Instance().Get(gpu_id_)->AllocateImpl(
         size);
   }
   void FreeImpl(Allocation* allocation) override {

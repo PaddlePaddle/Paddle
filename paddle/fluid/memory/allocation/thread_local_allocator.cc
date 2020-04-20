@@ -31,7 +31,7 @@ ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
   }
 }
 
-std::shared_ptr<ThreadLocalAllocatorImpl> CUDAThreadLocalAllocatorPool::Get(
+std::shared_ptr<ThreadLocalAllocatorImpl> ThreadLocalCUDAAllocatorPool::Get(
     int gpu_id) {
   auto pos = std::distance(devices_.begin(),
                            std::find(devices_.begin(), devices_.end(), gpu_id));
@@ -47,7 +47,7 @@ std::shared_ptr<ThreadLocalAllocatorImpl> CUDAThreadLocalAllocatorPool::Get(
   return allocators_[pos];
 }
 
-CUDAThreadLocalAllocatorPool::CUDAThreadLocalAllocatorPool()
+ThreadLocalCUDAAllocatorPool::ThreadLocalCUDAAllocatorPool()
     : devices_(platform::GetSelectedDevices()) {
   auto gpu_num = devices_.size();
   allocators_.resize(gpu_num);
