@@ -20,8 +20,10 @@ from ....framework import IrGraph
 from ....framework import IrNode
 from ....framework import Operator
 from .... import unique_name
-from ....framework import Program, program_guard
+from ....framework import Program, program_guard, default_startup_program
 from ....data import data
+from ....layers import mean
+from ....optimizer import MomentumOptimizer, SGDOptimizer
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
     'TransformForMobilePass', 'OutScaleForTrainingPass',
@@ -168,7 +170,9 @@ class QuantizationTransformPass(object):
                  weight_quantize_func=None,
                  act_quantize_func=None,
                  weight_preprocess_func=None,
-                 act_preprocess_func=None):
+                 act_preprocess_func=None,
+                 optimizer=None,
+                 for_test=False):
         """
         Constructor.
 
@@ -224,6 +228,8 @@ class QuantizationTransformPass(object):
         self._act_quantize_func = act_quantize_func
         self._weight_preprocess_func = weight_preprocess_func
         self._act_preprocess_func = act_preprocess_func
+        self._optimizer = optimizer
+        self._for_test = for_test
 
         quant_type = [
             'abs_max', 'channel_wise_abs_max', 'range_abs_max',
@@ -337,14 +343,21 @@ class QuantizationTransformPass(object):
 
         def _insert_func(graph, func, var_node, op):
             tmp_program = Program()
-            with program_guard(tmp_program):
+            with program_guard(tmp_program, default_startup_program()):
                 with unique_name.guard(var_node.name()):
                     in_node = data(
                         var_node.name() + '_tmp_input',
                         shape=var_node.shape(),
                         dtype='float32')
                     out_node = func(in_node)
-            tmp_graph = IrGraph(core.Graph(tmp_program.desc), for_test=False)
+                    loss = mean(out_node)
+                #if self._optimizer is not None:
+                if not self._for_test:
+                    in_node.stop_gradient = False
+                    optimizer = SGDOptimizer(0.001)
+                    optimizer.minimize(loss)
+            tmp_graph = IrGraph(
+                core.Graph(tmp_program.desc), for_test=self._for_test)
             in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
                                                    in_node.name)
             out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
@@ -369,10 +382,44 @@ class QuantizationTransformPass(object):
                                                       in_node.name())
             target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
                                                        out_node.name())
+            loss_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                 loss.name)
             outputs = target_in_node.outputs
             for node in outputs:
                 graph.update_input_link(target_in_node, var_node, node)
             graph.update_input_link(var_node, target_out_node, op)
+            op_out = op.outputs[0]
+            try:
+                var_node_grad = graph._find_node_by_name(
+                    graph.all_var_nodes(), var_node.name() + "@GRAD")
+            except:
+                var_node_grad = None
+            if not self._for_test:
+                op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
+                                                       op_out.name() + "@GRAD")
+                op_grad = op_out_grad.outputs[0]
+                origin_in_node_grad = op_grad.outputs[0]
+                target_out_grad_node = graph._find_node_by_name(
+                    graph.all_var_nodes(), target_out_node.name() + "@GRAD")
+                in_node_grad = graph._find_node_by_name(
+                    graph.all_var_nodes(), target_in_node.name() + "@GRAD")
+                in_node_grad_op = in_node_grad.inputs
+
+                graph.update_input_link(var_node, target_out_node, op_grad)
+                #target_out_grad_node.clear_inputs()
+                #graph.link_to(op_grad, target_out_grad_node)
+                if var_node_grad:
+                    graph.update_output_link(var_node_grad,
+                                             target_out_grad_node, op_grad)
+                in_node_grad_op = in_node_grad.inputs
+                for op in in_node_grad_op:
+                    graph.update_input_link(target_in_node, var_node, op)
+                    graph.update_output_link(in_node_grad, origin_in_node_grad,
+                                             op)
+                graph.safe_remove_nodes(in_node_grad)
+
+            graph.safe_remove_nodes(loss_node.inputs[0])
+            graph.safe_remove_nodes(loss_node)
             graph.safe_remove_nodes(target_in_node)
             return target_out_node
 
@@ -401,12 +448,12 @@ class QuantizationTransformPass(object):
                     if is_weight and self._weight_quantize_func is not None:
                         target_out_node = _insert_func(
                             graph, self._weight_quantize_func, var_node, op)
-                        dequantized_vars[name] = target_out_node
+                        #dequantized_vars[name] = target_out_node
                         continue
                     elif not is_weight and self._act_quantize_func is not None:
                         target_out_node = _insert_func(
                             graph, self._act_quantize_func, var_node, op)
-                        dequantized_vars[name] = target_out_node
+                        #dequantized_vars[name] = target_out_node
                         continue
 
                     quant_bits = self._weight_bits if is_weight \
