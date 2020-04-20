@@ -972,6 +972,8 @@ EOF
     FROM ${BASE_IMAGE}
     MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
     ENV HOME /root
+    WORKDIR /usr/bin
+    RUN apt-get update && apt install -y gcc-4.8 g++-4.8 && cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ && ln -s gcc-4.8 gcc && ln -s g++-4.8 g++
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
