@@ -11372,6 +11372,12 @@ Examples:
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+    check_variable_and_dtype(x, "x", ["bool"], op_name)
+    if y is not None:
+        check_variable_and_dtype(y, "y", ["bool"], op_name)
+    if out is not None:
+        check_type(out, "out", Variable, op_name)
+
     helper = LayerHelper(op_name, **locals())
 
     if binary_op:
