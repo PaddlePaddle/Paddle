@@ -23,6 +23,7 @@ limitations under the License. */
 #include "pybind11/pybind11.h"
 
 #include "paddle/fluid/operators/distributed/communicator.h"
+#include "paddle/fluid/operators/distributed/communicator_common.h"
 
 namespace py = pybind11;
 
@@ -36,6 +37,13 @@ using paddle::operators::distributed::SyncCommunicator;
 
 namespace paddle {
 namespace pybind {
+
+void BindCommunicatorContext(py::module* m) {
+  py::class_<CommContext>(*m, "CommContext")
+      .def(py::init<const std::string&, const std::vector<std::string>&,
+                    const std::vector<std::string>&,
+                    const std::vector<int64_t>&, int, bool, bool>());
+}
 
 void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
