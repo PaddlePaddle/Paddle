@@ -181,7 +181,7 @@ from .extension import diag_embed  #DEFINE_ALIAS
 # from .lod import dynamic_lstm   #DEFINE_ALIAS
 # from .lod import dynamic_lstmp   #DEFINE_ALIAS
 from . import common
-__all__ += common.__all__
+#__all__ += common.__all__
 # from .common import dropout   #DEFINE_ALIAS
 # from .common import embedding   #DEFINE_ALIAS
 # from .common import fc   #DEFINE_ALIAS
