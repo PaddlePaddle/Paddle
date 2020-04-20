@@ -101,16 +101,15 @@ class MatMulFactory {
                             "ValueError: Each element of axis should "
                             "be a unique value range from 0 to (dims - 1), "
                             "where the dims is the axis's size, "
-                            "But received axis[%d] is %d, axis_size is %d",
+                            "but received axis[%d] is %d, axis_size is %d",
                             i, axis[i], axis_size));
       PADDLE_ENFORCE_EQ(
           ++count[axis[i]], 1,
           platform::errors::InvalidArgument(
-              "ValueError: Each element of axis should "
-              "be a unique value range from 0 to (dims - 1), "
+              "ValueError: Each element of axis must "
+              "appear exactly once in the range from 0 to (dims - 1), "
               "where the dims is the axis's size, "
-              "unique value means this axis value can appear only once. "
-              "But received count[axis[%d]] is %d",
+              "but received count[axis[%d]] is %d",
               i, count[axis[i]]));
     }
 
