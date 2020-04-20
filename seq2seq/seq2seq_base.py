@@ -27,7 +27,10 @@ class CrossEntropyCriterion(Loss):
         super(CrossEntropyCriterion, self).__init__()
 
     def forward(self, outputs, labels):
-        (predict, mask), label = outputs, labels[0]
+        predict, (trg_length, label) = outputs[0], labels
+        # for target padding mask
+        mask = layers.sequence_mask(
+            trg_length, maxlen=layers.shape(predict)[1], dtype=predict.dtype)
 
         cost = layers.softmax_with_cross_entropy(
             logits=predict, label=label, soft_label=False)
@@ -151,17 +154,13 @@ class BaseModel(Model):
         self.decoder = Decoder(trg_vocab_size, embed_dim, hidden_size,
                                num_layers, dropout_prob, init_scale)
 
-    def forward(self, src, src_length, trg, trg_length):
+    def forward(self, src, src_length, trg):
         # encoder
         encoder_output, encoder_final_states = self.encoder(src, src_length)
 
         # decoder
         predict = self.decoder(trg, encoder_final_states)
-
-        # for target padding mask
-        mask = layers.sequence_mask(
-            trg_length, maxlen=layers.shape(trg)[1], dtype=predict.dtype)
-        return predict, mask
+        return predict
 
 
 class BaseInferModel(BaseModel):

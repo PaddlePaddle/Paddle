@@ -28,7 +28,7 @@ from paddle.fluid.io import DataLoader
 from model import Input, set_device
 from args import parse_args
 from seq2seq_base import BaseInferModel
-from seq2seq_attn import AttentionInferModel
+from seq2seq_attn import AttentionInferModel, AttentionGreedyInferModel
 from reader import Seq2SeqDataset, Seq2SeqBatchSampler, SortType, prepare_infer_input
 
 
@@ -87,7 +87,8 @@ def do_predict(args):
         num_workers=0,
         return_list=True)
 
-    model_maker = AttentionInferModel if args.attention else BaseInferModel
+    # model_maker = AttentionInferModel if args.attention else BaseInferModel
+    model_maker = AttentionGreedyInferModel if args.attention else BaseInferModel
     model = model_maker(
         args.src_vocab_size,
         args.tar_vocab_size,
@@ -111,6 +112,8 @@ def do_predict(args):
     with io.open(args.infer_output_file, 'w', encoding='utf-8') as f:
         for data in data_loader():
             finished_seq = model.test(inputs=flatten(data))[0]
+            finished_seq = finished_seq[:, :, np.newaxis] if len(
+                finished_seq.shape == 2) else finished_seq
             finished_seq = np.transpose(finished_seq, [0, 2, 1])
             for ins in finished_seq:
                 for beam_idx, beam in enumerate(ins):

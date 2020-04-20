@@ -44,7 +44,8 @@ def create_data_loader(args, device, for_train=True):
             end_mark="</s>",
             unk_mark="<unk>",
             max_length=args.max_len if i == 0 else None,
-            truncate=True)
+            truncate=True,
+            trg_add_bos_eos=True)
         (args.src_vocab_size, args.tar_vocab_size, bos_id, eos_id,
          unk_id) = dataset.get_vocab_summary()
         batch_sampler = Seq2SeqBatchSampler(
@@ -53,7 +54,8 @@ def create_data_loader(args, device, for_train=True):
             batch_size=args.batch_size,
             pool_size=args.batch_size * 20,
             sort_type=SortType.POOL,
-            shuffle=False if args.enable_ce else True)
+            shuffle=False if args.enable_ce else True,
+            distribute_mode=True if i == 0 else False)
         data_loader = DataLoader(
             dataset=dataset,
             batch_sampler=batch_sampler,
@@ -73,7 +75,7 @@ def prepare_train_input(insts, bos_id, eos_id, pad_id):
     src, src_length = pad_batch_data(
         [inst[0] for inst in insts], pad_id=pad_id)
     trg, trg_length = pad_batch_data(
-        [[bos_id] + inst[1] + [eos_id] for inst in insts], pad_id=pad_id)
+        [inst[1] for inst in insts], pad_id=pad_id)
     trg_length = trg_length - 1
     return src, src_length, trg[:, :-1], trg_length, trg[:, 1:, np.newaxis]
 
@@ -165,9 +167,24 @@ class TokenBatchCreator(object):
 class SampleInfo(object):
     def __init__(self, i, lens):
         self.i = i
-        # to be consistent with origianl reader implementation
-        self.min_len = lens[0]
-        self.max_len = lens[0]
+        self.lens = lens
+
+    def get_ranges(self, min_length=None, max_length=None, truncate=False):
+        ranges = []
+        # source
+        if (min_length is None or self.lens[0] >= min_length) and (
+                max_length is None or self.lens[0] <= max_length or truncate):
+            end = max_length if truncate and max_length else self.lens[0]
+            ranges.append([0, end])
+        # target
+        if len(self.lens) == 2:
+            if (min_length is None or self.lens[1] >= min_length) and (
+                    max_length is None or self.lens[1] <= max_length + 2 or
+                    truncate):
+                end = max_length + 2 if truncate and max_length else self.lens[
+                    1]
+                ranges.append([0, end])
+        return ranges if len(ranges) == len(self.lens) else None
 
 
 class MinMaxFilter(object):
@@ -197,6 +214,7 @@ class Seq2SeqDataset(Dataset):
                  end_mark="<e>",
                  unk_mark="<unk>",
                  trg_fpattern=None,
+                 trg_add_bos_eos=False,
                  byte_data=False,
                  min_length=None,
                  max_length=None,
@@ -220,6 +238,7 @@ class Seq2SeqDataset(Dataset):
         self._min_length = min_length
         self._max_length = max_length
         self._truncate = truncate
+        self._trg_add_bos_eos = trg_add_bos_eos
         self.load_src_trg_ids(fpattern, trg_fpattern)
 
     def load_src_trg_ids(self, fpattern, trg_fpattern=None):
@@ -238,8 +257,8 @@ class Seq2SeqDataset(Dataset):
             end=self._eos_idx,
             unk=self._unk_idx,
             delimiter=self._token_delimiter,
-            add_beg=False,
-            add_end=False)
+            add_beg=True if self._trg_add_bos_eos else False,
+            add_end=True if self._trg_add_bos_eos else False)
 
         converters = ComposedConverter([src_converter, trg_converter])
 
@@ -252,13 +271,12 @@ class Seq2SeqDataset(Dataset):
             fields = converters(line)
             lens = [len(field) for field in fields]
             sample = SampleInfo(i, lens)
-            if (self._min_length is None or
-                    sample.min_len >= self._min_length) and (
-                        self._max_length is None or
-                        sample.max_len <= self._max_length or self._truncate):
-                for field, slot in zip(fields, slots):
-                    slot.append(field[:self._max_length] if self._truncate and
-                                self._max_length is not None else field)
+            field_ranges = sample.get_ranges(self._min_length,
+                                             self._max_length, self._truncate)
+            if field_ranges:
+                for field, field_range, slot in zip(fields, field_ranges,
+                                                    slots):
+                    slot.append(field[field_range[0]:field_range[1]])
                 self._sample_infos.append(sample)
 
     def _load_lines(self, fpattern, trg_fpattern=None):
