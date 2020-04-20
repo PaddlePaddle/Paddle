@@ -126,15 +126,14 @@ class DDim {
 
   std::string to_str() const;
 
-  template <typename T>
-  DDim reshape(const std::vector<T>& shape) const {
+  DDim reshape(const std::vector<int>& shape) const {
     const int64_t copy_dim_val = 0;
     const DDim& in_dims = *this;
     DDim out_dims;
     out_dims.rank_ = shape.size();
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] == copy_dim_val) {
-        PADDLE_ENFORCE_LT(static_cast<T>(i), in_dims.size(),
+        PADDLE_ENFORCE_LT(static_cast<int>(i), in_dims.size(),
                           platform::errors::InvalidArgument(
                               "The index of 0 in `shape` must be less than "
                               "the dimensions. But received shape[%d] "
@@ -147,8 +146,8 @@ class DDim {
     }
     return out_dims;
   }
-  template <typename T>
-  DDim transpose(const std::vector<T>& axis) const {
+
+  DDim transpose(const std::vector<int>& axis) const {
     const DDim& in_dims = *this;
     size_t in_rank = in_dims.size();
     size_t axis_size = axis.size();
@@ -161,9 +160,9 @@ class DDim {
                                           "axis's size is %d",
                                           in_rank, axis_size));
 
-    std::vector<T> count(axis_size, 0);
+    std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE_LT(axis[i], static_cast<T>(axis_size),
+      PADDLE_ENFORCE_LT(axis[i], static_cast<int>(axis_size),
                         platform::errors::InvalidArgument(
                             "ValueError: Each element of axis must appear "
                             "exactly once in the range from 0 to (dims - 1), "
