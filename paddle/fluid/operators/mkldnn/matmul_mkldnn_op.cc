@@ -305,20 +305,11 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
     const ExecutionContext& ctx) {
   const auto x_dims = framework::vectorize<int>(ctx.Input<Tensor>("X")->dims());
   const auto y_dims = framework::vectorize<int>(ctx.Input<Tensor>("Y")->dims());
-  const auto out_dims =
-      framework::vectorize<int>(ctx.Output<Tensor>("Out")->dims());
   const auto& out_name = ctx.OutputName("Out");
-  auto src_dt = MKLDNNGetDataType<XT>();
-  auto out_dt = MKLDNNGetDataType<OT>();
-  const auto& shape_X = ctx.Attr<std::vector<int>>("shape_X");
-  const auto& shape_Y = ctx.Attr<std::vector<int>>("shape_Y");
-  const auto& axis_X = ctx.Attr<std::vector<int>>("axis_X");
-  const auto& axis_Y = ctx.Attr<std::vector<int>>("axis_Y");
   const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
-  const std::string key = platform::CreateKey(
-      platform::ThreadIDasStr(), src_dt, out_dt, x_dims, y_dims, out_dims,
-      shape_X, shape_Y, axis_X, axis_Y, out_name);
+  const std::string key =
+      platform::CreateKey(platform::ThreadIDasStr(), x_dims, y_dims, out_name);
 
   auto factory =
       std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
