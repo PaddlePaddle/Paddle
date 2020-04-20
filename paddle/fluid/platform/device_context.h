@@ -186,7 +186,7 @@ class CUDAContext {
         platform::errors::Fatal(
             "Failed to create Cusolver dn handle in DeviceContext"));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cusolverDnSetStream(cusolver_dn_handle_, stream_),
+        dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()),
         platform::errors::Fatal(
             "Failed to set stream for Cusolver dn handle in DeviceContext"));
   }
