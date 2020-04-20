@@ -24,7 +24,7 @@ __all__ = [
     #  'transpose',
     'dist',
     't',
-    #  'cross',
+    'cross',
     #  'cholesky',
     #  'tensordot'
 ]
@@ -533,4 +533,66 @@ def t(input, name=None):
             outputs={'Out': [out],
                      'XShape': [input_shape]},
             attrs={'axis': [1, 0]})
+    return out
+
+
+def cross(input, other, dim=None):
+    """
+    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
+    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
+    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    
+    Args:
+        input (Variable): The first input tensor variable.
+        other (Variable): The second input tensor variable.
+        dim (int): The dimension to take the cross-product in.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data_x = np.array([[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0],
+                               [3.0, 3.0, 3.0]])
+            data_y = np.array([[1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0]])
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_x)
+                y = fluid.dygraph.to_variable(data_y)
+                out_z1 = paddle.cross(x, y)
+                print(out_z1.numpy())
+                #[[-1. -1. -1.]
+                # [ 2.  2.  2.]
+                # [-1. -1. -1.]]
+                out_z2 = paddle.cross(x, y, dim=1)
+                print(out_z2.numpy())
+                #[[0. 0. 0.]
+                # [0. 0. 0.]
+                # [0. 0. 0.]]
+    """
+    helper = LayerHelper("cross", **locals())
+    if in_dygraph_mode():
+        if dim:
+            return core.ops.cross(input, other, 'dim', dim)
+        else:
+            return core.ops.cross(input, other)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+    attrs = dict()
+    if dim:
+        attrs['dim'] = dim
+
+    helper.append_op(
+        type='cross',
+        inputs={'X': input,
+                'Y': other},
+        outputs={'Out': out},
+        attrs=attrs)
     return out
