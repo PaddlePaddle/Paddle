@@ -48,8 +48,8 @@ __all__ = [
     'RNNCell', 'BasicLSTMCell', 'BasicGRUCell', 'RNN', 'DynamicDecode',
     'BeamSearchDecoder', 'MultiHeadAttention', 'FFN',
     'TransformerEncoderLayer', 'TransformerEncoder', 'TransformerDecoderLayer',
-    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'BiGRU',
-    'Linear_chain_crf', 'Crf_decoding', 'SequenceTagging'
+    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'Linear_chain_crf',
+    'Crf_decoding', 'SequenceTagging'
 ]
 
 
