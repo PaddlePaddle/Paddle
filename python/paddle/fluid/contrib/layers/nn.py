@@ -34,7 +34,7 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batched_gemm'
+    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc'
 ]
 
 
@@ -1300,51 +1300,63 @@ def rank_attention(input,
     return output
 
 
-def batched_gemm(x, y, batch_count, mat_m, mat_n, mat_k):
+def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     """
-    **Batched GEMM layer**
-    This Op can calculate BatchedGEMM between x and y.
+    **Batch FC layer**
+    This Op can calculate BatcheFC.
     Notice: It currently supports GPU device.
     This Op exists in contrib, which means that it is not shown to the public.
     Args:
-        x: Tensor with data type float32, float64.
-        y: Tensor with data type float32, float64.
-        batch_count: The batch size of x or y.
-        mat_m: rows of x.
-        mat_n: columns of y.
-        mat_k: columns of x or rows of y.
+        input: Tensor with data type float32, float64.
+        param_size: The size of w.
+        param_attr: Attribute initializer of w.
+        bias_size: The size of bias.
+        bias_attr: Attribute initializer of bias.
+        act: Activation to be applied to the output of this layer.
+
     Returns:
-        Variable: A Tensor with the same data type as x's.
+        Variable: A Tensor with the same data type as input's.
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
            
-           x = fluid.data(name="x", shape=[16, 2, 3], dtype="float32")
-           y = fluid.data(name="y", shape=[16, 3, 5], dtype="float32")
-           out = fluid.contrib.layers.batched_gemm(x=x,
-                                                   y=y,
-                                                   batch_count=16,
-                                                   mat_m=2,
-                                                   mat_n=5,
-                                                   mat_k=3)
+           input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+           out = fluid.contrib.layers.batch_fc(input=input,
+                                               param_size=[16, 3, 10],
+                                               param_attr=
+                                                 fluid.ParamAttr(learning_rate=1.0,
+                                                               name="w_0",
+                                                               initializer=
+                                                               fluid.initializer.Xavier(uniform=False)),
+                                               bias_size=[16, 10],
+                                               bias_attr=
+                                                 fluid.ParamAttr(learning_rate=1.0,
+                                                               name="b_0",
+                                                               initializer=
+                                                               fluid.initializer.Xavier(uniform=False)),
+                                                   act="relu")
     """
-    helper = LayerHelper('batched_gemm', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
 
-    output = helper.create_variable_for_type_inference(dtype)
+    helper = LayerHelper("batch_fc", **locals())
+    check_type(input, 'input', (Variable), 'batch_fc')
+    input_shape = input.shape
+    assert input_shape[0] == param_size[0]
+    assert input_shape[2] == param_size[1]
+    assert param_size[2] == bias_size[1]
+    assert input_shape[0] == bias_size[0]
 
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'input', ['float32', 'float64'], 'batch_fc')
+
+    w = helper.create_parameter(
+        attr=param_attr, shape=param_size, dtype=dtype, is_bias=False)
+    b = helper.create_parameter(
+        attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=False)
+    pre_act = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type="batched_gemm",
-        inputs={
-            "X": x,
-            "Y": y,
-        },
-        outputs={"Out": output},
-        attrs={
-            "BatchCount": batch_count,
-            "Mat_M": mat_m,
-            "Mat_N": mat_n,
-            "Mat_K": mat_k
-        })
-
-    return output
+        type="batch_fc",
+        inputs={"Input": input_var,
+                "W": w,
+                "Bias": b},
+        outputs={"Out": pre_act})
+    return helper.append_activation(pre_act)

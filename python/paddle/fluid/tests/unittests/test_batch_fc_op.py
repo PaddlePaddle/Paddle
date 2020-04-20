@@ -22,7 +22,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 
 
-def np_cal_batchfc(input, w, bias, dorelu):
+def np_cal_batchfc(input, w, bias):
     slot_pairs_num, batch_size, in_dim = input.shape
     _, _, out_dim = w.shape
     res = np.zeros((slot_pairs_num, batch_size, out_dim))
@@ -31,20 +31,15 @@ def np_cal_batchfc(input, w, bias, dorelu):
     for slot in range(slot_pairs_num):
         for bindx in range(out_dim):
             res[slot, :, bindx] += bias[slot, bindx]
-            if dorelu:
-                res[slot, :, bindx]
-    flag = (res > 0).astype(int)
-    res = res * flag
     return res
 
 
 class TestBatchFCOp(OpTest):
     def config(self):
         self.slot_pairs_num = 10
-        self.batch_size = 100
-        self.in_dim = 16
-        self.out_dim = 32
-        self.do_relu = True
+        self.batch_size = 5
+        self.in_dim = 10
+        self.out_dim = 12
         self.dtype = "float64"
 
     def setUp(self):
@@ -53,37 +48,58 @@ class TestBatchFCOp(OpTest):
                                        self.in_dim)).astype(self.dtype)
         self.w = np.random.random((self.slot_pairs_num, self.in_dim,
                                    self.out_dim)).astype(self.dtype)
-
         self.bias = np.random.random((self.slot_pairs_num,
                                       self.out_dim)).astype(self.dtype)
         self.op_type = "batch_fc"
-        np_out = np_cal_batchfc(self.input, self.w, self.bias, self.do_relu)
+        np_out = np_cal_batchfc(self.input, self.w, self.bias)
         np_out = np_out.astype(self.dtype)
-        str_relu = ""
-        if self.do_relu:
-            str_relu = "relu"
         self.inputs = {"Input": self.input, "W": self.w, "Bias": self.bias}
-        self.attrs = {'activation_type': str_relu}
         self.outputs = {"Out": np_out}
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
 
+    def test_check_grad_gpu(self):
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ["Bias", "W", "Input"], "Out")
 
-#    def test_check_grad_gpu(self):
-#        if core.is_compiled_with_cuda():
-#            self.check_grad_with_place(core.CUDAPlace(0), ["RankParam"], "Out")
 
-
-class TestBatchFCOp1(TestBatchFCOp):
+class TestBatchFCOp1(OpTest):
     def config(self):
         self.slot_pairs_num = 10
-        self.batch_size = 100
-        self.in_dim = 16
-        self.out_dim = 32
-        self.do_relu = False
+        self.batch_size = 5
+        self.in_dim = 10
+        self.out_dim = 12
         self.dtype = "float64"
+
+    def setUp(self):
+        self.config()
+        self.input = np.random.random((self.slot_pairs_num, self.batch_size,
+                                       self.in_dim)).astype(self.dtype)
+        self.w = np.random.random((self.slot_pairs_num, self.in_dim,
+                                   self.out_dim)).astype(self.dtype)
+        self.bias = np.random.random((self.slot_pairs_num,
+                                      self.out_dim)).astype(self.dtype)
+        self.op_type = "batch_fc"
+        np_out = np_cal_batchfc(self.input, self.w, self.bias)
+        np_out = np_out.astype(self.dtype)
+        self.inputs = {"Input": self.input, "W": self.w, "Bias": self.bias}
+        self.outputs = {"Out": np_out}
+
+    def test_check_output_cpu(self):
+        try:
+            self.check_output_with_place(place=core.CPUPlace())
+        except:
+            print("do not support cpu test, skip")
+
+    def test_check_grad_cpu(self):
+        try:
+            self.check_grad_with_place(core.CPUPlace(), ["Bias", "W", "Input"],
+                                       "Out")
+        except:
+            print("do not support cpu test, skip")
 
 
 if __name__ == "__main__":

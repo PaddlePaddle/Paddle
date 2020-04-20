@@ -3195,13 +3195,23 @@ class TestBook(LayerTest):
                 [x, y], start_index=0, length=2)
             return (sum)
 
-    def test_batched_gemm(self):
+    def test_batch_fc(self):
         with self.static_graph():
-            x = fluid.data(name="x", shape=[16, 2, 3], dtype="float32")
-            y = fluid.data(name="y", shape=[16, 3, 5], dtype="float32")
-            out = fluid.contrib.layers.batched_gemm(
-                x=x, y=y, batch_count=16, mat_m=2, mat_n=5, mat_k=3)
-            return (out)
+            input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+            out = fluid.contrib.layers.batch_fc(
+                input=input,
+                param_size=[16, 3, 10],
+                param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                bias_size=[16, 10],
+                bias_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="b_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                act="relu")
+        return (out)
 
     def test_rank_attention(self):
         with self.static_graph():

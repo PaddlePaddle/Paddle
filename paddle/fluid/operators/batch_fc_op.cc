@@ -39,12 +39,6 @@ class BatchFCOp : public framework::OperatorWithKernel {
                           "Input of BatchFCOp should have 3D."));
     PADDLE_ENFORCE_EQ(w_dims.size(), 3, platform::errors::InvalidArgument(
                                             "W of BatchFCOp should have 3D."));
-    // X.dim = slot_num * batch_size * in_dim
-    // W.dim = slot_num * in_dim * out_dim
-    // b.dim = slot_num * out_dim
-    // output.dim = slot_num * batch_size * out_dim
-    // output = ReLU(X * W + b)
-
     PADDLE_ENFORCE_EQ(
         input_dims[0], w_dims[0],
         platform::errors::InvalidArgument(
@@ -54,15 +48,13 @@ class BatchFCOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Input.dim[2] and W.dim[1] of BatchFCOp should be same."));
 
-    if (ctx->HasInput("Bias")) {
-      auto bias_dims = ctx->GetInputDim("Bias");
-      PADDLE_ENFORCE_EQ(bias_dims[0], input_dims[0],
-                        platform::errors::InvalidArgument(
-                            "Bias.dim[0] should be same as input.dim[0]."));
-      PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[2],
-                        platform::errors::InvalidArgument(
-                            "Bias.dim[1] should be same as input.dim[2]."));
-    }
+    auto bias_dims = ctx->GetInputDim("Bias");
+    PADDLE_ENFORCE_EQ(bias_dims[0], input_dims[0],
+                      platform::errors::InvalidArgument(
+                          "Bias.dim[0] should be same as input.dim[0]."));
+    PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[2],
+                      platform::errors::InvalidArgument(
+                          "Bias.dim[1] should be same as input.dim[2]."));
 
     ctx->SetOutputDim("Out", {input_dims[0], input_dims[1], w_dims[2]});
     ctx->ShareLoD("Input", /*->*/ "Out");
@@ -77,33 +69,32 @@ class BatchFCOp : public framework::OperatorWithKernel {
   }
 };
 
-// class BatchFCGradOp : public framework::OperatorWithKernel {
-// public:
-//  using framework::OperatorWithKernel::OperatorWithKernel;
-//
-//  void InferShape(framework::InferShapeContext* ctx) const override {
-//    PADDLE_ENFORCE_EQ(
-//        ctx->HasInput("Input"), true,
-//        platform::errors::InvalidArgument("Input should not be null"));
-//    PADDLE_ENFORCE_EQ(
-//        ctx->HasInput("W"), true,
-//        platform::errors::InvalidArgument("Input(W) should not be null"));
-//
-//    ctx->SetOutputDim(framework::GradVarName("Input"),
-//    ctx->GetInputDim("Input"));
-//    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
-//    ctx->SetOutputDim(framework::GradVarName("Bias"),
-//    ctx->GetInputDim("Bias"));
-//  }
-//
-// protected:
-//  framework::OpKernelType GetExpectedKernelType(
-//      const framework::ExecutionContext& ctx) const override {
-//    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-//                                       ctx, framework::GradVarName("Out")),
-//                                   ctx.device_context());
-//  }
-//};
+class BatchFCGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::InvalidArgument("Input should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("W"), true,
+        platform::errors::InvalidArgument("Input(W) should not be null"));
+
+    ctx->SetOutputDim(framework::GradVarName("Input"),
+                      ctx->GetInputDim("Input"));
+    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
+    ctx->SetOutputDim(framework::GradVarName("Bias"), ctx->GetInputDim("Bias"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
 
 class BatchFCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -112,9 +103,6 @@ class BatchFCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("W", "(Tensor) Input tensor of batch_fc_op operator.");
     AddInput("Bias", "(Tensor) Input tensor of batch_fc_op operator.");
     AddOutput("Out", "Output tensor of batch_fc_op operator.");
-    AddAttr<std::string>("activation_type",
-                         "Activation type used in fully connected operator.")
-        .SetDefault("");
     AddComment(R"DOC(
 BatchFC Operator.
 Notice: It currently supports GPU device.
@@ -123,36 +111,35 @@ This Op exists in contrib, which means that it is not shown to the public.
   }
 };
 
-// template <typename T>
-// class BatchFCGradOpMaker : public framework::SingleGradOpMaker<T> {
-// public:
-//  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-//
-// protected:
-//  void Apply(GradOpPtr<T> op) const override {
-//    op->SetType("batch_fc_grad");
-//
-//    op->SetInput("Input", this->Input("Input"));
-//    op->SetInput("W", this->Input("W"));
-//    op->SetInput("Bias", this->Input("Bias"));
-//    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-//
-//    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
-//    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
-//    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-//    op->SetAttrMap(this->Attrs());
-//  }
-//};
+template <typename T>
+class BatchFCGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("batch_fc_grad");
+
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(batch_fc, ops::BatchFCOp, ops::BatchFCOpMaker);
-//                  ops::BatchFCGradOpMaker<paddle::framework::OpDesc>,
-//                  ops::BatchFCGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(batch_fc, ops::BatchFCOp, ops::BatchFCOpMaker,
+                  ops::BatchFCGradOpMaker<paddle::framework::OpDesc>,
+                  ops::BatchFCGradOpMaker<paddle::imperative::OpBase>);
 
-// REGISTER_OPERATOR(batch_fc_grad, ops::BatchFCGradOp);
+REGISTER_OPERATOR(batch_fc_grad, ops::BatchFCGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     batch_fc, ops::BatchFCKernel<paddle::platform::CPUDeviceContext, float>,
