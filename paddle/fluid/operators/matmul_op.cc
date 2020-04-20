@@ -415,9 +415,9 @@ class MatMulOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     //  if mkldnn matmul+transpose+reshape fuse activated
     auto reshape_out =
-        context->Attrs().Get<std::vector<int64_t>>("fused_reshape_Out");
+        context->Attrs().Get<std::vector<int>>("fused_reshape_Out");
     auto transpose_out =
-        context->Attrs().Get<std::vector<int64_t>>("fused_transpose_Out");
+        context->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
     if (!reshape_out.empty() && !transpose_out.empty()) {
       auto reshape_out_size = reshape_out.size();
@@ -479,6 +479,14 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        R"DOC(Shape of fused reshape of `Out` output.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_transpose_Out",
+        R"DOC(Axis of fused transpose of `Out` output.)DOC")
+        .SetDefault({});
     /* int8 parameters */
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
@@ -499,12 +507,6 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
-    AddAttr<std::vector<int64_t>>("fused_reshape_Out",
-                                  "Shape of fused reshape.")
-        .SetDefault({});
-    AddAttr<std::vector<int64_t>>("fused_transpose_Out",
-                                  "Axis of fused transpose.")
-        .SetDefault({});
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
