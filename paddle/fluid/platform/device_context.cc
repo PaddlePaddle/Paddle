@@ -423,7 +423,10 @@ framework::DataLayout get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
+void MKLDNNDeviceContext::ResetBlobMap() const {
+  VLOG(3) << "Clearing DNNL cache.";
+  p_blobmap_->clear();
+}
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
   std::lock_guard<std::mutex> lock(*p_mutex_);
