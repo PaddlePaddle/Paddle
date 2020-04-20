@@ -22,7 +22,7 @@ namespace stream {
 
 constexpr unsigned int kDefaultFlag = cudaStreamDefault;
 
-bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
+bool CUDAStream::Init(const Place& place, const Priority& priority) {
   PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
