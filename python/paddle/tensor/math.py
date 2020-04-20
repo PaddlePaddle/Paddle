@@ -1108,7 +1108,7 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
         .. code-block:: python
             import paddle
             import paddle.fluid as fluid
-            
+
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -1158,6 +1158,7 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
 def min(input, dim=None, keep_dim=False, out=None, name=None):
     """
     Computes the minimum of tensor elements over the given dimension.
+
     Args:
         input (Variable): The input variable which is a Tensor, the data type is float32,
             float64, int32, int64.
@@ -1175,9 +1176,11 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
             if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         Variable: Tensor, result of minimum on the specified dim of input tensor,
         it's data type is the same as input's Tensor.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -1242,6 +1245,7 @@ def log1p(x, out=None, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+
     Examples:
         .. code-block:: python
             import paddle
