@@ -26,7 +26,7 @@ import paddle
 
 
 def output_hist(out):
-    hist, _ = np.histogram(out, range=(-5, 10))
+    hist, _ = np.histogram(out, range=(-10, 10))
     hist = hist.astype("float32")
     hist /= float(out.size)
     prob = 0.1 * np.ones((10))
@@ -41,7 +41,7 @@ class TestRandintOp(OpTest):
         self.outputs = {"Out": np.zeros((10000, 784)).astype("float32")}
 
     def init_attrs(self):
-        self.attrs = {"shape": [10000, 784], "low": -5, "high": 10}
+        self.attrs = {"shape": [10000, 784], "low": -10, "high": 10, "seed": 10}
         self.output_hist = output_hist
 
     def test_check_output(self):
@@ -51,7 +51,7 @@ class TestRandintOp(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         self.assertTrue(
             np.allclose(
-                hist, prob, rtol=0, atol=0.1), "hist: " + str(hist))
+                hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
 
 
 class TestRandintOpError(unittest.TestCase):
@@ -90,7 +90,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         self.outputs = {"Out": np.zeros((10000, 784)).astype("int32")}
 
     def init_attrs(self):
-        self.attrs = {"low": -5, "high": 10}
+        self.attrs = {"low": -10, "high": 10, "seed": 10}
         self.output_hist = output_hist
 
     def test_check_output(self):
@@ -100,7 +100,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         self.assertTrue(
             np.allclose(
-                hist, prob, rtol=0, atol=0.1), "hist: " + str(hist))
+                hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
 
 
 class TestRandint_attr_tensor(OpTest):
@@ -111,7 +111,7 @@ class TestRandint_attr_tensor(OpTest):
         self.outputs = {"Out": np.zeros((10000, 784)).astype("int64")}
 
     def init_attrs(self):
-        self.attrs = {"low": -5, "high": 10}
+        self.attrs = {"low": -10, "high": 10, "seed": 10}
         self.output_hist = output_hist
 
     def test_check_output(self):
@@ -121,7 +121,7 @@ class TestRandint_attr_tensor(OpTest):
         hist, prob = self.output_hist(np.array(outs[0]))
         self.assertTrue(
             np.allclose(
-                hist, prob, rtol=0, atol=0.1), "hist: " + str(hist))
+                hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
 
 
 # Test python API

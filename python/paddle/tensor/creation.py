@@ -404,7 +404,8 @@ def eye(num_rows,
         name=None):
     """
     **eye**
-    This function constructs an identity tensor, or a batch of tensor.
+    This function constructs an identity tensor.
+
     Args:
         num_rows(int): the number of rows in each batch tensor.
         num_columns(int, optional): the number of columns in each batch tensor.
@@ -417,8 +418,10 @@ def eye(num_rows,
         stop_gradient(bool, optional): Whether stop calculating gradients. Default:True.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         Variable: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
+
     Examples:
         .. code-block:: python
           import paddle

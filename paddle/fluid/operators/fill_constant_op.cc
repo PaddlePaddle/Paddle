@@ -30,7 +30,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(
             shape[i], 0,
             platform::errors::InvalidArgument(
-                "Each value of attribute 'shape' is expected to be greater "
+                "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But recieved: shape[%u] = %d; shape = [%s].",
                 i, shape[i], framework::make_ddim(shape)));
       }

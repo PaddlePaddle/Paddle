@@ -421,10 +421,12 @@ def dot(x, y, name=None):
        Only support 1-d Tensor(vector).
 
     Parameters:
-    
         x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
         y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        Variable: the calculated result Tensor/LoDTensor.
 
     Examples:
 
@@ -474,11 +476,11 @@ def t(input, name=None):
     the fluid.layers.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
+        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
         .. code-block:: text
