@@ -58,6 +58,7 @@ class TestLoDRankTableError(unittest.TestCase):
 
             x = data(name='x', shape=[10], dtype='float32', lod_level=1)
             out = lod_rank_table(x=x, level=0)
+            out = lod_rank_table(x=[x], level=0)
 
 
 if __name__ == '__main__':
