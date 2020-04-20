@@ -1,5 +1,5 @@
 #!/usr/bin/env python
- import difflib
+import difflib
 import sys
 
 try:
