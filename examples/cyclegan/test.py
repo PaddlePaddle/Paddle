@@ -22,9 +22,9 @@ import numpy as np
 from scipy.misc import imsave
 
 import paddle.fluid as fluid
-from check import check_gpu, check_version
+from hapi.model import Model, Input, set_device
 
-from model import Model, Input, set_device
+from check import check_gpu, check_version
 from cyclegan import Generator, GeneratorCombine
 import data as data
 
@@ -41,7 +41,7 @@ def main():
     im_shape = [-1, 3, 256, 256]
     input_A = Input(im_shape, 'float32', 'input_A')
     input_B = Input(im_shape, 'float32', 'input_B')
-    g.prepare(inputs=[input_A, input_B])
+    g.prepare(inputs=[input_A, input_B], device=FLAGS.device)
     g.load(FLAGS.init_model, skip_mismatch=True, reset_optimizer=True)
 
     if not os.path.exists(FLAGS.output):
@@ -56,7 +56,7 @@ def main():
         data_A = np.array(data_A).astype("float32")
         data_B = np.array(data_B).astype("float32")
 
-        fake_A, fake_B, cyc_A, cyc_B = g.test([data_A, data_B])
+        fake_A, fake_B, cyc_A, cyc_B = g.test_batch([data_A, data_B])
 
         datas = [fake_A, fake_B, cyc_A, cyc_B, data_A, data_B]
         odatas = []
@@ -75,7 +75,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("CycleGAN test")
     parser.add_argument(
-        "-d", "--dynamic", action='store_false', help="Enable dygraph mode")
+        "-d", "--dynamic", action='store_true', help="Enable dygraph mode")
     parser.add_argument(
         "-p",
         "--device",

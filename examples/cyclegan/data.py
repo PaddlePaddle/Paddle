@@ -20,14 +20,14 @@ import random
 import numpy as np
 from PIL import Image, ImageOps
 
+import paddle
+
 DATASET = "cityscapes"
 A_LIST_FILE = "./data/" + DATASET + "/trainA.txt"
 B_LIST_FILE = "./data/" + DATASET + "/trainB.txt"
 A_TEST_LIST_FILE = "./data/" + DATASET + "/testA.txt"
 B_TEST_LIST_FILE = "./data/" + DATASET + "/testB.txt"
 IMAGES_ROOT = "./data/" + DATASET + "/"
-
-import paddle.fluid as fluid
 
 
 class Cityscapes(paddle.io.Dataset):
