@@ -46,11 +46,6 @@ def parse_args():
         action='store_true',
         help='If used, the graph of QAT model is drawn.')
     parser.add_argument(
-        '--scale_from_attr',
-        action='store_true',
-        help='If used, quantization scales from the `out_threshold` attribute are preffered over the scales from `fake_quantize/dequantize` ops.'
-    )
-    parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
     parser.add_argument(
         '--fp32_model', type=str, default='', help='A path to an FP32 model.')
@@ -185,7 +180,6 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
             if (transform_to_int8):
                 transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
                     self._quantized_ops,
-                    _scale_from_attr=self._scale_from_attr,
                     _scope=inference_scope,
                     _place=place,
                     _core=core,
@@ -311,7 +305,6 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
         skip_batch_num = test_case_args.skip_batch_num
         acc_diff_threshold = test_case_args.acc_diff_threshold
         self._debug = test_case_args.debug
-        self._scale_from_attr = test_case_args.scale_from_attr
         self._quantized_ops = set(test_case_args.quantized_ops.split(','))
 
         _logger.info('FP32 & QAT INT8 prediction run.')
