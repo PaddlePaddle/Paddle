@@ -53,21 +53,15 @@ class CUDAStream final {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) const {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaEventRecord(ev, stream_),
-        platform::errors::Fatal("CUDA event recording failed."));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
   }
 
   void RecordEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaEventRecord(ev, stream_),
-        platform::errors::Fatal("CUDA event recording failed."));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
   }
 
   void WaitEvent(cudaEvent_t ev) const {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(stream_, ev, 0),
-        platform::errors::Fatal("Failed to wait event."));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
   }
 
   void Wait() const;
