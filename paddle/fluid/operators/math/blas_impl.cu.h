@@ -91,10 +91,7 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasStrsm(args...),
-        platform::errors::External(
-            "The error has happened when calling cublasStrsm"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasStrsm(args...));
   }
 };
 
@@ -142,10 +139,7 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void TRSM(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDtrsm(args...),
-        platform::errors::External(
-            "The error has happened when calling cublasDtrsm"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDtrsm(args...));
   }
 };
 

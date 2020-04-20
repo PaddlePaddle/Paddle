@@ -177,13 +177,9 @@ class CUDAContext {
 
   void InitCuSolverContext() {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cusolverDnCreate(&cusolver_dn_handle_),
-        platform::errors::Fatal(
-            "Failed to create Cusolver dn handle in DeviceContext"));
+        dynload::cusolverDnCreate(&cusolver_dn_handle_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()),
-        platform::errors::Fatal(
-            "Failed to set stream for Cusolver dn handle in DeviceContext"));
+        dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
   }
 
   void DestoryCuDNNContext() {
@@ -201,8 +197,7 @@ class CUDAContext {
   void DestoryCuSolverContext() {
     if (cusolver_dn_handle_) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cusolverDnDestroy(cusolver_dn_handle_),
-          platform::errors::Fatal("Failed to destory Cusolver dn handle"));
+          dynload::cusolverDnDestroy(cusolver_dn_handle_));
     }
   }
 

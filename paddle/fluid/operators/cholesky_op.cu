@@ -117,17 +117,11 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
     int workspace_size = 0;                                                    \
     PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
         platform::dynload::cusolverDn##C##potrf_bufferSize(                    \
-            handle, uplo, n, A, lda, &workspace_size),                         \
-        platform::errors::External(                                            \
-            "The error has happened when calling cusolverDn" #C                \
-            "potrf_bufferSize"));                                              \
+            handle, uplo, n, A, lda, &workspace_size));                        \
     auto workspace = memory::Alloc(dev_ctx, workspace_size);                   \
     T* workspace_ptr = reinterpret_cast<T*>(workspace->ptr());                 \
-    PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
-        platform::dynload::cusolverDn##C##potrf(                               \
-            handle, uplo, n, A, lda, workspace_ptr, workspace_size, info),     \
-        platform::errors::External(                                            \
-            "The error has happened when calling cusolverDn" #C "potrf"));     \
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDn##C##potrf(       \
+        handle, uplo, n, A, lda, workspace_ptr, workspace_size, info));        \
   }
 
 FUNC_WITH_TYPES(POTRF_INSTANCE);
@@ -141,10 +135,7 @@ FUNC_WITH_TYPES(POTRF_INSTANCE);
     auto handle = dev_ctx.cusolver_dn_handle();                             \
     PADDLE_ENFORCE_CUDA_SUCCESS(                                            \
         platform::dynload::cusolverDn##C##potrfBatched(                     \
-            handle, uplo, n, Aarray, lda, info_array, batch_size),          \
-        platform::errors::External(                                         \
-            "The error has happened when calling cusolverDn" #C             \
-            "potrfBatched"));                                               \
+            handle, uplo, n, Aarray, lda, info_array, batch_size));         \
   }
 
 FUNC_WITH_TYPES(POTRF_BATCH_INSTANCE);
