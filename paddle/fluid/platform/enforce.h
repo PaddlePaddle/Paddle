@@ -31,6 +31,7 @@ limitations under the License. */
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+#include "paddle/fluid/platform/cuda_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
 #include <fstream>
@@ -45,7 +46,6 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"

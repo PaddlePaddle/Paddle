@@ -102,31 +102,6 @@ MACRO(UNSET_VAR VAR_NAME)
     UNSET(${VAR_NAME})
 ENDMACRO()
 
-# Funciton to Download the dependencies during compilation
-# This function has 2 parameters, URL / DIRNAME:
-# 1. URL:           The download url of 3rd dependencies
-# 2. NAME:          The name of file, that determin the dirname
-#
-MACRO(file_download_and_uncompress URL NAME)
-  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
-  SET(EXTERNAL_PROJECT_NAME "extern_download_${NAME}")
-  SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data)
-  ExternalProject_Add(
-      ${EXTERNAL_PROJECT_NAME}
-      ${EXTERNAL_PROJECT_LOG_ARGS}
-      PREFIX                ${THIRD_PARTY_PATH}/${NAME}
-      URL                   ${URL}
-      DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}/data/
-      SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}/data/
-      DOWNLOAD_NO_PROGRESS  1
-      CONFIGURE_COMMAND     ""
-      BUILD_COMMAND         ""
-      UPDATE_COMMAND        ""
-      INSTALL_COMMAND       ""
-    )
-  list(APPEND third_party_deps ${EXTERNAL_PROJECT_NAME})
-ENDMACRO()
-
 
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
@@ -209,10 +184,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-# download file
-set(CUDAERROR_URL  "https://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
-file_download_and_uncompress(${CUDAERROR_URL} "cudaerror")
-
 if(WITH_AMD_GPU)
     include(external/rocprim)   # download, build, install rocprim
     list(APPEND third_party_deps extern_rocprim)
@@ -248,6 +219,7 @@ IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
 ENDIF()
 
 if(WITH_GPU)
+    include(external/cudaerror)  # download cudaErrorMessage.pb
     include(external/cub)       # download cub
     list(APPEND third_party_deps extern_cub)
 endif(WITH_GPU)
