@@ -32,7 +32,7 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import range   #DEFINE_ALIAS
 # from .creation import zeros   #DEFINE_ALIAS
 # from .creation import zeros_like   #DEFINE_ALIAS
-# from .creation import arrange   #DEFINE_ALIAS
+from .creation import arange  #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
@@ -129,6 +129,7 @@ from .math import addmm  #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS
 from .linalg import dot  #DEFINE_ALIAS
+from .linalg import bmm  #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 from .linalg import norm  #DEFINE_ALIAS
 # from .linalg import transpose   #DEFINE_ALIAS
