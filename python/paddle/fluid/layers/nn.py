@@ -7218,8 +7218,8 @@ def image_resize(input,
 
             if len(input.shape) == 3:
                 if len(out_shape) != 1:
-                    raise ValueError("out_shape length should be 2 for "
-                                     "input 4-D tensor.")
+                    raise ValueError("out_shape length should be 1 for "
+                                     "input 3-D tensor.")
                 if contain_var:
                     attrs['out_w'] = size_list[0]
                 else:

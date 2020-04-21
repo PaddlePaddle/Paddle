@@ -130,17 +130,18 @@ class TestLinearInterpOpAPI(unittest.TestCase):
         shape_tensor = fluid.data(name="shape_tensor", shape=[1], dtype="int32")
         scale_tensor = fluid.data(
             name="scale_tensor", shape=[1], dtype="float32")
-        actual_size = fluid.data(name="actual_size", shape=[1], dtype="int32")
 
-        out1 = fluid.layers.resize_linear(x, out_shape=[50, ])
-        out2 = fluid.layers.resize_linear(x, out_shape=shape_tensor)
-        out3 = fluid.layers.resize_linear(x, scale=scale_tensor)
+        out1 = fluid.layers.resize_linear(
+            x, out_shape=[50, ], align_mode=1, align_corners=True)
+        out2 = fluid.layers.resize_linear(
+            x, out_shape=shape_tensor, align_mode=1, align_corners=True)
+        out3 = fluid.layers.resize_linear(
+            x, scale=scale_tensor, align_mode=1, align_corners=True)
 
         x_data = np.random.random((1, 3, 100)).astype("float64")
         dim_data = np.array([50, ]).astype("int32")
         shape_data = np.array([50, ]).astype("int32")
         scale_data = np.array([0.5, ]).astype("float32")
-        actual_size_data = np.array([50, ]).astype("int32")
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
@@ -153,13 +154,13 @@ class TestLinearInterpOpAPI(unittest.TestCase):
                               "x": x_data,
                               "dim": dim_data,
                               "shape_tensor": shape_data,
-                              "actual_size": actual_size_data,
                               "scale_tensor": scale_data
                           },
                           fetch_list=[out1, out2, out3],
                           return_numpy=True)
 
-        expect_res = linear_interp_np(x_data, out_w=50, align_corners=True)
+        expect_res = linear_interp_np(
+            x_data, out_w=50, align_mode=1, align_corners=True)
 
         for res in results:
             self.assertTrue(np.allclose(res, expect_res))

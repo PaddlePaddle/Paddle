@@ -61,8 +61,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     if (scale > 0) {
       // round down
       out_w = (data_layout == DataLayout::kNCHW
-                   ? static_cast<int>(dim_x[3] * scale)
-                   : static_cast<int>(dim_x[2] * scale));
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
       // protect when input shape is -1
       out_w = out_w > 0 ? out_w : -1;
     } else {
@@ -258,7 +258,7 @@ class InterpolateOp : public framework::OperatorWithKernel {
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
     PADDLE_ENFORCE(dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
-                   "Input(X) dimension must be 4 or 5");
+                   "Input(X) dimension must be 3, 4 or 5");
 
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
@@ -360,7 +360,10 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
           in both the 3rd dimension(in height direction) and the 4th dimension(in width 
           direction) on input tensor.
-            
+           
+          Linear interpolation is the method of using a line connecting two known quantities 
+          to determine the value of an unknown quantity between the two known quantities. 
+          
           Bilinear interpolation is an extension of linear interpolation for 
           interpolating functions of two variables (e.g. H-direction and 
           W-direction in this op) on a rectilinear 2D grid. The key idea is 
