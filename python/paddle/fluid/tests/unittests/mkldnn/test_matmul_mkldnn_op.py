@@ -184,7 +184,7 @@ class TestMatMulOpReshapeTranspose(OpTest):
         self._cpu_only = True
         self.use_mkldnn = True
         self.transpose_y = True
-        self.init_data_type()
+        self.init_data_type(self)
         self.generate_data()
 
         self.inputs = {'X': self.x, 'Y': self.y}
@@ -222,7 +222,7 @@ class TestMatMulOpReshapeTranspose4DXFloat(TestMatMulOpReshapeTranspose):
 
 
 class TestMatMulOpReshapeTranspose4DXInt8(TestMatMulOpReshapeTranspose4DXFloat):
-    def init_data_type():
+    def init_data_type(self):
         self.data_type_ = 'int8'
 
 
@@ -240,7 +240,7 @@ class TestMatMulOpReshapeTranspose4DYFloat(TestMatMulOpReshapeTranspose):
 
 
 class TestMatMulOpReshapeTranspose4DYInt8(TestMatMulOpReshapeTranspose4DYFloat):
-    def init_data_type():
+    def init_data_type(self):
         self.data_type_ = 'int8'
 
 
@@ -259,7 +259,7 @@ class TestMatMulOpReshapeTranspose4DXYFloat(TestMatMulOpReshapeTranspose):
 
 class TestMatMulOpReshapeTranspose4DXYInt8(
         TestMatMulOpReshapeTranspose4DXYFloat):
-    def init_data_type():
+    def init_data_type(self):
         self.data_type_ = 'int8'
 
 
@@ -278,7 +278,7 @@ class TestMatMulOpReshapeTranspose2DXFloat(TestMatMulOpReshapeTranspose):
 
 
 class TestMatMulOpReshapeTranspose2DXInt8(TestMatMulOpReshapeTranspose2DXFloat):
-    def init_data_type():
+    def init_data_type(self):
         self.data_type_ = 'int8'
 
 
@@ -295,7 +295,7 @@ class TestMatMulOpReshapeTranspose2DYFloat(TestMatMulOpReshapeTranspose):
 
 
 class TestMatMulOpReshapeTranspose2DYInt8(TestMatMulOpReshapeTranspose2DYFloat):
-    def init_data_type():
+    def init_data_type(self):
         self.data_type_ = 'int8'
 
 
@@ -314,7 +314,7 @@ class TestMatMulOpReshapeTranspose3DXFloat(TestMatMulOpReshapeTranspose):
 
 
 class TestMatMulOpReshapeTranspose3DXInt8(TestMatMulOpReshapeTranspose3DXFloat):
-    def init_data_type():
+    def init_data_type(self):
         self.data_type_ = 'int8'
 
 
