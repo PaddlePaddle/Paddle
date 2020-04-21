@@ -123,6 +123,7 @@ from .math import log1p  #DEFINE_ALIAS
 # from .math import erf   #DEFINE_ALIAS
 from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
+from .math import clamp  #DEFINE_ALIAS
 # from .attribute import rank   #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS

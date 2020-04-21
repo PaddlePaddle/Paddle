@@ -145,6 +145,7 @@ from .tensor.math import log1p  #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
 from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
+from .tensor.math import clamp  #DEFINE_ALIAS
 # from .tensor.attribute import rank   #DEFINE_ALIAS
 # from .tensor.attribute import shape   #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS
