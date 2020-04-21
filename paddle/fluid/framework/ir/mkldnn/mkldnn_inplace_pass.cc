@@ -110,14 +110,16 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     // It may be that next op is reusing some of vars, we need to
     // make sure that unwanted inplace is not created
     // TODO(jczaja): Make UT for that one
-    auto& next_op_infer_inplace =
-        OpInfoMap::Instance().Get(next_op->Op()->Type()).infer_inplace_;
-    if ((next_op_infer_inplace == nullptr)) {
-      for (auto& n : next_op->outputs) {
-        if (n->Name() == current_op_in->Name()) {
-          VLOG(3) << "DNNL in-place pass FAIL: in-place var cannot "
-                     "be an output to non-inplaced next op";
-          return;
+    for (auto& n : current_op_out->outputs) {
+      auto& n_op_infer_inplace =
+          OpInfoMap::Instance().Get(n->Op()->Type()).infer_inplace_;
+      if ((n_op_infer_inplace == nullptr)) {
+        for (auto& m : n->outputs) {
+          if (m->Name() == current_op_in->Name()) {
+            VLOG(3) << "DNNL in-place pass FAIL: in-place var cannot "
+                       "be an output to non-inplaced next op";
+            return;
+          }
         }
       }
     }
@@ -136,6 +138,8 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
 
     // Get inferer of next op
     // If no inferer then we are done
+    auto& next_op_infer_inplace =
+        OpInfoMap::Instance().Get(next_op->Op()->Type()).infer_inplace_;
     if (next_op_infer_inplace) {
       auto in_to_outs = next_op_infer_inplace(false);
       auto out_name = in_to_outs.begin()->second;
