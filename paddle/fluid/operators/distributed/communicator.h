@@ -457,8 +457,8 @@ class GeoSgdCommunicator : public Communicator {
                             const std::string splited_var_name) {
     size_t index = 0;
     for (size_t i = 0;
-         i < send_varname_to_ctx_[var_name].splited_var_names.size(); i++) {
-      if (send_varname_to_ctx_[var_name].splited_var_names[i] ==
+         i < send_varname_to_ctx_[var_name].splited_varnames.size(); i++) {
+      if (send_varname_to_ctx_[var_name].splited_varnames[i] ==
           splited_var_name) {
         index = i;
         break;

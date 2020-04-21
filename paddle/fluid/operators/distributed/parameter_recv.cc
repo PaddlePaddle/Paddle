@@ -57,8 +57,8 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   if (recv_var->IsType<framework::LoDTensor>() ||
       recv_var->IsType<framework::SelectedRows>()) {
     std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
-      auto &recv_var_name = rpc_ctx.splited_var_names[i];
+    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_varnames[i];
       local_scope->Var(recv_var_name);
       VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
       if (recv_var->IsType<framework::LoDTensor>()) {
@@ -88,7 +88,7 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
         recv_var->GetMutable<framework::LoDTensor>();
     auto dev_ctx = paddle::platform::CPUDeviceContext();
     int64_t recv_numel = 0;
-    for (auto &recv_var_name : rpc_ctx.splited_var_names) {
+    for (auto &recv_var_name : rpc_ctx.splited_varnames) {
       auto *recv_var = local_scope->FindVar(recv_var_name);
       if (recv_var->IsType<framework::LoDTensor>()) {
         auto &in = recv_var->Get<framework::LoDTensor>();
@@ -148,8 +148,8 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
     std::vector<int64_t> abs_sections =
         ToAbsoluteSection(rpc_ctx.height_sections);
 
-    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
-      auto &recv_var_name = rpc_ctx.splited_var_names[i];
+    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_varnames[i];
       auto *var = local_scope->FindVar(recv_var_name);
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
       auto *var_slr_row = var_slr->mutable_rows();
@@ -171,7 +171,7 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
     auto *slr_data = slr->mutable_value()->data<float>();
 
     size_t row_offset = 0;
-    for (auto &recv_var_name : rpc_ctx.splited_var_names) {
+    for (auto &recv_var_name : rpc_ctx.splited_varnames) {
       auto *var = local_scope->FindVar(recv_var_name);
       auto *var_slr = var->GetMutable<framework::SelectedRows>();
       auto *var_slr_row = var_slr->mutable_rows();

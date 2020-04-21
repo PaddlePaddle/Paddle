@@ -438,7 +438,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
       auto splited_var_nums =
-          recv_varname_to_ctx_[sparse_var_tables[i]].splited_var_names.size();
+          recv_varname_to_ctx_[sparse_var_tables[i]].splited_varnames.size();
       ids_table->insert(
           std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
               sparse_var_tables[i],
@@ -499,7 +499,7 @@ void GeoSgdCommunicator::SendThread() {
         auto &var_name = iter.first;
         if (var_list_[DeltaVarToVar(var_name)] == true) {
           // sparse var: merge->send->recv
-          for (auto &splited_var_name : iter.second.splited_var_names) {
+          for (auto &splited_var_name : iter.second.splited_varnames) {
             auto send_task = [this, &var_name, &splited_var_name] {
               auto before_run_geo = GetCurrentUS();
               VLOG(4) << "ids_send_vec_ size: " << ids_send_vec_.size();
@@ -515,7 +515,7 @@ void GeoSgdCommunicator::SendThread() {
                 send_threadpool_->enqueue(std::move(send_task)));
           }
         } else {
-          for (auto &splited_var_name : iter.second.splited_var_names) {
+          for (auto &splited_var_name : iter.second.splited_varnames) {
             auto send_task = [this, &var_name, &splited_var_name] {
               auto before_run_geo = GetCurrentUS();
               SendUpdateDenseVars(var_name, splited_var_name);

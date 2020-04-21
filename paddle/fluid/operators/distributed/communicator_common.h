@@ -27,29 +27,33 @@ struct CommContext {
 
   CommContext(const std::string &name, const std::vector<std::string> &names,
               const std::vector<std::string> &emap,
-              const std::vector<int64_t> &sections, int id,
+              const std::vector<int64_t> &sections,
+              const std::vector<std::string> &origin_names, int id,
               bool merge_add_ = true, bool use_send_handler_ = true)
       : var_name(name),
-        splited_var_names(names),
+        splited_varnames(names),
         epmap(emap),
         height_sections(sections),
+        origin_varnames(origin_names),
         trainer_id(id),
         merge_add(merge_add_),
         use_send_handler(use_send_handler_) {}
 
   CommContext(const CommContext &ctx) {
     var_name = ctx.var_name;
-    splited_var_names = ctx.splited_var_names;
+    splited_varnames = ctx.splited_varnames;
     epmap = ctx.epmap;
     height_sections = ctx.height_sections;
     trainer_id = ctx.trainer_id;
     merge_add = ctx.merge_add;
     use_send_handler = ctx.use_send_handler;
+    origin_varnames = ctx.origin_varnames;
   }
 
   std::string var_name;
-  std::vector<std::string> splited_var_names;
+  std::vector<std::string> splited_varnames;
   std::vector<std::string> epmap;
+  std::vector<std::string> origin_varnames;
   std::vector<int64_t> height_sections;
   int trainer_id;
   bool merge_add;
@@ -60,8 +64,8 @@ inline std::ostream &operator<<(std::ostream &os, const CommContext &rpc_ctx) {
   os << "{";
   os << "var_name: " << rpc_ctx.var_name << "\n";
 
-  os << "splited_var_names: [";
-  for (auto &name : rpc_ctx.splited_var_names) {
+  os << "splited_varnames: [";
+  for (auto &name : rpc_ctx.splited_varnames) {
     os << name << ", ";
   }
   os << "]\n";

@@ -51,15 +51,15 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldCommContext(
     PADDLE_ENFORCE_GT(multi_parts, 0, "multi_parts must >=1");
 
     if (multi_parts == 1) {
-      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
         table_pairs.push_back(
-            std::make_pair(rpc_ctx.epmap[i], rpc_ctx.splited_var_names[i]));
+            std::make_pair(rpc_ctx.epmap[i], rpc_ctx.splited_varnames[i]));
       }
     } else {
-      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
         for (int x = 0; x < multi_parts; x++) {
           auto table =
-              string::Sprintf("%s@%d@PIECE", rpc_ctx.splited_var_names[i], x);
+              string::Sprintf("%s@%d@PIECE", rpc_ctx.splited_varnames[i], x);
           table_pairs.push_back(std::make_pair(rpc_ctx.epmap[i], table));
         }
       }
@@ -91,7 +91,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
 
   if (send_var->IsType<framework::LoDTensor>()) {
-    size_t out_num = rpc_ctx.splited_var_names.size();
+    size_t out_num = rpc_ctx.splited_varnames.size();
     if (out_num > 1) {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
       auto &send_tensor_dims = send_tensor.dims();
@@ -111,20 +111,20 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       // create output var in local scope
       size_t row_offset = 0;
       for (size_t i = 0; i < out_num; ++i) {
-        framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
+        framework::Tensor *out = local_scope->Var(rpc_ctx.splited_varnames[i])
                                      ->GetMutable<framework::LoDTensor>();
         *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
         row_offset += outs_dims[i][0];
       }
     } else {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
-      framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[0])
+      framework::Tensor *out = local_scope->Var(rpc_ctx.splited_varnames[0])
                                    ->GetMutable<framework::LoDTensor>();
       out->ShareDataWith(send_tensor);
     }
     if (rpc_ctx.use_send_handler) {
-      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
-        auto &send_var_name = rpc_ctx.splited_var_names[i];
+      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+        auto &send_var_name = rpc_ctx.splited_varnames[i];
         VLOG(4) << "send var name: " << send_var_name;
         auto &endpoint = rpc_ctx.epmap[i];
         VLOG(4) << "send var endpoint: " << endpoint;
@@ -136,13 +136,13 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
           VLOG(4) << "send var " << send_var_name << " async handle done";
         } else {
           VLOG(3) << "don't send non-initialized variable: "
-                  << rpc_ctx.splited_var_names[i];
+                  << rpc_ctx.splited_varnames[i];
         }
       }
     } else {
-      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
         for (size_t j = 0; j < rpc_ctx.epmap.size(); j++) {
-          auto &send_var_name = rpc_ctx.splited_var_names[i];
+          auto &send_var_name = rpc_ctx.splited_varnames[i];
           VLOG(4) << "send var name: " << send_var_name;
           auto &endpoint = rpc_ctx.epmap[j];
           VLOG(4) << "send var endpoint: " << endpoint;
@@ -155,7 +155,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
             VLOG(4) << "send var " << send_var_name << " async handle done";
           } else {
             VLOG(3) << "don't send non-initialized variable: "
-                    << rpc_ctx.splited_var_names[i];
+                    << rpc_ctx.splited_varnames[i];
           }
         }
       }
@@ -202,7 +202,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
 
     auto place = platform::CPUPlace();
 
-    for (size_t ctx = 0; ctx < rpc_ctx.splited_var_names.size(); ctx++) {
+    for (size_t ctx = 0; ctx < rpc_ctx.splited_varnames.size(); ctx++) {
       for (int part = 0; part < multi_parts; part++) {
         auto out_idx = ctx * multi_parts + part;
         auto rows_idx = outs_rows_idx[out_idx];
@@ -252,7 +252,7 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
         VLOG(4) << "send var " << send_var_name << " async handle done";
       } else {
         VLOG(4) << "don't send non-initialized variable: "
-                << rpc_ctx.splited_var_names[i];
+                << rpc_ctx.splited_varnames[i];
       }
     }
   } else {
