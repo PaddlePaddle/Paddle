@@ -20,7 +20,7 @@ from collections import Counter
 
 import paddle.fluid as fluid
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static import convert_function_with_cache
 
@@ -50,10 +50,14 @@ class TestCacheProgram(unittest.TestCase):
                     op.type for op in fluid.default_main_program().block(0).ops
                 ])
                 if batch_id > 0:
+                    prev_out_numpy = prev_out[0].numpy() if isinstance(
+                        prev_out, tuple) else prev_out.numpy()
+                    cur_out_numpy = cur_out[0].numpy() if isinstance(
+                        cur_out, tuple) else cur_out.numpy()
                     self.assertTrue(
-                        np.allclose(prev_out[0].numpy(), cur_out[0].numpy()),
+                        np.allclose(prev_out_numpy, cur_out_numpy),
                         msg='Output in previous batch is {}\n Output in current batch is \n{}'
-                        .format(prev_out, cur_out))
+                        .format(prev_out_numpy, cur_out_numpy))
                     self.assertEqual(prev_ops, cur_ops)
 
 
@@ -139,7 +143,7 @@ class TestConvertWithCache(unittest.TestCase):
         self.assertTrue(id(static_func), id(cached_func))
 
 
-@dygraph_to_static_output
+@declarative
 def sum_even_util_limit(max_len, limit):
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     for i in range(max_len):
@@ -152,7 +156,7 @@ def sum_even_util_limit(max_len, limit):
     return ret_sum
 
 
-@dygraph_to_static_output
+@declarative
 def sum_under_while(limit):
     i = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
@@ -165,10 +169,10 @@ def sum_under_while(limit):
 class TestToOutputWithCache(unittest.TestCase):
     def test_output(self):
         ret = sum_even_util_limit(80, 10)
-        self.assertEqual(ret[0].numpy(), 30)
+        self.assertEqual(ret.numpy(), 30)
 
         ret = sum_under_while(100)
-        self.assertEqual(ret[0].numpy(), 5050)
+        self.assertEqual(ret.numpy(), 5050)
 
 
 if __name__ == '__main__':

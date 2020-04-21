@@ -104,13 +104,9 @@ void BufferedReader::ReadAsync(size_t i) {
       // gpu memory immediately without waiting gpu kernel ends
       platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaEventRecord(events_[i].get(), compute_stream_),
-          platform::errors::Fatal(
-              "cudaEventRecord raises unexpected exception"));
+          cudaEventRecord(events_[i].get(), compute_stream_));
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0),
-          platform::errors::Fatal(
-              "cudaStreamWaitEvent raises unexpected exception"));
+          cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0));
 
       platform::RecordEvent record_event("BufferedReader:MemoryCopy");
       for (size_t i = 0; i < cpu.size(); ++i) {
@@ -138,17 +134,11 @@ void BufferedReader::ReadAsync(size_t i) {
                        size);
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        cuda_pinned_place, cuda_pinned_ptr, size, stream_.get());
-          PADDLE_ENFORCE_CUDA_SUCCESS(
-              cudaStreamSynchronize(stream_.get()),
-              platform::errors::Fatal(
-                  "cudaStreamSynchronize raises unexpected exception"));
+          PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
         }
         gpu[i].set_lod(cpu[i].lod());
       }
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaStreamSynchronize(stream_.get()),
-          platform::errors::Fatal(
-              "cudaStreamSynchronize raises unexpected exception"));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
     }
 #endif
     return i;

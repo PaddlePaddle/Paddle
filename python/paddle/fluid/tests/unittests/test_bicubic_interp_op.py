@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle
 from paddle.fluid import Program, program_guard
-from paddle.nn.functional import *
+from paddle.nn.functional import interpolate
 
 
 def cubic_1(x, a):

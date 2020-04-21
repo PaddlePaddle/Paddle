@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import declarative
 
 import numpy as np
 import unittest
@@ -30,7 +30,7 @@ class Pool2D(fluid.dygraph.Layer):
         self.pool2d = fluid.dygraph.Pool2D(
             pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
 
-    @dygraph_to_static_output
+    @declarative
     def forward(self, x):
         inputs = fluid.dygraph.to_variable(x)
 
@@ -54,7 +54,7 @@ class Linear(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.5)))
 
-    @dygraph_to_static_output
+    @declarative
     def forward(self, x):
         inputs = fluid.dygraph.to_variable(x)
         pre = self.fc(inputs)
@@ -82,7 +82,9 @@ class TestPool2D(unittest.TestCase):
         with fluid.program_guard(main_prog, startup_prog):
             dy_layer = self.dygraph_class()
             out = dy_layer(x=self.data)
-            return out[0].numpy()
+            if isinstance(out, tuple):
+                return out[0].numpy()
+            return out.numpy()
 
     def test_static_output(self):
         dygraph_res = self.run_dygraph_mode()

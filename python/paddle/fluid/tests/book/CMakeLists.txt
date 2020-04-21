@@ -5,7 +5,3 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
-
-if(WITH_HIGH_LEVEL_API_TEST)
-  add_subdirectory(high-level-api)
-endif()

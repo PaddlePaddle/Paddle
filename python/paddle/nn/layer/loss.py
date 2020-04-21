@@ -17,9 +17,9 @@ import paddle.fluid as fluid
 __all__ = [
     #'NCELoss',
     'CrossEntropyLoss',
-    #    'MSELoss',
+    'MSELoss',
     'L1Loss',
-    #    'NLLLoss',
+    'NLLLoss',
     'BCELoss'
 ]
 
@@ -133,6 +133,97 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             return fluid.layers.reduce_mean(out)
         else:
             return out
+
+
+class MSELoss(fluid.dygraph.layers.Layer):
+    """
+    **Mean Square Error Loss**
+    Computes the mean square error (squared L2 norm) of given input and label.
+
+    If :attr:`reduction` is set to ``'none'``, loss is calculated as:
+
+    .. math::
+        Out = (input - label)^2
+
+    If :attr:`reduction` is set to ``'mean'``, loss is calculated as:
+
+    .. math::
+        Out = \operatorname{mean}((input - label)^2)
+
+    If :attr:`reduction` is set to ``'sum'``, loss is calculated as:
+
+    .. math::
+        Out = \operatorname{sum}((input - label)^2)
+
+    where `input` and `label` are `float32` tensors of arbitrary shapes.
+
+    Parameters:
+        reduction (string, optional): The reduction method for the output,
+            could be 'none' | 'mean' | 'sum'.
+            'none': no reduction will be applied
+            'mean': the output will be averaged
+            'sum': the output will be summed
+
+    Examples:
+        .. code-block:: python
+        import numpy as np
+        import paddle
+        from paddle import fluid
+        import paddle.fluid.dygraph as dg
+
+        mse_loss = paddle.nn.loss.MSELoss()
+        input = fluid.data(name="input", shape=[1])
+        label = fluid.data(name="label", shape=[1])
+        place = fluid.CPUPlace()
+        input_data = np.array([1.5]).astype("float32")
+        label_data = np.array([1.7]).astype("float32")
+
+        # declarative mode
+        output = mse_loss(input,label)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        output_data = exe.run(
+            fluid.default_main_program(),
+            feed={"input":input_data, "label":label_data},
+            fetch_list=[output],
+            return_numpy=True)
+        print(output_data)
+        # [array([0.04000002], dtype=float32)]
+
+        # imperative mode
+        with dg.guard(place) as g:
+            input = dg.to_variable(input_data)
+            label = dg.to_variable(label_data)
+            output = mse_loss(input, label)
+            print(output.numpy())
+            # [0.04000002]
+    """
+
+    def __init__(self, reduction='mean'):
+        super(MSELoss, self).__init__()
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
+                "but received {}.".format(reduction))
+        self.reduction = reduction
+
+    def forward(self, input, label):
+        if not fluid.framework.in_dygraph_mode():
+            fluid.data_feeder.check_variable_and_dtype(input, 'input',
+                                                       ['float32'], 'MSELoss')
+            fluid.data_feeder.check_variable_and_dtype(label, 'label',
+                                                       ['float32'], 'MSELoss')
+
+        square_out = fluid.layers.square(
+            fluid.layers.elementwise_sub(input, label))
+        if self.reduction == 'none':
+            return square_out
+
+        reduce_op = 'reduce_mean'
+        if self.reduction == 'sum':
+            reduce_op = 'reduce_sum'
+
+        return getattr(fluid.layers, reduce_op)(square_out)
 
 
 class L1Loss(fluid.dygraph.Layer):
@@ -329,3 +420,145 @@ class BCELoss(fluid.dygraph.Layer):
             return fluid.layers.reduce_mean(out)
         else:
             return out
+
+
+class NLLLoss(fluid.dygraph.Layer):
+    """
+    This op accepts input and target label and returns negative log likelihood 
+    cross error. It is useful to train a classification problem with C classes.
+     
+    The input for the loss is epected to contain log-probabilities of
+    each classes. It hs to be a Tensor of size either (batch_size, C) or 
+    (batch_size, C, d1, d2, ..., dK) with K >= 1 for the K-dimensional case.
+    The label for the loss should be a class index in the range [0, C-1]
+    where C is the number of classes. If ignore_index is specified, the
+    specified target value does not contribute to the input gradient.
+    
+    If the optional argument `weight` is provided, it should be a 1D Tensor
+    assigning weight to each of the classed. This is particularly useful
+    when you have an unbalanced training set.
+ 
+    The loss is calculated as follows.
+    The unreduced (i.e. with :attr:`reduction` set to ``'none'``) loss can be described as:
+
+    .. math::
+        \ell(x, y) = L = \{l_1,\dots,l_N\}^\\top, \quad
+        l_n = - w_{y_n} x_{n,y_n}, \quad
+        w_{c} = \\text{weight}[c] \cdot \mathbb{1}\{c \\not= \\text{ignore\\_index}\},
+
+    where :math:`N` is the batch size. If :attr:`reduction` is not ``'none'``
+    (default ``'mean'``), then
+
+    .. math::
+        \ell(x, y) = \\begin{cases}
+            \\sum_{n=1}^N \\frac{1}{\\sum_{n=1}^N w_{y_n}} l_n, &
+            \\text{if reduction} = \\text{'mean';}\\\\
+            \\sum_{n=1}^N l_n,  &
+            \\text{if reduction} = \\text{'sum'.}
+        \\end{cases}
+
+    Parameters:
+        input (Variable): Input tensor, the data type is float32, float64. 
+        label (Variable): Label tensor, the data type is int64_t.
+        weight (Variable, optional): Weight tensor, a manual rescaling weight given
+            to each class. If given, it has to be a Tensor of size `C`. Otherwise,
+            it treated as if having all ones. the data type is 
+            float32, float64, Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            Default is ``'mean'``.
+        ignore_index (int64, optional): Specifies a target value that is ignored
+            and does not contribute to the input gradient.
+
+    Returns:
+        The tensor variable storing the nll_loss.
+
+    Return type: Variable.
+    
+    Examples:
+
+        .. code-block:: python
+
+            # declarative mode
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            input_np = np.random.random(size=(10, 10)).astype(np.float32)
+            label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
+            prog = fluid.Program()
+            startup_prog = fluid.Program()
+            place = fluid.CPUPlace()
+            with fluid.program_guard(prog, startup_prog):
+                input = fluid.data(name='input', shape=[10, 10], dtype='float32')
+                label = fluid.data(name='label', shape=[10], dtype='int64')
+                nll_loss = paddle.nn.loss.NLLLoss()
+                res = nll_loss(input, label)
+
+                exe = fluid.Executor(place)
+                static_result = exe.run(
+                    prog,
+                    feed={"input": input_np,
+                          "label": label_np},
+                    fetch_list=[res])
+            print(static_result)
+            
+            # imperative mode
+            import paddle.fluid.dygraph as dg
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_np)
+                label = dg.to_variable(label_np)
+                output = nll_loss(input, label)
+                print(output.numpy())
+    """
+
+    def __init__(self, weight=None, reduction='mean', ignore_index=-100):
+        super(NLLLoss, self).__init__()
+        self.weight = weight
+        self.reduction = reduction
+        self.ignore_index = ignore_index
+
+    def forward(self, input, label):
+        dtype = self._helper.input_dtype(input)
+
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'nll_loss')
+        fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
+                                                   'nll_loss')
+
+        if self.reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in nll_loss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % self.reduction)
+
+        x_shape = list(input.shape)
+        n = x_shape[0]
+        c = x_shape[1]
+        x_dims = len(x_shape)
+        if x_dims < 2:
+            raise ValueError('Expected 2 or more dimensions (got {})'.format(
+                x_dims))
+        if x_dims != 2 and x_dims != 4:
+            input = fluid.layers.reshape(input, shape=[n, c, 1, -1])
+            label = fluid.layers.reshape(label, shape=[n, 1, -1])
+            out_shape = [n] + x_shape[2:]
+
+        inputs = {'X': input, 'Label': label}
+        attrs = {'reduction': self.reduction, 'ignore_index': self.ignore_index}
+
+        if self.weight is not None:
+            if isinstance(self.weight, fluid.framework.Variable):
+                inputs['Weight'] = self.weight
+
+        out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
+        total_weight = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype)
+        outputs = {'Out': out, 'Total_weight': total_weight}
+
+        self._helper.append_op(
+            type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
+        if x_dims != 2 and x_dims != 4 and self.reduction == 'none':
+            out = fluid.layers.reshape(out, shape=out_shape)
+
+        return out
