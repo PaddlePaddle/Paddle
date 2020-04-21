@@ -172,8 +172,8 @@ def append_send_ops_pass(program, config):
 
     sends = config.get_send_op_config()
 
-    for send in sends:
-        dummys.append(_append_send_op(send.inputs, send.queue))
+    for merged_name, send in sends.items():
+        dummys.append(_append_send_op(send.origin_varnames, merged_name))
 
     if mode in [DistributedMode.SYNC, DistributedMode.HALF_ASYNC]:
         _append_barrier_op(dummys)

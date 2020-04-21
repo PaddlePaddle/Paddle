@@ -55,13 +55,13 @@ struct CommContext {
 
     ss << "\nmerged_var: " << var_name << " trainer_id: " << trainer_id << "\n";
 
-    for (int i = 0; i < splited_varnames.size(); i++) {
+    for (size_t i = 0; i < splited_varnames.size(); i++) {
       ss << "slice varname: " << splited_varnames[i] << " ep: " << epmap[i]
          << " section: " << height_sections[i] << "\n";
     }
 
     ss << "origin varnames: ";
-    for (int i = 0; i < origin_varnames.size(); i++) {
+    for (size_t i = 0; i < origin_varnames.size(); i++) {
       ss << origin_varnames[i] << " ";
     }
 

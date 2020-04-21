@@ -138,26 +138,28 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
-    def buid_ctx(self, vars):
+    def buid_ctx(self, vars, mapping):
         def get_grad_var_ep(slices):
             names = []
             eps = []
             sections = []
+            offset = 0
 
             for slice in slices:
                 names.append(slice.name)
-                sections.append(slice.offset)
+                offset += reduce(lambda x, y: x * y, slice.shape)
+                sections.append(offset)
                 for ep, pairs in self.param_grad_ep_mapping.items():
-                    params, grads = pairs
+                    params, grads = pairs["params"], pairs["grads"]
 
                     for var in params + grads:
-                        if slice == var.name:
+                        if slice.name == var.name:
                             eps.append(ep)
                             break
             return names, eps, sections
 
         name = vars.merged_var.name
-        slice_grads = self.grad_var_mapping[name]
+        slice_grads = mapping[name]
         names, eps, sections = get_grad_var_ep(slice_grads)
         origin_varnames = [var.name for var in vars.ordered_vars]
         trainer_id = self.get_role_id()
@@ -171,16 +173,16 @@ class CompileTimeStrategy(object):
         send_ctx = {}
         for merged in self.merged_variables_pairs:
             grads = merged[1]
-            ctx = self.buid_ctx(grads)
-            send_ctx[ctx.name] = ctx
+            ctx = self.buid_ctx(grads, self.grad_var_mapping)
+            send_ctx[ctx.merged_varname] = ctx
         return send_ctx
 
     def get_communicator_recv_context(self):
         recv_ctx = {}
         for merged in self.merged_variables_pairs:
             params = merged[0]
-            ctx = self.buid_ctx(params)
-            recv_ctx[ctx.name] = ctx
+            ctx = self.buid_ctx(params, self.param_var_mapping)
+            recv_ctx[ctx.merged_varname] = ctx
         return recv_ctx
 
     def get_server_runtime_config(self):
