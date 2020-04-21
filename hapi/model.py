@@ -1161,7 +1161,7 @@ class Model(fluid.dygraph.Layer):
         if fluid.in_dygraph_mode():
             feed_list = None
         else:
-            feed_list = [x.forward() for x in self._inputs + self._labels]
+            feed_list = [x.forward() for x in self._inputs]
 
         if test_data is not None and isinstance(test_data, Dataset):
             test_sampler = DistributedBatchSampler(
@@ -1236,10 +1236,10 @@ class Model(fluid.dygraph.Layer):
             callbacks.on_batch_begin(mode, step, logs)
             if mode == 'train':
                 outs = self.train_batch(data[:len(self._inputs)],
-                                           data[len(self._inputs):])
+                                        data[len(self._inputs):])
             else:
                 outs = self.eval_batch(data[:len(self._inputs)],
-                                          data[len(self._inputs):])
+                                       data[len(self._inputs):])
 
             # losses
             loss = outs[0] if self._metrics else outs
@@ -1267,7 +1267,7 @@ class Model(fluid.dygraph.Layer):
 
         if mode == 'train':
             assert epoch is not None, 'when mode is train, epoch must be given'
-            callbacks.on_epoch_end(epoch)
+            callbacks.on_epoch_end(epoch, logs)
 
         return logs
 

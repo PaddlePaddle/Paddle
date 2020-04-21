@@ -218,8 +218,6 @@ class ProgBarLogger(Callback):
             # if steps is not None, last step will update in on_epoch_end
             if self.steps and self.train_step < self.steps:
                 self._updates(logs, 'train')
-            else:
-                self._updates(logs, 'train')
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
@@ -238,7 +236,7 @@ class ProgBarLogger(Callback):
 
     def on_eval_batch_end(self, step, logs=None):
         logs = logs or {}
-        self.eval_step = step
+        self.eval_step += 1
         samples = logs.get('batch_size', 1)
         self.evaled_samples += samples
 
