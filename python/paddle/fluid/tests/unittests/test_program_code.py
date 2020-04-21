@@ -113,6 +113,7 @@ class TestProgramToReadableCode(unittest.TestCase):
 
     def test_program_print(self):
         print(self.var)
+        print(self.param)
         print(self.op)
         print(self.block)
         print(self.program)
