@@ -224,8 +224,9 @@ class L1Loss(fluid.dygraph.Layer):
 
 class BCELoss(fluid.dygraph.Layer):
     """
-    This op measures the binary cross entropy between input predictions and target label. 
-    The BCELoss layer calculates the binary cross entropy loss as follows.
+    This interface is used to construct a callable object of the ``BCELoss`` class.
+    The BCELoss layer measures the binary_cross_entropy loss between input predictions 
+    and target labels. The binary_cross_entropy loss can be described as:
 
     If :attr:`weight` is set, the loss is:
 
@@ -249,15 +250,17 @@ class BCELoss(fluid.dygraph.Layer):
     .. math::
         Out = SUM(Out)
 
+    Note that the input predictions always be the output of sigmoid, and the target labels 
+    should be numbers between 0 and 1.
+
+    The shape of input predictions and target labels are [N, *], where N is batch_size and `*` 
+    means any number of additional dimensions. If ``reduction`` is ``'none'``, the shape of 
+    output is scalar, else the shape of output is same as input.
+
     Parameters:
-        input (Variable): Input tensor, the data type is float32,
-            float64. Input must be in [0, 1].
-        label (Variable): Label tensor, has the same shape with input, 
-            the data type is float32, float64. Note that the label should be numbers
-            between 0 and 1.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight given 
-            to the loss of each batch element. If given, has to be a Variable of size 
-            nbatch and the data type is float32, float64, int32, int64. Default is ``'None'``.
+        weight (Variable, optional): A manual rescaling weight given to the loss of each 
+            batch element. If given, has to be a Variable of size nbatch and the data type
+            is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
@@ -265,10 +268,8 @@ class BCELoss(fluid.dygraph.Layer):
             If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
 
-    Returns:
-        The tensor variable storing the bce_loss of input and label.
-
-    Return type: Variable.
+    Returns: 
+        A callable object of BCELoss.
 
     Examples:
         .. code-block:: python
