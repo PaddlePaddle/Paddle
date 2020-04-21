@@ -41,12 +41,16 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSscal(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSscal(args...),
+        platform::errors::External("dynload cublasSscal lib failed"));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasScopy(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasScopy(args...),
+        platform::errors::External("dynload cublasScopy lib failed"));
   }
 
   template <typename... ARGS>
@@ -104,12 +108,16 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDscal(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDscal(args...),
+        platform::errors::External("dynload cublasDscal lib failed"));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDcopy(args...));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDcopy(args...),
+        platform::errors::External("dynload cublasDcopy lib failed"));
   }
 
   template <typename... ARGS>

@@ -135,12 +135,6 @@ copy(inference_lib_dist
         SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
 
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
-copy(inference_lib_dist
-        SRCS ${cudaerror_INCLUDE_DIR}
-        DSTS ${dst_dir})
-
-# CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
         DSTS ${FLUID_INFERENCE_INSTALL_DIR})
@@ -190,7 +184,7 @@ copy(fluid_lib_dist
         )
 
 set(module "framework")
-set(framework_lib_deps framework_proto data_feed_proto trainer_desc_proto)
+set(framework_lib_deps framework_proto)
 add_dependencies(fluid_lib_dist ${framework_lib_deps})
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/trainer_desc.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
@@ -210,11 +204,11 @@ copy(fluid_lib_dist
         )
 
 set(module "platform")
-set(platform_lib_deps profiler_proto error_codes_proto cuda_error_proto)
+set(platform_lib_deps profiler_proto)
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/*.pb.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/error_codes.pb.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "string")
@@ -254,7 +248,6 @@ set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
 copy(inference_lib_dist
         SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)
-
 
 # CMakeCache Info
 copy(fluid_lib_dist

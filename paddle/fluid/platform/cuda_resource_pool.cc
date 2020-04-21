@@ -27,13 +27,18 @@ CudaStreamResourcePool::CudaStreamResourcePool() {
       platform::SetDeviceId(dev_idx);
       cudaStream_t stream;
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+          cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking),
+          platform::errors::Fatal(
+              "cudaStreamCreateWithFlags raises unexpected exception"));
       return stream;
     };
 
     auto deleter = [dev_idx](cudaStream_t stream) {
       platform::SetDeviceId(dev_idx);
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamDestroy(stream),
+          platform::errors::Fatal(
+              "cudaStreamDestroy raises unexpected exception"));
     };
 
     pool_.emplace_back(
@@ -67,13 +72,18 @@ CudaEventResourcePool::CudaEventResourcePool() {
       platform::SetDeviceId(dev_idx);
       cudaEvent_t event;
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+          cudaEventCreateWithFlags(&event, cudaEventDisableTiming),
+          platform::errors::Fatal(
+              "cudaEventCreateWithFlags raises unexpected exception"));
       return event;
     };
 
     auto deleter = [dev_idx](cudaEvent_t event) {
       platform::SetDeviceId(dev_idx);
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(event));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaEventDestroy(event),
+          platform::errors::Fatal(
+              "cudaEventDestroy raises unexpected exception"));
     };
 
     pool_.emplace_back(ResourcePool<CudaEventObject>::Create(creator, deleter));

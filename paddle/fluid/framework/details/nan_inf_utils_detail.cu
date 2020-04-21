@@ -152,7 +152,9 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
-                          cudaMemcpyHostToDevice, dev_ctx->stream()));
+                          cudaMemcpyHostToDevice, dev_ctx->stream()),
+          platform::errors::External(
+              "Async cudaMemcpy op_var info to gpu failed."));
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,

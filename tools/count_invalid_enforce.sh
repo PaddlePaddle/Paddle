@@ -30,9 +30,9 @@ ALL_PADDLE_CHECK_CNT=0
 VALID_PADDLE_CHECK_CNT=0
 
 function enforce_scan(){
-    paddle_check=`grep -r -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
+    paddle_check=`grep -r -zoE "(PADDLE_ENFORCE[A-Z_]*|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
     total_check_cnt=`echo "$paddle_check" | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    valid_check_cnt=`echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
+    valid_check_cnt=`echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]*|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
     eval $2=$total_check_cnt
     eval $3=$valid_check_cnt
 }

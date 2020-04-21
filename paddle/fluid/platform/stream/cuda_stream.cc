@@ -30,10 +30,13 @@ bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
   CUDADeviceGuard guard(boost::get<CUDAPlace>(place_).device);
   if (priority == Priority::kHigh) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, -1));
+        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, -1),
+        platform::errors::Fatal("High priority cuda stream creation failed."));
   } else if (priority == Priority::kNormal) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, 0));
+        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, 0),
+        platform::errors::Fatal(
+            "Normal priority cuda stream creation failed."));
   }
   callback_manager_.reset(new StreamCallbackManager(stream_));
   VLOG(3) << "CUDAStream Init stream: " << stream_
@@ -46,7 +49,9 @@ void CUDAStream::Destroy() {
   Wait();
   WaitCallback();
   if (stream_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamDestroy(stream_),
+        platform::errors::Fatal("Cuda stream destruction failed."));
   }
   stream_ = nullptr;
 }
@@ -62,7 +67,10 @@ void CUDAStream::Wait() const {
   }
 #endif
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      e_sync, platform::errors::Fatal(
+                  "cudaStreamSynchronize raises error: %s, errono: %d",
+                  cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
 }
 
 }  // namespace stream
