@@ -51,7 +51,7 @@ class ImageNetDataset(DatasetFolder):
         img_path, label = self.samples[idx]
         img = cv2.imread(img_path).astype(np.float32)
         label = np.array([label])
-        return self.transform(img, label)
+        return self.transform(img), label
 
     def __len__(self):
         return len(self.samples)
