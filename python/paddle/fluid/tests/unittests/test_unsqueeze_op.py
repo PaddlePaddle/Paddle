@@ -16,7 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
+import paddle
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -74,6 +75,31 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (10, 1, 1, 2, 5, 1)
+
+
+class API_TestUnsqueeze(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[-1, 10], dtype='float64')
+            result_squeeze = paddle.unsqueeze(data1, axes=[1])
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input1 = np.random.random([5, 1, 10]).astype('float64')
+            input = np.squeeze(input1, axis=1)
+            result, = exe.run(feed={"data1": input},
+                              fetch_list=[result_squeeze])
+            self.assertTrue(np.allclose(input1, result))
+
+
+class API_TestDyUnsqueeze(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input1 = np.squeeze(input_1, axis=1)
+            input = fluid.dygraph.to_variable(input_1)
+            output = paddle.unsqueeze(input, axes=[1])
+            out_np = output.numpy()
+            self.assertTrue(np.allclose(input1, out_np))
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@
 
 import numpy as np
 import unittest
+import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
 
@@ -123,6 +124,42 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             np.array_equal(
                 res[0], np.stack(
                     [self.x] * self.iter_num, axis=self.axis)))
+
+
+class API_test(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float64')
+            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float64')
+            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float64')
+            result_stack = paddle.stack([data1, data2, data3], axis=0)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input1 = np.random.random([1, 2]).astype('float64')
+            input2 = np.random.random([1, 2]).astype('float64')
+            input3 = np.random.random([1, 2]).astype('float64')
+            result, = exe.run(
+                feed={"data1": input1,
+                      "data2": input2,
+                      "data3": input3},
+                fetch_list=[result_stack])
+            expected_result = np.stack([input1, input2, input3], axis=0)
+            self.assertTrue(np.allclose(expected_result, result))
+
+
+class API_DygraphTest(unittest.TestCase):
+    def test_out(self):
+        data1 = np.array([[1.0, 2.0]])
+        data2 = np.array([[3.0, 4.0]])
+        data3 = np.array([[5.0, 6.0]])
+        with fluid.dygraph.guard():
+            x1 = fluid.dygraph.to_variable(data1)
+            x2 = fluid.dygraph.to_variable(data2)
+            x3 = fluid.dygraph.to_variable(data3)
+            result = paddle.stack([x1, x2, x3], axis=0)
+            result_np = result.numpy()
+        expected_result = np.stack([data1, data2, data3], axis=0)
+        self.assertTrue(np.allclose(expected_result, result_np))
 
 
 if __name__ == '__main__':
