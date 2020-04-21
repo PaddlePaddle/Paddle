@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import math
+
 import paddle.fluid as fluid
 
 from hapi.metrics import Metric
@@ -55,13 +56,12 @@ class PPL(Metric):
         self.reset_freq = reset_freq
         self.reset()
 
-    def add_metric_op(self, pred, label):
-        seq_length = label[0]
+    def add_metric_op(self, pred, seq_length, label):
         word_num = fluid.layers.reduce_sum(seq_length)
         return word_num
 
     def update(self, word_num):
-        self.word_count += word_num[0]
+        self.word_count += word_num
         return word_num
 
     def reset(self):
@@ -76,5 +76,5 @@ class PPL(Metric):
 
     def cal_acc_ppl(self, batch_loss, batch_size):
         self.total_loss += batch_loss * batch_size
-        ppl = np.exp(self.total_loss / self.word_count)
+        ppl = math.exp(self.total_loss / self.word_count)
         return ppl

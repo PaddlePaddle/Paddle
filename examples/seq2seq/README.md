@@ -11,11 +11,9 @@
 ├── reader.py              # 数据读入程序
 ├── download.py            # 数据下载程序
 ├── train.py               # 训练主程序
-├── infer.py               # 预测主程序
-├── run.sh                 # 默认配置的启动脚本
-├── infer.sh               # 默认配置的解码脚本
-├── attention_model.py     # 带注意力机制的翻译模型程序
-└── base_model.py          # 无注意力机制的翻译模型程序
+├── predict.py             # 预测主程序
+├── seq2seq_attn.py        # 带注意力机制的翻译模型程序
+└── seq2seq_base.py        # 无注意力机制的翻译模型程序
 ```
 
 ## 简介
@@ -40,13 +38,7 @@ python download.py
 
 ## 模型训练
 
-`run.sh`包含训练程序的主函数，要使用默认参数开始训练，只需要简单地执行：
-
-```
-sh run.sh
-```
-
-默认使用带有注意力机制的RNN模型，可以通过修改 `attention` 参数为False来训练不带注意力机制的RNN模型。
+执行以下命令即可训练带有注意力机制的Seq2Seq机器翻译模型：
 
 ```sh
 export CUDA_VISIBLE_DEVICES=0
@@ -70,8 +62,7 @@ python train.py \
     --model_path ./attention_models
 ```
 
-训练程序会在每个epoch训练结束之后，save一次模型。
-
+可以通过修改 `attention` 参数为False来训练不带注意力机制的Seq2Seq模型，各参数的具体说明请参阅 `args.py` 。训练程序会在每个epoch训练结束之后，save一次模型。
 
 默认使用动态图模式进行训练，可以通过设置 `eager_run` 参数为False来以静态图模式进行训练，如下：
 
@@ -100,13 +91,7 @@ python train.py \
 
 ## 模型预测
 
-当模型训练完成之后， 可以利用infer.sh的脚本进行预测，默认使用beam search的方法进行预测，加载第10个epoch的模型进行预测，对test的数据集进行解码
-
-```
-sh infer.sh
-```
-
-如果想预测别的数据文件，只需要将 --infer_file参数进行修改。
+训练完成之后，可以使用保存的模型（由 `--reload_model` 指定）对test的数据集（由 `--infer_file` 指定）进行beam search解码，命令如下：
 
 ```sh
 export CUDA_VISIBLE_DEVICES=0
@@ -124,13 +109,13 @@ python infer.py \
     --max_grad_norm 5.0 \
     --vocab_prefix data/en-vi/vocab \
     --infer_file data/en-vi/tst2013.en \
-    --reload_model attention_models/epoch_10 \
-    --infer_output_file attention_infer_output/infer_output.txt \
+    --reload_model attention_models/10 \
+    --infer_output_file infer_output.txt \
     --beam_size 10 \
     --use_gpu True
 ```
 
-和训练类似，预测时同样可以以静态图模式进行，如下：
+各参数的具体说明请参阅 `args.py` ，注意预测时所用模型超参数需和训练时一致。和训练类似，预测时同样可以以静态图模式进行，如下：
 
 ```sh
 export CUDA_VISIBLE_DEVICES=0
@@ -148,8 +133,8 @@ python infer.py \
     --max_grad_norm 5.0 \
     --vocab_prefix data/en-vi/vocab \
     --infer_file data/en-vi/tst2013.en \
-    --reload_model attention_models/epoch_10 \
-    --infer_output_file attention_infer_output/infer_output.txt \
+    --reload_model attention_models/10 \
+    --infer_output_file infer_output.txt \
     --beam_size 10 \
     --use_gpu True \
     --eager_run False  

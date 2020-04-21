@@ -67,7 +67,7 @@ def do_train(args):
         parameter_list=model.parameters(),
         grad_clip=grad_clip)
 
-    ppl_metric = PPL()
+    ppl_metric = PPL(reset_freq=100)  # ppl for every 100 batches
     model.prepare(
         optimizer,
         CrossEntropyCriterion(),

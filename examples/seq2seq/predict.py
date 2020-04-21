@@ -108,7 +108,7 @@ def do_predict(args):
     # TODO(guosheng): use model.predict when support variant length
     with io.open(args.infer_output_file, 'w', encoding='utf-8') as f:
         for data in data_loader():
-            finished_seq = model.test(inputs=flatten(data))[0]
+            finished_seq = model.test_batch(inputs=flatten(data))[0]
             finished_seq = finished_seq[:, :, np.newaxis] if len(
                 finished_seq.shape) == 2 else finished_seq
             finished_seq = np.transpose(finished_seq, [0, 2, 1])
