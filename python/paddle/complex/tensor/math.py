@@ -62,9 +62,11 @@ def elementwise_add(x, y, axis=-1, act=None, name=None):
     if is_real(x_imag) and is_real(y_imag):
         imag = layers.elementwise_add(x_imag, y_imag, act=act, name=name)
     elif is_real(x_imag):
-        imag = layers.assign(x_imag)
+        imag = layers.elementwise_add(
+            x_imag, layers.zeros_like(y_real), act=act, name=name)
     else:
-        imag = layers.expand_as(y_imag, target_tensor=y_real)
+        imag = layers.elementwise_add(
+            layers.zeros_like(x_real), y_imag, act=act, name=name)
     return ComplexVariable(real, imag)
 
 
@@ -109,9 +111,11 @@ def elementwise_sub(x, y, axis=-1, act=None, name=None):
     if is_real(x_imag) and is_real(y_imag):
         imag = layers.elementwise_sub(x_imag, y_imag, act=act, name=name)
     elif is_real(x_imag):
-        imag = layers.assign(x_imag)
+        imag = layers.elementwise_sub(
+            x_imag, layers.zeros_like(y_real), act=act, name=name)
     else:
-        imag = -layers.expand_as(y_imag, target_tensor=y_real)
+        imag = layers.elementwise_sub(
+            layers.zeros_like(x_real), y_imag, act=act, name=name)
     return ComplexVariable(real, imag)
 
 
