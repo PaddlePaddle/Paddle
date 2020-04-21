@@ -300,7 +300,7 @@ class API_TestSplit(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([4, 6, 6]).astype('float64')
-            input2 = np.array([2])
+            input2 = np.array([2]).astype('int32')
             r0, r1, r2, = exe.run(feed={"data1": input1,
                                         "data2": input2},
                                   fetch_list=[x0, x1, x2])
@@ -344,12 +344,12 @@ class API_TestSplit4(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data = fluid.layers.data('data', shape=[-1, 10], dtype='float64')
-            index = fluid.layers.data('index', shape=[1], dtype='int64')
+            index = fluid.layers.data('index', shape=[1], dtype='int32')
             x0, x1 = paddle.split(data, num_or_sections=(3, index), dim=1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 10]).astype('float64')
-            input2 = np.array([7])
+            input2 = np.array([7]).astype('int32')
             r0, r1 = exe.run(feed={"data": input1,
                                    "index": input2},
                              fetch_list=[x0, x1])

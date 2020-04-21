@@ -107,12 +107,12 @@ class API_TestUnsqueeze2(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.data('data1', shape=[-1, 10], dtype='float64')
-            data2 = fluid.data('data2', shape=[1], dtype='int64')
+            data2 = fluid.data('data2', shape=[1], dtype='int32')
             result_squeeze = paddle.unsqueeze(data1, axes=data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
-            input2 = np.array([1])
+            input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1, axis=1)
             result1, = exe.run(feed={"data1": input,
                                      "data2": input2},
@@ -124,12 +124,12 @@ class API_TestUnsqueeze3(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.data('data1', shape=[-1, 10], dtype='float64')
-            data2 = fluid.data('data2', shape=[1], dtype='int64')
+            data2 = fluid.data('data2', shape=[1], dtype='int32')
             result_squeeze = paddle.unsqueeze(data1, axes=[data2, 3])
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([5, 1, 10, 1]).astype('float64')
-            input2 = np.array([1])
+            input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1)
             result1, = exe.run(feed={"data1": input,
                                      "data2": input2},
