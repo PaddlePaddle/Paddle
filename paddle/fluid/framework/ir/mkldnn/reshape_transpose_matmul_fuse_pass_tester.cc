@@ -77,21 +77,9 @@ void TestMain(bool with_xshapes) {
   int total_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
-  auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  std::string test_name{"test_reshape_transpose_matmul"};
-  if (with_xshapes) test_name += "_one_with_xshapes";
-
-  graph_viz_pass->Set("graph_viz_path",
-                      new std::string(test_name + "_before.dot"));
-  graph.reset(graph_viz_pass->Apply(graph.release()));
-
   auto pass =
       PassRegistry::Instance().Get("reshape_transpose_matmul_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
-
-  graph_viz_pass->Get<std::string>(std::string{"graph_viz_path"}) =
-      test_name + "_after.dot";
-  graph.reset(graph_viz_pass->Apply(graph.release()));
 
   int num_reshape_nodes_after = GetNumOpNodes(graph, "reshape2");
   int num_transpose_nodes_after = GetNumOpNodes(graph, "transpose2");
@@ -133,4 +121,3 @@ TEST(ReshapeTransposeMatmulFusePass,
 }  // namespace paddle
 
 USE_PASS(reshape_transpose_matmul_fuse_pass);
-USE_PASS(graph_viz_pass);
