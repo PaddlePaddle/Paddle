@@ -257,7 +257,8 @@ class TestMatMulOpReshapeTranspose4DXYFloat(TestMatMulOpReshapeTranspose):
             self.y.reshape([2, 128, 12, 64]).transpose([0, 2, 3, 1]))
 
 
-class TestMatMulOpReshapeTranspose4DXYInt8(TestMatMulOpReshapeTranspose4DXYFloat):
+class TestMatMulOpReshapeTranspose4DXYInt8(
+        TestMatMulOpReshapeTranspose4DXYFloat):
     def init_data_type():
         self.data_type_ = 'int8'
 

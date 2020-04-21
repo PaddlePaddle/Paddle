@@ -107,7 +107,8 @@ void TestMain(bool with_xshapes) {
   check("Y");
 }
 
-TEST(ReshapeTransposeMatmulMkldnnFusePass, both_matmul_inputs_reshape_transpose) {
+TEST(ReshapeTransposeMatmulMkldnnFusePass,
+     both_matmul_inputs_reshape_transpose) {
   TestMain(false);
 }
 

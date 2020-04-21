@@ -23,9 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void ReshapeTransposeMatmulMkldnnFusePass::Fuse(Graph *graph,
-                                          bool with_reshape_xshape,
-                                          bool with_transpose_xshape) const {
+void ReshapeTransposeMatmulMkldnnFusePass::Fuse(
+    Graph *graph, bool with_reshape_xshape, bool with_transpose_xshape) const {
   GraphPatternDetector gpd;
   patterns::ReshapeTransposeMatmulPattern rtm_pattern(gpd.mutable_pattern(),
                                                       name_scope_);
