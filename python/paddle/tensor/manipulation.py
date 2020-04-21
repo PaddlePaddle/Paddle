@@ -235,7 +235,7 @@ def stack(x, axis=0, out=None, name=None):
         Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
 
     Example:    
-
+        .. code-block:: python
             import numpy as np
             import paddle
             import paddle.fluid as fluid
