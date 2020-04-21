@@ -345,7 +345,7 @@ class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
             'nms_thresh': self.nms_thresh,
             'min_size': self.min_size,
             'eta': self.eta,
-            'return_lod': True
+            'return_rois_num': True
         }
 
         self.outputs = {

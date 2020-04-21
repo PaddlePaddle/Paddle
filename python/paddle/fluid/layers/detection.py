@@ -2845,7 +2845,7 @@ def generate_proposals(scores,
     rpn_roi_probs.stop_gradient = True
     rpn_rois_lod.stop_gradient = True
 
-    if return_lod:
+    if return_rois_num:
         return rpn_rois, rpn_roi_probs, rpn_rois_lod
     else:
         return rpn_rois, rpn_roi_probs
