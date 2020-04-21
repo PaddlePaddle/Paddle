@@ -50,6 +50,24 @@ struct CommContext {
     origin_varnames = ctx.origin_varnames;
   }
 
+  void print() {
+    std::stringstream ss;
+
+    ss << "\nmerged_var: " << var_name << " trainer_id: " << trainer_id << "\n";
+
+    for (int i = 0; i < splited_varnames.size(); i++) {
+      ss << "slice varname: " << splited_varnames[i] << " ep: " << epmap[i]
+         << " section: " << height_sections[i] << "\n";
+    }
+
+    ss << "origin varnames: ";
+    for (int i = 0; i < origin_varnames.size(); i++) {
+      ss << origin_varnames[i] << " ";
+    }
+
+    VLOG(1) << ss.str();
+  }
+
   std::string var_name;
   std::vector<std::string> splited_varnames;
   std::vector<std::string> epmap;

@@ -45,50 +45,15 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
 // get CommContext and remote send and recv op
 void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  using RpcCtxMap = operators::distributed::RpcCtxMap;
-  VLOG(3) << "ProcessGraph";
-  RpcCtxMap send_varname_to_ctx;
-
-  for (auto &node : graphs[0]->Nodes()) {
-    VLOG(3) << "node name " << node->Name();
-    if (node && node->IsOp()) {
-      if (node->Name() == "send") {
-        auto send_var_name = node->Op()->Input("X")[0];
-        auto send_varnames = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("send_varnames"));
-        auto epmap = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("epmap"));
-        auto height_section = boost::get<std::vector<int64_t>>(
-            node->Op()->GetNullableAttr("sections"));
-        auto trainer_id =
-            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
-        auto merge_add =
-            boost::get<bool>(node->Op()->GetNullableAttr("merge_add"));
-        if (!merge_add) {
-          merge_add = FLAGS_communicator_is_sgd_optimizer;
-        }
-        auto use_send_handler =
-            boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
-        send_varname_to_ctx[send_var_name] =
-            operators::distributed::CommContext(
-                send_var_name, send_varnames, epmap, height_section, {},
-                trainer_id, merge_add, use_send_handler);
-        VLOG(3) << "find and init an send op: "
-                << send_varname_to_ctx[send_var_name];
-      }
-    }
-  }
-
   // init communicator here
-  if (send_varname_to_ctx.size() > 0) {
-    auto *instance = operators::distributed::Communicator::GetInstance();
-    auto initialized = instance ? true : false;
-    PADDLE_ENFORCE_EQ(initialized, true,
-                      platform::errors::InvalidArgument(
-                          "Communicator is not Initialized, you may use "
-                          "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
-                          "develop/markdown_doc/transpiler)"));
-  }
+  auto *instance = operators::distributed::Communicator::GetInstance();
+  auto initialized = instance ? true : false;
+  PADDLE_ENFORCE_EQ(initialized, true,
+                    platform::errors::InvalidArgument(
+                        "Communicator is not Initialized, you may use "
+                        "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
+                        "develop/markdown_doc/transpiler)"));
+
 #endif
 }
 

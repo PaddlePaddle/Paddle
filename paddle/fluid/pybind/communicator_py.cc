@@ -47,8 +47,11 @@ void BindCommunicatorContext(py::module* m) {
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
                    const std::vector<std::string>&, int, bool, bool>())
-      .def_property("trainer_id",
-                    [](const CommContext& self) { return self.trainer_id; });
+      .def("trainer_id",
+           [](const CommContext& self) { return self.trainer_id; })
+      .def("merged_varname",
+           [](const CommContext& self) { return self.var_name; })
+      .def("print", [](const CommContext& self) { self.print(); });
 }
 
 void BindCommunicator(py::module* m) {

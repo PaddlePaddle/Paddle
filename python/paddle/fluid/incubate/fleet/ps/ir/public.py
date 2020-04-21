@@ -20,6 +20,7 @@ import os
 
 import six
 from paddle.fluid import core
+from paddle.fluid.core import CommContext
 from paddle.fluid.incubate.fleet.ps.ir import vars_metatools
 from paddle.fluid.incubate.fleet.ps.ir.ps_dispatcher import RoundRobin, PSDispatcher
 
@@ -111,8 +112,6 @@ class CompileTimeStrategy(object):
         self.param_grad_ep_mapping = collections.OrderedDict()
         self.grad_param_mapping = collections.OrderedDict()
 
-        self.var_distributed = vars_metatools.VarsDistributed()
-
         self._build_var_distributed()
 
     def get_distributed_mode(self):
@@ -139,27 +138,50 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
-    def get_send_op_config(self):
-        class Send:
-            def __init__(self, queue, inputs):
-                self.queue = queue
-                self.inputs = inputs
+    def buid_ctx(self, vars):
+        def get_grad_var_ep(slices):
+            names = []
+            eps = []
+            sections = []
 
-        sends = []
+            for slice in slices:
+                names.append(slice.name)
+                sections.append(slice.offset)
+                for ep, pairs in self.param_grad_ep_mapping.items():
+                    params, grads = pairs
 
+                    for var in params + grads:
+                        if slice == var.name:
+                            eps.append(ep)
+                            break
+            return names, eps, sections
+
+        name = vars.merged_var.name
+        slice_grads = self.grad_var_mapping[name]
+        names, eps, sections = get_grad_var_ep(slice_grads)
+        origin_varnames = [var.name for var in vars.ordered_vars]
+        trainer_id = self.get_role_id()
+        aggregate = True
+        send_hander = True
+        ctx = core.CommContext(name, names, eps, sections, origin_varnames,
+                               trainer_id, aggregate, send_hander)
+        return ctx
+
+    def get_communicator_send_context(self):
+        send_ctx = {}
         for merged in self.merged_variables_pairs:
             grads = merged[1]
-            send = Send(grads.merged_var.name,
-                        [var.name for var in grads.ordered_vars])
-            sends.append(send)
+            ctx = self.buid_ctx(grads)
+            send_ctx[ctx.name] = ctx
+        return send_ctx
 
-        return sends
-
-    def get_recv_op_config(self):
-        pass
-
-    def get_communicator_context(self):
-        pass
+    def get_communicator_recv_context(self):
+        recv_ctx = {}
+        for merged in self.merged_variables_pairs:
+            params = merged[0]
+            ctx = self.buid_ctx(params)
+            recv_ctx[ctx.name] = ctx
+        return recv_ctx
 
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()
@@ -388,8 +410,9 @@ class CompileTimeStrategy(object):
         ]
 
     def _build_var_distributed(self):
-        sparse_pairs, dense_pairs = self.get_param_grads()
+        self.var_distributed = vars_metatools.VarsDistributed()
 
+        sparse_pairs, dense_pairs = self.get_param_grads()
         origin_for_sparse = []
         origin_for_dense = []
         param_name_grad_name = dict()
