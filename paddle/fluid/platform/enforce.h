@@ -681,6 +681,44 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
 #endif
 }
 
+/***** CUSOLVER ERROR *****/
+inline bool is_error(cusolverStatus_t stat) {
+  return stat != CUSOLVER_STATUS_SUCCESS;
+}
+
+inline const char* cusolverGetErrorString(cusolverStatus_t stat) {
+  switch (stat) {
+    case CUSOLVER_STATUS_NOT_INITIALIZED:
+      return "CUSOLVER_STATUS_NOT_INITIALIZED";
+    case CUSOLVER_STATUS_ALLOC_FAILED:
+      return "CUSOLVER_STATUS_ALLOC_FAILED";
+    case CUSOLVER_STATUS_INVALID_VALUE:
+      return "CUSOLVER_STATUS_INVALID_VALUE";
+    case CUSOLVER_STATUS_ARCH_MISMATCH:
+      return "CUSOLVER_STATUS_ARCH_MISMATCH";
+    case CUSOLVER_STATUS_EXECUTION_FAILED:
+      return "CUSOLVER_STATUS_EXECUTION_FAILED";
+    case CUSOLVER_STATUS_INTERNAL_ERROR:
+      return "CUSOLVER_STATUS_INTERNAL_ERROR";
+    case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+      return "CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+    default:
+      return "Unknown cusolver status";
+  }
+}
+inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
+  std::string msg(" Cublas error, ");
+  return msg + cusolverGetErrorString(stat) + " ";
+}
+
+inline void throw_on_error(cusolverStatus_t stat, const std::string& msg) {
+#ifndef REPLACE_ENFORCE_GLOG
+  throw std::runtime_error(msg);
+#else
+  LOG(FATAL) << msg;
+#endif
+}
+
 /****** NCCL ERROR ******/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
