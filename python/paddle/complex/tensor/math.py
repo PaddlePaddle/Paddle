@@ -158,15 +158,21 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     (a, b) = (x.real, x.imag) if is_complex(x) else (x, None)
     (c, d) = (y.real, y.imag) if is_complex(y) else (y, None)
 
-    ac = layers.elementwise_mul(a, c, act=act, name=name)
-    bd = layers.elementwise_mul(
-        b, d, act=act, name=name) if is_real(b) and is_real(d) else None
-    bc = layers.elementwise_mul(
-        b, c, act=act, name=name) if is_real(b) else None
-    ad = layers.elementwise_mul(
-        a, d, act=act, name=name) if is_real(d) else None
-    real = ac - bd if is_real(bd) else ac
-    imag = bc + ad if is_real(bc) and is_real(ad) else bc if is_real(bc) else ad
+    ac = layers.elementwise_mul(a, c, name=name)
+    if is_real(b) and is_real(d):
+        bd = layers.elementwise_mul(b, d, name=name)
+    else:
+        bd = layers.zeros_like(ac)
+    if is_real(b):
+        bc = layers.elementwise_mul(b, c, name=name)
+    else:
+        bc = layers.zeros_like(a)
+    if is_real(d):
+        ad = layers.elementwise_mul(a, d, name=name)
+    else:
+        ad = layers.zeros_like(a)
+    real = layers.elementwise_sub(ac, bd, act=act, name=name)
+    imag = layers.elementwise_add(bc, ad, act=act, name=name)
     return ComplexVariable(real, imag)
 
 
