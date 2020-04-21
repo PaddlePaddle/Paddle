@@ -26,8 +26,8 @@ __all__ = ['DarkNet', 'ConvBNLayer', 'darknet53']
 
 # {num_layers: (url, md5)}
 pretrain_infos = {
-    53: ('https://paddlemodels.bj.bcebos.com/hapi/darknet53.pdparams',
-         '2506357a5c31e865785112fc614a487d')
+    53: ('https://paddle-hapi.bj.bcebos.com/models/darknet53.pdparams',
+         'ca506a90e2efecb9a2093f8ada808708')
 }
 
 
@@ -67,6 +67,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
     def forward(self, inputs):
         out = self.conv(inputs)
         out = self.batch_norm(out)
+        # out = fluid.layers.relu(out)
         if self.act == 'leaky':
             out = fluid.layers.leaky_relu(x=out, alpha=0.1)
         return out

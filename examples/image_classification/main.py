@@ -18,8 +18,6 @@ from __future__ import print_function
 import argparse
 import contextlib
 import os
-import sys
-sys.path.append('../')
 
 import time
 import math
@@ -89,8 +87,16 @@ def main():
     labels = [Input([None, 1], 'int64', name='label')]
 
     train_dataset = ImageNetDataset(
-        os.path.join(FLAGS.data, 'train'), mode='train')
-    val_dataset = ImageNetDataset(os.path.join(FLAGS.data, 'val'), mode='val')
+        os.path.join(FLAGS.data, 'train'),
+        mode='train',
+        image_size=FLAGS.image_size,
+        resize_short_size=FLAGS.resize_short_size)
+
+    val_dataset = ImageNetDataset(
+        os.path.join(FLAGS.data, 'val'),
+        mode='val',
+        image_size=FLAGS.image_size,
+        resize_short_size=FLAGS.resize_short_size)
 
     optim = make_optimizer(
         np.ceil(
@@ -176,6 +182,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "--weight-decay", default=1e-4, type=float, help="weight decay")
     parser.add_argument("--momentum", default=0.9, type=float, help="momentum")
+    parser.add_argument(
+        "--image-size", default=224, type=int, help="intput image size")
+    parser.add_argument(
+        "--resize-short-size",
+        default=256,
+        type=float,
+        help="short size of keeping ratio resize")
     FLAGS = parser.parse_args()
     assert FLAGS.data, "error: must provide data path"
     main()

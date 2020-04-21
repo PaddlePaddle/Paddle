@@ -24,7 +24,11 @@ from paddle import fluid
 
 
 class ImageNetDataset(DatasetFolder):
-    def __init__(self, path, mode='train'):
+    def __init__(self,
+                 path,
+                 mode='train',
+                 image_size=224,
+                 resize_short_size=256):
         super(ImageNetDataset, self).__init__(path)
         self.mode = mode
 
@@ -32,13 +36,14 @@ class ImageNetDataset(DatasetFolder):
             mean=[123.675, 116.28, 103.53], std=[58.395, 57.120, 57.375])
         if self.mode == 'train':
             self.transform = transforms.Compose([
-                transforms.RandomResizedCrop(224),
+                transforms.RandomResizedCrop(image_size),
                 transforms.RandomHorizontalFlip(),
                 transforms.Permute(mode='CHW'), normalize
             ])
         else:
             self.transform = transforms.Compose([
-                transforms.Resize(256), transforms.CenterCrop(224),
+                transforms.Resize(resize_short_size),
+                transforms.CenterCrop(image_size),
                 transforms.Permute(mode='CHW'), normalize
             ])
 
