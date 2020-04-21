@@ -695,9 +695,7 @@ def tril(input, diagonal=0, name=None):
             # array([[ 1,  0,  0,  0],
             #        [ 5,  6,  0,  0],
             #        [ 9, 10, 11,  0]])
-
-        .. code-block:: python
-
+            
             # example 2, positive diagonal value
             tril = tensor.tril(x, diagonal=2)
             tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -705,9 +703,7 @@ def tril(input, diagonal=0, name=None):
             # array([[ 1,  2,  3,  0], 
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-
-        .. code-block:: python
-
+            
             # example 3, negative diagonal value
             tril = tensor.tril(x, diagonal=-1)
             tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -771,8 +767,6 @@ def triu(input, diagonal=0, name=None):
             #        [ 0,  6,  7,  8],
             #        [ 0,  0, 11, 12]])
 
-        .. code-block:: python
-
             # example 2, positive diagonal value
             triu = tensor.triu(x, diagonal=2)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -780,8 +774,6 @@ def triu(input, diagonal=0, name=None):
             # array([[0, 0, 3, 4],
             #        [0, 0, 0, 8],
             #        [0, 0, 0, 0]])
-
-        .. code-block:: python
 
             # example 3, negative diagonal value
             triu = tensor.triu(x, diagonal=-1)
