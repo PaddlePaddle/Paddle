@@ -169,17 +169,25 @@ class LRNOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LRNOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LRNOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("MidOut"),
-                   "MidOut(Out) of LRNOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LRN");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LRN");
+    OP_INOUT_CHECK(ctx->HasOutput("MidOut"), "Output", "MidOut", "LRN");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
+    PADDLE_ENFORCE_EQ(x_dim.size(), 4, platform::errors::InvalidArgument(
+                                           "Input(input) rank should be 4, "
+                                           "but received input rank (%d) != 4",
+                                           x_dim.size()));
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE(n > 0 && n % 2 == 1, "n should be positive odd value");
+    PADDLE_ENFORCE_GT(n, 0UL, platform::errors::InvalidArgument(
+                                  "Argument(n) should be positive, "
+                                  "but received n(%d) not greater than 0",
+                                  n));
+    PADDLE_ENFORCE_EQ(n % 2, 1UL, platform::errors::InvalidArgument(
+                                      "Argument(n) should be odd value, "
+                                      "but received n(%d) is not an odd value",
+                                      n));
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -317,10 +325,10 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("MidOut"), "Input(MidOut) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LRNGrad");
+    OP_INOUT_CHECK(ctx->HasInput("MidOut"), "Input", "MidOu", "LRNGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "LRNGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);

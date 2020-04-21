@@ -41,16 +41,12 @@ struct CUBlas<float> {
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSscal(args...),
-        platform::errors::External("dynload cublasSscal lib failed"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSscal(args...));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasScopy(args...),
-        platform::errors::External("dynload cublasScopy lib failed"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasScopy(args...));
   }
 
   template <typename... ARGS>
@@ -71,22 +67,19 @@ struct CUBlas<float> {
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSgetrfBatched(args...),
-        platform::errors::External("Call of cublasSgetrfBatched failed."));
+        platform::dynload::cublasSgetrfBatched(args...));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSgetriBatched(args...),
-        platform::errors::External("Call of cublasSgetriBatched failed."));
+        platform::dynload::cublasSgetriBatched(args...));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSmatinvBatched(args...),
-        platform::errors::External("Call of cublasSmatinvBatched failed."));
+        platform::dynload::cublasSmatinvBatched(args...));
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -129,16 +122,12 @@ struct CUBlas<double> {
 
   template <typename... ARGS>
   static void SCAL(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDscal(args...),
-        platform::errors::External("dynload cublasDscal lib failed"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDscal(args...));
   }
 
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDcopy(args...),
-        platform::errors::External("dynload cublasDcopy lib failed"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDcopy(args...));
   }
 
   template <typename... ARGS>
@@ -159,22 +148,19 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDgetrfBatched(args...),
-        platform::errors::External("Call of cublasDgetrfBatched failed."));
+        platform::dynload::cublasDgetrfBatched(args...));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDgetriBatched(args...),
-        platform::errors::External("Call of cublasDgetriBatched failed."));
+        platform::dynload::cublasDgetriBatched(args...));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDmatinvBatched(args...),
-        platform::errors::External("Call of cublasDmatinvBatched failed."));
+        platform::dynload::cublasDmatinvBatched(args...));
   }
 
   template <typename... ARGS>

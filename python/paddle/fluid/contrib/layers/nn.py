@@ -1236,7 +1236,8 @@ def rank_attention(input,
                    rank_offset,
                    rank_param_shape,
                    rank_param_attr,
-                   max_rank=3):
+                   max_rank=3,
+                   max_size=0):
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and 
@@ -1266,7 +1267,8 @@ def rank_attention(input,
                                                                      name="ubm_rank_param.w_0",
                                                                      initializer=
                                                                      fluid.initializer.Xavier(uniform=False)),
-                                                      max_rank=3)
+                                                      max_rank=3,
+                                                      max_size=0)
     """
     helper = LayerHelper('rank_attention', **locals())
     dtype = helper.input_dtype(input_param_name='input')
@@ -1278,6 +1280,8 @@ def rank_attention(input,
     rank_param.stop_gradient = False
 
     output = helper.create_variable_for_type_inference(dtype)
+    input_help = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
     ins_rank = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
@@ -1288,7 +1292,9 @@ def rank_attention(input,
             "RankOffset": rank_offset,
             "RankParam": rank_param
         },
-        outputs={"Out": output},
-        attrs={"MaxRank": max_rank})
-
+        outputs={"Out": output,
+                 "InputHelp": input_help,
+                 "InsRank": ins_rank},
+        attrs={"MaxRank": max_rank,
+               "MaxSize": max_size})
     return output
