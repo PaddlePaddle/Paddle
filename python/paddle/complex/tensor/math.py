@@ -30,11 +30,11 @@ def elementwise_add(x, y, axis=-1, act=None, name=None):
 
     Args:
         x (Variable|ComplexVariable): The first input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
         y (Variable|ComplexVariable): The second input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
 
@@ -77,11 +77,11 @@ def elementwise_sub(x, y, axis=-1, act=None, name=None):
 
     Args:
         x (Variable|ComplexVariable): The first input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
         y (Variable|ComplexVariable): The second input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
 
@@ -124,11 +124,11 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
 
     Args:
         x (Variable|ComplexVariable): The first input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
         y (Variable|ComplexVariable): The second input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
 
@@ -175,11 +175,11 @@ def elementwise_div(x, y, axis=-1, act=None, name=None):
 
     Args:
         x (Variable|ComplexVariable): The first input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
         y (Variable|ComplexVariable): The second input Variable or ComplexVariable 
-            with number of dimensions. The supported data types include float32 
+            with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
 

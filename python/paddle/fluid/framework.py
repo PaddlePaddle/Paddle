@@ -1671,8 +1671,8 @@ class ComplexVariable(object):
           to create a dygraph ComplexVariable with complex number data.**
 
     Args:
-        real (Variable): The Variable to hold real part data.
-        imag (Variable): The Variable to hold imaginery part data.
+        real (Variable): The Variable holding real-part data.
+        imag (Variable): The Variable holding imaginery-part data.
     
     Examples:
         .. code-block:: python
@@ -1691,9 +1691,9 @@ class ComplexVariable(object):
 
     def __init__(self, real, imag):
         assert real.shape == imag.shape, "The real part and imaginary part " \
-            "of ComplexVariable should have the same shape!"
+            "of a ComplexVariable should have the same shape!"
         assert real.dtype == imag.dtype, "The real part and imaginary part " \
-            "of ComplexVariable should have the same data type!"
+            "of a ComplexVariable should have the same data type!"
 
         self.real = real
         self.imag = imag
@@ -1723,10 +1723,13 @@ class ComplexVariable(object):
         if isinstance(name, str):
             self.real.name = name + ".real"
             self.imag.name = name + ".imag"
-        elif isinstance(name, tuple) and len(name) == 2:
+        elif (isinstance(name, tuple) or isinstance(name,
+                                                    list)) and len(name) == 2:
             self.real.name, self.imag.name = name[0], name[1]
         else:
-            raise ValueError("Invalid name assigned to a ComplexVariable!")
+            raise ValueError(
+                "An invalid name assigned to the ComplexVariable, "
+                "which must be a string, or a tuple or a list with length 2!")
 
     def numpy(self):
         return self.real.numpy() + 1j * self.imag.numpy()

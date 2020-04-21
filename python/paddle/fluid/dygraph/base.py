@@ -492,15 +492,24 @@ def grad(outputs,
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None):
     """
-    The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
+    The API will create a ``Variable`` or ``ComplexVariable`` object from 
+    numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray or Variable object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16, complex64, complex128}.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
+        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
+            or ComplexVariable object that needs to be converted, it can be 
+            multi-dimension, and the data type is one of numpy\.{float16, 
+            float32, float64, int16, int32, int64, uint8, uint16, complex64, 
+            complex128}.
+        name(str, optional): The default value is None. Normally there is no 
+            need for user to set this property. For more information, please 
+            refer to :ref:`api_guide_Name` .
+        zero_copy(bool, optional): Whether to share memory with the input numpy 
+            array. This parameter only works with CPUPlace and will be set to 
+            True when it is None. Default: None.
 
     Returns:
-        Variable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable object, just return ``value``.
+        Variable or ComplexVariable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable object, just return ``value``.
 
 
     Examples:
@@ -518,7 +527,10 @@ def to_variable(value, name=None, zero_copy=None):
             y = fluid.dygraph.to_variable(x)
             x[0][0] = 0
             y[0][0].numpy()  # array([0.], dtype=float32)
-
+            c = np.array([2+1j, 2])
+            z = fluid.dygraph.to_variable(c)
+            z.numpy() # array([2.+1.j, 2.+0.j])
+            z.dtype # 'complex128'
     """
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
