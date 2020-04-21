@@ -47,54 +47,64 @@ __all__ = [
 ]
 
 
-def cd(input,
-       fill_value,
-       out=None,
-       dtype=None,
-       device=None,
-       stop_gradient=True,
-       name=None):
+def full_like(input,
+              fill_value,
+              out=None,
+              dtype=None,
+              device=None,
+              stop_gradient=True,
+              name=None):
     """
     **full_like**
     This function creates a tensor filled with `fill_value` which has identical shape and dtype 
     with `input`.
+
     Args:
-        input(Variable): The input tensor which specifies shape and dtype.
-        fill_value(bool|float|int): The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            If out is None, a new Varibale will be create to store the result. Default value is None.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set bool, float32, float64, int32, int64. 
-            The default value is None, the dtype is the same as input.
-        device (string, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be the device that the user set in 
-            the paddle program. Default value is None.
-        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable.
-            Default value is True.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        input(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        fill_value(bool|float|int): The value to fill the tensor with. Default value is 0. Note: this value shouldn't exceed the range of the output data type.
+        out(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of operation. If out is None, a new Varibale will be create to store the result. Default value is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The default value is None, which means the output data type is the same as input.
+        device (string, optional): Which device to run the operator. The :attr:`device` must be None, 'cpu', 'gpu'. If :attr:`device` is None, it will be the device that the user set in the paddle program. Default value is None.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable. Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
         out(Variable): The Tensor variable storing the output.
+    
     Examples:
         .. code-block:: python
-            import paddle
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', dtype='float32', shape=[3])
-            data = paddle.full_like(x, 1.0) # data=[1.0, 1.0, 1.0]
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+          input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+          output = paddle.full_like(input, 2.0)
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
+          print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
     helper = LayerHelper("full_like", **locals())
 
+    var_dtype = None
     if dtype is None:
-        dtype = input.dtype
-
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+        var_dtype = input.dtype
+    else:
+        check_dtype(
+            dtype, 'dtype',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'full_like')
+        var_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
+
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [input]},
-        attrs={'value': fill_value},
+        attrs={'value': fill_value,
+               "dtype": var_dtype},
         outputs={'Out': [out]})
     out.stop_gradient = stop_gradient
 

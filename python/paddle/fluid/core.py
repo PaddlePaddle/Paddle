@@ -185,8 +185,8 @@ if avx_supported():
         from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
         if sys.platform != 'win32':
-            from .core_avx import _set_process_pid
-            from .core_avx import _erase_process_pid
+            from .core_avx import _set_process_pids
+            from .core_avx import _erase_process_pids
             from .core_avx import _set_process_signal_handler
             from .core_avx import _throw_error_if_process_failed
             from .core_avx import _convert_to_tensor_list
@@ -229,8 +229,8 @@ if load_noavx:
         from .core_noavx import _load_dygraph_dict
         from .core_noavx import _create_loaded_parameter
         if sys.platform != 'win32':
-            from .core_noavx import _set_process_pid
-            from .core_noavx import _erase_process_pid
+            from .core_noavx import _set_process_pids
+            from .core_noavx import _erase_process_pids
             from .core_noavx import _set_process_signal_handler
             from .core_noavx import _throw_error_if_process_failed
             from .core_noavx import _convert_to_tensor_list
