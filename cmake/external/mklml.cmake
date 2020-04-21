@@ -33,7 +33,7 @@ IF(WIN32)
 ELSE()
     #TODO(intel-huying):
     #  Now enable csrmm function in mklml library temporarily, it will be updated as offical version later.
-    SET(MKLML_VER "mklml_lnx_2019.0.5.20190502" CACHE STRING "" FORCE)
+    SET(MKLML_VER "Csrmm_mklml_lnx_2019.0.5.20190502" CACHE STRING "" FORCE)
     SET(MKLML_URL "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
     SET(MKLML_LIB                 ${MKLML_LIB_DIR}/libmklml_intel.so)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5.so)
