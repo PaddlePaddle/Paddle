@@ -14,7 +14,7 @@
 from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode, _varbase_creator
 
 __all__ = [
     'matmul',
@@ -109,8 +109,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     }
 
     if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                        transpose_y, 'alpha', float(alpha))
+        return out
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
