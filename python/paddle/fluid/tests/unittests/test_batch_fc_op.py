@@ -58,7 +58,7 @@ class TestBatchFCOp(OpTest):
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
+            self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad_gpu(self):
         if core.is_compiled_with_cuda():

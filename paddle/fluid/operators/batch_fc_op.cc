@@ -23,13 +23,18 @@ class BatchFCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "X(Input) of Batch Fully Connected should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::InvalidArgument(
+            "X(Input) of Batch Fully Connected should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        "Out(Output) of Batch Fully Connected should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                      "W(Input) of Batch Fully Connected should not be null.");
+        platform::errors::InvalidArgument(
+            "Out(Output) of Batch Fully Connected should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("W"), true,
+        platform::errors::InvalidArgument(
+            "W(Input) of Batch Fully Connected should not be null."));
 
     auto input_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
