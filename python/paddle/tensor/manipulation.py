@@ -472,7 +472,7 @@ def squeeze(input, axes, out=None, name=None):
                 # input is a variable which shape is [5, 1, 10]
                 input = fluid.dygraph.to_variable(input_1)
 
-                output = paddle.fluid.layers.squeeze(input, axes=[1])
+                output = paddle.squeeze(input, axes=[1])
                 # output.shape [5, 10]
 
     """
@@ -526,7 +526,7 @@ def unsqueeze(input, axes, out=None, name=None):
                 # input is a variable which shape is [5, 10]
                 input = fluid.dygraph.to_variable(input_1)
 
-                output = paddle.fluid.layers.unsqueeze(input, axes=[1])
+                output = paddle.unsqueeze(input, axes=[1])
                 # output.shape [5, 1, 10]
     """
     if not isinstance(axes, (int, list, tuple, Variable)):
@@ -630,7 +630,7 @@ def gather(input, index, overwrite=True):
                 index_1 = np.array([0,1])
                 input = fluid.dygraph.to_variable(input_1)
                 index = fluid.dygraph.to_variable(index_1)
-                output = paddle.fluid.layers.gather(input, index)
+                output = paddle.gather(input, index)
                 # expected output: [[1,2],[3,4]]
     """
     helper = LayerHelper('gather', **locals())
