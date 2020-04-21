@@ -162,20 +162,27 @@ class TestDnnlMatMulOpInt8ForceFP32BasicScales(TestDnnlMatMulOp):
 
 
 @skip_check_grad_ci(reason="Tests inference only optimization.")
-class TestMatMulOpTransposeReshape(OpTest):
+class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
+    def init_data_type(self):
+        self.data_type_ = np.float32
+
     def generate_data(self):
-        self.x = np.random.random([1, 128, 128]).astype("float32")
-        self.y = np.random.random([1, 128, 64]).astype("float32")
-        self.out = np.matmul(self.x, self.y)
-        self.reshape_out = []
+        self.x = np.random.random([1, 128, 128]).astype(self.data_type_)
+        self.y = np.random.random([1, 128, 64]).astype(self.data_type_)
+
+    def init_params_and_out(self):
         self.transpose_out = []
+        self.reshape_out = []
+        self.out = np.matmul(self.x, self.y)
 
     def setUp(self):
         os.environ["DNNL_MAX_CPU_ISA"] = "AVX"
         self.op_type = "matmul"
         self._cpu_only = True
         self.use_mkldnn = True
+        self.init_data_type()
         self.generate_data()
+        self.init_params_and_out()
 
         self.inputs = {'X': self.x, 'Y': self.y}
         self.attrs = {'use_mkldnn': self.use_mkldnn}
@@ -192,27 +199,46 @@ class TestMatMulOpTransposeReshape(OpTest):
         self.check_output()
 
 
-class TestMatMulOpTransposeReshapeFloatWithEmpty(TestMatMulOpTransposeReshape):
-    def generate_data(self):
-        bs = 8
-        dt = "float32"
-        self.x = np.random.random([bs, 12, 128, 128]).astype(dt)
-        self.y = np.random.random([bs, 12, 128, 64]).astype(dt)
-        self.transpose_out = []
-        self.reshape_out = []
-        self.out = np.matmul(self.x, self.y)
+class TestMatMulOpTransposeReshapeIntEmptyInt(
+        TestMatMulOpTransposeReshapeEmptyFloat):
+    def init_data_type(self):
+        self.data_type_ = np.int8
 
 
-class TestMatMulOpTransposeReshapeFloat(TestMatMulOpTransposeReshape):
+class TestMatMulOpTransposeReshapeBasicFloat(
+        TestMatMulOpTransposeReshapeEmptyFloat):
     def generate_data(self):
-        bs = 8
-        dt = "float32"
-        self.x = np.random.random([bs, 12, 128, 128]).astype(dt)
-        self.y = np.random.random([bs, 12, 128, 64]).astype(dt)
+        self.bs = 8
+        self.x = np.random.random(
+            [self.bs, 12, 128, 128]).astype(self.data_type_)
+        self.y = np.random.random(
+            [self.bs, 12, 128, 64]).astype(self.data_type_)
+
+    def init_params_and_out(self):
         self.transpose_out = [0, 2, 1, 3]
-        self.reshape_out = [0, 0, 768]
+        self.reshape_out = [0, 0, self.x.shape[1] * self.y.shape[-1]]
         self.out = np.matmul(self.x, self.y).transpose([0, 2, 1, 3]).reshape(
-            [bs, -1, 768])
+            [self.bs, -1, self.x.shape[1] * self.y.shape[-1]])
+
+
+class TestMatMulOpTransposeReshapeBasicInt(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def init_data_type(self):
+        self.data_type_ = np.int8
+
+
+class TestMatMulOpTransposeReshapeOtherDimFloat(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def generate_data(self):
+        self.bs = 11
+        self.x = np.random.random([self.bs, 12, 14, 18]).astype(self.data_type_)
+        self.y = np.random.random([self.bs, 12, 18, 13]).astype(self.data_type_)
+
+
+class TestMatMulOpTransposeReshapeOtherDimInt(
+        TestMatMulOpTransposeReshapeOtherDimFloat):
+    def init_data_type(self):
+        self.data_type_ = np.int8
 
 
 if __name__ == "__main__":

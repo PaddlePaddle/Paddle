@@ -427,6 +427,13 @@ class MatMulOp : public framework::OperatorWithKernel {
                             "transpose_out_size supported rank is 4, "
                             "received %d",
                             transpose_out_size));
+      bool supported_transpose_axis =
+          (transpose_out.at(0) == 0 && transpose_out.at(1) == 2 &&
+           transpose_out.at(2) == 1 && transpose_out.at(3) == 3);
+      PADDLE_ENFORCE_EQ(
+          supported_transpose_axis, true,
+          platform::errors::InvalidArgument(
+              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
       PADDLE_ENFORCE_EQ(
           reshape_out_size, 3,
           platform::errors::InvalidArgument("reshape_out supported rank is 3, "

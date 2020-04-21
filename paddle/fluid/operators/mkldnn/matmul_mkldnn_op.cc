@@ -31,6 +31,11 @@ using platform::MKLDNNDeviceContext;
 using framework::ExecutionContext;
 using Tensor = framework::Tensor;
 
+template <typename T>
+constexpr bool IsInt8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
 static framework::DDim RowMatrixDimsFromVector(const framework::DDim& x_dim) {
@@ -88,10 +93,10 @@ class MatMulFactory {
     return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
   }
 
-  void correctStridesWhenOutputFused(const ExecutionContext& ctx,
-                                     const memory::dim N, memory::dim b,
-                                     memory::dims* out_strides) const {
-    if (IsOutputFused(ctx)) *out_strides = {N, b * N, 1};
+  void CorrectStridesWhenFloatOutputFused(const ExecutionContext& ctx,
+                                          const memory::dim N, memory::dim b,
+                                          memory::dims* out_strides) const {
+    if (!IsInt8<OT>() && IsOutputFused(ctx)) *out_strides = {N, b * N, 1};
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -139,7 +144,7 @@ class MatMulFactory {
                                  : memory::dims{N * K, 1, K};
     memory::dims out_strides = memory::dims{M * N, N, 1};
 
-    correctStridesWhenOutputFused(ctx, N, b, &out_strides);
+    CorrectStridesWhenFloatOutputFused(ctx, N, b, &out_strides);
 
     return {x_dims, y_dims, out_dims, strides_x, strides_y, out_strides};
   }
@@ -264,10 +269,6 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   return factory;
 }
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
 // Choose appropriate primitive factory implementation based on inferred
 // output type (uint8, int8 or float).
 template <typename XT, typename YT>

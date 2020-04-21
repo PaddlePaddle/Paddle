@@ -469,7 +469,8 @@ class Qat2Int8MkldnnPass(object):
                     self._find_avg_pooling_ids(graph))
         ir_pass.apply(cpp_graph)
         if self._debug:
-            graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
+            graph.draw('.',
+                       'qat_int8_before_matmul_fuse_{}'.format(ir_pass.type()),
                        graph.all_op_nodes())
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(

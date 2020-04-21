@@ -16,66 +16,63 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+from paddle.fluid.tests.unittests.mkldnn.test_matmul_mkldnn_op import TestDnnlMatMulOp
+
 import paddle.fluid as fluid
 from inference_pass_test import InferencePassTest
 
 
 class TestMKLDNNMatmulFuseOp(InferencePassTest):
-    def setUp(self):
-        bs = 8
-        d_type = 'float32'
-        shape_x = [12, 128, 128]
-        shape_y = [12, 128, 64]
+    def init_data(self):
+        self.bs = 8
+        self.d_type = np.float32
+        self.shape_x = [12, 128, 128]
+        self.shape_y = [12, 128, 64]
+        self.enable_mkldnn = True
+
+    def make_network(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x', shape=[-1] + shape_x, dtype=d_type)
-            y = fluid.data(name='y', shape=[-1] + shape_y, dtype=d_type)
+            x = fluid.data(
+                name='x', shape=[-1] + self.shape_x, dtype=self.d_type)
+            y = fluid.data(
+                name='y', shape=[-1] + self.shape_y, dtype=self.d_type)
             out = fluid.layers.matmul(x, y)
             out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.reshape(out, [0, 0, shape_y[0] * shape_y[2]])
+            out = fluid.layers.reshape(
+                out, [0, 0, self.shape_y[0] * self.shape_y[2]])
             out = fluid.layers.fc(out, size=1)
+        return out
 
+    def setUp(self):
+        self.init_data()
+        out = self.make_network()
+        self.set_feeds(out)
+
+    def set_feeds(self, out):
         self.feeds = {
-            "x": np.random.random([bs] + shape_x).astype(d_type),
-            "y": np.random.random([bs] + shape_y).astype(d_type)
+            "x": np.random.random([self.bs] + self.shape_x).astype(self.d_type),
+            "y": np.random.random([self.bs] + self.shape_y).astype(self.d_type)
         }
         self.fetch_list = [out]
-        self.enable_mkldnn = True
 
     def test_check_output(self):
         use_gpu = False
         self.check_output_with_option(use_gpu)
 
 
-class TestMKLDNNMatmulOtherDimsFuseOp(InferencePassTest):
-    def setUp(self):
-        bs = 8
-        d_type = 'float32'
-        shape_x = [12, 1, 1]
-        shape_y = [12, 1, 64]
-        with fluid.program_guard(self.main_program, self.startup_program):
-            x = fluid.data(name='x', shape=[-1] + shape_x, dtype=d_type)
-            y = fluid.data(name='y', shape=[-1] + shape_y, dtype=d_type)
-            out = fluid.layers.matmul(x, y)
-            out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.reshape(out, [0, 0, shape_y[0] * shape_y[2]])
-            out = fluid.layers.fc(out, size=1)
-
-        self.feeds = {
-            "x": np.random.random([bs] + shape_x).astype(d_type),
-            "y": np.random.random([bs] + shape_y).astype(d_type)
-        }
-        self.fetch_list = [out]
+class TestMKLDNNMatmulOtherDimsFuseOp(TestMKLDNNMatmulFuseOp):
+    def init_data(self):
+        self.bs = 8
+        self.d_type = np.float32
+        self.shape_x = [12, 1, 1]
+        self.shape_y = [12, 1, 64]
         self.enable_mkldnn = True
-
-    def test_check_output(self):
-        use_gpu = False
-        self.check_output_with_option(use_gpu)
 
 
 class TestMKLDNNMatmulNotFuseOp(InferencePassTest):
     def setUp(self):
         batch_size = 7
-        d_type = 'float32'
+        d_type = np.float32
         shape_x = [12, 128, 128]
         shape_y = [12, 128, 64]
         with fluid.program_guard(self.main_program, self.startup_program):
@@ -85,7 +82,7 @@ class TestMKLDNNMatmulNotFuseOp(InferencePassTest):
             out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
             out = fluid.layers.transpose(
                 out, perm=[0, 1, 2, 3])  # breaks pattern
-            out = fluid.layers.reshape(out, [0, 0, 768])
+            out = fluid.layers.reshape(out, [0, 0, shape_y[0] * shape_y[2]])
             out = fluid.layers.fc(out, size=1)
 
         self.feeds = {
