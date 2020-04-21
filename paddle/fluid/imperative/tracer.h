@@ -76,7 +76,7 @@ class Tracer {
     return program_desc_tracer_.get();
   }
 
-  std::string GenerateUniqueName(std::string key = "_tmp") {
+  std::string GenerateUniqueName(std::string key = "tmp") {
     return generator_->Generate(key);
   }
 

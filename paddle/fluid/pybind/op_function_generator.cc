@@ -232,8 +232,7 @@ GenerateOpFunctions(const std::string& module_name) {
     }
     std::string function_args = "";
     if (input_args == "") {
-      function_args =
-          paddle::string::Sprintf(FUNCTION_ARGS_NO_INPUT, input_args);
+      function_args = FUNCTION_ARGS_NO_INPUT;
     } else {
       function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
     }
