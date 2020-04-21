@@ -1140,6 +1140,12 @@ def lod_rank_table(x, level=0):
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
     """
+    check_type(x, 'x', (Variable, list), 'lod_rank_table')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_rank_table')
+
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
