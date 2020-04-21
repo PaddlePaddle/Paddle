@@ -193,17 +193,17 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
         return self._run(inputs, labels)
 
-    def eval(self, inputs, labels=None):
+    def eval_batch(self, inputs, labels=None):
         self.mode = 'eval'
         return self._run(inputs, labels)
 
-    def test(self, inputs):
+    def test_batch(self, inputs):
         self.mode = 'test'
         return self._run(inputs, None)
 
@@ -567,7 +567,7 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         super(Model, self.model).train()
@@ -600,7 +600,7 @@ class DynamicGraphAdapter(object):
         return ([to_numpy(l) for l in losses], metrics) \
             if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
-    def eval(self, inputs, labels=None):
+    def eval_batch(self, inputs, labels=None):
         super(Model, self.model).eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
@@ -642,7 +642,7 @@ class DynamicGraphAdapter(object):
         return ([to_numpy(l) for l in losses], metrics) \
             if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
-    def test(self, inputs):
+    def test_batch(self, inputs):
         super(Model, self.model).eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
@@ -741,14 +741,14 @@ class Model(fluid.dygraph.Layer):
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train(self, *args, **kwargs):
-        return self._adapter.train(*args, **kwargs)
+    def train_batch(self, *args, **kwargs):
+        return self._adapter.train_batch(*args, **kwargs)
 
-    def eval(self, *args, **kwargs):
-        return self._adapter.eval(*args, **kwargs)
+    def eval_batch(self, *args, **kwargs):
+        return self._adapter.eval_batch(*args, **kwargs)
 
-    def test(self, *args, **kwargs):
-        return self._adapter.test(*args, **kwargs)
+    def test_batch(self, *args, **kwargs):
+        return self._adapter.test_batch(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         if ParallelEnv().local_rank == 0:
@@ -816,7 +816,7 @@ class Model(fluid.dygraph.Layer):
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + err.message))
+                        ("Skip loading for {}. ".format(key) + str(err)))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
@@ -1185,7 +1185,7 @@ class Model(fluid.dygraph.Layer):
         outputs = []
         for data in tqdm.tqdm(loader):
             data = flatten(data)
-            outputs.append(self.test(data[:len(self._inputs)]))
+            outputs.append(self.test_batch(data[:len(self._inputs)]))
 
         # NOTE: for lod tensor output, we should not stack outputs
         # for stacking may loss its detail info
@@ -1198,18 +1198,6 @@ class Model(fluid.dygraph.Layer):
                     and isinstance(test_loader, DataLoader):
             outputs = [o[:len(test_loader.dataset)] for o in outputs]
         return outputs
-
-    def set_eval_data(self, eval_data):
-        """
-        Args:
-            eval_data (Dataset|DataLoader|None): An iterable data loader is used for 
-                eval. An instance of paddle.io.Dataset or 
-                paddle.io.Dataloader is recomended. 
-        """
-        assert isinstance(
-            eval_data,
-            DataLoader), "eval_data must be a instance of Dataloader!"
-        self._test_dataloader = eval_data
 
     def _run_one_epoch(self,
                        data_loader,
@@ -1247,11 +1235,11 @@ class Model(fluid.dygraph.Layer):
 
             callbacks.on_batch_begin(mode, step, logs)
             if mode == 'train':
-                outs = self.train(data[:len(self._inputs)],
-                                  data[len(self._inputs):])
+                outs = self.train_batch(data[:len(self._inputs)],
+                                           data[len(self._inputs):])
             else:
-                outs = self.eval(data[:len(self._inputs)],
-                                 data[len(self._inputs):])
+                outs = self.eval_batch(data[:len(self._inputs)],
+                                          data[len(self._inputs):])
 
             # losses
             loss = outs[0] if self._metrics else outs

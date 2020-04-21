@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 from hapi.model import Model
 from hapi.download import get_weights_path
 
-__all__ = ['DarkNet', 'ConvBNLayer', 'darknet53']
+__all__ = ['DarkNet', 'darknet53']
 
 # {num_layers: (url, md5)}
 pretrain_infos = {
@@ -136,7 +136,7 @@ class LayerWarp(fluid.dygraph.Layer):
 DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 
-class DarkNet(fluid.dygraph.Layer):
+class DarkNet(Model):
     """DarkNet model from
     `"YOLOv3: An Incremental Improvement" <https://arxiv.org/abs/1804.02767>`_
 

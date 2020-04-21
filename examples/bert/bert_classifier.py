@@ -16,14 +16,60 @@
 import paddle.fluid as fluid
 from hapi.metrics import Accuracy
 from hapi.configure import Config
+from hapi.text.bert import BertEncoder
+from paddle.fluid.dygraph import Linear, Layer
 from hapi.model import set_device, Model, SoftmaxWithCrossEntropy, Input
-
-from cls import ClsModelLayer
 import hapi.text.tokenizer.tokenization as tokenization
 from hapi.text.bert import Optimizer, BertConfig, BertDataLoader, BertInputExample
 
 
-def train():
+class ClsModelLayer(Model):
+    """
+    classify model
+    """
+
+    def __init__(self,
+                 args,
+                 config,
+                 num_labels,
+                 return_pooled_out=True,
+                 use_fp16=False):
+        super(ClsModelLayer, self).__init__()
+        self.config = config
+        self.use_fp16 = use_fp16
+        self.loss_scaling = args.loss_scaling
+
+        self.bert_layer = BertEncoder(
+            config=self.config, return_pooled_out=True, use_fp16=self.use_fp16)
+
+        self.cls_fc = Linear(
+            input_dim=self.config["hidden_size"],
+            output_dim=num_labels,
+            param_attr=fluid.ParamAttr(
+                name="cls_out_w",
+                initializer=fluid.initializer.TruncatedNormal(scale=0.02)),
+            bias_attr=fluid.ParamAttr(
+                name="cls_out_b", initializer=fluid.initializer.Constant(0.)))
+
+    def forward(self, src_ids, position_ids, sentence_ids, input_mask):
+        """
+        forward
+        """
+
+        enc_output, next_sent_feat = self.bert_layer(src_ids, position_ids,
+                                                     sentence_ids, input_mask)
+
+        cls_feats = fluid.layers.dropout(
+            x=next_sent_feat,
+            dropout_prob=0.1,
+            dropout_implementation="upscale_in_train")
+
+        pred = self.cls_fc(cls_feats)
+
+        return pred
+
+
+def main():
 
     config = Config(yaml_file="./bert.yaml")
     config.build()
@@ -34,8 +80,6 @@ def train():
 
     bert_config = BertConfig(config.bert_config_path)
     bert_config.print_config()
-
-    trainer_count = fluid.dygraph.parallel.Env().nranks
 
     tokenizer = tokenization.FullTokenizer(
         vocab_file=config.vocab_path, do_lower_case=config.do_lower_case)
@@ -52,14 +96,24 @@ def train():
         return BertInputExample(
             uid=uid, text_a=text_a, text_b=text_b, label=label)
 
-    bert_dataloader = BertDataLoader(
+    train_dataloader = BertDataLoader(
         "./data/glue_data/MNLI/train.tsv",
         tokenizer, ["contradiction", "entailment", "neutral"],
-        max_seq_length=64,
-        batch_size=32,
+        max_seq_length=config.max_seq_len,
+        batch_size=config.batch_size,
         line_processor=mnli_line_processor)
 
-    num_train_examples = len(bert_dataloader.dataset)
+    dev_dataloader = BertDataLoader(
+        "./data/glue_data/MNLI/dev_matched.tsv",
+        tokenizer, ["contradiction", "entailment", "neutral"],
+        max_seq_length=config.max_seq_len,
+        batch_size=config.batch_size,
+        line_processor=mnli_line_processor,
+        shuffle=False,
+        phase="predict")
+
+    trainer_count = fluid.dygraph.parallel.Env().nranks
+    num_train_examples = len(train_dataloader.dataset)
     max_train_steps = config.epoch * num_train_examples // config.batch_size // trainer_count
     warmup_steps = int(max_train_steps * config.warmup_proportion)
 
@@ -82,7 +136,6 @@ def train():
         config,
         bert_config,
         len(["contradiction", "entailment", "neutral"]),
-        is_training=True,
         return_pooled_out=True)
 
     optimizer = Optimizer(
@@ -106,10 +159,15 @@ def train():
     cls_model.bert_layer.init_parameters(
         config.init_pretraining_params, verbose=config.verbose)
 
-    cls_model.fit(train_data=bert_dataloader.dataloader, epochs=config.epoch)
+    # do train
+    cls_model.fit(train_data=train_dataloader.dataloader,
+                  epochs=config.epoch,
+                  save_dir=config.checkpoints)
 
-    return cls_model
+    # do eval
+    cls_model.evaluate(
+        eval_data=test_dataloader.dataloader, batch_size=config.batch_size)
 
 
 if __name__ == '__main__':
-    cls_model = train()
+    main()

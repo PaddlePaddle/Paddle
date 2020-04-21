@@ -31,8 +31,6 @@ import multiprocessing
 
 import collections
 import copy
-import six
-import sys
 from functools import partial, reduce
 
 import paddle
@@ -50,8 +48,8 @@ __all__ = [
     'RNNCell', 'BasicLSTMCell', 'BasicGRUCell', 'RNN', 'DynamicDecode',
     'BeamSearchDecoder', 'MultiHeadAttention', 'FFN',
     'TransformerEncoderLayer', 'TransformerEncoder', 'TransformerDecoderLayer',
-    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'DynamicGRU',
-    'BiGRU', 'Linear_chain_crf', 'Crf_decoding', 'SequenceTagging'
+    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'Linear_chain_crf',
+    'Crf_decoding', 'SequenceTagging'
 ]
 
 
@@ -246,194 +244,225 @@ class BasicLSTMCell(RNNCell):
         self._dtype = dtype
         self._input_size = input_size
 
-        assert isinstance(forget_gate_weights, dict)
-        assert isinstance(input_gate_weights, dict)
-        assert isinstance(output_gate_weights, dict)
-        assert isinstance(cell_weights, dict)
+        self.use_customized_weight = False
+        for _weights in [
+                forget_gate_weights, input_gate_weights, output_gate_weights,
+                cell_weights
+        ]:
+            for _key in _weights:
+                if _weights[_key] is not None:
+                    self.use_customized_weight = True
+                    break
+            if self.use_customized_weight:
+                break
 
-        # forgot get parameters
-        if "w" in forget_gate_weights and forget_gate_weights["w"] is not None:
-            self.fg_w = forget_gate_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_forget_gate_w"
-            else:
-                tmp_param_attr = self._param_attr
-            self.fg_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
+        if not self.use_customized_weight:
+
+            self._weight = self.create_parameter(
+                attr=self._param_attr,
+                shape=[
+                    self._input_size + self._hidden_size, 4 * self._hidden_size
+                ],
                 dtype=self._dtype)
 
-        if "h" in forget_gate_weights and forget_gate_weights["h"] is not None:
-            self.fg_h = forget_gate_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_forget_gate_h"
-            else:
-                tmp_param_attr = self._param_attr
-            self.fg_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in forget_gate_weights and forget_gate_weights["b"] is not None:
-            self.fg_b = forget_gate_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_forget_gate_b"
-            else:
-                tmp_param_attr = self._bias_attr
-            self.fg_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
+            self._bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[4 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
-
-        # input gate parameters
-        if "w" in input_gate_weights and input_gate_weights["w"] is not None:
-            self.ig_w = input_gate_weights["w"]
         else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_input_gate_w"
+            if "w" in forget_gate_weights and forget_gate_weights[
+                    "w"] is not None:
+                self.fg_w = forget_gate_weights["w"]
             else:
-                tmp_param_attr = self._param_attr
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_forget_gate_w"
+                else:
+                    tmp_param_attr = self._param_attr
+                self.fg_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
 
-            self.ig_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in input_gate_weights and input_gate_weights["h"] is not None:
-            self.ig_h = input_gate_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_input_gate_h"
+            if "h" in forget_gate_weights and forget_gate_weights[
+                    "h"] is not None:
+                self.fg_h = forget_gate_weights["h"]
             else:
-                tmp_param_attr = self._param_attr
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_forget_gate_h"
+                else:
+                    tmp_param_attr = self._param_attr
+                self.fg_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
 
-            self.ig_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "b" in input_gate_weights and input_gate_weights["b"] is not None:
-            self.ig_b = input_gate_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_input_gate_b"
+            if "b" in forget_gate_weights and forget_gate_weights[
+                    "b"] is not None:
+                self.fg_b = forget_gate_weights["b"]
             else:
-                tmp_param_attr = self._bias_attr
-            self.ig_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
+                if self._bias_attr is not None and self._bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._bias_attr)
+                    tmp_param_attr.name += "_forget_gate_b"
+                else:
+                    tmp_param_attr = self._bias_attr
+                self.fg_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
-        # output gate parameters
-        if "w" in output_gate_weights and output_gate_weights["w"] is not None:
-            self.og_w = output_gate_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_output_gate_w"
+            if "w" in input_gate_weights and input_gate_weights[
+                    "w"] is not None:
+                self.ig_w = input_gate_weights["w"]
             else:
-                tmp_param_attr = self._param_attr
-            self.og_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_input_gate_w"
+                else:
+                    tmp_param_attr = self._param_attr
 
-        if "h" in output_gate_weights and output_gate_weights["h"] is not None:
-            self.og_h = output_gate_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_output_gate_h"
+                self.ig_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
+
+            if "h" in input_gate_weights and input_gate_weights[
+                    "h"] is not None:
+                self.ig_h = input_gate_weights["h"]
             else:
-                tmp_param_attr = self._param_attr
-            self.og_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_input_gate_h"
+                else:
+                    tmp_param_attr = self._param_attr
 
-        if "b" in output_gate_weights and output_gate_weights["b"] is not None:
-            self.og_b = output_gate_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_output_gate_b"
+                self.ig_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
+
+            if "b" in input_gate_weights and input_gate_weights[
+                    "b"] is not None:
+                self.ig_b = input_gate_weights["b"]
             else:
-                tmp_param_attr = self._bias_attr
-            self.og_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
+                if self._bias_attr is not None and self._bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._bias_attr)
+                    tmp_param_attr.name += "_input_gate_b"
+                else:
+                    tmp_param_attr = self._bias_attr
+                self.ig_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
-        # cell parameters
-        if "w" in cell_weights and cell_weights["w"] is not None:
-            self.c_w = cell_weights["w"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_cell_w"
+            if "w" in output_gate_weights and output_gate_weights[
+                    "w"] is not None:
+                self.og_w = output_gate_weights["w"]
             else:
-                tmp_param_attr = self._param_attr
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_output_gate_w"
+                else:
+                    tmp_param_attr = self._param_attr
+                self.og_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
 
-            self.c_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in cell_weights and cell_weights["h"] is not None:
-            self.c_h = cell_weights["h"]
-        else:
-            if self._param_attr is not None and self._param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._param_attr)
-                tmp_param_attr.name += "_cell_h"
+            if "h" in output_gate_weights and output_gate_weights[
+                    "h"] is not None:
+                self.og_h = output_gate_weights["h"]
             else:
-                tmp_param_attr = self._param_attr
-            self.c_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_output_gate_h"
+                else:
+                    tmp_param_attr = self._param_attr
 
-        if "b" in cell_weights and cell_weights["b"] is not None:
-            self.c_b = cell_weights["b"]
-        else:
-            if self._bias_attr is not None and self._bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(self._bias_attr)
-                tmp_param_attr.name += "_cell_b"
+                self.og_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
+
+            if "b" in output_gate_weights and output_gate_weights[
+                    "b"] is not None:
+                self.og_b = output_gate_weights["b"]
             else:
-                tmp_param_attr = self._bias_attr
-            self.c_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
+                if self._bias_attr is not None and self._bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._bias_attr)
+                    tmp_param_attr.name += "_output_gate_b"
+                else:
+                    tmp_param_attr = self._bias_attr
+                self.og_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
-        # the weight is concated here in order to make the computation more efficent.
-        weight_w = fluid.layers.concat(
-            [self.ig_w, self.c_w, self.fg_w, self.og_w], axis=-1)
-        weight_h = fluid.layers.concat(
-            [self.ig_h, self.c_h, self.fg_h, self.og_h], axis=-1)
-        self._weight = fluid.layers.concat([weight_w, weight_h], axis=0)
+            if "w" in cell_weights and cell_weights["w"] is not None:
+                self.c_w = cell_weights["w"]
+            else:
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_cell_w"
+                else:
+                    tmp_param_attr = self._param_attr
 
-        self._bias = fluid.layers.concat(
-            [self.ig_b, self.c_b, self.fg_b, self.og_b])
+                self.c_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
+
+            if "h" in cell_weights and cell_weights["h"] is not None:
+                self.c_h = cell_weights["h"]
+            else:
+                if self._param_attr is not None and self._param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._param_attr)
+                    tmp_param_attr.name += "_cell_h"
+                else:
+                    tmp_param_attr = self._param_attr
+                self.c_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
+
+            if "b" in cell_weights and cell_weights["b"] is not None:
+                self.c_b = cell_weights["b"]
+            else:
+                if self._bias_attr is not None and self._bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(self._bias_attr)
+                    tmp_param_attr.name += "_cell_b"
+                else:
+                    tmp_param_attr = self._bias_attr
+                self.c_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
     def forward(self, input, state):
+
+        if self.use_customized_weight:
+            weight_w = fluid.layers.concat(
+                [self.ig_w, self.c_w, self.fg_w, self.og_w], axis=-1)
+            weight_h = fluid.layers.concat(
+                [self.ig_h, self.c_h, self.fg_h, self.og_h], axis=-1)
+            _weight = fluid.layers.concat([weight_w, weight_h], axis=0)
+            _bias = fluid.layers.concat(
+                [self.ig_b, self.c_b, self.fg_b, self.og_b])
+        else:
+            _weight = self._weight
+            _bias = self._bias
+
         pre_hidden, pre_cell = state
         concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        gate_input = layers.matmul(x=concat_input_hidden, y=_weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._bias)
+        gate_input = layers.elementwise_add(gate_input, _bias)
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
@@ -500,10 +529,9 @@ class BasicGRUCell(RNNCell):
                  cell_weights={"w": None,
                                "h": None,
                                "b": None}):
-
         super(BasicGRUCell, self).__init__()
         self._input_size = input_size
-        self._hiden_size = hidden_size
+        self._hidden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
@@ -514,6 +542,16 @@ class BasicGRUCell(RNNCell):
         assert isinstance(reset_gate_weights, dict)
         assert isinstance(cell_weights, dict)
 
+        self.use_customized_weight = False
+        for _weights in [
+                update_gate_weights, reset_gate_weights, cell_weights
+        ]:
+            for _key in _weights:
+                if _weights[_key] is not None:
+                    self.use_customized_weight = True
+            if self.use_customized_weight:
+                break
+
         if self._param_attr is not None and self._param_attr.name is not None:
             gate_param_attr = copy.deepcopy(self._param_attr)
             candidate_param_attr = copy.deepcopy(self._param_attr)
@@ -523,156 +561,194 @@ class BasicGRUCell(RNNCell):
             gate_param_attr = self._param_attr
             candidate_param_attr = self._param_attr
 
-        if self._bias_attr is not None and self._bias_attr.name is not None:
-            gate_bias_attr = copy.deepcopy(self._bias_attr)
-            candidate_bias_attr = copy.deepcopy(self._bias_attr)
-            gate_bias_attr.name += "_gate"
-            candidate_bias_attr.name += "_candidate"
-        else:
-            gate_bias_attr = self._bias_attr
-            candidate_bias_attr = self._bias_attr
-
-        # create the parameters of gates in gru
-        if "w" in update_gate_weights and update_gate_weights["w"] is not None:
-            self.ug_w = update_gate_weights["w"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_update_gate_w"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.ug_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
+        if not self.use_customized_weight:
+            self._gate_weight = self.create_parameter(
+                attr=gate_param_attr,
+                shape=[
+                    self._input_size + self._hidden_size, 2 * self._hidden_size
+                ],
                 dtype=self._dtype)
 
-        if "h" in update_gate_weights and update_gate_weights["h"] is not None:
-            self.ug_h = update_gate_weights["h"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_update_gate_h"
-            else:
-                tmp_param_attr = gate_param_attr
-            self.ug_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
+            self._candidate_weight = self.create_parameter(
+                attr=candidate_param_attr,
+                shape=[
+                    self._input_size + self._hidden_size, self._hidden_size
+                ],
                 dtype=self._dtype)
 
-        if "b" in update_gate_weights and update_gate_weights["b"] is not None:
-            self.ug_b = update_gate_weights["b"]
-        else:
-            if gate_bias_attr is not None and gate_bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_bias_attr)
-                tmp_param_attr.name += "_update_gate_b"
+            if self._bias_attr is not None and self._bias_attr.name is not None:
+                gate_bias_attr = copy.deepcopy(self._bias_attr)
+                candidate_bias_attr = copy.deepcopy(self._bias_attr)
+                gate_bias_attr.name += "_gate"
+                candidate_bias_attr.name += "_candidate"
             else:
-                tmp_param_attr = gate_bias_attr
-            self.ug_b = self.create_parameter(
-                attr=tmp_param_attr,
+                gate_bias_attr = self._bias_attr
+                candidate_bias_attr = self._bias_attr
+
+            self._gate_bias = self.create_parameter(
+                attr=gate_bias_attr,
+                shape=[2 * self._hidden_size],
+                dtype=self._dtype,
+                is_bias=True)
+            self._candidate_bias = self.create_parameter(
+                attr=candidate_bias_attr,
                 shape=[self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
 
-        # reset gate parameters
-        if "w" in reset_gate_weights and reset_gate_weights["w"] is not None:
-            self.rg_w = reset_gate_weights["w"]
         else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_reset_gate_w"
+
+            # create the parameters of gates in gru
+            if "w" in update_gate_weights and update_gate_weights[
+                    "w"] is not None:
+                self.ug_w = update_gate_weights["w"]
             else:
-                tmp_param_attr = gate_param_attr
-            self.rg_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
+                if gate_param_attr is not None and gate_param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(gate_param_attr)
+                    tmp_param_attr.name += "_update_gate_w"
+                else:
+                    tmp_param_attr = gate_param_attr
+                self.ug_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
 
-        if "h" in reset_gate_weights and reset_gate_weights["h"] is not None:
-            self.rg_h = reset_gate_weights["h"]
-        else:
-            if gate_param_attr is not None and gate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_param_attr)
-                tmp_param_attr.name += "_reset_gate_h"
+            if "h" in update_gate_weights and update_gate_weights[
+                    "h"] is not None:
+                self.ug_h = update_gate_weights["h"]
             else:
-                tmp_param_attr = gate_param_attr
-            self.rg_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
+                if gate_param_attr is not None and gate_param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(gate_param_attr)
+                    tmp_param_attr.name += "_update_gate_h"
+                else:
+                    tmp_param_attr = gate_param_attr
+                self.ug_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
 
-        if "b" in reset_gate_weights and reset_gate_weights["b"] is not None:
-            self.rg_b = reused_params["b"]
-        else:
-            if gate_bias_attr is not None and gate_bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(gate_bias_attr)
-                tmp_param_attr.name += "_reset_gate_b"
+            if "b" in update_gate_weights and update_gate_weights[
+                    "b"] is not None:
+                self.ug_b = update_gate_weights["b"]
             else:
-                tmp_param_attr = gate_bias_attr
-            self.rg_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
+                if gate_bias_attr is not None and gate_bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(gate_bias_attr)
+                    tmp_param_attr.name += "_update_gate_b"
+                else:
+                    tmp_param_attr = gate_bias_attr
+                self.ug_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
-        # cell parameters
-        if "w" in cell_weights and cell_weights["w"] is not None:
-            self.c_w = cell_weights["w"]
-        else:
-            if candidate_param_attr is not None and candidate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(candidate_param_attr)
-                tmp_param_attr.name += "_cell_w"
+            # reset gate parameters
+            if "w" in reset_gate_weights and reset_gate_weights[
+                    "w"] is not None:
+                self.rg_w = reset_gate_weights["w"]
             else:
-                tmp_param_attr = gate_param_attr
+                if gate_param_attr is not None and gate_param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(gate_param_attr)
+                    tmp_param_attr.name += "_reset_gate_w"
+                else:
+                    tmp_param_attr = gate_param_attr
+                self.rg_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
 
-            self.c_w = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._input_size, self._hidden_size],
-                dtype=self._dtype)
-
-        if "h" in cell_weights and cell_weights["h"] is not None:
-            self.c_h = cell_weights["h"]
-        else:
-            if candidate_param_attr is not None and candidate_param_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(candidate_param_attr)
-                tmp_param_attr.name += "_cell_h"
+            if "h" in reset_gate_weights and reset_gate_weights[
+                    "h"] is not None:
+                self.rg_h = reset_gate_weights["h"]
             else:
-                tmp_param_attr = gate_param_attr
-            self.c_h = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size, self._hidden_size],
-                dtype=self._dtype)
+                if gate_param_attr is not None and gate_param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(gate_param_attr)
+                    tmp_param_attr.name += "_reset_gate_h"
+                else:
+                    tmp_param_attr = gate_param_attr
+                self.rg_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
 
-        if "b" in cell_weights and cell_weights["b"] is not None:
-            self.c_b = cell_weights["b"]
-        else:
-            if candidate_bias_attr is not None and candidate_bias_attr.name is not None:
-                tmp_param_attr = copy.deepcopy(candidate_bias_attr)
-                tmp_param_attr.name += "_cell_b"
+            if "b" in reset_gate_weights and reset_gate_weights[
+                    "b"] is not None:
+                self.rg_b = reused_params["b"]
             else:
-                tmp_param_attr = gate_bias_attr
-            self.c_b = self.create_parameter(
-                attr=tmp_param_attr,
-                shape=[self._hidden_size],
-                dtype=self._dtype,
-                is_bias=True)
+                if gate_bias_attr is not None and gate_bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(gate_bias_attr)
+                    tmp_param_attr.name += "_reset_gate_b"
+                else:
+                    tmp_param_attr = gate_bias_attr
+                self.rg_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
-        rg_weights = layers.concat([self.rg_w, self.rg_h], axis=0)
-        ug_weights = layers.concat([self.ug_w, self.ug_h], axis=0)
-        self._gate_weight = layers.concat([rg_weights, ug_weights], axis=-1)
+            # cell parameters
+            if "w" in cell_weights and cell_weights["w"] is not None:
+                self.c_w = cell_weights["w"]
+            else:
+                if candidate_param_attr is not None and candidate_param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(candidate_param_attr)
+                    tmp_param_attr.name += "_cell_w"
+                else:
+                    tmp_param_attr = gate_param_attr
 
-        self._candidate_weight = layers.concat([self.c_w, self.c_h], axis=0)
+                self.c_w = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._input_size, self._hidden_size],
+                    dtype=self._dtype)
 
-        self._gate_bias = layers.concat([self.rg_b, self.ug_b], axis=0)
+            if "h" in cell_weights and cell_weights["h"] is not None:
+                self.c_h = cell_weights["h"]
+            else:
+                if candidate_param_attr is not None and candidate_param_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(candidate_param_attr)
+                    tmp_param_attr.name += "_cell_h"
+                else:
+                    tmp_param_attr = gate_param_attr
+                self.c_h = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size, self._hidden_size],
+                    dtype=self._dtype)
 
-        self._candidate_bias = self.c_b
+            if "b" in cell_weights and cell_weights["b"] is not None:
+                self.c_b = cell_weights["b"]
+            else:
+                if candidate_bias_attr is not None and candidate_bias_attr.name is not None:
+                    tmp_param_attr = copy.deepcopy(candidate_bias_attr)
+                    tmp_param_attr.name += "_cell_b"
+                else:
+                    tmp_param_attr = gate_bias_attr
+                self.c_b = self.create_parameter(
+                    attr=tmp_param_attr,
+                    shape=[self._hidden_size],
+                    dtype=self._dtype,
+                    is_bias=True)
 
     def forward(self, input, state):
+
+        if self.use_customized_weight:
+            rg_weights = layers.concat([self.rg_w, self.rg_h], axis=0)
+            ug_weights = layers.concat([self.ug_w, self.ug_h], axis=0)
+            _gate_weight = layers.concat([rg_weights, ug_weights], axis=-1)
+            _candidate_weight = layers.concat([self.c_w, self.c_h], axis=0)
+            _gate_bias = layers.concat([self.rg_b, self.ug_b], axis=0)
+            _candidate_bias = self.c_b
+        else:
+            _gate_weight = self._gate_weight
+            _gate_bias = self._gate_bias
+            _candidate_weight = self._candidate_weight
+            _candidate_bias = self._candidate_bias
+
         pre_hidden = state
         concat_input_hidden = layers.concat([input, pre_hidden], axis=1)
 
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+        gate_input = layers.matmul(x=concat_input_hidden, y=_gate_weight)
 
-        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
+        gate_input = layers.elementwise_add(gate_input, _gate_bias)
 
         gate_input = self._gate_activation(gate_input)
         r, u = layers.split(gate_input, num_or_sections=2, dim=1)
@@ -680,8 +756,8 @@ class BasicGRUCell(RNNCell):
         r_hidden = r * pre_hidden
 
         candidate = layers.matmul(
-            layers.concat([input, r_hidden], 1), self._candidate_weight)
-        candidate = layers.elementwise_add(candidate, self._candidate_bias)
+            layers.concat([input, r_hidden], 1), _candidate_weight)
+        candidate = layers.elementwise_add(candidate, _candidate_bias)
 
         c = self._activation(candidate)
         new_hidden = u * pre_hidden + (1 - u) * c
@@ -870,7 +946,6 @@ class DynamicDecode(Layer):
                     # To confirm states.finished/finished be consistent with
                     # next_finished.
                     layers.assign(next_finished, finished)
-
                 next_sequence_lengths = layers.elementwise_add(
                     sequence_lengths,
                     layers.cast(
@@ -1479,98 +1554,98 @@ class TransformerDecoder(Layer):
         ]
 
 
-class DynamicGRU(fluid.dygraph.Layer):
+#TODO: we should merge GRUCell with BasicGRUCell
+class GRUCell(RNNCell):
     def __init__(self,
-                 size,
-                 h_0=None,
+                 input_size,
+                 hidden_size,
                  param_attr=None,
                  bias_attr=None,
-                 is_reverse=False,
                  gate_activation='sigmoid',
                  candidate_activation='tanh',
-                 origin_mode=False,
-                 init_size=None):
-        super(DynamicGRU, self).__init__()
+                 origin_mode=False):
+        super(GRUCell, self).__init__()
+        self.hidden_size = hidden_size
+        self.fc_layer = Linear(
+            input_size, hidden_size * 3, param_attr=param_attr)
 
         self.gru_unit = GRUUnit(
-            size * 3,
+            hidden_size * 3,
             param_attr=param_attr,
             bias_attr=bias_attr,
             activation=candidate_activation,
             gate_activation=gate_activation,
             origin_mode=origin_mode)
 
-        self.size = size
-        self.h_0 = h_0
-        self.is_reverse = is_reverse
+    def forward(self, inputs, states):
+        # for GRUCell, `step_outputs` and `new_states` both are hidden
+        x = self.fc_layer(inputs)
+        hidden, _, _ = self.gru_unit(x, states)
+        return hidden, hidden
 
-    def forward(self, inputs):
-        hidden = self.h_0
-        res = []
+    @property
+    def state_shape(self):
+        return [self.hidden_size]
 
-        for i in range(inputs.shape[1]):
-            if self.is_reverse:
-                i = inputs.shape[1] - 1 - i
-            input_ = inputs[:, i:i + 1, :]
-            input_ = fluid.layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False)
-            hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False)
-            res.append(hidden_)
-        if self.is_reverse:
-            res = res[::-1]
-        res = fluid.layers.concat(res, axis=1)
-        return res
+
+#TODO: we should merge GRUCell with BasicGRUCell
+class GRUEncoderCell(RNNCell):
+    def __init__(self,
+                 num_layers,
+                 input_size,
+                 hidden_size,
+                 dropout_prob=0.,
+                 init_scale=0.1):
+        super(GRUEncoderCell, self).__init__()
+        self.dropout_prob = dropout_prob
+        # use add_sublayer to add multi-layers
+        self.gru_cells = []
+        for i in range(num_layers):
+            self.gru_cells.append(
+                self.add_sublayer(
+                    "gru_%d" % i,
+                    #BasicGRUCell(
+                    GRUCell(
+                        input_size=input_size if i == 0 else hidden_size,
+                        hidden_size=hidden_size,
+                        param_attr=fluid.ParamAttr(
+                            initializer=fluid.initializer.UniformInitializer(
+                                low=-init_scale, high=init_scale)))))
+
+    def forward(self, step_input, states):
+        new_states = []
+        for i, gru_cell in enumerate(self.gru_cells):
+            out, state = gru_cell(step_input, states[i])
+            step_input = layers.dropout(
+                out,
+                self.dropout_prob,
+                dropout_implementation='upscale_in_train'
+            ) if self.dropout_prob > 0 else out
+            new_states.append(step_input)
+        return step_input, new_states
+
+    @property
+    def state_shape(self):
+        return [cell.state_shape for cell in self.gru_cells]
 
 
 class BiGRU(fluid.dygraph.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
         super(BiGRU, self).__init__()
+        self.gru = RNN(GRUEncoderCell(1, input_dim, grnn_hidden_dim, 0.0,
+                                      init_bound),
+                       is_reverse=False,
+                       time_major=False)
 
-        self.pre_gru = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
-
-        self.gru = DynamicGRU(
-            size=grnn_hidden_dim,
-            h_0=h_0,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
-
-        self.pre_gru_r = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
-
-        self.gru_r = DynamicGRU(
-            size=grnn_hidden_dim,
-            is_reverse=True,
-            h_0=h_0,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Uniform(
-                    low=-init_bound, high=init_bound),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4)))
+        self.gru_r = RNN(GRUEncoderCell(1, input_dim, grnn_hidden_dim, 0.0,
+                                        init_bound),
+                         is_reverse=True,
+                         time_major=False)
 
     def forward(self, input_feature):
-        res_pre_gru = self.pre_gru(input_feature)
-        res_gru = self.gru(res_pre_gru)
-        res_pre_gru_r = self.pre_gru_r(input_feature)
-        res_gru_r = self.gru_r(res_pre_gru_r)
-        bi_merge = fluid.layers.concat(input=[res_gru, res_gru_r], axis=-1)
+        pre_gru, pre_state = self.gru(input_feature)
+        gru_r, r_state = self.gru_r(input_feature)
+        bi_merge = fluid.layers.concat(input=[pre_gru, gru_r], axis=-1)
         return bi_merge
 
 
@@ -1610,7 +1685,7 @@ class Linear_chain_crf(fluid.dygraph.Layer):
             "Transition": self._transition,
             "Label": [label]
         }
-        if length:
+        if length is not None:
             this_inputs['Length'] = [length]
         self._helper.append_op(
             type='linear_chain_crf',
@@ -1655,7 +1730,7 @@ class Crf_decoding(fluid.dygraph.Layer):
             "Transition": self._transition,
             "Label": label
         }
-        if length:
+        if length is not None:
             this_inputs['Length'] = [length]
         self._helper.append_op(
             type='crf_decoding',
@@ -1754,7 +1829,7 @@ class SequenceTagging(fluid.dygraph.Layer):
                 name='crfw', learning_rate=self.crf_lr),
             size=self.num_labels)
 
-    def forward(self, word, target, lengths):
+    def forward(self, word, lengths, target=None):
         """
         Configure the network
         """
@@ -1767,9 +1842,14 @@ class SequenceTagging(fluid.dygraph.Layer):
 
         emission = self.fc(bigru_output)
 
-        crf_cost = self.linear_chain_crf(
-            input=emission, label=target, length=lengths)
-        avg_cost = fluid.layers.mean(x=crf_cost)
-        self.crf_decoding.weight = self.linear_chain_crf.weight
-        crf_decode = self.crf_decoding(input=emission, length=lengths)
-        return crf_decode, avg_cost, lengths
+        if target is not None:
+            crf_cost = self.linear_chain_crf(
+                input=emission, label=target, length=lengths)
+            avg_cost = fluid.layers.mean(x=crf_cost)
+            self.crf_decoding.weight = self.linear_chain_crf.weight
+            crf_decode = self.crf_decoding(input=emission, length=lengths)
+            return crf_decode, avg_cost, lengths
+        else:
+            self.linear_chain_crf.weight = self.crf_decoding.weight
+            crf_decode = self.crf_decoding(input=emission, length=lengths)
+            return crf_decode, lengths

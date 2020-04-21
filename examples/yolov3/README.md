@@ -99,17 +99,11 @@ YOLOv3 的网络结构由基础特征提取网络、multi-scale特征融合层�
   |   ...
   ```
 
-```bash
-sh pretrain_weights/download.sh
-```
-
 ### 模型训练
 
 数据准备完成后，可使用`main.py`脚本启动训练和评估，如下脚本会自动每epoch交替进行训练和模型评估，并将checkpoint默认保存在`yolo_checkpoint`目录下。
 
 YOLOv3模型训练总batch_size为64训练，以下以使用4卡Tesla P40每卡batch_size为16训练介绍训练方式。对于静态图和动态图，多卡训练中`--batch_size`为每卡上的batch_size，即总batch_size为`--batch_size`乘以卡数。
-
-YOLOv3模型训练须加载骨干网络[DarkNet53]()的预训练权重，可在训练时通过`--pretrain_weights`指定，若指定为URL，将自动下载权重至`~/.cache/paddle/weights`目录并加载。
 
 `main.py`脚本参数可通过如下命令查询
 
@@ -122,7 +116,7 @@ python main.py --help
 使用如下方式进行多卡训练:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --data=<path/to/dataset> --batch_size=16 --pretrain_weights=https://paddlemodels.bj.bcebos.com/hapi/darknet53_pretrained.pdparams
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --data=<path/to/dataset> --batch_size=16
 ```
 
 #### 动态图训练
@@ -132,7 +126,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --data=
 使用如下方式进行多卡训练:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 python main.py -m paddle.distributed.launch --data=<path/to/dataset> --batch_size=16 -d --pretrain_weights=https://paddlemodels.bj.bcebos.com/hapi/darknet53_pretrained.pdparams
+CUDA_VISIBLE_DEVICES=0,1,2,3 python main.py -m paddle.distributed.launch --data=<path/to/dataset> --batch_size=16 -d
 ```
 
 

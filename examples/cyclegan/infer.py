@@ -25,9 +25,9 @@ from PIL import Image
 from scipy.misc import imsave
 
 import paddle.fluid as fluid
-from check import check_gpu, check_version
+from hapi.model import Model, Input, set_device
 
-from model import Model, Input, set_device
+from check import check_gpu, check_version
 from cyclegan import Generator, GeneratorCombine
 
 
@@ -43,7 +43,7 @@ def main():
     im_shape = [-1, 3, 256, 256]
     input_A = Input(im_shape, 'float32', 'input_A')
     input_B = Input(im_shape, 'float32', 'input_B')
-    g.prepare(inputs=[input_A, input_B])
+    g.prepare(inputs=[input_A, input_B], device=FLAGS.device)
     g.load(FLAGS.init_model, skip_mismatch=True, reset_optimizer=True)
 
     out_path = FLAGS.output + "/single"
@@ -59,10 +59,10 @@ def main():
         data = image.transpose([2, 0, 1])[np.newaxis, :]
 
         if FLAGS.input_style == "A":
-            _, fake, _, _ = g.test([data, data])
+            _, fake, _, _ = g.test_batch([data, data])
 
         if FLAGS.input_style == "B":
-            fake, _, _, _ = g.test([data, data])
+            fake, _, _, _ = g.test_batch([data, data])
 
         fake = np.squeeze(fake[0]).transpose([1, 2, 0])
 
@@ -74,7 +74,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("CycleGAN inference")
     parser.add_argument(
-        "-d", "--dynamic", action='store_false', help="Enable dygraph mode")
+        "-d", "--dynamic", action='store_true', help="Enable dygraph mode")
     parser.add_argument(
         "-p",
         "--device",

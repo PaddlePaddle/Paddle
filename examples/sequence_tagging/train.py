@@ -24,11 +24,17 @@ import sys
 import math
 import argparse
 import numpy as np
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from metrics import Metric
-from model import Model, Input, Loss, set_device
-from text import SequenceTagging
+work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(work_dir, "../"))
+
+
+from hapi.metrics import Metric
+from hapi.model import Model, Input, Loss, set_device
+from hapi.text.text import SequenceTagging
+
+from utils.check import check_gpu, check_version
+from utils.configure import PDConfig
 from reader import LacDataset, create_lexnet_data_generator, create_dataloader 
 
 import paddle.fluid as fluid
@@ -47,6 +53,7 @@ class SeqTagging(Model):
             for infer: return the prediction
             otherwise: return the prediction
         """
+        self.mode_type = args.mode
         self.word_emb_dim = args.word_emb_dim
         self.vocab_size = vocab_size
         self.num_labels = num_labels
@@ -72,12 +79,18 @@ class SeqTagging(Model):
                         init_bound=self.init_bound,
                         length=self.length)
 
-    def forward(self, word, target, lengths):
+    def forward(self, *inputs):
         """
         Configure the network
         """
-        crf_decode, avg_cost, lengths = self.sequence_tagging(word, target, lengths)
-        return crf_decode, avg_cost, lengths
+        word = inputs[0]
+        lengths = inputs[1]
+        if self.mode_type == "train" or self.mode_type == "test": 
+            target = inputs[2]
+            outputs = self.sequence_tagging(word, lengths, target)
+        else: 
+            outputs = self.sequence_tagging(word, lengths)
+        return outputs
 
 
 class Chunk_eval(fluid.dygraph.Layer):
@@ -103,10 +116,9 @@ class Chunk_eval(fluid.dygraph.Layer):
             dtype="int64")
         num_correct_chunks = self._helper.create_variable_for_type_inference(
             dtype="int64")
-
-        this_input = {"Inference": input, "Label": label[0]}
-        if seq_length:
-            this_input["SeqLength"] = seq_length[0]
+        this_input = {"Inference": input, "Label": label}
+        if seq_length is not None:
+            this_input["SeqLength"] = seq_length
         self._helper.append_op(
             type='chunk_eval',
             inputs=this_input,
@@ -144,9 +156,10 @@ class ChunkEval(Metric):
             int(math.ceil((num_labels - 1) / 2.0)), "IOB")
         self.reset()
 
-    def add_metric_op(self, pred, label, *args, **kwargs):
-        crf_decode = pred[0]
-        lengths = pred[2]
+    def add_metric_op(self, *args): 
+        crf_decode = args[0]
+        lengths = args[2]
+        label = args[3]
         (num_infer_chunks, num_label_chunks,
          num_correct_chunks) = self.chunk_eval(
              input=crf_decode, label=label, seq_length=lengths)
@@ -194,18 +207,16 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [
-        Input(
-            [None, args.max_seq_len], 'int64', name='words'), Input(
-                [None, args.max_seq_len], 'int64', name='target'), Input(
-                    [None], 'int64', name='length')
-    ]
-    labels = [Input([None, args.max_seq_len], 'int64', name='labels')]
+    inputs = [Input([None, None], 'int64', name='words'),
+              Input([None], 'int64', name='length'), 
+              Input([None, None], 'int64', name='target')]
+
+    labels = [Input([None, None], 'int64', name='labels')]
 
     feed_list = None if args.dynamic else [x.forward() for x in inputs + labels]
     dataset = LacDataset(args)
-    train_path = os.path.join(args.data, "train.tsv")
-    test_path = os.path.join(args.data, "test.tsv")
+    train_path = args.train_file
+    test_path = args.test_file
 
     train_generator = create_lexnet_data_generator(
         args, reader=dataset, file_name=train_path, place=place, mode="train")
@@ -233,8 +244,11 @@ def main(args):
         labels=labels,
         device=args.device)
 
-    if args.resume is not None:
-        model.load(args.resume)
+    if args.init_from_checkpoint:
+        model.load(args.init_from_checkpoint)
+
+    if args.init_from_pretrain_model:
+        model.load(args.init_from_pretrain_model, reset_optimizer=True)
 
     model.fit(train_dataset,
               test_dataset,
@@ -246,78 +260,12 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("LAC training")
-    parser.add_argument(
-        "-dir", "--data", default=None, type=str, help='path to LAC dataset')
-    parser.add_argument(
-        "-wd",
-        "--word_dict_path",
-        default=None,
-        type=str,
-        help='word dict path')
-    parser.add_argument(
-        "-ld",
-        "--label_dict_path",
-        default=None,
-        type=str,
-        help='label dict path')
-    parser.add_argument(
-        "-wrd",
-        "--word_rep_dict_path",
-        default=None,
-        type=str,
-        help='The path of the word replacement Dictionary.')
-    parser.add_argument(
-        "-dev",
-        "--device",
-        type=str,
-        default='gpu',
-        help="device to use, gpu or cpu")
-    parser.add_argument(
-        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
-    parser.add_argument(
-        "-e", "--epoch", default=10, type=int, help="number of epoch")
-    parser.add_argument(
-        '-lr',
-        '--base_learning_rate',
-        default=1e-3,
-        type=float,
-        metavar='LR',
-        help='initial learning rate')
-    parser.add_argument(
-        "--word_emb_dim",
-        default=128,
-        type=int,
-        help='word embedding dimension')
-    parser.add_argument(
-        "--grnn_hidden_dim", default=128, type=int, help="hidden dimension")
-    parser.add_argument(
-        "--bigru_num", default=2, type=int, help='the number of bi-rnn')
-    parser.add_argument("-elr", "--emb_learning_rate", default=1.0, type=float)
-    parser.add_argument("-clr", "--crf_learning_rate", default=1.0, type=float)
-    parser.add_argument(
-        "-b", "--batch_size", default=300, type=int, help="batch size")
-    parser.add_argument(
-        "--max_seq_len", default=126, type=int, help="max sequence length")
-    parser.add_argument(
-        "-n", "--num_devices", default=1, type=int, help="number of devices")
-    parser.add_argument(
-        "-r",
-        "--resume",
-        default=None,
-        type=str,
-        help="checkpoint path to resume")
-    parser.add_argument(
-        "-o",
-        "--save_dir",
-        default="./model",
-        type=str,
-        help="save model path")
-    parser.add_argument(
-        "-sf", "--save_freq", default=1, type=int, help="save frequency")
-    parser.add_argument(
-        "-ef", "--eval_freq", default=1, type=int, help="eval frequency")
+    args = PDConfig(yaml_file="sequence_tagging.yaml")
+    args.build()
+    args.Print()
+    
+    use_gpu = True if args.device == "gpu" else False
+    check_gpu(use_gpu)
+    check_version()
 
-    args = parser.parse_args()
-    print(args)
     main(args)
