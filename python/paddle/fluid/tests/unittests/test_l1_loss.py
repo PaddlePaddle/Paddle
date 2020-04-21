@@ -33,7 +33,7 @@ class TestL1Loss(unittest.TestCase):
                 name='input', shape=[10, 1], dtype='float32')
             label = fluid.layers.data(
                 name='label', shape=[10, 1], dtype='float32')
-            l1_loss = paddle.nn.loss.L1Loss()
+            l1_loss = paddle.nn.L1Loss()
             ret = l1_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -44,7 +44,7 @@ class TestL1Loss(unittest.TestCase):
                 fetch_list=[ret])
 
         with fluid.dygraph.guard():
-            l1_loss = paddle.nn.loss.L1Loss()
+            l1_loss = paddle.nn.L1Loss()
             dy_ret = l1_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -68,7 +68,7 @@ class TestL1Loss(unittest.TestCase):
                 name='input', shape=[10, 10, 5], dtype='float32')
             label = fluid.layers.data(
                 name='label', shape=[10, 10, 5], dtype='float32')
-            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+            l1_loss = paddle.nn.L1Loss(reduction='sum')
             ret = l1_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -79,7 +79,7 @@ class TestL1Loss(unittest.TestCase):
                 fetch_list=[ret])
 
         with fluid.dygraph.guard():
-            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+            l1_loss = paddle.nn.L1Loss(reduction='sum')
             dy_ret = l1_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -103,7 +103,7 @@ class TestL1Loss(unittest.TestCase):
                 name='input', shape=[10, 5], dtype='float32')
             label = fluid.layers.data(
                 name='label', shape=[10, 5], dtype='float32')
-            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+            l1_loss = paddle.nn.L1Loss(reduction='none')
             ret = l1_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -114,7 +114,7 @@ class TestL1Loss(unittest.TestCase):
                 fetch_list=[ret])
 
         with fluid.dygraph.guard():
-            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+            l1_loss = paddle.nn.L1Loss(reduction='none')
             dy_ret = l1_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))

@@ -78,7 +78,7 @@ class TestNNMseLoss(unittest.TestCase):
                     name='input', shape=dim, dtype='float32')
                 label = fluid.layers.data(
                     name='label', shape=dim, dtype='float32')
-                mse_loss = paddle.nn.loss.MSELoss()
+                mse_loss = paddle.nn.MSELoss()
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
@@ -89,7 +89,7 @@ class TestNNMseLoss(unittest.TestCase):
                     fetch_list=[ret])
 
             with fluid.dygraph.guard():
-                mse_loss = paddle.nn.loss.MSELoss()
+                mse_loss = paddle.nn.MSELoss()
                 dy_ret = mse_loss(
                     fluid.dygraph.to_variable(input_np),
                     fluid.dygraph.to_variable(label_np))
@@ -115,7 +115,7 @@ class TestNNMseLoss(unittest.TestCase):
                     name='input', shape=dim, dtype='float32')
                 label = fluid.layers.data(
                     name='label', shape=dim, dtype='float32')
-                mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
+                mse_loss = paddle.nn.MSELoss(reduction='sum')
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
@@ -126,7 +126,7 @@ class TestNNMseLoss(unittest.TestCase):
                     fetch_list=[ret])
 
             with fluid.dygraph.guard():
-                mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
+                mse_loss = paddle.nn.MSELoss(reduction='sum')
                 dy_ret = mse_loss(
                     fluid.dygraph.to_variable(input_np),
                     fluid.dygraph.to_variable(label_np))
@@ -152,7 +152,7 @@ class TestNNMseLoss(unittest.TestCase):
                     name='input', shape=dim, dtype='float32')
                 label = fluid.layers.data(
                     name='label', shape=dim, dtype='float32')
-                mse_loss = paddle.nn.loss.MSELoss(reduction='none')
+                mse_loss = paddle.nn.MSELoss(reduction='none')
                 ret = mse_loss(input, label)
 
                 exe = fluid.Executor(place)
@@ -163,7 +163,7 @@ class TestNNMseLoss(unittest.TestCase):
                     fetch_list=[ret])
 
             with fluid.dygraph.guard():
-                mse_loss = paddle.nn.loss.MSELoss(reduction='none')
+                mse_loss = paddle.nn.MSELoss(reduction='none')
                 dy_ret = mse_loss(
                     fluid.dygraph.to_variable(input_np),
                     fluid.dygraph.to_variable(label_np))

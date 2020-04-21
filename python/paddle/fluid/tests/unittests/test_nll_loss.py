@@ -82,7 +82,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss()
+            nll_loss = paddle.nn.NLLLoss()
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -93,7 +93,7 @@ class TestNLLLoss(unittest.TestCase):
                 fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss()
+            nll_loss = paddle.nn.NLLLoss()
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -115,7 +115,7 @@ class TestNLLLoss(unittest.TestCase):
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -126,7 +126,7 @@ class TestNLLLoss(unittest.TestCase):
                 fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(reduction='sum')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -150,7 +150,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
             weight = fluid.data(name='weight', shape=[10], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
+            nll_loss = paddle.nn.NLLLoss(weight=weight)
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -163,7 +163,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np))
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -188,7 +188,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
             weight = fluid.data(name='weight', shape=[10], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(weight=weight, reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -201,7 +201,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np), reduction='sum')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -225,7 +225,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
             weight = fluid.data(name='weight', shape=[10], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
+            nll_loss = paddle.nn.NLLLoss(weight=weight)
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -238,7 +238,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np))
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -261,7 +261,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
             weight = fluid.data(name='weight', shape=[10], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='none')
+            nll_loss = paddle.nn.NLLLoss(weight=weight, reduction='none')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -274,7 +274,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np), reduction='none')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -299,7 +299,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(
                 name='input', shape=[5, 3, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss()
+            nll_loss = paddle.nn.NLLLoss()
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -310,7 +310,7 @@ class TestNLLLoss(unittest.TestCase):
                 fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss()
+            nll_loss = paddle.nn.NLLLoss()
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -334,7 +334,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(
                 name='input', shape=[5, 3, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -345,7 +345,7 @@ class TestNLLLoss(unittest.TestCase):
                 fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(reduction='sum')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -372,7 +372,7 @@ class TestNLLLoss(unittest.TestCase):
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
 
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
+            nll_loss = paddle.nn.NLLLoss(weight=weight)
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -385,7 +385,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np))
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -411,7 +411,7 @@ class TestNLLLoss(unittest.TestCase):
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
 
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
+            nll_loss = paddle.nn.NLLLoss(weight=weight)
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -424,7 +424,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np))
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -452,7 +452,7 @@ class TestNLLLoss(unittest.TestCase):
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
 
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(weight=weight, reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -465,7 +465,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np), reduction='sum')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -491,7 +491,7 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(
                 name='input', shape=[5, 3, 5, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
-            nll_loss = paddle.nn.loss.NLLLoss()
+            nll_loss = paddle.nn.NLLLoss()
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -502,7 +502,7 @@ class TestNLLLoss(unittest.TestCase):
                 fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss()
+            nll_loss = paddle.nn.NLLLoss()
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
                 fluid.dygraph.to_variable(label_np))
@@ -533,7 +533,7 @@ class TestNLLLoss(unittest.TestCase):
                 name='input', shape=[5, 3, 5, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
+            nll_loss = paddle.nn.NLLLoss(weight=weight)
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -546,7 +546,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np))
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -579,7 +579,7 @@ class TestNLLLoss(unittest.TestCase):
                 name='input', shape=[5, 3, 5, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='sum')
+            nll_loss = paddle.nn.NLLLoss(weight=weight, reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -592,7 +592,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np), reduction='sum')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -628,7 +628,7 @@ class TestNLLLoss(unittest.TestCase):
                 name='input', shape=[5, 3, 5, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='none')
+            nll_loss = paddle.nn.NLLLoss(weight=weight, reduction='none')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -641,7 +641,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np), reduction='none')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
@@ -676,7 +676,7 @@ class TestNLLLoss(unittest.TestCase):
                 name='input', shape=[5, 3, 5, 5, 5], dtype='float64')
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
-            nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='none')
+            nll_loss = paddle.nn.NLLLoss(weight=weight, reduction='none')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -689,7 +689,7 @@ class TestNLLLoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            nll_loss = paddle.nn.loss.NLLLoss(
+            nll_loss = paddle.nn.NLLLoss(
                 weight=fluid.dygraph.to_variable(weight_np), reduction='none')
             dy_res = nll_loss(
                 fluid.dygraph.to_variable(input_np),
