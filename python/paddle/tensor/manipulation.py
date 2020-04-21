@@ -18,7 +18,8 @@ from ..fluid.layers import core, reshape
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-
+from ..fluid.layers.tensor import fill_constant
+from ..fluid.layers import utils
 # TODO: define functions to manipulate a tensor  
 __all__ = [
     #            'cast',
@@ -311,7 +312,7 @@ def split(input, num_or_sections, dim=-1, name=None):
                 # input is a variable which shape is [4, 6, 6]
                 input = fluid.dygraph.to_variable(input_1)
 
-                x0, x1, x2 = paddle.split(input, num_or_sections=3, axis=1)
+                x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=1)
                 # x0.shape [4, 2, 6]
                 # x1.shape [4, 2, 6]
                 # x2.shape [4, 2, 6]
@@ -525,7 +526,7 @@ def unsqueeze(input, axes, out=None, name=None):
                 # input is a variable which shape is [5, 10]
                 input = fluid.dygraph.to_variable(input_1)
 
-                output = paddle.fluid.layers.squeeze(input, axes=[1])
+                output = paddle.fluid.layers.unsqueeze(input, axes=[1])
                 # output.shape [5, 1, 10]
     """
     if not isinstance(axes, (int, list, tuple, Variable)):
@@ -620,6 +621,7 @@ def gather(input, index, overwrite=True):
 
         .. code-block:: python
 
+            import numpy as np
             import paddle
             import paddle.fluid as fluid
 

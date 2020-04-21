@@ -126,6 +126,42 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
                     [self.x] * self.iter_num, axis=self.axis)))
 
 
+class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
+    """
+    Test stack api when the input(x) is a LoDTensorArray.
+    """
+
+    def setUp(self):
+        self.axis = 1
+        self.iter_num = 3
+        self.input_shape = [2, 3]
+        self.x = np.random.random(self.input_shape).astype("float32")
+        self.place = fluid.CUDAPlace(0) \
+            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.set_program()
+
+    def set_program(self):
+        self.program = fluid.Program()
+        with fluid.program_guard(self.program):
+            input = fluid.layers.assign(self.x)
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+
+            self.out_var = paddle.stack(tensor_array, axis=self.axis)
+
+    def test_case(self):
+        self.assertTrue(self.out_var.shape[self.axis] == -1)
+        exe = fluid.Executor(self.place)
+        res = exe.run(self.program, fetch_list=self.out_var)
+        self.assertTrue(
+            np.array_equal(
+                res[0], np.stack(
+                    [self.x] * self.iter_num, axis=self.axis)))
+
+
 class API_test(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -160,6 +196,13 @@ class API_DygraphTest(unittest.TestCase):
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3], axis=0)
         self.assertTrue(np.allclose(expected_result, result_np))
+
+        with fluid.dygraph.guard():
+            y1 = fluid.dygraph.to_variable(data1)
+            result = paddle.stack(y1, axis=0)
+            result_np_2 = result.numpy()
+        expected_result_2 = np.stack(data1, axis=0)
+        self.assertTrue(np.allclose(expected_result_2, result_np_2))
 
 
 if __name__ == '__main__':
