@@ -800,17 +800,17 @@ void MultiSlotInMemoryDataFeed::Init(
   feed_vec_.resize(use_slots_.size());
   const int kEstimatedFeasignNumPerSlot = 5;  // Magic Number
   for (size_t i = 0; i < all_slot_num; i++) {
-    batch_float_feasigns.push_back(std::vector<float>());
-    batch_uint64_feasigns.push_back(std::vector<uint64_t>());
-    batch_float_feasigns[i].reserve(default_batch_size_ *
-                                    kEstimatedFeasignNumPerSlot);
-    batch_uint64_feasigns[i].reserve(default_batch_size_ *
+    batch_float_feasigns_.push_back(std::vector<float>());
+    batch_uint64_feasigns_.push_back(std::vector<uint64_t>());
+    batch_float_feasigns_[i].reserve(default_batch_size_ *
                                      kEstimatedFeasignNumPerSlot);
-    offset.push_back(std::vector<size_t>());
-    offset[i].reserve(default_batch_size_ +
-                      1);  // Each lod info will prepend a zero
+    batch_uint64_feasigns_[i].reserve(default_batch_size_ *
+                                      kEstimatedFeasignNumPerSlot);
+    offset_.push_back(std::vector<size_t>());
+    offset_[i].reserve(default_batch_size_ +
+                       1);  // Each lod info will prepend a zero
   }
-  visit.resize(all_slot_num, false);
+  visit_.resize(all_slot_num, false);
   pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
 }
@@ -1002,11 +1002,11 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
 #ifdef _LINUX
-  for (size_t i = 0; i < batch_float_feasigns.size(); ++i) {
-    batch_float_feasigns[i].clear();
-    batch_uint64_feasigns[i].clear();
-    offset[i].clear();
-    offset[i].push_back(0);
+  for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
+    batch_float_feasigns_[i].clear();
+    batch_uint64_feasigns_[i].clear();
+    offset_[i].clear();
+    offset_[i].push_back(0);
   }
   ins_content_vec_.clear();
   ins_content_vec_.reserve(ins_vec.size());
@@ -1017,30 +1017,31 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     ins_id_vec_.push_back(r.ins_id_);
     ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
-      batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
-      visit[item.slot()] = true;
+      batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
+      visit_[item.slot()] = true;
     }
     for (auto& item : r.uint64_feasigns_) {
-      batch_uint64_feasigns[item.slot()].push_back(item.sign().uint64_feasign_);
-      visit[item.slot()] = true;
+      batch_uint64_feasigns_[item.slot()].push_back(
+          item.sign().uint64_feasign_);
+      visit_[item.slot()] = true;
     }
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
-      if (visit[j]) {
-        visit[j] = false;
+      if (visit_[j]) {
+        visit_[j] = false;
       } else {
         // fill slot value with default value 0
         if (type[0] == 'f') {  // float
-          batch_float_feasigns[j].push_back(0.0);
+          batch_float_feasigns_[j].push_back(0.0);
         } else if (type[0] == 'u') {  // uint64
-          batch_uint64_feasigns[j].push_back(0);
+          batch_uint64_feasigns_[j].push_back(0);
         }
       }
       // get offset of this ins in this slot
       if (type[0] == 'f') {  // float
-        offset[j].push_back(batch_float_feasigns[j].size());
+        offset_[j].push_back(batch_float_feasigns_[j].size());
       } else if (type[0] == 'u') {  // uint64
-        offset[j].push_back(batch_uint64_feasigns[j].size());
+        offset_[j].push_back(batch_uint64_feasigns_[j].size());
       }
     }
   }
@@ -1049,21 +1050,21 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     if (feed_vec_[i] == nullptr) {
       continue;
     }
-    int total_instance = offset[i].back();
+    int total_instance = offset_[i].back();
     const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float
-      float* feasign = batch_float_feasigns[i].data();
+      float* feasign = batch_float_feasigns_[i].data();
       float* tensor_ptr =
           feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
-      uint64_t* feasign = batch_uint64_feasigns[i].data();
+      uint64_t* feasign = batch_uint64_feasigns_[i].data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
     }
-    auto& slot_offset = offset[i];
+    auto& slot_offset = offset_[i];
     LoD data_lod{slot_offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
@@ -1439,11 +1440,11 @@ int PaddleBoxDataFeed::GetCurrentPhase() {
 
 void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
 #ifdef _LINUX
-  for (size_t i = 0; i < batch_float_feasigns.size(); ++i) {
-    batch_float_feasigns[i].clear();
-    batch_uint64_feasigns[i].clear();
-    offset[i].clear();
-    offset[i].push_back(0);
+  for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
+    batch_float_feasigns_[i].clear();
+    batch_uint64_feasigns_[i].clear();
+    offset_[i].clear();
+    offset_[i].push_back(0);
   }
   ins_content_vec_.clear();
   ins_content_vec_.reserve(ins_vec.size());
@@ -1454,30 +1455,31 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
     ins_id_vec_.push_back(r->ins_id_);
     ins_content_vec_.push_back(r->content_);
     for (auto& item : r->float_feasigns_) {
-      batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
-      visit[item.slot()] = true;
+      batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
+      visit_[item.slot()] = true;
     }
     for (auto& item : r->uint64_feasigns_) {
-      batch_uint64_feasigns[item.slot()].push_back(item.sign().uint64_feasign_);
-      visit[item.slot()] = true;
+      batch_uint64_feasigns_[item.slot()].push_back(
+          item.sign().uint64_feasign_);
+      visit_[item.slot()] = true;
     }
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
-      if (visit[j]) {
-        visit[j] = false;
+      if (visit_[j]) {
+        visit_[j] = false;
       } else {
         // fill slot value with default value 0
         if (type[0] == 'f') {  // float
-          batch_float_feasigns[j].push_back(0.0);
+          batch_float_feasigns_[j].push_back(0.0);
         } else if (type[0] == 'u') {  // uint64
-          batch_uint64_feasigns[j].push_back(0);
+          batch_uint64_feasigns_[j].push_back(0);
         }
       }
       // get offset of this ins in this slot
       if (type[0] == 'f') {  // float
-        offset[j].push_back(batch_float_feasigns[j].size());
+        offset_[j].push_back(batch_float_feasigns_[j].size());
       } else if (type[0] == 'u') {  // uint64
-        offset[j].push_back(batch_uint64_feasigns[j].size());
+        offset_[j].push_back(batch_uint64_feasigns_[j].size());
       }
     }
   }
@@ -1486,21 +1488,21 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
     if (feed_vec_[i] == nullptr) {
       continue;
     }
-    int total_instance = offset[i].back();
+    int total_instance = offset_[i].back();
     const auto& type = all_slots_type_[i];
     if (type[0] == 'f') {  // float
-      float* feasign = batch_float_feasigns[i].data();
+      float* feasign = batch_float_feasigns_[i].data();
       float* tensor_ptr =
           feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
     } else if (type[0] == 'u') {  // uint64
       // no uint64_t type in paddlepaddle
-      uint64_t* feasign = batch_uint64_feasigns[i].data();
+      uint64_t* feasign = batch_uint64_feasigns_[i].data();
       int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
           {total_instance, 1}, this->place_);
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
     }
-    auto& slot_offset = offset[i];
+    auto& slot_offset = offset_[i];
     LoD data_lod{slot_offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
