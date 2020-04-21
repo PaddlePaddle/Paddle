@@ -19,8 +19,9 @@ from paddle.fluid.initializer import UniformInitializer
 from paddle.fluid.dygraph import Embedding, Linear, Layer
 from paddle.fluid.layers import BeamSearchDecoder
 
-from text import DynamicDecode, RNN, BasicLSTMCell, RNNCell
-from model import Model, Loss
+from hapi.model import Model, Loss
+from hapi.text import DynamicDecode, RNN, BasicLSTMCell, RNNCell
+
 from seq2seq_base import Encoder
 
 
@@ -238,92 +239,3 @@ class AttentionInferModel(AttentionModel):
             encoder_output=encoder_output,
             encoder_padding_mask=encoder_padding_mask)
         return rs
-
-
-class GreedyEmbeddingHelper(fluid.layers.GreedyEmbeddingHelper):
-    def __init__(self, embedding_fn, start_tokens, end_token):
-        if isinstance(start_tokens, int):
-            self.need_convert_start_tokens = True
-            self.start_token_value = start_tokens
-        super(GreedyEmbeddingHelper, self).__init__(embedding_fn, start_tokens,
-                                                    end_token)
-        self.end_token = fluid.layers.create_global_var(
-            shape=[1], dtype="int64", value=end_token, persistable=True)
-
-    def initialize(self, batch_ref=None):
-        if getattr(self, "need_convert_start_tokens", False):
-            assert batch_ref is not None, (
-                "Need to give batch_ref to get batch size "
-                "to initialize the tensor for start tokens.")
-            self.start_tokens = fluid.layers.fill_constant_batch_size_like(
-                input=fluid.layers.utils.flatten(batch_ref)[0],
-                shape=[-1],
-                dtype="int64",
-                value=self.start_token_value,
-                input_dim_idx=0)
-        return super(GreedyEmbeddingHelper, self).initialize()
-
-
-class BasicDecoder(fluid.layers.BasicDecoder):
-    def initialize(self, initial_cell_states):
-        (initial_inputs,
-         initial_finished) = self.helper.initialize(initial_cell_states)
-        return initial_inputs, initial_cell_states, initial_finished
-
-
-class AttentionGreedyInferModel(AttentionModel):
-    def __init__(self,
-                 src_vocab_size,
-                 trg_vocab_size,
-                 embed_dim,
-                 hidden_size,
-                 num_layers,
-                 dropout_prob=0.,
-                 bos_id=0,
-                 eos_id=1,
-                 beam_size=1,
-                 max_out_len=256):
-        args = dict(locals())
-        args.pop("self")
-        args.pop("__class__", None)  # py3
-        args.pop("beam_size", None)
-        self.bos_id = args.pop("bos_id")
-        self.eos_id = args.pop("eos_id")
-        self.max_out_len = args.pop("max_out_len")
-        super(AttentionGreedyInferModel, self).__init__(**args)
-        # dynamic decoder for inference
-        decoder_helper = GreedyEmbeddingHelper(
-            start_tokens=bos_id,
-            end_token=eos_id,
-            embedding_fn=self.decoder.embedder)
-        decoder = BasicDecoder(
-            cell=self.decoder.lstm_attention.cell,
-            helper=decoder_helper,
-            output_fn=self.decoder.output_layer)
-        self.greedy_search_decoder = DynamicDecode(
-            decoder, max_step_num=max_out_len, is_test=True)
-
-    def forward(self, src, src_length):
-        # encoding
-        encoder_output, encoder_final_state = self.encoder(src, src_length)
-
-        # decoder initial states
-        decoder_initial_states = [
-            encoder_final_state,
-            self.decoder.lstm_attention.cell.get_initial_states(
-                batch_ref=encoder_output, shape=[self.hidden_size])
-        ]
-        # attention mask to avoid paying attention on padddings
-        src_mask = layers.sequence_mask(
-            src_length,
-            maxlen=layers.shape(src)[1],
-            dtype=encoder_output.dtype)
-        encoder_padding_mask = (src_mask - 1.0) * 1e9
-        encoder_padding_mask = layers.unsqueeze(encoder_padding_mask, [1])
-
-        # dynamic decoding with greedy search
-        rs, _ = self.greedy_search_decoder(
-            inits=decoder_initial_states,
-            encoder_output=encoder_output,
-            encoder_padding_mask=encoder_padding_mask)
-        return rs.sample_ids

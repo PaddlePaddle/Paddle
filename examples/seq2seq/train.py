@@ -14,8 +14,6 @@
 
 import logging
 import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import random
 from functools import partial
 
@@ -23,9 +21,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.io import DataLoader
 
-from model import Input, set_device
-from metrics import Metric
-from callbacks import ProgBarLogger
+from hapi.model import Input, set_device
 from args import parse_args
 from seq2seq_base import BaseModel, CrossEntropyCriterion
 from seq2seq_attn import AttentionModel

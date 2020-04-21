@@ -15,8 +15,6 @@
 import logging
 import os
 import io
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import random
 from functools import partial
 
@@ -25,10 +23,10 @@ import paddle.fluid as fluid
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.io import DataLoader
 
-from model import Input, set_device
+from hapi.model import Input, set_device
 from args import parse_args
 from seq2seq_base import BaseInferModel
-from seq2seq_attn import AttentionInferModel, AttentionGreedyInferModel
+from seq2seq_attn import AttentionInferModel
 from reader import Seq2SeqDataset, Seq2SeqBatchSampler, SortType, prepare_infer_input
 
 
@@ -87,8 +85,7 @@ def do_predict(args):
         num_workers=0,
         return_list=True)
 
-    # model_maker = AttentionInferModel if args.attention else BaseInferModel
-    model_maker = AttentionGreedyInferModel if args.attention else BaseInferModel
+    model_maker = AttentionInferModel if args.attention else BaseInferModel
     model = model_maker(
         args.src_vocab_size,
         args.tar_vocab_size,

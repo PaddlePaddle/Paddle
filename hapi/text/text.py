@@ -238,8 +238,9 @@ class BasicLSTMCell(RNNCell):
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._forget_bias = layers.fill_constant(
-            [1], dtype=dtype, value=forget_bias)
+        # TODO(guosheng): find better way to resolve constants in __init__
+        self._forget_bias = layers.create_global_var(
+            shape=[1], dtype=dtype, value=forget_bias, persistable=True)
         self._forget_bias.stop_gradient = False
         self._dtype = dtype
         self._input_size = input_size

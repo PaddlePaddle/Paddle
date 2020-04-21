@@ -15,8 +15,8 @@
 import numpy as np
 import paddle.fluid as fluid
 
-from metrics import Metric
-from callbacks import ProgBarLogger
+from hapi.metrics import Metric
+from hapi.callbacks import ProgBarLogger
 
 
 class TrainCallback(ProgBarLogger):
