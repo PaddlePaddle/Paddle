@@ -58,18 +58,25 @@ def full_like(input,
     **full_like**
     This function creates a tensor filled with `fill_value` which has identical shape and dtype 
     with `input`.
+
     Args:
-        input(Variable): The input tensor which specifies shape and dtype.
-        fill_value: The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
-        out(Variable): The output tensor.
+        input(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        fill_value(bool|float|int): The value to fill the tensor with. Default value is 0. Note: this value shouldn't exceed the range of the output data type.
+        out(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of operation. If out is None, a new Varibale will be create to store the result. Default value is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The default value is None, which means the output data type is the same as input.
+        device (string, optional): Which device to run the operator. The :attr:`device` must be None, 'cpu', 'gpu'. If :attr:`device` is None, it will be the device that the user set in the paddle program. Default value is None.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable. Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
-        out(Variable): The tensor variable storing the output.
+        out(Variable): The Tensor variable storing the output.
+    
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.fluid as fluid
           import numpy as np
-
           input = fluid.data(name='input', dtype='float32', shape=[2, 3])
           output = paddle.full_like(input, 2.0)
           exe = fluid.Executor(fluid.CPUPlace())
@@ -80,18 +87,24 @@ def full_like(input,
     """
     helper = LayerHelper("full_like", **locals())
 
+    var_dtype = None
     if dtype is None:
-        dtype = 'float32'
-
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+        var_dtype = input.dtype
+    else:
+        check_dtype(
+            dtype, 'dtype',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'full_like')
+        var_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
+
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [input]},
-        attrs={'value': fill_value},
+        attrs={'value': fill_value,
+               "dtype": var_dtype},
         outputs={'Out': [out]})
     out.stop_gradient = stop_gradient
 
