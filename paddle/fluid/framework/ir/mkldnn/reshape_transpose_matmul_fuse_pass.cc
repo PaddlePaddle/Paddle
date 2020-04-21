@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -23,7 +23,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void ReshapeTransposeMatmulFusePass::Fuse(Graph *graph,
+void ReshapeTransposeMatmulMkldnnFusePass::Fuse(Graph *graph,
                                           bool with_reshape_xshape,
                                           bool with_transpose_xshape) const {
   GraphPatternDetector gpd;
@@ -35,7 +35,7 @@ void ReshapeTransposeMatmulFusePass::Fuse(Graph *graph,
   int found_reshape_transpose_matmul_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "handle ReshapeTransposeMatmul fuse";
+    VLOG(4) << "handle ReshapeTransposeMatmulMkldnn fuse";
     GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, rtm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, rtm_pattern);
@@ -94,13 +94,13 @@ void ReshapeTransposeMatmulFusePass::Fuse(Graph *graph,
 
   std::stringstream msg_ss;
   msg_ss << "---    Fused " << found_reshape_transpose_matmul_count
-         << " ReshapeTransposeMatmul patterns";
+         << " ReshapeTransposeMatmulMkldnn patterns";
   if (with_reshape_xshape) msg_ss << " with reshape's xshape";
   if (with_transpose_xshape) msg_ss << " with transpose's xshape";
   string::PrettyLogDetail(msg_ss.str().c_str());
 }
 
-void ReshapeTransposeMatmulFusePass::ApplyImpl(ir::Graph *graph) const {
+void ReshapeTransposeMatmulMkldnnFusePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
@@ -116,5 +116,5 @@ void ReshapeTransposeMatmulFusePass::ApplyImpl(ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(reshape_transpose_matmul_fuse_pass,
-              paddle::framework::ir::ReshapeTransposeMatmulFusePass);
+REGISTER_PASS(reshape_transpose_matmul_mkldnn_fuse_pass,
+              paddle::framework::ir::ReshapeTransposeMatmulMkldnnFusePass);

@@ -25,9 +25,9 @@ namespace ir {
 /*
  * Fuse Reshape->Transpose->MatMul when MatMul uses mkldnn.
  */
-class ReshapeTransposeMatmulFusePass : public FusePassBase {
+class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
  public:
-  virtual ~ReshapeTransposeMatmulFusePass() {}
+  virtual ~ReshapeTransposeMatmulMkldnnFusePass() {}
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

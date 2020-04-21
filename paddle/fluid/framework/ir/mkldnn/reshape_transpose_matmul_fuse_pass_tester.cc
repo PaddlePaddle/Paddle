@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -78,7 +78,7 @@ void TestMain(bool with_xshapes) {
   VLOG(3) << DebugString(graph);
 
   auto pass =
-      PassRegistry::Instance().Get("reshape_transpose_matmul_fuse_pass");
+      PassRegistry::Instance().Get("reshape_transpose_matmul_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int num_reshape_nodes_after = GetNumOpNodes(graph, "reshape2");
@@ -107,11 +107,11 @@ void TestMain(bool with_xshapes) {
   check("Y");
 }
 
-TEST(ReshapeTransposeMatmulFusePass, both_matmul_inputs_reshape_transpose) {
+TEST(ReshapeTransposeMatmulMkldnnFusePass, both_matmul_inputs_reshape_transpose) {
   TestMain(false);
 }
 
-TEST(ReshapeTransposeMatmulFusePass,
+TEST(ReshapeTransposeMatmulMkldnnFusePass,
      both_matmul_inputs_reshape_transpose_one_with_xshapes) {
   TestMain(true);
 }
@@ -120,4 +120,4 @@ TEST(ReshapeTransposeMatmulFusePass,
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(reshape_transpose_matmul_fuse_pass);
+USE_PASS(reshape_transpose_matmul_mkldnn_fuse_pass);
