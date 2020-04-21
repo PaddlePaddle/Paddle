@@ -131,5 +131,66 @@ DDim stride_numel(const DDim& ddim) {
   return strides;
 }
 
+DDim DDim::reshape(const std::vector<int>& shape) const {
+  const int64_t copy_dim_val = 0;
+  const DDim& in_dims = *this;
+  DDim out_dims;
+  out_dims.rank_ = shape.size();
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (shape[i] == copy_dim_val) {
+      PADDLE_ENFORCE_LT(static_cast<int>(i), in_dims.size(),
+                        platform::errors::InvalidArgument(
+                            "Index %d of shape under which the value of 0 "
+                            "is stored, must be lower than the number of "
+                            "old dimensions. But received shape[%d] = 0, "
+                            "dimensions = %d, shape = [%s].",
+                            i, in_dims.size(), in_dims));
+      out_dims[i] = in_dims[i];
+    } else {
+      out_dims[i] = shape[i];
+    }
+  }
+  return out_dims;
+}
+
+DDim DDim::transpose(const std::vector<int>& axis) const {
+  const DDim& in_dims = *this;
+  size_t in_rank = in_dims.size();
+  size_t axis_size = axis.size();
+
+  PADDLE_ENFORCE_EQ(
+      in_rank, axis_size,
+      platform::errors::InvalidArgument("The input dimension's size "
+                                        "should be equal to the axis's size. "
+                                        "But received dimension is %d, "
+                                        "axis's size is %d",
+                                        in_rank, axis_size));
+
+  std::vector<int> count(axis_size, 0);
+  for (size_t i = 0; i < axis_size; i++) {
+    PADDLE_ENFORCE_LT(axis[i], static_cast<int>(axis_size),
+                      platform::errors::InvalidArgument(
+                          "ValueError: Each element of axis should "
+                          "be a unique value range from 0 to (dims - 1), "
+                          "where the dims is the axis's size, "
+                          "but received axis[%d] is %d, axis_size is %d",
+                          i, axis[i], axis_size));
+    PADDLE_ENFORCE_EQ(
+        ++count[axis[i]], 1,
+        platform::errors::InvalidArgument(
+            "ValueError: Each element of axis must "
+            "appear exactly once in the range from 0 to (dims - 1), "
+            "where the dims is the axis's size, "
+            "but received count[axis[%d]] is %d",
+            i, count[axis[i]]));
+  }
+
+  DDim out_dims(in_dims);
+  for (size_t i = 0; i < axis_size; i++) {
+    out_dims[i] = in_dims[axis[i]];
+  }
+  return out_dims;
+}
+
 }  // namespace framework
 }  // namespace paddle
