@@ -135,10 +135,14 @@ copy(inference_lib_dist
         SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
 
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
-copy(inference_lib_dist
-        SRCS ${cudaerror_INCLUDE_DIR}
-        DSTS ${dst_dir})
+# Only GPU need cudaErrorMessage.pb
+IF(WITH_GPU)
+        set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
+        copy(inference_lib_dist
+                SRCS ${cudaerror_INCLUDE_DIR}
+                DSTS ${dst_dir})
+ENDIF()
+
 
 # CMakeCache Info
 copy(inference_lib_dist

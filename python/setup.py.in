@@ -331,7 +331,6 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
     list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/platform')) +
     list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/framework')) +
-    list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}')) + # errorMessage.pb for errormessage
     ['${EIGEN_INCLUDE_DIR}/Eigen/Core'] + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/unsupported/Eigen')) + # eigen
@@ -346,6 +345,8 @@ headers = (
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
+if '${WITH_GPU}' == 'ON':
+    headers += list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}')) + # errorMessage.pb for errormessage
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
@@ -405,7 +406,8 @@ class InstallHeaders(Command):
     def run(self):
         # only copy third_party/cudaErrorMessage.pb for cudaErrorMessage on mac or windows
         if os.name == 'nt' or sys.platform == 'darwin':
-            self.mkdir_and_copy_file('${cudaerror_INCLUDE_DIR}/cudaErrorMessage.pb')
+            if '${WITH_GPU}' == 'ON':
+                self.mkdir_and_copy_file('${cudaerror_INCLUDE_DIR}/cudaErrorMessage.pb')
             return
         hdrs = self.distribution.headers
         if not hdrs:
