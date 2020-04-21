@@ -284,7 +284,7 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor {
   explicit FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor(const T scale)
       : scale_(scale) {}
   HOSTDEVICE T operator()(const T& x, const T& y) const {
-    return (y > -scale_ && y < scale_) ? x : 0;
+    return (y >= -scale_ && y <= scale_) ? x : 0;
   }
 
  private:
