@@ -627,7 +627,6 @@ def gather(input, index, overwrite=True):
 
             with fluid.dygraph.guard():
                 input_1 = np.array([[1,2],[3,4],[5,6]])
-                # input is a variable which shape is [5, 1, 10]
                 index_1 = np.array([0,1])
                 input = fluid.dygraph.to_variable(input_1)
                 index = fluid.dygraph.to_variable(index_1)
