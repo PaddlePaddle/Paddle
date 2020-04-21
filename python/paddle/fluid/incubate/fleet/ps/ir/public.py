@@ -174,7 +174,7 @@ class CompileTimeStrategy(object):
         for merged in self.merged_variables_pairs:
             grads = merged[1]
             ctx = self.buid_ctx(grads, self.grad_var_mapping)
-            send_ctx[ctx.merged_varname] = ctx
+            send_ctx[ctx.merged_varname()] = ctx
         return send_ctx
 
     def get_communicator_recv_context(self):
@@ -182,7 +182,7 @@ class CompileTimeStrategy(object):
         for merged in self.merged_variables_pairs:
             params = merged[0]
             ctx = self.buid_ctx(params, self.param_var_mapping)
-            recv_ctx[ctx.merged_varname] = ctx
+            recv_ctx[ctx.merged_varname()] = ctx
         return recv_ctx
 
     def get_server_runtime_config(self):
