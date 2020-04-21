@@ -90,17 +90,18 @@ def is_numpy_api(node):
 
 def is_control_flow_to_transform(node, var_name_to_type):
     """
-    Determines whether the node is a Paddle control flow statement which needs to
-    transform into a static graph control flow statement.
+    Determines whether the node is a PaddlePaddle control flow statement which needs to
+    be transformed into a static graph control flow statement.
     """
     assert isinstance(node, gast.AST), \
         "The type of input node must be gast.AST, but received %s." % type(node)
 
     if isinstance(node, gast.If):
-        from .ifelse_transformer import IfConditionVisitor
-        if_visitor = IfConditionVisitor(
+        from .ifelse_transformer import IsControlFlowVisitor
+        visitor = IsControlFlowVisitor(
             node.test, node_var_type_map=var_name_to_type)
-        return if_visitor.is_control_flow()
+        need_to_transform = visitor.transform()
+        return need_to_transform
 
     if isinstance(node, gast.For):
         # TODO: make a better condition
