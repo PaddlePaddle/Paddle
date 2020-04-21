@@ -581,7 +581,6 @@ def cross(input, other, dim=None):
         
     Examples:
         .. code-block:: python
-
             import paddle
             import paddle.fluid as fluid
             import numpy as np
@@ -606,7 +605,6 @@ def cross(input, other, dim=None):
                 #[[0. 0. 0.]
                 # [0. 0. 0.]
                 # [0. 0. 0.]]
-
     """
     helper = LayerHelper("cross", **locals())
     if in_dygraph_mode():
@@ -653,6 +651,7 @@ def cholesky(x, upper=False):
         
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.fluid as fluid
             import numpy as np
@@ -667,6 +666,7 @@ def cholesky(x, upper=False):
                 # [[1.190523   0.         0.        ]
                 #  [0.9906703  0.27676893 0.        ]
                 #  [1.25450498 0.05600871 0.06400121]]
+
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
@@ -677,6 +677,7 @@ def cholesky(x, upper=False):
         inputs={'X': [x]},
         outputs={'Out': out},
         attrs={'upper': upper})
+    return out
 
 
 def bmm(x, y, name=None):
