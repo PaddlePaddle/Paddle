@@ -35,6 +35,9 @@ using paddle::operators::distributed::GeoSgdCommunicator;
 using paddle::operators::distributed::HalfAsyncCommunicator;
 using paddle::operators::distributed::SyncCommunicator;
 
+using paddle::operators::distributed::CommContext;
+using paddle::operators::distributed::RpcCtxMap;
+
 namespace paddle {
 namespace pybind {
 
@@ -73,12 +76,11 @@ void BindCommunicator(py::module* m) {
         }
         return Communicator::GetInstantcePtr();
       }))
-      .def(py::init(
-          [](const std::string& mode, const std::vector<CommContext>& send_ctxs,
-             const std::vector<CommContext>& recv_ctxs, Scope* param_scope,
-             std::map<std::string, std::string>& envs) {
-            return Communicator::GetInstantcePtr();
-          }))
+      .def(py::init([](const std::string& mode, const RpcCtxMap& send_ctx,
+                       const RpcCtxMap& recv_ctx, Scope* param_scope,
+                       std::map<std::string, std::string>& envs) {
+        return Communicator::GetInstantcePtr();
+      }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning);
