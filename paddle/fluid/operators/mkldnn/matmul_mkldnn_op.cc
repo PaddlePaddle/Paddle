@@ -83,35 +83,23 @@ class MatMulFactory {
 
   std::vector<int64_t> Transpose(const std::vector<int64_t>& x,
                                  const std::vector<int>& axis) {
-    size_t x_rank = x.size();
+    size_t in_rank = x.size();
     size_t axis_size = axis.size();
 
-    PADDLE_ENFORCE_EQ(
-        x_rank, axis_size,
-        platform::errors::InvalidArgument("The input vector's size "
-                                          "should be equal to the axis's size. "
-                                          "But received vector's size is %d, "
-                                          "axis's size is %d",
-                                          x_rank, axis_size));
+    auto axis_set = std::set<int>(axis.begin(), axis.end());
+    PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
+                      "In an axis array, elements must be unique.");
 
-    std::vector<int> count(axis_size, 0);
-    for (size_t i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE_LT(axis[i], static_cast<int>(axis_size),
-                        platform::errors::InvalidArgument(
-                            "ValueError: Each element of axis should "
-                            "be a unique value range from 0 to (dims - 1), "
-                            "where the dims is the axis's size, "
-                            "but received axis[%d] is %d, axis_size is %d",
-                            i, axis[i], axis_size));
-      PADDLE_ENFORCE_EQ(
-          ++count[axis[i]], 1,
-          platform::errors::InvalidArgument(
-              "ValueError: Each element of axis must "
-              "appear exactly once in the range from 0 to (dims - 1), "
-              "where the dims is the axis's size, "
-              "but received count[axis[%d]] is %d",
-              i, count[axis[i]]));
-    }
+    PADDLE_ENFORCE_EQ(
+        in_rank, axis_size,
+        platform::errors::InvalidArgument("The input dimension's size "
+                                          "should be equal to the axis's size. "
+                                          "But received dimension is %d, "
+                                          "axis's size is %d",
+                                          in_rank, axis_size));
+
+    PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
+                      "Axis values must be ranging from 0 to (dims - 1).");
 
     std::vector<int64_t> new_x(x.size());
     for (size_t i = 0; i < x.size(); i++) {

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ddim.h"
+#include <set>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -155,8 +156,12 @@ DDim DDim::reshape(const std::vector<int>& shape) const {
 
 DDim DDim::transpose(const std::vector<int>& axis) const {
   const DDim& in_dims = *this;
-  size_t in_rank = in_dims.size();
   size_t axis_size = axis.size();
+  size_t in_rank = in_dims.size();
+
+  auto axis_set = std::set<int>(axis.begin(), axis.end());
+  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
+                    "In an axis array, elements must be unique.");
 
   PADDLE_ENFORCE_EQ(
       in_rank, axis_size,
@@ -166,24 +171,8 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
                                         "axis's size is %d",
                                         in_rank, axis_size));
 
-  std::vector<int> count(axis_size, 0);
-  for (size_t i = 0; i < axis_size; i++) {
-    PADDLE_ENFORCE_LT(axis[i], static_cast<int>(axis_size),
-                      platform::errors::InvalidArgument(
-                          "ValueError: Each element of axis should "
-                          "be a unique value range from 0 to (dims - 1), "
-                          "where the dims is the axis's size, "
-                          "but received axis[%d] is %d, axis_size is %d",
-                          i, axis[i], axis_size));
-    PADDLE_ENFORCE_EQ(
-        ++count[axis[i]], 1,
-        platform::errors::InvalidArgument(
-            "ValueError: Each element of axis must "
-            "appear exactly once in the range from 0 to (dims - 1), "
-            "where the dims is the axis's size, "
-            "but received count[axis[%d]] is %d",
-            i, count[axis[i]]));
-  }
+  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
+                    "Axis values must be ranging from 0 to (dims - 1).");
 
   DDim out_dims(in_dims);
   for (size_t i = 0; i < axis_size; i++) {
