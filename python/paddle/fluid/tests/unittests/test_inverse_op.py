@@ -22,12 +22,13 @@ from op_test import OpTest
 
 class TestInverseOp(OpTest):
     def config(self):
-        self.matrix_shape = [4, 8, 8]
+        self.matrix_shape = [10, 10]
 
     def setUp(self):
         self.op_type = "inverse"
         self.config()
 
+        np.random.seed(123)
         mat = np.random.random(self.matrix_shape).astype("float64")
         inverse = np.linalg.inv(mat)
 
@@ -43,45 +44,66 @@ class TestInverseOp(OpTest):
 
 class TestInverseOpBatched(TestInverseOp):
     def config(self):
-        self.matrix_shape = [100, 100]
+        self.matrix_shape = [8, 4, 4]
 
 
 class TestInverseAPI(unittest.TestCase):
     def setUp(self):
+        np.random.seed(123)
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
-    def assert_is_close(self, place, array1, array2, atol=1e-5):
-        self.assertTrue(
-            np.allclose(
-                array1, array2, atol=1e-4),
-            "Array has diff at " + str(place) + " when the shape is " +
-            str(array1.shape) + ". The maximum diff is " +
-            str(np.amax(np.absolute(array1 - array2))))
+    def assert_is_close(self, place, a, b, atol=None):
+        abs_a = np.abs(a)
+        if a.dtype == np.float64:
+            abs_a[abs_a < 1e-10] = 1e-3
+            abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+            abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+        else:
+            abs_a[abs_a < 1e-3] = 1
 
-    def check_static_result(self, place, N, with_out=False):
+        diff = np.abs(a - b) / abs_a
+        max_diff = np.amax(diff)
+
+        def error_message():
+            offset = np.argmax(diff)
+            return (
+                "Array has diff at %s when the shape is %s and data type is %s. "
+                "The maximum diff is %e, offset is %d: %e vs %e.") % (
+                    str(place), str(a.shape), str(a.dtype), max_diff, offset,
+                    a.flatten()[offset], b.flatten()[offset])
+
+        if atol is None:
+            if a.dtype == np.float64:
+                max_relative_error = 1e-5
+            else:
+                max_relative_error = 1e-2
+        self.assertLessEqual(max_diff, max_relative_error, error_message())
+
+    def check_static_result(self, place, N, dtype, with_out=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[N, N], dtype="float64")
+            input = fluid.data(name="input", shape=[N, N], dtype=dtype)
             if with_out:
-                out = fluid.data(name="output", shape=[N, N], dtype="float64")
+                out = fluid.data(name="output", shape=[N, N], dtype=dtype)
             else:
                 out = None
             result = paddle.inverse(input=input, out=None)
 
-            input_np = np.random.random([N, N]).astype("float64")
+            input_np = np.random.random([N, N]).astype(dtype)
             result_np = np.linalg.inv(input_np)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assert_is_close(place, fetches[0], result_np, atol=1e-5)
+            self.assert_is_close(place, fetches[0], result_np)
 
     def test_static(self):
         for place in self.places:
-            for N in [4, 36]:
-                self.check_static_result(place=place, N=N)
+            for dtype in ["float64", "float32"]:
+                for N in [4, 32]:
+                    self.check_static_result(place=place, N=N, dtype=dtype)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -90,23 +112,6 @@ class TestInverseAPI(unittest.TestCase):
             result = paddle.inverse(input)
             self.assertTrue(
                 np.allclose(result.numpy(), np.linalg.inv(input_np)))
-
-    def test_product(self):
-        for place in self.places:
-            for N in [4, 36]:
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
-                    input = fluid.data(
-                        name="input", shape=[N, N], dtype="float32")
-                    matinv = paddle.inverse(input=input, out=None)
-                    prod = fluid.layers.matmul(input, matinv)
-
-                    input_np = np.random.random([N, N]).astype("float32")
-                    exe = fluid.Executor(place)
-                    fetches = exe.run(fluid.default_main_program(),
-                                      feed={"input": input_np},
-                                      fetch_list=[prod])
-                    self.assert_is_close(
-                        place, fetches[0], np.identity(N), atol=1e-5)
 
 
 class TestInverseAPIError(unittest.TestCase):
