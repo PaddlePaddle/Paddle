@@ -601,7 +601,6 @@ def gather(input, index, overwrite=True):
 
                 Out = [[3, 4],
                        [5, 6]]
-
     Args:
         input (Variable): The source input tensor with rank>=1. Supported data type is
             int32, int64, float32, float64 and uint8 (only for CPU),
