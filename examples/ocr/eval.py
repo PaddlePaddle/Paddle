@@ -23,7 +23,7 @@ from hapi.model import Input, set_device
 from hapi.vision.transforms import BatchCompose
 
 from utility import add_arguments, print_arguments
-from utility import SeqAccuracy, MyProgBarLogger, SeqBeamAccuracy
+from utility import SeqAccuracy, LoggerCallBack, SeqBeamAccuracy
 from utility import postprocess
 from seq2seq_attn import Seq2SeqAttModel, Seq2SeqAttInferModel, WeightCrossEntropy
 import data
@@ -91,7 +91,7 @@ def main(FLAGS):
 
     model.evaluate(
         eval_data=test_loader,
-        callbacks=[MyProgBarLogger(10, 2, FLAGS.batch_size)])
+        callbacks=[LoggerCallBack(10, 2, FLAGS.batch_size)])
 
 
 def beam_search(FLAGS):
@@ -140,7 +140,7 @@ def beam_search(FLAGS):
 
     model.evaluate(
         eval_data=test_loader,
-        callbacks=[MyProgBarLogger(10, 2, FLAGS.batch_size)])
+        callbacks=[LoggerCallBack(10, 2, FLAGS.batch_size)])
 
 
 if __name__ == '__main__':

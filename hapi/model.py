@@ -1267,7 +1267,7 @@ class Model(fluid.dygraph.Layer):
 
         if mode == 'train':
             assert epoch is not None, 'when mode is train, epoch must be given'
-            callbacks.on_epoch_end(epoch)
+            callbacks.on_epoch_end(epoch, logs)
 
         return logs
 

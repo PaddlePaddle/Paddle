@@ -102,31 +102,31 @@ class SeqAccuracy(Metric):
         return self._name
 
 
-class MyProgBarLogger(ProgBarLogger):
+class LoggerCallBack(ProgBarLogger):
     def __init__(self, log_freq=1, verbose=2, train_bs=None, eval_bs=None):
-        super(MyProgBarLogger, self).__init__(log_freq, verbose)
+        super(LoggerCallBack, self).__init__(log_freq, verbose)
         self.train_bs = train_bs
         self.eval_bs = eval_bs if eval_bs else train_bs
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
         logs['loss'] = [l / self.train_bs for l in logs['loss']]
-        super(MyProgBarLogger, self).on_train_batch_end(step, logs)
+        super(LoggerCallBack, self).on_train_batch_end(step, logs)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
         logs['loss'] = [l / self.train_bs for l in logs['loss']]
-        super(MyProgBarLogger, self).on_epoch_end(epoch, logs)
+        super(LoggerCallBack, self).on_epoch_end(epoch, logs)
 
     def on_eval_batch_end(self, step, logs=None):
         logs = logs or {}
         logs['loss'] = [l / self.eval_bs for l in logs['loss']]
-        super(MyProgBarLogger, self).on_eval_batch_end(step, logs)
+        super(LoggerCallBack, self).on_eval_batch_end(step, logs)
 
     def on_eval_end(self, logs=None):
         logs = logs or {}
         logs['loss'] = [l / self.eval_bs for l in logs['loss']]
-        super(MyProgBarLogger, self).on_eval_end(logs)
+        super(LoggerCallBack, self).on_eval_end(logs)
 
 
 def index2word(ids):

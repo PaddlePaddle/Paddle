@@ -28,7 +28,7 @@ from hapi.model import Input, set_device
 from hapi.vision.transforms import BatchCompose
 
 from utility import add_arguments, print_arguments
-from utility import SeqAccuracy, MyProgBarLogger
+from utility import SeqAccuracy, LoggerCallBack
 from seq2seq_attn import Seq2SeqAttModel, WeightCrossEntropy
 import data
 
@@ -129,7 +129,7 @@ def main(FLAGS):
               eval_data=test_loader,
               epochs=FLAGS.epoch,
               save_dir=FLAGS.checkpoint_path,
-              callbacks=[MyProgBarLogger(10, 2, FLAGS.batch_size)])
+              callbacks=[LoggerCallBack(10, 2, FLAGS.batch_size)])
 
 
 if __name__ == '__main__':
