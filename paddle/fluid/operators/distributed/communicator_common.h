@@ -50,7 +50,7 @@ struct CommContext {
     origin_varnames = ctx.origin_varnames;
   }
 
-  void print() {
+  std::string print() const {
     std::stringstream ss;
 
     ss << "\nmerged_var: " << var_name << " trainer_id: " << trainer_id << "\n";
@@ -65,7 +65,7 @@ struct CommContext {
       ss << origin_varnames[i] << " ";
     }
 
-    VLOG(1) << ss.str();
+    return ss.str();
   }
 
   std::string var_name;
