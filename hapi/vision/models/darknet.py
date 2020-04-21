@@ -22,7 +22,7 @@ from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Pool2D, Linear
 from hapi.model import Model
 from hapi.download import get_weights_path
 
-__all__ = ['DarkNet', 'ConvBNLayer', 'darknet53']
+__all__ = ['DarkNet', 'darknet53']
 
 # {num_layers: (url, md5)}
 pretrain_infos = {

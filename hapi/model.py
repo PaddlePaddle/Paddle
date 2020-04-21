@@ -816,7 +816,7 @@ class Model(fluid.dygraph.Layer):
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + err.message))
+                        ("Skip loading for {}. ".format(key) + str(err)))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
@@ -1161,7 +1161,7 @@ class Model(fluid.dygraph.Layer):
         if fluid.in_dygraph_mode():
             feed_list = None
         else:
-            feed_list = [x.forward() for x in self._inputs + self._labels]
+            feed_list = [x.forward() for x in self._inputs]
 
         if test_data is not None and isinstance(test_data, Dataset):
             test_sampler = DistributedBatchSampler(
@@ -1281,7 +1281,7 @@ class Model(fluid.dygraph.Layer):
 
         if mode == 'train':
             assert epoch is not None, 'when mode is train, epoch must be given'
-            callbacks.on_epoch_end(epoch)
+            callbacks.on_epoch_end(epoch, logs)
 
         return logs
 

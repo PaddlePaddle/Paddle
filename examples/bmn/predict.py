@@ -19,7 +19,8 @@ import logging
 import paddle.fluid as fluid
 
 from hapi.model import set_device, Input
-from hapi.vision.models import bmn, BmnLoss
+
+from modeling import bmn, BmnLoss
 from bmn_metric import BmnMetric
 from reader import BmnDataset
 from config_utils import *

@@ -19,9 +19,10 @@ import sys
 import os
 
 from hapi.model import set_device, Input
-from hapi.vision.models import bmn, BmnLoss
+
 from reader import BmnDataset
 from config_utils import *
+from modeling import bmn, BmnLoss
 
 DATATYPE = 'float32'
 

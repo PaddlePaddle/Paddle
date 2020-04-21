@@ -27,12 +27,12 @@ from paddle.io import DataLoader
 
 from hapi.model import Model, Input, set_device
 from hapi.distributed import DistributedBatchSampler
-from hapi.download import is_url, get_weights_path
-from hapi.datasets import COCODataset
-from hapi.vision.transforms import *
-from hapi.vision.models import yolov3_darknet53, YoloLoss
+from hapi.vision.transforms import Compose, BatchCompose
 
+from modeling import yolov3_darknet53, YoloLoss
+from coco import COCODataset
 from coco_metric import COCOMetric
+from transforms import *
 
 NUM_MAX_BOXES = 50
 
@@ -126,10 +126,7 @@ def main():
                    pretrained=pretrained)
 
     if FLAGS.pretrain_weights and not FLAGS.eval_only:
-        pretrain_weights = FLAGS.pretrain_weights
-        if is_url(pretrain_weights):
-            pretrain_weights = get_weights_path(pretrain_weights)
-        model.load(pretrain_weights, skip_mismatch=True, reset_optimizer=True)
+        model.load(FLAGS.pretrain_weights, skip_mismatch=True, reset_optimizer=True)
 
     optim = make_optimizer(len(batch_sampler), parameter_list=model.parameters())
 
@@ -168,7 +165,7 @@ def main():
               save_dir="yolo_checkpoint/mixup",
               save_freq=10)
 
-    # do not use image mixup transfrom in laste FLAGS.no_mixup_epoch epoches
+    # do not use image mixup transfrom in the last FLAGS.no_mixup_epoch epoches
     dataset.mixup = False
     model.fit(train_data=loader,
               epochs=FLAGS.no_mixup_epoch,
@@ -200,8 +197,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-j", "--num_workers", default=4, type=int, help="reader worker number")
     parser.add_argument(
-        "-p", "--pretrain_weights",
-        default="./pretrain_weights/darknet53_pretrained", type=str,
+        "-p", "--pretrain_weights", default=None, type=str,
         help="path to pretrained weights")
     parser.add_argument(
         "-r", "--resume", default=None, type=str,
