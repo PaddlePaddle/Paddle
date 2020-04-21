@@ -28,7 +28,7 @@ struct CommContext {
   CommContext(const std::string &name, const std::vector<std::string> &names,
               const std::vector<std::string> &emap,
               const std::vector<int64_t> &sections,
-              const std::vector<std::string> &origin_names = {}, int id,
+              const std::vector<std::string> &origin_names, int id,
               bool merge_add_ = true, bool use_send_handler_ = true)
       : var_name(name),
         splited_varnames(names),

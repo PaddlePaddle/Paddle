@@ -989,7 +989,7 @@ void HalfAsyncCommunicator::InitImpl(
           boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       send_varname_to_ctx[send_var_name] = operators::distributed::CommContext(
-          send_var_name, send_varnames, epmap, height_section, {} trainer_id);
+          send_var_name, send_varnames, epmap, height_section, {}, trainer_id);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
