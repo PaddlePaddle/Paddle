@@ -184,7 +184,7 @@ class TestMatMulOpReshapeTranspose(OpTest):
         self._cpu_only = True
         self.use_mkldnn = True
         self.transpose_y = True
-        self.init_data_type(self)
+        self.init_data_type()
         self.generate_data()
 
         self.inputs = {'X': self.x, 'Y': self.y}
