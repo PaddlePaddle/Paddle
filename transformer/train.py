@@ -21,7 +21,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.io import DataLoader
+from paddle.io import DataLoader
 
 from utils.configure import PDConfig
 from utils.check import check_gpu, check_version

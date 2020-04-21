@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# when test, you should add hapi root path to the PYTHONPATH,
+# export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
 import unittest
 import random
 import time
 
-from progressbar import ProgressBar
+from hapi.progressbar import ProgressBar
 
 
 class TestProgressBar(unittest.TestCase):
