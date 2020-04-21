@@ -277,5 +277,44 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor {
+ public:
+  explicit FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor(const T scale)
+      : scale_(scale) {}
+  HOSTDEVICE T operator()(const T& x, const T& y) const {
+    return (y > -scale_ && y < scale_) ? x : 0;
+  }
+
+ private:
+  T scale_;
+};
+
+template <typename DeviceContext, typename T>
+class FakeQuantOrWithDequantMovingAverageAbsMaxGradKernel
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::LoDTensor>("X");
+    auto* out_scale = context.Input<framework::LoDTensor>("OutScale");
+    auto* d_out =
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* d_x =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+
+    if (d_x != nullptr) {
+      const T* d_out_data = d_out->data<T>();
+      const T* x_data = x->data<T>();
+      auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
+      auto scale = *(out_scale->data<T>());
+
+      Transform<DeviceContext> trans;
+      trans(context.template device_context<DeviceContext>(), d_out_data,
+            d_out_data + d_out->numel(), x_data, d_x_data,
+            ClipGradFunctor<T>(scale));
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
