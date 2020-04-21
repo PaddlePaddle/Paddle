@@ -329,6 +329,9 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor* index = nullptr) {
     auto lod_level = in_grad->lod().size();
     auto& lod = in_grad->lod()[lod_level - 1];
+    if (in_grad->dims()[0] == 0) {
+      return;
+    }
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
     dim3 threads(1024, 1);
     dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);

@@ -43,10 +43,6 @@ class SequencePoolKernel : public framework::OpKernel<T> {
                                         "does not contain LoD information."));
     PADDLE_ENFORCE_LE(lod_level, 2UL,
                       "The lod level of input shall be no more than 2.");
-    PADDLE_ENFORCE_GE(
-        dims[0],
-        /*batch size = */ static_cast<int64_t>(lod[lod_level - 1].size() - 1),
-        "The first dimension of Input(X) must be large than batch size.");
     if (lod_level > 1UL) {
       PADDLE_ENFORCE_EQ(lod[0][lod[0].size() - 1], lod[1].size() - 1,
                         "The input lod information is illegal.");

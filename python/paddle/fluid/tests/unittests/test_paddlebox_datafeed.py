@@ -44,9 +44,6 @@ class TestDataFeed(unittest.TestCase):
     def test_pboxdatafeed(self):
         self.run_dataset(False)
 
-    def test_pboxdatafeed(self):
-        self.run_dataset(True)
-
     def run_dataset(self, is_cpu):
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
@@ -66,8 +63,9 @@ class TestDataFeed(unittest.TestCase):
                        num_flatten_dims=1,
                        bias_attr=False)
         loss = layers.reduce_mean(fc)
-        place = fluid.CPUPlace() if is_cpu or not core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
+        if not core.is_compiled_with_cuda():
+            return
+        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
 
         with open("test_run_with_dump_a.txt", "w") as f:
