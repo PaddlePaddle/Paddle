@@ -106,20 +106,20 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     } else {
       VLOG(3) << "DNNL Inplace: Current op already inplaced! ";
     }
-   
+
     // It may be that next op is reusing some of vars, we need to
     // make sure that unwanted inplace is not created
     // TODO(jczaja): Make UT for that one
     auto& next_op_infer_inplace =
         OpInfoMap::Instance().Get(next_op->Op()->Type()).infer_inplace_;
-    if((next_op_infer_inplace == nullptr) ) {
-      for(auto& n : next_op->outputs) {
+    if ((next_op_infer_inplace == nullptr)) {
+      for (auto& n : next_op->outputs) {
         if (n->Name() == current_op_out->Name()) {
           VLOG(3) << "DNNL in-place pass FAIL: in-place var cannot "
-                   "be an output to non-inplaced next op";
+                     "be an output to non-inplaced next op";
           return;
         }
-      } 
+      }
     }
 
     auto original_name =
