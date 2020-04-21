@@ -417,7 +417,7 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradOp
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"););
+      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     }
   }
   framework::OpKernelType GetExpectedKernelType(
@@ -564,14 +564,13 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    paddle::framework::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
-        paddle::framework::OpDesc>,
-    paddle::framework::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
-        paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
+                      paddle::framework::OpDesc>,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
+                      paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max_grad,
                   ops::FakeQuantOrWithDequantMovingAverageAbsMaxGradOp);
 

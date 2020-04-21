@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
@@ -308,10 +309,10 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradKernel
       auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
       auto scale = *(out_scale->data<T>());
 
-      Transform<DeviceContext> trans;
+      platform::Transform<DeviceContext> trans;
       trans(context.template device_context<DeviceContext>(), d_out_data,
             d_out_data + d_out->numel(), x_data, d_x_data,
-            ClipGradFunctor<T>(scale));
+            FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor<T>(scale));
     }
   }
 };
