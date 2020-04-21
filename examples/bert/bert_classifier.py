@@ -103,7 +103,7 @@ def main():
         batch_size=config.batch_size,
         line_processor=mnli_line_processor)
 
-    dev_dataloader = BertDataLoader(
+    test_dataloader = BertDataLoader(
         "./data/glue_data/MNLI/dev_matched.tsv",
         tokenizer, ["contradiction", "entailment", "neutral"],
         max_seq_length=config.max_seq_len,
