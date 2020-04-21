@@ -71,8 +71,8 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
             boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
         send_varname_to_ctx[send_var_name] =
             operators::distributed::CommContext(
-                send_var_name, send_varnames, epmap, height_section, trainer_id,
-                merge_add, use_send_handler);
+                send_var_name, send_varnames, epmap, height_section, {},
+                trainer_id, merge_add, use_send_handler);
         VLOG(3) << "find and init an send op: "
                 << send_varname_to_ctx[send_var_name];
       }

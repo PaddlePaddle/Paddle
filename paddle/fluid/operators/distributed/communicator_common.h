@@ -53,8 +53,8 @@ struct CommContext {
   std::string var_name;
   std::vector<std::string> splited_varnames;
   std::vector<std::string> epmap;
-  std::vector<std::string> origin_varnames;
   std::vector<int64_t> height_sections;
+  std::vector<std::string> origin_varnames;
   int trainer_id;
   bool merge_add;
   bool use_send_handler;
