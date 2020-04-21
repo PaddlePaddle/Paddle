@@ -200,3 +200,44 @@ class BaseInferModel(BaseModel):
         # dynamic decoding with beam search
         rs, _ = self.beam_search_decoder(inits=encoder_final_states)
         return rs
+
+
+class BaseGreedyInferModel(BaseModel):
+    def __init__(self,
+                 src_vocab_size,
+                 trg_vocab_size,
+                 embed_dim,
+                 hidden_size,
+                 num_layers,
+                 dropout_prob=0.,
+                 bos_id=0,
+                 eos_id=1,
+                 beam_size=1,
+                 max_out_len=256):
+        args = dict(locals())
+        args.pop("self")
+        args.pop("__class__", None)  # py3
+        args.pop("beam_size", None)
+        self.bos_id = args.pop("bos_id")
+        self.eos_id = args.pop("eos_id")
+        self.max_out_len = args.pop("max_out_len")
+        super(BaseGreedyInferModel, self).__init__(**args)
+        # dynamic decoder for inference
+        decoder_helper = GreedyEmbeddingHelper(
+            start_tokens=bos_id,
+            end_token=eos_id,
+            embedding_fn=self.decoder.embedder)
+        decoder = BasicDecoder(
+            cell=self.decoder.stack_lstm.cell,
+            helper=decoder_helper,
+            output_fn=self.decoder.output_layer)
+        self.greedy_search_decoder = DynamicDecode(
+            decoder, max_step_num=max_out_len, is_test=True)
+
+    def forward(self, src, src_length):
+        # encoding
+        encoder_output, encoder_final_states = self.encoder(src, src_length)
+
+        # dynamic decoding with greedy search
+        rs, _ = self.greedy_search_decoder(inits=encoder_final_states)
+        return rs.sample_ids

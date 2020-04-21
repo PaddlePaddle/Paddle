@@ -89,6 +89,12 @@ def parse_args():
         help="max grad norm for global norm clip")
 
     parser.add_argument(
+        "--log_freq",
+        type=int,
+        default=100,
+        help="The frequency to print training logs")
+
+    parser.add_argument(
         "--model_path",
         type=str,
         default='model',

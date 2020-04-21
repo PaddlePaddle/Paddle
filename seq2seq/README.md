@@ -151,7 +151,7 @@ python infer.py \
     --reload_model attention_models/epoch_10 \
     --infer_output_file attention_infer_output/infer_output.txt \
     --beam_size 10 \
-    --use_gpu True
+    --use_gpu True \
     --eager_run False  
 ```
 

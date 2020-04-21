@@ -168,7 +168,7 @@ class SampleInfo(object):
     def __init__(self, i, lens):
         self.i = i
         self.lens = lens
-        self.max_len = lens[0]
+        self.max_len = lens[0]  # to be consitent with the original reader
 
     def get_ranges(self, min_length=None, max_length=None, truncate=False):
         ranges = []
@@ -379,7 +379,7 @@ class Seq2SeqBatchSampler(BatchSampler):
                 reverse = True
                 for i in range(0, len(infos), self._pool_size):
                     # to avoid placing short next to long sentences
-                    reverse = not reverse
+                    reverse = False  # not reverse
                     infos[i:i + self._pool_size] = sorted(
                         infos[i:i + self._pool_size],
                         key=lambda x: x.max_len,
