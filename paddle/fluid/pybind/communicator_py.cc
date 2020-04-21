@@ -70,6 +70,12 @@ void BindCommunicator(py::module* m) {
         }
         return Communicator::GetInstantcePtr();
       }))
+      .def(py::init(
+          [](const std::string& mode, const std::vector<CommContext>& send_ctxs,
+             const std::vector<CommContext>& recv_ctxs, Scope* param_scope,
+             std::map<std::string, std::string>& envs) {
+            return Communicator::GetInstantcePtr();
+          }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning);
