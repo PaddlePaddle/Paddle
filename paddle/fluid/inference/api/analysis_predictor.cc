@@ -527,9 +527,13 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
     std::call_once(gflags_initialized, [&]() {
       std::vector<std::string> gflags;
-      PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
-      PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
-                        config.gpu_device_id());
+      PADDLE_ENFORCE_GE(
+          config.memory_pool_init_size_mb(), 0.f,
+          platform::errors::InvalidArgument(
+              "The size of memory pool should be greater than 0."));
+      PADDLE_ENFORCE_GE(config.gpu_device_id(), 0,
+                        platform::errors::InvalidArgument(
+                            "Invalid device id %d", config.gpu_device_id()));
       gflags.push_back("dummy");
 
       float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
