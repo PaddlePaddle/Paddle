@@ -105,7 +105,7 @@ class KV_MAPS {
         ss << feasign_values[j] << " ";
       }
       ss << "]\n";
-      VLOG(1) << ss.str();
+      VLOG(3) << ss.str();
       data_->insert(
           std::pair<int64_t, std::vector<int64_t>>(feasign, feasign_values));
     }

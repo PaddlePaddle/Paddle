@@ -468,10 +468,17 @@ void FleetWrapper::PushDenseParamSync(
   auto place = platform::CPUPlace();
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
+    std::stringstream ss;
+    ss << "push dense param sync for " << t << ": [";
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* g = tensor->mutable_data<float>(place);
+    for (auto i = 0; i < tensor->numel(); i++) {
+      ss << g[i] << ",";
+    }
+    ss << "]\n";
+    VLOG(1) << ss.str();
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
@@ -495,10 +502,17 @@ void FleetWrapper::PushDenseVarsAsync(
 #ifdef PADDLE_WITH_PSLIB
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
+    std::stringstream ss;
+    ss << "push dense var async for " << t << ": [";
     Variable* var = scope.FindVar(t);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
     float* g = tensor->data<float>();
+    for (auto i = 0; i < count; i ++) {
+      ss << g[i] << ",";
+    }
+    ss << "]\n";
+    VLOG(1) << ss.str();
     if (scale_datanorm >= 0) {
       if (t.find(".batch_size@GRAD") != std::string::npos ||
           t.find(".batch_sum@GRAD") != std::string::npos) {

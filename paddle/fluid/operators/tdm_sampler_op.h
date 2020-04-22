@@ -50,16 +50,16 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
   // get dimension
   int input_ids_num = input_tensor.numel();
-  VLOG(1) << "TDM: input ids nums: " << input_ids_num;
+  VLOG(3) << "TDM: input ids nums: " << input_ids_num;
   auto layer_nums = neg_samples_num_vec.size();
-  VLOG(1) << "TDM: tree layer nums: " << layer_nums;
+  VLOG(3) << "TDM: tree layer nums: " << layer_nums;
 
   int sample_res_length = 0;
   for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
     sample_res_length += (neg_samples_num_vec[layer_idx] +
                           static_cast<int>(output_positive_flag));
   }
-  VLOG(1) << "TDM: sample res length: " << sample_res_length;
+  VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
   auto total_sample_nums = input_ids_num * sample_res_length;
 
@@ -73,7 +73,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   std::vector<OutT> label_vec(total_sample_nums, zero);
   std::vector<OutT> mask_vec(total_sample_nums, one);
 
-  VLOG(1) << "End get input & output data";
+  VLOG(3) << "End get input & output data";
   // generate uniform sampler
 
   auto seed = context.Attr<int>("seed");
@@ -84,13 +84,13 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     Sampler *sampler = new math::UniformSampler(layer_node_nums - 1, seed);
     sampler_vec.push_back(sampler);
   }
-  VLOG(1) << "TDM: get sampler ";
+  VLOG(3) << "TDM: get sampler ";
 
   for (int i = 0; i < input_ids_num; ++i) {
     // find leaf node travel path
     T input_id = input_data[i];
 
-    VLOG(1) << "TDM: input id: " << input_id;
+    VLOG(3) << "TDM: input id: " << input_id;
     std::vector<int64_t> travel_data(layer_nums, 0);
     if (travel_info->find(input_id) != travel_info->end())
       travel_data = travel_info->at(input_id);
@@ -99,11 +99,11 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     int offset = 0;
     for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
       int sample_num = neg_samples_num_vec[layer_idx];
-      VLOG(1) << "TDM: Sample num: " << sample_num;
+      VLOG(3) << "TDM: Sample num: " << sample_num;
 
       int node_nums =
           layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
-      VLOG(1) << "TDM: layer - " << layer_idx + 1
+      VLOG(3) << "TDM: layer - " << layer_idx + 1
               << " - has node_nums: " << node_nums;
 
       PADDLE_ENFORCE_LE(
@@ -117,14 +117,14 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
       if (positive_node_id == 0) {
         // skip padding
-        VLOG(1) << "TDM: Skip padding ";
+        VLOG(3) << "TDM: Skip padding ";
         for (int sample_index = 0;
              sample_index < sample_num + static_cast<int>(output_positive_flag);
              sample_index++) {
           output_vec[i * sample_res_length + offset] = 0;
           label_vec[i * sample_res_length + offset] = 0;
           mask_vec[i * sample_res_length + offset] = 0;
-          VLOG(1) << "TDM: Res append positive "
+          VLOG(3) << "TDM: Res append positive "
                   << output_vec[i * sample_res_length + offset]
                   << " Label append positive "
                   << label_vec[i * sample_res_length + offset]
@@ -141,7 +141,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
         output_vec[i * sample_res_length + offset] = static_cast<OutT>(positive_node_id);
         label_vec[i * sample_res_length + offset] = 1;
         mask_vec[i * sample_res_length + offset] = 1;
-        VLOG(1) << "TDM: node id: " << positive_node_id << " Res append  "
+        VLOG(3) << "TDM: node id: " << positive_node_id << " Res append  "
                 << output_vec[i * sample_res_length + offset]
                 << " Label append  "
                 << label_vec[i * sample_res_length + offset] << " Mask append  "
@@ -165,7 +165,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
             layer_data[layer_offset_lod[layer_idx] + sample_res]);
         label_vec[i * sample_res_length + offset] = 0;
         mask_vec[i * sample_res_length + offset] = 1;
-        VLOG(1) << "TDM: node id: " << positive_node_id
+        VLOG(3) << "TDM: node id: " << positive_node_id
                 << " Res append negitive "
                 << output_vec[i * sample_res_length + offset]
                 << " Label append negitive "
@@ -204,7 +204,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     std::shared_ptr<framework::UUMAP> travel_info =
         framework::KV_MAPS::GetInstance()->get_data("travel_info");
     for (auto ite = travel_info->begin(); ite != travel_info->end(); ite++) {
-        VLOG(1) << ite->first << " " << ite->second[0];
+        VLOG(3) << ite->first << " " << ite->second[0];
     }
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
 
