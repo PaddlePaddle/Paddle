@@ -27,7 +27,6 @@ from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-from ..fluid.layers import range  #DEFINE_ALIAS
 
 __all__ = [
     #       'create_tensor',
@@ -41,7 +40,6 @@ __all__ = [
     'linspace',
     'ones',
     'ones_like',
-    'range',
     'zeros',
     'zeros_like',
     'arange',

@@ -54,7 +54,6 @@ from .tensor.creation import fill_constant  #DEFINE_ALIAS
 from .tensor.creation import linspace  #DEFINE_ALIAS
 from .tensor.creation import ones  #DEFINE_ALIAS
 from .tensor.creation import ones_like  #DEFINE_ALIAS
-from .tensor.creation import range  #DEFINE_ALIAS
 from .tensor.creation import zeros  #DEFINE_ALIAS
 from .tensor.creation import zeros_like  #DEFINE_ALIAS
 from .tensor.creation import arange  #DEFINE_ALIAS

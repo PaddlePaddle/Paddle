@@ -33,7 +33,6 @@ from .creation import fill_constant  #DEFINE_ALIAS
 from .creation import linspace  #DEFINE_ALIAS
 from .creation import ones  #DEFINE_ALIAS
 from .creation import ones_like  #DEFINE_ALIAS
-from .creation import range  #DEFINE_ALIAS
 from .creation import zeros  #DEFINE_ALIAS
 from .creation import zeros_like  #DEFINE_ALIAS
 from .creation import arange  #DEFINE_ALIAS
