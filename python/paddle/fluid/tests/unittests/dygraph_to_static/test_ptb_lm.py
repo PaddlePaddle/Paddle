@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import logging
+import time
 import unittest
+
+import numpy as np
+
 import paddle.fluid as fluid
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.base import to_variable
-import numpy as np
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
-import time
+
 PRINT_STEP = 20
 SEED = 2020
 
@@ -165,8 +166,15 @@ class PtbModel(fluid.Layer):
     def build_once(self, input, label, init_hidden, init_cell):
         pass
 
-    @dygraph_to_static_func
+    @declarative
     def forward(self, input, label, init_hidden, init_cell):
+
+        # TODO(liym27): Call `to_variable` to feed data successfully.
+        #  Remove to_variable statements later
+        input = to_variable(input)
+        label = to_variable(label)
+        init_hidden = to_variable(init_hidden)
+        init_cell = to_variable(init_cell)
 
         init_h = fluid.layers.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size])
@@ -275,7 +283,7 @@ def train_dygraph(place):
                                speed))
                         avg_batch_time = time.time()
 
-            return dy_loss.numpy(), last_hidden.numpy(), last_cell.numpy()
+            return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
 def train_static(place):
@@ -289,23 +297,11 @@ def train_static(place):
     vocab_size = 1000
     batch_num = 200
 
-    exe = fluid.Executor(place)
     main_prog = fluid.Program()
     startup_prog = fluid.Program()
     main_prog.random_seed = SEED
     startup_prog.random_seed = SEED
     with fluid.program_guard(main_prog, startup_prog):
-        x = fluid.data(name="x", shape=[-1, num_steps, 1], dtype="int64")
-        y = fluid.data(name="y", shape=[-1, num_steps, 1], dtype="int64")
-        y.stop_gradient = True
-        init_hidden = fluid.data(
-            name="init_hidden",
-            shape=[num_layers, batch_size, hidden_size],
-            dtype="float32")
-        init_cell = fluid.data(
-            name="init_cell",
-            shape=[num_layers, batch_size, hidden_size],
-            dtype="float32")
 
         ptb_model = PtbModel(
             hidden_size=hidden_size,
@@ -315,59 +311,53 @@ def train_static(place):
             init_scale=init_scale,
             dropout=dropout)
 
-        dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                    init_cell)
-
         sgd = SGDOptimizer(
             learning_rate=1e-3, parameter_list=ptb_model.parameters())
-        sgd.minimize(dy_loss)
-    exe.run(startup_prog)
-    for epoch_id in range(max_epoch):
+        program_translator = ProgramTranslator()
+        program_translator.set_optimizer(sgd, index_of_loss=0)
 
-        total_loss = 0.0
-        iters = 0.0
-        total_sample = 0
+        for epoch_id in range(max_epoch):
 
-        init_hidden_data = np.zeros(
-            (num_layers, batch_size, hidden_size), dtype='float32')
-        init_cell_data = np.zeros(
-            (num_layers, batch_size, hidden_size), dtype='float32')
+            total_loss = 0.0
+            iters = 0.0
+            total_sample = 0
 
-        for step_id in range(batch_num):
-            x_data = np.arange(12).reshape(4, 3).astype('int64')
-            y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-            y_data = y_data.reshape((-1, 1))
+            init_hidden_data = np.zeros(
+                (num_layers, batch_size, hidden_size), dtype='float32')
+            init_cell_data = np.zeros(
+                (num_layers, batch_size, hidden_size), dtype='float32')
 
-            x_data = x_data.reshape((-1, num_steps, 1))
-            y_data = y_data.reshape((-1, num_steps, 1))
+            for step_id in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                y_data = y_data.reshape((-1, 1))
 
-            out_loss, np_hidden, np_cell = exe.run(
-                main_prog,
-                feed={
-                    "x": x_data,
-                    "y": y_data,
-                    "init_hidden": init_hidden_data,
-                    "init_cell": init_cell_data
-                },
-                fetch_list=[dy_loss, last_hidden, last_cell])
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, num_steps, 1))
 
-            total_loss += out_loss
-            iters += num_steps
-            total_sample += 1
+                dy_loss, last_hidden, last_cell = ptb_model(
+                    x_data, y_data, init_hidden_data, init_cell_data)
 
-            if step_id % PRINT_STEP == 0:
-                if step_id == 0:
-                    logging.info("epoch %d | step %d, loss %0.3f" %
-                                 (epoch_id, step_id, total_loss / total_sample))
-                    avg_batch_time = time.time()
-                else:
-                    speed = PRINT_STEP / (time.time() - avg_batch_time)
-                    logging.info(
-                        "epoch %d | step %d, loss %0.3f, speed %.3f steps/s" %
-                        (epoch_id, step_id, total_loss / total_sample, speed))
-                    avg_batch_time = time.time()
+                out_loss = dy_loss.numpy()
+                total_loss += out_loss
+                iters += num_steps
+                total_sample += 1
 
-        return out_loss, np_hidden, np_cell
+                if step_id % PRINT_STEP == 0:
+                    if step_id == 0:
+                        logging.info(
+                            "epoch %d | step %d, loss %0.3f" %
+                            (epoch_id, step_id, total_loss / total_sample))
+                        avg_batch_time = time.time()
+                    else:
+                        speed = PRINT_STEP / (time.time() - avg_batch_time)
+                        logging.info(
+                            "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
+                            % (epoch_id, step_id, total_loss / total_sample,
+                               speed))
+                        avg_batch_time = time.time()
+
+            return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
 class TestPtb(unittest.TestCase):
