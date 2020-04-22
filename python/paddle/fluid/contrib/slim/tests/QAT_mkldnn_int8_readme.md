@@ -8,10 +8,12 @@ In **Release 1.6**, a new approach was introduced, called QAT2, which adds suppo
 
 In **Release 1.7**, a support for [Ernie (NLP) QAT trained model](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn) was added to the QAT2.
 
+In **Release 2.0**, further optimizations were added to the QAT2: INT8 `matmul` kernel, inplace execution of activation and `elementwise_add` operators, and broader support for quantization aware strategy from PaddleSlim.
+
 In this document we focus on the QAT2 approach only. 
 
 ## 0. Prerequisites
-* PaddlePaddle in version 1.7.1 or higher is required. For instructions on how to install it see the [installation document](https://www.paddlepaddle.org.cn/install/quick).
+* PaddlePaddle in version 2.0 or higher is required. For instructions on how to install it see the [installation document](https://www.paddlepaddle.org.cn/install/quick).
   
 * MKL-DNN and MKL are required. The highest performance gain can be observed using CPU servers supporting AVX512 instructions.
 * INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension (e.g. CLX class Intel processors). A linux server supports AVX512 VNNI instructions if the output of the command `lscpu` contains the `avx512_vnni` entry in the `Flags` section. AVX512 VNNI support on Windows can be checked using the [`coreinfo`]( https://docs.microsoft.com/en-us/sysinternals/downloads/coreinfo) tool.
@@ -30,11 +32,18 @@ A QAT model can be transformed into an INT8 quantized model if it contains enoug
 
 ### Gathering scales
 
-The information about the quantization scales is being collected from three types of operators:
+The information about the quantization scales is collected from two sources:
 
-* `fake_quantize_moving_average_abs_max` - imitates INT8 quantization of FP32 tensors, but keeps quantized output values as floats; is used before quantized operator (e.g. `conv2d`) to gather scale information for the op's input.
-* `fake_dequantize_max_abs` - imitates dequantization of INT8 tensors back into floats; it is used after quantized operator, and contains scale used for the op's weights dequantization.
-* `fake_quantize_dequantize_moving_average_abs_max` - imitates immediate quantization and dequantization; it can be used after a quantized operator to get the scale value for the op's output.
+1. the `out_threshold` attribute of quantizable operators - it contains a single value quantization scale for the operator's output,
+2.  fake quantize/dequantize operators - they imitate quantization from FP32 into INT8, or dequantization in reverse direction, but keep the quantized tensor values as floats.
+
+There are three types of fake quantize/dequantize operators:
+
+* `fake_quantize_moving_average_abs_max` and `fake_quantize_range_abs_max` - used before quantized operator (e.g. `conv2d`), gather single value scale information for the op's input,
+* `fake_dequantize_max_abs` and `fake_channel_wise_dequantize_max_abs` - used after quantized operators, contain scales used for the operators' weights dequantization; the first one collects a single value scale for the weights tensor, whereas the second one collects a vector of scales for each output channel of the weights,
+* `fake_quantize_dequantize_moving_average_abs_max` - used after a quantized operator to get the scale value for the op's output; imitates immediate quantization and dequantization.
+
+Scale values gathered from the fake quantize/dequantize operators have precedence over the scales collected from the `out_threshold` attributes.
 
 Notes:
 
@@ -43,7 +52,7 @@ Notes:
    and we want to quantize the `conv2d` op, then after applying FP32 optimizations the sequence will become
    ```... → input1 → conv2d → output3 → ...```
    and the quantization scales have to be collected for the `input1` and `outpu3` tensors in the QAT model.
-2. Quantization of the following operators is supported: `conv2d`, `depthwise_conv2d`, `mul`, `fc`, `pool2d`, `reshape2`, `transpose2`, `concat`.
+2. Quantization of the following operators is supported: `conv2d`, `depthwise_conv2d`, `mul`, `fc`, `matmul`, `pool2d`, `reshape2`, `transpose2`, `concat`.
 3. The longest sequence of consecutive quantizable operators in the model, the biggest performance boost can be achieved through quantization:
    ```... → conv2d → conv2d → pool2d → conv2d → conv2d → ...``` 
    Quantizing single operator separated from other quantizable operators can give no performance benefits or even slow down the inference:
@@ -55,7 +64,7 @@ All the `fake_quantize_*` and `fake_dequantize_*` operators are being removed fr
 
 ### Dequantizing weights
 
-Weights of `conv2d`, `depthwise_conv2d` and `mul` operators are assumed to be fake-quantized (with integer values in the `int8` range, but kept as `float`s) in QAT models. Here, the information about the scale from `fake_dequantize_max_abs` operators is used to fake-dequantize the weights back to the full float range of values. At this moment the model becomes an unoptimized clean FP32 inference model.
+Weights of `conv2d`, `depthwise_conv2d` and `mul` operators are assumed to be fake-quantized (with integer values in the `int8` range, but kept as `float`s) in QAT models. Here, the information about the scale from `fake_dequantize_max_abs` and `fake_channel_wise_dequantize_max_abs` operators is used to fake-dequantize the weights back to the full float range of values. At this moment the model becomes an unoptimized clean FP32 inference model.
 
 ### Optimizing FP32 graph
 
@@ -71,7 +80,7 @@ The basic datatype used during INT8 inference is signed INT8, with possible valu
 
 ### Propagation of scales
 
-Some of the operators (e.g. `reshape2`, `transpose2`, `pool2d` with max pooling) transform the data without changing the quantization scale. For this reason we propagate the quantization scale values through these operators without any modifications. We propagate the quantization scales also through the `scale` operator, updating the quantization scale accordingly. This approach lets us minimize the number of `fake_quantize` and `fake_dequantize` operators in the graph, because the information about the scales required for the quantization process to succeed spreads between quantized operators.
+Some of the operators (e.g. `reshape2`, `transpose2`, `pool2d` with max pooling) transform the data without changing the quantization scale. For this reason we propagate the quantization scale values through these operators without any modifications. We propagate the quantization scales also through the `scale` operator, updating the quantization scale accordingly. This approach lets us minimize the number of fake quantize/dequantize operators in the graph, because the information about the scales required for the quantization process to succeed spreads between quantized operators.
 
 ### Applying quantization passes
 
@@ -261,7 +270,10 @@ You can use the `qat2_int8_image_classification_comparison.py` script to reprodu
 
 * `--qat_model` - a path to a QAT model that will be transformed into INT8 model.
 * `--fp32_model` - a path to an FP32 model whose accuracy will be measured and compared to the accuracy of the INT8 model.
-* `--quantized_ops` - a comma-separated list of names of operators to be quantized. The list depends on which operators have quantization scales provided in the model. Also, it may be more optimal in terms of performance to choose only certain types of operators for quantization. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
+* `--quantized_ops` - a comma-separated list of names of operators to be quantized. When deciding which operators to put on the list, the following have to be considered:
+  * Only operators which support quantization will be taken into account.
+  * All the quantizable operators from the list, which are present in the model, must have quantization scales provided in the model. Otherwise, the quantization procedure will fail with a message saying which variable is missing a quantization scale.
+  * Sometimes it may be suboptimal to quantize all quantizable operators in the model (cf. *Notes* in the **Gathering scales** section above). To find the optimal configuration for this option, user can run benchmark a few times with different lists of quantized operators present in the model and compare the results. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
 * `--infer_data` - a path to the validation dataset.
 
 ```bash
