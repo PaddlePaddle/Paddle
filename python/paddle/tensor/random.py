@@ -21,7 +21,7 @@ from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator, V
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers import utils
+from ..fluid.layers import uniform_random, utils
 from ..fluid.layers.tensor import fill_constant
 
 from ..fluid.io import shuffle  #DEFINE_ALIAS
@@ -31,7 +31,7 @@ __all__ = [
     #       'uniform',
     'shuffle',
     'randn',
-    #       'rand',
+    'rand',
     'randint',
     'randperm'
 ]
@@ -393,4 +393,95 @@ def randperm(n,
     with device_guard(device):
         helper.append_op(
             type='randperm', inputs=inputs, outputs=outputs, attrs=attrs)
+    return out
+
+
+def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
+    """
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [0, 1).
+
+    Examples:
+    ::
+
+        Input:
+          shape = [1, 2]
+
+        Output:
+          result=[[0.8505902, 0.8397286]]
+
+    Args:
+        shape(list|tuple|Variable): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is a Variable, it should be an 1-D Tensor .
+        out(Variable, optional): Optional output which can be any created
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
+            which can be float32, float64, if dytpe is `None`, the data
+            type of created tensor is `float32`
+        device(str, optional): This parameter specifies that the Tensor is created
+            on the GPU or CPU.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
+            default value is True.
+    Returns:
+        Variable: A Tensor of the specified shape filled with random numbers from a uniform distribution on the interval [0, 1).
+
+    Raises:
+        TypeError: The shape type should be list or tupple or Variable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = paddle.rand(shape=[3, 4])
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            dim_1 = fluid.layers.fill_constant([1],"int64",3)
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = paddle.rand(shape=[dim_1, dim_2])
+
+            # example 3:
+            # attr shape is a Variable, the data type must be int64 or int32.
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            result_3 = paddle.rand(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = paddle.rand(var_shape_int32)
+    """
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'rand')
+
+    check_type(shape, 'shape', (Variable, list, tuple), 'rand')
+    if isinstance(shape, Variable):
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'], 'rand')
+    elif isinstance(shape, (list, tuple)):
+        for i, _shape in enumerate(shape):
+            if not isinstance(_shape, Variable):
+                check_type(_shape, '_shape', (int), 'rand')
+            else:
+                check_variable_and_dtype(_shape, 'shape[' + str(i) + ']',
+                                         ['int32', 'int64'], 'rand')
+
+    if device not in [None, 'cpu', 'gpu']:
+        raise ValueError(
+            "The input device should in [None, 'cpu', 'gpu'], but received {}".
+            format(device))
+
+    helper = LayerHelper("rand", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        check_variable_and_dtype(out, 'out', [dtype], 'rand')
+    out.stop_gradient = stop_gradient
+
+    with device_guard(device):
+        out = uniform_random(shape, dtype, min=0., max=1.0)
     return out
