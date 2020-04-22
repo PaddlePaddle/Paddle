@@ -201,7 +201,7 @@ python -u predict.py \
   --special_token '<s>' '<e>' '<unk>' \
   --predict_file gen_data/wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de \
   --batch_size 32 \
-  --init_from_params base_model_dygraph/step_100000/transformer \
+  --init_from_params big_model_dygraph/step_100000/transformer \
   --beam_size 5 \
   --max_out_len 255 \
   --output_file predict.txt \

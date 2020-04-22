@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import glob
-import six
+import sys
 import os
 import io
 import itertools
@@ -26,7 +26,7 @@ from paddle.io import BatchSampler, DataLoader, Dataset
 
 
 def create_data_loader(args, device):
-    data_loaders = [None, None]
+    data_loaders = [(None, None)] * 2
     data_files = [args.training_file, args.validation_file
                   ] if args.validation_file else [args.training_file]
     for i, data_file in enumerate(data_files):
@@ -65,7 +65,7 @@ def create_data_loader(args, device):
                 n_head=args.n_head),
             num_workers=0,  # TODO: use multi-process
             return_list=True)
-        data_loaders[i] = data_loader
+        data_loaders[i] = (data_loader, batch_sampler.__len__)
     return data_loaders
 
 
@@ -476,6 +476,7 @@ class Seq2SeqBatchSampler(BatchSampler):
                 for i in range(self._nranks)
             ] for batch in batches]
             batches = list(itertools.chain.from_iterable(batches))
+        self.batch_number = (len(batches) + self._nranks - 1) // self._nranks
 
         # for multi-device
         for batch_id, batch in enumerate(batches):
@@ -489,11 +490,13 @@ class Seq2SeqBatchSampler(BatchSampler):
                 yield batch_indices
 
     def __len__(self):
+        if hasattr(self, "batch_number"):  #
+            return self.batch_number
         if not self._use_token_batch:
             batch_number = (
                 len(self._dataset) + self._batch_size * self._nranks - 1) // (
                     self._batch_size * self._nranks)
         else:
-            # TODO(guosheng): fix the uncertain length
-            batch_number = 1
+            # for uncertain batch number, the actual value is self.batch_number
+            batch_number = sys.maxsize
         return batch_number
