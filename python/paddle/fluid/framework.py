@@ -217,6 +217,24 @@ def _dygraph_only_(func):
     return __impl__
 
 
+# NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
+# used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
+# official docments, logically, we want to keep VarBase and logically consistent. While, actually,
+# in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
+# So, those APIs are listed under class Variable to generate docs only.
+# TODO(zhiqiu): We should make VarBase consistent with Variable, for example, by inheritting
+# same base class. 
+def _fake_interface_only_(func):
+    def __impl__(*args, **kwargs):
+        #   if in_dygraph_mode():
+        #       raise AssertionError("We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
+        #   else:
+        #       raise AssertionError("We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
+        return func(*args, **kwargs)
+
+    return __impl__
+
+
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 
@@ -1199,9 +1217,6 @@ class Variable(object):
                 print("=============with detail===============")
                 print(new_variable.to_string(True, True))
         """
-        if in_dygraph_mode():
-            return
-
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         protostr = self.desc.serialize_to_string()
