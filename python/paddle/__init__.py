@@ -91,7 +91,7 @@ from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import randperm
-# from .tensor.random import rand   #DEFINE_ALIAS
+from .tensor.random import rand  #DEFINE_ALIAS
 from .tensor.random import randint  #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
 # from .tensor.math import acos   #DEFINE_ALIAS
