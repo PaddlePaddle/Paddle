@@ -464,109 +464,107 @@ def add_optimizer_pass(program, config):
         if _is_optimizer_op(op) and _is_opt_op_on_pserver(ps_endpoint, op):
             opt_op_on_pserver.append(op)
 
-        def __append_optimize_op__(op, block, grad_to_block_id, merged_var,
-                                   lr_ops):
-            if _is_optimizer_op(op):
-                _append_pserver_ops(block, op, ps_endpoint, grad_to_block_id,
-                                    origin_program, merged_var,
-                                    sparse_grad_to_param)
-            elif op not in lr_ops:
-                _append_pserver_non_opt_ops(block, op)
+    def __append_optimize_op__(op, block, grad_to_block_id, merged_var, lr_ops):
+        if _is_optimizer_op(op):
+            _append_pserver_ops(block, op, ps_endpoint, grad_to_block_id,
+                                origin_program, merged_var,
+                                sparse_grad_to_param)
+        elif op not in lr_ops:
+            _append_pserver_non_opt_ops(block, op)
 
-        def __clone_lr_op_sub_block__(op, program, lr_block):
-            if not op.has_attr('sub_block'):
-                return
+    def __clone_lr_op_sub_block__(op, program, lr_block):
+        if not op.has_attr('sub_block'):
+            return
 
-            origin_block_desc = op.attr('sub_block')
-            origin_block = origin_program.block(origin_block_desc.id)
-            assert isinstance(origin_block, Block)
-            # we put the new sub block to new block to follow the block
-            # hierarchy of the original blocks
-            new_sub_block = program._create_block(lr_block.idx)
+        origin_block_desc = op.attr('sub_block')
+        origin_block = origin_program.block(origin_block_desc.id)
+        assert isinstance(origin_block, Block)
+        # we put the new sub block to new block to follow the block
+        # hierarchy of the original blocks
+        new_sub_block = program._create_block(lr_block.idx)
 
-            # clone vars
-            for var in origin_block.vars:
-                new_sub_block._clone_variable(var)
+        # clone vars
+        for var in origin_block.vars:
+            new_sub_block._clone_variable(var)
 
-            # clone ops
-            for origin_op in origin_block.ops:
-                cloned_op = _clone_lr_op(program, new_sub_block, origin_op)
-                # clone sub_block of op
-                __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
+        # clone ops
+        for origin_op in origin_block.ops:
+            cloned_op = _clone_lr_op(program, new_sub_block, origin_op)
+            # clone sub_block of op
+            __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
-            # reset the block of op
-            op._set_attr('sub_block', new_sub_block)
+        # reset the block of op
+        op._set_attr('sub_block', new_sub_block)
 
-        def _get_lr_ops():
-            lr_ops = []
-            block = origin_program.global_block()
-            for index, op in enumerate(block.ops):
-                role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
-                if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                        int(OPT_OP_ROLE_ATTR_VALUE):
-                    lr_ops.append(op)
-            return lr_ops
+    def _get_lr_ops():
+        lr_ops = []
+        block = origin_program.global_block()
+        for index, op in enumerate(block.ops):
+            role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
+            if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
+                    role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                    int(OPT_OP_ROLE_ATTR_VALUE):
+                lr_ops.append(op)
+        return lr_ops
 
         # append lr decay ops to the child block if exists
-        lr_ops = _get_lr_ops()
-        lr_decay_block_id = -1
-        optimize_blocks = []
 
-        if len(lr_ops) > 0:
-            lr_decay_block = program._create_block(program.num_blocks - 1)
-            optimize_blocks.append(lr_decay_block)
-            for _, op in enumerate(lr_ops):
-                cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op)
-                # append sub blocks to pserver_program in lr_decay_op
-                __clone_lr_op_sub_block__(cloned_op, program, lr_decay_block)
-            lr_decay_block_id = lr_decay_block.idx
+    lr_ops = _get_lr_ops()
+    lr_decay_block_id = -1
+    optimize_blocks = []
 
-        # append op to the current block
-        grad_to_block_id = []
-        pre_block_idx = program.num_blocks - 1
-        for idx, opt_op in enumerate(opt_op_on_pserver):
-            per_opt_block = program._create_block(pre_block_idx)
-            optimize_blocks.append(per_opt_block)
-            optimize_target_param_name = opt_op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
-            # append grad merging ops before clip and weight decay
-            # e.g. merge grad -> L2Decay op -> clip op -> optimize
-            merged_var = None
+    if len(lr_ops) > 0:
+        lr_decay_block = program._create_block(program.num_blocks - 1)
+        optimize_blocks.append(lr_decay_block)
+        for _, op in enumerate(lr_ops):
+            cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op)
+            # append sub blocks to pserver_program in lr_decay_op
+            __clone_lr_op_sub_block__(cloned_op, program, lr_decay_block)
+        lr_decay_block_id = lr_decay_block.idx
+
+    # append op to the current block
+    grad_to_block_id = []
+    pre_block_idx = program.num_blocks - 1
+    for idx, opt_op in enumerate(opt_op_on_pserver):
+        per_opt_block = program._create_block(pre_block_idx)
+        optimize_blocks.append(per_opt_block)
+        optimize_target_param_name = opt_op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
+        # append grad merging ops before clip and weight decay
+        # e.g. merge grad -> L2Decay op -> clip op -> optimize
+        merged_var = None
+        for _, op in enumerate(optimize_ops):
+            # find the origin grad var before clipping/L2Decay,
+            # merged_var should be the input var name of L2Decay
+            grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
+            if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name:
+                merged_var = _append_pserver_grad_merge_ops(
+                    per_opt_block, grad_varname_for_block, ps_endpoint,
+                    grad_to_block_id)
+                if merged_var:
+                    break  # append optimize op once then append other ops.
+
+        if merged_var:
             for _, op in enumerate(optimize_ops):
-                # find the origin grad var before clipping/L2Decay,
-                # merged_var should be the input var name of L2Decay
-                grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
-                if op.attr(OP_ROLE_VAR_ATTR_NAME)[
-                        0] == optimize_target_param_name:
-                    merged_var = _append_pserver_grad_merge_ops(
-                        per_opt_block, grad_varname_for_block, ps_endpoint,
-                        grad_to_block_id)
-                    if merged_var:
-                        break  # append optimize op once then append other ops.
+                # optimizer is connected to itself
+                if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
+                        op not in global_ops:
+                    __append_optimize_op__(op, per_opt_block, grad_to_block_id,
+                                           merged_var, lr_ops)
 
-            if merged_var:
-                for _, op in enumerate(optimize_ops):
-                    # optimizer is connected to itself
-                    if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                            op not in global_ops:
-                        __append_optimize_op__(op, per_opt_block,
-                                               grad_to_block_id, merged_var,
-                                               lr_ops)
+    # dedup grad to ids list
+    grad_to_block_id = list(set(grad_to_block_id))
+    # append global ops
+    if global_ops:
+        opt_state_block = program._create_block(program.num_blocks - 1)
+        optimize_blocks.append(opt_state_block)
+        for glb_op in global_ops:
+            __append_optimize_op__(glb_op, opt_state_block, grad_to_block_id,
+                                   None, lr_ops)
 
-        # dedup grad to ids list
-        grad_to_block_id = list(set(grad_to_block_id))
-        # append global ops
-        if global_ops:
-            opt_state_block = program._create_block(program.num_blocks - 1)
-            optimize_blocks.append(opt_state_block)
-            for glb_op in global_ops:
-                __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id, None, lr_ops)
-
-        if len(optimize_blocks) == 0:
-            pre_block_idx = program.num_blocks - 1
-            empty_block = program._create_block(pre_block_idx)
-            optimize_blocks.append(empty_block)
+    if len(optimize_blocks) == 0:
+        pre_block_idx = program.num_blocks - 1
+        empty_block = program._create_block(pre_block_idx)
+        optimize_blocks.append(empty_block)
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
     op._set_attr("optimize_blocks", optimize_blocks)
