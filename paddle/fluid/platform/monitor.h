@@ -20,57 +20,142 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "glog/logging.h"
 
 namespace paddle {
 namespace platform {
-class Monitor {
+
+template <typename T>
+class StatRegistry;
+
+template <typename T>
+class StatValue {
+  T v_{0};
+  std::mutex mu_;
+  // We use lock rather than atomic for generic values
  public:
-  Monitor() {}
-  virtual ~Monitor() {}
-
-  static Monitor* Instance() {
-    if (nullptr == instance) {
-      VLOG(0) << "Init Monitor Instance";
-      instance = new Monitor();
-    }
-    return instance;
+  T increase(T inc) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return v_ += inc;
   }
-
-  void LogCudaMalloc(int device_id, size_t size) {
-    std::lock_guard<std::mutex> g(mutex_);
-    stats_.gpu_mem_size_[device_id] += size;
+  T decrease(T inc) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return v_ -= inc;
   }
-
-  void LogCudaFree(int device_id, size_t size) {
-    std::lock_guard<std::mutex> g(mutex_);
-    stats_.gpu_mem_size_[device_id] -= size;
+  T reset(T value = 0) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return v_ = value;
   }
+  T get() {
+    std::lock_guard<std::mutex> lock(mu_);
+    return v_;
+  }
+};
 
+template <typename T>
+struct ExportedStatValue {
+  std::string key;
+  T value;
+};
+
+template <typename T>
+class StatRegistry {
  public:
-  struct MonitorStats {
-    MonitorStats() {
-      gpu_mem_size_.resize(8, 0);  // more than 8 GPUs in a node?
-      nets_in_ = 0;
-      nets_out_ = 0;
-      total_feasign_num_in_mem_ = 0;
+  ~StatRegistry<T>() {}
+
+  static StatRegistry<T>& get() {
+    static StatRegistry<T> r;
+    return r;
+  }
+
+  StatValue<T>* add(const std::string& name) {
+    std::lock_guard<std::mutex> lg(mutex_);
+    auto it = stats_.find(name);
+    if (it != stats_.end()) {
+      return it->second.get();
     }
-    // System
-    std::vector<size_t> gpu_mem_size_;
-    std::atomic<size_t> nets_in_;
-    std::atomic<size_t> nets_out_;
+    auto v = std::unique_ptr<StatValue<T>>(new StatValue<T>);
+    VLOG(0) << "Register Stats: " << name;
+    auto value = v.get();
+    stats_.insert(std::make_pair(name, std::move(v)));
+    return value;
+  }
 
-    // Application
-    std::atomic<size_t> total_feasign_num_in_mem_;
-  };
+  void publish(std::vector<ExportedStatValue<T>>& exported,  // NOLINT
+               bool reset = false) {
+    std::lock_guard<std::mutex> lg(mutex_);
+    exported.resize(stats_.size());
+    int i = 0;
+    for (const auto& kv : stats_) {
+      auto& out = exported.at(i++);
+      out.key = kv.first;
+      out.value = reset ? kv.second->reset() : kv.second->get();
+    }
+  }
 
-  MonitorStats stats_;
+  std::vector<ExportedStatValue<T>> publish(bool reset = false) {
+    std::vector<ExportedStatValue<T>> stats;
+    publish(stats, reset);
+    return stats;
+  }
 
  private:
   std::mutex mutex_;
-  static Monitor* instance;
+  std::unordered_map<std::string, std::unique_ptr<StatValue<T>>> stats_;
 };
+
+template <typename T>
+class Stat {
+ public:
+  explicit Stat(const std::string& n)
+      : name(n), value_(StatRegistry<T>::get().add(n)) {}
+
+  T increase(T inc) { return value_->increase(inc); }
+  T decrease(T inc) { return value_->decrease(inc); }
+  T reset(T value) { return value_->reset(value); }
+  T get() const { return value_->get(); }
+
+ private:
+  std::string name;
+  StatValue<T>* value_;
+};
+
+// Because we only support these two types in pybind
+#define REGISTER_FLOAT_STATUS(item) static Stat<float> _##item(#item);
+
+#define REGISTER_INT_STATUS(item) static Stat<int64_t> _##item(#item);
+
+#define STAT_ADD(item, t) paddle::platform::_##item.increase(t)
+#define STAT_SUB(item, t) paddle::platform::_##item.decrease(t)
+
+// Support add stat value by string
+#define STAT_INT_ADD(item, t) \
+  paddle::platform::StatRegistry<int64_t>::get().add(item)->increase(t)
+#define STAT_INT_SUB(item, t) \
+  paddle::platform::StatRegistry<int64_t>::get().add(item)->decrease(t)
+
+#define STAT_FLOAT_ADD(item, t) \
+  paddle::platform::StatRegistry<float>::get().add(item)->increase(t)
+#define STAT_FLOAT_SUB(item, t) \
+  paddle::platform::StatRegistry<float>::get().add(item)->decrease(t)
+
+#define STAT_RESET(item, t) paddle::platform::_##item.reset(t)
+
+#define STAT_GET(item) paddle::platform::_##item.get()
+
+// Register your own monitor stats here
+
+REGISTER_INT_STATUS(STAT_total_feasign_num_in_mem)
+REGISTER_INT_STATUS(STAT_gpu0_mem_size)
+REGISTER_INT_STATUS(STAT_gpu1_mem_size)
+REGISTER_INT_STATUS(STAT_gpu2_mem_size)
+REGISTER_INT_STATUS(STAT_gpu3_mem_size)
+REGISTER_INT_STATUS(STAT_gpu4_mem_size)
+REGISTER_INT_STATUS(STAT_gpu5_mem_size)
+REGISTER_INT_STATUS(STAT_gpu6_mem_size)
+REGISTER_INT_STATUS(STAT_gpu7_mem_size)
 
 }  // namespace platform
 }  // namespace paddle

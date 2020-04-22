@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/monitor.h"
+#include <utility>
 
 namespace paddle {
-namespace platform {
-Monitor* Monitor::instance = nullptr;
-}  // namespace platform
+namespace platform {}  // namespace platform
 }  // namespace paddle

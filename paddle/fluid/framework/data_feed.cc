@@ -392,7 +392,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
       writer << std::move(instance);
       instance = T();
     }
-    platform::Monitor::Instance()->stats_.total_feasign_num_in_mem_ += fea_num_;
+    STAT_ADD(STAT_total_feasign_num_in_mem, fea_num_);
     {
       std::lock_guard<std::mutex> flock(*mutex_for_fea_num_);
       *total_fea_num_ += fea_num_;

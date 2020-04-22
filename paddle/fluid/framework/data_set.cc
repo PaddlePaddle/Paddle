@@ -332,14 +332,11 @@ void DatasetImpl<T>::ReleaseMemory() {
   std::vector<T>().swap(input_records_);
   std::vector<T>().swap(slots_shuffle_original_data_);
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
-  VLOG(0) << "total_ins_("
-          << platform::Monitor::Instance()->stats_.total_feasign_num_in_mem_
-          << ") - total_fea_num_(" << total_fea_num_ << ") = ("
-          << platform::Monitor::Instance()->stats_.total_feasign_num_in_mem_ -
-                 total_fea_num_
+  VLOG(3) << "total_feasign_num_(" << STAT_GET(STAT_total_feasign_num_in_mem)
+          << ") - current_fea_num_(" << total_fea_num_ << ") = ("
+          << STAT_GET(STAT_total_feasign_num_in_mem) - total_fea_num_
           << ")";  // For Debug
-  platform::Monitor::Instance()->stats_.total_feasign_num_in_mem_ -=
-      total_fea_num_;
+  STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
 }
 
 // do local shuffle
@@ -699,6 +696,8 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
     preload_readers_[i]->SetFileListIndex(&file_idx_);
     preload_readers_[i]->SetFileList(filelist_);
+    preload_readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
+    preload_readers_[i]->SetFeaNum(&total_fea_num_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
     preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetParseLogKey(parse_logkey_);

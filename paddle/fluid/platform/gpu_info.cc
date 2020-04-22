@@ -365,7 +365,7 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         cur_size_ += size;
       }
-      Monitor::Instance()->LogCudaMalloc(dev_id_, size);
+      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return cudaSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -394,7 +394,7 @@ class RecordedCudaMallocHelper {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
       }
-      Monitor::Instance()->LogCudaFree(dev_id_, size);
+      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
       cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
     }

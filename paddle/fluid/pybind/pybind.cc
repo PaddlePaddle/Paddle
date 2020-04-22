@@ -56,6 +56,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
@@ -1536,6 +1537,25 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+
+  m.def("get_float_stats", []() {
+    std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
+    paddle::platform::StatRegistry<float>::get().publish(float_stats);
+    std::unordered_map<std::string, float> stats_map;
+    for (const auto &stat : float_stats) {
+      stats_map[stat.key] = stat.value;
+    }
+    return stats_map;
+  });
+  m.def("get_int_stats", []() {
+    std::vector<paddle::platform::ExportedStatValue<int64_t>> int_stats;
+    paddle::platform::StatRegistry<int64_t>::get().publish(int_stats);
+    std::unordered_map<std::string, int> stats_map;
+    for (const auto &stat : int_stats) {
+      stats_map[stat.key] = stat.value;
+    }
+    return stats_map;
+  });
   m.def("run_cmd",
         [](const std::string &cmd, int time_out = -1,
            int sleep_inter = -1) -> const std::string {
@@ -2452,8 +2472,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
-  BindMonitor(&m);
-  BindMonitorStats(&m);
 #ifdef PADDLE_WITH_BOX_PS
   BindBoxWrapper(&m);
 #endif

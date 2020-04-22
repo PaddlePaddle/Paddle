@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
-#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #ifdef PADDLE_WITH_BOX_PS
 #include <boxps_public.h>
@@ -38,27 +37,6 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-void BindMonitor(py::module* m) {
-  py::class_<platform::Monitor, std::shared_ptr<platform::Monitor>>(*m,
-                                                                    "Monitor")
-      .def(py::init(
-          []() { return std::make_shared<paddle::platform::Monitor>(); }));
-}  // end Monitor
-
-void BindMonitorStats(py::module* m) {
-  py::class_<platform::Monitor::MonitorStats,
-             std::shared_ptr<platform::Monitor::MonitorStats>>(*m,
-                                                               "MonitorStats")
-      .def(py::init())
-      // .def_readwrite("total_feasign_num_in_mem_",
-      // &platform::Monitor::MonitorStats::total_feasign_num_in_mem_)
-      // .def_readwrite("nets_in_", &platform::Monitor::MonitorStats::nets_in_)
-      // .def_readwrite("nets_out_",
-      // &platform::Monitor::MonitorStats::nets_out_)
-      .def_readwrite("gpu_mem_size_",
-                     &platform::Monitor::MonitorStats::gpu_mem_size_);
-}  // end Monitor
-
 void BindBoxHelper(py::module* m) {
   py::class_<framework::BoxHelper, std::shared_ptr<framework::BoxHelper>>(
       *m, "BoxPS")

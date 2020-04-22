@@ -22,8 +22,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-void BindMonitor(py::module* m);
-void BindMonitorStats(py::module* m);
 void BindBoxHelper(py::module* m);
 #ifdef PADDLE_WITH_BOX_PS
 void BindBoxWrapper(py::module* m);
