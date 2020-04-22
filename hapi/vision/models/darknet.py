@@ -156,7 +156,7 @@ class DarkNet(Model):
             .format(DarkNet_cfg.keys())
         self.stages = DarkNet_cfg[num_layers]
         self.stages = self.stages[0:5]
-        self.num_classes = 1000
+        self.num_classes = num_classes
         self.with_pool = True
         ch_in = 3
         self.conv0 = ConvBNLayer(

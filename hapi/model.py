@@ -1184,9 +1184,9 @@ class Model(fluid.dygraph.Layer):
 
         outputs = []
         count = 0
-        for i, data in tqdm.tqdm(enumerate(loader)):
+        for data in tqdm.tqdm(loader):
             data = flatten(data)
-            out = to_list(self.test(data[:len(self._inputs)]))
+            out = to_list(self.test_batch(data[:len(self._inputs)]))
             outputs.append(out)
             count += out[0].shape[0]
 
@@ -1199,15 +1199,10 @@ class Model(fluid.dygraph.Layer):
         # NOTE: for lod tensor output, we should not stack outputs
         # for stacking may loss its detail info
 
-        if stack_outputs:
-            stack_outs = []
-            for i in range(len(outputs[0])):
-                split_outs = []
-                for out in outputs:
-                    split_outs.append(out[i])
-                stack_outs.append(np.vstack(split_outs))
+        outputs = list(zip(*outputs))
 
-            outputs = stack_outs
+        if stack_outputs:
+            outputs = [np.vstack(outs) for outs in outputs]
 
         self._test_dataloader = None
 
