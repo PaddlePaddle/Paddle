@@ -388,9 +388,9 @@ def where(condition, x, y, name=None):
     Examples:
         .. code-block:: python
 
+          import paddle
           import numpy as np
           import paddle.fluid as fluid
-          import paddle.tensor as paddle
 
           x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
           y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
@@ -417,8 +417,7 @@ def where(condition, x, y, name=None):
             return core.ops.where(condition, x, y)
         else:
             helper = LayerHelper("where", **locals())
-            dtype = helper.input_dtype()
-            out = helper.create_variable_for_type_inference(dtype)
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
             helper.append_op(
                 type='where',

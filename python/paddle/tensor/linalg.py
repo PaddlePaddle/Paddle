@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode, _varbase_creator
 
 __all__ = [
     'matmul',
@@ -26,7 +27,8 @@ __all__ = [
     't',
     'cross',
     #  'cholesky',
-    #  'tensordot'
+    #  'tensordot',
+    'bmm'
 ]
 
 
@@ -109,8 +111,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     }
 
     if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                        transpose_y, 'alpha', float(alpha))
+        return out
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -339,9 +343,32 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
 def dist(x, y, p=2):
     """
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
-    of distance. The shapes of x and y must be broadcastable.
+    of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
+    details, please refer to the `numpy's broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_:
 
-    Where, z = x - y,
+    - Each input has at least one dimension.
+    - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
+
+    Where, z = x - y, the shapes of x and y are broadcastable, then the shape of z can be
+    obtained as follows:
+
+    1. If the number of dimensions of x and y are not equal, prepend 1 to the dimensions of the
+    tensor with fewer dimensions.
+
+    For example, The shape of x is [8, 1, 6, 1], the shape of y is [7, 1, 5], prepend 1 to the
+    dimension of y.
+
+    x (4-D Tensor):  8 x 1 x 6 x 1
+
+    y (4-D Tensor):  1 x 7 x 1 x 5
+
+    2. Determine the size of each dimension of the output z: choose the maximum value from the
+    two input dimensions.
+
+    z (4-D Tensor):  8 x 7 x 6 x 5
+
+    If the number of dimensions of the two inputs are the same, the size of the output can be
+    directly determined in step 2. When p takes different values, the norm formula is as follows:
 
     When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
 
@@ -419,10 +446,12 @@ def dot(x, y, name=None):
        Only support 1-d Tensor(vector).
 
     Parameters:
-    
         x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
         y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
         name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        Variable: the calculated result Tensor/LoDTensor.
 
     Examples:
 
@@ -440,6 +469,11 @@ def dot(x, y, name=None):
 
     """
     op_type = 'dot'
+    # skip var type check in dygraph mode to improve efficiency
+    if in_dygraph_mode():
+        op = getattr(core.ops, op_type)
+        return op(x, y)
+
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
 
@@ -467,11 +501,11 @@ def t(input, name=None):
     the fluid.layers.transpose function which perm dimensions set 0 and 1.
     
     Args:
-        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
+        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float16, float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
-        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Variable: A transposed n-D Tensor, with data type being float16, float32, float64, int32, int64.
     
     For Example:
         .. code-block:: text
@@ -590,4 +624,51 @@ def cross(input, other, dim=None):
                 'Y': other},
         outputs={'Out': out},
         attrs=attrs)
+    return out
+
+
+def bmm(x, y, name=None):
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both of the two input tensors must be three-dementional and share the same batch size.
+
+    if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+
+    Examples:
+        import paddle
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
+        out = paddle.bmm(x, y)
+    
+        # In dygraph mode:
+        # size input1: (2, 2, 3) and input2: (2, 3, 2)
+        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+    """
+
+    helper = LayerHelper('bmm', **locals())
+    if in_dygraph_mode():
+        return core.ops.bmm(x, y)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out

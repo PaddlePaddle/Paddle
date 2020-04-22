@@ -18,6 +18,7 @@ from __future__ import print_function
 #from .linalg import *
 
 # TODO: define alias in tensor and framework directory
+
 # from .creation import create_tensor   #DEFINE_ALIAS
 # from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
@@ -32,7 +33,7 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import range   #DEFINE_ALIAS
 # from .creation import zeros   #DEFINE_ALIAS
 # from .creation import zeros_like   #DEFINE_ALIAS
-# from .creation import arrange   #DEFINE_ALIAS
+from .creation import arange  #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
@@ -43,7 +44,7 @@ from .creation import meshgrid  #DEFINE_ALIAS
 from .creation import trace  #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
-# from .stat import std   #DEFINE_ALIAS
+from .stat import std  #DEFINE_ALIAS
 # from .stat import var   #DEFINE_ALIAS
 from .logic import equal  #DEFINE_ALIAS
 # from .logic import greater_equal   #DEFINE_ALIAS
@@ -122,8 +123,9 @@ from .math import logsumexp  #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS
 from .math import log1p  #DEFINE_ALIAS
 # from .math import erf   #DEFINE_ALIAS
-# from .math import addcmul   #DEFINE_ALIAS
+from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
+from .math import clamp  #DEFINE_ALIAS
 # from .attribute import rank   #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
@@ -137,6 +139,8 @@ from .linalg import dist  #DEFINE_ALIAS
 from .linalg import t  #DEFINE_ALIAS
 from .linalg import cross  #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
+# from .linalg import dot   #DEFINE_ALIAS
+from .linalg import bmm  #DEFINE_ALIAS
 # from .manipulation import cast   #DEFINE_ALIAS
 # from .manipulation import concat   #DEFINE_ALIAS
 # from .manipulation import expand   #DEFINE_ALIAS
@@ -153,13 +157,13 @@ from .linalg import cross  #DEFINE_ALIAS
 # from .manipulation import slice   #DEFINE_ALIAS
 # from .manipulation import split   #DEFINE_ALIAS
 # from .manipulation import squeeze   #DEFINE_ALIAS
-# from .manipulation import stack   #DEFINE_ALIAS
+# from .manipulation import stack  #DEFINE_ALIAS
 # from .manipulation import strided_slice   #DEFINE_ALIAS
 # from .manipulation import transpose   #DEFINE_ALIAS
 # from .manipulation import unique   #DEFINE_ALIAS
 # from .manipulation import unique_with_counts   #DEFINE_ALIAS
 # from .manipulation import unsqueeze   #DEFINE_ALIAS
-# from .manipulation import unstack   #DEFINE_ALIAS
+# from .manipulation import unstack    #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
