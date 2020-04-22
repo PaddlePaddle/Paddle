@@ -124,7 +124,7 @@ void TestDynamic2() {
   output_t->copy_to_cpu(out_data.data());
   std::vector<float> result = {0.617728, 1.63504, 2.15771, 0.535556};
   for (size_t i = 0; i < out_data.size(); i++) {
-    EXPECT_NEAR(result[i], out_data[i], 1e-6);
+    EXPECT_NEAR(result[i], out_data[i], 1e-5);
   }
 }
 

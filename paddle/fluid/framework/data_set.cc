@@ -326,6 +326,8 @@ void DatasetImpl<T>::ReleaseMemory() {
   std::vector<paddle::framework::Channel<PvInstance>>().swap(multi_pv_consume_);
 
   std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  input_records_.clear();
+  std::vector<T>().swap(input_records_);
   VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
 }
 
