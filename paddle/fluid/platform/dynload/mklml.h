@@ -92,10 +92,6 @@ extern void* mklml_dso_handle;
   __macro(vdInv);                   \
   __macro(vmsErf);                  \
   __macro(vmdErf);                  \
-  __macro(LAPACKE_sgetrf);          \
-  __macro(LAPACKE_dgetrf);          \
-  __macro(LAPACKE_sgetri);          \
-  __macro(LAPACKE_dgetri);          \
   __macro(MKL_Free_Buffers);        \
   __macro(MKL_Set_Num_Threads)
 

@@ -218,14 +218,6 @@ class Blas {
   template <typename T>
   void VMERF(int n, const T* a, T* y, int64_t mode) const;
 
-#ifdef PADDLE_WITH_MKLML
-  template <typename T>
-  void GETRF(int m, int n, T* a, int* ipiv) const;
-
-  template <typename T>
-  void GETRI(int n, T* a, const int* ipiv) const;
-#endif
-
 #ifdef PADDLE_WITH_CUDA
   template <typename T>
   void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
@@ -371,18 +363,6 @@ class BlasT : private Blas<DeviceContext> {
   void VMERF(ARGS... args) const {
     Base()->template VMERF<T>(args...);
   }
-
-#ifdef PADDLE_WITH_MKLML
-  template <typename... ARGS>
-  void GETRF(ARGS... args) const {
-    Base()->template GETRF<T>(args...);
-  }
-
-  template <typename... ARGS>
-  void GETRI(ARGS... args) const {
-    Base()->template GETRI<T>(args...);
-  }
-#endif
 
 #ifdef PADDLE_WITH_CUDA
   template <typename... ARGS>

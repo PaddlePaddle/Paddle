@@ -39,25 +39,6 @@ class MatrixInverseFunctor<platform::CPUDeviceContext, T> {
     const T* a_ptr = a.data<T>();
     T* a_inv_ptr = a_inv->mutable_data<T>(context.GetPlace());
 
-#ifdef PADDLE_WITH_MKLML
-    framework::Tensor ipiv;
-    int* ipiv_ptr = ipiv.mutable_data<int>({n}, context.GetPlace());
-
-    if (a_ptr != a_inv_ptr) {
-      framework::TensorCopy(a, context.GetPlace(), a_inv);
-    }
-
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    for (int i = 0; i < batch_size; ++i) {
-      T* mat_ptr = a_inv_ptr + i * n * n;
-
-      // Compute the LU Factorization of a general m-by-n matrix: A = P*L*U
-      blas.GETRF(n, n, mat_ptr, ipiv_ptr);
-
-      // Computes the inverse of an LU-factored general matrix.
-      blas.GETRI(n, mat_ptr, ipiv_ptr);
-    }
-#else
     for (int i = 0; i < batch_size; ++i) {
       ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
       EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
@@ -70,7 +51,6 @@ class MatrixInverseFunctor<platform::CPUDeviceContext, T> {
           platform::errors::InvalidArgument("Input is not invertible."));
       mat_inv.noalias() = lu.inverse();
     }
-#endif
   }
 };
 

@@ -155,16 +155,6 @@ struct CBlas<float> {
     platform::dynload::mkl_scsrmm(args...);
   }
 #endif
-
-  template <typename... ARGS>
-  static void GETRF(ARGS... args) {
-    platform::dynload::LAPACKE_sgetrf(args...);
-  }
-
-  template <typename... ARGS>
-  static void GETRI(ARGS... args) {
-    platform::dynload::LAPACKE_sgetri(args...);
-  }
 };
 
 template <>
@@ -286,16 +276,6 @@ struct CBlas<double> {
     platform::dynload::mkl_dcsrmm(args...);
   }
 #endif
-
-  template <typename... ARGS>
-  static void GETRF(ARGS... args) {
-    platform::dynload::LAPACKE_dgetrf(args...);
-  }
-
-  template <typename... ARGS>
-  static void GETRI(ARGS... args) {
-    platform::dynload::LAPACKE_dgetri(args...);
-  }
 };
 
 #else
@@ -919,20 +899,6 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
     const T *beta, T *c, const int *ldc) const {
   CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
                   ldb, beta, c, ldc);
-}
-
-template <>
-template <typename T>
-void Blas<platform::CPUDeviceContext>::GETRF(int m, int n, T *a,
-                                             int *ipiv) const {
-  CBlas<T>::GETRF(LAPACK_ROW_MAJOR, m, n, a, n, ipiv);
-}
-
-template <>
-template <typename T>
-void Blas<platform::CPUDeviceContext>::GETRI(int n, T *a,
-                                             const int *ipiv) const {
-  CBlas<T>::GETRI(LAPACK_ROW_MAJOR, n, a, n, ipiv);
 }
 #endif
 
