@@ -83,6 +83,7 @@ class Qat2Int8MkldnnPass(object):
         graph = self._propagate_scales(graph)
         graph = self._set_dummy_out_scales(graph)
         graph = self._quantize_fp32_graph(graph)
+        graph = self._optimize_int8_graph(graph)
         graph = self._cleanup(graph)
         return graph
 
@@ -390,11 +391,14 @@ class Qat2Int8MkldnnPass(object):
         self._remove_unused_var_nodes(graph)
         return graph
 
-    def _cleanup(self, graph):
+    def _optimize_int8_graph(self, graph):
         # remove dropout ops
         graph = self._apply_pass(graph, 'simplify_with_basic_ops_pass')
         # make some MKL-DNN ops working inplace
         graph = self._apply_pass(graph, 'mkldnn_inplace_pass')
+        return graph
+
+    def _cleanup(self, graph):
         graph = self._remove_unused_var_nodes(graph)
         graph = self._set_op_role_forward(graph)
         return graph
