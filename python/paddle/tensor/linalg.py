@@ -26,7 +26,8 @@ __all__ = [
     't',
     'cross',
     #  'cholesky',
-    #  'tensordot'
+    #  'tensordot',
+    'bmm'
 ]
 
 
@@ -599,4 +600,45 @@ def cross(input, other, dim=None):
                 'Y': other},
         outputs={'Out': out},
         attrs=attrs)
+    return out
+
+
+def bmm(x, y, name=None):
+    """
+    Applies batched matrix multiplication to two tensors.
+    Both of the two input tensors must be three-dementional and share the same batch size.
+    if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+    Examples:
+        import paddle
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
+        out = paddle.bmm(x, y)
+    
+        # In dygraph mode:
+        # size input1: (2, 2, 3) and input2: (2, 3, 2)
+        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+    """
+
+    helper = LayerHelper('bmm', **locals())
+    if in_dygraph_mode():
+        return core.ops.bmm(x, y)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out
