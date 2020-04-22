@@ -27,34 +27,17 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
-template <typename T>
-class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
+class SlicePluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
-                                            float* bias, float* scale,
-                                            std::vector<int> emb_sizes,
-                                            int bias_size, int scale_size,
-                                            int hidden_size, float eps)
-      : embs_(input_embs),
-        bias_(bias),
-        scale_(scale),
-        emb_sizes_(emb_sizes),
-        bias_size_(bias_size),
-        scale_size_(scale_size),
-        hidden_size_(hidden_size),
-        eps_(eps) {}
-
-  EmbEltwiseLayernormPluginDynamic(void const* serialData,
-                                   size_t serialLength) {}
+  explicit SlicePluginDynamic(std::vector<int> starts, std::vector<int> ends,
+                              std::vector<int> axes, bool ban_fp16)
+      : starts_(starts), ends_(ends), axes_(axes), ban_fp16_(ban_fp16) {}
+  SlicePluginDynamic(void const* serialData, size_t serialLength) {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new EmbEltwiseLayernormPluginDynamic(
-        embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
-        eps_);
+    return new SlicePluginDynamic(starts_, ends_, axes_, ban_fp16_);
   }
 
-  const char* getPluginType() const override {
-    return "fused_embedding_eltwise_layernorm_plugin";
-  }
+  const char* getPluginType() const override { return "slice_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
@@ -92,22 +75,14 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 
  private:
-  std::vector<float*> embs_;
-  float* bias_;
-  float* scale_;
+  std::vector<int> starts_;
+  std::vector<int> ends_;
+  std::vector<int> axes_;
 
-  // data on devices
-  float* bias_gpu_;
-  float* scale_gpu_;
-  std::vector<T*> embs_gpu_;
-
-  std::vector<int> emb_sizes_;
-  int bias_size_;
-  int scale_size_;
-  int hidden_size_;
-  float eps_;
+  bool ban_fp16_{false};
 };
 #endif
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
