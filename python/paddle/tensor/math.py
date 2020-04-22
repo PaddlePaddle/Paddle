@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core
+from ..fluid.framework import core, _varbase_creator
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 import sys
 
@@ -904,7 +904,10 @@ def mm(input, mat2, out=None, name=None):
             out = paddle.mm(x, mat2) # out shape is [2, 2]
     """
     if in_dygraph_mode():
-        return core.ops.matmul(input, mat2)
+        if out is None:
+            out = _varbase_creator(dtype=input.dtype)
+        core.ops.matmul(input, mat2, out)
+        return out
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -1082,7 +1085,7 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
 
 def inverse(input, out=None, name=None):
     """
-    Takes the inverse of the square matrix. The input can be A square matrix
+    Takes the inverse of the square matrix. The input can be a square matrix
     (2-D Tensor) or batches of square matrixs.
 
     Args:
@@ -1098,7 +1101,8 @@ def inverse(input, out=None, name=None):
             please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor holds the inverse of input.
+        Variable: A Tensor holds the inverse of input. The shape and data type
+            is the same as input.
 
     Examples:
         .. code-block:: python
