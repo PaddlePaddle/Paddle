@@ -33,7 +33,7 @@ __all__ = [
     #            'reduce_any',
     #            'allclose',
     #            'elementwise_equal',
-    'isnan'
+    'isnan',
 ]
 
 from paddle.fluid.layer_helper import LayerHelper
