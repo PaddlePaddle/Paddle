@@ -289,7 +289,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            fluid.save_dygraph(self.state_dict, "./test_dy")
+            paddle.imperative.save_imperative(self.state_dict, "./test_dy")
 
     def testLoadAndSetVarBase(self):
         seed = 90
@@ -369,7 +369,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph("./test_dy")
+            para_state_dict, opti_state_dict = paddle.imperative.load_imperative(
+                "./test_dy")
             adam.set_dict(opti_state_dict)
 
             opti_dict = adam.state_dict()
