@@ -27,8 +27,6 @@ from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
 
-from paddle.fluid.transpiler.details import program_to_code
-
 
 class TestProgram2Code(unittest.TestCase):
     def test_print(self):
@@ -55,7 +53,7 @@ class TestProgram2Code(unittest.TestCase):
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 ops._scale(x=x, scale=10.0, out=out_var)
 
-        program_to_code(main)
+        print(main)
 
     def init_client(self, place, port):
         main = fluid.Program()
@@ -75,7 +73,7 @@ class TestProgram2Code(unittest.TestCase):
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
 
-        program_to_code(main)
+        print(main)
 
 
 class TestProgramToReadableCode(unittest.TestCase):
