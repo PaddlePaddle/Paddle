@@ -64,6 +64,10 @@ extern void *cublas_dso_handle;
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
   __macro(cublasDaxpy_v2);                \
+  __macro(cublasSscal_v2);                \
+  __macro(cublasDscal_v2);                \
+  __macro(cublasScopy_v2);                \
+  __macro(cublasDcopy_v2);                \
   __macro(cublasSgemv_v2);                \
   __macro(cublasDgemv_v2);                \
   __macro(cublasSgemm_v2);                \

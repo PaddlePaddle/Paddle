@@ -99,8 +99,9 @@ void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
 }
 
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
-  PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
-                 "Fail to parse program_desc from binary string.");
+  PADDLE_ENFORCE_EQ(desc_.ParseFromString(binary_str), true,
+                    platform::errors::InvalidArgument(
+                        "Failed to parse program_desc from binary string."));
   InitFromProto();
 }
 

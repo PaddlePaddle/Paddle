@@ -13,4 +13,28 @@
 # limitations under the License.
 
 # TODO: define random api
-# __all__ = ['manual_seed']
+import paddle.fluid as fluid
+
+__all__ = ['manual_seed']
+
+
+def manual_seed(seed):
+    """
+    Set global manual seed for program
+
+    Args:
+        manual_seed(int): random seed for program
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.framework import manual_seed
+            manual_seed(102)
+    """
+    fluid.default_main_program().random_seed = seed
+    fluid.default_startup_program().random_seed = seed
+    program = fluid.Program()
+    program.global_seed(seed)

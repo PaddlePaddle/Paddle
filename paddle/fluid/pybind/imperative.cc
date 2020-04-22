@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -101,7 +102,8 @@ static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
   PADDLE_ENFORCE_EQ(
       kwargs.contains("value"), true,
-      platform::errors::InvalidArgument("Missing argument: value"));
+      platform::errors::NotFound(
+          "The kwargs used to create Varbase misses argument: value"));
 
   auto persistable = kwargs.contains("persistable")
                          ? kwargs["persistable"].cast<bool>()
@@ -158,7 +160,8 @@ static T PyObjectCast(PyObject *obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error &) {
-    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s", typeid(T).name()));
   }
 }
 
@@ -212,8 +215,9 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     }
   }
 
-  PADDLE_ENFORCE_EQ(PyErr_Occurred() == nullptr, true,
-                    py::str(py::handle(PyErr_Occurred())));
+  PADDLE_ENFORCE_EQ(
+      PyErr_Occurred(), nullptr,
+      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
   return result;
 }
 
@@ -287,11 +291,22 @@ void BindImperative(py::module *m_ptr) {
 
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
-  m.def("_set_process_pid", [](int64_t key, pid_t pid) {
-    imperative::SetLoadProcessPID(key, pid);
+  m.def("_set_process_pids", [](int64_t key, py::object &obj) {
+    PADDLE_ENFORCE_EQ(
+        py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj), true,
+        platform::errors::InvalidArgument(
+            "The subprocess ids set in DataLoader is illegal."
+            "Expected data type is tuple or list, but received %s",
+            obj.get_type()));
+    py::list pids = py::cast<py::list>(obj);
+    std::set<pid_t> pids_set = {};
+    for (size_t i = 0; i < pids.size(); i++) {
+      pids_set.insert(pids[i].cast<pid_t>());
+    }
+    imperative::SetLoadProcessPIDs(key, pids_set);
   });
-  m.def("_erase_process_pid",
-        [](int64_t key) { imperative::EraseLoadProcessPID(key); });
+  m.def("_erase_process_pids",
+        [](int64_t key) { imperative::EraseLoadProcessPIDs(key); });
   m.def("_set_process_signal_handler",
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
@@ -503,7 +518,7 @@ void BindImperative(py::module *m_ptr) {
              PADDLE_ENFORCE_EQ(
                  tensor.IsInitialized(), true,
                  platform::errors::InvalidArgument(
-                     "%s is Empty, Please check if it has no data in",
+                     "Tensor of %s is Empty, please check if it has no data.",
                      self.Name()));
              return TensorToPyArray(tensor, true);
            },
@@ -621,6 +636,10 @@ void BindImperative(py::module *m_ptr) {
              return self.MutableGradVar()->Get<framework::LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("_set_grad_type",
+           [](imperative::VarBase &self, framework::proto::VarType::Type type) {
+             self.MutableGradVarBase()->SetType(type);
+           })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
@@ -695,8 +714,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_train_mode", &imperative::Tracer::NoGrad,
-                    &imperative::Tracer::SetNoGrad)
+      .def_property("_train_mode", &imperative::Tracer::HasGrad,
+                    &imperative::Tracer::SetHasGrad)
       .def_property(
           "_expected_place",
           [](const imperative::Tracer &self) -> py::object {

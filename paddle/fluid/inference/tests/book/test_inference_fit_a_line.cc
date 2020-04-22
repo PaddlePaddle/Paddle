@@ -40,10 +40,10 @@ TEST(inference, fit_a_line) {
       cpu_feeds[i].push_back(input);
     }
 
-    std::vector<std::vector<paddle::framework::LoDTensor*>> cpu_fetchs1;
+    std::vector<std::vector<paddle::framework::FetchType*>> cpu_fetchs1;
     cpu_fetchs1.resize(num_threads);
     for (int i = 0; i < num_threads; ++i) {
-      auto* output = new paddle::framework::LoDTensor();
+      auto* output = new paddle::framework::FetchType();
       cpu_fetchs1[i].push_back(output);
     }
 
@@ -58,10 +58,10 @@ TEST(inference, fit_a_line) {
     }
 
 #ifdef PADDLE_WITH_CUDA
-    std::vector<std::vector<paddle::framework::LoDTensor*>> cpu_fetchs2;
+    std::vector<std::vector<paddle::framework::FetchType*>> cpu_fetchs2;
     cpu_fetchs2.resize(num_threads);
     for (int i = 0; i < num_threads; ++i) {
-      auto* output = new paddle::framework::LoDTensor();
+      auto* output = new paddle::framework::FetchType();
       cpu_fetchs2[i].push_back(output);
     }
 
@@ -76,7 +76,9 @@ TEST(inference, fit_a_line) {
     }
 
     for (int i = 0; i < num_threads; ++i) {
-      CheckError<float>(*cpu_fetchs1[i][0], *cpu_fetchs2[i][0]);
+      CheckError<float>(
+          boost::get<paddle::framework::LoDTensor>(*cpu_fetchs1[i][0]),
+          boost::get<paddle::framework::LoDTensor>(*cpu_fetchs2[i][0]));
       delete cpu_fetchs2[i][0];
     }
 #endif

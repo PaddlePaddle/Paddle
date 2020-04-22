@@ -261,15 +261,14 @@ TEST(EOF_EXCEPTION, THROW_EOF) {
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
 bool CheckCudaStatusSuccess(T value, const std::string& msg = "success") {
-  PADDLE_ENFORCE_CUDA_SUCCESS(value, msg);
+  PADDLE_ENFORCE_CUDA_SUCCESS(value);
   return true;
 }
 
 template <typename T>
-bool CheckCudaStatusFailure(
-    T value, const std::string& msg = "self-defined cuda status failed") {
+bool CheckCudaStatusFailure(T value, const std::string& msg) {
   try {
-    PADDLE_ENFORCE_CUDA_SUCCESS(value, msg);
+    PADDLE_ENFORCE_CUDA_SUCCESS(value);
     return false;
   } catch (paddle::platform::EnforceNotMet& error) {
     std::string ex_msg = error.what();
@@ -279,24 +278,29 @@ bool CheckCudaStatusFailure(
 
 TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusSuccess(cudaSuccess));
-  EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorInvalidValue));
-  EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorMemoryAllocation));
+  EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorInvalidValue, "Cuda error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(cudaErrorMemoryAllocation, "Cuda error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CURAND_STATUS_SUCCESS));
-  EXPECT_TRUE(CheckCudaStatusFailure(CURAND_STATUS_VERSION_MISMATCH));
-  EXPECT_TRUE(CheckCudaStatusFailure(CURAND_STATUS_NOT_INITIALIZED));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CURAND_STATUS_VERSION_MISMATCH, "Curand error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CURAND_STATUS_NOT_INITIALIZED, "Curand error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUDNN_STATUS_SUCCESS));
-  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_NOT_INITIALIZED));
-  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_ALLOC_FAILED));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUDNN_STATUS_NOT_INITIALIZED, "Cudnn error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUDNN_STATUS_ALLOC_FAILED, "Cudnn error"));
 
   EXPECT_TRUE(CheckCudaStatusSuccess(CUBLAS_STATUS_SUCCESS));
-  EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_NOT_INITIALIZED));
-  EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_INVALID_VALUE));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUBLAS_STATUS_NOT_INITIALIZED, "Cublas error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUBLAS_STATUS_INVALID_VALUE, "Cublas error"));
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
-  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError));
-  EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError, "Nccl error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError, "Nccl error"));
 #endif
 }
 #endif
@@ -360,6 +364,22 @@ TEST(enforce, cannot_to_string_type) {
   PADDLE_ENFORCE_EQ(list.begin(), list.end());
   list.push_back(4);
   PADDLE_ENFORCE_NE(list.begin(), list.end());
+}
+
+TEST(GET_DATA_SAFELY_MACRO, SUCCESS) {
+  int* a = new int(10);
+  GET_DATA_SAFELY(a, "Input", "X", "dummy");
+}
+
+TEST(GET_DATA_SAFELY_MACRO, FAIL) {
+  bool caught_exception = false;
+  try {
+    int* a = nullptr;
+    GET_DATA_SAFELY(a, "Input", "X", "dummy");
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
 }
 
 TEST(OP_INOUT_CHECK_MACRO, SUCCESS) {

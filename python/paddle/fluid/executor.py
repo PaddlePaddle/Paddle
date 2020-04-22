@@ -329,12 +329,12 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Returns:
        LodTensor|numpy.ndarray
     """
-    assert isinstance(name, str)
+    assert isinstance(name, six.string_types)
     if scope is None:
         scope = global_scope()
     assert isinstance(scope, core._Scope)
 
-    var = scope.find_var(name)
+    var = scope.find_var(_to_name_str(name))
     assert var is not None, (
         "Cannot find " + name + " in scope. Perhaps you need to make the"
         " variable persistable by using var.persistable = True in your"
@@ -354,7 +354,7 @@ def _to_name_str(var):
         elif isinstance(var, six.string_types):
             return str(var)
         elif isinstance(var, Operator):
-            return var.desc.type()
+            return str(id(var))
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -455,12 +455,14 @@ handler = FetchHandlerExample(var_dict=var_dict)
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
-    and single/multiple-CPU running. When construction the Executor,
-    the device is required.
+    and single/multiple-CPU running.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents
-            the executor run on which device.
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
+            which device the executor runs on. When this parameter is None, PaddlePaddle
+            will set the default device according to its installation version. If Paddle
+            is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
+            GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
 
     Returns:
         Executor
@@ -473,9 +475,13 @@ class Executor(object):
           import numpy
           import os
 
-          use_cuda = True
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
+          # Set place explicitly.
+          # use_cuda = True
+          # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          # exe = fluid.Executor(place)
+
+          # If you don't set place, PaddlePaddle sets the default device.
+          exe = fluid.Executor()
 
           train_program = fluid.Program()
           startup_program = fluid.Program()
@@ -498,14 +504,19 @@ class Executor(object):
 
           # Or, compiled the program and run. See `CompiledProgram`
           # for more detail.
-          # NOTE: If you use CPU to run the program, you need
-          # to specify the CPU_NUM, otherwise, fluid will use
-          # all the number of the logic core as the CPU_NUM,
-          # in that case, the batch size of the input should be
-          # greater than CPU_NUM, if not, the process will be
+          # NOTE: If you use CPU to run the program or Paddle is
+          # CPU version, you need to specify the CPU_NUM, otherwise,
+          # fluid will use all the number of the logic core as
+          # the CPU_NUM, in that case, the batch size of the input
+          # should be greater than CPU_NUM, if not, the process will be
           # failed by an exception.
-          if not use_cuda:
-              os.environ['CPU_NUM'] = str(2)
+
+          # Set place explicitly.
+          # if not use_cuda:
+          #     os.environ['CPU_NUM'] = str(2)
+
+          # If you don't set place and PaddlePaddle is CPU version
+          os.environ['CPU_NUM'] = str(2)
 
           compiled_prog = compiler.CompiledProgram(
               train_program).with_data_parallel(
@@ -515,8 +526,14 @@ class Executor(object):
                                fetch_list=[loss.name])
     """
 
-    def __init__(self, place):
-        self.place = place
+    def __init__(self, place=None):
+        if place is None:
+            if core.is_compiled_with_cuda():
+                self.place = core.CUDAPlace(0)
+            else:
+                self.place = core.CPUPlace()
+        else:
+            self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()
@@ -914,14 +931,14 @@ class Executor(object):
             return_merged(bool): This parameter indicates whether fetched variables (the variables
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
-                of :code:`Tensor` ( :code:`return_numpy` is False) or a two-dimensional list of
-                :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
-                the type of the return value is an one-dimensional list of :code:`Tensor` ( :code:`return_numpy`
-                is False) or an one-dimensional list of :code:`numpy.ndarray` ( :code:`return_numpy` is True).
-                Please see Examples 2 for more details. If the lengths of fetched results are variant, please
-                set :code:`return_merged` as False, which denotes that the fetched results will not be merged.
-                The default is True, but it is just for the compatibility, and may use False as default value
-                in the future version.
+                of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
+                list of :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
+                the type of the return value is an one-dimensional list of :code:`Tensor` / :code:`LoDTensorArray`
+                ( :code:`return_numpy` is False) or an one-dimensional list of :code:`numpy.ndarray`
+                ( :code:`return_numpy` is True). Please see Examples 2 for more details. If the lengths of fetched
+                results are variant, please set :code:`return_merged` as False, which denotes that the fetched
+                results will not be merged. The default is True, but it is just for the compatibility, and may
+                use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not 
@@ -963,13 +980,17 @@ class Executor(object):
               loss = fluid.layers.mean(hidden)
               adam = fluid.optimizer.Adam()
               adam.minimize(loss)
+              i = fluid.layers.zeros(shape=[1], dtype='int64')
+              array = fluid.layers.array_write(x=loss, i=i)
 
               # Run the startup program once and only once.
               exe.run(fluid.default_startup_program())
 
               x = numpy.random.random(size=(10, 1)).astype('float32')
-              outs = exe.run(feed={'X': x},
-                             fetch_list=[loss.name])
+              loss_val, array_val = exe.run(feed={'X': x},
+                                            fetch_list=[loss.name, array.name])
+              print(array_val)
+              # [array([0.02153828], dtype=float32)]
 
         Examples 2:
             .. code-block:: python
@@ -1209,7 +1230,7 @@ class Executor(object):
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        arr = scope.find_var(fetch_var_name).get_fetch_list()
         tensors = arr._move_to_list()
         if return_numpy:
             return as_numpy(tensors)
