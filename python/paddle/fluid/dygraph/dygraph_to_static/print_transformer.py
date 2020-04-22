@@ -49,7 +49,7 @@ class PrintTransformer(gast.NodeTransformer):
 
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-        if node.func.id == 'print':
+        if isinstance(node.func, gast.Name) and node.func.id == 'print':
             if self._without_format(node):
                 if self._is_tensor_node(node.args[0]):
                     to_print_node(node)

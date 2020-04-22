@@ -26,16 +26,6 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
-@signature_safe_contextmanager
-def stdout_redirector(stream):
-    old_stdout = sys.stdout
-    sys.stdout = stream
-    try:
-        yield
-    finally:
-        sys.stdout = old_stdout
-
-
 # 1. print VarBase
 def dyfunc_print_variable(x):
     x_v = fluid.dygraph.to_variable(x)
@@ -81,11 +71,8 @@ class TestPrintBase(unittest.TestCase):
         raise NotImplementedError("Print test should implement set_test_func")
 
     def get_dygraph_output(self):
-        f = io.StringIO()
-        with stdout_redirector(f):
-            with fluid.dygraph.guard():
-                self.dygraph_func(self.input)
-        return f.getvalue()
+        with fluid.dygraph.guard():
+            self.dygraph_func(self.input)
 
     def get_static_output(self):
         # TODO: How to catch C++ stdout to python
@@ -104,11 +91,8 @@ class TestPrintVariable(TestPrintBase):
         self.dygraph_func = dyfunc_print_variable
 
     def test_transformed_static_result(self):
-        print(self.get_dygraph_output())
+        self.get_dygraph_output()
         self.get_static_output()
-        # dy_out = self.get_dygraph_output()
-        # static_out = self.get_static_output()
-        # self.assertEqual(dy_out, static_out)
 
 
 class TestPrintNdArray(TestPrintBase):
