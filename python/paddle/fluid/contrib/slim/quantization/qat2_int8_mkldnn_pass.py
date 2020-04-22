@@ -151,6 +151,7 @@ class Qat2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.op().has_attr("out_threshold"):
                 attr_scale = op.op().attr("out_threshold")
+                if attr_scale == 0.0: continue
                 scale = np.array(1.0 / attr_scale).astype(np.float64)
                 scale_lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
