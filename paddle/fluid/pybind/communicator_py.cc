@@ -84,6 +84,20 @@ void BindCommunicator(py::module* m) {
       .def(py::init([](const std::string& mode, const RpcCtxMap& send_ctx,
                        const RpcCtxMap& recv_ctx, Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
+        if (mode == "HALF_ASYNC") {
+          Communicator::InitInstance<HalfAsyncCommunicator>(send_ctx, recv_ctx,
+                                                            param_scope, envs);
+        } else if (mode == "ASYNC") {
+          Communicator::InitInstance<AsyncCommunicator>(send_ctx, recv_ctx,
+                                                        param_scope, envs);
+        } else if (mode == "SYNC") {
+          Communicator::InitInstance<SyncCommunicator>(send_ctx, recv_ctx,
+                                                       param_scope, envs);
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "unsuported communicator MODE"));
+        }
+
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)

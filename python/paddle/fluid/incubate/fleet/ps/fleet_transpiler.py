@@ -137,9 +137,23 @@ class FleetTranspiler(Fleet):
         if isinstance(self._strategy, GeoStrategy):
             kwargs = sync_strategy_envs()
 
-        self._communicator = Communicator(
-            self.main_program, trainer_config.mode, kwargs,
-            trainer_config.get_communicator_flags())
+        if trainer_config.mode in [
+                DistributedMode.SYNC, DistributedMode.ASYNC,
+                DistributedMode.HALF_ASYNC
+        ]:
+            send_ctx = fleet.compiled_config.get_communicator_send_context()
+            recv_ctx = fleet.compiled_config.get_communicator_recv_context()
+
+            self._communicator = Communicator(
+                trainer_config.mode, kwargs,
+                trainer_config.get_communicator_flags())
+            self._communicator.init_with_ctx(send_ctx, recv_ctx)
+
+        else:
+            self._communicator = Communicator(
+                trainer_config.mode, kwargs,
+                trainer_config.get_communicator_flags())
+            self._communicator.init_with_program(self.main_program)
 
         if not self._communicator.is_running():
             self._communicator.start()
@@ -498,50 +512,6 @@ class FleetTranspiler(Fleet):
 
         fluid.io.save_persistables(executor, dirname, main_program, None)
 
-    # def _transpile(self, config):
-    #     program_config = self._strategy.get_program_config()
-    #
-    #     # _origin_main_program is a deep copy for default_main_program, for inference
-    #     self._origin_main_program = default_main_program().clone(for_test=False)
-    #     self._origin_startup_program = default_startup_program().clone(
-    #         for_test=False)
-    #
-    #     if program_config.geo_sgd_mode:
-    #         from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
-    #         self._transpiler = GeoSgdTranspiler(program_config)
-    #     else:
-    #         self._transpiler = OriginTranspiler(program_config)
-    #     self._transpiler._set_server_config(
-    #         self._strategy.get_server_runtime_config())
-    #
-    #     if self.is_worker():
-    #         self._transpiler.transpile(
-    #             trainer_id=fleet.worker_id(),
-    #             pservers=fleet.server_endpoints(to_string=True),
-    #             trainers=fleet.worker_num(),
-    #             sync_mode=program_config.sync_mode)
-    #
-    #         if isinstance(self._role_maker, MPISymetricRoleMaker):
-    #             program_config.wait_port = False
-    #             self._strategy.set_program_config(program_config)
-    #
-    #         self.main_program = self._transpiler.get_trainer_program(
-    #             wait_port=program_config.wait_port)
-    #         self.startup_program = default_startup_program()
-    #         if program_config.geo_sgd_mode:
-    #             self.vars_info = self._transpiler._get_vars_info()
-    #             self.startup_program = self._transpiler.trainer_startup_program
-    #     else:
-    #         self._transpiler.transpile(
-    #             trainer_id=fleet.worker_id(),
-    #             pservers=fleet.server_endpoints(to_string=True),
-    #             trainers=fleet.worker_num(),
-    #             sync_mode=program_config.sync_mode,
-    #             current_endpoint=self.server_endpoints()[self.server_id()])
-    #         self.main_program, self.startup_program = \
-    #             self._transpiler.get_pserver_programs(
-    #                 self.server_endpoints()[self.server_id()])
-
     def _set_opt_info(self, opt_info):
         """
         this function saves the result from DistributedOptimizer.minimize()
@@ -893,6 +863,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
             fleet._origin_main_program, fleet._origin_startup_program,
             self._strategy, fleet._role_maker)
 
+        fleet.compiled_config = compiled_config
         fleet.main_program, fleet.startup_program = \
             self._build_trainer_programs(compiled_config) if fleet.is_worker() \
                 else self._build_pserver_programs(compiled_config)

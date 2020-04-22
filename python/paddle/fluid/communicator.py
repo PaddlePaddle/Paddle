@@ -25,7 +25,7 @@ __all__ = ['Communicator']
 
 
 class Communicator(object):
-    def __init__(self, program, mode, kwargs=None, envs={}):
+    def __init__(self, mode, kwargs=None, envs={}):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -82,8 +82,18 @@ class Communicator(object):
         elif mode == DistributedMode.GEO:
             mode_str = "GEO"
 
-        self.communicator_ = core.DistCommunicator(mode_str, program.desc,
-                                                   global_scope(), envs)
+        self.mode = mode_str
+        self.envs = envs
+        self.communicator_ = None
+
+    def init_with_program(self, program):
+        self.communicator_ = core.DistCommunicator(self.mode, program.desc,
+                                                   global_scope(), self.envs)
+
+    def init_with_ctx(self, send_ctx, recv_ctx):
+        self.communicator_ = core.DistCommunicator(self.mode, send_ctx,
+                                                   recv_ctx,
+                                                   global_scope(), self.envs)
 
     def start(self):
         """

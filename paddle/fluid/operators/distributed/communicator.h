@@ -224,6 +224,26 @@ class Communicator {
     }
   }
 
+  template <typename T>
+  static Communicator* InitInstance(
+      const RpcCtxMap& send_ctx, const RpcCtxMap& recv_ctx, Scope* recv_scope,
+      const std::map<std::string, std::string>& envs) {
+    std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>, send_ctx,
+                   recv_ctx, recv_scope, std::ref(envs));
+    return communicator_.get();
+  }
+
+  // Init is called by InitInstance.
+  template <typename T>
+  static void InitWithRpcCtx(const RpcCtxMap& send_ctx,
+                             const RpcCtxMap& recv_ctx, Scope* recv_scope,
+                             const std::map<std::string, std::string>& envs) {
+    if (communicator_.get() == nullptr) {
+      communicator_.reset(new T(std::ref(envs)));
+      communicator_->InitImpl(send_ctx, recv_ctx, recv_scope);
+    }
+  }
+
  protected:
   bool running_ = false;
   static std::shared_ptr<Communicator> communicator_;
