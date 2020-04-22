@@ -24,7 +24,7 @@ def load_image(image_path, max_size=400, shape=None):
         transforms.Resize(size), transforms.Permute(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-    image = transform(image, None)[0][np.newaxis, :3, :, :]
+    image = transform(image)[np.newaxis, :3, :, :]
     image = fluid.dygraph.to_variable(image)
     return image
 
@@ -123,8 +123,8 @@ def main():
         parameter_list=[target], learning_rate=FLAGS.lr)
     model.prepare(optimizer, style_loss)
 
-    content_fetures = model.test(content)
-    style_features = model.test(style)
+    content_fetures = model.test_batch(content)
+    style_features = model.test_batch(style)
 
     # 将两个特征组合，作为损失函数的label传给模型
     feats = style_features + [content_fetures[-2]]
@@ -132,7 +132,7 @@ def main():
     # 训练5000个step，每500个step画一下生成的图像查看效果
     steps = FLAGS.steps
     for i in range(steps):
-        outs = model.train(target, feats)
+        outs = model.train_batch(target, feats)
         if i % 500 == 0:
             print('iters:', i, 'loss:', outs[0][0])
 
