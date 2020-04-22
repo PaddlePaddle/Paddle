@@ -155,7 +155,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
     .. math::
         Out = \operatorname{sum}((input - label)^2)
 
-    where `input` and `label` are `float32` tensors of arbitrary shapes.
+    where `input` and `label` are `float32` tensors of same shape.
 
     Parameters:
         reduction (string, optional): The reduction method for the output,
