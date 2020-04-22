@@ -174,9 +174,15 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
+  std::vector<ir::Node *> isolated_vars;
+
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
+
+      if (node->inputs.empty() && node->outputs.empty()) {
+        isolated_vars.emplace_back(node.get());
+      }
     }
   }
 
@@ -184,6 +190,10 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   result.Set(details::kGraphVars, new details::GraphVars(places_.size()));
   result.Set(details::kGraphDepVars, new details::GraphDepVars);
   result.Set(kGraphOps, new GraphOps);
+
+  for (auto *var_node : isolated_vars) {
+    CreateIsolatedVarNode(&result, var_node);
+  }
 
   bool is_forwarding = true;
 
@@ -580,6 +590,15 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
     const std::string &og) const {
   PADDLE_ENFORCE(all_vars_.count(og) != 0);
   return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
+}
+
+void MultiDevSSAGraphBuilderBase::CreateIsolatedVarNode(
+    ir::Graph *graph, ir::Node *var_node) const {
+  for (size_t i = 0; i < places_.size(); ++i) {
+    VLOG(10) << "Create isolated var node " << var_node->Name() << " at device "
+             << i;
+    CreateOrGetLatestVarHandle(graph, var_node, places_[i], i);
+  }
 }
 
 void AllReduceSSAGraphBuilder::InsertCollectiveOp(
