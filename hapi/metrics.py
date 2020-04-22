@@ -48,9 +48,16 @@ class Metric(object):
                                   format(self.__class__.__name__))
 
     @abc.abstractmethod
-    def update(self, *args, **kwargs):
+    def update(self, *args):
         """
         Update states for metric
+
+        Inputs of :code:`update` is the outputs of :code:`Metric.add_metric_op`,
+        if :code:`add_metric_op` is not defined, the inputs of :code:`update`
+        will be flatten arguments of **output** of mode and **label** from data:
+        :code:`update(output1, output2, ..., label1, label2,...)`
+
+        see :code:`Metric.add_metric_op`
         """
         raise NotImplementedError("function 'update' not implemented in {}.".
                                   format(self.__class__.__name__))
@@ -72,11 +79,26 @@ class Metric(object):
         raise NotImplementedError("function 'name' not implemented in {}.".
                                   format(self.__class__.__name__))
 
-    def add_metric_op(self, pred, label):
+    def add_metric_op(self, *args):
         """
-        Add process op for metric in program
+        This API is advanced usage to accelerate metric calculating, calulations
+        from outputs of model to the states which should be updated by Metric can
+        be defined here, where Paddle OPs is also supported. Outputs of this API
+        will be the inputs of "Metric.update".
+
+        If :code:`add_metric_op` is defined, it will be called with **outputs**
+        of model and **labels** from data as arguments, all outputs and labels
+        will be concatenated and flatten and each filed as a separate argument
+        as follows:
+        :code:`add_metric_op(output1, output2, ..., label1, label2,...)`
+
+        If :code:`add_metric_op` is not defined, default behaviour is to pass
+        input to output, so output format will be:
+        :code:`return output1, output2, ..., label1, label2,...`
+
+        see :code:`Metric.update`
         """
-        return pred, label
+        return args
 
 
 class Accuracy(Metric):
@@ -91,12 +113,12 @@ class Accuracy(Metric):
         self._init_name(name)
         self.reset()
 
-    def add_metric_op(self, pred, label, *args, **kwargs):
-        pred = fluid.layers.argsort(pred[0], descending=True)[1][:, :self.maxk]
-        correct = pred == label[0]
+    def add_metric_op(self, pred, label, *args):
+        pred = fluid.layers.argsort(pred, descending=True)[1][:, :self.maxk]
+        correct = pred == label
         return correct
 
-    def update(self, correct, *args, **kwargs):
+    def update(self, correct, *args):
         accs = []
         for i, k in enumerate(self.topk):
             num_corrects = correct[:, :k].sum()

@@ -67,7 +67,7 @@ def to_list(value):
     if value is None:
         return value
     if isinstance(value, (list, tuple)):
-        return value
+        return list(value)
     return [value]
 
 
@@ -193,17 +193,17 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
         return self._run(inputs, labels)
 
-    def eval(self, inputs, labels=None):
+    def eval_batch(self, inputs, labels=None):
         self.mode = 'eval'
         return self._run(inputs, labels)
 
-    def test(self, inputs):
+    def test_batch(self, inputs):
         self.mode = 'test'
         return self._run(inputs, None)
 
@@ -473,7 +473,7 @@ class StaticGraphAdapter(object):
             if mode != 'test':
                 for metric in self.model._metrics:
                     metrics.append(
-                        to_list(metric.add_metric_op(outputs, labels)))
+                        to_list(metric.add_metric_op(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = fluid.layers.sum(losses)
@@ -567,7 +567,7 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train(self, inputs, labels=None):
+    def train_batch(self, inputs, labels=None):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         super(Model, self.model).train()
@@ -593,14 +593,14 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.add_metric_op(
-                to_list(outputs), to_list(labels))
+                *(to_list(outputs) + to_list(labels)))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
             if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
-    def eval(self, inputs, labels=None):
+    def eval_batch(self, inputs, labels=None):
         super(Model, self.model).eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
@@ -632,7 +632,8 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(to_list(outputs), labels)
+            metric_outs = metric.add_metric_op(
+                *(to_list(outputs) + to_list(labels)))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -641,7 +642,7 @@ class DynamicGraphAdapter(object):
         return ([to_numpy(l) for l in losses], metrics) \
             if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
-    def test(self, inputs):
+    def test_batch(self, inputs):
         super(Model, self.model).eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
@@ -740,14 +741,14 @@ class Model(fluid.dygraph.Layer):
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train(self, *args, **kwargs):
-        return self._adapter.train(*args, **kwargs)
+    def train_batch(self, *args, **kwargs):
+        return self._adapter.train_batch(*args, **kwargs)
 
-    def eval(self, *args, **kwargs):
-        return self._adapter.eval(*args, **kwargs)
+    def eval_batch(self, *args, **kwargs):
+        return self._adapter.eval_batch(*args, **kwargs)
 
-    def test(self, *args, **kwargs):
-        return self._adapter.test(*args, **kwargs)
+    def test_batch(self, *args, **kwargs):
+        return self._adapter.test_batch(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         if ParallelEnv().local_rank == 0:
@@ -798,6 +799,13 @@ class Model(fluid.dygraph.Layer):
                     format(key, list(state.shape), list(param.shape)))
             return param, state
 
+        def _strip_postfix(path):
+            path, ext = os.path.splitext(path)
+            assert ext in ['', '.pdparams', '.pdopt', '.pdmodel'], \
+                    "Unknown postfix {} from weights".format(ext)
+            return path
+
+        path = _strip_postfix(path)
         param_state = _load_state_from_path(path + ".pdparams")
         assert param_state, "Failed to load parameters, please check path."
 
@@ -808,7 +816,7 @@ class Model(fluid.dygraph.Layer):
             except ValueError as err:
                 if skip_mismatch:
                     warnings.warn(
-                        ("Skip loading for {}. ".format(key) + err.message))
+                        ("Skip loading for {}. ".format(key) + str(err)))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
@@ -928,35 +936,35 @@ class Model(fluid.dygraph.Layer):
         Args:
             train_data (Dataset|DataLoader): An iterable data loader is used for 
                 train. An instance of paddle paddle.io.Dataset or 
-                paddle.io.Dataloader is recomended.
+                paddle.io.Dataloader is recomended. Default: None.
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation at the end of epoch. If None, will not do evaluation. 
                 An instance of paddle.io.Dataset or paddle.io.Dataloader 
-                is recomended.
+                is recomended. Default: None.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored.
-            epochs (int): Integer number. The number of epochs to train the model.
+                parameter will be ignored. Default: 1.
+            epochs (int): Integer number. The number of epochs to train the model. Default: 1.
             eval_freq (int): The frequency, in number of epochs, an evalutation
-                is performed.
+                is performed. Default: 1.
             log_freq (int): The frequency, in number of steps, the training logs
-                are printed.
+                are printed. Default: 10.
             save_dir(str|None): The directory to save checkpoint during training.
-                If None, will not save checkpoint.
-            save_freq (int): The frequency, in number of epochs, to save checkpoint.
+                If None, will not save checkpoint. Default: None.
+            save_freq (int): The frequency, in number of epochs, to save checkpoint. Default: 1.
             verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch.
+                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
             drop_last (bool): whether drop the last incomplete batch of train_data 
                 when dataset size is not divisible by the batch size. When train_data 
-                is an instance of Dataloader, this parameter will be ignored.
+                is an instance of Dataloader, this parameter will be ignored. Default: False.
             shuffle (bool): whther to shuffle train_data. When train_data is an instance 
-                of Dataloader, this parameter will be ignored.
+                of Dataloader, this parameter will be ignored. Default: True.
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored.
+                both the instance of Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
-                are automatically inserted.
+                are automatically inserted. Default: None.
         """
 
         assert train_data is not None, \
@@ -1058,18 +1066,20 @@ class Model(fluid.dygraph.Layer):
                 evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored.
+                When eval_data is the instance of Dataloader, this argument will be ignored.
+                Default: 1.
             log_freq (int): The frequency, in number of steps, the eval logs
-                are printed.
+                are printed. Default: 10.
             verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch.
+                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
             num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored.
+                both the instance of Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
-                are automatically inserted.
+                are automatically inserted. Default: None.
+        Returns:
+            dict: Result of metric.
         """
 
         if fluid.in_dygraph_mode():
@@ -1125,7 +1135,7 @@ class Model(fluid.dygraph.Layer):
                 test_data,
                 batch_size=1,
                 num_workers=0,
-                stack_outputs=True):
+                stack_outputs=False):
         """
         FIXME: add more comments and usage
         Args:
@@ -1134,22 +1144,24 @@ class Model(fluid.dygraph.Layer):
                 is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored.
+                argument will be ignored. Default: 1.
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored.
+                both the instance of Dataloader, this argument will be ignored. Default: 0.
             stack_output (bool): whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
                 is False. stack_outputs as False is used for LoDTensor output situation,
-                it is recommended set as True if outputs contains no LoDTensor. Default False
+                it is recommended set as True if outputs contains no LoDTensor. Default: False.
+        Returns:
+            list: output of models.
         """
 
         if fluid.in_dygraph_mode():
             feed_list = None
         else:
-            feed_list = [x.forward() for x in self._inputs + self._labels]
+            feed_list = [x.forward() for x in self._inputs]
 
         if test_data is not None and isinstance(test_data, Dataset):
             test_sampler = DistributedBatchSampler(
@@ -1171,33 +1183,30 @@ class Model(fluid.dygraph.Layer):
             loader = test_loader()
 
         outputs = []
+        count = 0
         for data in tqdm.tqdm(loader):
             data = flatten(data)
-            outputs.append(self.test(data[:len(self._inputs)]))
+            out = to_list(self.test_batch(data[:len(self._inputs)]))
+            outputs.append(out)
+            count += out[0].shape[0]
+
+        if test_loader is not None and self._adapter._nranks > 1 \
+                    and isinstance(test_loader, DataLoader) \
+                    and count > len(test_loader.dataset):
+            size = outputs[-1][0].shape[0] - (count - len(test_loader.dataset))
+            outputs[-1] = [o[:size] for o in outputs[-1]]
 
         # NOTE: for lod tensor output, we should not stack outputs
         # for stacking may loss its detail info
+
         outputs = list(zip(*outputs))
+
         if stack_outputs:
-            outputs = [np.stack(outs, axis=0) for outs in outputs]
+            outputs = [np.vstack(outs) for outs in outputs]
 
         self._test_dataloader = None
-        if test_loader is not None and self._adapter._nranks > 1 \
-                    and isinstance(test_loader, DataLoader):
-            outputs = [o[:len(test_loader.dataset)] for o in outputs]
-        return outputs
 
-    def set_eval_data(self, eval_data):
-        """
-        Args:
-            eval_data (Dataset|DataLoader|None): An iterable data loader is used for 
-                eval. An instance of paddle.io.Dataset or 
-                paddle.io.Dataloader is recomended. 
-        """
-        assert isinstance(
-            eval_data,
-            DataLoader), "eval_data must be a instance of Dataloader!"
-        self._test_dataloader = eval_data
+        return outputs
 
     def _run_one_epoch(self,
                        data_loader,
@@ -1235,11 +1244,11 @@ class Model(fluid.dygraph.Layer):
 
             callbacks.on_batch_begin(mode, step, logs)
             if mode == 'train':
-                outs = self.train(data[:len(self._inputs)],
-                                  data[len(self._inputs):])
+                outs = self.train_batch(data[:len(self._inputs)],
+                                        data[len(self._inputs):])
             else:
-                outs = self.eval(data[:len(self._inputs)],
-                                 data[len(self._inputs):])
+                outs = self.eval_batch(data[:len(self._inputs)],
+                                       data[len(self._inputs):])
 
             # losses
             loss = outs[0] if self._metrics else outs
@@ -1267,7 +1276,7 @@ class Model(fluid.dygraph.Layer):
 
         if mode == 'train':
             assert epoch is not None, 'when mode is train, epoch must be given'
-            callbacks.on_epoch_end(epoch)
+            callbacks.on_epoch_end(epoch, logs)
 
         return logs
 

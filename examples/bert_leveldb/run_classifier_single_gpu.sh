@@ -4,7 +4,7 @@ TASK_NAME='MNLI'
 DATA_PATH="./data/glue_data/MNLI/"
 CKPT_PATH="./data/saved_model/mnli_models"
 
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=0
 
 # start fine-tuning
 python3.7 bert_classifier.py\

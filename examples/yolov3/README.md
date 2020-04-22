@@ -101,10 +101,9 @@ YOLOv3 的网络结构由基础特征提取网络、multi-scale特征融合层�
 
 ### 模型训练
 
-数据准备完毕后，可使用`main.py`脚本启动训练和评估，如下脚本会自动每epoch交替进行训练和模型评估，并将checkpoint默认保存在`yolo_checkpoint`目录下。
+数据准备完成后，可使用`main.py`脚本启动训练和评估，如下脚本会自动每epoch交替进行训练和模型评估，并将checkpoint默认保存在`yolo_checkpoint`目录下。
 
 YOLOv3模型训练总batch_size为64训练，以下以使用4卡Tesla P40每卡batch_size为16训练介绍训练方式。对于静态图和动态图，多卡训练中`--batch_size`为每卡上的batch_size，即总batch_size为`--batch_size`乘以卡数。
-
 
 `main.py`脚本参数可通过如下命令查询
 

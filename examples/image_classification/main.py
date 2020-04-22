@@ -18,8 +18,6 @@ from __future__ import print_function
 import argparse
 import contextlib
 import os
-import sys
-sys.path.append('../')
 
 import time
 import math
@@ -76,6 +74,9 @@ def main():
     device = set_device(FLAGS.device)
     fluid.enable_dygraph(device) if FLAGS.dynamic else None
 
+    model_list = [x for x in models.__dict__["__all__"]]
+    assert FLAGS.arch in model_list, "Expected FLAGS.arch in {}, but received {}".format(
+        model_list, FLAGS.arch)
     model = models.__dict__[FLAGS.arch](pretrained=FLAGS.eval_only and
                                         not FLAGS.resume)
 
@@ -86,15 +87,29 @@ def main():
     labels = [Input([None, 1], 'int64', name='label')]
 
     train_dataset = ImageNetDataset(
-        os.path.join(FLAGS.data, 'train'), mode='train')
-    val_dataset = ImageNetDataset(os.path.join(FLAGS.data, 'val'), mode='val')
+        os.path.join(FLAGS.data, 'train'),
+        mode='train',
+        image_size=FLAGS.image_size,
+        resize_short_size=FLAGS.resize_short_size)
+
+    val_dataset = ImageNetDataset(
+        os.path.join(FLAGS.data, 'val'),
+        mode='val',
+        image_size=FLAGS.image_size,
+        resize_short_size=FLAGS.resize_short_size)
 
     optim = make_optimizer(
         np.ceil(
             len(train_dataset) * 1. / FLAGS.batch_size / ParallelEnv().nranks),
         parameter_list=model.parameters())
 
-    model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 5)), inputs, labels)
+    model.prepare(
+        optim,
+        CrossEntropy(),
+        Accuracy(topk=(1, 5)),
+        inputs,
+        labels,
+        FLAGS.device)
 
     if FLAGS.eval_only:
         model.evaluate(
@@ -152,7 +167,7 @@ if __name__ == '__main__':
         type=str,
         help="checkpoint path to resume")
     parser.add_argument(
-        "--eval-only", action='store_true', help="enable dygraph mode")
+        "--eval-only", action='store_true', help="only evaluate the model")
     parser.add_argument(
         "--lr-scheduler",
         default='piecewise',
@@ -167,6 +182,13 @@ if __name__ == '__main__':
     parser.add_argument(
         "--weight-decay", default=1e-4, type=float, help="weight decay")
     parser.add_argument("--momentum", default=0.9, type=float, help="momentum")
+    parser.add_argument(
+        "--image-size", default=224, type=int, help="intput image size")
+    parser.add_argument(
+        "--resize-short-size",
+        default=256,
+        type=int,
+        help="short size of keeping ratio resize")
     FLAGS = parser.parse_args()
     assert FLAGS.data, "error: must provide data path"
     main()

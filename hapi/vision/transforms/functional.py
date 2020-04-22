@@ -26,6 +26,8 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
+__all__ = ['flip', 'resize']
+
 
 def flip(image, code):
     """

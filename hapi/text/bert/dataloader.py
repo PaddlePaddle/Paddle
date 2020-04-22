@@ -30,6 +30,7 @@ from hapi.distributed import DistributedBatchSampler
 from hapi.text.bert.data_processor import DataProcessor, XnliProcessor, ColaProcessor, MrpcProcessor, MnliProcessor
 from hapi.text.bert.batching import prepare_batch_data
 import hapi.text.tokenizer.tokenization as tokenization
+from paddle.fluid.dygraph.parallel import ParallelEnv, ParallelStrategy
 
 __all__ = [
     'BertInputExample', 'BertInputFeatures', 'SingleSentenceDataset',
@@ -227,6 +228,9 @@ class SingleSentenceDataset(Dataset):
         if line_processor is None:
             line_processor = default_line_processor
 
+        if ParallelEnv().nranks > 1:
+            leveldb_file = leveldb_file + "_" + str(ParallelEnv().local_rank)
+
         if not os.path.exists(leveldb_file):
             print("putting data %s into leveldb %s" %
                   (input_file, leveldb_file))
@@ -384,7 +388,12 @@ class BertDataLoader(object):
                  quotechar=None,
                  device=fluid.CPUPlace(),
                  num_workers=0,
-                 return_list=True):
+                 return_list=True,
+                 phase="train"):
+
+        assert phase in [
+            "train", "predict", "test"
+        ], "phase of BertDataLoader should be in [train, predict, test], but get %s" % phase
 
         self.dataset = SingleSentenceDataset(tokenizer, label_list,
                                              max_seq_length, mode)
@@ -394,15 +403,21 @@ class BertDataLoader(object):
                 input_file, label_list, max_seq_length, tokenizer,
                 line_processor, delimiter, quotechar)
         elif mode == "leveldb":
-            #prepare_leveldb(self, input_file, leveldb_file, label_list, max_seq_length, tokenizer, line_processor=None, delimiter="\t", quotechar=None):
             self.dataset.prepare_leveldb(input_file, leveldb_file, label_list,
                                          max_seq_length, tokenizer,
                                          line_processor, delimiter, quotechar)
         else:
             raise ValueError("mode should be in [all_in_memory, leveldb]")
 
-        self.sampler = DistributedBatchSampler(
-            self.dataset, batch_size, shuffle=shuffle, drop_last=drop_last)
+        if phase == "train":
+            self.sampler = DistributedBatchSampler(
+                self.dataset, batch_size, shuffle=shuffle, drop_last=drop_last)
+        elif phase == "test" or phase == "predict":
+            self.sampler = BatchSampler(
+                dataset=self.dataset,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last)
 
         self.dataloader = DataLoader(
             dataset=self.dataset,

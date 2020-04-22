@@ -43,13 +43,13 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch 
 ### 单卡预测
 执行如下命令进行预测
 ```bash
-python -u main.py --arch resnet50 -d --evaly-only /path/to/imagenet 
+python -u main.py --arch resnet50 -d --eval-only /path/to/imagenet 
 ```
 
 ### 多卡预测
 执行如下命令进行多卡预测
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch resnet50 --evaly-only /path/to/imagenet
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch resnet50 --eval-only /path/to/imagenet
 ```
 
 
@@ -71,17 +71,23 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch 
 * **weight-decay**: 模型权重正则化系数，默认值：1e-4
 * **momentum**: SGD优化器的动量，默认值：0.9
 
+注意：使用```--resume```恢复训练时，假如你的模型路径为```./output/118.pdparams```，你输入的路径不需要带后缀，即```--resume ./output/118```即可。
 
 ## 模型
 
 | 模型 | top1 acc | top5 acc |
 | --- | --- | --- |
+| [ResNet18](https://paddle-hapi.bj.bcebos.com/models/resnet18.pdparams) | 71.72 | 90.60 |
+| [ResNet34](https://paddle-hapi.bj.bcebos.com/models/resnet34.pdparams) | 75.02 | 92.31 |
 | [ResNet50](https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams) | 76.27 | 93.03 |
+| [ResNet101](https://paddle-hapi.bj.bcebos.com/models/resnet101.pdparams) | 78.33 | 94.04 |
+| [ResNet152](https://paddle-hapi.bj.bcebos.com/models/resnet152.pdparams) | 78.78 | 94.40 |
 | [vgg16](https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams) | 71.92 | 90.65 | 
 | [mobilenet_v1](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v1_x1.0.pdparams) | 71.16 | 89.89 | 
 | [mobilenet_v2](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams) | 72.30 | 90.74 | 
+| [darknet53](https://paddle-hapi.bj.bcebos.com/models/darknet53.pdparams) | 78.43 | 94.24 | 
 
-上述模型的复现参数请参考scripts下的脚本。
+上述部分模型的复现参数请参考scripts下的脚本。需要注意的是darknet要使用image size为256的输入来预测, 即```--image-size 256```
 
 
 ## 参考文献

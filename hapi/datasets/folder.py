@@ -18,7 +18,7 @@ import cv2
 
 from paddle.io import Dataset
 
-__all__ = ["DatasetFolder"]
+__all__ = ["DatasetFolder", "ImageFolder"]
 
 
 def has_valid_extension(filename, extensions):
@@ -150,7 +150,7 @@ class DatasetFolder(Dataset):
         path, target = self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:
-            sample, target = self.transform(sample, target)
+            sample, target = self.transform(sample)
 
         return sample, target
 
@@ -164,3 +164,80 @@ IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif',
 
 def cv2_loader(path):
     return cv2.imread(path)
+
+
+class ImageFolder(Dataset):
+    """A generic data loader where the samples are arranged in this way:
+
+        root/1.ext
+        root/2.ext
+        root/sub_dir/3.ext
+
+    Args:
+        root (string): Root directory path.
+        loader (callable, optional): A function to load a sample given its path.
+        extensions (tuple[string], optional): A list of allowed extensions.
+            both extensions and is_valid_file should not be passed.
+        transform (callable, optional): A function/transform that takes in
+            a sample and returns a transformed version.
+        is_valid_file (callable, optional): A function that takes path of a file
+            and check if the file is a valid file (used to check of corrupt files)
+            both extensions and is_valid_file should not be passed.
+
+     Attributes:
+        samples (list): List of sample path
+     """
+
+    def __init__(self,
+                 root,
+                 loader=None,
+                 extensions=None,
+                 transform=None,
+                 is_valid_file=None):
+        self.root = root
+        if extensions is None:
+            extensions = IMG_EXTENSIONS
+
+        samples = []
+        path = os.path.expanduser(root)
+        if not ((extensions is None) ^ (is_valid_file is None)):
+            raise ValueError(
+                "Both extensions and is_valid_file cannot be None or not None at the same time"
+            )
+        if extensions is not None:
+
+            def is_valid_file(x):
+                return has_valid_extension(x, extensions)
+
+        for root, _, fnames in sorted(os.walk(path, followlinks=True)):
+            for fname in sorted(fnames):
+                f = os.path.join(root, fname)
+                if is_valid_file(f):
+                    samples.append(f)
+
+        if len(samples) == 0:
+            raise (RuntimeError(
+                "Found 0 files in subfolders of: " + self.root + "\n"
+                "Supported extensions are: " + ",".join(extensions)))
+
+        self.loader = cv2_loader if loader is None else loader
+        self.extensions = extensions
+        self.samples = samples
+        self.transform = transform
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path = self.samples[index]
+        sample = self.loader(path)
+        if self.transform is not None:
+            sample = self.transform(sample)
+        return [sample]
+
+    def __len__(self):
+        return len(self.samples)

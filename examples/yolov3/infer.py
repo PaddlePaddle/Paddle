@@ -25,8 +25,9 @@ from paddle.fluid.optimizer import Momentum
 from paddle.io import DataLoader
 
 from hapi.model import Model, Input, set_device
-from hapi.vision.models import yolov3_darknet53, YoloLoss
-from hapi.vision.transforms import *
+
+from modeling import yolov3_darknet53, YoloLoss
+from transforms import *
 
 from visualizer import draw_bbox
 
