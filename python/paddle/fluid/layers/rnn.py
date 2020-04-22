@@ -725,7 +725,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.     
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return nn.reshape(x, shape=(-1, self.beam_size) + x.shape[1:])
+        return nn.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
 
     def _merge_batch_beams(self, x):
         """
@@ -741,7 +741,7 @@ class BeamSearchDecoder(Decoder):
                 data type is same as `x`.     
         """
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return nn.reshape(x, shape=(-1, ) + x.shape[2:])
+        return nn.reshape(x, shape=[-1] + list(x.shape[2:]))
 
     def _expand_to_beam_size(self, x):
         """
