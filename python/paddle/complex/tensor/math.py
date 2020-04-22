@@ -21,7 +21,7 @@ __all__ = [
 ]
 
 
-def elementwise_add(x, y, axis=-1, act=None, name=None):
+def elementwise_add(x, y, axis=-1, name=None):
     """
     The element-wise addition layer for complex number inputs. At least one of 
     inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the detailed 
@@ -58,19 +58,18 @@ def elementwise_add(x, y, axis=-1, act=None, name=None):
     complex_variable_exists([x, y], "elementwise_add")
     (x_real, x_imag) = (x.real, x.imag) if is_complex(x) else (x, None)
     (y_real, y_imag) = (y.real, y.imag) if is_complex(y) else (y, None)
-    real = layers.elementwise_add(x_real, y_real, act=act, name=name)
+    real = layers.elementwise_add(x_real, y_real, axis=axis, name=name)
     if is_real(x_imag) and is_real(y_imag):
-        imag = layers.elementwise_add(x_imag, y_imag, act=act, name=name)
+        imag = layers.elementwise_add(x_imag, y_imag, axis=axis, name=name)
     elif is_real(x_imag):
-        imag = layers.elementwise_add(
-            x_imag, layers.zeros_like(y_real), act=act, name=name)
+        imag = layers.assign(x_imag)
     else:
         imag = layers.elementwise_add(
-            layers.zeros_like(x_real), y_imag, act=act, name=name)
+            layers.zeros_like(x_real), y_imag, axis=axis, name=name)
     return ComplexVariable(real, imag)
 
 
-def elementwise_sub(x, y, axis=-1, act=None, name=None):
+def elementwise_sub(x, y, axis=-1, name=None):
     """
     The element-wise subtraction layer for complex number inputs. At least one of 
     inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the detailed 
@@ -107,19 +106,18 @@ def elementwise_sub(x, y, axis=-1, act=None, name=None):
     complex_variable_exists([x, y], "elementwise_sub")
     (x_real, x_imag) = (x.real, x.imag) if is_complex(x) else (x, None)
     (y_real, y_imag) = (y.real, y.imag) if is_complex(y) else (y, None)
-    real = layers.elementwise_sub(x_real, y_real, act=act, name=name)
+    real = layers.elementwise_sub(x_real, y_real, axis=axis, name=name)
     if is_real(x_imag) and is_real(y_imag):
-        imag = layers.elementwise_sub(x_imag, y_imag, act=act, name=name)
+        imag = layers.elementwise_sub(x_imag, y_imag, axis=axis, name=name)
     elif is_real(x_imag):
-        imag = layers.elementwise_sub(
-            x_imag, layers.zeros_like(y_real), act=act, name=name)
+        imag = layers.assign(x_imag)
     else:
         imag = layers.elementwise_sub(
-            layers.zeros_like(x_real), y_imag, act=act, name=name)
+            layers.zeros_like(x_real), y_imag, axis=axis, name=name)
     return ComplexVariable(real, imag)
 
 
-def elementwise_mul(x, y, axis=-1, act=None, name=None):
+def elementwise_mul(x, y, axis=-1, name=None):
     """
     The element-wise multiplication layer for complex number inputs. At least 
     one of inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the 
@@ -158,25 +156,19 @@ def elementwise_mul(x, y, axis=-1, act=None, name=None):
     (a, b) = (x.real, x.imag) if is_complex(x) else (x, None)
     (c, d) = (y.real, y.imag) if is_complex(y) else (y, None)
 
-    ac = layers.elementwise_mul(a, c, name=name)
-    if is_real(b) and is_real(d):
-        bd = layers.elementwise_mul(b, d, name=name)
-    else:
-        bd = layers.zeros_like(ac)
-    if is_real(b):
-        bc = layers.elementwise_mul(b, c, name=name)
-    else:
-        bc = layers.zeros_like(a)
-    if is_real(d):
-        ad = layers.elementwise_mul(a, d, name=name)
-    else:
-        ad = layers.zeros_like(a)
-    real = layers.elementwise_sub(ac, bd, act=act, name=name)
-    imag = layers.elementwise_add(bc, ad, act=act, name=name)
+    ac = layers.elementwise_mul(a, c, axis=axis, name=name)
+    bd = layers.elementwise_mul(
+        b, d, axis=axis, name=name) if is_real(b) and is_real(d) else None
+    bc = layers.elementwise_mul(
+        b, c, axis=axis, name=name) if is_real(b) else None
+    ad = layers.elementwise_mul(
+        a, d, axis=axis, name=name) if is_real(d) else None
+    real = ac - bd if is_real(bd) else ac
+    imag = bc + ad if is_real(bc) and is_real(ad) else bc if is_real(bc) else ad
     return ComplexVariable(real, imag)
 
 
-def elementwise_div(x, y, axis=-1, act=None, name=None):
+def elementwise_div(x, y, axis=-1, name=None):
     """
     The element-wise division layer for complex number inputs. At least one of 
     inputs :attr:`x` and :attr:`y` must be a ComplexVariable. See the detailed 
@@ -218,4 +210,7 @@ def elementwise_div(x, y, axis=-1, act=None, name=None):
              ) if is_real(d) else 1 / layers.pow(c, 2.0)
     return elementwise_mul(
         elementwise_mul(
-            x, y_conj, name=name), e, act=act, name=name)
+            x, y_conj, axis=axis, name=name),
+        e,
+        axis=axis,
+        name=name)

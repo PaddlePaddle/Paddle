@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
-from .tensor.math import elementwise_add
-from .tensor.math import elementwise_sub
-from .tensor.math import elementwise_mul
-from .tensor.math import elementwise_div
+from . import tensor
+from .tensor import *
+
+__all__ = tensor.__all__ + []
