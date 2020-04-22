@@ -88,29 +88,19 @@ def is_numpy_api(node):
         return False
 
 
-def is_control_flow_to_transform(node, var_name_to_type):
+def is_control_flow_to_transform(node,
+                                 static_analysis_visitor=None,
+                                 var_name_to_type=None):
     """
     Determines whether the node is a PaddlePaddle control flow statement which needs to
     be transformed into a static graph control flow statement.
     """
     assert isinstance(node, gast.AST), \
         "The type of input node must be gast.AST, but received %s." % type(node)
-
-    if isinstance(node, gast.If):
-        visitor = IsControlFlowVisitor(
-            node.test, node_var_type_map=var_name_to_type)
-        need_to_transform = visitor.transform()
-        return need_to_transform
-
-    if isinstance(node, gast.For):
-        # TODO: make a better condition
-        return True
-
-    if isinstance(node, gast.While):
-        # TODO: make a better condition
-        return True
-
-    return False
+    visitor = IsControlFlowVisitor(
+        node, static_analysis_visitor, node_var_type_map=var_name_to_type)
+    need_to_transform = visitor.transform()
+    return need_to_transform
 
 
 def _delete_keywords_from(node):
@@ -421,8 +411,8 @@ def is_candidate_node(node):
     """
     Nodes with specified type will be dependent on tensor.
     """
-    is_compare_node = isinstance(node,
-                                 (gast.Compare, gast.BoolOp, gast.UnaryOp))
+    is_compare_node = isinstance(node, (gast.Compare, gast.BoolOp, gast.UnaryOp,
+                                        gast.For, gast.If, gast.While))
     # TODO(Aurelius84): `.numpy()` may be an customized function,
     # and should consider a more elegant way to solve this problem.
     has_numpy_attr = ".numpy()" in ast_to_source_code(node)
@@ -475,6 +465,8 @@ class IsControlFlowVisitor(gast.NodeVisitor):
             from .static_analysis import StaticAnalysisVisitor
             static_analysis_visitor = StaticAnalysisVisitor(ast_node)
         self.static_analysis_visitor = static_analysis_visitor
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
         self.node_var_type_map = node_var_type_map
 
         self.is_control_flow_num = 0
@@ -483,8 +475,67 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     def transform(self):
         node = self.ast_root
         if is_candidate_node(node):
-            self.visit(node)
+            if isinstance(node, gast.If):
+                self._visit_If(node)
+            if isinstance(node, gast.For):
+                self._visit_For(node)
+            elif isinstance(node, gast.While):
+                self._visit_While(node)
+            else:
+                self.visit(node)
         return self.is_control_flow_num > 0
+
+    def _visit_If(self, node):
+        assert isinstance(node, gast.If)
+        self.visit(node.test)
+        return
+
+    def _visit_For(self, node):
+        assert isinstance(node, gast.For)
+        # TODO
+        # self.is_control_flow_num += 1
+        if not isinstance(node.iter, gast.Call):
+            return
+        if not isinstance(node.iter.func, gast.Name):
+            return
+        if node.iter.func.id != "range":
+            return
+        for arg in node.iter.args:
+            self.visit(arg)
+
+        for child_node in gast.walk(node):
+            if isinstance(child_node, (gast.Continue, gast.Break)):
+                self._visit_break_continue(child_node)
+        return
+
+    def _visit_While(self, node):
+        assert isinstance(node, gast.While)
+        test = node.test
+        self.generic_visit(test)
+        for child_node in gast.walk(node):
+            if isinstance(child_node, (gast.Continue, gast.Break)):
+                self._visit_break_continue(child_node)
+        return
+
+    def _visit_break_continue(self, node):
+        assert isinstance(node, (gast.Break, gast.Continue))
+        wrapper_node = self.node_to_wrapper_map.get(node)
+        if not wrapper_node:
+            # Transformed node is not in node_to_wrapper_map
+            return
+
+        while wrapper_node.parent:
+            parent_node = wrapper_node.parent.node
+            if isinstance(parent_node, (gast.For, gast.While)):
+                if parent_node is self.ast_root:
+                    self.is_control_flow_num += 1
+                    return
+                else:
+                    return
+
+            wrapper_node = wrapper_node.parent
+
+        return
 
     def visit_BoolOp(self, node):
         for i, child in enumerate(node.values):
