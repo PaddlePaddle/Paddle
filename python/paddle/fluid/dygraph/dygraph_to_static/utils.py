@@ -50,8 +50,9 @@ def is_api_in_module(node, module_prefix):
         #  source_file = inspect.getfile(dyfunc)
         #  import_statements = ImportVisitor(source_file).transform()
         #  import_str = "".join(import_statements)
-        import paddle.fluid as fluid
         import paddle
+        import paddle.fluid as fluid
+        import paddle.fluid.layers as layers
         from paddle.fluid.dygraph import to_variable
         import paddle.fluid.dygraph as dygraph
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
@@ -436,11 +437,21 @@ def compare_with_none(node):
 
 class IsControlFlowVisitor(gast.NodeVisitor):
     """
-    Judge whether the node.test from Dygraph code dependent on paddle Tensor.
-    If does, it should satisfy:
-        1. must involve at least one var whose type is Tensor.
-        2. the Tensor var should call `.numpy()[]` interface or Tensor.shape is [1].
-        3. involve Tensor.shape[i] and the shape[i] is unknown in compile time.
+    Judge whether the ast_node of control flow from Dygraph code dependent on paddle Tensor.
+    `ast_node` can be gast.If, gast.For, gast.While, gast.If.test(gast.Compare, gast.BoolOp, gast.UnaryOp).
+
+    If returns True,
+    gast.If.test must meet at least one of the following requirements:
+        1. involves at least one var whose type is Tensor.
+        2. the Tensor var calls `.numpy()[]` interface or Tensor.shape is [1].
+        3. involves Tensor.shape[i] and the shape[i] is unknown in compile time.
+    gast.While must meet at least one of the requirements 1 to 5:
+        4. has `break` statement.
+        5. has `continue` statement.
+    gast.For must meet at least one of the requirements 4 to 6:
+        6. calls `range` function in `for` statement and the argument of range is Tensor.
+        TODO: Support non-range case
+
     The following examples should not be considered as control_flow_if:
         1. `if Tensor_var` or `if Tensor_var is None`
         2. if Tensor.shape[i] is determined with fixed value (not -1 or None)
