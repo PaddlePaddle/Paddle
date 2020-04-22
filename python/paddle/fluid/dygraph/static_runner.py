@@ -334,11 +334,15 @@ class StaticModelRunner(layers.Layer):
                 self._output_names.append(cpt.to_bytes(op.input('X')[0]))
                 self._output_descs.append(
                     root_block.find_var(cpt.to_bytes(op.input('X')[0])))
-            elif op.type() == 'fetch' and op.input('X')[0].startswith(
-                    'save_infer_model/scale_'):
+            elif op.type() == 'fetch':
                 ops_to_remove.append(i)
                 fetch_var_name = cpt.to_bytes(op.output('Out')[0])
                 root_block._remove_var(fetch_var_name)
+                # NOTE: some old pre-train models have no extra scale_op
+                if not op.input('X')[0].startswith('save_infer_model/scale_'):
+                    self._output_names.append(cpt.to_bytes(op.input('X')[0]))
+                    self._output_descs.append(
+                        root_block.find_var(cpt.to_bytes(op.input('X')[0])))
             else:
                 if op.has_attr("op_callstack"):
                     op.remove_attr("op_callstack")
