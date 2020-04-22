@@ -23,7 +23,7 @@ import unittest
 
 import paddle.fluid as fluid
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
 @signature_safe_contextmanager
@@ -61,6 +61,15 @@ def dyfunc_print_with_format2(x):
     print("PrintVariable: %s" % (x_v))
 
 
+# 5. print VarBase in control flow1
+def dyfunc_print_with_ifelse(x):
+    x_v = fluid.dygraph.to_variable(x)
+    if len(x_v.shape) > 1:
+        print(x_v)
+    else:
+        print(x_v)
+
+
 class TestPrintBase(unittest.TestCase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
@@ -82,7 +91,9 @@ class TestPrintBase(unittest.TestCase):
         # TODO: How to catch C++ stdout to python
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            dygraph_to_static_func(self.dygraph_func)(self.input)
+            program_translator = ProgramTranslator()
+            static_func = program_translator.get_func(self.dygraph_func)
+            static_func(self.input)
 
         exe = fluid.Executor(self.place)
         exe.run(main_program)
@@ -128,6 +139,11 @@ class TestPrintWithFormat2(TestPrintBase):
         with self.assertRaises(NotImplementedError):
             self.get_dygraph_output()
             self.get_static_output()
+
+
+class TestPrintWithIfElse(TestPrintVariable):
+    def set_test_func(self):
+        self.dygraph_func = dyfunc_print_with_ifelse
 
 
 if __name__ == '__main__':

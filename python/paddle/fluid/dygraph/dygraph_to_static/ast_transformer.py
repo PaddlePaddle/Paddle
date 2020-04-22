@@ -89,12 +89,11 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).transform()
 
+        # Transform all python print statement
+        PrintTransformer(node_wrapper).transform()
+
         # Transform call recursively
         CallTransformer(node_wrapper).transform()
-
-        # Transform all python print statement
-        # print(astor.dump_tree(self.root))
-        PrintTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
