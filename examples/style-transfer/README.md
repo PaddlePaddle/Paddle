@@ -176,8 +176,8 @@ model.prepare(optimizer, style_loss)
 
 ```python
 # 使用内容图像和风格图像获取内容特征和风格特征
-content_fetures = model.test(content)
-style_features = model.test(style)
+content_fetures = model.test_batch(content)
+style_features = model.test_batch(style)
 ```
 
 
@@ -191,7 +191,7 @@ feats = style_features + [content_fetures[-2]]
 # 训练5000个step，每500个step画一下生成的图像查看效果
 steps = 5000
 for i in range(steps):
-    outs = model.train(target, feats)
+    outs = model.train_batch(target, feats)
 
     if i % 500 == 0:
         print('iters:', i, 'loss:', outs[0])
