@@ -222,21 +222,20 @@ def _dygraph_only_(func):
 # official docments, logically, we want to keep VarBase and logically consistent. While, actually,
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
-# TODO(zhiqiu): We should make VarBase consistent with Variable, for example, by inheritting
+# TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
 # same base class. 
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
-        #   if in_dygraph_mode():
-        #       raise AssertionError("We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
-        #   else:
-        #       raise AssertionError("We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
-        return func(*args, **kwargs)
+        raise AssertionError(
+            "'%s' should be called by Dygraph Varible in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode"
+            % func.__name__)
 
     return __impl__
 
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
 def _dygraph_tracer():
@@ -609,7 +608,6 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -971,7 +969,7 @@ class Variable(object):
         self._stop_gradient = stop_gradient
         self.is_data = is_data
 
-    @dygraph_only
+    @fake_interface_only
     def detach(self):
         """
         **Notes**:
@@ -1001,7 +999,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def numpy(self):
         """
         **Notes**:
@@ -1033,7 +1031,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def set_value(self, value):
         """
         **Notes**:
@@ -1064,7 +1062,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def backward(self, backward_strategy=None):
         """
         **Notes**:
@@ -1102,7 +1100,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def gradient(self):
         """
         **Notes**:
@@ -1150,7 +1148,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def clear_gradient(self):
         """
         **Notes**:
@@ -1263,17 +1261,11 @@ class Variable(object):
                 assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self._stop_gradient
+        return self._stop_gradient
 
     @stop_gradient.setter
     def stop_gradient(self, s):
-        if in_dygraph_mode():
-            pass
-        else:
-            self._stop_gradient = s
+        self._stop_gradient = s
 
     @property
     def persistable(self):
@@ -1298,19 +1290,11 @@ class Variable(object):
                                                 dtype='float32')
             print("persistable of current Var is: {}".format(new_variable.persistable))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.persistable()
+        return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        if in_dygraph_mode():
-            logging.warn(
-                "There will be no use to set persistable in Dygraph Mode, since "
-                "you can just do it by hold it as normal Python variable")
-        else:
-            self.desc.set_persistable(p)
+        self.desc.set_persistable(p)
 
     @property
     def name(self):
@@ -1330,10 +1314,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return cpt.to_text(self.desc.name())
+        return cpt.to_text(self.desc.name())
 
     @property
     def grad_name(self):
@@ -1357,10 +1338,7 @@ class Variable(object):
 
     @name.setter
     def name(self, new_name):
-        if in_dygraph_mode():
-            pass
-        else:
-            self.desc.set_name(new_name)
+        self.desc.set_name(new_name)
 
     @property
     def shape(self):
@@ -1382,10 +1360,7 @@ class Variable(object):
 
         """
         # convert to tuple, make it as same as numpy API.
-        if in_dygraph_mode():
-            pass
-        else:
-            return tuple(self.desc.shape())
+        return tuple(self.desc.shape())
 
     @property
     def dtype(self):
@@ -1405,13 +1380,9 @@ class Variable(object):
                                                 dtype='float32')
             print("Dtype of current Var is: {}".format(new_variable.dtype))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.dtype()
+        return self.desc.dtype()
 
     @property
-    @dygraph_not_support
     def lod_level(self):
         """
         Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
@@ -1434,10 +1405,6 @@ class Variable(object):
                                                 dtype='float32')
             print("LoD Level of current Var is: {}".format(new_variable.lod_level))
         """
-        # TODO(minqiyang): Support lod_level in dygraph mode
-        if in_dygraph_mode():
-            raise Exception("Dygraph model DO NOT supprt lod")
-
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
             raise Exception("SelectedRows DO NOT supprt lod")
 
@@ -1461,10 +1428,7 @@ class Variable(object):
                                                 dtype='float32')
             print("Type of current Var is: {}".format(new_variable.type))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.type()
+        return self.desc.type()
 
     def _set_error_clip(self, error_clip):
         """
@@ -1950,10 +1914,7 @@ class Operator(object):
 
     @property
     def type(self):
-        if in_dygraph_mode():
-            return self._type
-        else:
-            return self.desc.type()
+        return self.desc.type()
 
     def input(self, name):
         """
