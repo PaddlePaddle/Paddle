@@ -42,7 +42,7 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TransposeFlattenConcatFusePassTRTTest.TensorRTParam(
-            1 << 20, 1, 3, AnalysisConfig.Precision.Float32, False, False)
+            1 << 20, 8, 3, AnalysisConfig.Precision.Float32, False, False)
         self.fetch_list = [out]
 
     def test_check_output(self):

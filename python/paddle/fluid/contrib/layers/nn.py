@@ -27,13 +27,14 @@ from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.fluid.layers import slice, reshape
 import warnings
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention'
+    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler'
 ]
 
 
@@ -419,6 +420,9 @@ def tree_conv(nodes_vector,
           # also output tensor could be pooling(the pooling in paper called global pooling)
           pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
     """
+    check_type(nodes_vector, 'nodes_vector', (Variable), 'tree_conv')
+    check_type(edge_set, 'edge_set', (Variable), 'tree_conv')
+
     helper = LayerHelper("tree_conv", **locals())
     dtype = helper.input_dtype('nodes_vector')
     feature_size = nodes_vector.shape[2]
@@ -1019,11 +1023,221 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     return (child, leaf_mask)
 
 
+def tdm_sampler(x,
+                neg_samples_num_list,
+                layer_node_num_list,
+                leaf_node_num,
+                tree_travel_attr=None,
+                tree_layer_attr=None,
+                output_positive=True,
+                output_list=True,
+                seed=0,
+                tree_dtype='int32',
+                dtype='int32'):
+    """
+    **Tdm Sampler**
+    According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
+    .. code-block:: text
+
+        Given:
+            tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
+            travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path (exclude root node)
+            layer_list = [[1, 2], [3, 4, 5, 6]] # two layer (exclude root node)
+
+            x = [[0], [1], [2], [3]] # Corresponding to leaf node [[3], [4], [5], [6]]
+            neg_samples_num_list = [0, 0] # negative sample nums = 0
+            layer_node_num_list = [2, 4]
+            leaf_node_num = 4
+            output_list = False
+
+          we get:
+            out = [[1, 3], [1, 4], [2, 5], [2, 6]]
+            labels = [[1, 1], [1, 1], [1, 1], [1, 1]]
+            mask = [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+    Args:
+        x (Variable): Variable contained the item_id(corresponding to leaf node) information, dtype support int32/int64.
+        neg_samples_num_list (list(int)): Number of negative samples per layer.
+        layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
+        leaf_node_num (int): Number of leaf nodes.
+        tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
+        tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (node_num, 1), dtype support int32/int64.
+        output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
+        output_list (bool): Whether to divide the output into layers and organize it into list format.
+        seed (int): The number of random seed.
+        tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks) 
+
+    Returns:
+        tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
+            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
+            and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
+            sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
+            If output_list = True, the result will organize into list format specified by layer information.
+            Output variable have same type with tdm-travel and tdm-layer parameter(tree_dtype).
+
+    Examples:
+        .. code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
+        layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
+
+        neg_samples_num_list = [0, 0] # negative sample nums = 0
+        layer_node_num_list = [2, 4] #two layer (exclude root node)
+        leaf_node_num = 4
+
+        travel_array = np.array(travel_list)
+        layer_array = np.array(layer_list_flat)
+
+        sample, label, mask = fluid.contrib.layers.tdm_sampler(
+            x,
+            neg_samples_num_list,
+            layer_node_num_list,
+            leaf_node_num,
+            tree_travel_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    travel_array)),
+            tree_layer_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    layer_array)),
+            output_positive=True,
+            output_list=True,
+            seed=0,
+            tree_dtype='int32')
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
+
+        exe.run(feed={"x":xx})
+
+    """
+    helper = LayerHelper("tdm_sampler", **locals())
+    check_dtype(tree_dtype, 'tree_dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if len(neg_samples_num_list) != len(layer_node_num_list):
+        raise ValueError(
+            "The shape of negative samples list must match the shape of layers. "
+            "But received len of neg_samples_num_list: {},"
+            "and len of layer_node_num_list: {}, please check your input.".
+            format(len(neg_samples_num_list), len(layer_node_num_list)))
+    assert leaf_node_num is not None, "leaf_node_num should not be None here."
+
+    layer_nums = 0
+    node_nums = 0
+    tree_layer_offset_lod = [0]
+    for layer_idx, layer_node_num in enumerate(layer_node_num_list):
+        layer_nums += 1
+        node_nums += layer_node_num
+        tree_layer_offset_lod.append(node_nums)
+        if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
+            raise ValueError(
+                "The number of negative samples must be less than the number of nodes "
+                "in the layer {}, But received negative nums {}, and num of node at layer {} "
+                "is {}, please check your input.".format(
+                    layer_idx, neg_samples_num_list[
+                        layer_idx], layer_idx, layer_node_num_list[layer_idx]))
+    assert leaf_node_num < node_nums, "leaf_node_num must be less than total node nums."
+
+    travel_shape = [leaf_node_num, layer_nums]
+    travel = helper.create_parameter(
+        attr=tree_travel_attr,
+        shape=travel_shape,
+        dtype=tree_dtype,
+        default_initializer=Constant(0))
+
+    layer_shape = [node_nums, 1]
+    layer = helper.create_parameter(
+        attr=tree_layer_attr,
+        shape=layer_shape,
+        dtype=tree_dtype,
+        default_initializer=Constant(0))
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out.stop_gradient = True
+
+    labels = helper.create_variable_for_type_inference(dtype=dtype)
+    labels.stop_gradient = True
+
+    mask = helper.create_variable_for_type_inference(dtype=dtype)
+    mask.stop_gradient = True
+
+    helper.append_op(
+        type='tdm_sampler',
+        inputs={"X": x,
+                "Travel": travel,
+                "Layer": layer},
+        outputs={'Out': out,
+                 'Labels': labels,
+                 'Mask': mask},
+        attrs={
+            'neg_samples_num_list': neg_samples_num_list,
+            'output_positive': output_positive,
+            'layer_offset_lod': tree_layer_offset_lod,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    if output_list:
+        output_list = []
+        labels_list = []
+        mask_list = []
+        start_offset = 0
+        positive_flag = 1
+        if not output_positive:
+            positive_flag = 0
+
+        for layer_sample_num in neg_samples_num_list:
+            end_offset = start_offset + \
+                layer_sample_num + positive_flag
+            layer_samples = slice(
+                out, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_labels = slice(
+                labels, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_mask = slice(
+                mask, axes=[1], starts=[start_offset], ends=[end_offset])
+
+            layer_samples = reshape(layer_samples,
+                                    [-1, layer_sample_num + positive_flag, 1])
+            layer_samples.stop_gradient = True
+
+            layer_labels = reshape(layer_labels,
+                                   [-1, layer_sample_num + positive_flag, 1])
+            layer_labels.stop_gradient = True
+
+            layer_mask = reshape(layer_mask,
+                                 [-1, layer_sample_num + positive_flag, 1])
+            layer_mask.stop_gradient = True
+
+            output_list.append(layer_samples)
+            labels_list.append(layer_labels)
+            mask_list.append(layer_mask)
+            start_offset = end_offset
+
+        out = output_list
+        labels = labels_list
+        mask = mask_list
+
+    return (out, labels, mask)
+
+
 def rank_attention(input,
                    rank_offset,
                    rank_param_shape,
                    rank_param_attr,
-                   max_rank=3):
+                   max_rank=3,
+                   max_size=0):
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and 
@@ -1042,7 +1256,7 @@ def rank_attention(input,
         .. code-block:: python
            import paddle.fluid as fluid
            import numpy as np
-           
+
            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
            rank_offset = fluid.data(name="rank_offset", shape=[None, 7], dtype="int32")
            out = fluid.contrib.layers.rank_attention(input=input,
@@ -1053,7 +1267,8 @@ def rank_attention(input,
                                                                      name="ubm_rank_param.w_0",
                                                                      initializer=
                                                                      fluid.initializer.Xavier(uniform=False)),
-                                                      max_rank=3)
+                                                      max_rank=3,
+                                                      max_size=0)
     """
     helper = LayerHelper('rank_attention', **locals())
     dtype = helper.input_dtype(input_param_name='input')
@@ -1065,6 +1280,8 @@ def rank_attention(input,
     rank_param.stop_gradient = False
 
     output = helper.create_variable_for_type_inference(dtype)
+    input_help = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
     ins_rank = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
@@ -1075,7 +1292,9 @@ def rank_attention(input,
             "RankOffset": rank_offset,
             "RankParam": rank_param
         },
-        outputs={"Out": output},
-        attrs={"MaxRank": max_rank})
-
+        outputs={"Out": output,
+                 "InputHelp": input_help,
+                 "InsRank": ins_rank},
+        attrs={"MaxRank": max_rank,
+               "MaxSize": max_size})
     return output

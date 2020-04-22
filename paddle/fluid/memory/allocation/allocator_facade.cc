@@ -32,6 +32,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
@@ -74,6 +75,18 @@ class AllocatorFacadePrivate {
         for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
              ++dev_id) {
           InitAutoGrowthCUDAAllocator(platform::CUDAPlace(dev_id));
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+        break;
+      }
+
+      case AllocatorStrategy::kThreadLocal: {
+        InitNaiveBestFitCPUAllocator();
+#ifdef PADDLE_WITH_CUDA
+        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+             ++dev_id) {
+          InitThreadLocalCUDAAllocator(platform::CUDAPlace(dev_id));
         }
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
@@ -134,6 +147,10 @@ class AllocatorFacadePrivate {
 
   void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+
+  void InitThreadLocalCUDAAllocator(platform::CUDAPlace p) {
+    allocators_[p] = std::make_shared<ThreadLocalCUDAAllocator>(p);
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p) {

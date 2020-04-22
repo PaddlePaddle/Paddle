@@ -179,7 +179,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
       }
 
       if (return_merged) {
-        return FeedFetchList();
+        return FetchList();
       } else {
         return FetchUnmergedList();
       }
@@ -245,22 +245,43 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   }
 
   if (return_merged) {
-    FeedFetchList ret;
+    FetchList ret;
     ret.reserve(fetch_tensors.size());
-
     for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
       std::vector<const LoDTensor *> lodtensor_ptrs;
       lodtensor_ptrs.reserve(place_num);
+      std::vector<const LoDTensorArray *> lodtensorarray_ptrs;
+      lodtensorarray_ptrs.reserve(place_num);
       for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
         if (!is_valid[scope_idx]) {
           continue;
         }
-        const auto &fetch_list =
-            boost::get<FeedFetchList>(fetch_data[scope_idx]);
-        lodtensor_ptrs.push_back(&fetch_list[fetch_idx]);
+        const auto &fetch_list = boost::get<FetchList>(fetch_data[scope_idx]);
+        if (data_is_lod_tensor(fetch_list[fetch_idx])) {
+          lodtensor_ptrs.push_back(
+              &(boost::get<LoDTensor>(fetch_list[fetch_idx])));
+        } else {
+          lodtensorarray_ptrs.push_back(
+              &(boost::get<LoDTensorArray>(fetch_list[fetch_idx])));
+        }
       }
-      ret.emplace_back();
-      ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      if (lodtensor_ptrs.size() != 0) {
+        LoDTensor var;
+        var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+        ret.emplace_back(var);
+      } else {
+        LoDTensorArray var_array(lodtensorarray_ptrs[0]->size());
+        for (size_t i = 0; i < lodtensorarray_ptrs[0]->size(); ++i) {
+          LoDTensor var;
+          std::vector<const LoDTensor *> ptrs;
+          for (size_t j = 0; j < lodtensorarray_ptrs.size(); ++j) {
+            ptrs.push_back(&(lodtensorarray_ptrs[j]->at(i)));
+          }
+          var.MergeLoDTensor(ptrs, platform::CPUPlace());
+          var_array[i] = std::move(var);
+        }
+        ret.emplace_back(var_array);
+      }
     }
     return ret;
   } else {
@@ -277,8 +298,8 @@ FetchResultType ParallelSSAGraphExecutor::Run(
             boost::get<FetchUnmergedList>(fetch_data[scope_idx]);
         PADDLE_ENFORCE_EQ(
             fetch_list[fetch_idx].size(), 1,
-            platform::errors::Fatal(
-                "Each place must have only one fetched LoDTensor!"));
+            platform::errors::Fatal("Each place must have only one fetched "
+                                    "LoDTensor/LoDTensorArray!"));
         ret.back().emplace_back(fetch_list[fetch_idx][0]);
       }
     }
