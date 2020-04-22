@@ -6196,10 +6196,12 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor.
-        y (Variable|None): If provided, output's LoD would be derived
-                           from :attr:`y`.
-        target_lod (list|tuple|None): One level LoD which should be considered
+        x (Variable): Input variable which could be a Tensor or LoDTensor. 
+                      The data type should be int32, int64, float32 or float64.
+        y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`. 
+                                If y's lod level>0, the data type can be any type. 
+                                If y's lod level=0, the data type should be int32.
+        target_lod (list|tuple, optional): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
 
     Returns:
@@ -6221,11 +6223,9 @@ def lod_reset(x, y=None, target_lod=None):
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
-        if y.lod_level > 0:
-            check_variable_and_dtype(
-                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
-        else:
-            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
+        check_type(y, 'y', (Variable), 'lod_reset')
+        if y.lod_level == 0:
+            check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6261,9 +6261,11 @@ def lod_append(x, level):
                 x.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a tensor or LoDTensor.
-        level (list|tuple|Variable): The LoD level to be appended into LoD of x.
-
+        x (Variable): Input variable which could be a tensor or LoDTensor. 
+                      The data type should be int32, int64, float32 or float64.
+        level (list|tuple|Variable, optional): The LoD level to be appended into LoD of x. 
+                                               If level is variable and its lod level>0, the data type can be any type.
+                                               If level is variable and its lod level=0, the data type should be int32.
     Returns:
         Variable: Output variable with new LoD level.
 
@@ -6283,6 +6285,9 @@ def lod_append(x, level):
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
         raise ValueError("Input(level) must be list, tuple or Variable.")
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_append')
+
     helper = LayerHelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -6291,6 +6296,8 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
+        if level.lod_level == 0:
+            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
     else:
         attrs['target_lod'] = level
     helper.append_op(
