@@ -1170,9 +1170,9 @@ class Variable(object):
         pass
 
     def __str__(self):
-        return self.to_readable_code()
+        return self._to_readable_code()
 
-    def to_readable_code(self):
+    def _to_readable_code(self):
         """
         Get readable debug string of Variable.
 
@@ -1193,7 +1193,7 @@ class Variable(object):
                 new_variable = cur_block.create_var(name="X",
                                                     shape=[-1, 23, 48],
                                                     dtype='float32')
-                print(new_variable.to_readable_code())
+                print(new_variable._to_readable_code())
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS or self.type == core.VarDesc.VarType.LOD_TENSOR:
             var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
@@ -1971,7 +1971,7 @@ class Operator(object):
         proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
         return _debug_string_(proto, throw_on_error)
 
-    def to_readable_code(self, skip_op_callstack=True):
+    def _to_readable_code(self, skip_op_callstack=True):
         """
         Get readable debug string of Operator.
 
@@ -1999,7 +1999,7 @@ class Operator(object):
             new_op = cur_block.append_op(type="abs",
                                 inputs={"X": [var]},
                                 outputs={"Out": [var]})
-            print(new_op.to_readable_code())
+            print(new_op._to_readable_code())
         """
         assert isinstance(
             skip_op_callstack, bool
@@ -2065,7 +2065,7 @@ class Operator(object):
         return op_str
 
     def __str__(self):
-        return self.to_readable_code()
+        return self._to_readable_code()
 
     __repr__ = __str__
 
@@ -2362,9 +2362,9 @@ class Block(object):
         self.removed_vars = collections.OrderedDict()
 
     def __str__(self):
-        return self.to_readable_code()
+        return self._to_readable_code()
 
-    def to_readable_code(self, skip_op_callstack=True):
+    def _to_readable_code(self, skip_op_callstack=True):
         """
         Get readable debug string of Block.
 
@@ -2392,7 +2392,7 @@ class Block(object):
             new_op = cur_block.append_op(type="abs",
                                 inputs={"X": [new_var]},
                                 outputs={"Out": [new_var]})
-            print(cur_block.to_readable_code())
+            print(cur_block._to_readable_code())
         """
         assert isinstance(
             skip_op_callstack, bool
@@ -2401,11 +2401,11 @@ class Block(object):
         block_str = "{ // block "
         block_str += "{}\n".format(self.idx)
         for var in list(self.vars.values()):
-            block_str += "    {}\n".format(var.to_readable_code())
+            block_str += "    {}\n".format(var._to_readable_code())
         block_str += "\n"
         for op in self.ops:
             block_str += "    {}\n".format(
-                op.to_readable_code(skip_op_callstack))
+                op._to_readable_code(skip_op_callstack))
         block_str += "}"
         return block_str
 
@@ -4020,9 +4020,9 @@ class Program(object):
         Raises:
             ValueError: If any of required fields is not set.
         """
-        return self.to_readable_code()
+        return self._to_readable_code()
 
-    def to_readable_code(self, skip_op_callstack=True):
+    def _to_readable_code(self, skip_op_callstack=True):
         """
         Get readable debug string of Program.
 
@@ -4050,7 +4050,7 @@ class Program(object):
             new_op = cur_block.append_op(type="abs",
                                 inputs={"X": [new_var]},
                                 outputs={"Out": [new_var]})
-            print(cur_program.to_readable_code())
+            print(cur_program._to_readable_code())
         """
         assert isinstance(
             skip_op_callstack, bool
@@ -4058,7 +4058,7 @@ class Program(object):
             type(skip_op_callstack))
         program_str = ""
         for block in self.blocks:
-            program_str += block.to_readable_code(skip_op_callstack)
+            program_str += block._to_readable_code(skip_op_callstack)
         return program_str
 
     def to_string(self, throw_on_error, with_details=False):
@@ -4945,7 +4945,7 @@ class Parameter(Variable):
         self.is_distributed = False
 
     def __str__(self):
-        return self.to_readable_code()
+        return self._to_readable_code()
 
     def to_string(self, throw_on_error, with_details=False):
         """

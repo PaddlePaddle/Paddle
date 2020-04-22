@@ -105,11 +105,11 @@ class TestProgramToReadableCode(unittest.TestCase):
             out = layers.cond(pred, true_func, false_func)
 
     def test_program_code(self):
-        self.var.to_readable_code()
-        self.param.to_readable_code()
-        self.op.to_readable_code()
-        self.block.to_readable_code()
-        self.program.to_readable_code()
+        self.var._to_readable_code()
+        self.param._to_readable_code()
+        self.op._to_readable_code()
+        self.block._to_readable_code()
+        self.program._to_readable_code()
 
     def test_program_print(self):
         print(self.var)
