@@ -283,11 +283,18 @@ function check_style() {
     pre-commit install
     clang-format --version
 
-    if ! pre-commit run -a ; then
-        git diff
+    commit_files=on
+    for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
+        if ! pre-commit run --files $file_name ; then
+            git diff
+            commit_files=off
+        fi
+    done 
+    
+    if [ $commit_files == 'off' ];then
+        echo "code format error"
         exit 1
     fi
-
     trap : 0
 }
 
