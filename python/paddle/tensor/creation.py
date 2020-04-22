@@ -712,7 +712,10 @@ def tril(input, diagonal=0, name=None):
             #        [ 5,  0,  0,  0],
             #        [ 9, 10,  0,  0]])
 
-   """
+    """
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'tril_triu')
+        return op(input, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
 
@@ -784,6 +787,9 @@ def triu(input, diagonal=0, name=None):
             #        [ 0, 10, 11, 12]])
 
     """
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'tril_triu')
+        return op(input, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
