@@ -26,6 +26,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
@@ -150,8 +151,9 @@ class NameVisitor(gast.NodeVisitor):
         self.visit(root_node)
 
     def is_control_flow_loop(self, node):
-        # TODO: make a better condition
-        return True
+        need_transform = is_control_flow_to_transform(
+            node, self.static_analysis_visitor)
+        return need_transform
 
     def get_loop_var_names(self, node):
         assert isinstance(
