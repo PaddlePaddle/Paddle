@@ -20,6 +20,7 @@ import traceback
 import numpy as np
 
 __all__ = [
+    "Compose",
     'ColorDistort',
     'RandomExpand',
     'RandomCrop',
@@ -31,6 +32,37 @@ __all__ = [
     'BboxXYXY2XYWH',
     'ResizeImage',
 ]
+
+
+class Compose(object):
+    """Composes several transforms together.
+
+    Args:
+        transforms (list of ``Transform`` objects): list of transforms to compose.
+
+    """
+
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, *data):
+        for f in self.transforms:
+            try:
+                data = f(*data)
+            except Exception as e:
+                stack_info = traceback.format_exc()
+                print("fail to perform transform [{}] with error: "
+                      "{} and stack:\n{}".format(f, e, str(stack_info)))
+                raise e
+        return data
+
+    def __repr__(self):
+        format_string = self.__class__.__name__ + '('
+        for t in self.transforms:
+            format_string += '\n'
+            format_string += '    {0}'.format(t)
+        format_string += '\n)'
+        return format_string
 
 
 class ColorDistort(object):
@@ -147,7 +179,10 @@ class RandomExpand(object):
         fill_value (list): color value used to fill the canvas. in RGB order.
     """
 
-    def __init__(self, ratio=4., prob=0.5, fill_value=[123.675, 116.28, 103.53]):
+    def __init__(self,
+                 ratio=4.,
+                 prob=0.5,
+                 fill_value=[123.675, 116.28, 103.53]):
         assert ratio > 1.01, "expand ratio must be larger than 1.01"
         self.ratio = ratio
         self.prob = prob
@@ -493,8 +528,7 @@ def _crop_box_with_center_constraint(box, crop):
     cropped_box[:, :2] -= crop[:2]
     cropped_box[:, 2:] -= crop[:2]
     centers = (box[:, :2] + box[:, 2:]) / 2
-    valid = np.logical_and(
-        crop[:2] <= centers, centers < crop[2:]).all(axis=1)
+    valid = np.logical_and(crop[:2] <= centers, centers < crop[2:]).all(axis=1)
     valid = np.logical_and(
         valid, (cropped_box[:, :2] < cropped_box[:, 2:]).all(axis=1))
     return cropped_box, np.where(valid)[0]
@@ -517,8 +551,8 @@ def random_crop(inputs):
         for i in range(50):
             scale = np.random.uniform(*scaling)
             min_ar, max_ar = aspect_ratios
-            ar = np.random.uniform(max(min_ar, scale**2),
-                                   min(max_ar, scale**-2))
+            ar = np.random.uniform(
+                max(min_ar, scale**2), min(max_ar, scale**-2))
             crop_h = int(h * scale / np.sqrt(ar))
             crop_w = int(w * scale * np.sqrt(ar))
             crop_y = np.random.randint(0, h - crop_h)
@@ -529,7 +563,8 @@ def random_crop(inputs):
                 continue
 
             cropped_box, valid_ids = _crop_box_with_center_constraint(
-                gt_box, np.array(crop_box, dtype=np.float32))
+                gt_box, np.array(
+                    crop_box, dtype=np.float32))
             if valid_ids.size > 0:
                 found = True
                 break
@@ -545,9 +580,7 @@ def random_crop(inputs):
 
 
 class ResizeImage(object):
-    def __init__(self,
-                 target_size=0,
-                 interp=cv2.INTER_CUBIC):
+    def __init__(self, target_size=0, interp=cv2.INTER_CUBIC):
         """
         Rescale image to the specified target size.
         If target_size is list, selected a scale randomly as the specified
@@ -574,8 +607,8 @@ class ResizeImage(object):
             raise ImageError('{}: image is not 3-dimensional.'.format(self))
         im_scale_x = float(self.target_size) / float(im.shape[1])
         im_scale_y = float(self.target_size) / float(im.shape[0])
-        resize_w = self.target_size 
-        resize_h = self.target_size 
+        resize_w = self.target_size
+        resize_h = self.target_size
 
         im = cv2.resize(
             im,
@@ -586,4 +619,3 @@ class ResizeImage(object):
             interpolation=self.interp)
 
         return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
-

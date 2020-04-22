@@ -1135,7 +1135,7 @@ class Model(fluid.dygraph.Layer):
                 test_data,
                 batch_size=1,
                 num_workers=0,
-                stack_outputs=True):
+                stack_outputs=False):
         """
         FIXME: add more comments and usage
         Args:
@@ -1183,20 +1183,29 @@ class Model(fluid.dygraph.Layer):
             loader = test_loader()
 
         outputs = []
+        count = 0
         for data in tqdm.tqdm(loader):
             data = flatten(data)
-            outputs.append(self.test_batch(data[:len(self._inputs)]))
+            out = to_list(self.test_batch(data[:len(self._inputs)]))
+            outputs.append(out)
+            count += out[0].shape[0]
+
+        if test_loader is not None and self._adapter._nranks > 1 \
+                    and isinstance(test_loader, DataLoader) \
+                    and count > len(test_loader.dataset):
+            size = outputs[-1][0].shape[0] - (count - len(test_loader.dataset))
+            outputs[-1] = [o[:size] for o in outputs[-1]]
 
         # NOTE: for lod tensor output, we should not stack outputs
         # for stacking may loss its detail info
+
         outputs = list(zip(*outputs))
+
         if stack_outputs:
-            outputs = [np.stack(outs, axis=0) for outs in outputs]
+            outputs = [np.vstack(outs) for outs in outputs]
 
         self._test_dataloader = None
-        if test_loader is not None and self._adapter._nranks > 1 \
-                    and isinstance(test_loader, DataLoader):
-            outputs = [o[:len(test_loader.dataset)] for o in outputs]
+
         return outputs
 
     def _run_one_epoch(self,

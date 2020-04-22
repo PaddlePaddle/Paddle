@@ -73,6 +73,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             out = fluid.layers.leaky_relu(x=out, alpha=0.1)
         return out
 
+
 class YoloDetectionBlock(fluid.dygraph.Layer):
     def __init__(self, ch_in, channel):
         super(YoloDetectionBlock, self).__init__()
@@ -81,38 +82,34 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
             "channel {} cannot be divided by 2".format(channel)
 
         self.conv0 = ConvBNLayer(
-            ch_in=ch_in,
-            ch_out=channel,
-            filter_size=1,
-            stride=1,
-            padding=0)
+            ch_in=ch_in, ch_out=channel, filter_size=1, stride=1, padding=0)
         self.conv1 = ConvBNLayer(
             ch_in=channel,
-            ch_out=channel*2,
+            ch_out=channel * 2,
             filter_size=3,
             stride=1,
             padding=1)
         self.conv2 = ConvBNLayer(
-            ch_in=channel*2,
+            ch_in=channel * 2,
             ch_out=channel,
             filter_size=1,
             stride=1,
             padding=0)
         self.conv3 = ConvBNLayer(
             ch_in=channel,
-            ch_out=channel*2,
+            ch_out=channel * 2,
             filter_size=3,
             stride=1,
             padding=1)
         self.route = ConvBNLayer(
-            ch_in=channel*2,
+            ch_in=channel * 2,
             ch_out=channel,
             filter_size=1,
             stride=1,
             padding=0)
         self.tip = ConvBNLayer(
             ch_in=channel,
-            ch_out=channel*2,
+            ch_out=channel * 2,
             filter_size=3,
             stride=1,
             padding=1)
@@ -149,8 +146,10 @@ class YOLOv3(Model):
             "model_mode should be 'train' 'eval' or 'test', but got " \
             "{}".format(model_mode)
         self.model_mode = str.lower(model_mode)
-        self.anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45,
-                        59, 119, 116, 90, 156, 198, 373, 326]
+        self.anchors = [
+            10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
+            373, 326
+        ]
         self.anchor_masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
         self.valid_thresh = 0.005
         self.nms_thresh = 0.45
@@ -158,7 +157,10 @@ class YOLOv3(Model):
         self.nms_posk = 100
         self.draw_thresh = 0.5
 
-        self.backbone = darknet53(pretrained=(model_mode=='train'))
+        self.backbone = darknet53(
+            pretrained=(model_mode == 'train'),
+            with_pool=False,
+            num_classes=-1)
         self.block_outputs = []
         self.yolo_blocks = []
         self.route_blocks = []
@@ -173,24 +175,38 @@ class YOLOv3(Model):
 
             block_out = self.add_sublayer(
                 "block_out_{}".format(idx),
-                Conv2D(num_channels=1024 // (2**idx),
-                       num_filters=num_filters,
-                       filter_size=1,
-                       act=None,
-                       param_attr=ParamAttr(
-                           initializer=fluid.initializer.Normal(0., 0.02)),
-                       bias_attr=ParamAttr(
-                           initializer=fluid.initializer.Constant(0.0),
-                           regularizer=L2Decay(0.))))
+                Conv2D(
+                    num_channels=1024 // (2**idx),
+                    num_filters=num_filters,
+                    filter_size=1,
+                    act=None,
+                    param_attr=ParamAttr(
+                        initializer=fluid.initializer.Normal(0., 0.02)),
+                    bias_attr=ParamAttr(
+                        initializer=fluid.initializer.Constant(0.0),
+                        regularizer=L2Decay(0.))))
             self.block_outputs.append(block_out)
             if idx < 2:
                 route = self.add_sublayer(
                     "route2_{}".format(idx),
-                    ConvBNLayer(ch_in=512 // (2**idx),
-                                ch_out=256 // (2**idx),
-                                filter_size=1,
-                                act='leaky_relu'))
+                    ConvBNLayer(
+                        ch_in=512 // (2**idx),
+                        ch_out=256 // (2**idx),
+                        filter_size=1,
+                        act='leaky_relu'))
                 self.route_blocks.append(route)
+
+    def extract_feats(self, inputs):
+        out = self.backbone.conv0(inputs)
+        out = self.backbone.downsample0(out)
+        blocks = []
+        for i, conv_block_i in enumerate(
+                self.backbone.darknet53_conv_block_list):
+            out = conv_block_i(out)
+            blocks.append(out)
+            if i < len(self.backbone.stages) - 1:
+                out = self.backbone.downsample_list[i](out)
+        return blocks[-1:-4:-1]
 
     def forward(self, img_id, img_shape, inputs):
         outputs = []
@@ -198,7 +214,7 @@ class YOLOv3(Model):
         scores = []
         downsample = 32
 
-        feats = self.backbone(inputs)
+        feats = self.extract_feats(inputs)
         route = None
         for idx, feat in enumerate(feats):
             if idx > 0:
@@ -233,15 +249,18 @@ class YOLOv3(Model):
         if self.model_mode == 'train':
             return outputs
 
-        preds = [img_id,
-                 fluid.layers.multiclass_nms(
-                    bboxes=fluid.layers.concat(boxes, axis=1),
-                    scores=fluid.layers.concat(scores, axis=2),
-                    score_threshold=self.valid_thresh,
-                    nms_top_k=self.nms_topk,
-                    keep_top_k=self.nms_posk,
-                    nms_threshold=self.nms_thresh,
-                    background_label=-1)]
+        preds = [
+            img_id, fluid.layers.multiclass_nms(
+                bboxes=fluid.layers.concat(
+                    boxes, axis=1),
+                scores=fluid.layers.concat(
+                    scores, axis=2),
+                score_threshold=self.valid_thresh,
+                nms_top_k=self.nms_topk,
+                keep_top_k=self.nms_posk,
+                nms_threshold=self.nms_thresh,
+                background_label=-1)
+        ]
 
         if self.model_mode == 'test':
             return preds
@@ -249,14 +268,17 @@ class YOLOv3(Model):
         # model_mode == "eval"
         return outputs + preds
 
+
 class YoloLoss(Loss):
     def __init__(self, num_classes=80, num_max_boxes=50):
         super(YoloLoss, self).__init__()
         self.num_classes = num_classes
         self.num_max_boxes = num_max_boxes
         self.ignore_thresh = 0.7
-        self.anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45,
-                        59, 119, 116, 90, 156, 198, 373, 326]
+        self.anchors = [
+            10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198,
+            373, 326
+        ]
         self.anchor_masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 
     def forward(self, outputs, labels):
@@ -265,7 +287,7 @@ class YoloLoss(Loss):
         losses = []
 
         for idx, out in enumerate(outputs):
-            if idx == 3: break # debug
+            if idx == 3: break  # debug
             anchor_mask = self.anchor_masks[idx]
             loss = fluid.layers.yolov3_loss(
                 x=out,
@@ -284,8 +306,10 @@ class YoloLoss(Loss):
         return losses
 
 
-def _yolov3_darknet(num_layers=53, num_classes=80,
-                    model_mode='train', pretrained=True):
+def _yolov3_darknet(num_layers=53,
+                    num_classes=80,
+                    model_mode='train',
+                    pretrained=True):
     model = YOLOv3(num_classes, model_mode)
     if pretrained:
         assert num_layers in pretrain_infos.keys(), \

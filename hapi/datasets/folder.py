@@ -150,7 +150,7 @@ class DatasetFolder(Dataset):
         path, target = self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:
-            sample, target = self.transform(sample, target)
+            sample, target = self.transform(sample)
 
         return sample, target
 

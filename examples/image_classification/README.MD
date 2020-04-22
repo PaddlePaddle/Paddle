@@ -85,8 +85,9 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch 
 | [vgg16](https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams) | 71.92 | 90.65 | 
 | [mobilenet_v1](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v1_x1.0.pdparams) | 71.16 | 89.89 | 
 | [mobilenet_v2](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams) | 72.30 | 90.74 | 
+| [darknet53](https://paddle-hapi.bj.bcebos.com/models/darknet53.pdparams) | 78.43 | 94.24 | 
 
-上述模型的复现参数请参考scripts下的脚本。
+上述部分模型的复现参数请参考scripts下的脚本。需要注意的是darknet要使用image size为256的输入来预测, 即```--image-size 256```
 
 
 ## 参考文献
