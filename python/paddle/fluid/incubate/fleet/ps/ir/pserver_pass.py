@@ -292,7 +292,7 @@ def _get_output_map_from_op(varmap, op):
 
 
 def get_op_by_type(block, op_type):
-    for op in block:
+    for op in block.ops:
         if op.type == op_type:
             return op
     raise ValueError("add_listen_and_serv_pass must at first")
@@ -447,7 +447,7 @@ def add_optimizer_pass(program, config):
                     return True
             return False
 
-    origin_program = config.get_origin_main_program
+    origin_program = config.get_origin_main_program()
     ps_endpoint = config.get_ps_endpoint()
 
     opt_op_on_pserver = []

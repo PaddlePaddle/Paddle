@@ -115,7 +115,8 @@ class CompileTimeStrategy(object):
         self._build_var_distributed()
 
     def get_distributed_mode(self):
-        return self.strategy.distributed_mode
+        trainer = self.strategy.get_trainer_runtime_config()
+        return trainer.mode
 
     def get_role_id(self):
         return self.role_maker.role_id()
