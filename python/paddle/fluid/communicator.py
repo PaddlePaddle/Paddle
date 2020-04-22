@@ -25,7 +25,7 @@ __all__ = ['Communicator']
 
 
 class Communicator(object):
-    def __init__(self, mode, kwargs=None, envs={}):
+    def __init__(self, mode, kwargs=None, envs=None):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -48,8 +48,9 @@ class Communicator(object):
                 comm.stop()
         """
         # set all recv op to not_run mode
-        assert isinstance(program, Program)
 
+        if envs is None:
+            envs = {}
         if mode == DistributedMode.GEO:
             push_vars = kwargs["push_vars"]
             push_var_names = []
