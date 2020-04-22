@@ -69,6 +69,7 @@ def main():
                 [None, 2], 'int32', name='img_shape'), Input(
                     [None, 3, None, None], 'float32', name='image')
     ]
+
     labels = [
         Input(
             [None, NUM_MAX_BOXES, 4], 'float32', name='gt_bbox'), Input(
@@ -81,6 +82,7 @@ def main():
             ColorDistort(), RandomExpand(), RandomCrop(), RandomFlip(),
             NormalizeBox(), PadBox(), BboxXYXY2XYWH()
         ])
+
         train_collate_fn = BatchCompose([RandomShape(), NormalizeImage()])
         dataset = COCODataset(
             dataset_dir=FLAGS.data,
@@ -103,6 +105,7 @@ def main():
             ResizeImage(target_size=608), NormalizeBox(), PadBox(),
             BboxXYXY2XYWH()
         ])
+
         eval_collate_fn = BatchCompose([NormalizeImage()])
         dataset = COCODataset(
             dataset_dir=FLAGS.data,
