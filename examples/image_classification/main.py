@@ -187,7 +187,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--resize-short-size",
         default=256,
-        type=float,
+        type=int,
         help="short size of keeping ratio resize")
     FLAGS = parser.parse_args()
     assert FLAGS.data, "error: must provide data path"
