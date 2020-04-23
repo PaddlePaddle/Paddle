@@ -3461,6 +3461,8 @@ class IrGraph(object):
                             self._find_node_by_name(node.inputs, each_var_name)
                         ]
                 for each_var_name in node.op().output_arg_names():
+                    if node.outputs == []:
+                        break
                     if each_var_name not in var_nodes:
                         var_nodes[each_var_name] = [
                             self._find_node_by_name(node.outputs, each_var_name)

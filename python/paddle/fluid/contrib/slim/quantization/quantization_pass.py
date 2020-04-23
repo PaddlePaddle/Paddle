@@ -172,7 +172,8 @@ class QuantizationTransformPass(object):
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
                  optimizer=None,
-                 for_test=False):
+                 for_test=False,
+                 exe=None):
         """
         Constructor.
 
@@ -230,6 +231,7 @@ class QuantizationTransformPass(object):
         self._act_preprocess_func = act_preprocess_func
         self._optimizer = optimizer
         self._for_test = for_test
+        self._exe = exe
 
         quant_type = [
             'abs_max', 'channel_wise_abs_max', 'range_abs_max',
@@ -309,6 +311,7 @@ class QuantizationTransformPass(object):
             elif in_node.is_ctrl_var():
                 new_node = graph.create_control_dep_var()
                 create_var_map[key] = new_node
+                #new_node = None
             else:
                 new_node = graph.create_var_node_from_desc(in_node.node.var())
                 create_var_map[key] = new_node
@@ -332,9 +335,13 @@ class QuantizationTransformPass(object):
                 return
             for in_node in op_node.inputs:
                 new_node = _create_new_node(in_node)
+                #if new_node == None:
+                #    continue
                 graph.link_to(new_node, new_op_node)
             for in_node in op_node.outputs:
                 new_node = _create_new_node(in_node)
+                #if new_node == None:
+                #    continue
                 graph.link_to(new_op_node, new_node)
             for var_node in op_node.outputs:
                 for next_op_node in var_node.outputs:
@@ -343,8 +350,8 @@ class QuantizationTransformPass(object):
 
         def _insert_func(graph, func, var_node, op):
             tmp_program = Program()
-            with program_guard(tmp_program, default_startup_program()):
-                with unique_name.guard(var_node.name()):
+            with program_guard(tmp_program):
+                with unique_name.guard(var_node.name() + "_"):
                     in_node = data(
                         var_node.name() + '_tmp_input',
                         shape=var_node.shape(),
@@ -378,6 +385,7 @@ class QuantizationTransformPass(object):
                     _copy_graph(tmp_graph, op_node)
             for node in in_op_node:
                 _copy_graph(tmp_graph, node)
+
             target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
                                                       in_node.name())
             target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
@@ -389,12 +397,19 @@ class QuantizationTransformPass(object):
                 graph.update_input_link(target_in_node, var_node, node)
             graph.update_input_link(var_node, target_out_node, op)
             op_out = op.outputs[0]
+            '''
+            if var_node.name() == 'feed_image':
+                import pdb
+                pdb.set_trace()
+            '''
             if not self._for_test:
+                '''
                 try:
                     var_node_grad = graph._find_node_by_name(
                         graph.all_var_nodes(), var_node.name() + "@GRAD")
                 except:
                     var_node_grad = None
+                '''
 
                 op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
                                                        op_out.name() + "@GRAD")
@@ -407,37 +422,53 @@ class QuantizationTransformPass(object):
 
                 graph.update_input_link(var_node, target_out_node, op_grad)
                 #graph.link_to(op_grad, target_out_grad_node)
+                # var_node_grad_op = var_node_grad.inputs[0]
+                op_grad_out = None
+                for node in op_grad.outputs:
+                    if var_node.name() + "@GRAD" in node.name():
+                        op_grad_out = node
+                """
                 if var_node_grad:
                     graph.update_output_link(var_node_grad,
-                                             target_out_grad_node, op_grad)
+                                             target_out_grad_node, var_node_grad_op)
                 else:
-                    graph.link_to(op_grad, target_out_grad_node)
+                    graph.link_to(var_node_grad_op, target_out_grad_node)
+                """
                 #import pdb
                 #pdb.set_trace()
+                if op_grad_out:
+                    graph.update_output_link(op_grad_out, target_out_grad_node,
+                                             op_grad)
+                else:
+                    graph.link_to(op_grad, target_out_grad_node)
+
                 for node in in_node_grad_op:
                     graph.update_input_link(target_in_node, var_node, node)
+                    if op_grad_out:
+                        graph.update_output_link(in_node_grad, op_grad_out,
+                                                 node)
+                    """
                     if var_node_grad:
                         graph.update_output_link(in_node_grad, var_node_grad,
                                                  node)
                     else:
                         node.remove_output(in_node_grad)
-                        #print(node.output_names())
-                    #print(in_node_grad.name())
-                    #graph.safe_remove_nodes(in_node_grad)
+                    """
+                    #print(node.output_names())
+                #print(in_node_grad.name())
+                #graph.safe_remove_nodes(in_node_grad)
                 mean_grad = target_out_grad_node.inputs[0]
                 mean_out_grad = mean_grad.inputs[0]
                 fill_constant_node = mean_out_grad.inputs[0]
-                target_out_grad_node.clear_inputs()
+                #target_out_grad_node.clear_inputs()
                 graph.safe_remove_nodes(mean_grad)
                 graph.safe_remove_nodes(mean_out_grad)
                 graph.safe_remove_nodes(fill_constant_node)
+                graph.safe_remove_nodes(in_node_grad)
 
             graph.safe_remove_nodes(loss_node.inputs[0])
             graph.safe_remove_nodes(loss_node)
             graph.safe_remove_nodes(target_in_node)
-            for op in graph.all_op_nodes():
-                if 'feed_image_tmp_input@GRAD' in op.output_arg_names():
-                    print(op.name())
             return target_out_node
 
         def _transform_forward(graph, op):
@@ -526,7 +557,26 @@ class QuantizationTransformPass(object):
         for op in ops:
             if op.name() in self._quantizable_grad_ops:
                 _transform_backward(graph, op)
+
         graph.resolve_hazard()
+        '''
+        for node in graph.all_var_nodes():
+            if node.name() == 'tmp_62.quantized.dequantized':
+                for op in node.outputs:
+                    if op.name() == 'mul':
+                        for in_node in op.inputs:
+                            print("inputs", in_node.name(), in_node)
+                        for out_node in op.outputs:
+                            print("outputs", out_node.name(), in_node)
+            if node.name() == 'fc_0.tmp_0@GRAD':
+                for op in node.outputs:
+                    if op.name() == 'mul_grad':
+                        for in_node in op.inputs:
+                            print("inputs", in_node.name(), in_node)
+                        for out_node in op.outputs:
+                            print("outputs", out_node.name(), in_node)
+
+        '''
         return graph
 
     def _create_global_step(self, graph):

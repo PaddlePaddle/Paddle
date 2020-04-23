@@ -39,6 +39,23 @@ Graph* Pass::Apply(Graph* graph) const {
   }
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
+  VLOG(1) << "debug circle" << std::endl;
+  std::vector<std::vector<ir::Node*>> circles;
+  FindCircleSubGraph(*graph, &circles);
+  for (size_t i = 0; i < circles.size(); i++) {
+    std::vector<ir::Node*> circle = circles[i];
+    VLOG(1) << "circle " << (i + 1) << " +++++++++++=";
+    for (size_t j = 0; j < circle.size(); j++) {
+      ir::Node* tmp = circle[j];
+      VLOG(1) << "Node name" << tmp->Name() << " ";
+      for (auto node : tmp->inputs) {
+        VLOG(1) << "Inputs: " << node->Name() << " ";
+      }
+      for (auto node : tmp->outputs) {
+        VLOG(1) << "Outputs: " << node->Name() << " ";
+      }
+    }
+  }
   PADDLE_ENFORCE(!HasCircle(*graph),
                  "Illegal Pass %s. Generated graph shouldn't have cycle.",
                  Type());
