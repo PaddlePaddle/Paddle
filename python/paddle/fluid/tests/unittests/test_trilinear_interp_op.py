@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.nn.functional import *
+from paddle.nn.functional import interpolate
 
 
 def trilinear_interp_np(input,
