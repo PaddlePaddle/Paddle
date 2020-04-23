@@ -24,6 +24,8 @@ USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP(relu);
+USE_OP(tanh);
+USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
 
 namespace paddle {
 namespace framework {
@@ -48,6 +50,8 @@ class MKLDNNInplacePassTest {
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
     } else if (type == "relu") {
+      op->SetInput("X", inputs);
+    } else if (type == "tanh") {
       op->SetInput("X", inputs);
     } else if (type == "softmax") {
       op->SetAttr("axis", -1);
@@ -90,6 +94,12 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "relu", "relu2", std::vector<std::string>({"j"}),
           std::vector<std::string>({"k"}),
           mkldnn_enabled_op.compare("softmax") == 0);
+    SetOp(&prog, "tanh", "tanh1", std::vector<std::string>({"k"}),
+          std::vector<std::string>({"l"}),
+          mkldnn_enabled_op.compare("tanh") == 0);
+    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"l"}),
+          std::vector<std::string>({"m"}),
+          mkldnn_enabled_op.compare("relu") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
             std::vector<std::string>({"z"}),
@@ -113,11 +123,6 @@ class MKLDNNInplacePassTest {
     std::unordered_map<std::string, std::string> input_names;
     std::unordered_map<std::string, std::string> output_names;
 
-    input_names["softmax"] = "X";
-    output_names["softmax"] = "Out";
-    input_names["elementwise_add"] = "X";
-    output_names["elementwise_add"] = "Out";
-
     VLOG(3) << DebugString(graph);
 
     for (auto* node : graph->Nodes()) {
@@ -127,8 +132,9 @@ class MKLDNNInplacePassTest {
           auto ins = op->Inputs();
           auto outs = op->Outputs();
           // Input and output are the same var
-          if (ins[input_names[mkldnn_enabled_op]] ==
-              outs[output_names[mkldnn_enabled_op]]) {
+          // All inplace ops are inplacing input named: X
+          // and output : Out 
+          if (ins["X"] == outs["Out"]) {
             ++use_mkldnn_true_count;
           }
         }
@@ -152,6 +158,9 @@ TEST(MKLDNNInplacePass, inplace_softmax_branched) {
 TEST(MKLDNNInplacePass, inplace_elementwise_add) {
   // Two elementwise_add mkl-dnn enabled op instances to be made inplace
   MKLDNNInplacePassTest().MainTest("elementwise_add", false, 1);
+}
+TEST(MKLDNNInplacePass, inplace_tanh) {
+  MKLDNNInplacePassTest().MainTest("tanh", false, 1);
 }
 }  // namespace ir
 }  // namespace framework

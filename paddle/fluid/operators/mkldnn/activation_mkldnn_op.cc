@@ -90,7 +90,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p = handler.AcquireDstMemory(y);
+  auto dst_memory_p = x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
   mkldnn::stream astream(dev_ctx.GetEngine());
