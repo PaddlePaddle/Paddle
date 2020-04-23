@@ -1303,7 +1303,7 @@ def rank_attention(input,
 def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     """
     **Batch FC layer**
-    This Op can calculate BatcheFC.
+    This Op can calculate BatchFC.
     Notice: It currently supports GPU device.
     This Op exists in contrib, which means that it is not shown to the public.
     Args:
