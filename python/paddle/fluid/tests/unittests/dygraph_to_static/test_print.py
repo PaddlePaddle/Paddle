@@ -14,19 +14,15 @@
 
 from __future__ import print_function
 
-import contextlib
-import io
-import sys
-import six
 import numpy
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.jit import declarative
 
 
 # 1. print VarBase
+@declarative
 def dyfunc_print_variable(x):
     """
     PY2:
@@ -43,6 +39,7 @@ def dyfunc_print_variable(x):
 
 
 # 2. print ndarray
+@declarative
 def dyfunc_print_ndarray(x):
     """
     PY2:
@@ -57,8 +54,7 @@ def dyfunc_print_ndarray(x):
 
 
 # 3. print VarBase with format
-
-
+@declarative
 def dyfunc_print_with_format(x):
     """
     PY2:
@@ -84,6 +80,7 @@ def dyfunc_print_with_format(x):
 
 
 # 4. print VarBase with format 2
+@declarative
 def dyfunc_print_with_format2(x):
     """
     PY2:
@@ -107,6 +104,7 @@ def dyfunc_print_with_format2(x):
 
 
 # 5. print VarBase in control flow1
+@declarative
 def dyfunc_print_with_ifelse(x):
     x_v = fluid.dygraph.to_variable(x)
     if len(x_v.shape) > 1:
@@ -116,6 +114,7 @@ def dyfunc_print_with_ifelse(x):
 
 
 # 6. print mutiple VarBases
+@declarative
 def dyfunc_print_multi_vars(x):
     """
     # NOTE: y_v type is error before cur PR in this case
@@ -129,6 +128,7 @@ def dyfunc_print_multi_vars(x):
 
 
 # 7. print continue VarBase
+@declarative
 def dyfunc_print_continue_vars(x):
     """
     PY3:
@@ -147,8 +147,7 @@ def dyfunc_print_continue_vars(x):
     """
     x_v = fluid.dygraph.to_variable(x)
     y_v = x_v * 2
-    z_v = x_v * 3
-    print(x_v, y_v, z_v)
+    print(x_v, y_v)
 
 
 class TestPrintBase(unittest.TestCase):
@@ -166,15 +165,9 @@ class TestPrintBase(unittest.TestCase):
             self.dygraph_func(self.input)
 
     def get_static_output(self):
-        # TODO: How to catch C++ stdout to python
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            program_translator = ProgramTranslator()
-            static_func = program_translator.get_func(self.dygraph_func)
-            static_func(self.input)
-
-        exe = fluid.Executor(self.place)
-        exe.run(main_program)
+        with fluid.program_guard(fluid.Program()):
+            # TODO: How to catch C++ stdout to python
+            self.dygraph_func(self.input)
 
 
 class TestPrintVariable(TestPrintBase):

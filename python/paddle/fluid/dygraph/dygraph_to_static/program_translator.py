@@ -176,18 +176,15 @@ class ProgramCache(object):
                 for feed_layer in self._inputs:
                     idx = self.feed_name_to_idx[feed_layer.name]
                     args[idx] = feed_layer
-                fetch_list = func(*args, **kwargs)
-                if not isinstance(fetch_list, tuple):
-                    # func just returns one reuslt
-                    fetch_list = [fetch_list]
-                fetch_list = list(fetch_list)
-                self._outputs = fetch_list
-            else:
-                fetch_list = func(*args, **kwargs)
-                if not isinstance(fetch_list, tuple):
-                    # func just returns one reuslt
-                    fetch_list = [fetch_list]
-                fetch_list = list(fetch_list)
+            fetch_list = func(*args, **kwargs)
+            if not isinstance(fetch_list, tuple):
+                # func just returns one reuslt
+                fetch_list = [fetch_list]
+            fetch_list = list(fetch_list)
+            # NOTE: avoid fetch_list is [None]
+            if len(fetch_list) == 1 and fetch_list[0] is None:
+                fetch_list = None
+            self._outputs = fetch_list
 
         return fetch_list
 
