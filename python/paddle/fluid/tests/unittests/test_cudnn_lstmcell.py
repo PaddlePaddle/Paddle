@@ -32,7 +32,12 @@ def tanh(x):
     return 2. * sigmoid(2. * x) - 1.
 
 
-def cudnn_step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
+def non_cudnn_step(step_in,
+                   pre_hidden,
+                   pre_cell,
+                   gate_w,
+                   gate_b,
+                   forget_bias=1.0):
     concat_1 = np.concatenate([step_in, pre_hidden], 1)
 
     gate_input = np.matmul(concat_1, gate_w)
@@ -45,12 +50,12 @@ def cudnn_step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
     return new_hidden, new_cell
 
 
-def non_cudnn_step(step_input_np, pre_hidden_np, pre_cell_np, weight_ih,
-                   bias_ih, weight_hh, bias_hh):
+def cudnn_step(step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
+               weight_hh, bias_hh):
 
-    igates = np.matmul(step_input_np, weight_ih)
+    igates = np.matmul(step_input_np, weight_ih.transpose(1, 0))
     igates = igates + bias_ih
-    hgates = np.matmul(pre_hidden_np, weight_hh)
+    hgates = np.matmul(pre_hidden_np, weight_hh.transpose(1, 0))
     hgates = hgates + bias_hh
 
     chunked_igates = np.split(igates, indices_or_sections=4, axis=1)
@@ -102,7 +107,6 @@ class TestCudnnLSTM(unittest.TestCase):
             bias_ih_name = "_bias_ih"
             weight_hh_name = "_weight_hh"
             bias_hh_name = "_bias_hh"
-
             weight_ih = param_list[weight_ih_name].numpy()
             weight_ih = np.random.uniform(
                 -0.1, 0.1, size=weight_ih.shape).astype('float64')
@@ -146,10 +150,9 @@ class TestCudnnLSTM(unittest.TestCase):
             named_api_hidden_out = named_api_out[0]
             named_api_cell_out = named_api_out[1]
 
-            np_hidden_out, np_cell_out = non_cudnn_step(
+            np_hidden_out, np_cell_out = cudnn_step(
                 step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
                 weight_hh, bias_hh)
-
             self.assertTrue(
                 np.allclose(
                     api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
@@ -230,7 +233,7 @@ class TestNonCudnnLSTM(unittest.TestCase):
             named_api_hidden_out = named_api_out[0]
             named_api_cell_out = named_api_out[1]
 
-            np_hidden_out, np_cell_out = cudnn_step(
+            np_hidden_out, np_cell_out = non_cudnn_step(
                 step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b)
 
             self.assertTrue(
