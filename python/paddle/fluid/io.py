@@ -60,6 +60,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
+    'save_serving_model',
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -1946,3 +1947,124 @@ def set_program_state(program, state_dict):
         warnings.warn(
             "This list is not set, Because of Paramerter not found in program. There are: {}".
             format(" ".join(unused_para_list)))
+
+def save_serving_model(server_model_folder_name,
+                       client_config_folder_name,
+                       feed_var_dict,
+                       fetch_var_dict,
+                       main_program=None):
+    """
+    Use save_inference_model interface to prune the given `main_program` to generate configuration files for Paddle Serving service. These configuration files contain the model file of the server and the configuration file of the client, which are stored in `server_model_folder_name` and `client_config_folder_name` folders respectively. 
+
+    Args:
+        server_model_folder_name(str): The directory path to save the model file of the server.
+        client_config_folder_name(str): The directory path to save the configuration file of the client.
+        feed_var_dict(dict): The dict stores variables that need to be fed data during inference.
+        fetch_var_dict(dict): The dict stores variables from which we can get inference results.
+        main_program(Program, optional): The original program, which will be pruned to
+                                         build the inference model. If is set None,
+                                         the global default :code:`_main_program_` will be used.
+                                         Default: None.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            server_model_folder = "./server_model"
+            client_config_folder = "./client_config"
+
+            # User defined network, here a linear regression example
+            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+            predict = fluid.layers.fc(input=x, size=1, act=None)
+
+            cost = fluid.layers.square_error_cost(input=predict, label=y)
+            avg_loss = fluid.layers.mean(cost)
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd_optimizer.minimize(avg_loss)
+
+            place = fluid.CPUPlace()
+            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            # Feed data and train process
+
+            # Save serving model.
+            fluid.io.save_serving_model(server_model_folder_name=server_model_folder,
+                                        client_config_folder_name=client_config_folder,
+                                        feed_var_dict={"x": x},
+                                        fetch_var_dict={"y": predict},
+                                        fluid.default_main_program())
+    """
+    executor = Executor(place=CPUPlace())
+
+    feed_var_names = [feed_var_dict[x].name for x in feed_var_dict]
+    target_vars = list(fetch_var_dict.values())
+
+    save_inference_model(
+        server_model_folder_name,
+        feed_var_names,
+        target_vars,
+        executor,
+        main_program=main_program)
+
+    config = model_conf.GeneralModelConfig()
+
+    for key in feed_var_dict:
+        feed_var = model_conf.FeedVar()
+        feed_var.alias_name = key
+        feed_var.name = feed_var_dict[key].name
+        feed_var.is_lod_tensor = feed_var_dict[key].lod_level >= 1
+        if feed_var_dict[key].dtype == core.VarDesc.VarType.INT32 or \
+           feed_var_dict[key].dtype == core.VarDesc.VarType.INT64:
+            feed_var.feed_type = 0
+        if feed_var_dict[key].dtype == core.VarDesc.VarType.FP32:
+            feed_var.feed_type = 1
+        if feed_var.is_lod_tensor:
+            feed_var.shape.extend([-1])
+        else:
+            tmp_shape = []
+            for v in feed_var_dict[key].shape:
+                if v >= 0:
+                    tmp_shape.append(v)
+            feed_var.shape.extend(tmp_shape)
+        config.feed_var.extend([feed_var])
+
+    for key in fetch_var_dict:
+        fetch_var = model_conf.FetchVar()
+        fetch_var.alias_name = key
+        fetch_var.name = fetch_var_dict[key].name
+        fetch_var.is_lod_tensor = fetch_var_dict[key].lod_level >= 1
+        if fetch_var_dict[key].dtype == core.VarDesc.VarType.INT32 or \
+           fetch_var_dict[key].dtype == core.VarDesc.VarType.INT64:
+            fetch_var.fetch_type = 0
+
+        if fetch_var_dict[key].dtype == core.VarDesc.VarType.FP32:
+            fetch_var.fetch_type = 1
+
+        if fetch_var.is_lod_tensor:
+            fetch_var.shape.extend([-1])
+        else:
+            tmp_shape = []
+            for v in fetch_var_dict[key].shape:
+                if v >= 0:
+                    tmp_shape.append(v)
+            fetch_var.shape.extend(tmp_shape)
+        config.fetch_var.extend([fetch_var])
+
+    os.makedirs(client_config_folder)
+    with open("{}/serving_client_conf.prototxt".format(client_config_folder_name), "w") as fout:
+        fout.write(str(config))
+    with open("{}/serving_server_conf.prototxt".format(server_model_folder_name), "w") as fout:
+        fout.write(str(config))
+    with open("{}/serving_client_conf.stream.prototxt".format(
+            client_config_folder_name), "wb") as fout:
+        fout.write(config.SerializeToString())
+    with open("{}/serving_server_conf.stream.prototxt".format(
+            server_model_folder_name), "wb") as fout:
+        fout.write(config.SerializeToString())
