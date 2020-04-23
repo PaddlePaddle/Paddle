@@ -50,6 +50,27 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
     auto transpose_axis =
         boost::get<std::vector<int>>(transpose_op->Op()->GetAttr("axis"));
 
+    auto reshape_out_size = reshape_shape.size();
+    auto transpose_out_size = transpose_axis.size();
+    bool supported_transpose_axis =
+        (transpose_axis.at(0) == 0 && transpose_axis.at(1) == 2 &&
+         transpose_axis.at(2) == 1 && transpose_axis.at(3) == 3);
+    if (transpose_out_size != 4) {
+      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+              << "supported rank is 4, received " << transpose_out_size;
+      return;
+    }
+    if (!supported_transpose_axis) {
+      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+              << "supported transpose axis for the fuse are {0, 2, 1, 3}";
+      return;
+    }
+    if (reshape_out_size != 3) {
+      VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
+              << "reshape_out supported rank is 3, received "
+              << reshape_out_size;
+      return;
+    }
     OpDesc *matmul_desc = matmul_op->Op();
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
     matmul_desc->SetAttr("fused_reshape_Out", reshape_shape);

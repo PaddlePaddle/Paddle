@@ -424,7 +424,7 @@ class MatMulOp : public framework::OperatorWithKernel {
       auto transpose_out_size = transpose_out.size();
       PADDLE_ENFORCE_EQ(transpose_out_size, 4,
                         platform::errors::InvalidArgument(
-                            "transpose_out_size supported rank is 4, "
+                            "transpose_out supported rank is 4, "
                             "received %d",
                             transpose_out_size));
       bool supported_transpose_axis =
@@ -488,11 +488,13 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
-        R"DOC(Shape of fused reshape of `Out` output.)DOC")
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+              "it's a shape atribute of fused reshape for `Out` output.)DOC")
         .SetDefault({});
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
-        R"DOC(Axis of fused transpose of `Out` output.)DOC")
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+              "it's a axis atribute of fused transpose for `Out` output.)DOC")
         .SetDefault({});
     /* int8 parameters */
     AddAttr<bool>("use_quantizer",

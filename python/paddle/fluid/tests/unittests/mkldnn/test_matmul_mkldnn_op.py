@@ -167,8 +167,9 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
         self.data_type_ = np.float32
 
     def generate_data(self):
-        self.x = np.random.random([1, 128, 128]).astype(self.data_type_)
-        self.y = np.random.random([1, 128, 64]).astype(self.data_type_)
+        self.bs = 1
+        self.x = np.random.random([self.bs, 128, 128]).astype(self.data_type_)
+        self.y = np.random.random([self.bs, 128, 64]).astype(self.data_type_)
 
     def init_params_and_out(self):
         self.transpose_out = []
@@ -197,6 +198,15 @@ class TestMatMulOpTransposeReshapeEmptyFloat(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def check_raise_error(self, msg):
+        try:
+            self.check_output()
+        except Exception as e:
+            if msg in str(e):
+                raise AttributeError
+            else:
+                print(e)
 
 
 class TestMatMulOpTransposeReshapeIntEmptyInt(
@@ -239,6 +249,45 @@ class TestMatMulOpTransposeReshapeOtherDimInt(
         TestMatMulOpTransposeReshapeOtherDimFloat):
     def init_data_type(self):
         self.data_type_ = np.int8
+
+
+class TestMatMulOpTransposeReshapeTransposeAxisNotSupportedException(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def init_params_and_out(self):
+        self.transpose_out = [0, 1, 2, 3]
+        self.reshape_out = [0, 0, self.x.shape[1] * self.y.shape[-1]]
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.assertRaises(AttributeError, self.check_raise_error,
+                          'InvalidArgumentError: supported transpose axis '
+                          'for the fuse are {0, 2, 1, 3}')
+
+
+class TestMatMulOpTransposeReshapeTransposeRankNotSupportedException(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def init_params_and_out(self):
+        self.transpose_out = [0, 2, 1]
+        self.reshape_out = [0, 0, self.x.shape[1] * self.y.shape[-1]]
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.assertRaises(
+            AttributeError, self.check_raise_error,
+            'InvalidArgumentError: transpose_out supported rank is 4')
+
+
+class TestMatMulOpTransposeReshapeRankOfReshapeNotSupportedException(
+        TestMatMulOpTransposeReshapeBasicFloat):
+    def init_params_and_out(self):
+        self.transpose_out = [0, 2, 1, 3]
+        self.reshape_out = [0, 0]
+        self.out = np.matmul(self.x, self.y)
+
+    def test_check_output(self):
+        self.assertRaises(
+            AttributeError, self.check_raise_error,
+            'InvalidArgumentError: reshape_out supported rank is 3')
 
 
 if __name__ == "__main__":
