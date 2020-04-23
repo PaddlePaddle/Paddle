@@ -119,11 +119,14 @@ def generate(key):
 # would save model in static graph mode, and load it in dygraph
 # mode. Therefore, we keep the variable name of Parameter currently.
 # 
-# Please fix me if a better method is found.        
+# Please fix me if a better method is found.    
+# 
+# NOTE(zhiqiu): use c++ unique_name_generator in dygraph mode, 
+# in order to keep name consistency.
 def generate_with_ignorable_key(key):
-    from .framework import in_dygraph_mode
+    from .framework import in_dygraph_mode, _dygraph_tracer
     if in_dygraph_mode():
-        key = "tmp"
+        return _dygraph_tracer()._generate_unique_name()
 
     return generator(key)
 

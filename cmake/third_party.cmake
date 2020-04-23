@@ -210,7 +210,7 @@ list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boos
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
 # download file
-set(CUDAERROR_URL  "https://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
+set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
 file_download_and_uncompress(${CUDAERROR_URL} "cudaerror")
 
 if(WITH_AMD_GPU)

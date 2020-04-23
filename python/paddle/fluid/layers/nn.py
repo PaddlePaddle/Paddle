@@ -5948,20 +5948,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
             )
-        attrs = {}
         if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-            attrs['shape'] = shape
-        else:
-            raise TypeError(
-                "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        out, _ = core.ops.reshape2(x, 'shape', shape)
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+            shape = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in shape
+            ]
+            out, _ = core.ops.reshape2(x, 'shape', shape)
+            return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
@@ -9770,16 +9763,12 @@ def expand(x, expand_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
-            if utils._contain_var(expand_times):
-                raise TypeError(
-                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+            expand_times = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in expand_times
+            ]
 
-        return core.ops.expand(x, 'expand_times', expand_times)
+            return core.ops.expand(x, 'expand_times', expand_times)
 
     inputs = {"X": [x]}
     attrs = {}
@@ -10057,6 +10046,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10150,6 +10142,12 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    check_type(input, 'input', (Variable),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'int'],
+                'fluid.layers.gaussian_random_batch_size_like')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10318,28 +10316,19 @@ def slice(input, axes, starts, ends):
     """
     if in_dygraph_mode():
         infer_flags = list(1 for i in range(len(axes)))
-        if isinstance(starts, (list, tuple)):
-            if utils._contain_var(starts):
-                raise TypeError(
-                    "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+        if isinstance(starts, (list, tuple)) and isinstance(ends,
+                                                            (list, tuple)):
+            starts = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in starts
+            ]
+            ends = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in ends
+            ]
 
-        if isinstance(ends, (list, tuple)):
-            if utils._contain_var(ends):
-                raise TypeError(
-                    "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
-                              ends, 'infer_flags', infer_flags)
+            return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
+                                  ends, 'infer_flags', infer_flags)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(

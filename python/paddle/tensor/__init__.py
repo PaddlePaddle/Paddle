@@ -69,7 +69,7 @@ from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .random import uniform   #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
-# from .random import rand   #DEFINE_ALIAS
+from .random import rand  #DEFINE_ALIAS
 from .random import randint  #DEFINE_ALIAS
 from .random import randperm
 # from .math import abs   #DEFINE_ALIAS
@@ -145,7 +145,7 @@ from .linalg import bmm  #DEFINE_ALIAS
 # from .manipulation import expand   #DEFINE_ALIAS
 # from .manipulation import expand_as   #DEFINE_ALIAS
 # from .manipulation import flatten   #DEFINE_ALIAS
-# from .manipulation import gather   #DEFINE_ALIAS
+from .manipulation import gather  #DEFINE_ALIAS
 # from .manipulation import gather_nd   #DEFINE_ALIAS
 # from .manipulation import reshape   #DEFINE_ALIAS
 # from .manipulation import reverse   #DEFINE_ALIAS
@@ -154,14 +154,14 @@ from .linalg import bmm  #DEFINE_ALIAS
 # from .manipulation import scatter_nd   #DEFINE_ALIAS
 # from .manipulation import shard_index   #DEFINE_ALIAS
 # from .manipulation import slice   #DEFINE_ALIAS
-# from .manipulation import split   #DEFINE_ALIAS
-# from .manipulation import squeeze   #DEFINE_ALIAS
-# from .manipulation import stack  #DEFINE_ALIAS
+from .manipulation import split  #DEFINE_ALIAS
+from .manipulation import squeeze  #DEFINE_ALIAS
+from .manipulation import stack  #DEFINE_ALIAS
 # from .manipulation import strided_slice   #DEFINE_ALIAS
 # from .manipulation import transpose   #DEFINE_ALIAS
 # from .manipulation import unique   #DEFINE_ALIAS
 # from .manipulation import unique_with_counts   #DEFINE_ALIAS
-# from .manipulation import unsqueeze   #DEFINE_ALIAS
+from .manipulation import unsqueeze  #DEFINE_ALIAS
 # from .manipulation import unstack    #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS

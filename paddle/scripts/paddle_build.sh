@@ -242,7 +242,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
@@ -279,12 +279,18 @@ function check_style() {
     pre-commit install
     clang-format --version
 
+    commit_files=on
     for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
             git diff
-            exit 1
+            commit_files=off
         fi
     done 
+    
+    if [ $commit_files == 'off' ];then
+        echo "code format error"
+        exit 1
+    fi
     trap : 0
 }
 
