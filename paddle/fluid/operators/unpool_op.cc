@@ -83,15 +83,9 @@ class UnpoolOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of UnpoolOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Indices"), true,
-        platform::errors::NotFound("Input(Indices) of UnpoolOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of UnpoolOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Unpool");
+    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Unpool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Unpool");
     auto in_x_dims = ctx->GetInputDim("X");
     auto in_y_dims = ctx->GetInputDim("Indices");
     std::string unpooling_type =
@@ -146,12 +140,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of UnpoolOpGradOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      platform::errors::NotFound(
-                          "Input(X@GRAD) of UnpoolOpGradOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UnpoolGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "UnpoolGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

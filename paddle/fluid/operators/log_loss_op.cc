@@ -23,10 +23,8 @@ class LogLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predicted"),
-                   "Input(Predicted) must be initialized.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) must be initialized.");
+    OP_INOUT_CHECK(ctx->HasInput("Predicted"), "Input", "Predicted", "LogLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "LogLoss");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto label_dims = ctx->GetInputDim("Labels");
@@ -87,14 +85,14 @@ class LogLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predicted"),
-                   "Input(Predicted) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Predicted")),
-                   "Output(Predicted@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Predicted"), "Input", "Predicted",
+                   "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   framework::GradVarName("Loss"), "LogLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Predicted")),
+                   "Output", framework::GradVarName("Predicted"),
+                   "LogLossGrad");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));

@@ -27,14 +27,11 @@ class LayerNormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"),
-                   "Output(Y) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Mean"),
-                   "Output(Mean) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Variance"),
-                   "Output(Variance) of LayerNormOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LayerNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "LayerNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Mean"), "Output", "Mean", "LayerNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Variance"), "Output", "Variance",
+                   "LayerNorm");
 
     auto x_dim = ctx->GetInputDim("X");
     auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
@@ -122,14 +119,12 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Mean"),
-                   "Input(Mean) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Variance"),
-                   "Input(Variance) of LayerNormOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) of LayerNormOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LayerNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "LayerNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
+                   "LayerNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                   framework::GradVarName("Y"), "LayerNormGrad");
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {
