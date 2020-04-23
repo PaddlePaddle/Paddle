@@ -234,7 +234,7 @@ void CUDAContext::InitEigenContext() {
 }
 
 CUDAContext::CUDAContext(const CUDAPlace& place,
-                         const enum stream::Priority& priority) {
+                         const stream::Priority& priority) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
   stream_.reset(new stream::CUDAStream(place, priority));
