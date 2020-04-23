@@ -28,7 +28,7 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-    const bool trainable_stats = ctx.Attr<bool>("use_global_stats");
+    const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
     PADDLE_ENFORCE_EQ(use_global_stats, false,
                       platform::errors::InvalidArgument(
                           "sync_batch_norm doesn't support "

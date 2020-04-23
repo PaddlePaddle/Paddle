@@ -1277,8 +1277,8 @@ class BatchNorm(layers.Layer):
 
         if in_dygraph_mode():
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", self._is_test, "data_layout", self._data_layout,
-                     "use_mkldnn", False, "fuse_with_relu",
+                     "is_test", not self.training, "data_layout",
+                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
                      self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
