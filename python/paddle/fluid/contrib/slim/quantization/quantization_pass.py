@@ -357,11 +357,12 @@ class QuantizationTransformPass(object):
                         shape=var_node.shape(),
                         dtype='float32')
                     out_node = func(in_node)
+                    # loss shape must be 1 when minimize
                     loss = mean(out_node)
                 #if self._optimizer is not None:
                 if not self._for_test:
                     in_node.stop_gradient = False
-                    optimizer = SGDOptimizer(0.001)
+                    optimizer = MomentumOptimizer(0.001, 0.9)
                     optimizer.minimize(loss)
             tmp_graph = IrGraph(
                 core.Graph(tmp_program.desc), for_test=self._for_test)
@@ -396,46 +397,28 @@ class QuantizationTransformPass(object):
             for node in outputs:
                 graph.update_input_link(target_in_node, var_node, node)
             graph.update_input_link(var_node, target_out_node, op)
-            op_out = op.outputs[0]
-            '''
-            if var_node.name() == 'feed_image':
-                import pdb
-                pdb.set_trace()
-            '''
-            if not self._for_test:
-                '''
-                try:
-                    var_node_grad = graph._find_node_by_name(
-                        graph.all_var_nodes(), var_node.name() + "@GRAD")
-                except:
-                    var_node_grad = None
-                '''
 
+            # update grad
+            if not self._for_test:
+                op_out = op.outputs[0]
                 op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
                                                        op_out.name() + "@GRAD")
+                # find op's gradient op, such as conv2d_grad
                 op_grad = op_out_grad.outputs[0]
                 target_out_grad_node = graph._find_node_by_name(
                     graph.all_var_nodes(), target_out_node.name() + "@GRAD")
                 in_node_grad = graph._find_node_by_name(
                     graph.all_var_nodes(), target_in_node.name() + "@GRAD")
                 in_node_grad_op = in_node_grad.inputs
-
+                # update op_grad's input
                 graph.update_input_link(var_node, target_out_node, op_grad)
-                #graph.link_to(op_grad, target_out_grad_node)
-                # var_node_grad_op = var_node_grad.inputs[0]
+
                 op_grad_out = None
+                # find var_node's corresponding grad node
                 for node in op_grad.outputs:
                     if var_node.name() + "@GRAD" in node.name():
                         op_grad_out = node
-                """
-                if var_node_grad:
-                    graph.update_output_link(var_node_grad,
-                                             target_out_grad_node, var_node_grad_op)
-                else:
-                    graph.link_to(var_node_grad_op, target_out_grad_node)
-                """
-                #import pdb
-                #pdb.set_trace()
+                # update op_grad's output
                 if op_grad_out:
                     graph.update_output_link(op_grad_out, target_out_grad_node,
                                              op_grad)
@@ -447,16 +430,7 @@ class QuantizationTransformPass(object):
                     if op_grad_out:
                         graph.update_output_link(in_node_grad, op_grad_out,
                                                  node)
-                    """
-                    if var_node_grad:
-                        graph.update_output_link(in_node_grad, var_node_grad,
-                                                 node)
-                    else:
-                        node.remove_output(in_node_grad)
-                    """
-                    #print(node.output_names())
-                #print(in_node_grad.name())
-                #graph.safe_remove_nodes(in_node_grad)
+                # remove useless nodes
                 mean_grad = target_out_grad_node.inputs[0]
                 mean_out_grad = mean_grad.inputs[0]
                 fill_constant_node = mean_out_grad.inputs[0]
