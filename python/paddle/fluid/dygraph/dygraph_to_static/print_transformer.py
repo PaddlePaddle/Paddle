@@ -50,6 +50,7 @@ class PrintTransformer(gast.NodeTransformer):
         if isinstance(node.func, gast.Name) and node.func.id == 'print':
             var = self._get_print_var(node)
             return self._contruct_print_node(var)
+        return node
 
     # NOTE: deal with print in PY2
     def visit_Print(self, node):
