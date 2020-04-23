@@ -63,9 +63,10 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role){
+RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  //do some initialization
+
+  // do some initialization
   start_ns_ = PosixInNsec();
   role_ = role;
   is_enabled_ = true;
@@ -278,7 +279,8 @@ bool ShouldSendProfileState() { return should_send_profile_state; }
 
 std::string OpName(const framework::VariableNameMap &name_map,
                    const std::string &type_name) {
-  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail || !IsProfileEnabled())
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail ||
+      !IsProfileEnabled())
     return "";
 
   std::string ret = type_name + "%";

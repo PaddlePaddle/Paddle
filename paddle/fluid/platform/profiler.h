@@ -123,7 +123,7 @@ struct MemEvenRecorder {
 
 struct RecordEvent {
   RecordEvent(const std::string& name,
-              const EventRole role);
+              const EventRole role = EventRole::kOrdinary);
 
   ~RecordEvent();
 
