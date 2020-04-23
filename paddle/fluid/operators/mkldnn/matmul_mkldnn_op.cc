@@ -165,8 +165,9 @@ class MatMulFactory {
 
     batch_size_ = 1;
     auto b = BS;
-    if (BS > 1 && !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
-                    ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())) {
+    if (BS > 1 &&
+        !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
+          ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())) {
       auto& x_dims = ctx.Input<Tensor>("X")->dims();
       auto& y_dims = ctx.Input<Tensor>("Y")->dims();
       batch_size_ = x_bs > y_bs ? x_dims[0] : y_dims[0];
