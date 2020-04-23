@@ -40,8 +40,8 @@ from .creation import full  # DEFINE_ALIAS
 from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
-from .creation import meshgrid  #DEFINE_ALIAS
 from .creation import trace  #DEFINE_ALIAS
+from .creation import meshgrid  #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
 from .stat import std  #DEFINE_ALIAS

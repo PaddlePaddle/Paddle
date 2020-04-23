@@ -43,6 +43,7 @@ __all__ = [
     'full_like',
     'triu',
     'tril',
+    'trace',
     'meshgrid',
 ]
 
@@ -883,33 +884,44 @@ def trace(input, offset=0, dim1=0, dim2=1):
     This OP computes the sum along diagonals of the input tensor.
     
     If Input is 2-D, returns the sum of diagonal. 
+
     If Input has larger dimensions, then returns an array of diagonals sum, diagonals be taken from
     the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
     of the input tensor.
+
     The argument ``offset`` determines where diagonals are taken from input tensor:
+
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
+    
     Args:
         input(Variable): The input tensor. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
         offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
         dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
         dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+    
     Returns:
         Variable, the output data type is the same as input data type.
+
     Examples:
         .. code-block:: python
+
             import paddle.tensor as tensor
             import paddle.fluid.dygraph as dg
             import numpy as np
             
             case1 = np.random.randn(2, 3).astype('float32')
-            case2 = np.random.randn(2, 2, 2, 3).astype('float32')
-            case1 = dg.to_variable(case1)
-            case2 = dg.to_variable(case2)
+            case2 = np.random.randn(3, 10, 10).astype('float32')
+            case3 = np.random.randn(3, 10, 5, 10).astype('float32')
+            
             with dg.guard():
+                case1 = dg.to_variable(case1)
+                case2 = dg.to_variable(case2)
+                case3 = dg.to_variable(case3)
                 data1 = tensor.trace(case1) # data1.shape = [1]
-                data2 = tensor.trace(case2, offset=1, dim1=0, dim2=-1) # data2.shape = [2, 2]
+                data2 = tensor.trace(case2, offset=1, dim1=1, dim2=2) # data2.shape = [3]
+                data3 = tensor.trace(case3, offset=-3, dim1=1, dim2=-1) # data2.shape = [3, 5]
     """
     inputs = {'Input': [input]}
     attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}

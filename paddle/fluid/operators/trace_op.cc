@@ -111,10 +111,12 @@ class TraceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input(Input) must not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::NotFound("Input(Input) of TraceOp is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Input")), true,
-                      "Input(Input@GRAD) should not be null.");
+                      platform::errors::NotFound(
+                          "Input(Input@GRAD) of TraceGradOp is not found."));
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
   }
