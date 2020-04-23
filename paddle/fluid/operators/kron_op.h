@@ -29,8 +29,8 @@ namespace operators {
 // Process an element in the output, used with a parallel-for
 template <typename T>
 struct KronElemFunctor {
-  KronElemFunctor(const T* a, const int64_t* stride_a, const T* b,
-                  const int64_t* shape_b, const int64_t* stride_b, T* out,
+  KronElemFunctor(const T* a, const T* b, T* out, const int64_t* shape_b,
+                  const int64_t* stride_a, const int64_t* stride_b,
                   const int64_t* stride_out, int ndims)
       : a_(a),
         b_(b),
@@ -70,13 +70,13 @@ struct KronElemFunctor {
 
 template <typename DeviceContext, typename T>
 struct KronOpFunctor {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* x,
-                  const framework::Tensor* y, framework::Tensor* out) {
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor& x,
+                  const framework::Tensor& y, framework::Tensor* out) {
     int ndims = out->dims().size();
     int64_t numel = out->numel();
 
-    const framework::DDim& dim_x = x->dims();
-    const framework::DDim& dim_y = y->dims();
+    const framework::DDim& dim_x = x.dims();
+    const framework::DDim& dim_y = y.dims();
     const framework::DDim& dim_out = out->dims();
     const framework::DDim stride_x = framework::stride(dim_x);
     const framework::DDim stride_y = framework::stride(dim_y);
@@ -107,9 +107,9 @@ struct KronOpFunctor {
 #endif
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    KronElemFunctor<T> functor(x->data<T>(), p_stride_x, y->data<T>(),
-                               p_shape_y, p_stride_y, out->data<T>(),
-                               p_stride_out, ndims);
+    KronElemFunctor<T> functor(x.data<T>(), y.data<T>(), out->data<T>(),
+                               p_shape_y, p_stride_x, p_stride_y, p_stride_out,
+                               ndims);
     for_range(functor);
   }
 };
@@ -178,17 +178,17 @@ struct IdentityFunctor {
 
 template <typename DeviceContext, typename T>
 struct KronGradOpFunctor {
-  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* dout,
-                  const framework::Tensor* x, const framework::Tensor* y,
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor& dout,
+                  const framework::Tensor& x, const framework::Tensor& y,
                   framework::Tensor* dx, framework::Tensor* dy) {
-    int ndims = dout->dims().size();
-    int64_t numel = dout->numel();
-    int64_t numel_x = x->numel();
-    int64_t numel_y = y->numel();
+    int ndims = dout.dims().size();
+    int64_t numel = dout.numel();
+    int64_t numel_x = x.numel();
+    int64_t numel_y = y.numel();
 
-    const framework::DDim& dim_x = x->dims();
-    const framework::DDim& dim_y = y->dims();
-    const framework::DDim& dim_dout = dout->dims();
+    const framework::DDim& dim_x = x.dims();
+    const framework::DDim& dim_y = y.dims();
+    const framework::DDim& dim_dout = dout.dims();
 
     const framework::DDim stride_x = framework::stride(dim_x);
     const framework::DDim stride_y = framework::stride(dim_y);
@@ -227,7 +227,7 @@ struct KronGradOpFunctor {
     dout_y.mutable_data<T>({numel_y, numel_x}, dev_ctx.GetPlace());
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    KronGradElemFunctor<T> func(dout->data<T>(), x->data<T>(), y->data<T>(),
+    KronGradElemFunctor<T> func(dout.data<T>(), x.data<T>(), y.data<T>(),
                                 dout_x.data<T>(), dout_y.data<T>(),
                                 p_stride_dout, p_stride_x, p_stride_y,
                                 p_shape_y, numel_x, numel_y, ndims);
@@ -292,7 +292,7 @@ class KronKernel : public framework::OpKernel<T> {
     framework::Tensor yy = UnsqueezeTo(*y, ndims);
 
     KronOpFunctor<DeviceContext, T> func;
-    func(dev_ctx, &xx, &yy, out);
+    func(dev_ctx, xx, yy, out);
   }
 };
 
@@ -317,7 +317,7 @@ class KronGradKernel : public framework::OpKernel<T> {
     framework::Tensor dyy = UnsqueezeTo(*dy, ndims);
 
     KronGradOpFunctor<DeviceContext, T> func;
-    func(dev_ctx, dout, &xx, &yy, &dxx, &dyy);
+    func(dev_ctx, *dout, xx, yy, &dxx, &dyy);
   }
 };
 

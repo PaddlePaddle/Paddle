@@ -28,9 +28,9 @@ class KronOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    // OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron");
-    // OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron");
-    // OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "kron");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "kron");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_y = ctx->GetInputDim("Y");
@@ -65,7 +65,7 @@ class KronOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
           Kron Operator.
 
-          This operator compute the Kronecker product of two tensors, a
+          This operator computes the Kronecker product of two tensors, a
           composite tensor made of blocks of the second tensor scaled by the 
           first.
 
@@ -95,7 +95,15 @@ class KronGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    // TODO(chenfeiyu): add IOcheck
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "kron_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "kron_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "kron_grad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Y")), "Output",
+                   framework::GradVarName("Y"), "kron_grad");
+
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
