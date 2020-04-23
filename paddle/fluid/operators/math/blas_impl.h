@@ -11,9 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
-
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -148,7 +146,6 @@ struct CBlas<float> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmsErf(args...);
   }
-
 #if !defined(_WIN32)
   template <typename... ARGS>
   static void CSRMM(ARGS... args) {

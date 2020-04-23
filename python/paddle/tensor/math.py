@@ -1085,8 +1085,9 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
 
 def inverse(input, out=None, name=None):
     """
-    Takes the inverse of the square matrix. The input can be a square matrix
-    (2-D Tensor) or batches of square matrixs.
+    Takes the inverse of the square matrix. A square matrix is a matrix with
+    the same number of rows and columns. The input can be a square matrix
+    (2-D Tensor) or batches of square matrices.
 
     Args:
         input (Variable): The input Variable which holds a Tensor. The last two
