@@ -31,15 +31,28 @@ class LogLossOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime() || (framework::product(pred_dims) > 0 &&
                              framework::product(label_dims) > 0)) {
-      PADDLE_ENFORCE_EQ(pred_dims, label_dims);
+      PADDLE_ENFORCE_EQ(
+          pred_dims, label_dims,
+          platform::errors::InvalidArgument(
+              "The rank of Input(Predicted) must be equal to the"
+              "rank of Input(Labels), but received rank of Input(Predicted)"
+              "is [%s], received rank of Input(Labels) is [%s].",
+              pred_dims, label_dims));
     }
     PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
-                      "The rank of Input(Predicted) must be 2 and the shape is "
-                      "[batch_size, 1].");
+                      platform::errors::InvalidArgument(
+                          "The rank of Input(Predicted) must be 2,"
+                          "But received rank of Input(Predicted)"
+                          "is [%d]",
+                          pred_dims.size()));
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(pred_dims[1], 1,
-                        "Each row of Input(Predicted) contains a real value, "
-                        "so the 2nd dimension of Input(X) must be 1.");
+      PADDLE_ENFORCE_EQ(
+          pred_dims[1], 1,
+          platform::errors::InvalidArgument(
+              "Each row of Input(Predicted) contains a real value, "
+              "so the 2nd dimension of Input(X) must be 1,"
+              "But got [%d]",
+              pred_dims[1]));
     }
     ctx->SetOutputDim("Loss", {pred_dims[0], 1});
     ctx->ShareLoD("Predicted", "Loss");
@@ -96,7 +109,13 @@ class LogLossGradOp : public framework::OperatorWithKernel {
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
-    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims);
+    PADDLE_ENFORCE_EQ(
+        loss_grad_dims, pred_dims,
+        platform::errors::InvalidArgument(
+            "The rank of loss_grad must be equal to the rank of Predicted,"
+            "But received rank of loss_grad is [%s], received Predicted is "
+            "[%s]",
+            loss_grad_dims, pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Predicted");
     ctx->SetOutputDim(pred_grad_name, pred_dims);

@@ -78,19 +78,29 @@ class AffineChannelOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(scale_dims.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Input(Scale)'s dimensions size must be 1,"
-                          "But received the scale's dimention is [%s] ",
+                          "Input(Scale)'s dimensions' size must be 1,"
+                          "But received the scale's dimensions' size is [%d] ",
                           scale_dims.size()));
     PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Input(Bias)'s dimensions size must be 1,"
-                          "But received the bias's dimention is [%s] ",
+                          "Input(Bias)'s dimensions' size must be 1,"
+                          "But received the bias's dimensions' size is [%d] ",
                           scale_dims.size()));
     if (ctx->IsRuntime() || scale_dims[0] > 0) {
-      PADDLE_ENFORCE_EQ(scale_dims[0], C);
+      PADDLE_ENFORCE_EQ(
+          scale_dims[0], C,
+          platform::errors::InvalidArgument(
+              "The first element of Input(Scale)'s dimensions must be [%d],"
+              "But got [%d].",
+              C, scale_dims[0]));
     }
     if (ctx->IsRuntime() || b_dims[0] > 0) {
-      PADDLE_ENFORCE_EQ(b_dims[0], C);
+      PADDLE_ENFORCE_EQ(
+          b_dims[0], C,
+          platform::errors::InvalidArgument(
+              "The first element of Input(Bias)'s dimensions must be [%d],"
+              "But got [%d].",
+              C, b_dims[0]));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));

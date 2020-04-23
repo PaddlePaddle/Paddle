@@ -95,8 +95,8 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(in_x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
-                          "Unpooling intput(X) must be of 4-dimensional, but "
-                          "received X's dimension is %d.",
+                          "Unpooling Intput(X) must be of 4-dimensional, but "
+                          "received Input(X)'s dimension is %d.",
                           in_x_dims.size()));
     PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
 
