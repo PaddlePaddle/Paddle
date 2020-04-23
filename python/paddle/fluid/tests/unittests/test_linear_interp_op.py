@@ -123,6 +123,88 @@ class TestLinearInterpOp(OpTest):
         self.align_mode = 1
 
 
+class TestLinearInterpOpDataLayout(TestLinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = 0.
+        self.out_size = np.array([50, ]).astype("int32")
+        self.align_corners = False
+        self.align_mode = 1
+        self.data_layout = 'NHWC'
+
+
+class TestLinearInterpOpAlignMode(TestLinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = 0.
+        self.out_size = np.array([50, ]).astype("int32")
+        self.align_corners = False
+        self.align_mode = 0
+
+
+class TestLinearInterpOpScale(TestLinearInterpOp):
+    def init_test_case(self):
+        self.interp_method = 'linear'
+        self.input_shape = [1, 3, 100]
+        self.out_w = 50
+        self.scale = 0.5
+        self.out_size = np.array([50, ]).astype("int32")
+        self.align_corners = False
+        self.align_mode = 0
+
+
+class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
+    def setUp(self):
+        self.out_size = None
+        self.actual_shape = None
+        self.data_layout = 'NCHW'
+        self.init_test_case()
+        self.op_type = "linear_interp"
+        input_np = np.random.random(self.input_shape).astype("float64")
+        self.shape_by_1Dtensor = False
+        self.scale_by_1Dtensor = False
+
+        if self.data_layout == "NCHW":
+            in_w = self.input_shape[2]
+        else:
+            in_w = self.input_shape[1]
+
+        if self.scale > 0:
+            out_w = int(in_w * self.scale)
+        else:
+            out_w = self.out_w
+
+        output_np = linear_interp_np(input_np, out_w, self.out_size,
+                                     self.actual_shape, self.align_corners,
+                                     self.align_mode, self.data_layout)
+
+        self.inputs = {'X': input_np}
+        if self.out_size is not None and self.shape_by_1Dtensor:
+            self.inputs['OutSize'] = self.out_size
+        elif self.actual_shape is not None and self.shape_by_1Dtensor:
+            self.inputs['OutSize'] = self.actual_shape
+        else:
+            size_tensor = []
+            for index, ele in enumerate(self.out_size):
+                size_tensor.append(("x" + str(index), np.ones(
+                    (1)).astype('int32') * ele))
+            self.inputs['SizeTensor'] = size_tensor
+
+        self.attrs = {
+            'out_w': self.out_w,
+            'scale': self.scale,
+            'interp_method': self.interp_method,
+            'align_corners': self.align_corners,
+            'align_mode': self.align_mode,
+            'data_layout': self.data_layout
+        }
+        self.outputs = {'Out': output_np}
+
+
 class TestLinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[1, 3, 128], dtype="float64")
