@@ -617,6 +617,28 @@ class TestLayer(LayerTest):
             self.assertTrue(
                 np.array_equal(conv2d1.bias.numpy(), conv2d2.bias.numpy()))
 
+        with self.static_graph():
+
+            # the input of Conv2DTranspose must be Variable.
+            def test_Variable():
+                images = np.ones([2, 3, 5, 5], dtype='float32')
+                conv2d = nn.Conv2DTranspose(
+                    num_channels=3, num_filters=3, filter_size=[2, 2])
+                conv2d_ret1 = conv2d(images)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of Conv2DTranspose must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            def test_type():
+                images = layers.data(
+                    name='pixel', shape=[3, 5, 5], dtype='int32')
+                conv2d = nn.Conv2DTranspose(
+                    num_channels=3, num_filters=3, filter_size=[2, 2])
+                conv2d_ret2 = conv2d(images)
+
+            self.assertRaises(TypeError, test_type)
+
     def test_bilinear_tensor_product(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
         inp_np_y = np.array([[4, 5, 6]]).astype('float32')
@@ -1235,6 +1257,61 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
+
+    def test_instance_norm(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        shape = (2, 4, 3, 3)
+
+        input = np.random.random(shape).astype('float32')
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X', shape=shape, dtype='float32', append_batch_size=False)
+            ret = layers.instance_norm(input=X)
+            static_ret = self.get_static_graph_result(
+                feed={'X': input}, fetch_list=[ret])[0]
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X', shape=shape, dtype='float32', append_batch_size=False)
+            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            ret = instanceNorm(X)
+            static_ret2 = self.get_static_graph_result(
+                feed={'X': input}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            instanceNorm = nn.InstanceNorm(num_channels=shape[1])
+            dy_ret = instanceNorm(base.to_variable(input))
+            dy_rlt_value = dy_ret.numpy()
+
+        with self.dynamic_graph():
+            instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+            dy_ret = instanceNorm(base.to_variable(input))
+            dy_rlt_value2 = dy_ret.numpy()
+
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value2))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
+        with self.static_graph():
+            # the input of InstanceNorm must be Variable.
+            def test_Variable():
+                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                ret1 = instanceNorm(input)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of InstanceNorm must be float32 or float64
+            def test_type():
+                input = np.random.random(shape).astype('int32')
+                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                ret2 = instanceNorm(input)
+
+            self.assertRaises(TypeError, test_type)
 
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():
@@ -2956,7 +3033,7 @@ class TestBook(LayerTest):
             z = layers.lod_reset(x=x, y=y)
             self.assertTrue(z.lod_level == 2)
             # case 2
-            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int64')
+            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int32')
             z = layers.lod_reset(x=x, y=lod_tensor_in)
             self.assertTrue(z.lod_level == 1)
             # case 3
@@ -3140,7 +3217,9 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            rois_lod = layers.data(
+                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
+            output = layers.roi_pool(x, rois, 7, 7, 0.6, rois_lod)
             return (output)
 
     def test_sequence_enumerate(self):
@@ -3155,7 +3234,10 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            output = layers.roi_align(x, rois, 14, 14, 0.5, 2)
+            rois_lod = layers.data(
+                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
+            output = layers.roi_align(x, rois, 14, 14, 0.5, 2, 'roi_align',
+                                      rois_lod)
             return (output)
 
     def test_roi_perspective_transform(self):
@@ -3350,12 +3432,12 @@ class TestBook(LayerTest):
                 name='gt_labels',
                 shape=[10, 1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             is_crowd = layers.data(
                 name='is_crowd',
                 shape=[1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             im_info = layers.data(
                 name='im_info',
                 shape=[1, 3],
@@ -3385,6 +3467,28 @@ class TestBook(LayerTest):
                 dtype='int32')
             out = fluid.layers.sigmoid_focal_loss(
                 x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
+            return (out)
+
+    def test_addmm(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input_data',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            x = layers.data(
+                name='x',
+                shape=[3, 2],
+                append_batch_size=False,
+                dtype='float32')
+            y = layers.data(
+                name='y',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+
+            out = paddle.addmm(input=input, x=x, y=y)
             return (out)
 
     def test_retinanet_detection_output(self):

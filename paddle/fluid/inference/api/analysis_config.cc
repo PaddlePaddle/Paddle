@@ -279,7 +279,14 @@ void AnalysisConfig::Update() {
 
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
+    bool use_calib_int8 =
+        (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8) &&
+        trt_use_calib_mode_;
     for (const auto &pass : kTRTSubgraphPasses) {
+      if (use_calib_int8 &&
+          (pass == "conv_bn_fuse_pass" || pass == "fc_fuse_pass")) {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }

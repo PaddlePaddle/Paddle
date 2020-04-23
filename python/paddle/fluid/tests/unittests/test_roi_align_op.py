@@ -26,7 +26,11 @@ class TestROIAlignOp(OpTest):
         self.init_test_case()
         self.make_rois()
         self.calc_roi_align()
-        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+        }
         self.attrs = {
             'spatial_scale': self.spatial_scale,
             'pooled_height': self.pooled_height,
@@ -168,6 +172,35 @@ class TestROIAlignOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestROIAlignInLodOp(TestROIAlignOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_align()
+
+        seq_len = self.rois_lod[0]
+        cur_len = 0
+        lod = [cur_len]
+        for l in seq_len:
+            cur_len += l
+            lod.append(cur_len)
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisLod': np.asarray(lod).astype('int64')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width,
+            'sampling_ratio': self.sampling_ratio
+        }
+
+        self.outputs = {'Out': self.out_data}
 
 
 if __name__ == '__main__':

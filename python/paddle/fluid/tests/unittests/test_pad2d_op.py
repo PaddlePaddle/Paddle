@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestPad2dOp(OpTest):
@@ -122,6 +124,21 @@ class TestCase7(TestPad2dOp):
         self.mode = "reflect"
         self.data_format = "NCHW"
         self.variable_paddings = True
+
+
+class TestPad2dOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 2, 2, 2)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.pad2d(input=input_data, paddings=[1, 1, 1, 1])
+
+            self.assertRaises(TypeError, test_Variable)
+
+            data = fluid.data(
+                name='data', shape=[None, 3, 20, 20], dtype='float16')
+            fluid.layers.pad2d(input=data, paddings=[1, 1, 1, 1])
 
 
 if __name__ == '__main__':

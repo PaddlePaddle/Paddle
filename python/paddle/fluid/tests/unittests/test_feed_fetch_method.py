@@ -31,7 +31,9 @@ class TestFeedFetch(unittest.TestCase):
 
         core.set_feed_variable(scope, input_tensor, "feed", 0)
 
-        output_tensor = core.get_fetch_variable(scope, "feed", 0)
+        output = scope.var("fetch").get_fetch_list()
+        output.append(input_tensor)
+        output_tensor = core.get_fetch_variable(scope, "fetch", 0)
 
         output_lod = output_tensor.recursive_sequence_lengths()
         self.assertEqual(2, output_lod[0][0])
