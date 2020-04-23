@@ -30,10 +30,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
+std::vector<int64_t> ConvOp::ComputeOutputShape(
+    framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Conv");
   OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter", "Conv");
-  OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Conv");
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -54,30 +54,30 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5, true,
       platform::errors::InvalidArgument(
-          "The input of Op(conv) should be 4-D or 5-D Tensor. But "
-          "received: %u-D Tensor, the shape of input is [%s].",
+          "The input of Op(Conv) should be a 4-D or 5-D Tensor. But "
+          "received: input's dimension is %u, input's shape is [%s].",
           in_dims.size(), in_dims));
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       platform::errors::InvalidArgument(
-          "The input's dimension size and filter's dimension size of "
-          "Op(conv) should be equal. But received: the shape of input is [%s], "
-          "the dimension size of input is [%d], the shape of filter is [%s],  "
-          "the dimension size of filter is [%d].",
+          "The input's dimension and filter's dimension of "
+          "Op(Conv) should be equal. But received: the input's shape is [%s], "
+          "the input's dimension is %d; the filter's shape is [%s],  "
+          "the filter's dimension is %d.",
           in_dims, in_dims.size(), filter_dims, filter_dims.size()));
 
   int in_sub_stride_size = in_dims.size() - strides.size();
   PADDLE_ENFORCE_EQ(
       in_dims.size(), strides.size() + 2U,
       platform::errors::InvalidArgument(
-          "The dimension size of input minus the size of "
-          "Attr(stride) must be euqal to 2 for Op(conv)."
-          "But received: the dimension size of input minus the size "
-          "of Attr(stride) is [%d], the "
-          "input's dimension size is [%d], the shape of input "
-          "is [%s], the Attr(stride)'s size is [%d].",
-          in_sub_stride_size, in_dims.size(), in_dims, strides.size()));
+          "The difference of input's dimension and Attr(strides)'s "
+          "length must be euqal to 2 for Op(Conv). "
+          "But received: input's dimension is %d, input's shape is [%s]; "
+          "Attr(stride)'s length is %d, Attr(stride) is [%s]; "
+          "difference of input's dimention and Attr(strides)'s length = %u.",
+          in_dims.size(), in_dims, strides.size(),
+          framework::make_ddim(strides), in_sub_stride_size));
 
   const auto input_channels =
       channel_last ? in_dims[in_dims.size() - 1] : in_dims[1];
@@ -85,31 +85,31 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       input_channels, filter_dims[1] * groups,
       platform::errors::InvalidArgument(
-          "The number of input channels should be equal to filter channels * "
-          "groups for Op(conv). But received: the input's channels is [%d], "
-          "the shape of input is [%s], the filter's channel is [%d], the shape "
-          "of filter is [%s], the groups is [%d], the data_format is %s. The "
-          "error may come from wrong data_format setting.",
+          "The number of input's channels should be equal to filter's channels "
+          "* groups for Op(Conv). But received: the input's channels is %d, "
+          "the input's shape is [%s]; the filter's channels is %d, the "
+          "filter's shape is [%s]; the groups is %d, the data_format is %s. "
+          "The error may come from wrong data_format setting.",
           input_channels, in_dims, filter_dims[1], filter_dims, groups,
           data_format));
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
       platform::errors::InvalidArgument(
-          "The number of output channels of Op(conv) should be divided "
-          "by groups. But received: the output channels is [%d], the shape "
-          "of filter is [%s] (the first dimension of filter is output "
-          "channel), the groups is [%d].",
+          "The number of output's channels (filter's first dimension) of "
+          "Op(Conv) should be divided by groups. But received: "
+          "the output channels is %d, the filter's shape is [%s], "
+          "the groups is %d.",
           filter_dims[0], filter_dims, groups));
 
   framework::DDim in_data_dims;
-  framework::DDim filter_data_dims;
   if (channel_last) {
     in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
   }
 
-  filter_data_dims = framework::slice_ddim(filter_dims, 2, filter_dims.size());
+  framework::DDim filter_data_dims =
+      framework::slice_ddim(filter_dims, 2, filter_dims.size());
 
   std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
@@ -133,8 +133,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
     output_shape.push_back(filter_dims[0]);
   }
 
-  ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
-  ctx->ShareLoD("Input", "Output");
+  return output_shape;
 }
 
 framework::OpKernelType ConvOp::GetExpectedKernelType(

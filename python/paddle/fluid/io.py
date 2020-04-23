@@ -37,6 +37,8 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
+from . import dataloader
+from .dataloader import *
 from . import core
 from .. import compat as cpt
 

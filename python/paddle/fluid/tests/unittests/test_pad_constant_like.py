@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
-class TestPadOp(OpTest):
+class TestPadConstantLikeOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = "pad_constant_like"
@@ -49,7 +51,7 @@ class TestPadOp(OpTest):
         self.paddings = [(0, 13), (0, 0)]
 
 
-class TestCase1(TestPadOp):
+class TestCase1(TestPadConstantLikeOp):
     def initTestCase(self):
         self.x_shape = (4, 3, 4, 5)
         self.y_shape = (2, 3, 4, 5)
@@ -57,12 +59,33 @@ class TestCase1(TestPadOp):
         self.pad_value = 0.5
 
 
-class TestCase2(TestPadOp):
+class TestCase2(TestPadConstantLikeOp):
     def initTestCase(self):
         self.x_shape = (4, 3, 4, 10)
         self.y_shape = (2, 3, 2, 10)
         self.paddings = [(0, 2), (0, 0), (0, 2), (0, 0)]
         self.pad_value = 0.5
+
+
+class TestPadConstantLikeOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x_data = np.random.random((2, 2, 2, 2)).astype("float32")
+            y_data = np.random.random((2, 2, 2, 2)).astype("float32")
+
+            def test_Variable_x():
+                var_y = fluid.data(
+                    name="data_y", shape=[2, 2, 2, 2], dtype="float32")
+                fluid.layers.pad_constant_like(x=x_data, y=var_y)
+
+            self.assertRaises(TypeError, test_Variable_x)
+
+            def test_Variable_y():
+                var_x = fluid.data(
+                    name="data_x", shape=[2, 2, 2, 2], dtype="float32")
+                fluid.layers.pad_constant_like(x=var_x, y=y_data)
+
+            self.assertRaises(TypeError, test_Variable_y)
 
 
 if __name__ == '__main__':

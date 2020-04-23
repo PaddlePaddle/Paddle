@@ -165,11 +165,11 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     to merge the output if True block and False Block.
 
     Args:
-        in_true(tuple|list|None): The True branch to be merged.
-        in_false(tuple|list|None): The False branch to be merged.
-        x(tuple|list|None): The input tensor that contains complete
+        in_true(Variable|tuple|list|None): The True branch to be merged.
+        in_false(Variable|tuple|list|None): The False branch to be merged.
+        x(Variable|tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to merge.
 
     Returns:
@@ -192,6 +192,13 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
+    check_type(x, 'x', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
+    check_type(in_true, 'in_true', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(in_false, 'in_false', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
     out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
@@ -1102,6 +1109,12 @@ def lod_rank_table(x, level=0):
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
     """
+    check_type(x, 'x', (Variable, list), 'lod_rank_table')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_rank_table')
+
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
@@ -1408,8 +1421,9 @@ def less_than(x, y, force_cpu=None, cond=None):
         x(${x_type}): ${x_comment}.
         y(${y_type}): ${y_comment}.
         force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Variable|None): Optional output variable to store the result of *less_than*
-
+        cond(Variable, optional): Optional output which can be any created Variable
+            that meets the requirements to store the result of *less_than*.
+            if cond is None, a new Varibale will be created to store the result.
     Returns:
         ${out_comment}.
 
@@ -1436,6 +1450,15 @@ def less_than(x, y, force_cpu=None, cond=None):
           result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(result_value) # [[True, False], [False, False]]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_than")
+    if force_cpu != None:
+        check_type(force_cpu, "force_cpu", bool, "less_than")
+
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1462,12 +1485,11 @@ def less_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
-            this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
-            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *less_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1480,6 +1502,13 @@ def less_equal(x, y, cond=None):
           out1 = label<= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_equal")
+
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1504,12 +1533,11 @@ def greater_than(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
-            tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
-            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_than*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
@@ -1521,6 +1549,13 @@ def greater_than(x, y, cond=None):
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "greater_than")
+
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1545,12 +1580,11 @@ def greater_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
-            tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
-            type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1564,6 +1598,13 @@ def greater_equal(x, y, cond=None):
           out_1 = label >= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "greater_equal")
+
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1607,6 +1648,13 @@ def equal(x, y, cond=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "equal")
+
     helper = LayerHelper("equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1625,12 +1673,11 @@ def not_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
-             tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
-             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *not_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1641,6 +1688,13 @@ def not_equal(x, y, cond=None):
           limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "not_equal")
+
     helper = LayerHelper("not_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')

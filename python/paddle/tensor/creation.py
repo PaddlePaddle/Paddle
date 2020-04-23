@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..fluid.framework import Variable
+from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -37,13 +37,13 @@ __all__ = [
     #            'range', 
     'zeros',
     'zeros_like',
-    #            'arrange',
+    'arrange',
     'eye',
     'full',
     'full_like',
     'triu',
     'tril',
-    #            'meshgrid',
+    'meshgrid',
 ]
 
 
@@ -723,3 +723,147 @@ def triu(input, diagonal=0, name=None):
     """
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
+
+
+def meshgrid(input, name=None):
+    """
+    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    vector, and creates N-dimensional grids.
+    
+    Args:
+        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+ 
+    Returns:
+         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
+
+    Examples:
+      .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          x = fluid.data(name='x', shape=[100], dtype='int32')
+          y = fluid.data(name='y', shape=[200], dtype='int32')
+
+          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
+          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+
+          exe = fluid.Executor(place=fluid.CPUPlace())
+          grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+          res_1, res_2 = exe.run(fluid.default_main_program(),
+                                 feed={'x': input_1,
+                                       'y': input_2},
+                                 fetch_list=[grid_x, grid_y])
+     
+          #the shape of res_1 is (100, 200)
+          #the shape of res_2 is (100, 200)
+
+      .. code-block:: python
+
+          #example 2: in dygraph mode
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
+          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+          with fluid.dygraph.guard():
+              tensor_3 = fluid.dygraph.to_variable(input_3)
+              tensor_4 = fluid.dygraph.to_variable(input_4)
+              grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+
+          #the shape of grid_x is (100, 200)
+          #the shape of grid_y is (100, 200)
+
+    """
+
+    if in_dygraph_mode():
+        num = len(input)
+        out = core.ops.meshgrid(input, num)
+        return out
+
+    helper = LayerHelper('meshgrid', **locals())
+
+    if not isinstance(input, list):
+        raise TypeError("The type of input in meshgrid should be list.")
+
+    for id, input_ in enumerate(input):
+        check_dtype(input_.dtype, 'create data type',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'meshgrid')
+
+    num = len(input)
+    out = [
+        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        for i in range(num)
+    ]
+    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+
+    return out
+
+
+def arange(start, end, step=1, dtype=None, name=None):
+    """
+    Return evenly spaced values within a given interval.
+    Values are generated within the half-open interval [start, stop) (in other words,
+    the interval including start but excluding stop).
+    Parameters:
+        start(float32 | float64 | int32 | int64 | Variable): Start of interval. The interval includes this value.
+            when start is Variable, it is a 1-D Tensor with shape [1].
+        end(float32 | float64 | int32 | int64 | Variable): End of interval. The interval does not include this
+                                 value, except in some cases where step is not an integer
+                                 and floating point round-off affects the length of out. When end is Variable,
+                                 it is a 1-D Tensor with shape [1].
+        step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
+                                  distance between two adjacent values, out[i+1] - out[i].
+        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    
+    Return type: Variable
+    examples:
+        .. code-block:: python
+             import paddle
+             # expected out put: [0, 2, 4, 6, 8]
+             data = paddle.arange(0, 10, 2, 'int32')
+         #dygraph mode
+             import paddle
+             import paddle.fluid as fluid
+             with fluid.dygraph.guard():
+                 x = paddle.arange(0, 6, 2) 
+                 # x: [0, 2, 4]
+                 # x dtype: float32
+             
+    """
+    helper = LayerHelper("range", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'create data type',
+                ['float32', 'float64', 'int32', 'int64'], 'range')
+
+    dtype = convert_dtype(dtype)
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+
+    if not isinstance(end, Variable):
+        end = fill_constant([1], dtype, end)
+
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out

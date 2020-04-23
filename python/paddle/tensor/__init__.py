@@ -32,14 +32,14 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import range   #DEFINE_ALIAS
 # from .creation import zeros   #DEFINE_ALIAS
 # from .creation import zeros_like   #DEFINE_ALIAS
-# from .creation import arrange   #DEFINE_ALIAS
+from .creation import arange  #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
-# from .creation import meshgrid   #DEFINE_ALIAS
+from .creation import meshgrid  #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
 # from .stat import std   #DEFINE_ALIAS
@@ -121,20 +121,22 @@ from .math import logsumexp  #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS
 from .math import log1p  #DEFINE_ALIAS
 # from .math import erf   #DEFINE_ALIAS
-# from .math import addcmul   #DEFINE_ALIAS
+from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
+from .math import clamp  #DEFINE_ALIAS
 # from .attribute import rank   #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS
 from .linalg import dot  #DEFINE_ALIAS
+from .linalg import bmm  #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 from .linalg import norm  #DEFINE_ALIAS
 # from .linalg import transpose   #DEFINE_ALIAS
 from .linalg import dist  #DEFINE_ALIAS
 from .linalg import t  #DEFINE_ALIAS
-# from .linalg import cross   #DEFINE_ALIAS
+from .linalg import cross  #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
 # from .manipulation import cast   #DEFINE_ALIAS
 # from .manipulation import concat   #DEFINE_ALIAS
@@ -161,7 +163,7 @@ from .linalg import t  #DEFINE_ALIAS
 # from .manipulation import unstack   #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS
-# from .manipulation import roll   #DEFINE_ALIAS
+from .manipulation import roll  #DEFINE_ALIAS
 from .search import argmax  #DEFINE_ALIAS
 # from .search import argmin   #DEFINE_ALIAS
 # from .search import argsort   #DEFINE_ALIAS
@@ -170,7 +172,7 @@ from .search import argmax  #DEFINE_ALIAS
 # from .search import masked_select   #DEFINE_ALIAS
 # from .search import topk   #DEFINE_ALIAS
 from .search import where  #DEFINE_ALIAS
-# from .search import index_select   #DEFINE_ALIAS
+from .search import index_select  #DEFINE_ALIAS
 from .search import index_sample  # DEFINE_ALIAS
-# from .search import nonzero   #DEFINE_ALIAS
+from .search import nonzero  #DEFINE_ALIAS
 from .search import sort  #DEFINE_ALIAS

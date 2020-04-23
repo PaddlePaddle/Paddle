@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import logging
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -24,7 +25,7 @@ from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import GradientClipBase, error_clip_callback, append_gradient_clip_ops
+from .clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -64,31 +65,42 @@ class Optimizer(object):
                  learning_rate,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         self._parameter_list = parameter_list
+        self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
-            if name is not None:
-                self._name = unique_name.generate(name)
-            else:
-                self._name = unique_name.generate(self.__class__.__name__)
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
+            if regularization is not None:
+                for param in self._parameter_list:
+                    if param.regularizer is not None:
+                        logging.info(
+                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                            % regularization.__str__())
+                        break
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
-            self._name = name
 
+        if grad_clip is not None:
+            if not isinstance(grad_clip, GradientClipBase):
+                raise TypeError(
+                    "'grad_clip' should be an instance of GradientClipBase's derived class"
+                )
         self.regularization = regularization
+        self._grad_clip = grad_clip
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
         self._dtype = None
@@ -107,8 +119,6 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
-        # if pass grad_clip into minimize, it will not be None
-        self._grad_clip = None
 
     @framework.dygraph_only
     def state_dict(self):
@@ -787,8 +797,7 @@ class Optimizer(object):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None,
-                 grad_clip=None):
+                 no_grad_set=None):
         """
         Add operations to minimize ``loss`` by updating ``parameter_list``.
 
@@ -801,12 +810,7 @@ class Optimizer(object):
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
-                to be updated. The default value is None.   
-            grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-                some derived class of ``GradientClipBase`` . There are three cliping strategies 
-                ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
-                :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
-                gradient clipping.
+                to be updated. The default value is None.
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
@@ -820,12 +824,7 @@ class Optimizer(object):
             Please refer to the example of current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._grad_clip = grad_clip
+
         parameter_list = parameter_list if parameter_list \
             else self._parameter_list
         params_grads = self.backward(
@@ -859,6 +858,10 @@ class SGDOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -896,12 +899,14 @@ class SGDOptimizer(Optimizer):
                  learning_rate,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "sgd"
 
@@ -962,6 +967,10 @@ class MomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1002,6 +1011,7 @@ class MomentumOptimizer(Optimizer):
                  parameter_list=None,
                  use_nesterov=False,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
@@ -1009,6 +1019,7 @@ class MomentumOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "momentum"
         self._momentum = momentum
@@ -1097,13 +1108,14 @@ class DGCMomentumOptimizer(Optimizer):
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
-        local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
-        num_trainers (int, optional): The number of training nodes. Optional, default is None.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
              :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipByNorm, optional): Gradient cliping strategy. ``DGCMomentumOptimizer`` only support 
+            :ref:`api_fluid_clip_GradientClipByNorm` , and if not, it will raise TypeError. Default None, 
+            meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1130,9 +1142,9 @@ class DGCMomentumOptimizer(Optimizer):
                  sparsity=[0.999],
                  parameter_list=None,
                  use_nesterov=False,
-                 local_grad_clip_norm=None,
                  num_trainers=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
@@ -1146,6 +1158,7 @@ class DGCMomentumOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "dgc_momentum"
         self._momentum = momentum
@@ -1159,20 +1172,23 @@ class DGCMomentumOptimizer(Optimizer):
         self._rampup_begin_step_var = None
         self._global_step_var = None
 
-        self._local_grad_clip_norm = None
-        self._clip_norm = None
-        if local_grad_clip_norm is not None:
-            assert isinstance(num_trainers, int)
-            assert isinstance(local_grad_clip_norm, float)
-            assert num_trainers > 0
+        self._dgc_clip_norm = None
+        if grad_clip is not None:
+            if not isinstance(grad_clip, GradientClipByNorm):
+                raise TypeError(
+                    "The type of grad_clip should be 'GradientClipByNorm', because DGCMomentumOptimizer only support GradientClipByNorm"
+                )
+            assert isinstance(
+                num_trainers, int
+            ), "The type of num_trainers should be 'int', but received %s" % type(
+                value)
+            assert num_trainers > 0, "The value of num_trainers should be greater than 0!"
 
-            self._local_grad_clip_norm = local_grad_clip_norm
             self._num_trainers = num_trainers
-            self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
+            self._dgc_clip_norm = grad_clip.clip_norm * (num_trainers**-0.5)
 
         self.regular_type, self.regular_coeff = self._get_regularization_param(
             self.regularization)
-        self._grad_clip = None
 
     def _get_regularization_param(self, regularization):
         regular_type = 0
@@ -1342,8 +1358,8 @@ class DGCMomentumOptimizer(Optimizer):
                     op._remove_attr(op_maker.kOpRoleVarAttrName())
 
             clip_var = grad_var
-            if self._local_grad_clip_norm is not None:
-                clip_var = self._append_clip_norm(grad_var, self._clip_norm)
+            if self._dgc_clip_norm is not None:
+                clip_var = self._append_clip_norm(grad_var, self._dgc_clip_norm)
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
                          encoded_var, gather_var)
 
@@ -1494,6 +1510,10 @@ class LarsMomentumOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1526,6 +1546,7 @@ class LarsMomentumOptimizer(Optimizer):
                  lars_weight_decay=0.0005,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
@@ -1533,6 +1554,7 @@ class LarsMomentumOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "lars_momentum"
         self._momentum = momentum
@@ -1607,6 +1629,10 @@ class AdagradOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1639,6 +1665,7 @@ class AdagradOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None,
                  initial_accumulator_value=0.0):
         assert learning_rate is not None
@@ -1647,6 +1674,7 @@ class AdagradOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adagrad"
         self._epsilon = epsilon
@@ -1726,6 +1754,10 @@ class AdamOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1835,6 +1867,7 @@ class AdamOptimizer(Optimizer):
                  epsilon=1e-8,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None,
                  lazy_mode=False):
         assert learning_rate is not None
@@ -1845,6 +1878,7 @@ class AdamOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adam"
         self._beta1 = beta1
@@ -1986,6 +2020,10 @@ class AdamaxOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2031,6 +2069,7 @@ class AdamaxOptimizer(Optimizer):
                  epsilon=1e-8,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert beta1 is not None
@@ -2040,6 +2079,7 @@ class AdamaxOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adamax"
         self._beta1 = beta1
@@ -2238,6 +2278,10 @@ class DecayedAdagradOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2264,6 +2308,7 @@ class DecayedAdagradOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         assert learning_rate is not None
         assert decay is not None
@@ -2273,6 +2318,7 @@ class DecayedAdagradOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "decayed_adagrad"
         self._decay = decay
@@ -2337,6 +2383,10 @@ class AdadeltaOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -2367,6 +2417,7 @@ class AdadeltaOptimizer(Optimizer):
                  rho=0.95,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
@@ -2378,6 +2429,7 @@ class AdadeltaOptimizer(Optimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         self.type = "adadelta"
         self._epsilon = epsilon
@@ -2488,6 +2540,10 @@ class RMSPropOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2536,11 +2592,13 @@ class RMSPropOptimizer(Optimizer):
                  centered=False,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         super(RMSPropOptimizer, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
@@ -2656,6 +2714,10 @@ class FtrlOptimizer(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2704,11 +2766,13 @@ class FtrlOptimizer(Optimizer):
                  lr_power=-0.5,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  name=None):
         super(FtrlOptimizer, self).__init__(
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             name=name)
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
@@ -2798,6 +2862,10 @@ class LambOptimizer(AdamOptimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+            some derived class of ``GradientClipBase`` . There are three cliping strategies 
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -2834,6 +2902,7 @@ class LambOptimizer(AdamOptimizer):
                  epsilon=1e-6,
                  parameter_list=None,
                  regularization=None,
+                 grad_clip=None,
                  exclude_from_weight_decay_fn=None,
                  name=None):
         assert learning_rate is not None
@@ -2845,6 +2914,7 @@ class LambOptimizer(AdamOptimizer):
             learning_rate=learning_rate,
             parameter_list=parameter_list,
             regularization=regularization,
+            grad_clip=grad_clip,
             beta1=beta1,
             beta2=beta2,
             epsilon=epsilon,
@@ -3843,6 +3913,8 @@ class RecomputeOptimizer(Optimizer):
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
+        self._learning_rate = self._optimizer._learning_rate
+        self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
@@ -3994,7 +4066,8 @@ class RecomputeOptimizer(Optimizer):
                 checkpoints=self._checkpoints)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
-            self._optimizer._append_dgc_ops(params_grads)
+            if hasattr(self._optimizer, "_append_dgc_ops"):
+                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -4043,20 +4116,13 @@ class RecomputeOptimizer(Optimizer):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None,
-                 grad_clip=None):
+                 no_grad_set=None):
         assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (self._checkpoints is not None
                 ), "You should call _set_checkpoints first"
         if framework.in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute")
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._optimizer._grad_clip = grad_clip
         params_grads = self.backward(
             loss,
             startup_program=startup_program,

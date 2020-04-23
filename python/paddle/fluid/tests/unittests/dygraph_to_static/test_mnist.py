@@ -13,16 +13,17 @@
 # limitations under the License.
 
 from __future__ import print_function
-from time import time
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 import unittest
+from time import time
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
+from paddle.fluid.optimizer import AdamOptimizer
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -66,7 +67,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             global_pooling=global_pooling,
             use_cudnn=use_cudnn)
 
-    @dygraph_to_static_func
     def forward(self, inputs):
         x = self._conv2d(inputs)
         x = self._pool2d(x)
@@ -105,7 +105,6 @@ class MNIST(fluid.dygraph.Layer):
         else:
             return x
 
-    @dygraph_to_static_func
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
