@@ -40,6 +40,7 @@ class PrintTransformer(gast.NodeTransformer):
     def transform(self):
         self.visit(self.root)
 
+    # NOTE: deal with print in PY3
     def visit_Expr(self, node):
         value_node = node.value
         for child_node in gast.walk(value_node):
@@ -50,17 +51,39 @@ class PrintTransformer(gast.NodeTransformer):
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
         if isinstance(node.func, gast.Name) and node.func.id == 'print':
-            if self._without_format(node):
-                if self._is_tensor_node(node.args[0]):
-                    to_print_node(node)
-                else:
-                    raise TypeError(
-                        "print object type error, only support print Variable now."
-                    )
+            var = self._get_print_var(node)
+            return self._contruct_print_node(var)
+
+    # NOTE: deal with print in PY2
+    def visit_Print(self, node):
+        var = self._get_print_var(node)
+        print_call_node = self._contruct_print_node(var)
+        return gast.Expr(value=print_call_node)
+
+    def _get_print_var(self, node):
+        if isinstance(node, gast.Call):
+            var_list = node.args
+        elif isinstance(node, gast.Print):
+            var_list = node.values
+        # TODO: support print multiple Var
+        assert len(node.values) == 1, "Now only support print one Variable."
+        return var_list[0]
+
+    def _contruct_print_node(self, node):
+        if isinstance(node, gast.Name):
+            if self._is_tensor_node(node):
+                print_node = gast.Call(
+                    func=gast.parse('fluid.layers.Print').body[0].value,
+                    args=[node],
+                    keywords=[])
+                return print_node
             else:
-                # TODO: may not only print with format
-                raise NotImplementedError(
-                    "cannot transform print with format temporarily.")
+                raise TypeError(
+                    "print object type error, only support print Variable now.")
+        else:
+            # TODO: may not only print with format
+            raise NotImplementedError(
+                "cannot transform print with format temporarily.")
 
     def _is_tensor_node(self, node):
         tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
@@ -68,10 +91,4 @@ class PrintTransformer(gast.NodeTransformer):
         if wrapper_node is not None:
             if wrapper_node.node_var_type & tensor_types:
                 return True
-        return False
-
-    def _without_format(self, node):
-        assert isinstance(node, gast.Call)
-        if isinstance(node.args[0], gast.Name):
-            return True
         return False
