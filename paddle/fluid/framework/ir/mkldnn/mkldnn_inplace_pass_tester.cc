@@ -51,6 +51,8 @@ class MKLDNNInplacePassTest {
       op->SetInput("Input", {inputs[0]});
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
+    } else if (type == "gelu") {
+      op->SetInput("X", inputs);
     } else if (type == "leaky_relu") {
       op->SetInput("X", inputs);
     } else if (type == "relu") {
@@ -107,7 +109,7 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "leaky_relu", "leaky_relu1", std::vector<std::string>({"m"}),
           std::vector<std::string>({"n"}),
           mkldnn_enabled_op.compare("leaky_relu") == 0);
-    SetOp(&prog, "relu", "relu3", std::vector<std::string>({"n"}),
+    SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"n"}),
           std::vector<std::string>({"m"}),
           mkldnn_enabled_op.compare("relu") == 0);
     if (branched == true) {
@@ -174,7 +176,7 @@ TEST(MKLDNNInplacePass, inplace_tanh) {
 }
 
 TEST(MKLDNNInplacePass, inplace_leaky_relu) {
-  // Input of leaky_relu is used as output of subsequent relu, so no inplace cannot be done
+  // Input of leaky_relu is used as output of subsequent gelu, so no inplace cannot be done
   MKLDNNInplacePassTest().MainTest("leaky_relu", false, 0);
 }
 }  // namespace ir
