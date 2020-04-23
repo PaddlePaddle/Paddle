@@ -79,5 +79,31 @@ void CopyVariable(const Variable &src_var, Variable *dst_var) {
     PADDLE_THROW("unknown var type to copy");
   }
 }
+
+void FlattenVariable(const std::vector<Variable> &src_vars, Variable *dst_var) {
+  // only support cpu now
+  auto cpu_place = platform::CPUPlace();
+  auto numel = 0;
+
+  for (const auto &src_var : src_vars) {
+    auto &src_tensor = src_var.Get<framework::LoDTensor>();
+    numel += src_tensor.numel();
+  }
+
+  auto &src_tensor = src_vars[0].Get<framework::LoDTensor>();
+
+  auto *dst = dst_var->GetMutable<framework::LoDTensor>();
+  dst->Resize(framework::make_ddim({static_cast<int64_t>(numel), 1}));
+  dst->mutable_data(cpu_place, src_tensor.type());
+  auto dst_ptr = dst->mutable_data(cpu_place, src_tensor.type());
+
+  for (const auto &src : src_vars) {
+    auto size = src.numel() * SizeOfType(src.type());
+    auto src_ptr = src.data<void>();
+    memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr, size);
+    dst_ptr += size;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

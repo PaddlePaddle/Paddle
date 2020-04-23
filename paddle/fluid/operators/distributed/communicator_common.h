@@ -78,34 +78,6 @@ struct CommContext {
   bool use_send_handler;
 };
 
-inline std::ostream &operator<<(std::ostream &os, const CommContext &rpc_ctx) {
-  os << "{";
-  os << "var_name: " << rpc_ctx.var_name << "\n";
-
-  os << "splited_varnames: [";
-  for (auto &name : rpc_ctx.splited_varnames) {
-    os << name << ", ";
-  }
-  os << "]\n";
-
-  os << "epmap: [";
-  for (auto &ep : rpc_ctx.epmap) {
-    os << ep << ", ";
-  }
-  os << "]\n";
-
-  os << "height_sections: [";
-  for (auto &section : rpc_ctx.height_sections) {
-    os << section << ", ";
-  }
-  os << "]\n";
-
-  os << "merge add: " << rpc_ctx.merge_add;
-  os << "; send handler: " << rpc_ctx.use_send_handler << "\n";
-  os << "}";
-  return os;
-}
-
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

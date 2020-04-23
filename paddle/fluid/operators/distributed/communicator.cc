@@ -306,21 +306,47 @@ void AsyncCommunicator::Stop() {
 void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const std::vector<std::string> &var_tables,
                              const framework::Scope &scope) {
-  PADDLE_ENFORCE_EQ(
+  PADDLE_ENFORCE_GE(
       var_names.size(), 1,
-      platform::errors::InvalidArgument("var_names.size() == 1 is permitted"));
-  auto var_name = var_names[0];
-  // push var into send queue by var_name
-  auto *grad_var = scope.FindVar(var_name);
+      platform::errors::InvalidArgument("var_names.size() >= 1 is permitted"));
+
   PADDLE_ENFORCE_EQ(
-      grad_var->IsInitialized(), true,
+      var_tables.size(), 1,
+      platform::errors::InvalidArgument("var_names.size() == 1 is permitted"));
+
+  auto table_name = var_tables[0];
+  auto &queue = send_varname_to_queue_.at(table_name);
+
+  auto *var = scope.FindVar(var_names[0]);
+  PADDLE_ENFORCE_EQ(
+      var->IsInitialized(), true,
       platform::errors::InvalidArgument("grad var should be inited"));
 
-  auto tmp_grad_var = std::make_shared<Variable>();
-  framework::CopyVariable(*grad_var, tmp_grad_var.get());
-  auto &queue = send_varname_to_queue_.at(var_name);
-  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-  queue->Push(tmp_grad_var);
+  auto tmp_var = std::make_shared<Variable>();
+
+  if (var->IsType<framework::SelectedRows>()) {
+    framework::CopyVariable(*var, tmp_var.get());
+    auto &queue = send_varname_to_queue_.at(var_name);
+    queue->Push(tmp_grad_var);
+  } else if (var->IsType<framework::LoDTensor>()) {
+    // push var into send queue by var_name
+    std::vector<Variable> variables = {};
+
+    for (auto &varname : var_names) {
+      auto *var = scope.FindVar(varname);
+      PADDLE_ENFORCE_EQ(
+          var->IsInitialized(), true,
+          platform::errors::InvalidArgument("grad var should be inited"));
+      variables.push_back(*var);
+
+      framework::FlattenVariable(variables, tmp_var.get());
+      VLOG(3) << "send to " << table_name << " with queue size "
+              << queue->Size();
+      queue->Push(tmp_var);
+    }
+  } else {
+    PADDLE_THROW("unknown var type to copy");
+  }
 }
 
 GeoSgdCommunicator::~GeoSgdCommunicator() {
