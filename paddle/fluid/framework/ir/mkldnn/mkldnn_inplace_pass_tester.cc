@@ -146,7 +146,7 @@ class MKLDNNInplacePassTest {
           auto outs = op->Outputs();
           // Input and output are the same var
           // All inplace ops are inplacing input named: X
-          // and output : Out 
+          // and output : Out
           if (ins["X"] == outs["Out"]) {
             ++use_mkldnn_true_count;
           }
@@ -177,7 +177,8 @@ TEST(MKLDNNInplacePass, inplace_tanh) {
 }
 
 TEST(MKLDNNInplacePass, inplace_leaky_relu) {
-  // Input of leaky_relu is used as output of subsequent gelu, so no inplace cannot be done
+  // Input of leaky_relu is used as output of subsequent gelu, so no inplace
+  // cannot be done
   MKLDNNInplacePassTest().MainTest("leaky_relu", false, 0);
 }
 }  // namespace ir
