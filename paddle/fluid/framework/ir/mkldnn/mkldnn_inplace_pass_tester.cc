@@ -25,6 +25,7 @@ USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP(leaky_relu);
 USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
+USE_OP(gelu);
 USE_OP(relu);
 USE_OP(tanh);
 USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
