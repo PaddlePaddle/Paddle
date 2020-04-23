@@ -607,7 +607,7 @@ def warpctc(input,
     """
     helper = LayerHelper('warpctc', **locals())
     this_inputs = {'Logits': [input], 'Label': [label]}
-    if input_length and label_length:
+    if input_length is not None and label_length is not None:
         this_inputs['LogitsLength'] = [input_length]
         this_inputs['LabelLength'] = [label_length]
 
