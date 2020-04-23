@@ -16,21 +16,19 @@
 __all__ = [
     'BackwardStrategy', 'disable_dygraph', 'disable_imperative', 'enabled',
     'enable_dygraph', 'enable_imperative', 'guard', 'Layer', 'LayerList',
-    'load_dygraph', 'load_imperative', 'save_dygraph', 'save_imperative',
-    'prepare_context', 'to_variable', 'TracedLayer', 'no_grad', 'ParameterList',
-    'Sequential'
+    'load', 'save', 'prepare_context', 'to_variable', 'TracedLayer', 'no_grad',
+    'ParameterList', 'Sequential'
 ]
 
 from paddle.fluid import core
-from ..fluid.dygraph.base import enabled, enable_dygraph, disable_dygraph, guard, no_grad, to_variable
+from ..fluid.dygraph.base import enabled, guard, no_grad, to_variable
 from ..fluid.dygraph.layers import Layer
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential
-from ..fluid.dygraph.checkpoint import load_dygraph, save_dygraph
+from ..fluid.dygraph.checkpoint import load_dygraph as load
+from ..fluid.dygraph.checkpoint import save_dygraph as save
 from ..fluid.dygraph.parallel import prepare_context
 from ..fluid.dygraph.jit import TracedLayer
 
 BackwardStrategy = core.BackwardStrategy
-load_imperative = load_dygraph
-save_imperative = save_dygraph
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph

@@ -206,7 +206,7 @@ class TestImperative(unittest.TestCase):
 
     def test_functional_paddle_imperative_dygraph_context(self):
         self.assertFalse(paddle.imperative.enabled())
-        paddle.imperative.enable_dygraph()
+        paddle.enable()
         self.assertTrue(paddle.imperative.enabled())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         var_inp = paddle.imperative.to_variable(np_inp)
@@ -215,32 +215,7 @@ class TestImperative(unittest.TestCase):
         dy_out1 = out.numpy()
         out.backward()
         dy_grad1 = mlp._linear1.weight.gradient()
-        paddle.imperative.disable_dygraph()
-        self.assertFalse(paddle.imperative.enabled())
-        with paddle.imperative.guard():
-            self.assertTrue(paddle.imperative.enabled())
-            var_inp = paddle.imperative.to_variable(np_inp)
-            mlp = MLP(input_size=2)
-            out = mlp(var_inp)
-            dy_out2 = out.numpy()
-            out.backward()
-            dy_grad2 = mlp._linear1.weight.gradient()
-        self.assertFalse(paddle.imperative.enabled())
-        self.assertTrue(np.array_equal(dy_out1, dy_out2))
-        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
-
-    def test_functional_paddle_imperative_dygraph_context_alias(self):
-        self.assertFalse(paddle.imperative.enabled())
-        paddle.imperative.enable_imperative()
-        self.assertTrue(paddle.imperative.enabled())
-        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
-        var_inp = paddle.imperative.to_variable(np_inp)
-        mlp = MLP(input_size=2)
-        out = mlp(var_inp)
-        dy_out1 = out.numpy()
-        out.backward()
-        dy_grad1 = mlp._linear1.weight.gradient()
-        paddle.imperative.disable_imperative()
+        paddle.disable()
         self.assertFalse(paddle.imperative.enabled())
         with paddle.imperative.guard():
             self.assertTrue(paddle.imperative.enabled())
