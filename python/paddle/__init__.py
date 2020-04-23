@@ -227,5 +227,7 @@ from .framework.random import manual_seed  #DEFINE_ALIAS
 # from .framework import WeightNormParamAttr   #DEFINE_ALIAS
 # from .framework import Model   #DEFINE_ALIAS
 # from .framework import Sequential   #DEFINE_ALIAS
-from .fluid.dygraph.base import enable_dygraph as enable  #DEFINE_ALIAS
-from .fluid.dygraph.base import disable_dygraph as disable  #DEFINE_ALIAS
+from .fluid.dygraph.base import enable_dygraph  #DEFINE_ALIAS
+from .fluid.dygraph.base import disable_dygraph  #DEFINE_ALIAS
+enable = enable_dygraph  #DEFINE_ALIAS
+disable = disable_dygraph  #DEFINE_ALIAS
