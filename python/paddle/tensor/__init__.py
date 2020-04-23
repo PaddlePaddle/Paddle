@@ -40,7 +40,6 @@ from .creation import full  # DEFINE_ALIAS
 from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
-from .creation import trace  #DEFINE_ALIAS
 from .creation import meshgrid  #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
@@ -126,6 +125,7 @@ from .math import log1p  #DEFINE_ALIAS
 from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
 from .math import clamp  #DEFINE_ALIAS
+from .math import trace  #DEFINE_ALIAS
 # from .attribute import rank   #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS

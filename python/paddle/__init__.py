@@ -61,7 +61,6 @@ from .tensor.creation import full  #DEFINE_ALIAS
 from .tensor.creation import full_like  #DEFINE_ALIAS
 from .tensor.creation import triu  #DEFINE_ALIAS
 from .tensor.creation import tril  #DEFINE_ALIAS
-from .tensor.creation import trace  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
 # from .tensor.stat import mean   #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
@@ -147,6 +146,7 @@ from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clamp  #DEFINE_ALIAS
+from .tensor.math import trace  #DEFINE_ALIAS
 # from .tensor.attribute import rank   #DEFINE_ALIAS
 # from .tensor.attribute import shape   #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS

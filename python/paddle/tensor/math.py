@@ -14,12 +14,13 @@
 """
 math functions
 """
-
 from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core, _varbase_creator
+from ..fluid.framework import core, _varbase_creator, in_dygraph_mode
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 import sys
 
@@ -79,6 +80,7 @@ __all__ = [
            'addcmul',
            'addmm',
            'clamp',
+           'trace',
 ]
 # yapf: enable.
 
@@ -1408,3 +1410,93 @@ def clamp(input, min=None, max=None, output=None, name=None):
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
     return output
+
+def trace(input, offset=0, dim1=0, dim2=1):
+    """
+    This OP computes the sum along diagonals of the input tensor.
+    
+    If Input is 2-D, returns the sum of diagonal. 
+
+    If Input has larger dimensions, then returns an array of diagonals sum, diagonals be taken from
+    the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
+    of the input tensor.
+
+    The argument ``offset`` determines where diagonals are taken from input tensor:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+    
+    Args:
+        input(Variable): The input tensor. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
+        dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
+        dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+    
+    Returns:
+        Variable, the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.tensor as tensor
+            import paddle.fluid.dygraph as dg
+            import numpy as np
+            
+            case1 = np.random.randn(2, 3).astype('float32')
+            case2 = np.random.randn(3, 10, 10).astype('float32')
+            case3 = np.random.randn(3, 10, 5, 10).astype('float32')
+            
+            with dg.guard():
+                case1 = dg.to_variable(case1)
+                case2 = dg.to_variable(case2)
+                case3 = dg.to_variable(case3)
+                data1 = tensor.trace(case1) # data1.shape = [1]
+                data2 = tensor.trace(case2, offset=1, dim1=1, dim2=2) # data2.shape = [3]
+                data3 = tensor.trace(case3, offset=-3, dim1=1, dim2=-1) # data2.shape = [3, 5]
+    """
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+
+    def __check_input(input, offset, dim1, dim2):
+        check_dtype(input.dtype, 'Input',
+                    ['int32', 'int64', 'float16', 'float32', 'float64'],
+                    'trace')
+
+        input_shape = list(input.shape)
+        assert len(input_shape) >= 2,                     \
+                "Input must be at least 2-dimensional, "   \
+                "But received Input's dimensional: %s.\n" %  \
+                len(input_shape)
+
+        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1
+        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2
+
+        assert dim1_ < len(input_shape),     \
+            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape)), len(input_shape) - 1, dim1)
+
+        assert dim2_ < len(input_shape),   \
+            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
+            % (-(len(input_shape)), len(input_shape) - 1, dim2)
+
+
+        assert  dim1_ != dim2_,   \
+               "dim1 and dim2 cannot be the same dimension." \
+                "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
+
+    if not in_dygraph_mode():
+        __check_input(input, offset, dim1, dim2)
+    helper = LayerHelper('trace', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    helper.append_op(
+        type='trace',
+        inputs={'Input': [input]},
+        attrs={'offset': offset,
+               'dim1': dim1,
+               'dim2': dim2},
+        outputs={'Out': [out]})
+
+    return out
