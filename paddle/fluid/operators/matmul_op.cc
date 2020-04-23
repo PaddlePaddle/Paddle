@@ -427,9 +427,9 @@ class MatMulOp : public framework::OperatorWithKernel {
                             "transpose_out supported rank is 4, "
                             "received %d",
                             transpose_out_size));
-      bool supported_transpose_axis =
-          (transpose_out.at(0) == 0 && transpose_out.at(1) == 2 &&
-           transpose_out.at(2) == 1 && transpose_out.at(3) == 3);
+      const std::vector<int> supported_axis{0, 2, 1, 3};
+      const bool supported_transpose_axis = std::equal(
+          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
       PADDLE_ENFORCE_EQ(
           supported_transpose_axis, true,
           platform::errors::InvalidArgument(

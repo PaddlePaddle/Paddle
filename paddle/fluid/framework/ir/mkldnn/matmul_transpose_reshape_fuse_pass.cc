@@ -52,9 +52,9 @@ void MatmulTransposeReshapeMKLDNNPass::ApplyImpl(ir::Graph *graph) const {
 
     auto reshape_out_size = reshape_shape.size();
     auto transpose_out_size = transpose_axis.size();
-    bool supported_transpose_axis =
-        (transpose_axis.at(0) == 0 && transpose_axis.at(1) == 2 &&
-         transpose_axis.at(2) == 1 && transpose_axis.at(3) == 3);
+    const std::vector<int> supported_axis{0, 2, 1, 3};
+    const bool supported_transpose_axis = std::equal(
+        transpose_axis.begin(), transpose_axis.end(), supported_axis.begin());
     if (transpose_out_size != 4) {
       VLOG(3) << "do not perform matmul_transpose_reshape fuse: "
               << "supported rank is 4, received " << transpose_out_size;
