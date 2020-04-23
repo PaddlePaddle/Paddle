@@ -189,6 +189,27 @@ class CompileTimeStrategy(object):
     def get_server_runtime_config(self):
         return self.strategy.get_server_runtime_config()
 
+    def get_var_distributed(self, varname, is_param):
+        var_distributed = []
+        offset = 0
+        if is_param:
+            params = self.param_var_mapping[varname]
+            param_varnames = [var.name for var in params]
+            for ep, pairs in self.param_grad_ep_mapping.items():
+                for p in pairs["params"].items():
+                    if p.name in param_varnames:
+                        offset += reduce(lambda x, y: x * y, p.shape)
+                        var_distributed.append((p.name, ep, offset))
+        else:
+            grads = self.grad_var_mapping[varname]
+            grad_varnames = [var.name for var in grads]
+            for ep, pairs in self.param_grad_ep_mapping.items():
+                for g in pairs["grads"].items():
+                    if g.name in grad_varnames:
+                        offset += reduce(lambda x, y: x * y, g.shape)
+                        var_distributed.append((g.name, ep, offset))
+        return var_distributed
+
     def display(self):
         header = ("Fleet Compiled Config", "Value")
         maps = {}

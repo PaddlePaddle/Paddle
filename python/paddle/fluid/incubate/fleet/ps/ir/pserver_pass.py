@@ -179,19 +179,48 @@ def _clone_lr_op(program, origin_program, block, op):
 
 
 def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
-                        origin_program, merged_var, sparse_grad_to_param):
+                        origin_program, merged_var, sparse_grad_to_param,
+                        config):
     program = optimize_block.program
     pserver_block = program.global_block()
     new_inputs = collections.OrderedDict()
 
     def _get_param_block(opt_op):
         # param is already created on global program
-        param_block = None
-        for p in self.param_grad_ep_mapping[endpoint]["params"]:
-            if _same_or_split_var(p.name, opt_op.input("Param")[0]):
-                param_block = p
-                break
-        return param_block
+        unmerged_vars = []
+        merged_vars = []
+        merged_ordervars = []
+
+        param_vars = [
+            p for p in config.param_grad_ep_mapping[endpoint]["params"]
+        ]
+        for var in param_vars:
+            name = var.name
+            orig_varname = _orig_varname(name)
+
+            for pairs in config.merged_variables_pairs:
+                merged_p = pairs[0]
+                if merged_p.merged_var.name == orig_varname:
+                    if merged_p.merged_var.name == merged_p.ordered_vars[
+                            0].name:
+                        unmerged_vars.append(merged_p.ordered_vars[0])
+                    else:
+                        merged_vars.append(merged_p.merged_var)
+                        merged_ordervars.append(merged_p.ordered_vars[0])
+                    break
+
+        param_name = opt_op.input("Param")[0]
+
+        for i in range(len(unmerged_vars)):
+            if _same_or_split_var(param_name, unmerged_vars[i].name):
+                return unmerged_vars[i]
+
+        for i in range(len(merged_ordervars)):
+            if _same_or_split_var(param_name, merged_ordervars[i].name):
+                for var in param_vars:
+                    if _same_or_split_var(var.name, merged_vars[i].name):
+                        return var
+        return None
 
     for key in opt_op.input_names:
         if key == "Grad":
@@ -325,8 +354,8 @@ def add_listen_and_serv_pass(program, config):
 
 def add_rpc_global_flags_pass(program, config):
     server_runtime = config.get_server_runtime_config()
-    send_threads = server_runtime._rpc_send_thread_num,
-    get_threads = server_runtime._rpc_get_thread_num,
+    send_threads = server_runtime._rpc_send_thread_num
+    get_threads = server_runtime._rpc_get_thread_num
     pull_threads = server_runtime._rpc_prefetch_thread_num
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
@@ -402,6 +431,7 @@ def add_optimizer_pass(program, config):
                     _orig_varname(grad_varname_for_block):
                 grad_block = g
                 break
+
         if not grad_block:
             # do not append this op if current endpoint
             # is not dealing with this grad block
@@ -434,23 +464,12 @@ def add_optimizer_pass(program, config):
                 attrs={"scale": 1.0 / float(trainers)})
         return merged_var
 
-    def _is_opt_op_on_pserver(endpoint, op):
-        param_names = [
-            p.name for p in config.param_grad_ep_mapping[endpoint]["params"]
-        ]
-        if op.input("Param")[0] in param_names:
-            return True
-        else:
-            for n in param_names:
-                param = op.input("Param")[0]
-                if _same_or_split_var(n, param) and n != param:
-                    return True
-            return False
-
     origin_program = config.get_origin_main_program()
+    origin_program = origin_program.clone()
     ps_endpoint = config.get_ps_endpoint()
 
     opt_op_on_pserver = []
+    merged_param_pairs = []
     # Iterate through the ops, and if an op and the optimize ops
     # which located on current pserver are in one set, then
     # append it into the sub program.
@@ -458,19 +477,49 @@ def add_optimizer_pass(program, config):
     # sparse grad name to param name
     sparse_grad_to_param = []
 
-    optimize_ops = _get_optimize_ops(origin_program)
+    def _is_opt_op_on_pserver(endpoint, op):
+        param_names = [
+            p.name for p in config.param_grad_ep_mapping[endpoint]["params"]
+        ]
 
-    for _, op in enumerate(optimize_ops):
-        if _is_optimizer_op(op) and _is_opt_op_on_pserver(ps_endpoint, op):
-            opt_op_on_pserver.append(op)
+        unmerged_varnames = []
+        merged_varnames = []
+        merged_ordernames = []
+
+        for name in param_names:
+            orig_varname = _orig_varname(name)
+
+            for pairs in config.merged_variables_pairs:
+                merged_p = pairs[0]
+                if merged_p.merged_var.name == orig_varname:
+                    if merged_p.merged_var.name == merged_p.ordered_vars[
+                            0].name:
+                        unmerged_varnames.append(merged_p.ordered_vars[0].name)
+                    else:
+                        merged_varnames.append(merged_p.merged_var.name)
+                        merged_ordernames.append(merged_p.ordered_vars[0].name)
+                    break
+
+        param = op.input("Param")[0]
+
+        if param in unmerged_varnames:
+            return True
+
+        for i in range(len(merged_ordernames)):
+            if param == merged_ordernames[i]:
+                merged_p = merged_varnames[i]
+                merged_g = "{}@GRAD".format(merged_varnames[i])
+                op._set_attr(OP_ROLE_VAR_ATTR_NAME, [merged_p, merged_g])
+                return True
+        return False
 
     def __append_optimize_op__(op, block, grad_to_block_id, merged_var, lr_ops):
         if _is_optimizer_op(op):
             _append_pserver_ops(block, op, ps_endpoint, grad_to_block_id,
                                 origin_program, merged_var,
-                                sparse_grad_to_param)
+                                sparse_grad_to_param, config)
         elif op not in lr_ops:
-            _append_pserver_non_opt_ops(block, op)
+            _append_pserver_non_opt_ops(block, op, origin_program)
 
     def __clone_lr_op_sub_block__(op, program, lr_block):
         if not op.has_attr('sub_block'):
@@ -507,8 +556,13 @@ def add_optimizer_pass(program, config):
                 lr_ops.append(op)
         return lr_ops
 
-        # append lr decay ops to the child block if exists
+    optimize_ops = _get_optimize_ops(origin_program)
 
+    for _, op in enumerate(optimize_ops):
+        if _is_optimizer_op(op) and _is_opt_op_on_pserver(ps_endpoint, op):
+            opt_op_on_pserver.append(op)
+
+    # append lr decay ops to the child block if exists
     lr_ops = _get_lr_ops()
     lr_decay_block_id = -1
     optimize_blocks = []
@@ -571,6 +625,7 @@ def add_optimizer_pass(program, config):
     op._set_attr("grad_to_block_id", grad_to_block_id)
     op._set_attr("sparse_grad_to_param", sparse_grad_to_param)
     op._set_attr("lr_decay_block_id", lr_decay_block_id)
+    return program
 
 
 def build_pserver_startup_program_pass(program, p_main_program, config):

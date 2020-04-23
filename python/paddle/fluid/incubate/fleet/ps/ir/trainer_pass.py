@@ -104,6 +104,14 @@ def distributed_ops_pass(program, config):
                         if out_var.name in ins:
                             outputs_idxs[out_id] = idx
 
+            tables = config.get_var_distributed(w.name, True)
+
+            tablenames, eps, sections, = [], [], []
+            for table in tables:
+                tablenames.append(table[0])
+                eps.append(table[1])
+                sections.append(table[2])
+
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
                 distributed_idx = max(inputs_idxs) + 1
 
@@ -114,7 +122,9 @@ def distributed_ops_pass(program, config):
                             'W': w},
                     outputs={"Outputs": outputs},
                     attrs={
-                        "endpoints": pserver_endpoints,
+                        "table_names": tablenames,
+                        "height_sections": sections,
+                        "endpoints": eps,
                         "padding_idx": padding_idx,
                         "trainer_id": trainer_id
                     })
