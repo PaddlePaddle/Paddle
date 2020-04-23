@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-
+import paddle
 from op_test import OpTest
 
 
@@ -83,6 +83,32 @@ class TestSqueezeOpError(unittest.TestCase):
             # The input dtype of squeeze not support float16.
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
             self.assertRaises(TypeError, fluid.layers.squeeze, x3, axes=0)
+
+
+class API_TestSqueeze(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.layers.data(
+                'data1', shape=[-1, 1, 10], dtype='float64')
+            result_squeeze = paddle.squeeze(data1, axes=[1])
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input1 = np.random.random([5, 1, 10]).astype('float64')
+            result, = exe.run(feed={"data1": input1},
+                              fetch_list=[result_squeeze])
+            expected_result = np.squeeze(input1, axis=1)
+            self.assertTrue(np.allclose(expected_result, result))
+
+
+class API_TestDygraphSqueeze(unittest.TestCase):
+    def test_out(self):
+        with fluid.dygraph.guard():
+            input_1 = np.random.random([5, 1, 10]).astype("int32")
+            input = fluid.dygraph.to_variable(input_1)
+            output = paddle.squeeze(input, axes=[1])
+            out_np = output.numpy()
+            expected_out = np.squeeze(input_1, axis=1)
+            self.assertTrue(np.allclose(expected_out, out_np))
 
 
 if __name__ == "__main__":
