@@ -61,8 +61,8 @@ class WarpCTCOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
-        ctx.device_context(), layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -174,7 +174,7 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
                                        ctx, framework::GradVarName("Loss")),
-                                   ctx.device_context());
+                                   ctx.GetPlace());
   }
 };
 

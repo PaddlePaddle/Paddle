@@ -19,26 +19,40 @@ import unittest
 import numpy
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
-from paddle.fluid.layers import mul, data
+from paddle.fluid.layers import mul, data, zeros, array_write, increment
 
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
+        i = zeros(shape=[1], dtype='int64')
         a = data(name='a', shape=[784], dtype='float32')
+        array = array_write(x=a, i=i)
+
+        i = increment(i)
         b = data(
             name='b',
             shape=[784, 100],
             dtype='float32',
             append_batch_size=False)
+        array_write(x=b, i=i, array=array)
+
+        i = increment(i)
         out = mul(x=a, y=b)
-        place = core.CPUPlace()
+        array_write(x=out, i=i, array=array)
+
         a_np = numpy.random.random((100, 784)).astype('float32')
         b_np = numpy.random.random((784, 100)).astype('float32')
-        exe = Executor(place)
-        outs = exe.run(feed={'a': a_np, 'b': b_np}, fetch_list=[out])
-        out = outs[0]
-        self.assertEqual((100, 100), out.shape)
-        self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
+
+        exe = Executor()
+        res, res_array = exe.run(feed={'a': a_np,
+                                       'b': b_np},
+                                 fetch_list=[out, array])
+
+        self.assertEqual((100, 100), res.shape)
+        self.assertTrue(numpy.allclose(res, numpy.dot(a_np, b_np)))
+        self.assertTrue(numpy.allclose(res_array[0], a_np))
+        self.assertTrue(numpy.allclose(res_array[1], b_np))
+        self.assertTrue(numpy.allclose(res_array[2], res))
 
 
 if __name__ == '__main__':

@@ -13,26 +13,26 @@
 # limitations under the License.
 
 import logging
-import numpy as np
-import time
 import os
+import time
 import unittest
 
+import numpy as np
 import paddle.fluid as fluid
 
 import transformer_util as util
-from transformer_dygraph_model import Transformer
-from transformer_dygraph_model import CrossEntropyCriterion
+from transformer_dygraph_model import CrossEntropyCriterion, Transformer, position_encoding_init
 
 trainer_count = 1
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
 SEED = 10
+STEP_NUM = 10
 
 
 def train_static(args, batch_generator):
-    train_prog = fluid.default_main_program()
-    startup_prog = fluid.default_startup_program()
+    train_prog = fluid.Program()
+    startup_prog = fluid.Program()
     train_prog.random_seed = SEED
     startup_prog.random_seed = SEED
     with fluid.program_guard(train_prog, startup_prog):
@@ -107,7 +107,7 @@ def train_static(args, batch_generator):
                 else:
                     logging.info(
                         "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                        "normalized loss: %f, ppl: %f, speed: %.2f step/s" %
+                        "normalized loss: %f, ppl: %f, speed: %.2f steps/s" %
                         (step_idx, pass_id, batch_id, total_avg_cost,
                          total_avg_cost - loss_normalizer,
                          np.exp([min(total_avg_cost, 100)]),
@@ -116,10 +116,10 @@ def train_static(args, batch_generator):
             batch_id += 1
             step_idx += 1
             total_batch_num = total_batch_num + 1
-            if step_idx == 10:
-                if args.save_model:
-                    model_path = os.path.join(
-                        args.save_model, "step_" + str(step_idx), "transformer")
+            if step_idx == STEP_NUM:
+                if args.save_dygraph_model_path:
+                    model_path = os.path.join(args.save_static_model_path,
+                                              "transformer")
                     fluid.save(train_prog, model_path)
                 break
     return np.array(avg_loss)
@@ -191,7 +191,8 @@ def train_dygraph(args, batch_generator):
                     else:
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f, speed: %.2f step/s" %
+                            "normalized loss: %f, ppl: %f, speed: %.2f steps/s"
+                            %
                             (step_idx, pass_id, batch_id, total_avg_cost,
                              total_avg_cost - loss_normalizer,
                              np.exp([min(total_avg_cost, 100)]),
@@ -200,10 +201,9 @@ def train_dygraph(args, batch_generator):
                         avg_batch_time = time.time()
                 batch_id += 1
                 step_idx += 1
-                if step_idx == 10:
-                    if args.save_model:
-                        model_dir = os.path.join(args.save_model + '_dygraph',
-                                                 "step_" + str(step_idx))
+                if step_idx == STEP_NUM:
+                    if args.save_dygraph_model_path:
+                        model_dir = os.path.join(args.save_dygraph_model_path)
                         if not os.path.exists(model_dir):
                             os.makedirs(model_dir)
                         fluid.save_dygraph(
@@ -218,17 +218,182 @@ def train_dygraph(args, batch_generator):
         return np.array(avg_loss)
 
 
+def predict_dygraph(args, batch_generator):
+    with fluid.dygraph.guard(place):
+        fluid.default_main_program().random_seed = SEED
+
+        # define data loader
+        test_loader = fluid.io.DataLoader.from_generator(capacity=10)
+        test_loader.set_batch_generator(batch_generator, places=place)
+
+        # define model
+        transformer = Transformer(
+            args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
+            args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
+            args.d_inner_hid, args.prepostprocess_dropout,
+            args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
+            args.postprocess_cmd, args.weight_sharing, args.bos_idx,
+            args.eos_idx)
+
+        # load the trained model
+        model_dict, _ = util.load_dygraph(
+            os.path.join(args.save_dygraph_model_path, "transformer"))
+        # to avoid a longer length than training, reset the size of position
+        # encoding to max_length
+        model_dict["encoder.pos_encoder.weight"] = position_encoding_init(
+            args.max_length + 1, args.d_model)
+        model_dict["decoder.pos_encoder.weight"] = position_encoding_init(
+            args.max_length + 1, args.d_model)
+        transformer.load_dict(model_dict)
+
+        # set evaluate mode
+        transformer.eval()
+
+        step_idx = 0
+        speed_list = []
+        for input_data in test_loader():
+            (src_word, src_pos, src_slf_attn_bias, trg_word,
+             trg_src_attn_bias) = input_data
+            seq_ids, seq_scores = transformer.beam_search(
+                src_word,
+                src_pos,
+                src_slf_attn_bias,
+                trg_word,
+                trg_src_attn_bias,
+                bos_id=args.bos_idx,
+                eos_id=args.eos_idx,
+                beam_size=args.beam_size,
+                max_len=args.max_out_len)
+            seq_ids = seq_ids.numpy()
+            seq_scores = seq_scores.numpy()
+            if step_idx % args.print_step == 0:
+                if step_idx == 0:
+                    logging.info(
+                        "Dygraph Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f"
+                        % (step_idx, seq_ids[0][0][0], seq_scores[0][0]))
+                    avg_batch_time = time.time()
+                else:
+                    speed = args.print_step / (time.time() - avg_batch_time)
+                    speed_list.append(speed)
+                    logging.info(
+                        "Dygraph Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f, speed: %.3f steps/s"
+                        % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed))
+                    avg_batch_time = time.time()
+
+            step_idx += 1
+            if step_idx == STEP_NUM:
+                break
+        logging.info("Dygraph Predict:  avg_speed: %.4f steps/s" %
+                     (np.mean(speed_list)))
+        return seq_ids, seq_scores
+
+
+def predict_static(args, batch_generator):
+    test_prog = fluid.Program()
+    with fluid.program_guard(test_prog):
+        test_prog.random_seed = SEED
+
+        # define input and reader
+        input_field_names = util.encoder_data_input_fields + util.fast_decoder_data_input_fields
+        input_descs = util.get_input_descs(args, 'test')
+        input_slots = [{
+            "name": name,
+            "shape": input_descs[name][0],
+            "dtype": input_descs[name][1]
+        } for name in input_field_names]
+
+        input_field = util.InputField(input_slots)
+        feed_list = input_field.feed_list
+        loader = fluid.io.DataLoader.from_generator(
+            feed_list=feed_list, capacity=10)
+
+        # define model
+        transformer = Transformer(
+            args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
+            args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
+            args.d_inner_hid, args.prepostprocess_dropout,
+            args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
+            args.postprocess_cmd, args.weight_sharing, args.bos_idx,
+            args.eos_idx)
+
+        out_ids, out_scores = transformer.beam_search(
+            *feed_list,
+            bos_id=args.bos_idx,
+            eos_id=args.eos_idx,
+            beam_size=args.beam_size,
+            max_len=args.max_out_len)
+
+    # This is used here to set dropout to the test mode.
+    test_prog = test_prog.clone(for_test=True)
+
+    # define the executor and program for training
+    exe = fluid.Executor(place)
+
+    util.load(test_prog,
+              os.path.join(args.save_static_model_path, "transformer"), exe)
+
+    loader.set_batch_generator(batch_generator, places=place)
+
+    step_idx = 0
+    speed_list = []
+    for feed_dict in loader:
+        seq_ids, seq_scores = exe.run(
+            test_prog,
+            feed=feed_dict,
+            fetch_list=[out_ids.name, out_scores.name],
+            return_numpy=True)
+        if step_idx % args.print_step == 0:
+            if step_idx == 0:
+                logging.info(
+                    "Static Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f,"
+                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0]))
+                avg_batch_time = time.time()
+            else:
+                speed = args.print_step / (time.time() - avg_batch_time)
+                speed_list.append(speed)
+                logging.info(
+                    "Static Predict: step_idx: %d, 1st seq_id: %d, 1st seq_score: %.2f, speed: %.3f steps/s"
+                    % (step_idx, seq_ids[0][0][0], seq_scores[0][0], speed))
+                avg_batch_time = time.time()
+
+        step_idx += 1
+        if step_idx == STEP_NUM:
+            break
+    logging.info("Static Predict:  avg_speed: %.4f steps/s" %
+                 (np.mean(speed_list)))
+
+    return seq_ids, seq_scores
+
+
 class TestTransformer(unittest.TestCase):
     def prepare(self, mode='train'):
         args = util.ModelHyperParams()
         batch_generator = util.get_feed_data_reader(args, mode)
         return args, batch_generator
 
-    def test_train(self):
+    def _test_train(self):
         args, batch_generator = self.prepare(mode='train')
         static_avg_loss = train_static(args, batch_generator)
         dygraph_avg_loss = train_dygraph(args, batch_generator)
         self.assertTrue(np.allclose(static_avg_loss, dygraph_avg_loss))
+
+    def _test_predict(self):
+        args, batch_generator = self.prepare(mode='test')
+        static_seq_ids, static_scores = predict_static(args, batch_generator)
+        dygraph_seq_ids, dygraph_scores = predict_dygraph(args, batch_generator)
+
+        self.assertTrue(
+            np.allclose(static_seq_ids, static_seq_ids),
+            msg="static_seq_ids: {} \n dygraph_seq_ids: {}".format(
+                static_seq_ids, dygraph_seq_ids))
+        self.assertTrue(
+            np.allclose(static_scores, dygraph_scores),
+            msg="static_scores: {} \n dygraph_scores: {}".format(
+                static_scores, dygraph_scores))
+
+    def test_check_result(self):
+        self._test_train()
+        self._test_predict()
 
 
 if __name__ == '__main__':

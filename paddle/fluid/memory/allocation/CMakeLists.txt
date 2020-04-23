@@ -14,13 +14,15 @@ endif()
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
+  nv_library(thread_local_allocator SRCS thread_local_allocator.cc DEPS allocator)
+  cc_test(thread_local_allocator_test SRCS thread_local_allocator_test.cc DEPS thread_local_allocator)
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)
 
 nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
 if (WITH_GPU)
-    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard)
+    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator cuda_device_guard thread_local_allocator)
 else ()
     set(AllocatorFacadeDeps)
 endif()

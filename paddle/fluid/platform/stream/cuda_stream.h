@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
 namespace platform {
@@ -26,30 +28,52 @@ namespace stream {
 #ifdef PADDLE_WITH_CUDA
 
 enum class Priority : uint8_t {
-  NIL = 0x0,
-  HIGH = 0x1,
-  NORMAL = 0x2,
+  kNull = 0x0,
+  kHigh = 0x1,
+  kNormal = 0x2,
 };
 
 class CUDAStream final {
  public:
   CUDAStream() = default;
-  CUDAStream(const Place& place,
-             const enum Priority& priority = Priority::NORMAL) {
+  explicit CUDAStream(const Place& place,
+                      const Priority& priority = Priority::kNormal) {
     Init(place, priority);
   }
   virtual ~CUDAStream() { Destroy(); }
 
-  bool Init(const Place& place,
-            const enum Priority& priority = Priority::NORMAL);
+  bool Init(const Place& place, const Priority& priority = Priority::kNormal);
 
-  const cudaStream_t& stream() const { return stream_; }
+  template <typename Callback>
+  void AddCallback(Callback&& callback) const {
+    callback_manager_->AddCallback(callback);
+  }
+
+  template <typename Callback>
+  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+    callback();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+  }
+
+  void RecordEvent(cudaEvent_t ev) const {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+  }
+
+  void WaitEvent(cudaEvent_t ev) const {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream_, ev, 0));
+  }
+
+  void Wait() const;
+  void WaitCallback() const { callback_manager_->Wait(); }
+
+  const cudaStream_t& raw_stream() const { return stream_; }
   void Destroy();
 
  private:
   Place place_;
   cudaStream_t stream_{nullptr};
-  Priority priority_{Priority::NORMAL};
+  Priority priority_{Priority::kNormal};
+  std::unique_ptr<StreamCallbackManager> callback_manager_;
 
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };

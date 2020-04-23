@@ -19,10 +19,10 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void DealCeilMode(const nvinfer1::Dims &input_shape, std::vector<int> ksize,
-                  std::vector<int> strides, std::vector<int> paddings,
-                  nvinfer1::DimsHW *pre_pad, nvinfer1::DimsHW *post_pad,
-                  int input_dims) {
+inline void DealCeilMode(const nvinfer1::Dims &input_shape,
+                         std::vector<int> ksize, std::vector<int> strides,
+                         std::vector<int> paddings, nvinfer1::DimsHW *pre_pad,
+                         nvinfer1::DimsHW *post_pad, int input_dims) {
   int input_height = input_shape.d[input_dims - 2];
   int input_width = input_shape.d[input_dims - 1];
   int floor_h_output_size =
@@ -56,14 +56,18 @@ class Pool2dOpConverter : public OpConverter {
     VLOG(4)
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
-    // Declare inputs
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "TRT Pool2d expect 1 input, but got %d input.",
+                          op_desc.Input("X").size()));
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
+                      platform::errors::InvalidArgument(
+                          "TRT Pool2d expect 1 Output, but got %d output.",
+                          op_desc.Output("Out").size()));
+
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
-
-    PADDLE_ENFORCE_EQ(input_dims, 3UL);
 
     bool global_pooling = boost::get<bool>(op_desc.GetAttr("global_pooling"));
     std::string pool_type =
@@ -89,7 +93,9 @@ class Pool2dOpConverter : public OpConverter {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
     } else {
-      PADDLE_THROW("TensorRT unsupported pooling type!");
+      PADDLE_THROW(platform::errors::Fatal(
+          "Wrong pool op type, the trt do not support the %s pool type.",
+          pool_type));
     }
 
     nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);
@@ -106,13 +112,40 @@ class Pool2dOpConverter : public OpConverter {
 #endif
     }
 
+    if (engine_->with_dynamic_shape()) {
+      if (!adaptive && pool_type == "max" && !global_pooling && !ceil_mode) {
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
+                                                nv_pool_type, nv_ksize);
+        pool_layer->setStride(nv_strides);
+        pool_layer->setPadding(nv_paddings);
+        layer = pool_layer;
+      } else {
+#if IS_TRT_VERSION_GE(6000)
+        plugin::PoolPluginDynamic *plugin =
+            new plugin::PoolPluginDynamic(ceil_mode, pool_type, adaptive, ksize,
+                                          strides, paddings, global_pooling);
+        layer = engine_->AddPluginV2(&input1, 1, plugin);
+#endif
+      }
+      auto output_name = op_desc.Output("Out")[0];
+      layer->setName(("pool2d (Output: " + output_name + ")").c_str());
+      layer->getOutput(0)->setName(output_name.c_str());
+      engine_->SetITensor(output_name, layer->getOutput(0));
+      if (test_mode) {
+        engine_->DeclareOutput(output_name);
+      }
+      return;
+    }
+
     if (global_pooling == true) {
       nv_ksize.d[0] = input_shape.d[input_dims - 2];
       nv_ksize.d[1] = input_shape.d[input_dims - 1];
       auto *layer = TRT_ENGINE_ADD_LAYER(
           engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
           nv_pool_type, nv_ksize);
-      PADDLE_ENFORCE_NOT_NULL(layer, "pool layer could not be created.");
+      PADDLE_ENFORCE_NOT_NULL(
+          layer, platform::errors::Fatal(
+                     "trt pool layer in converter could not be created."));
       auto output_name = op_desc.Output("Out")[0];
       layer->setName(("pool2d (Output: " + output_name + ")").c_str());
       layer->getOutput(0)->setName(output_name.c_str());
@@ -138,13 +171,17 @@ class Pool2dOpConverter : public OpConverter {
             engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
             post_pad);
         PADDLE_ENFORCE_NOT_NULL(
-            pad_layer, "pad layer in poolOp converter could not be created.");
+            pad_layer,
+            platform::errors::Fatal(
+                "pad layer in poolOp converter could not be created."));
         input1 = pad_layer->getOutput(0);
       }
       auto *pool_layer = TRT_ENGINE_ADD_LAYER(
           engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
           nv_pool_type, nv_ksize);
-      PADDLE_ENFORCE_NOT_NULL(pool_layer, "pool layer could not be created.");
+      PADDLE_ENFORCE_NOT_NULL(
+          pool_layer, platform::errors::Fatal(
+                          "trt pool layer in converter could not be created."));
       pool_layer->setStride(nv_strides);
       pool_layer->setPadding(nv_paddings);
       layer = pool_layer;
@@ -159,9 +196,11 @@ class Pool2dOpConverter : public OpConverter {
       plugin::PoolPlugin *plugin =
           new plugin::PoolPlugin(ceil_mode, plugin_pool_type, adaptive, ksize,
                                  strides, paddings, input_shape_v);
-      PADDLE_ENFORCE_NOT_NULL(plugin->getPluginType(),
-                              "The plugin used must not be null");
       auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
+      PADDLE_ENFORCE_NOT_NULL(
+          pool_layer,
+          platform::errors::Fatal(
+              "trt pool plugin layer in converter could not be created."));
       layer = pool_layer;
     }
 

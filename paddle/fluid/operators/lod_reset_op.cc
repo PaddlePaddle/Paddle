@@ -24,16 +24,17 @@ class LoDResetOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LoDResetOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LoDResetOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDReset");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LoDReset");
 
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
-      PADDLE_ENFORCE_GT(level0.size(), 0,
-                        "If Input(Y) not provided, the target lod should be "
-                        "specified by attribute `target_lod`.");
+      PADDLE_ENFORCE_GT(
+          static_cast<int64_t>(level0.size()), 0,
+          platform::errors::InvalidArgument(
+              "If Input(Y) is not provided, the output's LoD should be "
+              "specified by attribute 'target_lod'. But the size of "
+              "'target_lod' is 0."));
     } else if (ctx->IsRuntime()) {
       ctx->ShareLoD("Y", "Out");
     }
@@ -181,10 +182,9 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LoDResetGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) of LoDResetGradOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDResetGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Output",
+                   framework::GradVarName("Out"), "LoDResetGrad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
