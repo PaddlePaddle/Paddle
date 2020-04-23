@@ -66,7 +66,7 @@ class PrintTransformer(gast.NodeTransformer):
         elif isinstance(node, gast.Print):
             var_list = node.values
         # TODO: support print multiple Var
-        assert len(node.values) == 1, "Now only support print one Variable."
+        assert len(var_list) == 1, "Now only support print one Variable."
         return var_list[0]
 
     def _contruct_print_node(self, node):
