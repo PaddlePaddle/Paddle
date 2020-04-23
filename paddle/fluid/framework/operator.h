@@ -484,8 +484,8 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
 
-  virtual platform::Place GetExecutionPlace(
-      const platform::Place& platform) const {
+  platform::Place GetExecutionPlace(
+      const platform::Place& platform) const override {
     return kernel_type_->place_;
   }
 
