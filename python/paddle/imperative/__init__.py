@@ -14,9 +14,8 @@
 
 # define api used to run in imperative mode 
 __all__ = [
-    'BackwardStrategy', 'disable_dygraph', 'disable_imperative', 'enabled',
-    'enable_dygraph', 'enable_imperative', 'guard', 'Layer', 'LayerList',
-    'load', 'save', 'prepare_context', 'to_variable', 'TracedLayer', 'no_grad',
+    'BackwardStrategy', 'enabled', 'guard', 'Layer', 'LayerList', 'load',
+    'save', 'prepare_context', 'to_variable', 'TracedLayer', 'no_grad',
     'ParameterList', 'Sequential'
 ]
 
@@ -30,5 +29,3 @@ from ..fluid.dygraph.parallel import prepare_context
 from ..fluid.dygraph.jit import TracedLayer
 
 BackwardStrategy = core.BackwardStrategy
-enable_imperative = enable_dygraph
-disable_imperative = disable_dygraph
