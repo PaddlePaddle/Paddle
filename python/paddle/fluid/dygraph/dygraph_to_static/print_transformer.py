@@ -42,10 +42,8 @@ class PrintTransformer(gast.NodeTransformer):
 
     # NOTE: deal with print in PY3
     def visit_Expr(self, node):
-        value_node = node.value
-        for child_node in gast.walk(value_node):
-            if isinstance(child_node, gast.Call):
-                self._visit_Call(child_node)
+        if isinstance(node.value, gast.Call):
+            node.value = self._visit_Call(node.value)
         return node
 
     def _visit_Call(self, node):

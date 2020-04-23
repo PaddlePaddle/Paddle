@@ -25,89 +25,83 @@ import paddle.fluid as fluid
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
+
 # 1. print VarBase
-"""
-PY2:
-Print(dest=None, values=[Name(id='x_v', annotation=None, type_comment=None)], nl=True)],
-PY3:
-Expr(
-    value=Call(func=Name(id='print', annotation=None, type_comment=None),
-        args=[Name(id='x_v', annotation=None, type_comment=None)],
-        keywords=[]))
-"""
-
-
 def dyfunc_print_variable(x):
-    x_v = fluid.dygraph.to_variable(x)
+    """
+    PY2:
+    Print(dest=None, values=[Name(id='x_v', annotation=None, type_comment=None)], nl=True)],
+    PY3:
+    Expr(
+        value=Call(func=Name(id='print', annotation=None, type_comment=None),
+            args=[Name(id='x_v', annotation=None, type_comment=None)],
+            keywords=[]))
+    """
     # NOTE: transform to static code, var name will be changed
-    x_v.name = "assign_0.tmp_0"
+    x_v = fluid.dygraph.to_variable(x)
     print(x_v)
 
 
 # 2. print ndarray
-"""
-PY2:
-Print(dest=None, values=[Name(id='x', annotation=None, type_comment=None)
-PY3:
-Expr(
-    value=Call(func=Name(id='print', annotation=None, type_comment=None),
-        args=[Name(id='x', annotation=None, type_comment=None)],
-        keywords=[]))
-"""
-
-
 def dyfunc_print_ndarray(x):
+    """
+    PY2:
+    Print(dest=None, values=[Name(id='x', annotation=None, type_comment=None)
+    PY3:
+    Expr(
+        value=Call(func=Name(id='print', annotation=None, type_comment=None),
+            args=[Name(id='x', annotation=None, type_comment=None)],
+            keywords=[]))
+    """
     print(x)
 
 
 # 3. print VarBase with format
-"""
-PY2:
-Print(dest=None,
-    values=[
-        Call(
-            func=Attribute(value=Constant(value='PrintVariable: {}', kind=None), attr='format'),
-            args=[Name(id='x_v', annotation=None, type_comment=None)],
-            keywords=[])],
-    nl=True)
-PY3:
-Expr(
-    value=Call(func=Name(id='print', annotation=None, type_comment=None),
-        args=[
+
+
+def dyfunc_print_with_format(x):
+    """
+    PY2:
+    Print(dest=None,
+        values=[
             Call(
                 func=Attribute(value=Constant(value='PrintVariable: {}', kind=None), attr='format'),
                 args=[Name(id='x_v', annotation=None, type_comment=None)],
                 keywords=[])],
-        keywords=[]))
-"""
-
-
-def dyfunc_print_with_format(x):
+        nl=True)
+    PY3:
+    Expr(
+        value=Call(func=Name(id='print', annotation=None, type_comment=None),
+            args=[
+                Call(
+                    func=Attribute(value=Constant(value='PrintVariable: {}', kind=None), attr='format'),
+                    args=[Name(id='x_v', annotation=None, type_comment=None)],
+                    keywords=[])],
+            keywords=[]))
+    """
     x_v = fluid.dygraph.to_variable(x)
     print("PrintVariable: {}".format(x_v))
 
 
 # 4. print VarBase with format 2
-"""
-PY2:
-Print(dest=None,
-    values=[
-        BinOp(left=Constant(value='PrintVariable: %s', kind=None),
-            op=Mod,
-            right=Name(id='x_v', annotation=None, type_comment=None))],
-    nl=True)
-PY3:
-Expr(
-    value=Call(func=Name(id='print', annotation=None, type_comment=None),
-        args=[
+def dyfunc_print_with_format2(x):
+    """
+    PY2:
+    Print(dest=None,
+        values=[
             BinOp(left=Constant(value='PrintVariable: %s', kind=None),
                 op=Mod,
                 right=Name(id='x_v', annotation=None, type_comment=None))],
-        keywords=[]))
-"""
-
-
-def dyfunc_print_with_format2(x):
+        nl=True)
+    PY3:
+    Expr(
+        value=Call(func=Name(id='print', annotation=None, type_comment=None),
+            args=[
+                BinOp(left=Constant(value='PrintVariable: %s', kind=None),
+                    op=Mod,
+                    right=Name(id='x_v', annotation=None, type_comment=None))],
+            keywords=[]))
+    """
     x_v = fluid.dygraph.to_variable(x)
     print("PrintVariable: %s" % (x_v))
 
@@ -122,11 +116,31 @@ def dyfunc_print_with_ifelse(x):
 
 
 # 6. print mutiple VarBases
-def dyfunc_print_multi_variables(x):
+def dyfunc_print_multi_vars(x):
+    """
+    # NOTE: y_v type is error before cur PR in this case
+    Assign(targets=[Name(id='y_v', annotation=None, type_comment=None)],
+        value=BinOp(left=Name(id='x_v', annotation=None, type_comment=None), op=Mult, right=Constant(value=2, kind=None)))
+    """
     x_v = fluid.dygraph.to_variable(x)
     y_v = x_v * 2
     print(x_v)
     print(y_v)
+
+
+# 7. print continue VarBase
+def dyfunc_print_continue_vars(x):
+    """
+    PY3:
+    Expr(
+        value=Call(func=Name(id='print', annotation=None, type_comment=None),
+            args=[Name(id='x_v', annotation=None, type_comment=None),
+                Name(id='y_v', annotation=None, type_comment=None)],
+            keywords=[]))
+    """
+    x_v = fluid.dygraph.to_variable(x)
+    y_v = x_v * 2
+    print(x_v, y_v)
 
 
 class TestPrintBase(unittest.TestCase):
@@ -199,9 +213,20 @@ class TestPrintWithIfElse(TestPrintVariable):
         self.dygraph_func = dyfunc_print_with_ifelse
 
 
-# class TestPrintMultipleVar(TestPrintVariable):
-#     def set_test_func(self):
-#         self.dygraph_func = dyfunc_print_multi_variables
+class TestPrintMultipleVar(TestPrintVariable):
+    def set_test_func(self):
+        self.dygraph_func = dyfunc_print_multi_vars
+
+
+class TestPrintContinueVar(TestPrintBase):
+    def set_test_func(self):
+        self.dygraph_func = dyfunc_print_continue_vars
+
+    def test_transform_static_error(self):
+        with self.assertRaises(AssertionError):
+            self.get_dygraph_output()
+            self.get_static_output()
+
 
 if __name__ == '__main__':
     unittest.main()
