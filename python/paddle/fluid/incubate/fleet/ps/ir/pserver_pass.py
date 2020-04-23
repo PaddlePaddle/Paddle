@@ -181,6 +181,7 @@ def _clone_lr_op(program, origin_program, block, op):
 def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                         origin_program, merged_var, sparse_grad_to_param,
                         config):
+
     program = optimize_block.program
     pserver_block = program.global_block()
     new_inputs = collections.OrderedDict()
@@ -194,6 +195,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
         param_vars = [
             p for p in config.param_grad_ep_mapping[endpoint]["params"]
         ]
+
         for var in param_vars:
             name = var.name
             orig_varname = _orig_varname(name)
@@ -213,7 +215,9 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
 
         for i in range(len(unmerged_vars)):
             if _same_or_split_var(param_name, unmerged_vars[i].name):
-                return unmerged_vars[i]
+                for var in param_vars:
+                    if _same_or_split_var(var.name, unmerged_vars[i].name):
+                        return var
 
         for i in range(len(merged_ordervars)):
             if _same_or_split_var(param_name, merged_ordervars[i].name):
@@ -235,6 +239,9 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                 new_inputs[key] = merged_var
         elif key == "Param":
             param_block = _get_param_block(opt_op)
+
+            print("param block: \n{}".format(param_block))
+
             if not param_block:
                 return
             tmpvar = pserver_block.create_var(
@@ -243,6 +250,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                 dtype=param_block.dtype,
                 shape=param_block.shape)
             new_inputs[key] = tmpvar
+
         elif key == "LearningRate":
             # learning rate variable has already be created by non-optimize op,
             # don't create it once again.
@@ -420,12 +428,14 @@ def add_recv_inputs_pass(program, config):
 def add_optimizer_pass(program, config):
     def _append_pserver_grad_merge_ops(optimize_block, grad_varname_for_block,
                                        endpoint, grad_to_block_id):
+
         is_sync = config.get_distributed_mode == DistributedMode.SYNC
         trainers = config.get_trainers()
 
         program = optimize_block.program
         pserver_block = program.global_block()
         grad_block = None
+
         for g in config.param_grad_ep_mapping[endpoint]["grads"]:
             if _orig_varname(g.name) == \
                     _orig_varname(grad_varname_for_block):
@@ -439,12 +449,23 @@ def add_optimizer_pass(program, config):
 
         orig_varname, block_name, trainer_name = _get_varname_parts(
             grad_block.name)
+
+        print("grad_block: \n{}".format(str(grad_block)))
+
         if block_name:
             merged_var_name = '.'.join([orig_varname, block_name])
         else:
             merged_var_name = orig_varname
 
-        merged_var = pserver_block.vars[merged_var_name]
+        merged_var = pserver_block.create_var(
+            name=grad_block.name,
+            persistable=True,
+            type=grad_block.type,
+            dtype=grad_block.dtype,
+            shape=grad_block.shape)
+
+        #merged_var = pserver_block.vars[merged_var_name]
+
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if is_sync and trainers > 1:
             vars2merge = []
@@ -557,7 +578,6 @@ def add_optimizer_pass(program, config):
         return lr_ops
 
     optimize_ops = _get_optimize_ops(origin_program)
-
     for _, op in enumerate(optimize_ops):
         if _is_optimizer_op(op) and _is_opt_op_on_pserver(ps_endpoint, op):
             opt_op_on_pserver.append(op)
@@ -579,6 +599,7 @@ def add_optimizer_pass(program, config):
     # append op to the current block
     grad_to_block_id = []
     pre_block_idx = program.num_blocks - 1
+
     for idx, opt_op in enumerate(opt_op_on_pserver):
         per_opt_block = program._create_block(pre_block_idx)
         optimize_blocks.append(per_opt_block)
