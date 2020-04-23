@@ -47,9 +47,13 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   EmbEltwiseLayernormPluginDynamic(void const* serialData,
                                    size_t serialLength) {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new EmbEltwiseLayernormPluginDynamic(
+    auto ptr = new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
         eps_);
+    ptr->embs_gpu_ = embs_gpu_;
+    ptr->bias_gpu_ = bias_gpu_;
+    ptr->scale_gpu_ = scale_gpu_;
+    return ptr;
   }
 
   const char* getPluginType() const override {
@@ -57,6 +61,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
+  void terminate() override;
 
   size_t getSerializationSize() const override;
   void serialize(void* buffer) const override;

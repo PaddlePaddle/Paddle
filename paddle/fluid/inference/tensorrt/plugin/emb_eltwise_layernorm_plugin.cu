@@ -73,6 +73,16 @@ int EmbEltwiseLayernormPluginDynamic<T>::initialize() {
 }
 
 template <typename T>
+void EmbEltwiseLayernormPluginDynamic<T>::terminate() {
+  for (auto ptr : embs_gpu_) {
+    if (ptr) cudaFree(ptr);
+  }
+
+  if (bias_gpu_) cudaFree(bias_gpu_);
+  if (scale_gpu_) cudaFree(scale_gpu_);
+}
+
+template <typename T>
 size_t EmbEltwiseLayernormPluginDynamic<T>::getSerializationSize() const {
   return 0;
 }
