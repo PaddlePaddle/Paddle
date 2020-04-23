@@ -202,7 +202,7 @@ def in_dygraph_mode():
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
+        ), "We don't support %s in imperative mode" % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -211,7 +211,7 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
+        ), "We Only support %s in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative Mode" % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -227,7 +227,7 @@ def _dygraph_only_(func):
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
-            "'%s' should be called by Dygraph Varible in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode"
+            "'%s' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
             % func.__name__)
 
     return __impl__

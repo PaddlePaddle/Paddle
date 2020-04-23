@@ -158,7 +158,7 @@ class Test_Detach(unittest.TestCase):
             assert type(e) == AssertionError
             assert str(
                 e
-            ) == "'detach' should be called by Dygraph Varible in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode"
+            ) == "'detach' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
 
 
 if __name__ == '__main__':
