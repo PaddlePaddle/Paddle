@@ -51,6 +51,8 @@ class MKLDNNInplacePassTest {
       op->SetInput("Input", {inputs[0]});
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
+    } else if (type == "gelu") {
+      op->SetInput("X", inputs);
     } else if (type == "relu") {
       op->SetInput("X", inputs);
     } else if (type == "tanh") {
