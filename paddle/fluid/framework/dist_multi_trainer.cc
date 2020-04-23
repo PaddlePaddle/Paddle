@@ -76,7 +76,7 @@ void DistMultiTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
   fleet_ptr->RegisterHeterCallback(
     [this](int worker, int taskid) {
-      workers_[worker]->Schedule(taskid);
+      //workers_[worker]->Schedule(taskid);
     }
   );
 }
@@ -136,7 +136,6 @@ void DistMultiTrainer::FinalizeDumpEnv() {
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
                                       const platform::Place &place) {
-  CreateClient2XpuConnection();
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetPlace(place);
     workers_[i]->SetReaderPlace(place);
@@ -144,7 +143,6 @@ void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
     workers_[i]->CacheProgram(main_program);
-    workers_[i]->SetXpuChannels(xpu_channels_);
   }
   // Scope* -> thread id, it will be used in push_dense op
   for (int i = 0; i < thread_num_; ++i) {
@@ -158,7 +156,10 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
-  pull_dense_worker_->Start();
+  //pull_dense_worker_->Start();
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->GetXpuOpIndex();
+  }
   VLOG(3) << "init other env done.";
 }
 
@@ -176,22 +177,6 @@ void DistMultiTrainer::Run() {
 
 Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
   return workers_[thread_id]->GetThreadScope();
-}
-
-void DistMultiTrainer::CreateClient2XpuConnection() {
-  brpc::ChannelOptions options;
-  options.protocol = "baidu_std";
-  options.connection_type = "single";
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
-  auto& xpu_list = fleet_ptr_->GetXpuList();
-  
-  xpu_channels_.resize(xpu_list.size());
-  for (size_t i = 0; i < xpu_list.size(); ++i) {
-    xpu_channels_[i].reset(new brpc::Channel());
-    if (xpu_channels_[i]->Init(xpu_list[i].c_str(), "", &options) != 0) {
-      VLOG(0) << "xpu channel init fail";
-    }
-  }
 }
 
 void DistMultiTrainer::Finalize() {
@@ -232,7 +217,7 @@ void DistMultiTrainer::Finalize() {
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }
-  pull_dense_worker_->Stop();
+  //pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
   // flush local client push queue

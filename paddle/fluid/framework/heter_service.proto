@@ -15,12 +15,54 @@ syntax = "proto2";
 package paddle.framework;
 option cc_generic_services = true;
 
+// It can be: LoDTensor、SelectedRows or NCCL_ID
+enum VarType {
+  LOD_TENSOR = 0;
+  SELECTED_ROWS = 1;
+  NCCL_ID = 2;
+}
+
+// VariableMessage is serialized paddle variable message.
+// NOTICE(gongwb):don't modify this proto if you are not
+//   not familar with how we serialize in sendrecvop_utils.h
+//   and deserilize it in  variable_response.h.
+message VariableMessage {
+  enum Type {
+    // Pod Types
+    BOOL = 0;
+    INT16 = 1;
+    INT32 = 2;
+    INT64 = 3;
+    FP16 = 4;
+    FP32 = 5;
+    FP64 = 6;
+  }
+
+  message LodData { repeated int64 lod_data = 1; }
+  optional string varname = 1;
+  // TODO(Yancey1989): reference framework::proto::VarDesc::VarType
+  optional VarType type = 2;
+  // bool persistable is not needed for sending.
+  // tensor info:
+  optional Type data_type = 3;
+  repeated int64 dims = 4;
+
+  // lod details:
+  optional int64 lod_level = 5;
+  repeated LodData lod = 6;
+  // selected_rows height, aka. original dim0
+  optional int64 slr_height = 7;
+  // tensor data
+  optional bytes data = 8;
+}
 message HeterRequest {
-  required string data = 1;
+  required int32 cmd = 1;
+  required int32 cur_batch = 2;
+  repeated VariableMessage vars = 3;
 };
 
 message HeterResponse {
-  required string data = 1;
+  optional VariableMessage vars = 1;
 };
 
 service HeterService {

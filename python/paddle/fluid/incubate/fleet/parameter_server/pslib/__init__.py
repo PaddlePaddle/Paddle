@@ -23,6 +23,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.role_maker import HeterRoleMaker
 
 
 class PSLib(Fleet):
@@ -44,6 +45,7 @@ class PSLib(Fleet):
             role_maker = MPISymetricRoleMaker()
         super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
+        self._heter_ptr = fluid.core.Heter()
 
     def _set_client_communication_config(self, request_timeout_ms,
                                          connect_timeout_ms, max_retry):
@@ -78,6 +80,11 @@ class PSLib(Fleet):
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_xpu():
+                    local_endpoint = self._role_maker.get_local_endpoint()
+                    local_endpoint = local_endpoint.split(":")
+                    self._heter_ptr.start_xpu_service(str(local_endpoint[0]), int(local_endpoint[1]))
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
@@ -86,20 +93,20 @@ class PSLib(Fleet):
                                         self._role_maker.worker_index() * 2)
             if isinstance(self._role_maker, HeterRoleMaker):
                 if self._role_maker.is_worker():
-                    self._fleet_ptr.set_xpu_endpoints(role_maker._xpu_endpoints)
-                if self._role_maker.is_xpu():
-                    self._fleet_ptr.set_server_endpoints(role_maker._server_endpoints)
+                    self._heter_ptr.set_xpu_list(self._role_maker._xpu_endpoints)
+                    self._heter_ptr.create_client2xpu_connection()
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
-            info = self._fleet_ptr.get_clients_info()
-            all_info = self._role_maker._worker_gather(info[0])
-            self._fleet_ptr.gather_clients(all_info)
-            self._fleet_ptr.set_client2client_config(
-                self._client2client_request_timeout_ms,
-                self._client2client_connect_timeout_ms,
-                self._client2client_max_retry)
-            self._fleet_ptr.create_client2client_connection()
+            if self._role_maker.is_worker():
+                info = self._fleet_ptr.get_clients_info()
+                all_info = self._role_maker._worker_gather(info[0])
+                self._fleet_ptr.gather_clients(all_info)
+                self._fleet_ptr.set_client2client_config(
+                    self._client2client_request_timeout_ms,
+                    self._client2client_connect_timeout_ms,
+                    self._client2client_max_retry)
+                self._fleet_ptr.create_client2client_connection()
 
             # barrier for init model
             self._role_maker._barrier_worker()
@@ -154,10 +161,16 @@ class PSLib(Fleet):
 
         """
         mode = kwargs.get("mode", 0)
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.load_model(model_dir, mode)
-        self._role_maker._barrier_worker()
+        if isinstance(self._role_maker, HeterRoleMaker):
+            self._role_maker._barrier_xpu()
+            if self._role_maker.is_first_xpu():
+                self._fleet_ptr.load_model(model_dir, mode)
+            self._role_maker._barrier_xpu()
+        else:    
+            self._role_maker._barrier_worker()
+            if self._role_maker.is_first_worker():
+                self._fleet_ptr.load_model(model_dir, mode)
+            self._role_maker._barrier_worker()
 
     def run_server(self):
         """

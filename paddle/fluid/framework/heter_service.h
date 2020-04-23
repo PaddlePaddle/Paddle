@@ -28,7 +28,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-typedef std::function<int (const std::string&)> HeterServiceHandler;
+typedef std::function<int (const HeterRequest*, HeterResponse*)> HeterServiceHandler;
 
 class HeterXpuService : public HeterService {
 public:
@@ -36,10 +36,11 @@ public:
   virtual ~HeterXpuService() {}
   
   void service(::google::protobuf::RpcController* controller,
-                     const HeterRequest* request, HeterResponse* response,
-                     ::google::protobuf::Closure* done) {
+               const HeterRequest* request, HeterResponse* response,
+               ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    int ret = handler_(request->data());
+    int ret = handler_(request, response);
+    //response->set_data("wxx");
     //response->set_err_code(0);
     //response->set_err_msg("");
     if (ret != 0) {
@@ -49,6 +50,7 @@ public:
   }
 
   void RegisterServiceHandler(HeterServiceHandler func) {
+    VLOG(0) << "register heter service";
     handler_ = func;
   }
 private:

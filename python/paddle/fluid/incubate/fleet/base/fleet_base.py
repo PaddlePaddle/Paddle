@@ -146,6 +146,16 @@ class Fleet(object):
         """
         return self._role_maker.is_server()
 
+    def is_xpu(self):
+        """
+        Check whether the node is an instance of server.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+        """
+        return self._role_maker.is_xpu()
+
     def split_files(self, files):
         """
         split files before distributed training,

@@ -1433,6 +1433,60 @@ class Executor(object):
                                       debug, fetch_list, fetch_info,
                                       print_period, fetch_handler)
 
+    def start_heter_trainer(self,
+                           program=None,
+                           scope=None,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100,
+                           fetch_handler=None):
+        return self._start_heter_trainer(program, scope, False,
+                                      debug, fetch_list, fetch_info,
+                                      print_period, fetch_handler)
+    
+    def _start_heter_trainer(self,
+                          program=None,
+                          scope=None,
+                          is_infer=False,
+                          debug=False,
+                          fetch_list=None,
+                          fetch_info=None,
+                          print_period=100,
+                          fetch_handler=None):
+
+        scope, trainer = self._prepare_trainer(
+            program=program,
+            dataset=None,
+            scope=scope,
+            thread=1,
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
+
+        trainer._set_infer(is_infer)
+        trainer._gen_trainer_desc()
+
+        self._dump_debug_info(program=program, trainer=trainer)
+
+        trainer_instance = self._default_executor.init_for_dataset(
+            program.desc, trainer._desc(), scope, None)
+
+        if fetch_handler is not None:
+            scope0 = trainer_instance.get_worker_scope(0)
+            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+            fetch_monitor.start()
+            self._default_executor.run_from_dataset(trainer_instance)
+            fetch_monitor.stop()
+            self._default_executor.release_trainer(trainer_instance)
+        else:
+
+            self._default_executor.run_from_dataset(trainer_instance)
+            self._default_executor.release_trainer(trainer_instance)
+
+        return None
+
     def train_from_dataset(self,
                            program=None,
                            dataset=None,

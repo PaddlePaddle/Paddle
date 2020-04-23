@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -58,18 +59,44 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int 
 
 }
 
-void HeterCpuWorker::CallRemoteXpu() {
-  HeterRequest request;
-  HeterResponse response;
-  brpc::Controller cntl;
-  HeterService_Stub stub(xpu_channels_[0].get());
-  stub.service(&cntl, &request, &response, NULL);
-  if (cntl.Failed()) {
-    std::cout << "call xpu fail" << std::endl;
+void HeterCpuWorker::GetXpuOpIndex() {
+  for (size_t i = 0; i < ops_.size(); ++i) {
+    auto& out_map = ops_[i]->Outputs();
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0") {
+            xpu_begin_op_index_ = i + 1;
+          }
+        }
+      }
+    }
+    
+    {
+      auto it = out_map.find("X@GRAD");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
   }
-  else {
-    std::cout << "call xpu success" << std::endl;
-  }
+  VLOG(3) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
 }
 
 void HeterCpuWorker::Schedule(int taskid) {
@@ -84,12 +111,6 @@ void HeterCpuWorker::JumpContext(std::shared_ptr<HeterTask> task) {
   VLOG(3) << "jump context " << task->taskid_;
   if (!(wait_queue_.TryPut(task->taskid_, task))) {
     run_queue_.Put(task->taskid_, task);
-  }
-}
-
-void HeterCpuWorker::SetXpuChannels(std::vector<std::shared_ptr<brpc::Channel>>& channels) {
-  for (auto& x : channels) {
-    xpu_channels_.push_back(x);
   }
 }
 
@@ -140,6 +161,7 @@ void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
   need_to_push_dense_ = param_.push_dense();
 
   fleet_ptr_ = FleetWrapper::GetInstance();
+  heter_ptr_ = HeterWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
@@ -970,6 +992,7 @@ void HeterCpuWorker::TrainFiles() {
   int done_cnt = 0;
   int cur_batch;
   wait_queue_.SetCap(3);
+  need_to_push_dense_ = false;
   //while ((cur_batch = device_reader_->Next()) > 0) {
   while (1) {
     //if (copy_table_config_.need_copy()) {
@@ -1025,8 +1048,8 @@ void HeterCpuWorker::TrainFiles() {
               table.fea_dim(), sparse_value_names_[tid]);
         }
         task->Update();
-        JumpContext(task);
-        break;
+        //JumpContext(task);
+        //break;
       }
       else if (task->state_ == OP_RUN) {
         VLOG(3) << "oprun taskid = " << task->taskid_;
@@ -1046,7 +1069,47 @@ void HeterCpuWorker::TrainFiles() {
         
         VLOG(3) << "fill sparse value for all sparse table done.";
         // do computation here
-        for (auto& op : ops_) {
+        for (int i = 0; i < xpu_begin_op_index_; ++i) {
+          auto& op = ops_[i];
+          bool need_skip = false;
+          for (auto t = 0u; t < skip_ops_.size(); ++t) {
+            if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+              need_skip = true;
+              break;
+            }
+          }
+          if (!need_skip) {
+            VLOG(3) << "run op: " << op->Type();
+            op->Run(*(task->scope_), place_);
+          }
+        }
+        // check inf and nan
+        //for (std::string& var_name : check_nan_var_names_) {
+        //  Variable* var = (task->scope_)->FindVar(var_name);
+        //  if (var == nullptr) {
+        //    continue;
+        //  }
+        //  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        //  if (tensor == nullptr) {
+        //    continue;
+        //  }
+        //  PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+        //                    "Tensor %s contains Inf", var_name);
+        //  PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+        //                    "Tensor %s contains NAN", var_name);
+        //}
+        task->Update();
+      }
+      else if (task->state_ == XPU) {
+        VLOG(3) << "call remote xpu taskid = " << task->taskid_;
+        heter_ptr_->CallRemoteXpu(task, this);
+        task->Update();
+        JumpContext(task);
+        break;
+      }
+      else if (task->state_ == OP_RUN_END) {
+        for (size_t i = xpu_end_op_index_ + 1; i < ops_.size(); ++i) {
+          auto& op = ops_[i];
           bool need_skip = false;
           for (auto t = 0u; t < skip_ops_.size(); ++t) {
             if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -1073,10 +1136,6 @@ void HeterCpuWorker::TrainFiles() {
           PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
                             "Tensor %s contains NAN", var_name);
         }
-        task->Update();
-      }
-      else if (task->state_ == XPU) {
-        CallRemoteXpu();
         task->Update();
       }
       else if (task->state_ == PUSH_GRAD) {

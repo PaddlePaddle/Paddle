@@ -52,6 +52,8 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
+class HeterWrapper;
+
 #define SEC_LOG                                                              \
   VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
           << "]: "
@@ -142,7 +144,7 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
-  virtual void SetXpuChannels(std::vector<std::shared_ptr<brpc::Channel>>& channels) {}
+  virtual void GetXpuOpIndex() {}
 
  protected:
   Scope* root_scope_ = nullptr;
@@ -303,6 +305,7 @@ enum HeterTaskState {
   PULL_SPARSE,
   OP_RUN,
   XPU,
+  OP_RUN_END,
   PUSH_GRAD,
   DONE
 };
@@ -319,6 +322,9 @@ public:
       //state_ = PUSH_GRAD;
     }
     else if (state_ == XPU) {
+      state_ = OP_RUN_END;
+    }
+    else if (state_ == OP_RUN_END) {
       state_ = PUSH_GRAD;
     }
     else if (state_ == PUSH_GRAD) {
@@ -539,17 +545,16 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void CreateThreadParam(const ProgramDesc &main_program);
   virtual void Schedule(int taskid);
-  virtual void CallRemoteXpu();
   virtual void JumpContext(std::shared_ptr<HeterTask> task);
   virtual void CacheProgram(const ProgramDesc &main_program) {
     new(&program_) ProgramDesc(main_program);
   }
-  virtual void SetXpuChannels(std::vector<std::shared_ptr<brpc::Channel>>& channels);
+  virtual void GetXpuOpIndex();
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::HeterWrapper> heter_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
   void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
   void PushGradients();
   void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
@@ -561,6 +566,8 @@ class HeterCpuWorker : public HogwildWorker {
 
  private:
   int worker_num_;
+  int xpu_begin_op_index_;
+  int xpu_end_op_index_;
   ProgramDesc program_;
   HeterObjectPool<HeterTask> object_pool_;
   HeterList<int, std::shared_ptr<HeterTask>> run_queue_;

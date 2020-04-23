@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/heter_service.h"
 
 namespace paddle {
@@ -113,17 +114,25 @@ class DistMultiTrainer : public MultiTrainer {
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void DumpWork(int tid);
   virtual void RegisterHeterCallback();
-  void CreateClient2XpuConnection();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
+};
+
+class HeterServiceContext {
+public:
+  Scope* scope_{nullptr};
 };
 
 class HeterXpuTrainer : public TrainerBase {
  public:
   HeterXpuTrainer() {}
-  virtual ~HeterXpuTrainer() {}
+  virtual ~HeterXpuTrainer() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place);
@@ -131,16 +140,30 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void Run();
   virtual void Finalize();
   virtual void DumpWork(int tid);
-  virtual void CreateXpu2ServerConnection();
   virtual void RegisterServiceHandler();
-  virtual int RunTask(const std::string& data);
+  virtual int RunTask(const HeterRequest* request, HeterResponse* response);
   virtual Scope* GetWorkerScope(int thread_id);
+  virtual void CacheProgram(const ProgramDesc &main_program) {
+    new(&program_) ProgramDesc(main_program);
+  }
  protected:
+  DownpourWorkerParameter param_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  float scale_datanorm_;
+  int xpu_begin_op_index_;
+  int xpu_end_op_index_;
+  bool running_;
+  paddle::platform::Place place_;
+  std::mutex mutex_;
+  ProgramDesc program_;
+  std::condition_variable cond_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
-  brpc::Server server_;
-  HeterXpuService service_;
+  std::shared_ptr<paddle::framework::HeterWrapper> heter_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::vector<std::shared_ptr<brpc::Channel>> server_channels_;
+  std::vector<OperatorBase*> ops_;
+  std::vector<std::string> op_names_;
+  HeterObjectPool<HeterServiceContext> object_pool_;
 };
 
 #if defined(PADDLE_WITH_NCCL)

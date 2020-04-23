@@ -216,7 +216,7 @@ class DownpourSGD(DeviceWorker):
                     dense_table_set.add(i)
                 break
 
-        trainer_desc.device_worker_name = opt_info["worker_class"]
+        trainer_desc.device_worker_name = opt_info.get("worker_class", "DownpourWorker")
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num
         if opt_info.get("program_id_to_worker") is None:

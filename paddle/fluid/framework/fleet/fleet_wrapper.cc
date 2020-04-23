@@ -101,24 +101,6 @@ void FleetWrapper::FinalizeWorker() {
 #endif
 }
 
-void FleetWrapper::SetXpuList(const std::vector<std::string>& xpu_list) {
-#ifdef PADDLE_WITH_PSLIB
-  VLOG(3) << "Going to set xpu list";
-  for (auto& x : xpu_list) {
-    xpu_list_.push_back(x);
-  }
-#endif
-}
-
-void FleetWrapper::SetServerList(const std::vector<std::string>& server_list) {
-#ifdef PADDLE_WITH_PSLIB
-  VLOG(3) << "Going to set xpu list";
-  for (auto& x : server_list_) {
-    server_list_.push_back(x);
-  }
-#endif
-}
-
 uint64_t FleetWrapper::RunServer() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server";
@@ -221,15 +203,15 @@ void FleetWrapper::HeterPullSparseVars(
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(workerid,
       pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), task->taskid_);
   pull_sparse_status.push_back(std::move(status));
-  //for (auto& t : pull_sparse_status) {
-  //  t.wait();
-  //  auto status = t.get();
-  //  if (status != 0) {
-  //    LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-  //    sleep(sleep_seconds_before_fail_exit_);
-  //    exit(-1);
-  //  }
-  //}
+  for (auto& t : pull_sparse_status) {
+    t.wait();
+    auto status = t.get();
+    if (status != 0) {
+      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
+      exit(-1);
+    }
+  }
 #endif
 }
 

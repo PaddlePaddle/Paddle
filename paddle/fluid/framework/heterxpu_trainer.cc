@@ -26,8 +26,18 @@ namespace framework {
 
 void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
                                   Dataset *dataset) {
+  param_ = trainer_desc.downpour_param();
+  for (int i = 0; i < param_.dense_table_size(); ++i) {
+    uint64_t table_id = static_cast<uint64_t>(param_.dense_table(i).table_id());
+    auto table = param_.dense_table(i);
+    dense_grad_names_[table_id].resize(table.dense_grad_name_size());
+    for (int j = 0; j < table.dense_grad_name_size(); ++j) {
+      dense_grad_names_[table_id][j] = table.dense_grad_name(j);
+    }
+  }
+  scale_datanorm_ = trainer_desc.scale_datanorm();
   //thread_num_ = trainer_desc.thread_num();
-  SetDataset(dataset);
+  //SetDataset(dataset);
 
   //dump_fields_path_ = trainer_desc.dump_fields_path();
   //dump_converter_ = trainer_desc.dump_converter();
@@ -44,15 +54,15 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   //mpi_rank_ = trainer_desc.mpi_rank();
   //mpi_size_ = trainer_desc.mpi_size();
   //dump_file_num_ = trainer_desc.dump_file_num();
-  const std::vector<paddle::framework::DataFeed *> readers =
-      dataset->GetReaders();
+  //const std::vector<paddle::framework::DataFeed *> readers =
+  //    dataset->GetReaders();
   //thread_num_ = readers.size();
   //for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
   //     i++) {
   //  need_merge_var_names_.push_back(
   //      trainer_desc.downpour_param().stat_var_names(i));
   //}
-
+  running_ = true;
   VLOG(3) << "going to initialize pull dense worker";
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
@@ -60,8 +70,8 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   SetDebug(trainer_desc.debug());
   
   fleet_ptr_ = FleetWrapper::GetInstance();
+  heter_ptr_ = HeterWrapper::GetInstance();
   RegisterServiceHandler();
-  CreateXpu2ServerConnection();
   //for (int i = 0; i < trainer_desc.worker_places_size(); ++i) {
   //  int num = trainer_desc.worker_places(i);
   //  platform::CUDAPlace place = platform::CUDAPlace(num);
@@ -72,42 +82,70 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   //  places_.push_back(place);
   //}
         
-  server_.AddService(&service_, brpc::SERVER_DOESNT_OWN_SERVICE);
-  brpc::ServerOptions options;
-  int start_port = 9000;
-  const static int max_port = 65535;
-       
-  if (server_.Start(butil::my_ip_cstr(), 
-      brpc::PortRange(start_port,  max_port), &options) != 0) {
-      VLOG(0) << "xpu server start fail";
-  }
 }
 
-void HeterXpuTrainer::CreateXpu2ServerConnection() {
-  brpc::ChannelOptions options;
-  options.protocol = "baidu_std";
-  options.connection_type = "single";
-  auto& server_list = fleet_ptr_->GetServerList();
-  
-  server_channels_.resize(server_list.size());
-  for (size_t i = 0; i < server_list.size(); ++i) {
-    server_channels_[i].reset(new brpc::Channel());
-    if (server_channels_[i]->Init(server_list[i].c_str(), "", &options) != 0) {
-      VLOG(0) << "server channel init fail";
-    }
-  }
-}
 
 void HeterXpuTrainer::DumpWork(int tid) {
 }
 
 void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc &main_program,
                                       const platform::Place &place) {
+  CacheProgram(main_program);
+  place_ = place;
 }
 
 void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->Start();
+  
+  auto &block = main_program.Block(0);
+  op_names_.clear();
+  for (auto &op_desc : block.AllOps()) {
+    std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
+    op_names_.push_back(op_desc->Type());
+    OperatorBase *local_op_ptr = local_op.release();
+    ops_.push_back(local_op_ptr);
+    continue;
+  }
+  
+  for (size_t i = 0; i < ops_.size(); ++i) {
+    auto& out_map = ops_[i]->Outputs();
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0") {
+            xpu_begin_op_index_ = i + 1;
+          }
+        }
+      }
+    }
+    
+    {
+      auto it = out_map.find("X@GRAD");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
+  }
+  
+  VLOG(3) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
   VLOG(3) << "init other env done.";
 }
 
@@ -123,15 +161,60 @@ void HeterXpuTrainer::Run() {
   //}
 }
 
-int HeterXpuTrainer::RunTask(const std::string& data) {
-  std::cout << data << std::endl;
+int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* response) {
+  std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
+
+  if (!context->scope_) {
+    context->scope_ = &(root_scope_->NewScope());
+    auto &block = program_.Block(0);
+    for (auto &var : block.AllVars()) {
+      if (!var->Persistable()) {
+        auto *ptr = context->scope_->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+      }
+    }
+  }
+
+  for (int i = 0; i < request->vars_size(); ++i) {
+    heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i));
+  }
+  
+  for (int i = xpu_begin_op_index_; i <= xpu_end_op_index_; ++i) {
+    auto& op = ops_[i];
+    op->Run(*(context->scope_), place_);
+  }
+
+  std::string varname = "concat_1.tmp_0@GRAD";
+
+  auto* res_var = response->mutable_vars();
+  heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
+  
+  for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
+       ++i) {
+    uint64_t tid = static_cast<uint64_t>(
+        param_.program_config(0).push_dense_table_id(i));
+    fleet_ptr_->PushDenseVarsAsync(
+        *(context->scope_), tid, dense_grad_names_[tid], &push_dense_status_,
+        scale_datanorm_, request->cur_batch());
+  }
+          
+  for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
+       ++i) {
+    uint64_t tid = static_cast<uint64_t>(
+        param_.program_config(0).push_dense_table_id(i));
+    pull_dense_worker_->IncreaseThreadVersion(0, tid);
+  }
+  VLOG(3) << "push dense gradient done.";
+
+  object_pool_.Push(context);
   return 0;
 }
 
 void HeterXpuTrainer::RegisterServiceHandler() {
-  service_.RegisterServiceHandler(
-    [this](const std::string& data) -> int {
-      return this->RunTask(data);
+  heter_ptr_->RegisterServiceHandler(
+    [this](const HeterRequest* request, HeterResponse* response) -> int {
+      return this->RunTask(request, response);
+      //return 0;
     });
 }
 
@@ -143,9 +226,11 @@ void HeterXpuTrainer::Finalize() {
   //for (auto &th : threads_) {
   //  th.join();
   //}
+  std::unique_lock<std::mutex> lock(mutex_);
+  cond_.wait(lock, [this] { return !running_; });
 
   pull_dense_worker_->Stop();
-  //root_scope_->DropKids();
+  root_scope_->DropKids();
 }
 
 }  // namespace framework
