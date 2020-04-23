@@ -3879,7 +3879,6 @@ class Program(object):
     def _version(self):
         return self.desc._version()
 
-    @dygraph_not_support
     def clone(self, for_test=False):
         """
         **Notes**:
@@ -4555,7 +4554,6 @@ class Program(object):
                 if other_var.stop_gradient:
                     var.stop_gradient = True
 
-    @dygraph_not_support
     def list_vars(self):
         """
         Get all :ref:`api_guide_Variable_en` from this Program. A iterable object is returned.
@@ -4578,7 +4576,6 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
-    @dygraph_not_support
     def all_parameters(self):
         """
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
