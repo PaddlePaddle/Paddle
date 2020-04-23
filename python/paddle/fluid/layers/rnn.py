@@ -118,15 +118,16 @@ class RNNCell(object):
         """
         check_variable_and_dtype(batch_ref, 'batch_ref',
                                  ['float32', 'float64'], 'RNNCell')
-        check_type(shape, 'shape', (list, tuple, type(None), int), 'RNNCell')
+        check_type(shape, 'shape', (list, tuple, type(None), int, long),
+                   'RNNCell')
         if isinstance(shape, (list, tuple)):
             shapes = map_structure(lambda x: x, shape)
             if isinstance(shape, list):
                 for i, _shape in enumerate(shapes):
-                    check_type(_shape, 'shapes[' + str(i) + ']', (int),
+                    check_type(_shape, 'shapes[' + str(i) + ']', (int, long),
                                'RNNCell')
             else:
-                check_type(shapes, 'shapes', (int), 'RNNCell')
+                check_type(shapes, 'shapes', (int, long), 'RNNCell')
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'RNNCell')
 
         # TODO: use inputs and batch_size
