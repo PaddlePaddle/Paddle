@@ -149,7 +149,7 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
     x_grad_vec[v_i] += out_grad_vec[i];
   }
   x_grad->mutable_data<T>(context.GetPlace());
-  framework::TensorFromVector(out_vec, context.device_context(), x_grad);
+  framework::TensorFromVector(x_grad_vec, context.device_context(), x_grad);
   x_grad->Resize(x_grad_dims);
 }
 
