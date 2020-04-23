@@ -78,7 +78,7 @@ class AffineChannelOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(scale_dims.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "The rank of Input(Scale)'s must be 1,"
+                          "The rank of Input(Scale) must be 1,"
                           "But received the rank of Input(Scale) is [%d] ",
                           scale_dims.size()));
     PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
