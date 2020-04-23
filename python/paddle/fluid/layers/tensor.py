@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
+import six
 from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
+from ..initializer import Initializer
 from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
 from ..initializer import Constant
@@ -101,10 +103,30 @@ def create_parameter(shape,
             import paddle.fluid.layers as layers
             W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
+    check_type(shape, 'shape', (list, tuple, numpy.ndarray), 'create_parameter')
+    for item in shape:
+        if six.PY2:
+            check_type(item, 'item of shape',
+                       (int, long, numpy.uint8, numpy.int8, numpy.int16,
+                        numpy.int32, numpy.int64), 'create_parameter')
+        else:
+            check_type(item, 'item of shape',
+                       (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                        numpy.int64), 'create_parameter')
+
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
+    ], 'create_parameter')
+    check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
+    check_type(default_initializer, 'default_initializer',
+               (type(None), Initializer), 'create_parameter')
+
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
         attr = ParamAttr(name=name)
-    return helper.create_parameter(attr, shape, dtype, is_bias,
+    return helper.create_parameter(attr, shape,
+                                   convert_dtype(dtype), is_bias,
                                    default_initializer)
 
 
@@ -140,6 +162,23 @@ def create_global_var(shape,
             var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                            persistable=True, force_cpu=True, name='new_var')
     """
+    check_type(shape, 'shape', (list, tuple, numpy.ndarray),
+               'create_global_var')
+    for item in shape:
+        if six.PY2:
+            check_type(item, 'item of shape',
+                       (int, long, numpy.uint8, numpy.int8, numpy.int16,
+                        numpy.int32, numpy.int64), 'create_global_var')
+        else:
+            check_type(item, 'item of shape',
+                       (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                        numpy.int64), 'create_global_var')
+
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
+    ], 'create_global_var')
+
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
         dtype=dtype,
@@ -164,7 +203,7 @@ def cast(x, dtype):
         x(Variable): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
-            bool, float15, float32, float64, int8, int32, int64, uint8.
+            bool, float16, float32, float64, int8, int32, int64, uint8.
 
     Returns:
         Variable: A Tensor with the same shape as input's.
@@ -526,7 +565,10 @@ def assign(input, output=None):
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == VarDesc.VarType.FP32:
+        if dtype == VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [bool(v) for v in input.flat]
+        elif dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
         elif dtype == VarDesc.VarType.INT32:
@@ -538,7 +580,7 @@ def assign(input, output=None):
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be float32, int32 or int64, but "
+                "the data type of 'input' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "

@@ -13,17 +13,8 @@
 # limitations under the License.
 from __future__ import print_function
 import numpy as np
-import warnings
-import six
-import os
-import inspect
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
-from ..fluid import dygraph_utils
-from ..fluid.param_attr import ParamAttr
-from ..fluid import unique_name
 from ..fluid import core, layers
 
 # TODO: define searching & indexing functions of a tensor  
@@ -36,8 +27,8 @@ __all__ = [
     #            'masked_select',
     #            'topk',
     'where',
-    #            'index_select',
-    #            'nonzero',
+    'index_select',
+    'nonzero',
     'sort',
     'index_sample'
 ]
@@ -135,6 +126,151 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
     return out
 
 
+def index_select(input, index, dim=0):
+    """
+    Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
+    the entries in `index` which is a Tensor. The returned tensor has the same number 
+    of dimensions as the original `input` tensor. The dim-th dimension has the same 
+    size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
+        
+    Args:
+        input (Variable): The input tensor variable.
+        index (Variable): The 1-D tensor containing the indices to index.
+        dim (int): The dimension in which we index.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                             [5.0, 6.0, 7.0, 8.0],
+                             [9.0, 10.0, 11.0, 12.0]])
+            data_index = np.array([0, 1, 1]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                out_z1 = paddle.index_select(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3. 4.]
+                # [5. 6. 7. 8.]
+                # [5. 6. 7. 8.]]
+                out_z2 = paddle.index_select(x, index, dim=1)
+                print(out_z2.numpy())
+                #[[ 1.  2.  2.]
+                # [ 5.  6.  6.]
+                # [ 9. 10. 10.]]
+    """
+    helper = LayerHelper("index_select", **locals())
+    if in_dygraph_mode():
+        return core.ops.index_select(input, index, 'dim', dim)
+
+    check_variable_and_dtype(input, 'x',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    helper.append_op(
+        type='index_select',
+        inputs={'X': input,
+                'Index': index},
+        outputs={'Out': out},
+        attrs={'dim': dim})
+    return out
+
+
+def nonzero(input, as_tuple=False):
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input` 
+    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
+    in `input`, each containing the indices (in that dimension) of all non-zero elements 
+    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If 
+    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
+    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
+    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
+        
+    Args:
+        inputs (Variable): The input tensor variable.
+        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+
+    Returns:
+        Variable. The data type is int64.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data1 = np.array([[1.0, 0.0, 0.0],
+                              [0.0, 2.0, 0.0],
+                              [0.0, 0.0, 3.0]])
+            data2 = np.array([0.0, 1.0, 0.0, 3.0])
+            data3 = np.array([0.0, 0.0, 0.0])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(data1)
+                x2 = fluid.dygraph.to_variable(data2)
+                x3 = fluid.dygraph.to_variable(data3)
+                out_z1 = paddle.nonzero(x1)
+                print(out_z1.numpy())
+                #[[0 0]
+                # [1 1]
+                # [2 2]]
+                out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
+                for out in out_z1_tuple:
+                    print(out.numpy())
+                #[[0]
+                # [1]
+                # [2]]
+                #[[0]
+                # [1]
+                # [2]]
+                out_z2 = paddle.nonzero(x2)
+                print(out_z2.numpy())
+                #[[1]
+                # [3]]
+                out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
+                for out in out_z2_tuple:
+                    print(out.numpy())
+                #[[1]
+                # [3]]
+                out_z3 = paddle.nonzero(x3)
+                print(out_z3.numpy())
+                #[]
+                out_z3_tuple = paddle.nonzero(x3, as_tuple=True)
+                for out in out_z3_tuple:
+                    print(out.numpy())
+                #[]                    
+    """
+    list_out = []
+    shape = input.shape
+    rank = len(shape)
+
+    if in_dygraph_mode():
+        outs = core.ops.where_index(input)
+    else:
+        outs = layers.where(input)
+
+    if not as_tuple:
+        return outs
+    elif rank == 1:
+        return tuple([outs])
+    else:
+        for i in range(rank):
+            list_out.append(
+                layers.slice(
+                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+        return tuple(list_out)
+
+
 def sort(input, axis=-1, descending=False, out=None, name=None):
     """
     This OP sorts the input along the given axis, and returns sorted output
@@ -224,60 +360,77 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
     return out, ids
 
 
-def where(Condition, X, Y):
+def where(condition, x, y, name=None):
     """
-    Return a tensor of elements selected from either $X$ or $Y$, depending on $Condition$.
+    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+
+    .. math::
+ 
+      out_i =
+      \\begin{cases}
+      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
+      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
+      \\end{cases}
+  
+
     Args:
-        Condition(Variable): A bool tensor with rank at least 1, the data type is bool.
-        X(Variable): X is a Tensor Variable.
-        Y(Variable): Y is a Tensor Variable.
+        condition(Variable): The condition to choose x or y.
+        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
+        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
     Returns:
-        out : The tensor. 
+        Variable: A Tensor with the same data dype as x. 
+
     Examples:
         .. code-block:: python
 
+          import paddle
           import numpy as np
-          import paddle as paddle
           import paddle.fluid as fluid
 
+          x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+          y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+
           with fluid.dygraph.guard():
-              x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
-              y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float64")
               x = fluid.dygraph.to_variable(x_i)
               y = fluid.dygraph.to_variable(y_i)
               out = paddle.where(x>1, x, y)
-              print(out.numpy())
-              #out: [1.0, 1.0, 3.2, 1.2]
+
+          print(out.numpy())
+          #out: [1.0, 1.0, 3.2, 1.2]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(Condition, 'Condition', ['bool'], 'where')
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
-            X, 'X', ['float32', 'float64', 'int32', 'int64'], 'where')
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where')
         check_variable_and_dtype(
-            Y, 'Y', ['float32', 'float64', 'int32', 'int64'], 'where')
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where')
 
-    X_shape = list(X.shape)
-    Y_shape = list(Y.shape)
-    if X_shape == Y_shape:
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape:
         if in_dygraph_mode():
-            return core.ops.where(Condition, X, Y)
+            return core.ops.where(condition, x, y)
         else:
             helper = LayerHelper("where", **locals())
-            dtype = helper.input_dtype()
-            out = helper.create_variable_for_type_inference(dtype)
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
             helper.append_op(
                 type='where',
-                inputs={'Condition': Condition,
-                        'X': X,
-                        'Y': Y},
+                inputs={'Condition': condition,
+                        'X': x,
+                        'Y': y},
                 outputs={'Out': [out]})
             return out
     else:
-        cond_int = layers.cast(Condition, X.dtype)
-        cond_not_int = layers.cast(layers.logical_not(Condition), X.dtype)
-        out1 = layers.elementwise_mul(X, cond_int)
-        out2 = layers.elementwise_mul(Y, cond_not_int)
+        cond_int = layers.cast(condition, x.dtype)
+        cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
+        out1 = layers.elementwise_mul(x, cond_int)
+        out2 = layers.elementwise_mul(y, cond_not_int)
         out = layers.elementwise_add(out1, out2)
         return out
 

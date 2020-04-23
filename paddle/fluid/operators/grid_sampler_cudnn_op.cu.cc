@@ -60,13 +60,10 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         DataLayout::kNCHW, framework::vectorize<int>(output->dims()));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnSpatialTfSamplerForward(
-            handle, cudnn_st_desc, CudnnDataType<T>::kOne(), cudnn_input_desc,
-            input_data, grid_data, CudnnDataType<T>::kZero(), cudnn_output_desc,
-            output_data),
-        platform::errors::InvalidArgument(
-            "cudnnSpatialTfSamplerForward in Op(grid_sampler) failed"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSpatialTfSamplerForward(
+        handle, cudnn_st_desc, CudnnDataType<T>::kOne(), cudnn_input_desc,
+        input_data, grid_data, CudnnDataType<T>::kZero(), cudnn_output_desc,
+        output_data));
   }
 };
 
@@ -122,9 +119,7 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
             input_data, CudnnDataType<T>::kZero(), cudnn_input_grad_desc,
             input_grad_data, CudnnDataType<T>::kOne(), cudnn_output_grad_desc,
             output_grad_data, grid_data, CudnnDataType<T>::kZero(),
-            grid_grad_data),
-        platform::errors::InvalidArgument(
-            "cudnnSpatialTfSamplerBackward in Op(grid_sampler) failed"));
+            grid_grad_data));
   }
 };
 

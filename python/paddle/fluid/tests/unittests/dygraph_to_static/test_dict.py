@@ -47,7 +47,6 @@ class SubNetWithDict(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=init_weight(0.2))
 
-    @dygraph_to_static_func
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
 

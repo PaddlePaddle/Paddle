@@ -972,6 +972,18 @@ struct MatmulDequant : public PatternBase {
   PATTERN_DECL_NODE(dequant_out);
 };
 
+// Scale + Matmul
+struct ScaleMatmul : public PatternBase {
+  ScaleMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "scale_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(scale_in);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(matmul_op);
+};
+
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image
@@ -1128,11 +1140,12 @@ struct MKLDNNInPlace : public PatternBase {
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 
-  // MKL-DNN's in-place ops: BatchNorm, Softmax, Layer Norm
+  // MKL-DNN's in-place ops: BatchNorm, Softmax, Elementwise_add
   PATTERN_DECL_NODE(inplace_to_be_op);
   PATTERN_DECL_NODE(inplace_to_be_op_in);
   PATTERN_DECL_NODE(inplace_to_be_op_out);
   PATTERN_DECL_NODE(next_op);
+  PATTERN_DECL_NODE(next_op_out);
 };
 
 struct TransposeFlattenConcat : public PatternBase {

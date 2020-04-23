@@ -19,12 +19,15 @@ import paddle
 import unittest
 import numpy
 
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid.layers.control_flow import max_sequence_len
 from paddle.fluid.layers.control_flow import lod_tensor_to_array
 from paddle.fluid.layers.control_flow import array_to_lod_tensor
 from paddle.fluid.layers.control_flow import shrink_memory
 from fake_reader import fake_imdb_reader
+
+numpy.random.seed(2020)
 
 
 class TestDynamicRNN(unittest.TestCase):
@@ -143,6 +146,8 @@ class TestDynamicRNN(unittest.TestCase):
     def test_train_dynamic_rnn(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        main_program.random_seed = 10
+        startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
@@ -195,6 +200,8 @@ class TestDynamicRNN(unittest.TestCase):
 
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        main_program.random_seed = 10
+        startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=2)
@@ -248,6 +255,8 @@ class TestDynamicRNN(unittest.TestCase):
         hidden_size = 32
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        main_program.random_seed = 10
+        startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=2)
@@ -297,6 +306,38 @@ class TestDynamicRNN(unittest.TestCase):
             is_nested=True,
             max_iters=100)
         self.train_data = train_data_orig
+
+
+class TestDynamicRNNErrors(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            init = fluid.layers.zeros(shape=[1], dtype='float32')
+            shape = 'shape'
+            sentence = fluid.data(
+                name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+
+            # The type of Input(shape) in API(memory) must be list or tuple
+            def input_shape_type_of_memory():
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    res = drnn.memory(init, shape)
+
+            self.assertRaises(TypeError, input_shape_type_of_memory)
+
+            # The type of element of Input(*outputs) in API(output) must be Variable.
+            def outputs_type_of_output():
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    word = drnn.step_input(sentence)
+                    memory = drnn.memory(shape=[10], dtype='float32', value=0)
+                    hidden = fluid.layers.fc(input=[word, memory],
+                                             size=10,
+                                             act='tanh')
+                    out = np.ones(1).astype('float32')
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    drnn.output(hidden, out)
+
+                self.assertRaises(TypeError, outputs_type_of_output)
 
 
 if __name__ == '__main__':

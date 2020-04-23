@@ -1581,6 +1581,21 @@ PDNode *patterns::MatmulDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::ScaleMatmul::operator()() {
+  auto scale_in = pattern->NewNode(scale_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("scale", "X");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
+  matmul_op->LinksFrom({scale_out});
+  return matmul_op;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
@@ -1877,30 +1892,30 @@ PDNode *patterns::MultipleQuantize::operator()() {
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
-  // batch_norm....
   auto possible_inplace_op =
-      pattern->NewNode(inplace_to_be_op_repr())->assert_is_ops({"softmax"});
+      pattern->NewNode(inplace_to_be_op_repr())
+          ->assert_is_ops({"elementwise_add", "softmax"});
 
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
-  // batch_norm....
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto input = pattern->NewNode(inplace_to_be_op_in_repr())
-                   ->assert_is_ops_input({"softmax"})
+                   ->assert_is_ops_input({"elementwise_add", "softmax"})
                    ->AsInput();
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
-  // batch_norm....
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto output = pattern->NewNode(inplace_to_be_op_out_repr())
-                    ->assert_is_ops_output({"softmax"})
-                    ->AsIntermediate();
+                    ->assert_is_ops_output({"elementwise_add", "softmax"})
+                    ->AsOutput();
 
   auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  auto next_output = pattern->NewNode(next_op_out_repr())->AsOutput();
 
   // Check if op is MKL-DNN enabled
   possible_inplace_op->assert_op_attr("use_mkldnn", true);
 
+  // linked structure
   possible_inplace_op->LinksTo({output});
   possible_inplace_op->LinksFrom({input});
   next_op->LinksFrom({output});
+  next_op->LinksTo({next_output});
 
   return possible_inplace_op;
 }
