@@ -1001,6 +1001,10 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    if in_dygraph_mode():
+        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        return out
+
     inputs = {'Input': input, "X": x, "Y": y}
     attrs = {'Alpha': alpha, 'Beta': beta}
 
