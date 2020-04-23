@@ -46,7 +46,7 @@ __all__ = [
     'unsqueeze',
     #            'unstack',
     'flip',
-    #            'unbind',
+    'unbind',
     'roll'
 ]
 
@@ -643,3 +643,54 @@ def gather(input, index, overwrite=True):
         outputs={"Out": out},
         attrs={'overwrite': overwrite})
     return out
+
+
+def unbind(input, axis=0):
+    """
+    Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
+    Args:
+        input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
+       
+        axis (int32, optional): A scalar with type ``int32`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
+            dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+    Returns:
+        list(Variable): The list of segmented Tensor variables.
+
+    Example:
+        .. code-block:: python
+            import paddle
+            # input is a variable which shape is [3, 4, 5]
+            input = paddle.fluid.data(
+                 name="input", shape=[3, 4, 5], dtype="float32")
+            [x0, x1, x2] = paddle.tensor.unbind(input, axis=0)
+            # x0.shape [4, 5]
+            # x1.shape [4, 5]
+            # x2.shape [4, 5]
+            [x0, x1, x2, x3] = paddle.tensor.unbind(input, axis=1)
+            # x0.shape [3, 5]
+            # x1.shape [3, 5]
+            # x2.shape [3, 5]
+            # x3.shape [3, 5]
+
+    """
+    helper = LayerHelper("unbind", **locals())
+    check_type(input, 'input', (Variable), 'unbind')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
+                'unbind')
+    if not isinstance(axis, (int)):
+        raise TypeError("The type of 'axis'  must be int, but received %s." %
+                        (type(axis)))
+    input_shape = input.shape
+    axis_ = axis if axis >= 0 else len(input_shape) + axis
+    num = input_shape[axis_]
+    outs = [
+        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
+    helper.append_op(
+        type="unbind",
+        inputs={"X": input},
+        outputs={"Out": outs},
+        attrs={"axis": axis})
+    return outs

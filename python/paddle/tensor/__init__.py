@@ -164,7 +164,7 @@ from .manipulation import stack  #DEFINE_ALIAS
 from .manipulation import unsqueeze  #DEFINE_ALIAS
 # from .manipulation import unstack    #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
-# from .manipulation import unbind   #DEFINE_ALIAS
+from .manipulation import unbind  #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
 from .search import argmax  #DEFINE_ALIAS
 # from .search import argmin   #DEFINE_ALIAS
