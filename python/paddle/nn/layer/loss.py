@@ -158,11 +158,20 @@ class MSELoss(fluid.dygraph.layers.Layer):
     where `input` and `label` are `float32` tensors of same shape.
 
     Parameters:
+        input (Variable): Input tensor, the data type is float32,
+        label (Variable): Label tensor, the data type is float32,
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
-            'none': no reduction will be applied
-            'mean': the output will be averaged
-            'sum': the output will be summed
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned. 
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned. 
+            Default is ``'mean'``.
+
+    Returns:
+        The tensor variable storing the MSE loss of input and label.
+
+    Return type:
+        Variable.
 
     Examples:
         .. code-block:: python
