@@ -123,11 +123,11 @@ struct MemEvenRecorder {
 
 struct RecordEvent {
   RecordEvent(const std::string& name,
-              const EventRole role = EventRole::kOrdinary);
+              const EventRole role);
 
   ~RecordEvent();
 
-  bool is_enabled_;
+  bool is_enabled_{false};
   uint64_t start_ns_;
   // Event name
   std::string name_;
