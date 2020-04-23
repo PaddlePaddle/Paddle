@@ -17,7 +17,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
 
-# TODO: define searching & indexing functions of a tensor  
+# TODO: define searching & indexing functions of a tensor
 __all__ = [
     'argmax',
     #            'argmin',
@@ -132,7 +132,7 @@ def index_select(input, index, dim=0):
     the entries in `index` which is a Tensor. The returned tensor has the same number 
     of dimensions as the original `input` tensor. The dim-th dimension has the same 
     size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
-        
+
     Args:
         input (Variable): The input tensor variable.
         index (Variable): The 1-D tensor containing the indices to index.
@@ -140,7 +140,7 @@ def index_select(input, index, dim=0):
 
     Returns:
         Variable: A Tensor with same data type as `input`.
-        
+
     Examples:
         .. code-block:: python
             import paddle
@@ -196,7 +196,7 @@ def nonzero(input, as_tuple=False):
     as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
     number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
-        
+
     Args:
         inputs (Variable): The input tensor variable.
         as_tuple (bool): Return type, Tensor or tuple of Tensor.
@@ -365,13 +365,13 @@ def where(condition, x, y, name=None):
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
- 
+
       out_i =
       \\begin{cases}
       x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
       y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
       \\end{cases}
-  
+
 
     Args:
         condition(Variable): The condition to choose x or y.

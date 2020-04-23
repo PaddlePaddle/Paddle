@@ -142,13 +142,14 @@ REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
 REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
                   ops::IndexSampleGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
-    index_sample, ops::IndexSampleKernel<paddle::platform::CPUPlace, float>,
-    ops::IndexSampleKernel<paddle::platform::CPUPlace, double>,
-    ops::IndexSampleKernel<paddle::platform::CPUPlace, int>,
-    ops::IndexSampleKernel<paddle::platform::CPUPlace, int64_t>);
+    index_sample,
+    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::IndexSampleKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     index_sample_grad,
-    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, float>,
-    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, double>,
-    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, int>,
-    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, int64_t>);
+    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::IndexSampleGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
