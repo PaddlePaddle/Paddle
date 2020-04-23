@@ -139,9 +139,7 @@ class TestUnbindOp4(TestUnbindOp):
 class TestUnbindAxisError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            #x = numpy.random.random((10)).astype("float32")
             x = fluid.data(shape=[2, 3], dtype='float32', name='x')
-            a = fluid.data(shape=[1], dtype='int32', name="axis")
 
             def test_table_Variable():
                 tensor.unbind(input=x, axis=2.0)
