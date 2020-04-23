@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import six
+import os
 
 from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder
 from . import unique_name
@@ -24,12 +25,17 @@ from .param_attr import ParamAttr
 from . import core
 from six.moves import zip
 from .layer_helper_base import LayerHelperBase
+from .profiler import APIStr
 
 
 class LayerHelper(LayerHelperBase):
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
+
+        if os.environ.get('ENABLE_API_BENCH_LOG'):
+            APIStr(layer_type, kwargs.items())
+
         # TODO(panyx0718, minqiyang): dygraph mode
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for dygraph mode.

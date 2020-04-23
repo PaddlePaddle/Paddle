@@ -18,6 +18,9 @@ from . import core
 from .wrapped_decorator import signature_safe_contextmanager
 import os
 import six
+import numpy as np
+
+from .framework import Variable
 
 __all__ = [
     'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
@@ -33,6 +36,164 @@ NVPROF_CONFIG = [
     "enableonstart 0",
     "conckerneltrace",
 ]
+
+not_record_op = ['data']
+not_record_param = ['name', 'op_type', 'attrs', 'bias_attr', 'param_attr']
+
+op_alias = dict()
+op_alias['depthwise_conv2d'] = 'conv2d'
+op_alias['max_pool2d_with_index'] = 'adaptive_pool2d'
+op_alias['max_pool3d_with_index'] = 'adaptive_pool3d'
+op_alias['depthwise_conv2d_transpose'] = 'conv2d_transpose'
+op_alias['smooth_l1_loss'] = 'smooth_l1'
+op_alias['reshape2'] = 'reshape'
+op_alias['unsqueeze2'] = 'unsqueeze'
+op_alias['top_k'] = 'topk'
+op_alias['global_step_counter'] = 'autoincreased_step_counter'
+op_alias['cross_entropy2'] = 'cross_entropy'
+
+op_str_list = []
+op_params_str_list = []
+op_list = []
+op_json_list = []
+op_params_json_list = []
+
+
+class APIStr(object):
+    def __init__(self, layer_type, params):
+        op_str_list.append(layer_type)
+        op_params_str_list.append(params)
+        op_j, param_j = self.op_trans(layer_type, params)
+        if op_j != -1:
+            op_json_list.append(op_j)
+        if op_j != -1:
+            op_params_json_list.append(param_j)
+        print(op_j)
+        print(param_j)
+
+    def op_trans(self, op, params):
+        op_json = ""
+        if op in op_alias.keys():
+            op = op_alias[op]
+        valid_op = True
+        for not_op in not_record_op:
+            if op.find(not_op) != -1:
+                valid_op = False
+        if valid_op:
+            op_json = '"op":' + '"' + op + '",'
+            op_list.append(op)
+        else:
+            print("API_LOG: return as not valid op:", op)
+            return -1, -1
+        op_json = '{\n' + op_json + '\n'
+        print(op)
+
+        params_json = '"param_info":{\n'
+        for param in params:
+            print(param)
+            key = param[0]
+            values = param[1]
+            if key != None and key not in not_record_param and not callable(
+                    values):
+                data_type = ""
+                strs = ""
+                if values is None: continue
+                if hasattr(values, 'dtype'):
+                    data_type = self.dtype_to_string(values.dtype)
+
+                vtype = self.type_to_string(values)
+                if vtype == "Variable":
+                    strs = strs + '    "' + key + '": {"type": "' + vtype + '", "dtype": "' + data_type + '", "shape": "' + str(
+                        list(values.shape)) + '"},'
+                elif vtype == "dict":
+                    continue
+                elif vtype == "list" and type(values[0]) is Variable:
+                    v = values[0]
+                    if hasattr(v, 'dtype'):
+                        data_type_l = self.dtype_to_string(v.dtype)
+                    for lv in values:
+                        strs = strs + '    "' + key + '": {"type": "variable", "dtype": "' + data_type_l + '", "shape":' + str(
+                            lv.shapes) + '"},'
+                else:
+                    strs = strs + '    "' + key + '": {"dtype": "' + vtype + '", "value": "' + str(
+                        values) + '"},'
+
+                if strs != '':
+                    strs = strs + '\n'
+                params_json = params_json + strs
+        params_json = params_json[:-2] + '\n}\n},\n'
+        return op_json, params_json
+
+    def dtype_to_string(self, dtype):
+        if dtype == core.VarDesc.VarType.FP16:
+            data_type = "float16"
+        elif dtype == core.VarDesc.VarType.FP32:
+            data_type = "float32"
+        elif dtype == core.VarDesc.VarType.FP64:
+            data_type = "float64"
+        elif dtype == core.VarDesc.VarType.INT8:
+            data_type = 'int8'
+        elif dtype == core.VarDesc.VarType.INT16:
+            data_type = 'int16'
+        elif dtype == core.VarDesc.VarType.INT32:
+            data_type = 'int32'
+        elif dtype == core.VarDesc.VarType.INT64:
+            data_type = 'int64'
+        elif dtype == core.VarDesc.VarType.UINT8:
+            data_type = 'uint8'
+        elif dtype == core.VarDesc.VarType.UINT16:
+            data_type = 'uint16'
+        elif dtype == core.VarDesc.VarType.BOOL:
+            data_type = 'bool'
+        else:
+            raise ValueError("Unsupported data type %s" % dtype)
+        return data_type
+
+    def type_to_string(self, values):
+        if type(values) is Variable:
+            vtype = "Variable"
+        elif type(values) is float:
+            vtype = "float"
+        elif type(values) is bool:
+            vtype = "bool"
+        elif type(values) is str:
+            vtype = "string"
+        elif type(values) is int:
+            vtype = "int"
+        elif type(values) is long:
+            vtype = "long"
+        elif type(values) is list:
+            vtype = "list"
+        elif type(values) is tuple:
+            vtype = "tuple"
+        elif type(values) is dict:
+            vtype = "dict"
+        elif type(values) is np.ndarray:
+            vtype = "numpy.ndarray"
+        elif type(values) is ParamAttr:
+            vtype = "ParamAttr"
+        else:
+            raise ValueError("Unsupported type %s" % type(values))
+        return vtype
+
+
+def API_info_summary():
+    if os.environ.get('ENABLE_API_BENCH_LOG'):
+        api_json_file = os.environ.get('API_LOG_PATH')
+        info_json_file = os.environ.get('API_INFO_LOG_PATH')
+        if api_json_file is not None:
+            with open(api_json_file, 'a') as fa:
+                for op_l in op_list:
+                    fa.writelines(op_l + '\n')
+        if info_json_file is not None:
+            with open(info_json_file, 'a') as f:
+                f.writelines('[\n')
+                for i in range(len(op_json_list)):
+                    f.writelines(op_json_list[i])
+                    f.writelines(op_params_json_list[i])
+                f.seek(-2, os.SEEK_END)
+                f.truncate()
+                f.writelines('\n]\n')
 
 
 @signature_safe_contextmanager
@@ -345,5 +506,6 @@ def profiler(state,
             thread0::elementwise_add    8           1.96555     0.191884    0.518004    0.245693    0.196998
     """
     start_profiler(state, tracer_option)
+    API_info_summary()
     yield
     stop_profiler(sorted_key, profile_path)
