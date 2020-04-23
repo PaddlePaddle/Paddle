@@ -23,8 +23,8 @@ USE_OP(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
-USE_OP(gelu);
-USE_OP_DEVICE_KERNEL(gelu, MKLDNN);
+USE_OP(leaky_relu);
+USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
 USE_OP(relu);
 USE_OP(tanh);
 USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
@@ -51,7 +51,7 @@ class MKLDNNInplacePassTest {
       op->SetInput("Input", {inputs[0]});
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
-    } else if (type == "gelu") {
+    } else if (type == "leaky_relu") {
       op->SetInput("X", inputs);
     } else if (type == "relu") {
       op->SetInput("X", inputs);
@@ -104,9 +104,9 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "relu", "relu2", std::vector<std::string>({"l"}),
           std::vector<std::string>({"m"}),
           mkldnn_enabled_op.compare("relu") == 0);
-    SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"m"}),
+    SetOp(&prog, "leaky_relu", "leaky_relu1", std::vector<std::string>({"m"}),
           std::vector<std::string>({"n"}),
-          mkldnn_enabled_op.compare("gelu") == 0);
+          mkldnn_enabled_op.compare("leaky_relu") == 0);
     SetOp(&prog, "relu", "relu3", std::vector<std::string>({"n"}),
           std::vector<std::string>({"m"}),
           mkldnn_enabled_op.compare("relu") == 0);
@@ -173,9 +173,9 @@ TEST(MKLDNNInplacePass, inplace_tanh) {
   MKLDNNInplacePassTest().MainTest("tanh", false, 1);
 }
 
-TEST(MKLDNNInplacePass, inplace_gelu) {
-  // Input of gelu is used as output of subsequent relu, so no inplace can be done
-  MKLDNNInplacePassTest().MainTest("gelu", false, 0);
+TEST(MKLDNNInplacePass, inplace_leaky_relu) {
+  // Input of leaky_relu is used as output of subsequent relu, so no inplace cannot be done
+  MKLDNNInplacePassTest().MainTest("leaky_relu", false, 0);
 }
 }  // namespace ir
 }  // namespace framework
