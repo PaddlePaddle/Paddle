@@ -123,7 +123,6 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
   auto index_dims = index.dims();
   auto x_grad_dims = x_grad->dims();
 
-  int batch_size = x_grad_dims[0];
   auto value_length = x_grad_dims[1];
   auto index_length = index_dims[1];
   int index_ids_num = index.numel();
