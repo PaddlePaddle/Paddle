@@ -14,9 +14,6 @@
 
 import logging
 import os
-import six
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import paddle
@@ -26,14 +23,18 @@ from paddle.io import DataLoader
 from utils.configure import PDConfig
 from utils.check import check_gpu, check_version
 
-from model import Input, set_device
-from callbacks import ProgBarLogger
+from hapi.model import Input, set_device
+from hapi.callbacks import ProgBarLogger
 from reader import create_data_loader
 from transformer import Transformer, CrossEntropyCriterion
 
 
 class TrainCallback(ProgBarLogger):
-    def __init__(self, args, verbose=2):
+    def __init__(self,
+                 args,
+                 verbose=2,
+                 train_steps_fn=None,
+                 eval_steps_fn=None):
         # TODO(guosheng): save according to step
         super(TrainCallback, self).__init__(args.print_step, verbose)
         # the best cross-entropy value with label smoothing
@@ -42,10 +43,16 @@ class TrainCallback(ProgBarLogger):
                 (1. - args.label_smooth_eps)) + args.label_smooth_eps *
             np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
         self.loss_normalizer = loss_normalizer
+        self.train_steps_fn = train_steps_fn
+        self.eval_steps_fn = eval_steps_fn
 
     def on_train_begin(self, logs=None):
         super(TrainCallback, self).on_train_begin(logs)
         self.train_metrics += ["normalized loss", "ppl"]
+
+    def on_train_batch_begin(self, step, logs=None):
+        if step == 0 and self.train_steps_fn:
+            self.train_progbar._num = self.train_steps_fn()
 
     def on_train_batch_end(self, step, logs=None):
         logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
@@ -56,6 +63,10 @@ class TrainCallback(ProgBarLogger):
         super(TrainCallback, self).on_eval_begin(logs)
         self.eval_metrics = list(
             self.eval_metrics) + ["normalized loss", "ppl"]
+
+    def on_eval_batch_begin(self, step, logs=None):
+        if step == 0 and self.eval_steps_fn:
+            self.eval_progbar._num = self.eval_steps_fn()
 
     def on_eval_batch_end(self, step, logs=None):
         logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
@@ -104,7 +115,8 @@ def do_train(args):
     ]
 
     # def dataloader
-    train_loader, eval_loader = create_data_loader(args, device)
+    (train_loader, train_steps_fn), (
+        eval_loader, eval_steps_fn) = create_data_loader(args, device)
 
     # define model
     transformer = Transformer(
@@ -142,7 +154,12 @@ def do_train(args):
                     eval_freq=1,
                     save_freq=1,
                     save_dir=args.save_model,
-                    callbacks=[TrainCallback(args)])
+                    callbacks=[
+                        TrainCallback(
+                            args,
+                            train_steps_fn=train_steps_fn,
+                            eval_steps_fn=eval_steps_fn)
+                    ])
 
 
 if __name__ == "__main__":

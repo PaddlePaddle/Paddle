@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import glob
 import six
 import os
@@ -22,170 +26,76 @@ from functools import partial
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.io import BatchSampler, DataLoader, Dataset
+from paddle.fluid.io import BatchSampler, DataLoader, Dataset
 
 
-def create_data_loader(args, device):
+def create_data_loader(args, device, for_train=True):
     data_loaders = [None, None]
-    data_files = [args.training_file, args.validation_file
-                  ] if args.validation_file else [args.training_file]
-    for i, data_file in enumerate(data_files):
+    data_prefixes = [args.train_data_prefix, args.eval_data_prefix
+                     ] if args.eval_data_prefix else [args.train_data_prefix]
+    for i, data_prefix in enumerate(data_prefixes):
         dataset = Seq2SeqDataset(
-            fpattern=data_file,
-            src_vocab_fpath=args.src_vocab_fpath,
-            trg_vocab_fpath=args.trg_vocab_fpath,
-            token_delimiter=args.token_delimiter,
-            start_mark=args.special_token[0],
-            end_mark=args.special_token[1],
-            unk_mark=args.special_token[2],
-            byte_data=True)
-        args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
-            args.unk_idx = dataset.get_vocab_summary()
+            fpattern=data_prefix + "." + args.src_lang,
+            trg_fpattern=data_prefix + "." + args.tar_lang,
+            src_vocab_fpath=args.vocab_prefix + "." + args.src_lang,
+            trg_vocab_fpath=args.vocab_prefix + "." + args.tar_lang,
+            token_delimiter=None,
+            start_mark="<s>",
+            end_mark="</s>",
+            unk_mark="<unk>",
+            max_length=args.max_len if i == 0 else None,
+            truncate=True,
+            trg_add_bos_eos=True)
+        (args.src_vocab_size, args.tar_vocab_size, bos_id, eos_id,
+         unk_id) = dataset.get_vocab_summary()
         batch_sampler = Seq2SeqBatchSampler(
             dataset=dataset,
-            use_token_batch=args.use_token_batch,
+            use_token_batch=False,
             batch_size=args.batch_size,
-            pool_size=args.pool_size,
-            sort_type=args.sort_type,
-            shuffle=args.shuffle,
-            shuffle_batch=args.shuffle_batch,
-            max_length=args.max_length,
-            distribute_mode=True
-            if i == 0 else False)  # every device eval all data
+            pool_size=args.batch_size * 20,
+            sort_type=SortType.POOL,
+            shuffle=False if args.enable_ce else True,
+            distribute_mode=True if i == 0 else False)
         data_loader = DataLoader(
             dataset=dataset,
             batch_sampler=batch_sampler,
             places=device,
             collate_fn=partial(
                 prepare_train_input,
-                bos_idx=args.bos_idx,
-                eos_idx=args.eos_idx,
-                src_pad_idx=args.eos_idx,
-                trg_pad_idx=args.eos_idx,
-                n_head=args.n_head),
-            num_workers=0,  # TODO: use multi-process
+                bos_id=bos_id,
+                eos_id=eos_id,
+                pad_id=eos_id),
+            num_workers=0,
             return_list=True)
         data_loaders[i] = data_loader
     return data_loaders
 
 
-def prepare_train_input(insts, bos_idx, eos_idx, src_pad_idx, trg_pad_idx,
-                        n_head):
-    """
-    Put all padded data needed by training into a list.
-    """
-    src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
-        [inst[0] + [eos_idx] for inst in insts],
-        src_pad_idx,
-        n_head,
-        is_target=False)
-    src_word = src_word.reshape(-1, src_max_len)
-    src_pos = src_pos.reshape(-1, src_max_len)
-    trg_word, trg_pos, trg_slf_attn_bias, trg_max_len = pad_batch_data(
-        [[bos_idx] + inst[1] for inst in insts],
-        trg_pad_idx,
-        n_head,
-        is_target=True)
-    trg_word = trg_word.reshape(-1, trg_max_len)
-    trg_pos = trg_pos.reshape(-1, trg_max_len)
-
-    trg_src_attn_bias = np.tile(src_slf_attn_bias[:, :, ::src_max_len, :],
-                                [1, 1, trg_max_len, 1]).astype("float32")
-
-    lbl_word, lbl_weight, num_token = pad_batch_data(
-        [inst[1] + [eos_idx] for inst in insts],
-        trg_pad_idx,
-        n_head,
-        is_target=False,
-        is_label=True,
-        return_attn_bias=False,
-        return_max_len=False,
-        return_num_token=True)
-    lbl_word = lbl_word.reshape(-1, 1)
-    lbl_weight = lbl_weight.reshape(-1, 1)
-
-    data_inputs = [
-        src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
-        trg_slf_attn_bias, trg_src_attn_bias, lbl_word, lbl_weight
-    ]
-
-    return data_inputs
+def prepare_train_input(insts, bos_id, eos_id, pad_id):
+    src, src_length = pad_batch_data(
+        [inst[0] for inst in insts], pad_id=pad_id)
+    trg, trg_length = pad_batch_data(
+        [inst[1] for inst in insts], pad_id=pad_id)
+    trg_length = trg_length - 1
+    return src, src_length, trg[:, :-1], trg_length, trg[:, 1:, np.newaxis]
 
 
-def prepare_infer_input(insts, bos_idx, eos_idx, src_pad_idx, n_head):
-    """
-    Put all padded data needed by beam search decoder into a list.
-    """
-    src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
-        [inst[0] + [eos_idx] for inst in insts],
-        src_pad_idx,
-        n_head,
-        is_target=False)
-    trg_src_attn_bias = np.tile(src_slf_attn_bias[:, :, ::src_max_len, :],
-                                [1, 1, 1, 1]).astype("float32")
-    src_word = src_word.reshape(-1, src_max_len)
-    src_pos = src_pos.reshape(-1, src_max_len)
-
-    data_inputs = [src_word, src_pos, src_slf_attn_bias, trg_src_attn_bias]
-    return data_inputs
+def prepare_infer_input(insts, bos_id, eos_id, pad_id):
+    src, src_length = pad_batch_data(insts, pad_id=pad_id)
+    return src, src_length
 
 
-def pad_batch_data(insts,
-                   pad_idx,
-                   n_head,
-                   is_target=False,
-                   is_label=False,
-                   return_attn_bias=True,
-                   return_max_len=True,
-                   return_num_token=False):
+def pad_batch_data(insts, pad_id):
     """
     Pad the instances to the max sequence length in batch, and generate the
     corresponding position data and attention bias.
     """
-    return_list = []
-    max_len = max(len(inst) for inst in insts)
-    # Any token included in dict can be used to pad, since the paddings' loss
-    # will be masked out by weights and make no effect on parameter gradients.
+    inst_lens = np.array([len(inst) for inst in insts], dtype="int64")
+    max_len = np.max(inst_lens)
     inst_data = np.array(
-        [inst + [pad_idx] * (max_len - len(inst)) for inst in insts])
-    return_list += [inst_data.astype("int64").reshape([-1, 1])]
-    if is_label:  # label weight
-        inst_weight = np.array([[1.] * len(inst) + [0.] * (max_len - len(inst))
-                                for inst in insts])
-        return_list += [inst_weight.astype("float32").reshape([-1, 1])]
-    else:  # position data
-        inst_pos = np.array([
-            list(range(0, len(inst))) + [0] * (max_len - len(inst))
-            for inst in insts
-        ])
-        return_list += [inst_pos.astype("int64").reshape([-1, 1])]
-    if return_attn_bias:
-        if is_target:
-            # This is used to avoid attention on paddings and subsequent
-            # words.
-            slf_attn_bias_data = np.ones(
-                (inst_data.shape[0], max_len, max_len))
-            slf_attn_bias_data = np.triu(slf_attn_bias_data,
-                                         1).reshape([-1, 1, max_len, max_len])
-            slf_attn_bias_data = np.tile(slf_attn_bias_data,
-                                         [1, n_head, 1, 1]) * [-1e9]
-        else:
-            # This is used to avoid attention on paddings.
-            slf_attn_bias_data = np.array([[0] * len(inst) + [-1e9] *
-                                           (max_len - len(inst))
-                                           for inst in insts])
-            slf_attn_bias_data = np.tile(
-                slf_attn_bias_data.reshape([-1, 1, 1, max_len]),
-                [1, n_head, max_len, 1])
-        return_list += [slf_attn_bias_data.astype("float32")]
-    if return_max_len:
-        return_list += [max_len]
-    if return_num_token:
-        num_token = 0
-        for inst in insts:
-            num_token += len(inst)
-        return_list += [num_token]
-    return return_list if len(return_list) > 1 else return_list[0]
+        [inst + [pad_id] * (max_len - len(inst)) for inst in insts],
+        dtype="int64")
+    return inst_data, inst_lens
 
 
 class SortType(object):
@@ -257,9 +167,25 @@ class TokenBatchCreator(object):
 class SampleInfo(object):
     def __init__(self, i, lens):
         self.i = i
-        # take bos and eos into account
-        self.min_len = min(lens[0] + 1, lens[1] + 2)
-        self.max_len = max(lens[0] + 1, lens[1] + 2)
+        self.lens = lens
+        self.max_len = lens[0]  # to be consitent with the original reader
+
+    def get_ranges(self, min_length=None, max_length=None, truncate=False):
+        ranges = []
+        # source
+        if (min_length is None or self.lens[0] >= min_length) and (
+                max_length is None or self.lens[0] <= max_length or truncate):
+            end = max_length if truncate and max_length else self.lens[0]
+            ranges.append([0, end])
+        # target
+        if len(self.lens) == 2:
+            if (min_length is None or self.lens[1] >= min_length) and (
+                    max_length is None or self.lens[1] <= max_length + 2 or
+                    truncate):
+                end = max_length + 2 if truncate and max_length else self.lens[
+                    1]
+                ranges.append([0, end])
+        return ranges if len(ranges) == len(self.lens) else None
 
 
 class MinMaxFilter(object):
@@ -269,9 +195,8 @@ class MinMaxFilter(object):
         self._creator = underlying_creator
 
     def append(self, info):
-        if info.max_len > self._max_len or info.min_len < self._min_len:
-            return
-        else:
+        if (self._min_len is None or info.min_len >= self._min_len) and (
+                self._max_len is None or info.max_len <= self._max_len):
             return self._creator.append(info)
 
     @property
@@ -289,9 +214,12 @@ class Seq2SeqDataset(Dataset):
                  start_mark="<s>",
                  end_mark="<e>",
                  unk_mark="<unk>",
-                 only_src=False,
                  trg_fpattern=None,
-                 byte_data=False):
+                 trg_add_bos_eos=False,
+                 byte_data=False,
+                 min_length=None,
+                 max_length=None,
+                 truncate=False):
         if byte_data:
             # The WMT16 bpe data used here seems including bytes can not be
             # decoded by utf8. Thus convert str to bytes, and use byte data
@@ -308,6 +236,10 @@ class Seq2SeqDataset(Dataset):
         self._unk_idx = self._src_vocab[unk_mark]
         self._field_delimiter = field_delimiter
         self._token_delimiter = token_delimiter
+        self._min_length = min_length
+        self._max_length = max_length
+        self._truncate = truncate
+        self._trg_add_bos_eos = trg_add_bos_eos
         self.load_src_trg_ids(fpattern, trg_fpattern)
 
     def load_src_trg_ids(self, fpattern, trg_fpattern=None):
@@ -326,8 +258,8 @@ class Seq2SeqDataset(Dataset):
             end=self._eos_idx,
             unk=self._unk_idx,
             delimiter=self._token_delimiter,
-            add_beg=False,
-            add_end=False)
+            add_beg=True if self._trg_add_bos_eos else False,
+            add_end=True if self._trg_add_bos_eos else False)
 
         converters = ComposedConverter([src_converter, trg_converter])
 
@@ -337,11 +269,16 @@ class Seq2SeqDataset(Dataset):
 
         slots = [self._src_seq_ids, self._trg_seq_ids]
         for i, line in enumerate(self._load_lines(fpattern, trg_fpattern)):
-            lens = []
-            for field, slot in zip(converters(line), slots):
-                slot.append(field)
-                lens.append(len(field))
-            self._sample_infos.append(SampleInfo(i, lens))
+            fields = converters(line)
+            lens = [len(field) for field in fields]
+            sample = SampleInfo(i, lens)
+            field_ranges = sample.get_ranges(self._min_length,
+                                             self._max_length, self._truncate)
+            if field_ranges:
+                for field, field_range, slot in zip(fields, field_ranges,
+                                                    slots):
+                    slot.append(field[field_range[0]:field_range[1]])
+                self._sample_infos.append(sample)
 
     def _load_lines(self, fpattern, trg_fpattern=None):
         fpaths = glob.glob(fpattern)
@@ -407,8 +344,8 @@ class Seq2SeqBatchSampler(BatchSampler):
                  batch_size,
                  pool_size=10000,
                  sort_type=SortType.NONE,
-                 min_length=0,
-                 max_length=100,
+                 min_length=None,
+                 max_length=None,
                  shuffle=False,
                  shuffle_batch=False,
                  use_token_batch=False,
@@ -442,7 +379,7 @@ class Seq2SeqBatchSampler(BatchSampler):
                 reverse = True
                 for i in range(0, len(infos), self._pool_size):
                     # to avoid placing short next to long sentences
-                    reverse = not reverse
+                    reverse = False  # not reverse
                     infos[i:i + self._pool_size] = sorted(
                         infos[i:i + self._pool_size],
                         key=lambda x: x.max_len,

@@ -238,8 +238,9 @@ class BasicLSTMCell(RNNCell):
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._forget_bias = layers.fill_constant(
-            [1], dtype=dtype, value=forget_bias)
+        # TODO(guosheng): find better way to resolve constants in __init__
+        self._forget_bias = layers.create_global_var(
+            shape=[1], dtype=dtype, value=forget_bias, persistable=True)
         self._forget_bias.stop_gradient = False
         self._dtype = dtype
         self._input_size = input_size
@@ -817,7 +818,7 @@ class RNN(fluid.dygraph.Layer):
                     lambda x: fluid.layers.transpose(x, [1, 0] + list(
                         range(2, len(x.shape)))), inputs)
 
-            if sequence_length:
+            if sequence_length is not None:
                 mask = fluid.layers.sequence_mask(
                     sequence_length,
                     maxlen=time_steps,
@@ -828,7 +829,7 @@ class RNN(fluid.dygraph.Layer):
                 inputs = map_structure(
                     lambda x: fluid.layers.reverse(x, axis=[0]), inputs)
                 mask = fluid.layers.reverse(
-                    mask, axis=[0]) if sequence_length else None
+                    mask, axis=[0]) if sequence_length is not None else None
 
             states = initial_states
             outputs = []
@@ -836,7 +837,7 @@ class RNN(fluid.dygraph.Layer):
                 step_inputs = map_structure(lambda x: x[i], inputs)
                 step_outputs, new_states = self.cell(step_inputs, states,
                                                      **kwargs)
-                if sequence_length:
+                if sequence_length is not None:
                     new_states = map_structure(
                         partial(
                             _maybe_copy, step_mask=mask[i]),

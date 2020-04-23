@@ -14,9 +14,6 @@
 
 import logging
 import os
-import six
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from functools import partial
 
 import numpy as np
@@ -28,9 +25,9 @@ from paddle.fluid.layers.utils import flatten
 from utils.configure import PDConfig
 from utils.check import check_gpu, check_version
 
-from model import Input, set_device
+from hapi.model import Input, set_device
 from reader import prepare_infer_input, Seq2SeqDataset, Seq2SeqBatchSampler
-from transformer import InferTransformer, position_encoding_init
+from transformer import InferTransformer
 
 
 def post_process_seq(seq, bos_idx, eos_idx, output_bos=False,
@@ -132,7 +129,7 @@ def do_predict(args):
     # TODO: use model.predict when support variant length
     f = open(args.output_file, "wb")
     for data in data_loader():
-        finished_seq = transformer.test(inputs=flatten(data))[0]
+        finished_seq = transformer.test_batch(inputs=flatten(data))[0]
         finished_seq = np.transpose(finished_seq, [0, 2, 1])
         for ins in finished_seq:
             for beam_idx, beam in enumerate(ins):

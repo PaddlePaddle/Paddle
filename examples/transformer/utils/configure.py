@@ -195,13 +195,19 @@ class PDConfig(object):
                                "Whether to perform predicting.")
         self.default_g.add_arg("do_eval", bool, False,
                                "Whether to perform evaluating.")
-        self.default_g.add_arg("do_save_inference_model", bool, False,
-                               "Whether to perform model saving for inference.")
+        self.default_g.add_arg(
+            "do_save_inference_model", bool, False,
+            "Whether to perform model saving for inference.")
 
         # NOTE: args for profiler
-        self.default_g.add_arg("is_profiler", int, 0, "the switch of profiler tools. (used for benchmark)")
-        self.default_g.add_arg("profiler_path", str, './', "the profiler output file path. (used for benchmark)")
-        self.default_g.add_arg("max_iter", int, 0, "the max train batch num.(used for benchmark)")
+        self.default_g.add_arg(
+            "is_profiler", int, 0,
+            "the switch of profiler tools. (used for benchmark)")
+        self.default_g.add_arg(
+            "profiler_path", str, './',
+            "the profiler output file path. (used for benchmark)")
+        self.default_g.add_arg("max_iter", int, 0,
+                               "the max train batch num.(used for benchmark)")
 
         self.parser = parser
 
