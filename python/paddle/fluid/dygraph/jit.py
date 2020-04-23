@@ -17,11 +17,16 @@ from __future__ import print_function
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
 import logging
-
+import numpy as np
+import six
+import paddle.fluid as fluid
+from paddle.fluid import framework
+from paddle import compat as cpt
+from paddle.fluid import backward
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from dygraph_to_static.program_translator import ProgramTranslator
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
@@ -156,12 +161,12 @@ def _declarative_(dygraph_func):
 
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if in_dygraph_mode() or not program_translator.enable_declarative:
-            logger.info(
-                "The decorator 'declarative' doesn't work in dygraph "
-                "mode or set ProgramTranslator.enable to False. We will "
-                "just return dygraph output.")
-            return dygraph_func(*args, **kwargs)
+        # if in_dygraph_mode() or not program_translator.enable_declarative:
+        #     logger.info(
+        #         "The decorator 'declarative' doesn't work in dygraph "
+        #         "mode or set ProgramTranslator.enable to False. We will "
+        #         "just return dygraph output.")
+        #     return dygraph_func(*args, **kwargs)
         program_translator = ProgramTranslator()
         return program_translator.get_output(dygraph_func, *args, **kwargs)
 
@@ -228,6 +233,7 @@ class TracedLayer(object):
         self._program = program
         self._feed_names = feed_names
         self._fetch_names = fetch_names
+        self._params = parameters
 
         self._place = _current_expected_place()
 
@@ -462,3 +468,172 @@ class TracedLayer(object):
                 target_vars=target_vars,
                 executor=self._exe,
                 main_program=self._program.clone())
+
+
+class ProgramContext(object):
+    def __init__(self, main_program, input_names, output_names):
+        self.input_names = input_names
+        self.output_name = output_names
+        self.program = main_program
+
+    def _parse_persistable_params(self):
+        program_desc = self.program.desc
+        persistable_vars = self._get_persis_vars(program_desc)
+
+    def _get_persis_vars(self, program_desc):
+        persis_vars = []
+        for i in six.moves.range(program_desc.num_blocks()):
+            block = program_desc.block(i)
+            persis_vars.extend(
+                list(filter(self._is_persistable, block.all_vars())))
+        return persis_vars
+
+    def _is_persistable(self, var_desc):
+        if var_desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                var_desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                var_desc.type() == core.VarDesc.VarType.READER or \
+                var_desc.type() == core.VarDesc.VarType.RAW:
+            return False
+        return var_desc.persistable()
+
+
+class PartialProgram(Layer):
+    def __init__(self, traced_layer):
+        super(PartialProgram, self).__init__()
+        self._traced_layer = traced_layer
+
+        self._input_names = []
+        self._output_names = []
+        self._params = []
+        self._output_descs = []
+        self._is_test = False
+
+        self._inner_scope = self._traced_layer._scope
+        self._inner_scope = core.Scope()
+        self._check_input_output()
+
+        self._program_desc = self._append_backward_desc()
+
+    def _check_input_output(self):
+        assert isinstance(self._traced_layer, TracedLayer)
+        self._input_names = self._traced_layer._feed_names
+        self._output_names = self._traced_layer._fetch_names
+        self._params = self._traced_layer._params
+        all_vars_map = self.program.global_block().vars
+        self._output_descs = [
+            all_vars_map[var_name].desc for var_name in all_vars_map
+            if var_name in self._output_names
+        ]
+
+    @switch_to_static_graph
+    def _append_backward_desc(self):
+        program_desc_copy = core.ProgramDesc(self.program.desc)
+
+        # Step 1. prepare program and related var
+        # NOTE: To reuse backward interfaces, build Program firstly.
+        # Originally, there is no need to build a program, but need to almost
+        # rewrite a series of methods for append_backward for program_desc.
+        # Therefore, in order to reuse the method of backward.py, build the program here.
+        program = self._build_program_by_desc(program_desc_copy)
+
+        # TODO: could the targets be in sub block?
+        targets = []
+        for out in self._output_descs:
+            targets.append(program.global_block().var(out.name()))
+
+        # Step 2. append backward
+        backward.gradients(targets=targets, inputs=[])
+        return program.desc
+
+    @switch_to_static_graph
+    def _build_program_by_desc(self, program_desc):
+        prog = framework.Program()
+        prog.desc = program_desc
+        prog.blocks = [
+            framework.Block(prog, i)
+            for i in six.moves.range(prog.desc.num_blocks())
+        ]
+        prog._sync_with_cpp()
+        return prog
+
+    def forward(self, inputs):
+        # Step 1. prepare inputs, outputs, attrs
+        if not isinstance(inputs, (list, tuple)):
+            inputs = [inputs]
+
+        input_vars = []
+        for i, value in enumerate(inputs):
+            if not isinstance(value, (np.ndarray, core.VarBase)):
+                raise TypeError(
+                    "The type of inputs.value in StaticModelRunner.forward must be numpy array or Variable(VarBase), but received %s."
+                    % type(value))
+            # NOTE: In order to unify the API, firstly convert the input to VarBase
+            if isinstance(value, np.ndarray):
+                var = core.VarBase(
+                    value=value,
+                    name=self._input_names[i],
+                    persistable=False,
+                    place=framework._current_expected_place(),
+                    zero_copy=True)
+            else:
+                var = value
+                # TODO: here may have important name set by user
+                var.name = self._input_names[i]
+            input_vars.append(var)
+
+        # params = []
+        # for param in self._parameters.values():
+        #     params.append(param)
+
+        output_vars = []
+        for var_desc in self._output_descs:
+            var = core.VarBase(var_desc.dtype(),
+                               var_desc.shape(),
+                               var_desc.name(), var_desc.type(), False)
+            output_vars.append(var)
+
+        # hold forward variables
+        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
+                                     "program_out_scope",
+                                     core.VarDesc.VarType.STEP_SCOPES, True)
+        tmp_scope_vec.value().set_scope(self._inner_scope)
+
+        # Step 2. run prorgam by op
+        framework._dygraph_tracer().trace_op(
+            type='run_program',
+            inputs={'X': input_vars,
+                    'Params': self._params},
+            outputs={'Out': output_vars,
+                     'OutScope': tmp_scope_vec},
+            attrs={
+                'global_block': self._program_desc.block(0),
+                'start_op_index': 0,
+                'end_op_index': self.program.desc.block(0).op_size(),
+                'is_test': self._is_test
+            })
+
+        # NOTE: [ why need set param's gradient type here ]
+        # if user set sparse gradient mode, the param's gradient
+        # will be SelectedRows, not LoDTensor. But tracer will just
+        # set param grad VarBase by forward VarBase(LoDTensor)
+        # If we don't change grad_var type here, RunProgramOp need
+        # transform SelectedRows to LoDTensor forcely, it may not
+        # be user wanted result.
+        for param in self._params:
+            grad_name = param.name + core.grad_var_suffix()
+            grad_var = self._program_desc.block(0).find_var(
+                cpt.to_bytes(grad_name))
+            # NOTE: cannot find var desc maybe no problem, such as in batch_norm
+            if grad_var is None:
+                continue
+            param._set_grad_type(grad_var.type())
+
+        # Step 3. prepare output, keep same form with inputs
+        outs = output_vars
+        if len(output_vars) == 1:
+            outs = output_vars[0]
+        return outs
+
+    @property
+    def program(self):
+        return self._traced_layer._program
