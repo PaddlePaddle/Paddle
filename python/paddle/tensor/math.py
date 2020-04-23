@@ -1415,7 +1415,7 @@ def trace(input, offset=0, dim1=0, dim2=1):
     """
     This OP computes the sum along diagonals of the input tensor.
     
-    If Input is 2-D, returns the sum of diagonal. 
+    If Input is 2D, returns the sum of diagonal. 
 
     If Input has larger dimensions, then returns an array of diagonals sum, diagonals be taken from
     the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
