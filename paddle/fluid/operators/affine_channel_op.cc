@@ -78,13 +78,13 @@ class AffineChannelOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(scale_dims.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Input(Scale)'s dimensions' size must be 1,"
-                          "But received the scale's dimensions' size is [%d] ",
+                          "The rank of Input(Scale)'s must be 1,"
+                          "But received the rank of Input(Scale) is [%d] ",
                           scale_dims.size()));
     PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "Input(Bias)'s dimensions' size must be 1,"
-                          "But received the bias's dimensions' size is [%d] ",
+                          "The rank of Input(Bias) must be 1,"
+                          "But received the rank of Input(Bias) is [%d] ",
                           scale_dims.size()));
     if (ctx->IsRuntime() || scale_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
