@@ -23,12 +23,12 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::primitive;
-using platform::to_void_cast;
 using framework::DataLayout;
-using platform::GetMKLDNNFormat;
-using platform::MKLDNNGetDataType;
-using platform::MKLDNNDeviceContext;
 using framework::ExecutionContext;
+using platform::GetMKLDNNFormat;
+using platform::MKLDNNDeviceContext;
+using platform::MKLDNNGetDataType;
+using platform::to_void_cast;
 using Tensor = framework::Tensor;
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
@@ -117,14 +117,12 @@ class MatMulFactory {
     if (!shape.empty() && !axis.empty()) {
       new_dims = input_dims.reshape(shape).transpose(axis);
     }
-    math::MatDescriptor mat_dim;
-    if (input_name == "X")
-      mat_dim = math::CreateMatrixDescriptor(RowMatrixDimsFromVector(new_dims),
-                                             0, ctx.Attr<bool>("transpose_X"));
-    else if (input_name == "Y")
-      mat_dim =
-          math::CreateMatrixDescriptor(ColumnMatrixDimsFromVector(new_dims), 0,
-                                       ctx.Attr<bool>("transpose_Y"));
+
+    auto& MatrixDimsFromVector = input_name == "X" ? RowMatrixDimsFromVector
+                                                   : ColumnMatrixDimsFromVector;
+    math::MatDescriptor mat_dim =
+        math::CreateMatrixDescriptor(MatrixDimsFromVector(new_dims), 0,
+                                     ctx.Attr<bool>("transpose_" + input_name));
 
     memory::dims strides;
     if (!shape.empty()) {
@@ -167,10 +165,11 @@ class MatMulFactory {
 
     batch_size_ = 1;
     auto b = BS;
-    if (BS > 1 &&
-        !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
-          ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())) {
-      batch_size_ = ctx.Input<Tensor>("X")->dims()[0];
+    if (BS > 1 && !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
+                    ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())) {
+      auto& x_dims = ctx.Input<Tensor>("X")->dims();
+      auto& y_dims = ctx.Input<Tensor>("Y")->dims();
+      batch_size_ = x_bs > y_bs ? x_dims[0] : y_dims[0];
       b = BS / batch_size_;
     }
 
