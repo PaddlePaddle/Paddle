@@ -52,6 +52,7 @@ __all__ += norm.__all__
 # from .control_flow import switch_case   #DEFINE_ALIAS
 # from .control_flow import while_loop   #DEFINE_ALIAS
 # from .control_flow import rnn   #DEFINE_ALIAS
+# from .layer.conv import Conv1D #DEFINE_ALIAS
 # from .layer.conv import Conv2D   #DEFINE_ALIAS
 # from .layer.conv import Conv2DTranspose   #DEFINE_ALIAS
 # from .layer.conv import Conv3D   #DEFINE_ALIAS
@@ -64,7 +65,7 @@ from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
-from .layer.conv import Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose  #DEFINE_ALIAS
+from .layer.conv import Conv1D, Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
 from .layer.loss import BCELoss  #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS
@@ -93,6 +94,7 @@ from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 # from .layer.common import Embedding   #DEFINE_ALIAS
 # from .layer.common import Linear   #DEFINE_ALIAS
 # from .layer.common import UpSample   #DEFINE_ALIAS
+from .functional.conv import conv1d  #DEFINE_ALIAS
 from .functional.conv import conv2d  #DEFINE_ALIAS
 from .functional.conv import conv2d_transpose  #DEFINE_ALIAS
 from .functional.conv import conv3d  #DEFINE_ALIAS
