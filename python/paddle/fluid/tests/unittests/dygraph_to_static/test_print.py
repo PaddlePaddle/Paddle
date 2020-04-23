@@ -137,10 +137,18 @@ def dyfunc_print_continue_vars(x):
             args=[Name(id='x_v', annotation=None, type_comment=None),
                 Name(id='y_v', annotation=None, type_comment=None)],
             keywords=[]))
+    PY2:
+    Print(dest=None,
+        values=[
+            Tuple(
+                elts=[Name(id='x_v', annotation=None, type_comment=None),
+                    Name(id='y_v', annotation=None, type_comment=None)])],
+        nl=True)
     """
     x_v = fluid.dygraph.to_variable(x)
     y_v = x_v * 2
-    print(x_v, y_v)
+    z_v = x_v * 3
+    print(x_v, y_v, z_v)
 
 
 class TestPrintBase(unittest.TestCase):

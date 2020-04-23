@@ -18,7 +18,6 @@ import gast
 import astor
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import to_print_node
 
 
 class PrintTransformer(gast.NodeTransformer):
@@ -63,6 +62,8 @@ class PrintTransformer(gast.NodeTransformer):
             var_list = node.args
         elif isinstance(node, gast.Print):
             var_list = node.values
+            if isinstance(var_list[0], gast.Tuple):
+                var_list = var_list[0].elts
         # TODO: support print multiple Var
         assert len(var_list) == 1, "Now only support print one Variable."
         return var_list[0]
