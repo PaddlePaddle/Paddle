@@ -976,5 +976,6 @@ USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
+USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 #endif
