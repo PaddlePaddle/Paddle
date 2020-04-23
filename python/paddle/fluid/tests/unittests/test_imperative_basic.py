@@ -206,7 +206,7 @@ class TestImperative(unittest.TestCase):
 
     def test_functional_paddle_imperative_dygraph_context(self):
         self.assertFalse(paddle.imperative.enabled())
-        paddle.enable()
+        paddle.enable_imperative()
         self.assertTrue(paddle.imperative.enabled())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         var_inp = paddle.imperative.to_variable(np_inp)
@@ -215,7 +215,7 @@ class TestImperative(unittest.TestCase):
         dy_out1 = out.numpy()
         out.backward()
         dy_grad1 = mlp._linear1.weight.gradient()
-        paddle.disable()
+        paddle.disable_imperative()
         self.assertFalse(paddle.imperative.enabled())
         with paddle.imperative.guard():
             self.assertTrue(paddle.imperative.enabled())

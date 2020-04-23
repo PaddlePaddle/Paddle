@@ -14,13 +14,13 @@
 
 # define api used to run in imperative mode 
 __all__ = [
-    'BackwardStrategy', 'enabled', 'guard', 'Layer', 'LayerList', 'load',
-    'save', 'prepare_context', 'to_variable', 'TracedLayer', 'no_grad',
+    'BackwardStrategy', 'enabled', 'grad', 'guard', 'Layer', 'LayerList',
+    'load', 'save', 'prepare_context', 'to_variable', 'TracedLayer', 'no_grad',
     'ParameterList', 'Sequential'
 ]
 
-from paddle.fluid import core
-from ..fluid.dygraph.base import enabled, guard, no_grad, to_variable
+from paddle.fluid import cora
+from ..fluid.dygraph.base import enabled, guard, no_grad, to_variable, grad
 from ..fluid.dygraph.layers import Layer
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential
 from ..fluid.dygraph.checkpoint import load_dygraph as load
