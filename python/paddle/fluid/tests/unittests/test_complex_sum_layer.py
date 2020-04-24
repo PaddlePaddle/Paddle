@@ -28,13 +28,13 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self._places.append(fluid.CUDAPlace(0))
 
     def test_complex_xy(self):
-        input = rand([2, 20, 2, 3]).astype(self._dtype) + 1j * rand(
-            [2, 20, 2, 3]).astype(self._dtype)
+        input = rand([2, 10, 10]).astype(self._dtype) + 1j * rand(
+            [2, 10, 10]).astype(self._dtype)
         for place in self._places:
             with dg.guard(place):
                 var_x = dg.to_variable(input)
-                result = cpx.trace(var_x, 1, 0, 2).numpy()
-                target = np.trace(input, 1, 0, 2)
+                result = cpx.sum(var_x, dim=[1, 2]).numpy()
+                target = np.sum(input, axis=(1, 2))
                 self.assertTrue(np.allclose(result, target))
 
 

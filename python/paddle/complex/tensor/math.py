@@ -23,6 +23,7 @@ __all__ = [
     'elementwise_mul',
     'elementwise_div',
     'trace',
+    'sum',
 ]
 
 
@@ -225,11 +226,11 @@ def trace(input, offset=0, dim1=0, dim2=1):
     """
     The trace layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
-    in :ref:`api_tensor_math_trace` . 
+    in :ref:`api_tensor_trace` . 
     
     Args:
         input(ComplexVariable): The input ComplexVariable. Must be at least 2-dimensional. 
-            The supported data types include complex64 or complex128.
+            The supported data types include complex64 and complex128.
     
     Returns:
         ComplexVariable, the output data type is the same as input data type.
@@ -251,5 +252,59 @@ def trace(input, offset=0, dim1=0, dim2=1):
     (input_real, input_imag) = (input.real, input.imag)
     real = math.trace(input_real, offset, dim1, dim2)
     imag = math.trace(input_imag, offset, dim1, dim2)
+
+    return ComplexVariable(real, imag)
+
+
+def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
+    """
+    The sum layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
+    See the detailed description for the function and other arguments 
+    in :ref:`api_tensor_sum` . 
+
+    Args:
+        input(ComplexVariable): The input ComplexVariable with any number of dimensions. 
+            The supported data types include complex64 and complex128.
+
+    Returns:
+        ComplexVariable, results of summation operation on the specified dim of input tensor,
+        it's data type is the same as input.
+
+    Raises:
+        ValueError, the :attr:`dtype` must be float64 or int64.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.complex as cpx
+            import paddle.fluid.dygraph as dg
+            import numpy as np
+
+            with dg.guard():
+                # x is a Tensor variable with following elements:
+                #    [[0.2, 0.3, 0.5, 0.9], 
+                #     [0.1, 0.2, 0.6, 0.7]]
+                # Each example is followed by the corresponding output tensor.
+                x = np.array([[0.2, 0.3, 0.5, 0.9],[0.1, 0.2, 0.6, 0.7]]) + 1j * np.array([[0.3, 0.4, 0.5, 0.2],[0.3, 0.6, 0.8, 0.3]])
+                x = dg.to_variable(x)
+                out1 = cpx.sum(x)  # [3.5+3.4j]
+                out2 = cpx.sum(x, dim=0)  # [0.3+0.6j, 0.5+1.j, 1.1+1.3j, 1.6+0.5j]
+                out3 = cpx.sum(x, dim=-1)  # [1.9+1.4j, 1.6+2.j]
+                out4 = cpx.sum(x, dim=1, keep_dim=True)  # [[1.9+1.4j], [1.6+2.j]]
+
+                # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+                #      [[[1, 2], [3, 4]],
+                #      [[5, 6], [7, 8]]]
+                # Each example is followed by the corresponding output tensor.
+                y = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]) + 1j * np.array([[[4, 3], [2, 1]], [[8, 7], [6, 5]]])
+                y = dg.to_variable(y)
+                out5 = cpx.sum(y, dim=[1, 2]) # [10.+10.j, 26.+26.j]
+                out6 = cpx.sum(y, dim=[0, 1]) # [16.+20.j, 20.+16.j]
+
+    """
+    complex_variable_exists([input], "sum")
+    (input_real, input_imag) = (input.real, input.imag)
+    real = math.sum(input_real, dim, dtype, keep_dim, name)
+    imag = math.sum(input_imag, dim, dtype, keep_dim, name)
 
     return ComplexVariable(real, imag)
