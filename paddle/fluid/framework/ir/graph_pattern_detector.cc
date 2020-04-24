@@ -1892,17 +1892,18 @@ PDNode *patterns::MultipleQuantize::operator()() {
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
-  auto possible_inplace_op =
-      pattern->NewNode(inplace_to_be_op_repr())
-          ->assert_is_ops({"elementwise_add", "softmax"});
+  const std::unordered_set<std::string> &supported_op_types = {
+      "abs",  "elementwise_add", "gelu", "leaky_relu", "relu", "softmax",
+      "sqrt", "swish",           "tanh"};
 
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
+  auto possible_inplace_op = pattern->NewNode(inplace_to_be_op_repr())
+                                 ->assert_is_ops(supported_op_types);
+
   auto input = pattern->NewNode(inplace_to_be_op_in_repr())
-                   ->assert_is_ops_input({"elementwise_add", "softmax"})
+                   ->assert_is_ops_input(supported_op_types)
                    ->AsInput();
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto output = pattern->NewNode(inplace_to_be_op_out_repr())
-                    ->assert_is_ops_output({"elementwise_add", "softmax"})
+                    ->assert_is_ops_output(supported_op_types)
                     ->AsOutput();
 
   auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
