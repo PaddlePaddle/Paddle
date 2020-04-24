@@ -198,17 +198,17 @@ class OperatorBase {
   }
 
  protected:
-  std::string type_;
+  const std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
   // I (Inputs)
   // O (Outputs)
   // OG (Output Gradients)
-  VariableNameMap inputs_;
+  const VariableNameMap inputs_;
 
   // NOTE: in case of OpGrad, outputs_ contains
   // IG (Inputs Gradients)
-  VariableNameMap outputs_;
-  AttributeMap attrs_;
+  const VariableNameMap outputs_;
+  const AttributeMap attrs_;
 
   // OpInfo
   const OpInfo* info_;
@@ -484,8 +484,8 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
 
-  virtual platform::Place GetExecutionPlace(
-      const platform::Place& platform) const {
+  platform::Place GetExecutionPlace(
+      const platform::Place& place) const override {
     return kernel_type_->place_;
   }
 
