@@ -326,18 +326,18 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
 
   if (var->IsType<framework::SelectedRows>()) {
     framework::CopyVariable(*var, tmp_var.get());
-    auto &queue = send_varname_to_queue_.at(var_name);
-    queue->Push(tmp_grad_var);
+    auto &queue = send_varname_to_queue_.at(table_name);
+    queue->Push(tmp_var);
   } else if (var->IsType<framework::LoDTensor>()) {
     // push var into send queue by var_name
-    std::vector<Variable> variables = {};
+    std::vector<Variable *> variables;
 
     for (auto &varname : var_names) {
-      auto *var = scope.FindVar(varname);
+      Variable *var = scope.FindVar(varname);
       PADDLE_ENFORCE_EQ(
           var->IsInitialized(), true,
           platform::errors::InvalidArgument("grad var should be inited"));
-      variables.push_back(*var);
+      variables.push_back(var);
 
       framework::FlattenVariable(variables, tmp_var.get());
       VLOG(3) << "send to " << table_name << " with queue size "

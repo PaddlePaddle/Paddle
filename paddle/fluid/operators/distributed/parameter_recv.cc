@@ -43,147 +43,63 @@ template <typename T>
 void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope) {
   VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
-  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
+  PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
+                    platform::errors::InvalidArgument(
+                        "origin_varnames.size() >= 1 is permitted"));
+
+  auto *origin_var = scope.FindVar(rpc_ctx.origin_varnames[0]);
+
+  if (origin_var->IsType<framework::SelectedRows>()) {
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("Only support LodTensor now"));
+  }
+
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &cpu_ctx = *pool.Get(platform::CPUPlace());
+  auto cpu_place = platform::CPUPlace();
+  auto &cpu_ctx = *pool.Get(cpu_place);
 
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
-  auto *recv_var = scope.FindVar(rpc_ctx.var_name);
-
-  // recv all vars to local scope
-  if (recv_var->IsType<framework::LoDTensor>() ||
-      recv_var->IsType<framework::SelectedRows>()) {
-    std::vector<distributed::VarHandlePtr> rets;
-    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-      auto &recv_var_name = rpc_ctx.splited_varnames[i];
-      local_scope->Var(recv_var_name);
-      VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
-      if (recv_var->IsType<framework::LoDTensor>()) {
-        // sparse param in recv_scope is LoDTensor
-        rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
-                                               *local_scope.get(),
-                                               recv_var_name, recv_var_name));
-      } else {
-        // sparse param in pserver_scope is SelectedRows
-        rets.push_back(rpc_client->AsyncGetVar(
-            rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
-            recv_var_name, recv_var_name));
-      }
-    }
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-    }
-  } else {
-    PADDLE_THROW("unsupported var type to recv!");
+  std::vector<distributed::VarHandlePtr> rets;
+  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+    auto &recv_var_name = rpc_ctx.splited_varnames[i];
+    Variable *var = local_scope->Var(recv_var_name);
+    VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+    // sparse param in recv_scope is LoDTensor
+    rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+                                           *local_scope.get(), recv_var_name,
+                                           recv_var_name));
+  }
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                               "internal error in RPCClient"));
   }
 
-  // concat recved tensor into one var
-  if (recv_var->IsType<framework::LoDTensor>()) {
-    size_t output_offset = 0;
-    size_t row_offset = 0;
-    framework::Tensor *recv_tensor =
-        recv_var->GetMutable<framework::LoDTensor>();
-    auto dev_ctx = paddle::platform::CPUDeviceContext();
-    int64_t recv_numel = 0;
-    for (auto &recv_var_name : rpc_ctx.splited_varnames) {
-      auto *recv_var = local_scope->FindVar(recv_var_name);
-      if (recv_var->IsType<framework::LoDTensor>()) {
-        auto &in = recv_var->Get<framework::LoDTensor>();
-        recv_numel += in.numel();
-        auto in_stride = framework::stride_numel(in.dims());
-        auto out_stride = framework::stride_numel(recv_tensor->dims());
-        StridedNumelCopyWithAxis<T>(
-            dev_ctx, 0, recv_tensor->data<T>() + output_offset, out_stride,
-            in.data<T>(), in_stride, in_stride[0]);
-        output_offset += in_stride[0];
-      } else if (recv_var->IsType<framework::SelectedRows>()) {
-        auto &recv_slr = recv_var->Get<framework::SelectedRows>();
-        auto &recv_dims = recv_tensor->dims();
-        int64_t width = recv_dims[1];
-        recv_numel += recv_slr.height() * width;
-        PADDLE_ENFORCE_EQ(recv_slr.value().dims()[1], width);
-        PADDLE_ENFORCE_EQ(recv_slr.value().dims()[0], recv_slr.rows().size());
-        VLOG(3) << "recv slr " << recv_var_name << " dims "
-                << recv_slr.value().dims();
-        if (VLOG_IS_ON(3)) {
-          std::ostringstream sstream;
-          sstream << "[";
-          for (auto &row_id : recv_slr.rows()) {
-            sstream << row_id << ", ";
-          }
-          sstream << "]";
-          VLOG(3) << "recv_slr size: " << recv_slr.rows().size() << " "
-                  << sstream.str();
-        }
-
-        for (size_t i = 0; i < recv_slr.rows().size(); ++i) {
-          auto row_id = recv_slr.rows()[i] + row_offset;
-          PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
-          memcpy(recv_tensor->data<T>() + row_id * width,
-                 recv_slr.value().data<T>() + i * width, sizeof(T) * width);
-        }
-        row_offset += recv_slr.height();
-      } else {
-        PADDLE_THROW("unsupported recieved var type");
-      }
-    }
-    auto numel = recv_tensor->numel();
-    if (recv_numel != numel) {
-      LOG(FATAL) << "recv_numel: " << recv_numel << " acture numel: " << numel;
-    }
-    PADDLE_ENFORCE_EQ(recv_numel, numel);
-  } else if (recv_var->IsType<framework::SelectedRows>()) {
-    auto cpu_place = platform::CPUPlace();
-    auto *slr = recv_var->GetMutable<framework::SelectedRows>();
-    slr->mutable_rows()->clear();
-    slr->mutable_value()->mutable_data<float>({{}}, cpu_place);
-    int64_t width = 0;
-    int64_t height = 0;
-    std::vector<int64_t> new_rows{};
-
-    // trans sparse ids from local to global
-    std::vector<int64_t> abs_sections =
-        ToAbsoluteSection(rpc_ctx.height_sections);
-
-    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-      auto &recv_var_name = rpc_ctx.splited_varnames[i];
-      auto *var = local_scope->FindVar(recv_var_name);
-      auto *var_slr = var->GetMutable<framework::SelectedRows>();
-      auto *var_slr_row = var_slr->mutable_rows();
-      width = var_slr->mutable_value()->dims()[1];
-      height += var_slr->height();
-      auto row_offset = abs_sections[i];
-      VLOG(4) << "Recv split_var " << recv_var_name << " Row size "
-              << var_slr_row->size();
-      for (size_t j = 0; j < var_slr_row->size(); j++) {
-        new_rows.push_back(row_offset + (*var_slr_row)[j]);
-      }
-    }
-    slr->set_rows(new_rows);
-    slr->set_height(height);
-    slr->mutable_value()->mutable_data<float>(
-        framework::make_ddim(
-            {static_cast<int64_t>(slr->mutable_rows()->size()), width}),
-        cpu_place);
-    auto *slr_data = slr->mutable_value()->data<float>();
-
-    size_t row_offset = 0;
-    for (auto &recv_var_name : rpc_ctx.splited_varnames) {
-      auto *var = local_scope->FindVar(recv_var_name);
-      auto *var_slr = var->GetMutable<framework::SelectedRows>();
-      auto *var_slr_row = var_slr->mutable_rows();
-      auto var_slr_row_size = var_slr_row->size();
-      auto *var_slr_data = var_slr->mutable_value()->data<float>();
-
-      memcpy(slr_data + row_offset * width, var_slr_data,
-             sizeof(float) * width * var_slr_row_size);
-      row_offset += var_slr_row_size;
-    }
+  std::vector<Variable *> variables;
+  for (auto &slice_varname : rpc_ctx.splited_varnames) {
+    Variable *var = local_scope->FindVar(slice_varname);
+    variables.push_back(var);
   }
 
+  // merged var's tensor into one
+  auto *merged_var = local_scope.FindVar(rpc_ctx.var_name);
+  framework::Tensor *merged_tensor =
+      merged_var->GetMutable<framework::LoDTensor>();
+
+  framework::FlattenVariable(variables, merged_var);
+  auto src_ptr = merged_var->Get<framework::LoDTensor>().data<void>();
+  // write tensor to global scope
+  int offset = 0;
+  for (auto &origin_varname : rpc_ctx.origin_varnames) {
+    Variable *origin_v = scope.FindVar(origin_varname);
+    framework::Tensor *origin_t = origin_v->GetMutable<framework::LoDTensor>();
+    auto size = origin_t->numel() * SizeOfType(origin_t.type());
+    memory::Copy(cpu_place, origin_t->data<void>(), cpu_place, src_ptr, size);
+    src_ptr = reinterpret_cast<char *>(src_ptr) + size;
+  }
   VLOG(2) << "ParameterRecv out " << rpc_ctx.var_name;
 }
 

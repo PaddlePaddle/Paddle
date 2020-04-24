@@ -180,9 +180,18 @@ class CompileTimeStrategy(object):
         return send_ctx
 
     def get_communicator_recv_context(self):
+        sparse_varnames = []
+
+        for pairs in self.origin_sparse_pairs:
+            param, grad = pairs
+            sparse_varnames.append(param.name)
+
         recv_ctx = {}
         for merged in self.merged_variables_pairs:
             params = merged[0]
+            if params.merged_var.name in sparse_varnames:
+                continue
+
             ctx = self.buid_ctx(params, self.param_var_mapping)
             recv_ctx[ctx.merged_varname()] = ctx
         return recv_ctx
