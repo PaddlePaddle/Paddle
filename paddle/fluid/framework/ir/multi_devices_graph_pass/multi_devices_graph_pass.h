@@ -94,6 +94,8 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
                          size_t device_id) const;
 
+  void CreateIsolatedVarNode(ir::Graph *result, ir::Node *var_node) const;
+
 #if defined(PADDLE_WITH_NCCL)
   mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
   mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};

@@ -68,7 +68,7 @@ function(inference_qat2_int8_image_classification_test target qat_model_dir fp32
                  --batch_size 10
                  --batch_num 2
                  --acc_diff_threshold 0.1
-		 --quantized_ops ${quantized_ops})
+                 --quantized_ops ${quantized_ops})
 endfunction()
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20 
@@ -215,12 +215,27 @@ if(LINUX AND WITH_MKLDNN)
 
 	set(QAT2_IC_QUANTIZED_OPS "conv2d,pool2d")
 
-	# QAT2 ResNet50
+	# QAT2 ResNet50 with input/output scales in `fake_quantize_moving_average_abs_max` operators,
+	# with weight scales in `fake_dequantize_max_abs` operators
         set(QAT2_RESNET50_MODEL_DIR "${QAT_INSTALL_DIR}/ResNet50_qat_perf")
 	set(FP32_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
 	set(QAT2_RESNET50_MODEL_ARCHIVE "ResNet50_qat_perf.tar.gz")
 	download_qat_model(${QAT2_RESNET50_MODEL_DIR} ${QAT2_RESNET50_MODEL_ARCHIVE})
 	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
+
+	# QAT2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+	# with weight scales in `fake_dequantize_max_abs` operators
+	set(QAT2_RESNET50_RANGE_MODEL_DIR "${QAT_INSTALL_DIR}/ResNet50_qat_range")
+	set(QAT2_RESNET50_RANGE_MODEL_ARCHIVE "ResNet50_qat_range.tar.gz")
+	download_qat_model(${QAT2_RESNET50_RANGE_MODEL_DIR} ${QAT2_RESNET50_RANGE_MODEL_ARCHIVE})
+	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_range_mkldnn ${QAT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
+
+	# QAT2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
+	# with weight scales in `fake_channel_wise_dequantize_max_abs` operators
+	set(QAT2_RESNET50_CHANNELWISE_MODEL_DIR "${QAT_INSTALL_DIR}/ResNet50_qat_channelwise")
+	set(QAT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE "ResNet50_qat_channelwise.tar.gz")
+	download_qat_model(${QAT2_RESNET50_CHANNELWISE_MODEL_DIR} ${QAT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE})
+	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_channelwise_mkldnn ${QAT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
 
 	# QAT2 MobileNetV1
         set(QAT2_MOBILENETV1_MODEL_DIR "${QAT_INSTALL_DIR}/MobileNet_qat_perf")
@@ -231,7 +246,7 @@ if(LINUX AND WITH_MKLDNN)
 	
 	### QATv2 for NLP
 
-	set(QAT2_NLP_QUANTIZED_OPS "fc,reshape2,transpose2")
+	set(QAT2_NLP_QUANTIZED_OPS "fc,reshape2,transpose2,matmul")
 
 	set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
 	set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")

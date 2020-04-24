@@ -29,6 +29,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
+list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -199,15 +200,20 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
+# disable this unittest temporarily
+list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
-  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+  # list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dynamic)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
 endif()
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
@@ -295,7 +301,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS ${dist_ENVS})
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
-
+    py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -347,10 +353,6 @@ set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu P
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 
-if (WITH_NGRAPH)
-    add_subdirectory(ngraph)
-endif()
-
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
@@ -367,6 +369,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
         test_optimizer_in_control_flow test_dataloader_keep_order
         test_dataloader_unkeep_order
+        test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
@@ -380,6 +383,9 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
 
 if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
 endif()
