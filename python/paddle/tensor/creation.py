@@ -696,8 +696,6 @@ def tril(input, diagonal=0, name=None):
             #        [ 5,  6,  0,  0],
             #        [ 9, 10, 11,  0]])
 
-        .. code-block:: python
-
             # example 2, positive diagonal value
             tril = tensor.tril(x, diagonal=2)
             tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -705,8 +703,6 @@ def tril(input, diagonal=0, name=None):
             # array([[ 1,  2,  3,  0], 
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-
-        .. code-block:: python
 
             # example 3, negative diagonal value
             tril = tensor.tril(x, diagonal=-1)
@@ -716,7 +712,10 @@ def tril(input, diagonal=0, name=None):
             #        [ 5,  0,  0,  0],
             #        [ 9, 10,  0,  0]])
 
-   """
+    """
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'tril_triu')
+        return op(input, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
 
@@ -771,8 +770,6 @@ def triu(input, diagonal=0, name=None):
             #        [ 0,  6,  7,  8],
             #        [ 0,  0, 11, 12]])
 
-        .. code-block:: python
-
             # example 2, positive diagonal value
             triu = tensor.triu(x, diagonal=2)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -780,8 +777,6 @@ def triu(input, diagonal=0, name=None):
             # array([[0, 0, 3, 4],
             #        [0, 0, 0, 8],
             #        [0, 0, 0, 0]])
-
-        .. code-block:: python
 
             # example 3, negative diagonal value
             triu = tensor.triu(x, diagonal=-1)
@@ -792,6 +787,9 @@ def triu(input, diagonal=0, name=None):
             #        [ 0, 10, 11, 12]])
 
     """
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'tril_triu')
+        return op(input, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
