@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.rnn import GRUCell
+from paddle.fluid.dygraph import GRUCell
 
 import numpy as np
 
