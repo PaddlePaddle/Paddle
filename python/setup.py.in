@@ -139,11 +139,11 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
-          'paddle.fluid',
-          'paddle.tensor',
+          'paddle.complex',
+          'paddle.complex.tensor',
           'paddle.framework',
+          'paddle.fluid',
           'paddle.fluid.dygraph',
-          'paddle.tensor',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
@@ -181,7 +181,9 @@ packages=['paddle',
           'paddle.nn',
           'paddle.nn.functional',
           'paddle.nn.layer',
-          'paddle.imperative']
+          'paddle.imperative',
+          'paddle.tensor',
+          ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
