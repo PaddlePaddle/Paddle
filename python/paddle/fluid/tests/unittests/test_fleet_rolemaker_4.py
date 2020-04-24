@@ -46,6 +46,7 @@ class TestCloudRoleMaker(unittest.TestCase):
                 KVHTTPServer
         except:
             print("warning: no fleet, skip test_pslib_4")
+            return
 
         try:
             import netifaces
@@ -83,76 +84,88 @@ class TestCloudRoleMaker(unittest.TestCase):
 
         import os
 
-        class TmpKVHander(KVHandler):
-            """
-            it is a fake handler only for this test case.
-            """
+        try:
+            class TmpKVHander(KVHandler):
+                """
+                it is a fake handler only for this test case.
+                """
 
-            def __init__(self, server):
-                """Init."""
-                self.path = "a/b/c"
-                self.server = server
-                self.wfile = FakeStream()
-                self.rfile = FakeStream()
-                self.headers = {}
-                self.headers['Content-Length'] = 0
+                def __init__(self, server):
+                    """Init."""
+                    self.path = "a/b/c"
+                    self.server = server
+                    self.wfile = FakeStream()
+                    self.rfile = FakeStream()
+                    self.headers = {}
+                    self.headers['Content-Length'] = 0
 
-            def address_string(self):
-                """
-                fake address string, it will do nothing.
-                """
-                return "123"
+                def address_string(self):
+                    """
+                    fake address string, it will do nothing.
+                    """
+                    return "123"
 
-            def send_response(self, code):
-                """
-                fake send response, it will do nothing.
+                def send_response(self, code):
+                    """
+                    fake send response, it will do nothing.
 
-                Args:
-                    code(int): error code
-                """
-                pass
+                    Args:
+                        code(int): error code
+                    """
+                    pass
 
-            def send_header(self, a, b):
-                """
-                fake send header, it will do nothing.
+                def send_header(self, a, b):
+                    """
+                    fake send header, it will do nothing.
 
-                Args:
-                    a(str): some header
-                    b(str): some header
-                """
-                pass
+                    Args:
+                        a(str): some header
+                        b(str): some header
+                    """
+                    pass
 
-            def end_headers(self):
-                """
-                fake end header, it will do nothing.
-                """
-                pass
+                def end_headers(self):
+                    """
+                    fake end header, it will do nothing.
+                    """
+                    pass
+        except:
+            print("warning: no KVHandler, skip test_pslib_4")
+            return
 
         import sys
 
-        class TmpServer(KVHTTPServer):
-            """
-            it is a fake server only for this test case.
-            """
+        try:
+            class TmpServer(KVHTTPServer):
+                """
+                it is a fake server only for this test case.
+                """
 
-            def __init__(self):
-                """Init."""
-                self.delete_kv_lock = threading.Lock()
-                self.delete_kv = {}
-                self.kv_lock = threading.Lock()
-                self.kv = {}
+                def __init__(self):
+                    """Init."""
+                    self.delete_kv_lock = threading.Lock()
+                    self.delete_kv = {}
+                    self.kv_lock = threading.Lock()
+                    self.kv = {}
+        except:
+            print("warning: no KVHTTPServer, skip test_pslib_4")
+            return
 
-        class TmpS(KVServer):
-            """
-            it is a fake server only for this test case.
-            """
+        try:
+            class TmpS(KVServer):
+                """
+                it is a fake server only for this test case.
+                """
 
-            def __init__(self):
-                """Init."""
-                self.http_server = TmpServer()
-                self.listen_thread = None
-                self.size = {}
-                self.size["a"] = 999
+                def __init__(self):
+                    """Init."""
+                    self.http_server = TmpServer()
+                    self.listen_thread = None
+                    self.size = {}
+                    self.size["a"] = 999
+        except:
+            print("warning: no KVServer, skip test_pslib_4")
+            return
 
         s = TmpServer()
         h = TmpKVHander(s)
