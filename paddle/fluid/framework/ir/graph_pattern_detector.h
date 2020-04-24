@@ -897,19 +897,18 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
-// Conv + Requant
+// Op + Requant
 // named nodes:
-// conv_op, conv_out
+// any_op, any_out
 // requant_op, requant_out
-struct ConvRequant : public PatternBase {
-  ConvRequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_requant") {}
+struct OpRequant : public PatternBase {
+  OpRequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "op_requant") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(requant_in);
   PATTERN_DECL_NODE(requant_op);
   PATTERN_DECL_NODE(requant_out);
 };
@@ -971,6 +970,18 @@ struct MatmulDequant : public PatternBase {
 
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
+};
+
+// Scale + Matmul
+struct ScaleMatmul : public PatternBase {
+  ScaleMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "scale_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(scale_in);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(matmul_op);
 };
 
 // PriorBox operator
@@ -1129,11 +1140,12 @@ struct MKLDNNInPlace : public PatternBase {
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 
-  // MKL-DNN's in-place ops: BatchNorm, Softmax, Layer Norm
+  // MKL-DNN's in-place ops: BatchNorm, Softmax, Elementwise_add
   PATTERN_DECL_NODE(inplace_to_be_op);
   PATTERN_DECL_NODE(inplace_to_be_op_in);
   PATTERN_DECL_NODE(inplace_to_be_op_out);
   PATTERN_DECL_NODE(next_op);
+  PATTERN_DECL_NODE(next_op_out);
 };
 
 struct TransposeFlattenConcat : public PatternBase {

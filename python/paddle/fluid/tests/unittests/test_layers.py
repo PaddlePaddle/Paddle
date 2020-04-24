@@ -3033,7 +3033,7 @@ class TestBook(LayerTest):
             z = layers.lod_reset(x=x, y=y)
             self.assertTrue(z.lod_level == 2)
             # case 2
-            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int64')
+            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int32')
             z = layers.lod_reset(x=x, y=lod_tensor_in)
             self.assertTrue(z.lod_level == 1)
             # case 3
@@ -3217,7 +3217,9 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            rois_lod = layers.data(
+                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
+            output = layers.roi_pool(x, rois, 7, 7, 0.6, rois_lod)
             return (output)
 
     def test_sequence_enumerate(self):
@@ -3232,7 +3234,10 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            output = layers.roi_align(x, rois, 14, 14, 0.5, 2)
+            rois_lod = layers.data(
+                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
+            output = layers.roi_align(x, rois, 14, 14, 0.5, 2, 'roi_align',
+                                      rois_lod)
             return (output)
 
     def test_roi_perspective_transform(self):
@@ -3427,12 +3432,12 @@ class TestBook(LayerTest):
                 name='gt_labels',
                 shape=[10, 1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             is_crowd = layers.data(
                 name='is_crowd',
                 shape=[1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             im_info = layers.data(
                 name='im_info',
                 shape=[1, 3],

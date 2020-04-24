@@ -58,11 +58,28 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       size_t idx = ids_data[i];
       size_t label = labels_data[i];
 
-      PADDLE_ENFORCE(idx >= 0 && idx < cls_num,
-                     "Class index of each instance should be in "
-                     "[0, class_number).");
-      PADDLE_ENFORCE(label >= 0 && label < cls_num,
-                     "Label of each instance should be in [0, class_number).");
+      PADDLE_ENFORCE_GE(
+          idx, 0,
+          platform::errors::InvalidArgument(
+              "Class index of each instance should be "
+              "greater than or equal to 0, But the index we received is %d",
+              idx));
+      PADDLE_ENFORCE_LT(idx, cls_num,
+                        platform::errors::InvalidArgument(
+                            "Class index of each instance should be less than "
+                            "cls_num = %d, But the index we received is %d",
+                            cls_num, idx));
+
+      PADDLE_ENFORCE_GE(label, 0,
+                        platform::errors::InvalidArgument(
+                            "Label of each instance should be greater than or "
+                            "equal to 0, But the label we received is %d",
+                            label));
+      PADDLE_ENFORCE_LT(label, cls_num,
+                        platform::errors::InvalidArgument(
+                            "Label of each instance should be less than "
+                            "cls_num = %d, But the label we received is %d",
+                            cls_num, label));
 
       T w = weights_data ? weights_data[i] : 1.0;
       if (idx == label) {

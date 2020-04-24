@@ -17,6 +17,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -321,12 +324,9 @@ class MatMulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of MatMulOp should not be null.");
-    PADDLE_ENFORCE(context->HasInput("Y"),
-                   "Input(Y) of MatMulOp should not be null.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of MatMulOp should not be null.");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -346,14 +346,15 @@ class MatMulOp : public framework::OperatorWithKernel {
     }
 
     if (context->IsRuntime()) {
-      PADDLE_ENFORCE(
+      PADDLE_ENFORCE_EQ(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
-          "ShapeError: The batch size of the two matrices should be equal, or "
-          "at least one is zero.\n"
-          "But received X's shape: %s, Y's shape: %s.",
-          DumpMatrixShape(mat_dim_x).c_str(),
-          DumpMatrixShape(mat_dim_y).c_str());
+          true, platform::errors::InvalidArgument(
+                    "The batch size of the two matrices should be equal, or "
+                    "at least one is zero.\n"
+                    "But received X's shape: %s, Y's shape: %s.",
+                    DumpMatrixShape(mat_dim_x).c_str(),
+                    DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
@@ -362,23 +363,23 @@ class MatMulOp : public framework::OperatorWithKernel {
     if (context->IsRuntime()) {
       PADDLE_ENFORCE_LE(
           head_number, mat_dim_x.width_,
-          "ShapeError: Unsatisfied mkl acceleration library requirements: "
-          "The number of heads "
-          "(%d) must be equal to X's width. But received X's shape: %s.",
-          head_number, DumpMatrixShape(mat_dim_x).c_str());
+          platform::errors::InvalidArgument(
+              "Unsatisfied mkl acceleration library requirements: "
+              "The number of heads "
+              "(%d) must be equal to X's width. But received X's shape: %s.",
+              head_number, DumpMatrixShape(mat_dim_x).c_str()));
 
       if (!split_vertical_y && head_number > 0) {
         dim_out_y = head_number * mat_dim_y.width_;
       }
     }
 #else
-    PADDLE_ENFORCE_EQ(
-        mat_dim_x.width_, mat_dim_y.height_,
-        platform::errors::InvalidArgument(
-            "ShapeError: Input X's width should be equal to the Y's height, "
-            "but received X's shape: [%s],"
-            "Y's shape: [%s].",
-            dim_x, dim_y));
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
+                      platform::errors::InvalidArgument(
+                          "Input X's width should be equal to the Y's height, "
+                          "but received X's shape: [%s],"
+                          "Y's shape: [%s].",
+                          dim_x, dim_y));
 #endif
 
     std::vector<int64_t> dim_out;
@@ -409,6 +410,21 @@ class MatMulOp : public framework::OperatorWithKernel {
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
     context->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using mkldnn::memory;
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -426,6 +442,30 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false);
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
+    AddAttr<bool>("force_fp32_output",
+                  "(bool, default false) Force INT8 kernel output FP32, only "
+                  "used in MKL-DNN INT8")
+        .SetDefault(false);
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
@@ -478,10 +518,10 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(context->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "matmul");
     auto x_dims = context->GetInputDim("X");
     auto y_dims = context->GetInputDim("Y");
 
