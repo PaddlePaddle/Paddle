@@ -222,9 +222,9 @@ def elementwise_div(x, y, axis=-1, name=None):
         name=name)
 
 
-def trace(input, offset=0, dim1=0, dim2=1):
+def trace(input, offset=0, dim1=0, dim2=1, name=None):
     """
-    The trace layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
+    The layer to compute the trace for a complex number tensor. input :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
     in :ref:`api_tensor_math_trace` . 
     
@@ -233,7 +233,7 @@ def trace(input, offset=0, dim1=0, dim2=1):
             The supported data types include complex64 and complex128.
     
     Returns:
-        ComplexVariable, the output data type is the same as input data type.
+        ComplexVariable: the output data type is the same as input data type.
 
     Examples:
         .. code-block:: python
@@ -249,16 +249,15 @@ def trace(input, offset=0, dim1=0, dim2=1):
                 data1 = tensor.trace(case1, offset=1, dim1=1, dim2=2) # data1.shape = [3]
     """
     complex_variable_exists([input], "trace")
-    (input_real, input_imag) = (input.real, input.imag)
-    real = math.trace(input_real, offset, dim1, dim2)
-    imag = math.trace(input_imag, offset, dim1, dim2)
+    real = math.trace(input.real, offset, dim1, dim2, name)
+    imag = math.trace(input.imag, offset, dim1, dim2, name)
 
     return ComplexVariable(real, imag)
 
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
-    The sum layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
+    The layer to compute the sum for a complex number tensor elements over the given dimension. input :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
     in :ref:`api_tensor_math_sum` . 
 
@@ -271,7 +270,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
         it's data type is the same as input.
 
     Raises:
-        ValueError, the :attr:`dtype` must be float64 or int64.
+        ValueError: the :attr:`dtype` must be float64 or int64.
     
     Examples:
         .. code-block:: python
@@ -303,8 +302,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
 
     """
     complex_variable_exists([input], "sum")
-    (input_real, input_imag) = (input.real, input.imag)
-    real = math.sum(input_real, dim, dtype, keep_dim, name)
-    imag = math.sum(input_imag, dim, dtype, keep_dim, name)
+    real = math.sum(input.real, dim, dtype, keep_dim, name)
+    imag = math.sum(input.imag, dim, dtype, keep_dim, name)
 
     return ComplexVariable(real, imag)

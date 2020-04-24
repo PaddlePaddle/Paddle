@@ -20,14 +20,14 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
 
-class TestComplexElementwiseLayers(unittest.TestCase):
+class TestComplexSumLayers(unittest.TestCase):
     def setUp(self):
         self._dtype = "float64"
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             self._places.append(fluid.CUDAPlace(0))
 
-    def test_complex_xy(self):
+    def test_complex_x(self):
         input = rand([2, 10, 10]).astype(self._dtype) + 1j * rand(
             [2, 10, 10]).astype(self._dtype)
         for place in self._places:

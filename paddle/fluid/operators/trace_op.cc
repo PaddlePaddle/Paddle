@@ -1,16 +1,16 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "paddle/fluid/operators/trace_op.h"
 
@@ -38,24 +38,25 @@ class TraceOp : public framework::OperatorWithKernel {
     int dim1_ = dim1 < 0 ? x_dims.size() + dim1 : dim1;
     int dim2_ = dim2 < 0 ? x_dims.size() + dim2 : dim2;
 
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::OutOfRange(
-                          "diag requires an array of at least two dimensions"));
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        platform::errors::OutOfRange(
+            "trace requires an tensor of at least two dimensions"));
     PADDLE_ENFORCE_LT(
         dim1_, x_dims.size(),
         platform::errors::OutOfRange(
-            "Dim1 is out of range (expected to be in range of [%ld, "
+            "Attr(dim1) is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
             -(x_dims.size()), (x_dims.size() - 1), dim1));
     PADDLE_ENFORCE_LT(
         dim2_, x_dims.size(),
         platform::errors::OutOfRange(
-            "Dim2 is out of range (expected to be in range of [%ld, "
+            "Attr(dim2) is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
             -(x_dims.size()), (x_dims.size() - 1), dim2));
     PADDLE_ENFORCE_NE(dim1_, dim2_,
                       platform::errors::InvalidArgument(
-                          "diagonal dimensions should not be identical "
+                          "The dimensions should not be identical "
                           "%ld vs %ld.",
                           dim1, dim2));
 
@@ -79,7 +80,7 @@ class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the sum along diagonals of the input tensor");
     AddAttr<int>(
         "offset",
-        R"DOC((int, default 0), Offset of the diagonal from the main diagonal. Can be both positive and negative. Defaults to 0.
+        R"DOC((int, default 0), offset of the diagonal from the main diagonal. Can be both positive and negative. Defaults to 0.
         )DOC")
         .SetDefault(0);
     AddAttr<int>(
@@ -100,8 +101,8 @@ Return the sum along diagonals of the input tensor.
 The behavior of this operator is similar to how `numpy.trace` works.
 
 If Input is 2-D, returns the sum of diagonal. 
-If Input has larger dimensions, then returns an array of diagonals sum, diagonals be taken from
-the 2D planes specified by dim1 and dim2.
+If Input has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
+the 2-D planes specified by dim1 and dim2.
 
 )DOC");
   }
@@ -116,7 +117,7 @@ class TraceOpGrad : public framework::OperatorWithKernel {
         platform::errors::NotFound("Input(Input) of TraceOp is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Input")), true,
                       platform::errors::NotFound(
-                          "Input(Input@GRAD) of TraceGradOp is not found."));
+                          "Output(Input@GRAD) of TraceGradOp is not found."));
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
   }

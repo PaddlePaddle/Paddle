@@ -1411,13 +1411,13 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
     return output
 
-def trace(input, offset=0, dim1=0, dim2=1):
+def trace(input, offset=0, dim1=0, dim2=1, name=None):
     """
     This OP computes the sum along diagonals of the input tensor.
     
-    If Input is 2D, returns the sum of diagonal. 
+    If ``input`` is 2D, returns the sum of diagonal. 
 
-    If Input has larger dimensions, then returns an array of diagonals sum, diagonals be taken from
+    If ``input`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
     the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
     of the input tensor.
 
@@ -1432,9 +1432,10 @@ def trace(input, offset=0, dim1=0, dim2=1):
         offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
         dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
         dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
-    
+        name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
     Returns:
-        Variable, the output data type is the same as input data type.
+        Variable: the output data type is the same as input data type.
 
     Examples:
         .. code-block:: python
@@ -1465,7 +1466,7 @@ def trace(input, offset=0, dim1=0, dim2=1):
 
         input_shape = list(input.shape)
         assert len(input_shape) >= 2,                     \
-                "Input must be at least 2-dimensional, "   \
+                "The input must be at least 2-dimensional, "   \
                 "But received Input's dimensional: %s.\n" %  \
                 len(input_shape)
 
@@ -1473,11 +1474,11 @@ def trace(input, offset=0, dim1=0, dim2=1):
         dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2
 
         assert dim1_ < len(input_shape),     \
-            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            "The argument dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
             % (-(len(input_shape)), len(input_shape) - 1, dim1)
 
         assert dim2_ < len(input_shape),   \
-            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
+            "The argument dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
             % (-(len(input_shape)), len(input_shape) - 1, dim2)
 
 
