@@ -161,7 +161,8 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
 
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
-                    "In an axis array, elements must be unique.");
+                    platform::errors::InvalidArgument(
+                        "In an axis array, elements must be unique."));
 
   PADDLE_ENFORCE_EQ(
       in_rank, axis_size,
@@ -172,7 +173,8 @@ DDim DDim::transpose(const std::vector<int>& axis) const {
                                         in_rank, axis_size));
 
   PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
-                    "Axis values must be ranging from 0 to (dims - 1).");
+                    platform::errors::InvalidArgument(
+                        "Axis values must be ranging from 0 to (dims - 1)."));
 
   DDim out_dims(in_dims);
   for (size_t i = 0; i < axis_size; i++) {
