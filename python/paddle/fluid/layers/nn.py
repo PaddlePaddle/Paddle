@@ -1,6 +1,6 @@
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "Licefnse");
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -167,8 +167,7 @@ __all__ = [
     'add_position_encoding',
     'bilinear_tensor_product',
     'merge_selected_rows',
-    '
-	',
+    'get_tensor_from_selected_rows',
     'shuffle_channel',
     'temporal_shift',
     'py_func',
@@ -12589,7 +12588,7 @@ def get_tensor_from_selected_rows(x, name=None):
     check_type(x, 'x', (Variable), 'get_tensor_from_selected_rows')
     if x.type != core.VarDesc.VarType.SELECTED_ROWS:
         raise TypeError(
-	    "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
+            "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
         )
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
