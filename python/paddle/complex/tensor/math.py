@@ -226,7 +226,7 @@ def trace(input, offset=0, dim1=0, dim2=1):
     """
     The trace layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
-    in :ref:`api_tensor_trace` . 
+    in :ref:`api_tensor_math_trace` . 
     
     Args:
         input(ComplexVariable): The input ComplexVariable. Must be at least 2-dimensional. 
@@ -246,7 +246,7 @@ def trace(input, offset=0, dim1=0, dim2=1):
             
             with dg.guard():
                 case1 = dg.to_variable(case1)
-                data1 = tensor.trace(case1, offset=1, dim1=1, dim2=2) # data2.shape = [3]
+                data1 = tensor.trace(case1, offset=1, dim1=1, dim2=2) # data1.shape = [3]
     """
     complex_variable_exists([input], "trace")
     (input_real, input_imag) = (input.real, input.imag)
@@ -260,7 +260,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
     The sum layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
-    in :ref:`api_tensor_sum` . 
+    in :ref:`api_tensor_math_sum` . 
 
     Args:
         input(ComplexVariable): The input ComplexVariable with any number of dimensions. 
