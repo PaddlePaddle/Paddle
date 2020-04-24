@@ -441,7 +441,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         return res, sizes
 
     check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
-    if isinstance(input, (list)):
+    if isinstance(input, list):
         for i, input_x in enumerate(input):
             check_type(input_x, 'input[' + str(i) + ']', Variable,
                        'tensor_array_to_tensor')
