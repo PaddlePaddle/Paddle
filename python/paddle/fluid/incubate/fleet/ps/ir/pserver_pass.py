@@ -40,7 +40,7 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 
 def _is_optimizer_op(op):
     if "Param" in op.input_names and \
-            "LearningRate" in op.input_names:
+                    "LearningRate" in op.input_names:
         return True
     return False
 
@@ -68,7 +68,7 @@ def _get_pserver_grad_param_var(var, var_dict, grad_param_name_map,
             if g.name.find(".trainer_") == -1:
                 # only param or grads have split blocks
                 if _orig_varname(g.name) in grad_param_name_map or \
-                        _orig_varname(g.name) in param_grad_name_map:
+                                _orig_varname(g.name) in param_grad_name_map:
                     grad_block = g
                     break
     return grad_block
@@ -572,8 +572,8 @@ def add_optimizer_pass(program, config):
         for index, op in enumerate(block.ops):
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                    role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                    int(OPT_OP_ROLE_ATTR_VALUE):
+                            role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                            int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
         return lr_ops
 
@@ -622,7 +622,7 @@ def add_optimizer_pass(program, config):
             for _, op in enumerate(optimize_ops):
                 # optimizer is connected to itself
                 if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                        op not in global_ops:
+                                op not in global_ops:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
@@ -656,15 +656,36 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 
     params = config.param_grad_ep_mapping[ps_endpoint]["params"]
 
+    merged_ordervars = []
+
+    for var in params:
+        name = var.name
+        orig_varname = _orig_varname(name)
+
+        for pairs in config.merged_variables_pairs:
+            merged_p = pairs[0]
+            if merged_p.merged_var.name == orig_varname:
+                if merged_p.merged_var.name != merged_p.ordered_vars[0].name:
+                    merged_ordervars.append(merged_p.ordered_vars[0])
+                break
+
     def _get_splited_name_and_shape(varname):
-        for idx, splited_param in enumerate(params):
+        for splited_param in params:
             pname = splited_param.name
             if _same_or_split_var(pname, varname) and varname != pname:
                 return pname, splited_param.shape
+
+            for idx, ordered in enumerate(merged_ordervars):
+                if _same_or_split_var(varname, ordered.name):
+                    print("pname: {}, ordered: {}, varname: {}".format(
+                        pname, ordered.name, varname))
+                    return pname, splited_param.shape
+
         return "", []
 
     # 1. create vars in pserver program to startup program
     pserver_vars = p_main_program.global_block().vars
+
     created_var_map = collections.OrderedDict()
     for _, var in six.iteritems(pserver_vars):
         tmpvar = program.global_block()._clone_variable(var)
@@ -679,6 +700,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
         if op.type not in ["recv", "fetch_barrier", "concat"]:
             for key in op.output_names:
                 newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                print("new name: {}".format(newname))
                 if newname:
                     op_on_pserver = True
                     new_outputs[key] = created_var_map[newname]

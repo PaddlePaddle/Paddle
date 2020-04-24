@@ -142,7 +142,13 @@ class FleetTranspiler(Fleet):
                 DistributedMode.HALF_ASYNC
         ]:
             send_ctx = fleet.compiled_config.get_communicator_send_context()
+            for k, v in send_ctx.items():
+                print("k: {}".format(k))
+
             recv_ctx = fleet.compiled_config.get_communicator_recv_context()
+            #recv_ctx = {}
+            for k, v in recv_ctx.items():
+                print("k: {}".format(k))
 
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
@@ -839,6 +845,13 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
         _startup = server.build_pserver_startup_program_pass(_startup, _main,
                                                              compiled_config)
+
+        with open("_main.po", "w") as wb:
+            wb.write(str(_main))
+
+        with open("_startup.po", "w") as wb:
+            wb.write(str(_startup))
+
         return _main, _startup
 
     def minimize(self,

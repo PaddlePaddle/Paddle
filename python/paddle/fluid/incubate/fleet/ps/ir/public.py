@@ -600,7 +600,7 @@ def _is_opt_role_op(op):
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
-            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+                    int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
         return True
     return False
 
