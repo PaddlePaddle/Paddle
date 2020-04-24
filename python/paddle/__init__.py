@@ -160,7 +160,7 @@ from .tensor.linalg import norm  #DEFINE_ALIAS
 from .tensor.linalg import dist  #DEFINE_ALIAS
 from .tensor.linalg import t  #DEFINE_ALIAS
 from .tensor.linalg import cross  #DEFINE_ALIAS
-# from .tensor.linalg import cholesky   #DEFINE_ALIAS
+from .tensor.linalg import cholesky  #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS
 # from .tensor.manipulation import cast   #DEFINE_ALIAS
 # from .tensor.manipulation import concat   #DEFINE_ALIAS
