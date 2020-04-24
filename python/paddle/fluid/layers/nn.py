@@ -1,6 +1,6 @@
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
+# Licensed under the Apache License, Version 2.0 (the "Licefnse");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -167,7 +167,8 @@ __all__ = [
     'add_position_encoding',
     'bilinear_tensor_product',
     'merge_selected_rows',
-    'get_tensor_from_selected_rows',
+    '
+	',
     'shuffle_channel',
     'temporal_shift',
     'py_func',
