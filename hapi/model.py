@@ -417,7 +417,6 @@ class StaticGraphAdapter(object):
         losses = []
         metrics = []
         with fluid.program_guard(prog, self._startup_prog):
-            # with fluid.unique_name.guard():
             ins = self.model._inputs
             lbls = self.model._labels if self.model._labels else []
             inputs = [k.forward() for k in to_list(ins)]
@@ -453,8 +452,6 @@ class StaticGraphAdapter(object):
 
         if mode != 'train':  # clone again to put it in test mode
             prog = prog.clone(for_test=True)
-        else:
-            self._progs['deploy'] = prog.clone()
 
         self._input_vars[mode] = inputs
 
