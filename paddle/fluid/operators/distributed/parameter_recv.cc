@@ -66,7 +66,6 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
     auto &recv_var_name = rpc_ctx.splited_varnames[i];
-    Variable *var = local_scope->Var(recv_var_name);
     VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
     // sparse param in recv_scope is LoDTensor
     rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
@@ -85,20 +84,18 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   }
 
   // merged var's tensor into one
-  auto *merged_var = local_scope.FindVar(rpc_ctx.var_name);
-  framework::Tensor *merged_tensor =
-      merged_var->GetMutable<framework::LoDTensor>();
+  auto *merged_var = local_scope->FindVar(rpc_ctx.var_name);
 
   framework::FlattenVariable(variables, merged_var);
   auto src_ptr = merged_var->Get<framework::LoDTensor>().data<void>();
   // write tensor to global scope
-  int offset = 0;
   for (auto &origin_varname : rpc_ctx.origin_varnames) {
     Variable *origin_v = scope.FindVar(origin_varname);
     framework::Tensor *origin_t = origin_v->GetMutable<framework::LoDTensor>();
-    auto size = origin_t->numel() * SizeOfType(origin_t.type());
+    auto size = origin_t->numel() * framework::SizeOfType(origin_t->type());
     memory::Copy(cpu_place, origin_t->data<void>(), cpu_place, src_ptr, size);
-    src_ptr = reinterpret_cast<char *>(src_ptr) + size;
+    src_ptr = static_cast<char *>(const_cast<void *>(src_ptr)) + size;
+    // src_ptr = *static_cast< char* >(src_ptr) + size;
   }
   VLOG(2) << "ParameterRecv out " << rpc_ctx.var_name;
 }
