@@ -15,8 +15,8 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
         output (str): a file name or a directory to save log. If None, will not save log file.
             If ends with ".txt" or ".log", assumed to be a file name.
             Otherwise, logs will be saved to `output/log.txt`.
-        name (str): the root module name of this logger. Default: 'hapi'
-
+        name (str): the root module name of this logger. Default: 'hapi'.
+        log_level (enum): log level. eg.'INFO', 'DEBUG', 'ERROR'. Default: logging.INFO.
     Returns:
         logging.Logger: a logger
     """
