@@ -15,9 +15,11 @@
 from ..helper import is_complex, is_real, complex_variable_exists
 from ...fluid.framework import ComplexVariable
 from ...fluid import layers
+from ...tensor import math
 
 __all__ = [
-    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div'
+    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div',
+    'kron'
 ]
 
 
@@ -197,7 +199,7 @@ def elementwise_div(x, y, axis=-1, name=None):
             with dg.guard():
                 x = dg.to_variable(a)
                 y = dg.to_variable(b)
-                out = paddle.complex.elementwise_div(x, y)
+                out = paddle.complex.kron(x, y)
                 print(out.numpy())
                 # [[0.24137931+0.10344828j 0.35      +0.05j      ]
                 #  [0.43396226+0.01886792j 0.5       +0.j        ]]
@@ -214,3 +216,67 @@ def elementwise_div(x, y, axis=-1, name=None):
         e,
         axis=axis,
         name=name)
+
+
+def kron(x, y, name=None):
+    """
+    The kronecker product of two complex tensors. At least one of inputs :attr:`x` 
+    and :attr:`y` must be a ComplexVariable. See the detailed description for 
+    the function and other arguments in :ref:`api_paddle_tensor_kron` . 
+
+    Let $x = a + ib$, and $y = c + id$, the euqation is 
+
+    .. math::
+       kron(x, y) = kron(a, c) - kron(b, d) + i(kron(a, d) + kron(b, c))
+
+    Args:
+        x (Variable|ComplexVariable): The first input Variable or ComplexVariable 
+            with any number of dimensions. The supported data types include float32 
+            and float64 when it is a Variable. Otherwise the supported data types 
+            are complex64 or complex128.
+        y (Variable|ComplexVariable): The second input Variable or ComplexVariable 
+            with any number of dimensions. The supported data types include float32 
+            and float64 when it is a Variable. Otherwise the supported data types 
+            are complex64 or complex128.
+
+    Returns:
+        ComplexVariable: The kronecker product, data type: complex64 or complex128, depending on the data type of x and y. If x and y are both a float32 Variable or a complex64 ComplexVariable, the data type of the output is complex64. If x and y are both a float64 Variable or complex128 ComplexVariable, the data type of the output is complex128.
+
+    Examples:
+        .. code-block:: python
+    
+            import numpy as np
+            import paddle
+            import paddle.fluid.dygraph as dg
+
+            a = np.array([[1.0+1.0j, 2.0+1.0j], [3.0+1.0j, 4.0+1.0j]])
+            b = np.array([[5.0+2.0j, 6.0+2.0j], [7.0+2.0j, 8.0+2.0j]])
+
+            place = fluid.CPUPlace()
+            with dg.guard(place):
+                x = dg.to_variable(a)
+                y = dg.to_variable(b)
+                out = paddle.complex.kron(x, y)
+                print(out.numpy())
+            # [[ 3. +7.j  4. +8.j  8. +9.j 10.+10.j]
+            #  [ 5. +9.j  6.+10.j 12.+11.j 14.+12.j]
+            #  [13.+11.j 16.+12.j 18.+13.j 22.+14.j]
+            #  [19.+13.j 22.+14.j 26.+15.j 30.+16.j]]
+    """
+    complex_variable_exists([x, y], "kron")
+    # X = A + Bi, Y = C+Di
+    # kron(A, B) = kron(A, C) - kron(B, D) + (kron(A, D) + kron(B, C))i
+    (a, b) = (x.real, x.imag) if is_complex(x) else (x, None)
+    (c, d) = (y.real, y.imag) if is_complex(y) else (y, None)
+
+    if is_real(b) and is_real(d):
+        real = math.kron(a, c) - math.kron(b, d)
+        imag = math.kron(a, d) + math.kron(b, c)
+    elif is_real(b):
+        real = math.kron(a, c)
+        imag = math.kron(b, c)
+    else:
+        # is_real(d)
+        real = math.kron(a, c)
+        imag = math.kron(a, d)
+    return ComplexVariable(real, imag)
