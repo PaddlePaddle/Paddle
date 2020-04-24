@@ -371,6 +371,7 @@ class Qat2Int8MkldnnPass(object):
                                      ['use_gpu', 'use_fc_padding'],
                                      [False, False])
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
+        graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
