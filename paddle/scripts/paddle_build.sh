@@ -253,6 +253,8 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
+    # show statistics summary of ccache
+    ccache -s cache directory
     cmake_base $1
 }
 
