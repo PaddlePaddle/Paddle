@@ -419,7 +419,7 @@ class QuantizationTransformPass(object):
                     if var_node.name() + "@GRAD" in node.name():
                         op_grad_out = node
                 # update op_grad's output
-                if op_grad_out:
+                if op_grad_out is not None:
                     graph.update_output_link(op_grad_out, target_out_grad_node,
                                              op_grad)
                 else:
@@ -427,7 +427,7 @@ class QuantizationTransformPass(object):
 
                 for node in in_node_grad_op:
                     graph.update_input_link(target_in_node, var_node, node)
-                    if op_grad_out:
+                    if op_grad_out is not None:
                         graph.update_output_link(in_node_grad, op_grad_out,
                                                  node)
                 # remove useless nodes
