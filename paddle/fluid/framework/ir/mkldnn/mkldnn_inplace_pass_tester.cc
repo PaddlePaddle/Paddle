@@ -14,9 +14,9 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_inplace_pass.h"
 
-#include <unordered_set>
 #include <gtest/gtest.h>
 #include <boost/logic/tribool.hpp>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -53,7 +53,9 @@ class MKLDNNInplacePassTest {
       op->SetInput("Input", {inputs[0]});
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
-    } else if (std::unordered_set<std::string>{"gelu", "leaky_relu", "relu", "tanh"}.count(type)) {
+    } else if (std::unordered_set<std::string>{"gelu", "leaky_relu", "relu",
+                                               "tanh"}
+                   .count(type)) {
       op->SetInput("X", inputs);
     } else if (type == "softmax") {
       op->SetAttr("axis", -1);
