@@ -1509,6 +1509,27 @@ PDNode *patterns::OpRequant::operator()() {
   return requant_out;
 }
 
+PDNode *patterns::RequantOp::operator()() {
+  auto requant_in = pattern->NewNode(requant_in_repr())
+                        ->assert_is_op_input("requantize", "Input");
+  auto requant_op =
+      pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
+  auto requant_out = pattern->NewNode(requant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("requantize", "Output");
+  auto any_op = pattern->NewNode(any_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      return (node->Op()->HasAttr("Scale_in") ||
+                              node->Op()->HasAttr("Scale_x") ||
+                              node->Op()->HasAttr("Scale_y"));
+                    });
+
+  requant_op->LinksFrom({requant_in}).LinksTo({requant_out});
+  any_op->LinksFrom({requant_out});
+  return any_op;
+}
+
 PDNode *patterns::ConvDequant::operator()() {
   // Create Operators
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
