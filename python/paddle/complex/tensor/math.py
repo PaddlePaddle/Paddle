@@ -15,9 +15,14 @@
 from ..helper import is_complex, is_real, complex_variable_exists
 from ...fluid.framework import ComplexVariable
 from ...fluid import layers
+from ...tensor import math
 
 __all__ = [
-    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div'
+    'elementwise_add',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_div',
+    'trace',
 ]
 
 
@@ -214,3 +219,37 @@ def elementwise_div(x, y, axis=-1, name=None):
         e,
         axis=axis,
         name=name)
+
+
+def trace(input, offset=0, dim1=0, dim2=1):
+    """
+    The trace layer for complex number inputs. inputs :attr:`input` must be a ComplexVariable. 
+    See the detailed description for the function and other arguments 
+    in :ref:`api_tensor_math_trace` . 
+    
+    Args:
+        input(ComplexVariable): The input ComplexVariable. Must be at least 2-dimensional. 
+            The supported data types include complex64 or complex128.
+    
+    Returns:
+        ComplexVariable, the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.complex.tensor as tensor
+            import paddle.fluid.dygraph as dg
+            import numpy as np
+            
+            case1 = np.random.randn(3, 10, 10).astype('float64') + 1j * np.random.randn(3, 10, 10).astype('float64')
+            
+            with dg.guard():
+                case1 = dg.to_variable(case1)
+                data1 = tensor.trace(case1, offset=1, dim1=1, dim2=2) # data2.shape = [3]
+    """
+    complex_variable_exists([input], "trace")
+    (input_real, input_imag) = (input.real, input.imag)
+    real = math.trace(input_real, offset, dim1, dim2)
+    imag = math.trace(input_imag, offset, dim1, dim2)
+
+    return ComplexVariable(real, imag)
