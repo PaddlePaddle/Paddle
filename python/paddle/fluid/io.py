@@ -41,6 +41,7 @@ from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
+import paddle.fluid.proto.serving_model_config_pb2 as serving_model_config_pb2
 
 batch = paddle.batch
 
@@ -2013,10 +2014,10 @@ def save_serving_model(server_model_folder_name,
         executor,
         main_program=main_program)
 
-    config = model_conf.GeneralModelConfig()
+    config = serving_model_config_pb2.GeneralModelConfig()
 
     for key in feed_var_dict:
-        feed_var = model_conf.FeedVar()
+        feed_var = serving_model_config_pb2.FeedVar()
         feed_var.alias_name = key
         feed_var.name = feed_var_dict[key].name
         feed_var.is_lod_tensor = feed_var_dict[key].lod_level >= 1
@@ -2036,7 +2037,7 @@ def save_serving_model(server_model_folder_name,
         config.feed_var.extend([feed_var])
 
     for key in fetch_var_dict:
-        fetch_var = model_conf.FetchVar()
+        fetch_var = serving_model_config_pb2.FetchVar()
         fetch_var.alias_name = key
         fetch_var.name = fetch_var_dict[key].name
         fetch_var.is_lod_tensor = fetch_var_dict[key].lod_level >= 1
