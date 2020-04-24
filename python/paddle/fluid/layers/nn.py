@@ -12585,6 +12585,9 @@ def get_tensor_from_selected_rows(x, name=None):
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
+    check_type(x, 'x', (Variable), 'get_tensor_from_selected_rows')
+    if x.type != core.VarDesc.VarType.SELECTED_ROWS:
+        raise TypeError("The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS.")
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(

@@ -440,10 +440,14 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
             numpy.array(list(map(lambda x: int(x.shape[axis]), input))))
         return res, sizes
 
+    check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
+    if isinstance(input, (list)):
+        for i, input_x in enumerate(input):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'tensor_array_to_tensor')
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     out_index = helper.create_variable_for_type_inference(dtype="int32")
-    check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
     helper.append_op(
         type='tensor_array_to_tensor',
         inputs={'X': input},
