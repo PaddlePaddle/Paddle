@@ -28,10 +28,15 @@ class LSTMCell(Layer):
         .. math::
 
             i_t &= sigmoid(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i)
+
             f_t &= sigmoid(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f)
+
             o_t &= sigmoid(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o)
+
             \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c)
+
             c_t &= f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t}
+
             h_t &= o_t \\odot tanh(c_t)
 
     The other LSTMCell version is compatible with the BasicLSTMUnit used in static graph.
@@ -40,10 +45,15 @@ class LSTMCell(Layer):
         .. math::
 
             i_t &= sigmoid(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)
+
             f_t &= sigmoid(W_{fx}x_{t} + W_{fh}h_{t-1} + b_f + forget_bias )
+
             o_t &= sigmoid(W_{ox}x_{t} + W_{oh}h_{t-1} + b_o)
+
             \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
+
             c_t &= f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t}
+
             h_t &= o_t \\odot tanh(c_t)
 
     Args:
@@ -226,18 +236,30 @@ class GRUCell(Layer):
     GRU implementation using basic operators.
     There are two GRUCell version, the default one is compatible with CUDNN GRU implementation.
     The algorithm can be described as the equations below.
+
         .. math::
+
             u_t & = sigmoid(W_{ux} x_{t} + b_ux + W_{uh} h_{t-1} + b_uh)
+
             r_t & = sigmoid(W_{rx} x_{t} + b_rx + W_{rh} h_{t-1} + b_rh)
+
             \\tilde{h_{t}} & = tanh(W_{cx} x_{t} + b_cx + r_t \\odot (W_{ch} h_{t-1} + b_ch))
+
             h_t & = u_t h_{t-1} + (1-u_t) \\tilde{h_{t}}
+
     The other LSTMCell version is compatible with the BasicGRUUnit used in static graph.
     The algorithm can be described as the equations below.
+
         .. math::
+
             u_t & = sigmoid(W_{ux} x_{t} + W_{uh} h_{t-1} + b_u)
+
             r_t & = sigmoid(W_{rx} x_{t} + W_{rh} h_{t-1} + b_r)
+
             \\tilde{h_{t}} & = tanh(W_{cx} x_{t} + W_{ch} \\odot(r_t, h_{t-1}) + b_m)
+
             h_t & = u_t h_{t-1} + (1-u_t) \\tilde{h_{t}}
+
     Args:
         hidden_size (integer): The hidden size used in the Cell.
         input_size (integer): The input size used in the Cell.
