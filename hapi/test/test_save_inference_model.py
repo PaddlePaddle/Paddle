@@ -43,9 +43,6 @@ class TestSaveInferenceModel(unittest.TestCase):
         if not os.path.exists(self.save_dir):
             os.makedirs(self.save_dir)
 
-        # tensor_img = np.array(np.random.random((1, 3, 224, 224)), dtype=np.float32)
-        # ori_results = model.test_batch(tensor_img)
-
         model.save_inference_model(self.save_dir)
 
         place = fluid.CPUPlace() if not fluid.is_compiled_with_cuda(
