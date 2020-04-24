@@ -68,10 +68,7 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {
   auto in_dims = inputs[0];
-  nvinfer1::DimsExprs ret;
-  for (int i = 0; i < ret.nbDims; i++) {
-    ret.d[i] = in_dims.d[i];
-  }
+  nvinfer1::DimsExprs ret = in_dims;
   // start, ends should greater 0
   for (size_t i = 0; i < axes_.size(); i++) {
     int start = starts_[i];
