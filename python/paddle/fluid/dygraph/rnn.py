@@ -45,12 +45,12 @@ class LSTMCell(Layer):
         input_size (integer): The input size used in the Cell.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
-            If it is set to None or one attribute of ParamAttr, lstm_unit will
+            If it is set to None or one attribute of ParamAttr, LSTMCell will
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
-            of LSTM unit.
-            If it is set to None or one attribute of ParamAttr, lstm_unit will 
+            of LSTMCell.
+            If it is set to None or one attribute of ParamAttr, LSTMCell will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -60,7 +60,7 @@ class LSTMCell(Layer):
         forget_bias(float|1.0): forget bias used when computing forget gate. This 
             is not used in default LSTMCell implementation (CUDNN compatiable)
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
-        dtype(string): data type used in this unit
+        dtype(string): data type used in this cell
     
     Returns:
         None
@@ -237,12 +237,12 @@ class GRUCell(Layer):
         input_size (integer): The input size used in the Cell.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
-            If it is set to None or one attribute of ParamAttr, gru_unit will
+            If it is set to None or one attribute of ParamAttr, GRUCell will
             create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
-            of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will 
+            of GRUCell.
+            If it is set to None or one attribute of ParamAttr, GRUCell will 
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -250,7 +250,7 @@ class GRUCell(Layer):
         activation (function|None): The activation function for cell (actNode).
                              Default: 'fluid.tanh'
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
-        dtype(string): data type used in this unit
+        dtype(string): data type used in this cell
     
     Returns:
         None
