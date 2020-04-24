@@ -34,13 +34,16 @@ from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.io import DataLoader, Dataset
 
+from hapi.loss import Loss
 from hapi.distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from hapi.metrics import Metric
 from hapi.callbacks import config_callbacks
 
 __all__ = [
-    'Model', 'Loss', 'CrossEntropy', 'Input', 'set_device',
-    'SoftmaxWithCrossEntropy'
+    'Model',
+    'Loss',
+    'Input',
+    'set_device',
 ]
 
 
@@ -115,47 +118,6 @@ class Input(fluid.dygraph.Layer):
 
     def forward(self):
         return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
-
-
-class Loss(object):
-    def __init__(self, average=True):
-        super(Loss, self).__init__()
-        self.average = average
-
-    def forward(self, outputs, labels):
-        raise NotImplementedError()
-
-    def __call__(self, outputs, labels=None):
-        labels = to_list(labels)
-        if in_dygraph_mode() and labels:
-            labels = [to_variable(l) for l in labels]
-        losses = to_list(self.forward(to_list(outputs), labels))
-        if self.average:
-            losses = [fluid.layers.reduce_mean(l) for l in losses]
-        else:
-            losses = [fluid.layers.reduce_sum(l) for l in losses]
-        return losses
-
-
-class CrossEntropy(Loss):
-    def __init__(self, average=True):
-        super(CrossEntropy, self).__init__()
-
-    def forward(self, outputs, labels):
-        return [
-            fluid.layers.cross_entropy(o, l) for o, l in zip(outputs, labels)
-        ]
-
-
-class SoftmaxWithCrossEntropy(Loss):
-    def __init__(self, average=True):
-        super(SoftmaxWithCrossEntropy, self).__init__()
-
-    def forward(self, outputs, labels):
-        return [
-            fluid.layers.softmax_with_cross_entropy(
-                o, l, return_softmax=False) for o, l in zip(outputs, labels)
-        ]
 
 
 class StaticGraphAdapter(object):
@@ -455,6 +417,7 @@ class StaticGraphAdapter(object):
         losses = []
         metrics = []
         with fluid.program_guard(prog, self._startup_prog):
+            # with fluid.unique_name.guard():
             ins = self.model._inputs
             lbls = self.model._labels if self.model._labels else []
             inputs = [k.forward() for k in to_list(ins)]
@@ -490,6 +453,8 @@ class StaticGraphAdapter(object):
 
         if mode != 'train':  # clone again to put it in test mode
             prog = prog.clone(for_test=True)
+        else:
+            self._progs['deploy'] = prog.clone()
 
         self._input_vars[mode] = inputs
 
@@ -1207,6 +1172,55 @@ class Model(fluid.dygraph.Layer):
         self._test_dataloader = None
 
         return outputs
+
+    def save_inference_model(self,
+                             save_dir,
+                             model_filename=None,
+                             params_filename=None,
+                             export_for_deployment=True,
+                             program_only=False):
+        """
+        Args:
+            dirname(str): The directory path to save the inference model.
+            model_filename(str|None): The name of file to save the inference program
+                                        itself. If is set None, a default filename
+                                        :code:`__model__` will be used.
+            params_filename(str|None): The name of file to save all related parameters.
+                                            If it is set None, parameters will be saved
+                                            in separate files .
+            export_for_deployment(bool): If True, programs are modified to only support
+                                        direct inference deployment. Otherwise,
+                                        more information will be stored for flexible
+                                        optimization and re-training. Currently, only
+                                        True is supported.
+                                        Default: True.
+            program_only(bool): If True, It will save inference program only, and do not 
+                                        save params of Program.
+                                        Default: False.
+
+        Returns:
+            list: The fetch variables' name list
+        """
+        # self.prepare(self.)
+        prog = self._adapter._progs.get('test', None)
+        assert prog, \
+            "Model is not ready, please call `model.prepare()` first"
+
+        infer_prog = prog.clone(for_test=True)
+
+        input_names = [v.name for v in self._adapter._input_vars['test']]
+        endpoints = self._adapter._endpoints['test']['output']
+
+        return fluid.io.save_inference_model(
+            save_dir,
+            input_names,
+            endpoints,
+            self._adapter._executor,
+            main_program=infer_prog,
+            model_filename=model_filename,
+            params_filename=params_filename,
+            export_for_deployment=export_for_deployment,
+            program_only=program_only)
 
     def _run_one_epoch(self,
                        data_loader,
