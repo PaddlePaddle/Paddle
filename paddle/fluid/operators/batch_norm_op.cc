@@ -33,7 +33,9 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "BatchNorm");
 
   bool is_test = ctx->Attrs().Get<bool>("is_test");
-  if (!is_test) {
+  bool trainable_stats = ctx->Attrs().Get<bool>("trainable_statistics");
+  bool test_mode = is_test && (!trainable_stats);
+  if (!test_mode) {
     OP_INOUT_CHECK(ctx->HasOutput("MeanOut"), "Output", "MeanOut", "BatchNorm");
     OP_INOUT_CHECK(ctx->HasOutput("VarianceOut"), "Output", "VarianceOut",
                    "BatchNorm");
@@ -258,7 +260,11 @@ void BatchNormOpMaker::Make() {
                 "global mean and variance are also used during train time, "
                 "the BN acts as scaling and shiffting.")
       .SetDefault(false);
-
+  AddAttr<bool>("trainable_statistics",
+                "(bool, default false) Whether to calculate mean and variance "
+                "in test mode. If setting true in test mode, mean and variace "
+                "will be calculated by current batch statistics.")
+      .SetDefault(false);
   AddComment(R"DOC(
 Batch Normalization.
 
@@ -281,8 +287,10 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
+    bool test_mode = is_test && (!trainable_stats);
 
-    bool global_stats = is_test || use_global_stats;
+    bool global_stats = test_mode || use_global_stats;
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
