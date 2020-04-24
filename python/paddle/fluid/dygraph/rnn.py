@@ -81,7 +81,9 @@ class LSTMCell(Layer):
     Returns:
         None
     Examples:
+
         .. code-block:: python
+
             from paddle import fluid
             import paddle.fluid.core as core
             from paddle.fluid.dygraph import LSTMCell
@@ -105,6 +107,7 @@ class LSTMCell(Layer):
                 pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
                 pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
                 new_hidden, new_cell = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var) 
+
     """
 
     def __init__(self,
@@ -283,7 +286,9 @@ class GRUCell(Layer):
     Returns:
         None
     Examples:
+
         .. code-block:: python
+
             from paddle import fluid
             import paddle.fluid.core as core
             from paddle.fluid.dygraph import GRUCell
@@ -303,6 +308,7 @@ class GRUCell(Layer):
                 cudnn_gru = GRUCell(hidden_size, input_size)
                 step_input_var = fluid.dygraph.to_variable(step_input_np)
                 pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
+
     """
 
     def __init__(self,
