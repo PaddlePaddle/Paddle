@@ -2233,7 +2233,6 @@ PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
   reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
   return reshape_out;
 }
-}
 
 }  // namespace ir
 }  // namespace framework

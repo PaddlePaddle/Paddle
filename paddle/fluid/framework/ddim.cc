@@ -156,8 +156,8 @@ DDim DDim::reshape(const std::vector<int>& shape) const {
 
 DDim DDim::transpose(const std::vector<int>& axis) const {
   const DDim& in_dims = *this;
-  size_t axis_size = axis.size();
   size_t in_rank = in_dims.size();
+  size_t axis_size = axis.size();
 
   auto axis_set = std::set<int>(axis.begin(), axis.end());
   PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,

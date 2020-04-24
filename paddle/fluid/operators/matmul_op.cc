@@ -524,11 +524,12 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("fused_transpose_Y",
                               R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        AddAttr<std::vector<int>>(
-            "fused_reshape_Out",
-            R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "fused_reshape_Out",
+        R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a shape atribute of fused reshape for `Out` output.)DOC")
-            .SetDefault({});
+        .SetDefault({});
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "

@@ -147,6 +147,11 @@ class MatMulFactory {
     return std::make_pair(mat_dim, strides);
   }
 
+  bool IsInputFused(const ExecutionContext& ctx) const {
+    return !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
+             ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())
+  }
+
   bool IsOutputFused(const ExecutionContext& ctx) const {
     auto& fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
     auto& fused_transpose_Out =
@@ -183,17 +188,10 @@ class MatMulFactory {
 
     batch_size_ = 1;
     auto b = BS;
-    if (BS > 1 &&
-        !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
-          ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())) {
+    if (BS > 1 && (IsOutputFused(ctx) || IsInputFused(ctx))) {
       auto& x_dims = ctx.Input<Tensor>("X")->dims();
       auto& y_dims = ctx.Input<Tensor>("Y")->dims();
       batch_size_ = x_bs > y_bs ? x_dims[0] : y_dims[0];
-      b = BS / batch_size_;
-    }
-
-    if (BS > 1 && IsOutputFused(ctx)) {
-      batch_size_ = ctx.Input<Tensor>("X")->dims()[0];
       b = BS / batch_size_;
     }
     memory::dims x_dims = {b, M, K};
@@ -259,7 +257,7 @@ class MatMulFactory {
     void* x_ptr = x_mem_.get_data_handle();
     void* y_ptr = y_mem_.get_data_handle();
     void* out_ptr = out_mem_.get_data_handle();
-    for (int64_t i = 0; i < batch_size_; i++) {
+    for (uint16_t i = 0; i < batch_size_; i++) {
       x_mem_.set_data_handle(x_ptr);
       y_mem_.set_data_handle(y_ptr);
       out_mem_.set_data_handle(out_ptr);
@@ -310,10 +308,10 @@ class MatMulFactory {
   dnnl::memory y_mem_;
   dnnl::memory out_mem_;
   dnnl::matmul matmul_prim_;
-  size_t x_offset_;
-  size_t y_offset_;
-  size_t out_offset_;
-  int64_t batch_size_;
+  uint32_t x_offset_;
+  uint32_t y_offset_;
+  uint32_t out_offset_;
+  uint16_t batch_size_;
   bool initialized_ = false;
 };
 
