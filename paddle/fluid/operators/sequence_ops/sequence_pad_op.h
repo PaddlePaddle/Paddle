@@ -37,7 +37,8 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         x->lod().empty(), false,
-        "Input(X) Tensor of SequencePadOp does not contain LoD information.");
+        platform::errors::NotFound("Input(X) Tensor of SequencePadOp does not "
+                                   "contain LoD information."));
 
     const auto* pad_value = ctx.Input<LoDTensor>("PadValue");
 

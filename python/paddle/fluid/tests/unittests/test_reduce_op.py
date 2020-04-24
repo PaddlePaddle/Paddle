@@ -138,6 +138,18 @@ class TestAllOpWithKeepDim(OpTest):
         self.check_output()
 
 
+class TestAllOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of reduce_all_op must be Variable.
+            input1 = 12
+            self.assertRaises(TypeError, fluid.layers.reduce_all, input1)
+            # The input dtype of reduce_all_op must be bool.
+            input2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.reduce_all, input2)
+
+
 class TestAnyOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_any"
@@ -172,6 +184,18 @@ class TestAnyOpWithKeepDim(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestAnyOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of reduce_any_op must be Variable.
+            input1 = 12
+            self.assertRaises(TypeError, fluid.layers.reduce_any, input1)
+            # The input dtype of reduce_any_op must be bool.
+            input2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.reduce_any, input2)
 
 
 class Test1DReduce(OpTest):

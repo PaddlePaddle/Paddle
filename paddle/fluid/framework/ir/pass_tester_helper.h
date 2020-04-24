@@ -494,7 +494,7 @@ static std::string DebugString(OpDesc* op) {
   return os.str();
 }
 
-static std::string DebugString(Node* node) {
+static std::string DebugString(const Node* node) {
   std::ostringstream os;
   if (node->IsOp() && node->Op()) {
     OpDesc* op = node->Op();
@@ -563,7 +563,7 @@ static std::string DebugString(const std::vector<Node*>& nodes) {
   for (auto* node : nodes) {
     if (node->IsOp() && node->Op()) {
       os << "  ";
-    } else if (node->IsVar() && node->Var()) {
+    } else if ((node->IsVar() && node->Var()) || node->IsCtrlVar()) {
       os << "    ";
     }
     os << DebugString(node) << "\n";

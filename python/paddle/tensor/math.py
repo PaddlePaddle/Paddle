@@ -19,8 +19,9 @@ from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core
+from ..fluid.framework import core, _varbase_creator
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
+import sys
 
 # TODO: define math functions
 # yapf: disable
@@ -75,8 +76,9 @@ __all__ = [
 #            'inverse',
            'log1p',
 #            'erf',
-#            'addcmul',
-           'addmm'
+           'addcmul',
+           'addmm',
+           'clamp',
 ]
 # yapf: enable.
 
@@ -178,9 +180,9 @@ def pow(input, exponent, out=None, name=None):
             # y_1 is x^{2.0}
 
             # example 2: argument exponent is Variable
-            exponet_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
+            exponent_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
             res = fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.pow(x, exponet_tensor, out=res)
+            y_2 = paddle.pow(x, exponent_tensor, out=res)
             # y_2 is x^{3.0}
     """
     helper = LayerHelper('pow', **locals())
@@ -902,7 +904,10 @@ def mm(input, mat2, out=None, name=None):
             out = paddle.mm(x, mat2) # out shape is [2, 2]
     """
     if in_dygraph_mode():
-        return core.ops.matmul(input, mat2)
+        if out is None:
+            out = _varbase_creator(dtype=input.dtype)
+        core.ops.matmul(input, mat2, out)
+        return out
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -946,7 +951,6 @@ def mm(input, mat2, out=None, name=None):
         type='matmul', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
     return out
-
 
 def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     """
@@ -996,6 +1000,10 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    if in_dygraph_mode():
+        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        return out
+
     inputs = {'Input': input, "X": x, "Y": y}
     attrs = {'Alpha': alpha, 'Beta': beta}
 
@@ -1012,38 +1020,52 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
 def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
     """
-This operator calculates the log of the sum of exponentials of the input Tensor.
+    This operator calculates the log of the sum of exponentials of the input Tensor.
 
-.. math::
-   logsumexp(x) = \log\sum exp(x)
-
-
-Parameters:
-   x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
-   dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`, 
-     sum all elements of :attr:`input` and return a Tensor variable with a single element, 
-     otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
-     the dimension to reduce is :math:`rank + dim[i]`.
-   keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. 
-     The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim` 
-     is true, default value is False.
-   name (str, optional): The default value is None.  Normally there is no need for user to 
-     set this property.  For more information, please refer to :ref:`api_guide_Name`
+    .. math::
+       logsumexp(x) = \log\sum exp(x)
 
 
-Examples:
+    Parameters:
+       x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+       dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`,
+         sum all elements of :attr:`input` and return a Tensor variable with a single element,
+         otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+         the dimension to reduce is :math:`rank + dim[i]`.
+       keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor.
+         The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim`
+         is true, default value is False.
+       out (Variable), optional):  Enable user to explicitly specify an output variable to save result.
+       name (str, optional): The default value is None.  Normally there is no need for user to
+         set this property.  For more information, please refer to :ref:`api_guide_Name`
 
-.. code-block:: python
+    Returns:
+       Variable: The calcuated result Tensor/LoDTensor.
 
-    import paddle
-    import paddle.fluid as fluid
-    import numpy as np
-    
-    with fluid.dygraph.guard():
-      np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
-      x = fluid.dygraph.to_variable(np_x)
-      print(paddle.logsumexp(x).numpy())
+    Examples:
 
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+          np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+          x = fluid.dygraph.to_variable(np_x)
+          print(paddle.logsumexp(x).numpy())
+
+    ..  code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
+            x = fluid.dygraph.to_variable(np_x)
+            print(paddle.logsumexp(x, dim=1).numpy())
+            print(paddle.logsumexp(x, dim=[0, 2]).numpy())
 
     """
     op_type = 'logsumexp'
@@ -1094,7 +1116,7 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
         .. code-block:: python
             import paddle
             import paddle.fluid as fluid
-            
+
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -1144,6 +1166,7 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
 def min(input, dim=None, keep_dim=False, out=None, name=None):
     """
     Computes the minimum of tensor elements over the given dimension.
+
     Args:
         input (Variable): The input variable which is a Tensor, the data type is float32,
             float64, int32, int64.
@@ -1161,9 +1184,11 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
             if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         Variable: Tensor, result of minimum on the specified dim of input tensor,
         it's data type is the same as input's Tensor.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -1228,6 +1253,7 @@ def log1p(x, out=None, name=None):
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -1255,3 +1281,134 @@ def log1p(x, out=None, name=None):
         out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
     return out
+
+def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
+    """
+    Calculate the element-wise multiplication of tensor1 and tensor2,
+    then multiply the result by value, and add it to input. The shape of input,
+    tensor1, tensor2 should be broadcastable.
+    The equation is:
+    ..  math::
+        out = input + value * tensor1 * tensor2
+    Args:
+        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
+        out(Variable, Optional): The variable that specifies the output of the
+            operator, which can be Variable that has been created in the
+            program. The default value is None, and a new Variable will be
+            created to save the output. Default: None.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
+    Returns:
+        out(Variable): The output result. A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.fluid as fluid
+          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
+          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
+          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
+          data = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+    """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    if convert_dtype(input.dtype) in ['float32', 'float64']:
+        check_type(value, 'value', float, 'addcmul')
+    if convert_dtype(input.dtype) in ['int32', 'int64']:
+        check_type(value, 'value', int, 'addcmul')
+
+    if out is not None:
+        layers.assign(layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value), out)
+    else:
+        out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
+    return out
+
+
+def clamp(input, min=None, max=None, output=None, name=None):
+    """
+    **clampe layer**
+
+    This operator clamps all elements in input into the range [ min, max ] and return
+    a resulting tensor as the following equation:
+
+    .. math::
+
+        Out = MIN(MAX(x, min), max) 
+
+    Args:
+        input (Variable): An input N-D Tensor or LoDTensor 
+            with data type float32, float64.   
+        min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
+            with shape [1] and type ``int32``, ``float32``, ``float64``.
+        max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
+            with shape [1] and type ``int32``, ``float32``, ``float64``.
+        output (Variable, optional): A tensor or LoDTensor. If :attr:`output` is None, 
+            a new tensor will be created as :attr:`output`. Default: None. 
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: A Tensor or LodTensor with the same data type and data shape as input's.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            in1 = np.array([[1.2,3.5],
+                            [4.5,6.4]]).astype('float32')
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = paddle.tensor.clamp(x1, min=3.5, max=5.0)
+                out2 = paddle.tensor.clamp(x1, min=2.5)
+                print(out1.numpy())
+                # [[3.5, 3.5]
+                # [4.5, 5.0]]
+                print(out2.numpy())
+                # [[2.5, 3.5]
+                # [[4.5, 6.4]
+    """
+
+    assert min is not None or max is not None, "either min or max should be defined."
+
+    if min is not None:
+        check_type(min, 'min', (float, Variable), 'clamp')
+        if isinstance(min, Variable):
+            check_dtype(min.dtype, 'min', ['float32', 'float64', 'int32'],
+                        'clamp', '(When the type of min in clamp is Variable.)')
+    if max is not None:
+        check_type(max, 'max', (float, Variable), 'clamp')
+        if isinstance(max, Variable):
+            check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
+                        'clamp', '(When the type of max in clamp is Variable.)')
+
+    inputs = {'X': input}
+    attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+
+    if isinstance(min, Variable):
+        min.stop_gradient = True
+        inputs['Min'] = min
+    elif min is not None:
+        attrs['min'] = min
+
+    if isinstance(max, Variable):
+        max.stop_gradient = True
+        inputs['Max'] = max
+    elif max is not None:
+        attrs['max'] = max
+
+    helper = LayerHelper('clamp', **locals())
+    if output is None:
+        output = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+    helper.append_op(
+        type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
+
+    return output

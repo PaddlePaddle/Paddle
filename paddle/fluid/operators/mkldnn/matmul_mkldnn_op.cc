@@ -31,6 +31,11 @@ using platform::MKLDNNGetDataType;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
 
+template <typename T>
+constexpr bool IsInt8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
 static framework::DDim RowMatrixDimsFromVector(const framework::DDim& x_dim) {
@@ -142,6 +147,19 @@ class MatMulFactory {
     return std::make_pair(mat_dim, strides);
   }
 
+  bool IsOutputFused(const ExecutionContext& ctx) const {
+    auto& fused_reshape_Out = ctx.Attr<std::vector<int>>("fused_reshape_Out");
+    auto& fused_transpose_Out =
+        ctx.Attr<std::vector<int>>("fused_transpose_Out");
+    return !fused_reshape_Out.empty() && !fused_transpose_Out.empty();
+  }
+
+  void CorrectStridesWhenFloatOutputFused(const ExecutionContext& ctx,
+                                          const memory::dim N, memory::dim b,
+                                          memory::dims* out_strides) const {
+    if (!IsInt8<OT>() && IsOutputFused(ctx)) *out_strides = {N, b * N, 1};
+  }
+
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
     math::MatDescriptor mat_dim_x;
     memory::dims strides_x;
@@ -174,6 +192,10 @@ class MatMulFactory {
       b = BS / batch_size_;
     }
 
+    if (BS > 1 && IsOutputFused(ctx)) {
+      batch_size_ = ctx.Input<Tensor>("X")->dims()[0];
+      b = BS / batch_size_;
+    }
     memory::dims x_dims = {b, M, K};
     memory::dims y_dims = {b, K, N};
     memory::dims out_dims = {b, M, N};
@@ -190,6 +212,8 @@ class MatMulFactory {
       strides_y = !ctx.Attr<bool>("transpose_Y") ? memory::dims{N * K, N, 1}
                                                  : memory::dims{N * K, 1, K};
     memory::dims out_strides = memory::dims{M * N, N, 1};
+
+    CorrectStridesWhenFloatOutputFused(ctx, N, b, &out_strides);
 
     return {x_dims, y_dims, out_dims, strides_x, strides_y, out_strides};
   }
@@ -275,6 +299,12 @@ class MatMulFactory {
   void SetInitialized() { initialized_ = true; }
 
  private:
+  struct memory_offsets {
+    size_t x_offset;
+    size_t y_offset;
+    size_t out_offset;
+  };
+
   dnnl::engine engine_;
   dnnl::memory x_mem_;
   dnnl::memory y_mem_;
@@ -306,10 +336,6 @@ static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
   return factory;
 }
 
-template <typename T>
-constexpr bool IsInt8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
-}
 // Choose appropriate primitive factory implementation based on inferred
 // output type (uint8, int8 or float).
 template <typename XT, typename YT>

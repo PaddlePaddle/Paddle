@@ -200,15 +200,20 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
+# disable this unittest temporarily
+list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
-  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+  # list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dynamic)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
 endif()
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
@@ -364,6 +369,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
         test_optimizer_in_control_flow test_dataloader_keep_order
         test_dataloader_unkeep_order
+        test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
@@ -377,6 +383,9 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
 
 if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-    set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
 endif()

@@ -192,7 +192,7 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDesc>> operator()() const {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
     this->Apply(retv.front().get());
@@ -209,7 +209,7 @@ class SingleGradOpMaker<imperative::OpBase>
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::shared_ptr<imperative::GradOpNode> operator()() const {
+  std::shared_ptr<imperative::GradOpNode> operator()() const final {
     auto node = this->NewGradNode();
     {
       imperative::TracedGradOp traced_grad_op(node);

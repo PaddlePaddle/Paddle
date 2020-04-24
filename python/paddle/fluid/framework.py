@@ -49,6 +49,7 @@ __all__ = [
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'Variable',
+    'ComplexVariable',
     'load_op_library',
     'require_version',
     'device_guard',
@@ -65,6 +66,8 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
+
+global_prog_seed = 0
 
 
 def require_version(min_version, max_version=None):
@@ -1655,6 +1658,88 @@ def get_all_op_protos():
     return ret_values
 
 
+class ComplexVariable(object):
+    """
+    The Variable defined on the complex number domain. It contains two common 
+    real number Variables as its members, :attr:`real` and :attr:`imag` 
+    holding the real part and imaginary part of complex numbers respectively.
+    
+    **Notes**:
+        **The constructor of Variable should not be invoked directly.**
+
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **
+          to create a dygraph ComplexVariable with complex number data.**
+
+    Args:
+        real (Variable): The Variable holding real-part data.
+        imag (Variable): The Variable holding imaginery-part data.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            a = np.array([1.0+2.0j, 0.2])
+            with fluid.dygraph.guard():
+                var = fluid.dygraph.to_variable(a, name="new_var")
+                print(var.name, var.dtype, var.shape)
+                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L]) 
+                print(var.numpy())
+                # [1. +2.j 0.2+0.j]
+    """
+
+    def __init__(self, real, imag):
+        assert real.shape == imag.shape, "The real part and imaginary part " \
+            "of a ComplexVariable should have the same shape!"
+        assert real.dtype == imag.dtype, "The real part and imaginary part " \
+            "of a ComplexVariable should have the same data type!"
+
+        self.real = real
+        self.imag = imag
+        if self.real.dtype in [
+                core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
+        ]:
+            self._dtype = "complex64"
+        else:
+            self._dtype = "complex128"
+        self._shape = self.real.shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def name(self):
+        return {"real": self.real.name, "imag": self.imag.name}
+
+    @name.setter
+    def name(self, name):
+        # rename
+        if isinstance(name, str):
+            self.real.name = name + ".real"
+            self.imag.name = name + ".imag"
+        elif (isinstance(name, tuple) or isinstance(name,
+                                                    list)) and len(name) == 2:
+            self.real.name, self.imag.name = name[0], name[1]
+        else:
+            raise ValueError(
+                "An invalid name assigned to the ComplexVariable, "
+                "which must be a string, or a tuple or a list with length 2!")
+
+    def numpy(self):
+        return self.real.numpy() + 1j * self.imag.numpy()
+
+    def __str__(self):
+        return "REAL: " + self.real.__str__() + "IMAG: " + self.imag.__str__()
+
+    __repr__ = __str__
+
+
 class OpProtoHolder(object):
     """
     A global variable to hold all OpProtos from C++ as a map
@@ -2520,16 +2605,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
-            if _dygraph_tracer_._train_mode == False:
-                # eval mode
-                if ('trainable_statistics' not in attrs
-                    ) or not attrs['trainable_statistics']:
-                    attrs['is_test'] = True
-                else:
-                    attrs['is_test'] = False
-
             type = kwargs.get("type", None)
-
             op = Operator(
                 block=self,
                 desc=None,
@@ -3653,7 +3729,8 @@ class Program(object):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
-        self._seed = 0
+        global global_prog_seed
+        self._seed = global_prog_seed
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self.__op_role_var = []
 
@@ -3691,6 +3768,33 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+    def global_seed(self, seed=0):
+        """
+        Set global seed for Program
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.default_main_program()
+                print(prog.random_seed)
+                ## 0
+                ## the default random seed is 0
+
+                prog.global_seed(102)
+                prog1 = fluid.default_main_program()
+                print(prog1.random_seed)
+                ## 102
+                ## the random seed is 102
+        """
+        global global_prog_seed
+        global_prog_seed = seed
+        self._seed = global_prog_seed
 
     @property
     def _op_role(self):

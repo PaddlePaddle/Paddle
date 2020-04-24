@@ -24,7 +24,7 @@ from paddle.fluid import core
 
 
 def set_child_signal_handler(self, child_pid):
-    core._set_process_pid(id(self), child_pid)
+    core._set_process_pids(id(self), tuple([child_pid]))
     current_handler = signal.getsignal(signal.SIGCHLD)
     if not callable(current_handler):
         current_handler = None

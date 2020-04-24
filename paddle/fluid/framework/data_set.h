@@ -272,6 +272,7 @@ class DatasetImpl : public Dataset {
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
+  std::vector<T> input_records_;  // only for paddleboxdatafeed
 };
 
 // use std::vector<MultiSlotType> or Record as data type
@@ -296,9 +297,6 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result);
   virtual ~MultiSlotDataset() {}
-
- protected:
-  std::vector<Record> input_records_;  // the real data
 };
 
 }  // end namespace framework

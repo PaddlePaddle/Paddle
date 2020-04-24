@@ -4627,6 +4627,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    check_variable_and_dtype(input, 'input', ('bool'), 'reduce_all')
     helper = LayerHelper('reduce_all', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4686,6 +4687,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
             # keep_dim=True, x.shape=(2,2), out.shape=(2,1)
 
     """
+    check_variable_and_dtype(input, 'input', ('bool'), 'reduce_any')
     helper = LayerHelper('reduce_any', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
@@ -4919,8 +4921,9 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
     if len(x.shape) == 1:
         axis = 0
-    helper = LayerHelper("l2_normalize", **locals())
+    check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
 
+    helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     norm = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -5778,6 +5781,8 @@ def one_hot(input, depth, allow_out_of_range=False):
         return out
 
     helper = LayerHelper("one_hot", **locals())
+    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'one_hot')
+    check_type(depth, 'depth', (six.integer_types, Variable), 'one_hot')
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
     if not isinstance(depth, Variable):
@@ -5943,20 +5948,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
             )
-        attrs = {}
         if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-            attrs['shape'] = shape
-        else:
-            raise TypeError(
-                "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        out, _ = core.ops.reshape2(x, 'shape', shape)
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+            shape = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in shape
+            ]
+            out, _ = core.ops.reshape2(x, 'shape', shape)
+            return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
@@ -6235,10 +6233,12 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor.
-        y (Variable|None): If provided, output's LoD would be derived
-                           from :attr:`y`.
-        target_lod (list|tuple|None): One level LoD which should be considered
+        x (Variable): Input variable which could be a Tensor or LoDTensor. 
+                      The data type should be int32, int64, float32 or float64.
+        y (Variable, optional): If provided, output's LoD would be derived from :attr:`y`. 
+                                If y's lod level>0, the data type can be any type. 
+                                If y's lod level=0, the data type should be int32.
+        target_lod (list|tuple, optional): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
 
     Returns:
@@ -6260,11 +6260,9 @@ def lod_reset(x, y=None, target_lod=None):
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
-        if y.lod_level > 0:
-            check_variable_and_dtype(
-                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
-        else:
-            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
+        check_type(y, 'y', (Variable), 'lod_reset')
+        if y.lod_level == 0:
+            check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6300,9 +6298,11 @@ def lod_append(x, level):
                 x.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a tensor or LoDTensor.
-        level (list|tuple|Variable): The LoD level to be appended into LoD of x.
-
+        x (Variable): Input variable which could be a tensor or LoDTensor. 
+                      The data type should be int32, int64, float32 or float64.
+        level (list|tuple|Variable, optional): The LoD level to be appended into LoD of x. 
+                                               If level is variable and its lod level>0, the data type can be any type.
+                                               If level is variable and its lod level=0, the data type should be int32.
     Returns:
         Variable: Output variable with new LoD level.
 
@@ -6322,6 +6322,9 @@ def lod_append(x, level):
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
         raise ValueError("Input(level) must be list, tuple or Variable.")
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_append')
+
     helper = LayerHelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -6330,6 +6333,8 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
+        if level.lod_level == 0:
+            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
     else:
         attrs['target_lod'] = level
     helper.append_op(
@@ -6389,6 +6394,7 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
         print(lrn.dtype)  # float32
     """
     helper = LayerHelper('lrn', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'lrn')
     dtype = helper.input_dtype()
     input_shape = input.shape
     dims = len(input_shape)
@@ -6474,6 +6480,9 @@ def pad(x, paddings, pad_value=0., name=None):
             x = fluid.data(name='data', shape=[300, 300], dtype='float32')
             out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
+
     helper = LayerHelper('pad', input=x, **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -6565,6 +6574,10 @@ def pad_constant_like(x, y, pad_value=0., name=None):
             out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
             # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
     """
+    check_type(x, 'x', (Variable), 'pad_constant_like')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
+                             "pad_constant_like")
+
     helper = LayerHelper('pad_constant_like', input=x, **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -8849,6 +8862,9 @@ def pad2d(input,
             data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
             result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        "pad2d")
 
     if in_dygraph_mode():
         _paddings = paddings.numpy().tolist() if isinstance(
@@ -9747,16 +9763,12 @@ def expand(x, expand_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
-            if utils._contain_var(expand_times):
-                raise TypeError(
-                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+            expand_times = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in expand_times
+            ]
 
-        return core.ops.expand(x, 'expand_times', expand_times)
+            return core.ops.expand(x, 'expand_times', expand_times)
 
     inputs = {"X": [x]}
     attrs = {}
@@ -9951,6 +9963,11 @@ def uniform_random_batch_size_like(input,
 
 
     """
+    check_variable_and_dtype(input, 'Input', ("float32", 'float64'),
+                             'uniform_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple), 'uniform_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'),
+                'uniform_random_batch_size_like')
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
     out = helper.create_variable_for_type_inference(dtype)
@@ -10029,6 +10046,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10122,6 +10142,12 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    check_type(input, 'input', (Variable),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'int'],
+                'fluid.layers.gaussian_random_batch_size_like')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10290,28 +10316,19 @@ def slice(input, axes, starts, ends):
     """
     if in_dygraph_mode():
         infer_flags = list(1 for i in range(len(axes)))
-        if isinstance(starts, (list, tuple)):
-            if utils._contain_var(starts):
-                raise TypeError(
-                    "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+        if isinstance(starts, (list, tuple)) and isinstance(ends,
+                                                            (list, tuple)):
+            starts = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in starts
+            ]
+            ends = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in ends
+            ]
 
-        if isinstance(ends, (list, tuple)):
-            if utils._contain_var(ends):
-                raise TypeError(
-                    "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
-                              ends, 'infer_flags', infer_flags)
+            return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
+                                  ends, 'infer_flags', infer_flags)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -10634,7 +10651,7 @@ def rank(input):
             input = fluid.data(name="input", shape=[3, 100, 100], dtype="float32")
             rank = fluid.layers.rank(input) # rank=(3,)
     """
-
+    check_type(input, 'input', (Variable), 'input')
     ndims = len(input.shape)
     out = assign(np.array(ndims, 'int32'))
 
@@ -11418,7 +11435,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     if y is not None:
         check_variable_and_dtype(y, "y", ["bool"], op_name)
     if out is not None:
-        check_variable_and_dtype(out, "out", [convert_dtype(x.dtype)], op_name)
+        check_type(out, "out", Variable, op_name)
 
     helper = LayerHelper(op_name, **locals())
 
@@ -11660,6 +11677,7 @@ def clip(x, min, max, name=None):
     """
 
     helper = LayerHelper("clip", **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
 
     if name is None:
         name = unique_name.generate_with_ignorable_key(".".join(
@@ -14262,7 +14280,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'uniform_random')
+    check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
 
     def get_new_shape_tensor(list_shape):
         new_shape_tensor = []

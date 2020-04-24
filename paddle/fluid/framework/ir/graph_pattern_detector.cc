@@ -1891,30 +1891,30 @@ PDNode *patterns::MultipleQuantize::operator()() {
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
-  // batch_norm....
   auto possible_inplace_op =
-      pattern->NewNode(inplace_to_be_op_repr())->assert_is_ops({"softmax"});
+      pattern->NewNode(inplace_to_be_op_repr())
+          ->assert_is_ops({"elementwise_add", "softmax"});
 
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
-  // batch_norm....
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto input = pattern->NewNode(inplace_to_be_op_in_repr())
-                   ->assert_is_ops_input({"softmax"})
+                   ->assert_is_ops_input({"elementwise_add", "softmax"})
                    ->AsInput();
-  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
-  // batch_norm....
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto output = pattern->NewNode(inplace_to_be_op_out_repr())
-                    ->assert_is_ops_output({"softmax"})
-                    ->AsIntermediate();
+                    ->assert_is_ops_output({"elementwise_add", "softmax"})
+                    ->AsOutput();
 
   auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  auto next_output = pattern->NewNode(next_op_out_repr())->AsOutput();
 
   // Check if op is MKL-DNN enabled
   possible_inplace_op->assert_op_attr("use_mkldnn", true);
 
+  // linked structure
   possible_inplace_op->LinksTo({output});
   possible_inplace_op->LinksFrom({input});
   next_op->LinksFrom({output});
+  next_op->LinksTo({next_output});
 
   return possible_inplace_op;
 }
@@ -2195,6 +2195,44 @@ PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
   if (with_transpose_xshape) transpose_op->LinksTo({transpose_xshape});
   matmul_op->LinksFrom({transpose_out}).LinksTo({matmul_out});
   return matmul_out;
+}
+
+PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsInput()
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_input("transpose2", "X");
+
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_op_output("transpose2", "Out")
+                           ->assert_is_op_input("reshape2", "X");
+
+  auto transpose_out_xshape = pattern->NewNode(transpose_out_xshape_repr())
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("transpose2", "XShape");
+
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("reshape2");
+
+  auto reshape_out_xshape = pattern->NewNode(reshape_out_xshape_repr())
+                                ->AsIntermediate()
+                                ->assert_is_op_output("reshape2", "XShape");
+
+  matmul_op->LinksTo({matmul_out});
+  transpose_op->LinksTo({transpose_out_xshape});
+  reshape_op->LinksTo({reshape_out_xshape});
+  transpose_op->LinksFrom({matmul_out}).LinksTo({transpose_out});
+  reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
+  return reshape_out;
+}
 }
 
 }  // namespace ir

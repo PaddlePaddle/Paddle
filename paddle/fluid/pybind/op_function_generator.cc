@@ -37,7 +37,8 @@ std::map<std::string, std::set<std::string>> op_passing_out_map = {
     {"momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
-    {"fill_constant", {"Out"}}};
+    {"fill_constant", {"Out"}},
+    {"matmul", {"Out"}}};
 
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
@@ -231,8 +232,7 @@ GenerateOpFunctions(const std::string& module_name) {
     }
     std::string function_args = "";
     if (input_args == "") {
-      function_args =
-          paddle::string::Sprintf(FUNCTION_ARGS_NO_INPUT, input_args);
+      function_args = FUNCTION_ARGS_NO_INPUT;
     } else {
       function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
     }
