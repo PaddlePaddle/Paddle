@@ -20,14 +20,15 @@ from paddle.fluid.regularizer import L2Decay
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Pool2D, Linear
 
 from hapi.model import Model
-from hapi.download import get_weights_path
+from hapi.download import get_weights_path_from_url
 
 __all__ = ['DarkNet', 'darknet53']
 
 # {num_layers: (url, md5)}
-pretrain_infos = {
-    53: ('https://paddle-hapi.bj.bcebos.com/models/darknet53.pdparams',
-         'ca506a90e2efecb9a2093f8ada808708')
+model_urls = {
+    'darknet53':
+    ('https://paddle-hapi.bj.bcebos.com/models/darknet53.pdparams',
+     'ca506a90e2efecb9a2093f8ada808708')
 }
 
 
@@ -213,16 +214,15 @@ class DarkNet(Model):
         return out
 
 
-def _darknet(num_layers=53, pretrained=False, **kwargs):
+def _darknet(arch, num_layers=53, pretrained=False, **kwargs):
     model = DarkNet(num_layers, **kwargs)
     if pretrained:
-        assert num_layers in pretrain_infos.keys(), \
-                "DarkNet{} do not have pretrained weights now, " \
-                "pretrained should be set as False".format(num_layers)
-        weight_path = get_weights_path(*(pretrain_infos[num_layers]))
+        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch)
+        weight_path = get_weights_path_from_url(*(model_urls[arch]))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
-        model.load(weight_path[:-9])
+        model.load(weight_path)
     return model
 
 
@@ -234,4 +234,4 @@ def darknet53(pretrained=False, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet,
             default True.
     """
-    return _darknet(53, pretrained, **kwargs)
+    return _darknet('darknet53', 53, pretrained, **kwargs)

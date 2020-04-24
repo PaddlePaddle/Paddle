@@ -26,7 +26,8 @@ from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from hapi.datasets.mnist import MNIST as MnistDataset
 
-from hapi.model import Model, CrossEntropy, Input, set_device
+from hapi.model import Model, Input, set_device
+from hapi.loss import CrossEntropy
 from hapi.metrics import Accuracy
 
 
