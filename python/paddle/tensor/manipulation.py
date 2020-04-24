@@ -20,6 +20,7 @@ from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
+import numpy as np
 # TODO: define functions to manipulate a tensor  
 __all__ = [
     #            'cast',
@@ -651,7 +652,7 @@ def unbind(input, axis=0):
     Args:
         input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
        
-        axis (int32, optional): A scalar with type ``int32`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
+        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
             dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
     Returns:
         list(Variable): The list of segmented Tensor variables.
@@ -681,6 +682,8 @@ def unbind(input, axis=0):
     if not isinstance(axis, (int)):
         raise TypeError("The type of 'axis'  must be int, but received %s." %
                         (type(axis)))
+    if isinstance(axis, np.generic):
+        axis = np.asscalar(axis)
     input_shape = input.shape
     axis_ = axis if axis >= 0 else len(input_shape) + axis
     num = input_shape[axis_]
