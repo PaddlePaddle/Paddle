@@ -2001,7 +2001,7 @@ def save_serving_model(server_model_folder_name,
                                         fetch_var_dict={"y": predict},
                                         fluid.default_main_program())
     """
-    executor = Executor(place=CPUPlace())
+    executor = Executor(place=paddle.fluid.CPUPlace())
 
     feed_var_names = [feed_var_dict[x].name for x in feed_var_dict]
     target_vars = list(fetch_var_dict.values())
