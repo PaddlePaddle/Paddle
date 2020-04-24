@@ -199,7 +199,7 @@ def elementwise_div(x, y, axis=-1, name=None):
             with dg.guard():
                 x = dg.to_variable(a)
                 y = dg.to_variable(b)
-                out = paddle.complex.kron(x, y)
+                out = paddle.complex.elementwise_div(x, y)
                 print(out.numpy())
                 # [[0.24137931+0.10344828j 0.35      +0.05j      ]
                 #  [0.43396226+0.01886792j 0.5       +0.j        ]]
@@ -240,7 +240,7 @@ def kron(x, y, name=None):
             are complex64 or complex128.
 
     Returns:
-        ComplexVariable: The kronecker product, data type: complex64 or complex128, depending on the data type of x and y. If x and y are both a float32 Variable or a complex64 ComplexVariable, the data type of the output is complex64. If x and y are both a float64 Variable or complex128 ComplexVariable, the data type of the output is complex128.
+        ComplexVariable: The kronecker product, data type: complex64 or complex128, depending on the data type of x and y. If the data types of x and y are float32/complex64, the data type of the output is complex64, else if the data types of x and y are float64/complex128, the data type of the output is complex128.
 
     Examples:
         .. code-block:: python

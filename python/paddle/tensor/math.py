@@ -1417,8 +1417,8 @@ def kron(x, y, out=None, name=None):
     Args:
         x (Variable): the fist operand of kron op, data type: float32 or 
             float64.
-        y (Variable): the seconf operand of kron op, data type: float32 or 
-            float64. It's data type should be the same with x.
+        y (Variable): the second operand of kron op, data type: float32 or 
+            float64. Its data type should be the same with x.
         out (Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of 
             operation. If out is None, a new Varibale will be create to store 
@@ -1428,7 +1428,7 @@ def kron(x, y, out=None, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: The output of kron op, data type: float32 or float64. It's data is the same with x.
+        Variable: The output of kron op, data type: float32 or float64. Its data is the same with x.
 
     Examples:
         .. code-block:: python
