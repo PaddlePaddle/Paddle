@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.common_ops_import import *
 from ..helper import is_complex, is_real, complex_variable_exists
 from ...fluid.framework import ComplexVariable
 from ...fluid import layers
@@ -39,6 +40,9 @@ def elementwise_add(x, y, axis=-1, name=None):
             with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -87,6 +91,9 @@ def elementwise_sub(x, y, axis=-1, name=None):
             with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -135,6 +142,9 @@ def elementwise_mul(x, y, axis=-1, name=None):
             with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -186,6 +196,9 @@ def elementwise_div(x, y, axis=-1, name=None):
             with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
 
     Examples:
         .. code-block:: python
@@ -238,6 +251,9 @@ def kron(x, y, name=None):
             with any number of dimensions. The supported data types include float32 
             and float64 when it is a Variable. Otherwise the supported data types 
             are complex64 or complex128.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         ComplexVariable: The kronecker product, data type: complex64 or complex128, depending on the data type of x and y. If the data types of x and y are float32/complex64, the data type of the output is complex64, else if the data types of x and y are float64/complex128, the data type of the output is complex128.
@@ -264,6 +280,7 @@ def kron(x, y, name=None):
             #  [19.+13.j 22.+14.j 26.+15.j 30.+16.j]]
     """
     complex_variable_exists([x, y], "kron")
+
     # X = A + Bi, Y = C+Di
     # kron(A, B) = kron(A, C) - kron(B, D) + (kron(A, D) + kron(B, C))i
     (a, b) = (x.real, x.imag) if is_complex(x) else (x, None)

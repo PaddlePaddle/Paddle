@@ -1463,7 +1463,10 @@ def kron(x, y, out=None, name=None):
     helper = LayerHelper('kron', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out
