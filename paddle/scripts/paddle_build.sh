@@ -279,7 +279,6 @@ function check_style() {
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
 
-    export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
 
