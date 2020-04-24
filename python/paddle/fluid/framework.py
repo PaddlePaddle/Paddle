@@ -2605,16 +2605,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
-            if _dygraph_tracer_._train_mode == False:
-                # eval mode
-                if ('trainable_statistics' not in attrs
-                    ) or not attrs['trainable_statistics']:
-                    attrs['is_test'] = True
-                else:
-                    attrs['is_test'] = False
-
             type = kwargs.get("type", None)
-
             op = Operator(
                 block=self,
                 desc=None,
