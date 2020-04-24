@@ -12585,7 +12585,7 @@ def get_tensor_from_selected_rows(x, name=None):
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
-    check_type(x, 'x', (Variable), 'get_tensor_from_selected_rows')
+    check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
     if x.type != core.VarDesc.VarType.SELECTED_ROWS:
         raise TypeError(
             "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
