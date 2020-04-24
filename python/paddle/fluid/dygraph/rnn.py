@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .layers import Layer
-from paddle.fluid import layers
+import paddle
+from . import Layer
+from ..layers import sigmoid, tanh, concat, fill_constant, matmul, elementwise_add, elementwise_mul, split
 import copy
 
 __all__ = ['LSTMCell', 'GRUCell']
@@ -54,9 +54,9 @@ class LSTMCell(Layer):
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
-                                  Default: 'fluid.layers.sigmoid'
+                                  Default: 'fluid.sigmoid'
         activation (function|None): The activation function for cells (actNode).
-                             Default: 'fluid.layers.tanh'
+                             Default: 'fluid.tanh'
         forget_bias(float|1.0): forget bias used when computing forget gate. This 
             is not used in default LSTMCell implementation (CUDNN compatiable)
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
@@ -108,8 +108,8 @@ class LSTMCell(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or sigmoid
+        self._activation = activation or tanh
         self._use_cudnn_impl = use_cudnn_impl
 
         if self._use_cudnn_impl:
@@ -155,7 +155,7 @@ class LSTMCell(Layer):
 
         else:
 
-            self._forget_bias = layers.fill_constant(
+            self._forget_bias = fill_constant(
                 [1], dtype=dtype, value=forget_bias)
             self._forget_bias.stop_gradient = False
 
@@ -175,29 +175,24 @@ class LSTMCell(Layer):
     def forward(self, input, pre_hidden, pre_cell):
 
         if self._use_cudnn_impl:
-            igates = layers.matmul(input, y=self._weight_ih, transpose_y=True)
-            igates = layers.elementwise_add(igates, self._bias_ih)
-            hgates = layers.matmul(
-                pre_hidden, self._weight_hh, transpose_y=True)
-            hgates = layers.elementwise_add(hgates, self._bias_hh)
+            igates = matmul(input, y=self._weight_ih, transpose_y=True)
+            igates = elementwise_add(igates, self._bias_ih)
+            hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
+            hgates = elementwise_add(hgates, self._bias_hh)
 
-            chunked_igates = layers.split(igates, num_or_sections=4, dim=1)
-            chunked_hgates = layers.split(hgates, num_or_sections=4, dim=1)
+            chunked_igates = split(igates, num_or_sections=4, dim=1)
+            chunked_hgates = split(hgates, num_or_sections=4, dim=1)
 
-            ingate = layers.elementwise_add(chunked_igates[0],
-                                            chunked_hgates[0])
+            ingate = elementwise_add(chunked_igates[0], chunked_hgates[0])
             ingate = self._gate_activation(ingate)
 
-            forgetgate = layers.elementwise_add(chunked_igates[1],
-                                                chunked_hgates[1])
+            forgetgate = elementwise_add(chunked_igates[1], chunked_hgates[1])
             forgetgate = self._gate_activation(forgetgate)
 
-            cellgate = layers.elementwise_add(chunked_igates[2],
-                                              chunked_hgates[2])
+            cellgate = elementwise_add(chunked_igates[2], chunked_hgates[2])
             cellgate = self._activation(cellgate)
 
-            outgate = layers.elementwise_add(chunked_igates[3],
-                                             chunked_hgates[3])
+            outgate = elementwise_add(chunked_igates[3], chunked_hgates[3])
             outgate = self._gate_activation(outgate)
 
             new_cell = (forgetgate * pre_cell) + (ingate * cellgate)
@@ -205,17 +200,16 @@ class LSTMCell(Layer):
 
         else:
 
-            concat_input_hidden = layers.concat([input, pre_hidden], 1)
-            gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+            concat_input_hidden = concat([input, pre_hidden], 1)
+            gate_input = matmul(x=concat_input_hidden, y=self._weight)
 
-            gate_input = layers.elementwise_add(gate_input, self._bias)
-            i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-            new_cell = layers.elementwise_add(
-                layers.elementwise_mul(
-                    pre_cell,
-                    self._gate_activation(
-                        layers.elementwise_add(f, self._forget_bias))),
-                layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)))
+            gate_input = elementwise_add(gate_input, self._bias)
+            i, j, f, o = split(gate_input, num_or_sections=4, dim=-1)
+            new_cell = elementwise_add(
+                elementwise_mul(pre_cell,
+                                self._gate_activation(
+                                    elementwise_add(f, self._forget_bias))),
+                elementwise_mul(sigmoid(i), tanh(j)))
             new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
         return new_hidden, new_cell
@@ -252,9 +246,9 @@ class GRUCell(Layer):
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
-                                  Default: 'fluid.layers.sigmoid'
+                                  Default: 'fluid.sigmoid'
         activation (function|None): The activation function for cell (actNode).
-                             Default: 'fluid.layers.tanh'
+                             Default: 'fluid.tanh'
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
         dtype(string): data type used in this unit
     
@@ -299,8 +293,8 @@ class GRUCell(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or sigmoid
+        self._activation = activation or tanh
         self._use_cudnn_impl = use_cudnn_impl
 
         if self._use_cudnn_impl:
@@ -393,45 +387,41 @@ class GRUCell(Layer):
 
         if self._use_cudnn_impl:
 
-            igates = layers.matmul(input, y=self._weight_ih, transpose_y=True)
-            igates = layers.elementwise_add(igates, self._bias_ih)
-            hgates = layers.matmul(
-                pre_hidden, self._weight_hh, transpose_y=True)
-            hgates = layers.elementwise_add(hgates, self._bias_hh)
+            igates = matmul(input, y=self._weight_ih, transpose_y=True)
+            igates = elementwise_add(igates, self._bias_ih)
+            hgates = matmul(pre_hidden, self._weight_hh, transpose_y=True)
+            hgates = elementwise_add(hgates, self._bias_hh)
 
-            chunked_igates = layers.split(igates, num_or_sections=3, dim=1)
-            chunked_hgates = layers.split(hgates, num_or_sections=3, dim=1)
+            chunked_igates = split(igates, num_or_sections=3, dim=1)
+            chunked_hgates = split(hgates, num_or_sections=3, dim=1)
 
-            reset_gate = layers.elementwise_add(chunked_igates[0],
-                                                chunked_hgates[0])
+            reset_gate = elementwise_add(chunked_igates[0], chunked_hgates[0])
             reset_gate = self._gate_activation(reset_gate)
 
-            input_gate = layers.elementwise_add(chunked_igates[1],
-                                                chunked_hgates[1])
+            input_gate = elementwise_add(chunked_igates[1], chunked_hgates[1])
             input_gate = self._gate_activation(input_gate)
 
             _temp = reset_gate * chunked_hgates[2]
-            new_gate = layers.elementwise_add(chunked_igates[2], _temp)
+            new_gate = elementwise_add(chunked_igates[2], _temp)
             new_gate = self._activation(new_gate)
 
             new_hidden = (pre_hidden - new_gate) * input_gate + new_gate
 
         else:
 
-            concat_input_hidden = layers.concat([input, pre_hidden], 1)
+            concat_input_hidden = concat([input, pre_hidden], 1)
 
-            gate_input = layers.matmul(
-                x=concat_input_hidden, y=self._gate_weight)
+            gate_input = matmul(x=concat_input_hidden, y=self._gate_weight)
 
-            gate_input = layers.elementwise_add(gate_input, self._gate_bias)
+            gate_input = elementwise_add(gate_input, self._gate_bias)
             gate_input = self._gate_activation(gate_input)
-            r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+            r, u = split(gate_input, num_or_sections=2, dim=1)
 
             r_hidden = r * pre_hidden
 
-            candidate = layers.matmul(
-                layers.concat([input, r_hidden], 1), self._candidate_weight)
-            candidate = layers.elementwise_add(candidate, self._candidate_bias)
+            candidate = matmul(
+                concat([input, r_hidden], 1), self._candidate_weight)
+            candidate = elementwise_add(candidate, self._candidate_bias)
 
             c = self._activation(candidate)
             new_hidden = u * pre_hidden + (1 - u) * c
