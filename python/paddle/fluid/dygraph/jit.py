@@ -19,7 +19,6 @@ __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 import logging
 import numpy as np
 import six
-import paddle.fluid as fluid
 from paddle.fluid import framework
 from paddle import compat as cpt
 from paddle.fluid import backward
