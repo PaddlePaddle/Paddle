@@ -1180,6 +1180,8 @@ class Model(fluid.dygraph.Layer):
                              export_for_deployment=True,
                              program_only=False):
         """
+        Save inference model must in static mode.
+
         Args:
             dirname(str): The directory path to save the inference model.
             model_filename(str|None): The name of file to save the inference program
@@ -1201,7 +1203,9 @@ class Model(fluid.dygraph.Layer):
         Returns:
             list: The fetch variables' name list
         """
-        # self.prepare(self.)
+        assert not fluid.in_dygraph_mode(
+        ), 'Save inference model must in static mode!'
+
         prog = self._adapter._progs.get('test', None)
         assert prog, \
             "Model is not ready, please call `model.prepare()` first"
