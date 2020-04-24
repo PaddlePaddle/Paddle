@@ -224,6 +224,16 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+void* GetCusolverDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
+#endif
+}
+
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib");

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -105,6 +106,10 @@ class CUDAContext {
 
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
 
+  const cusolverDnHandle_t& CusolverDnHandle() const {
+    return cusolver_dn_handle_;
+  }
+
   const std::unique_ptr<CublasHandleHolder>& CublasHandle() const {
     return cublas_handle_;
   }
@@ -170,6 +175,13 @@ class CUDAContext {
     }
   }
 
+  void InitCuSolverContext() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnCreate(&cusolver_dn_handle_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
+  }
+
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
@@ -182,6 +194,13 @@ class CUDAContext {
     cublas_tensor_core_handle_.reset();
   }
 
+  void DestoryCuSolverContext() {
+    if (cusolver_dn_handle_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cusolverDnDestroy(cusolver_dn_handle_));
+    }
+  }
+
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
@@ -189,6 +208,7 @@ class CUDAContext {
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
@@ -248,6 +268,8 @@ class CUDADeviceContext : public DeviceContext {
    *  CudnnWorkspaceHandle is an RAII object to implement thread-safe
    *  sequential cudnn function calls. */
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
+
+  cusolverDnHandle_t cusolver_dn_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;

@@ -1,6 +1,6 @@
 cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
-list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc)
+list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc)
 
 # There is no macOS version of NCCL.
 # Disable nvrtc and cuda_driver api on MacOS and Windows, and only do a early test on Linux.
