@@ -957,6 +957,10 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_bytes",
+           [](Variable &self) {
+             return py::bytes(*self.GetMutable<std::string>());
+           })
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
