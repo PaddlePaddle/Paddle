@@ -12401,7 +12401,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
-    check_variable_and_dtype(x, 'x', ['float32'], 'log_loss')
+    check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
     check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
 
     loss = helper.create_variable_for_type_inference(dtype=input.dtype)
