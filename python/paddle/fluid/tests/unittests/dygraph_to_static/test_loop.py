@@ -29,6 +29,9 @@ np.random.seed(SEED)
 
 def while_loop_dyfunc(x):
     i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while x < 10:
         i = i + x
         x = x + 1
@@ -37,6 +40,9 @@ def while_loop_dyfunc(x):
 
 def while_loop_dyfun_with_conflict_var(x):
     i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
 
     def relu(y):
         # 'y' is not visible outside the scope.
@@ -56,6 +62,9 @@ def while_loop_dyfunc_with_none(x):
     i = fluid.dygraph.to_variable(x)\
         if x is not None \
         else fluid.dygraph.to_variable(x+1)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     flag = 1
     while x < 10:
         i = i + x if flag is not None else x + i
@@ -72,6 +81,10 @@ def for_loop_dyfunc(max_len):
 
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
+
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while (x >= 0 and x < 10) or x <= -1 or x < -3 or (x < -7 or x < -5):
         i = i + x
         x = x + 1
@@ -102,6 +115,11 @@ def for_loop_class_var(max_len):
             self.c = 5
 
     foo = Foo()
+
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    # TODO(liym27): Delete it if the type of parameter x can be resolved
+    max_len = fluid.layers.fill_constant(
+        shape=[1], value=max_len, dtype="int32")
     for i in range(max_len):
         foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
