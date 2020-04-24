@@ -634,7 +634,7 @@ void AnalyzeEvent(
         std::string cname = event_items[k].name;
         bool condition = cname.length() > fname.length() &&
                          cname.rfind(fname, 0) == 0 &&
-                         !cname.rfind(grad_name, 0) == 0 &&
+                         cname.rfind(grad_name, 0) != 0 &&
                          (cname[fname.length()] == '/' &&
                           cname.rfind('/') == fname.length());
         if (condition) {
