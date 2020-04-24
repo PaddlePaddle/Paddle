@@ -76,30 +76,31 @@ class AffineChannelOp : public framework::OperatorWithKernel {
                            ? x_dims[1]
                            : x_dims[x_dims.size() - 1]);
 
-    PADDLE_ENFORCE_EQ(scale_dims.size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "The rank of Input(Scale) must be 1,"
-                          "But received the rank of Input(Scale) is [%d] ",
-                          scale_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        scale_dims.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The dimensions of Input(Scale) must be 1,"
+            "But received the dimensions of Input(Scale) is [%d] ",
+            scale_dims.size()));
     PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
                       platform::errors::InvalidArgument(
-                          "The rank of Input(Bias) must be 1,"
-                          "But received the rank of Input(Bias) is [%d] ",
+                          "The dimensions of Input(Bias) must be 1,"
+                          "But received the dimensions of Input(Bias) is [%d] ",
                           scale_dims.size()));
     if (ctx->IsRuntime() || scale_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
           scale_dims[0], C,
           platform::errors::InvalidArgument(
-              "The first element of Input(Scale)'s dimensions must be [%d],"
-              "But got [%d].",
+              "The first dimension value of Input(Scale) must be [%d],"
+              "But received [%d].",
               C, scale_dims[0]));
     }
     if (ctx->IsRuntime() || b_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
           b_dims[0], C,
           platform::errors::InvalidArgument(
-              "The first element of Input(Bias)'s dimensions must be [%d],"
-              "But got [%d].",
+              "The first dimension value of Input(Bias) must be [%d],"
+              "But received [%d].",
               C, b_dims[0]));
     }
 

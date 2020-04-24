@@ -34,15 +34,16 @@ class LogLossOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           pred_dims, label_dims,
           platform::errors::InvalidArgument(
-              "The rank of Input(Predicted) must be equal to the"
-              "rank of Input(Labels), but received rank of Input(Predicted)"
-              "is [%s], received rank of Input(Labels) is [%s].",
+              "The dimensions of Input(Predicted) must be equal to the"
+              "dimensions of Input(Labels), but received dimensions of "
+              "Input(Predicted)"
+              "is [%s], received dimensions of Input(Labels) is [%s].",
               pred_dims, label_dims));
     }
     PADDLE_ENFORCE_EQ(pred_dims.size(), 2,
                       platform::errors::InvalidArgument(
-                          "The rank of Input(Predicted) must be 2,"
-                          "But received rank of Input(Predicted)"
+                          "The dimensions of Input(Predicted) must be 2,"
+                          "But received dimensions of Input(Predicted)"
                           "is [%d]",
                           pred_dims.size()));
     if (ctx->IsRuntime()) {
@@ -109,13 +110,14 @@ class LogLossGradOp : public framework::OperatorWithKernel {
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));
-    PADDLE_ENFORCE_EQ(
-        loss_grad_dims, pred_dims,
-        platform::errors::InvalidArgument(
-            "The rank of loss_grad must be equal to the rank of Predicted,"
-            "But received rank of loss_grad is [%s], received Predicted is "
-            "[%s]",
-            loss_grad_dims, pred_dims));
+    PADDLE_ENFORCE_EQ(loss_grad_dims, pred_dims,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of loss_grad must be equal to the "
+                          "dimensions of Predicted,"
+                          "But received dimensions of loss_grad is [%s], "
+                          "received Predicted is "
+                          "[%s]",
+                          loss_grad_dims, pred_dims));
 
     auto pred_grad_name = framework::GradVarName("Predicted");
     ctx->SetOutputDim(pred_grad_name, pred_dims);

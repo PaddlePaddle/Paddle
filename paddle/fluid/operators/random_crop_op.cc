@@ -27,8 +27,9 @@ class RandomCropOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         x_dim.size(), static_cast<int64_t>(shape.size()),
         platform::errors::InvalidArgument(
-            "Rank of Input(X) must be greater than the length of Attr(shape),"
-            "But received rank of Input(X) is [%d], receivecd length"
+            "The dimensions of Input(X) must be greater than the length of "
+            "Attr(shape),"
+            "But received dimensions of Input(X) is [%d], receivecd length"
             "of Attr(shape) is [%d].",
             x_dim.size(), static_cast<int64_t>(shape.size())));
     auto out_dim = framework::vectorize<int>(x_dim);
@@ -39,8 +40,8 @@ class RandomCropOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(
             x_dim[x_i], shape[shape_i],
             platform::errors::InvalidArgument(
-                "Size of Input(X) must be larger than Attr(shape),"
-                "But received size of Input(X) is [%d], received"
+                "The dimensions of Input(X) must be larger than Attr(shape),"
+                "But received dimensions of Input(X) is [%d], received"
                 "size of Attr(shape) is [%d].",
                 x_dim[x_i], shape[shape_i]));
       }

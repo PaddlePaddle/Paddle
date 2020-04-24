@@ -8188,7 +8188,7 @@ def random_crop(x, shape, seed=None):
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64', 'uint8', 'int16', 'int32'],
                              'random_crop')
-    check_type(shape, 'shape', list, 'reshape')
+    check_type(shape, 'shape', (list, Variable), 'random_crop')
     dtype = x.dtype
     out = helper.create_variable_for_type_inference(dtype)
     if seed is None:

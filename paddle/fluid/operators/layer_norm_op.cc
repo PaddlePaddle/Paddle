@@ -35,48 +35,53 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
     auto x_dim = ctx->GetInputDim("X");
     auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
-    PADDLE_ENFORCE_LT(begin_norm_axis, x_dim.size(),
-                      platform::errors::InvalidArgument(
-                          "'begin_norm_axis' must be less than the rank of X,"
-                          "But received 'begin_norm_axis' is [%d],"
-                          "received the rank of X is [%d].",
-                          begin_norm_axis, x_dim.size()));
+    PADDLE_ENFORCE_LT(
+        begin_norm_axis, x_dim.size(),
+        platform::errors::InvalidArgument(
+            "'begin_norm_axis' must be less than the dimensions of X,"
+            "But received 'begin_norm_axis' is [%d],"
+            "received the dimensions of X is [%d].",
+            begin_norm_axis, x_dim.size()));
 
     auto matrix_dim = framework::flatten_to_2d(x_dim, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Scale").size(), 1,
-          platform::errors::InvalidArgument(
-              "The rank of Input(Scale) must be 1, but received rank of"
-              "Input(Scale) is [%d]",
-              ctx->GetInputDim("Scale").size()));
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The dimensions of Input(Scale) must be 1, but "
+                            "received dimensions of"
+                            "Input(Scale) is [%d]",
+                            ctx->GetInputDim("Scale").size()));
 
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
             ctx->GetInputDim("Scale")[0], right,
             platform::errors::InvalidArgument(
-                "The first element of Input(Scale)'s dimension should with"
-                "right, but received the first element of Input(Scale) is"
-                "[%d], the right is [%d].",
+                "The first dimension value of Input(Scale) must equal to be the"
+                "second dimension value of the flattened 2D matrix of Input(X),"
+                "But received the first dimension value of Input(Scale) is"
+                "[%d], the second dimension value of the flattened 2D matrix of"
+                " Input(Scale) is [%d].",
                 ctx->GetInputDim("Scale")[0], right));
       }
     }
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Bias").size(), 1,
-          platform::errors::InvalidArgument(
-              "The rank of Input(Bias) must be 1, but received rank of"
-              "Input(Bias) is [%d]",
-              ctx->GetInputDim("Bias").size()));
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The dimensions of Input(Bias) must be 1, but "
+                            "received dimensions of"
+                            "Input(Bias) is [%d]",
+                            ctx->GetInputDim("Bias").size()));
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
             ctx->GetInputDim("Bias")[0], right,
             platform::errors::InvalidArgument(
-                "The first element of Input(Scale)'s dimension should with"
-                "right, but received the first element of Input(Scale) is"
-                "[%d], the right is [%d].",
+                "The first dimension value of Input(Bias) must equal to be the"
+                "second dimension value of the flattened 2D matrix of Input(X),"
+                "But received the first dimension value of Input(Bias) is"
+                "[%d], the second dimension value of the flattened 2D matrix of"
+                " Input(Bias) is [%d].",
                 ctx->GetInputDim("Scale")[0], right));
       }
     }
@@ -113,8 +118,8 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
                             platform::errors::InvalidArgument(
-                                "'epsilon' should be between 0.0 and 0.001,"
-                                "But received [%s].",
+                                "'epsilon' in Op(LayerNorm) should be between"
+                                "0.0 and 0.001, But received [%s].",
                                 epsilon));
         });
     AddAttr<int>("begin_norm_axis",
@@ -125,8 +130,8 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const int &begin_norm_axis) {
           PADDLE_ENFORCE_GT(begin_norm_axis, 0,
                             platform::errors::InvalidArgument(
-                                "'begin_norm_axis' should be greater than zero."
-                                "But received [%d].",
+                                "'begin_norm_axis' in Op(LayerNorm) should be"
+                                "greater than zero. But received [%d].",
                                 begin_norm_axis));
         });
 
