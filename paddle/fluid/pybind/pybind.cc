@@ -1301,7 +1301,7 @@ All parameter, weight, gradient are variables in Paddle.
         .. code-block:: python
 
           import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()to be allocated
+          cpu_place = fluid.CPUPlace()
 
         )DOC")
       .def(py::init<>())
