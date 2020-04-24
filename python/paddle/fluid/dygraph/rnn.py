@@ -24,22 +24,28 @@ class LSTMCell(Layer):
     LSTMCell implementation using basic operators.
     There are two LSTMCell version, the default one is compatible with CUDNN LSTM implementation.
     The algorithm can be described as the equations below.
+
         .. math::
+
             i_t &= sigmoid(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i)
             f_t &= sigmoid(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f)
             o_t &= sigmoid(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o)
             \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c)
             c_t &= f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t}
             h_t &= o_t \\odot tanh(c_t)
+
     The other LSTMCell version is compatible with the BasicLSTMUnit used in static graph.
     The algorithm can be described as the equations below.
+
         .. math::
+
             i_t &= sigmoid(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)
             f_t &= sigmoid(W_{fx}x_{t} + W_{fh}h_{t-1} + b_f + forget_bias )
             o_t &= sigmoid(W_{ox}x_{t} + W_{oh}h_{t-1} + b_o)
             \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
             c_t &= f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t}
             h_t &= o_t \\odot tanh(c_t)
+
     Args:
         hidden_size (integer): The hidden size used in the Cell.
         input_size (integer): The input size used in the Cell.
