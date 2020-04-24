@@ -553,13 +553,13 @@ __global__ void KeBicubicInterpFw(
     T in_img_idy = align_corners
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = static_cast<int>(in_img_idy);
+    int input_y = floorf(in_img_idy);
     const T y_t = in_img_idy - input_y;
 
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = static_cast<int>(in_img_idx);
+    int input_x = floorf(in_img_idx);
     const T x_t = in_img_idx - input_x;
 
     T coefficients[4];
@@ -665,13 +665,13 @@ __global__ void KeBicubicInterpBw(
     T in_img_idy = align_corners
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = static_cast<int>(in_img_idy);
+    int input_y = floorf(in_img_idy);
     const T y_t = in_img_idy - input_y;
 
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = static_cast<int>(in_img_idx);
+    int input_x = floorf(in_img_idx);
 
     const T x_t = in_img_idx - input_x;
 
