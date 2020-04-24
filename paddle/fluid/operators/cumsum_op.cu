@@ -33,8 +33,37 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+
+// inclusive scan
+__global__ void OuterScan(const T* in, T* out, unsigned inner_dim_size,
+                          unsigned outer_dim_size, unsigned scan_dim_size,
+                          bool exclusive) {
+  int id = blockIdx.y * blockDim.x + threadIdx.x;
+
+  for (unsigned outer_index = blockIdx.x; outer_index < outer_dim_size;
+       outer_index += gridDim.x) {
+    for (unsigned inner_index = blockIdx.y * blockDim.x + threadIdx.x;
+         inner_index < inner_dim_size; inner_index += gridDim.y * blockDim.x) {
+      int src_index =
+          outer_index * scan_dim_size * inner_dim_size + inner_index;
+      int dst_index =
+          outer_index * scan_dim_size * inner_dim_size + inner_index;
+      T acc = 0;
+      for (unsigned scan_index = 0; scan_index < scan_dim_size; ++scan_index) {
+        acc = in[src_index] + acc;
+        out[dst_index] = acc;
+        src_index += inner_dim_size;
+        dst_index += inner_dim_size;
+      }
+    }
+  }
+}
+
+// exclusive scan
+template <typename T>
 __global__ void BlellochScan(const T* in, T* out, unsigned inner_dim_size,
-                             unsigned outer_dim_size) {
+                             unsigned outer_dim_size, unsigned scan_dim_size,
+                             int size) {
   // https://stackoverflow.com/questions/27570552/templated-cuda-kernel-with-dynamic-shared-memory
   extern __shared__ __align__(sizeof(T)) unsigned char raw_tmp[];
   T* share_tmp = reinterpret_cast<T*>(raw_tmp);
@@ -112,18 +141,36 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("axis(%d) should be less than the "
                                           "dimension(%d) of the input tensor.",
                                           axis, in_dims.size()));
-    unsigned inner_dim_size = in_dims[axis];
-    unsigned outer_dim_size = size / inner_dim_size;
+
+    unsigned scan_dim_size = in_dims[axis];
+    unsigned outer_dim_size = 1;
+    unsigned inner_dim_size = 1;
+    // treat all dim index < axis as outer_dim_size
+    for (size_t i = 0; i < axis; i++) {
+      outer_dim_size *= in_dims[i];
+    }
+    // treat all dim index > axis as innner_dim_size
+    for (size_t i = axis + 1; i < in_dims.size(); i++) {
+      inner_dim_size *= in_dims[i];
+    }
 
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* in_data = in->data<T>();
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto config = GetGpuLaunchConfig1D(dev_ctx, inner_dim_size / 2);
-    int mem_per_block = config.thread_per_block.x * sizeof(T);
-    BlellochScan<T><<<config.block_per_grid.x, config.thread_per_block.x,
-                      mem_per_block, dev_ctx.stream()>>>(
-        in_data, out_data, inner_dim_size, outer_dim_size);
+    bool optimize_condition = false;
+    if (optimize_condition) {
+      int mem_per_block = size * sizeof(T);
+      dim3 block(1024);
+      dim3 grid((size + block.x - 1) / block.x);
+
+    } else {
+      dim3 block(std::min(512u, inner_dim_size));
+      dim3 grid(outer_dim_size, (inner_dim_size + block.x - 1) / block.x);
+      OuterScan<T><<<block, grid, 0, dev_ctx.stream()>>>(
+          in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size,
+          exclusive);
+    }
   }
 };
 }  // namespace operators
