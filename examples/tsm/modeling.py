@@ -18,7 +18,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 
 from hapi.model import Model
-from hapi.download import get_weights_path
+from hapi.download import get_weights_path_from_url
 
 __all__ = ["TSM_ResNet", "tsm_resnet50"]
 
@@ -122,6 +122,7 @@ class TSM_ResNet(Model):
         seg_num (int): segment number of each video sample. Default 8.
         num_classes (int): video class number. Default 400.
     """
+
     def __init__(self, num_layers=50, seg_num=8, num_classes=400):
         super(TSM_ResNet, self).__init__()
 
@@ -136,7 +137,11 @@ class TSM_ResNet(Model):
         num_filters = [64, 128, 256, 512]
 
         self.conv = ConvBNLayer(
-            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
+            num_channels=3,
+            num_filters=64,
+            filter_size=7,
+            stride=2,
+            act='relu')
         self.pool2d_max = Pool2D(
             pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
@@ -193,7 +198,7 @@ def _tsm_resnet(num_layers, seg_num=8, num_classes=400, pretrained=True):
         assert num_layers in pretrain_infos.keys(), \
                 "TSM-ResNet{} do not have pretrained weights now, " \
                 "pretrained should be set as False".format(num_layers)
-        weight_path = get_weights_path(*(pretrain_infos[num_layers]))
+        weight_path = get_weights_path_from_url(*(pretrain_infos[num_layers]))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
         model.load(weight_path)

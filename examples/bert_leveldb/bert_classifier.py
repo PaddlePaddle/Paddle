@@ -18,7 +18,8 @@ from hapi.metrics import Accuracy
 from hapi.configure import Config
 from hapi.text.bert import BertEncoder
 from paddle.fluid.dygraph import Linear, Layer
-from hapi.model import set_device, Model, SoftmaxWithCrossEntropy, Input
+from hapi.model import set_device, Model, Input
+from hapi.loss import SoftmaxWithCrossEntropy
 import hapi.text.tokenizer.tokenization as tokenization
 from hapi.text.bert import Optimizer, BertConfig, BertDataLoader, BertInputExample
 

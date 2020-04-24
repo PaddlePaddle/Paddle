@@ -28,14 +28,14 @@ import numpy as np
 work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(work_dir, "../"))
 
-
 from hapi.metrics import Metric
-from hapi.model import Model, Input, Loss, set_device
+from hapi.model import Model, Input, set_device
+from hapi.loss import Loss
 from hapi.text.text import SequenceTagging
 
 from utils.check import check_gpu, check_version
 from utils.configure import PDConfig
-from reader import LacDataset, create_lexnet_data_generator, create_dataloader 
+from reader import LacDataset, create_lexnet_data_generator, create_dataloader
 
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import AdamOptimizer
@@ -65,19 +65,19 @@ class SeqTagging(Model):
         self.bigru_num = args.bigru_num
         self.batch_size = args.batch_size
         self.init_bound = 0.1
-        self.length=length
+        self.length = length
 
         self.sequence_tagging = SequenceTagging(
-                        vocab_size=self.vocab_size,
-                        num_labels=self.num_labels,
-                        batch_size=self.batch_size,
-                        word_emb_dim=self.word_emb_dim,
-                        grnn_hidden_dim=self.grnn_hidden_dim,
-                        emb_learning_rate=self.emb_lr,
-                        crf_learning_rate=self.crf_lr,
-                        bigru_num=self.bigru_num,
-                        init_bound=self.init_bound,
-                        length=self.length)
+            vocab_size=self.vocab_size,
+            num_labels=self.num_labels,
+            batch_size=self.batch_size,
+            word_emb_dim=self.word_emb_dim,
+            grnn_hidden_dim=self.grnn_hidden_dim,
+            emb_learning_rate=self.emb_lr,
+            crf_learning_rate=self.crf_lr,
+            bigru_num=self.bigru_num,
+            init_bound=self.init_bound,
+            length=self.length)
 
     def forward(self, *inputs):
         """
@@ -85,10 +85,10 @@ class SeqTagging(Model):
         """
         word = inputs[0]
         lengths = inputs[1]
-        if self.mode_type == "train" or self.mode_type == "test": 
+        if self.mode_type == "train" or self.mode_type == "test":
             target = inputs[2]
             outputs = self.sequence_tagging(word, lengths, target)
-        else: 
+        else:
             outputs = self.sequence_tagging(word, lengths)
         return outputs
 
@@ -156,7 +156,7 @@ class ChunkEval(Metric):
             int(math.ceil((num_labels - 1) / 2.0)), "IOB")
         self.reset()
 
-    def add_metric_op(self, *args): 
+    def add_metric_op(self, *args):
         crf_decode = args[0]
         lengths = args[2]
         label = args[3]
@@ -207,13 +207,18 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [Input([None, None], 'int64', name='words'),
-              Input([None], 'int64', name='length'), 
-              Input([None, None], 'int64', name='target')]
+    inputs = [
+        Input(
+            [None, None], 'int64', name='words'), Input(
+                [None], 'int64', name='length'), Input(
+                    [None, None], 'int64', name='target')
+    ]
 
     labels = [Input([None, None], 'int64', name='labels')]
 
-    feed_list = None if args.dynamic else [x.forward() for x in inputs + labels]
+    feed_list = None if args.dynamic else [
+        x.forward() for x in inputs + labels
+    ]
     dataset = LacDataset(args)
     train_path = args.train_file
     test_path = args.test_file
@@ -263,7 +268,7 @@ if __name__ == '__main__':
     args = PDConfig(yaml_file="sequence_tagging.yaml")
     args.build()
     args.Print()
-    
+
     use_gpu = True if args.device == "gpu" else False
     check_gpu(use_gpu)
     check_version()

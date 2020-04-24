@@ -22,7 +22,8 @@ import numpy as np
 from paddle import fluid
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
-from hapi.model import Model, CrossEntropy, Input, set_device
+from hapi.model import Model, Input, set_device
+from hapi.loss import CrossEntropy
 from hapi.metrics import Accuracy
 
 from modeling import tsm_resnet50
@@ -33,11 +34,10 @@ from transforms import *
 
 def make_optimizer(step_per_epoch, parameter_list=None):
     boundaries = [e * step_per_epoch for e in [40, 60]]
-    values = [FLAGS.lr * (0.1 ** i) for i in range(len(boundaries) + 1)]
+    values = [FLAGS.lr * (0.1**i) for i in range(len(boundaries) + 1)]
 
     learning_rate = fluid.layers.piecewise_decay(
-        boundaries=boundaries,
-        values=values)
+        boundaries=boundaries, values=values)
     optimizer = fluid.optimizer.Momentum(
         learning_rate=learning_rate,
         regularization=fluid.regularizer.L2Decay(1e-4),
@@ -51,29 +51,27 @@ def main():
     device = set_device(FLAGS.device)
     fluid.enable_dygraph(device) if FLAGS.dynamic else None
 
-    train_transform = Compose([GroupScale(),
-                               GroupMultiScaleCrop(),
-                               GroupRandomCrop(),
-                               GroupRandomFlip(),
-                               NormalizeImage()])
+    train_transform = Compose([
+        GroupScale(), GroupMultiScaleCrop(), GroupRandomCrop(),
+        GroupRandomFlip(), NormalizeImage()
+    ])
     train_dataset = KineticsDataset(
-            file_list=os.path.join(FLAGS.data, 'train_10.list'),
-            pickle_dir=os.path.join(FLAGS.data, 'train_10'),
-            label_list=os.path.join(FLAGS.data, 'label_list'),
-            transform=train_transform)
-    val_transform = Compose([GroupScale(),
-                             GroupCenterCrop(),
-                             NormalizeImage()])
+        file_list=os.path.join(FLAGS.data, 'train_10.list'),
+        pickle_dir=os.path.join(FLAGS.data, 'train_10'),
+        label_list=os.path.join(FLAGS.data, 'label_list'),
+        transform=train_transform)
+    val_transform = Compose(
+        [GroupScale(), GroupCenterCrop(), NormalizeImage()])
     val_dataset = KineticsDataset(
-            file_list=os.path.join(FLAGS.data, 'val_10.list'),
-            pickle_dir=os.path.join(FLAGS.data, 'val_10'),
-            label_list=os.path.join(FLAGS.data, 'label_list'),
-            mode='val',
-            transform=val_transform)
+        file_list=os.path.join(FLAGS.data, 'val_10.list'),
+        pickle_dir=os.path.join(FLAGS.data, 'val_10'),
+        label_list=os.path.join(FLAGS.data, 'label_list'),
+        mode='val',
+        transform=val_transform)
 
     pretrained = FLAGS.eval_only and FLAGS.weights is None
-    model = tsm_resnet50(num_classes=train_dataset.num_classes,
-                         pretrained=pretrained)
+    model = tsm_resnet50(
+        num_classes=train_dataset.num_classes, pretrained=pretrained)
 
     step_per_epoch = int(len(train_dataset) / FLAGS.batch_size \
                          / ParallelEnv().nranks)
@@ -116,7 +114,9 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("CNN training on TSM")
     parser.add_argument(
-        "--data", type=str, default='dataset/kinetics',
+        "--data",
+        type=str,
+        default='dataset/kinetics',
         help="path to dataset root directory")
     parser.add_argument(
         "--device", type=str, default='gpu', help="device to use, gpu or cpu")
