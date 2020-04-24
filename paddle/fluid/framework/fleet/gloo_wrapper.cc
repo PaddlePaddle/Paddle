@@ -54,7 +54,9 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
       paddle::framework::fs_remove(tmp);
       if (i == retry_times_) {
         VLOG(0) << "fs_open_write failed, retry times reaches limit";
-        exit(-1);
+        PADDLE_ENFORCE_EQ(0, 1, platform::errors::PreconditionNotMet(
+                                    "fs_open_write failed, retry times reaches"
+                                    " limit ", retry_times_));
       }
     } else {
       break;

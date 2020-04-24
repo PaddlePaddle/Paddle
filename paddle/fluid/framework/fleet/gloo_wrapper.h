@@ -148,6 +148,8 @@ class GlooWrapper {
 #ifdef PADDLE_WITH_GLOO
     gloo::BarrierOptions opts(context_);
     gloo::barrier(opts);
+#else
+    LOG(WARNING) << "Barrier does nothing when WITH_GLOO=OFF";
 #endif
   }
 
@@ -178,6 +180,8 @@ class GlooWrapper {
                                   "AllReduce mode not known: " + mode));
     }
     gloo::allreduce(opts);
+#else
+    LOG(WARNING) << "AllReduce does nothing when WITH_GLOO=OFF";
 #endif
     return recvbuf;
   }
@@ -191,6 +195,8 @@ class GlooWrapper {
     opts.setInput(&input, 1);
     opts.setOutput(ret.data(), size_);
     gloo::allgather(opts);
+#else
+    LOG(WARNING) << "AllGather does nothing when WITH_GLOO=OFF";
 #endif
     return std::move(ret);
   }
