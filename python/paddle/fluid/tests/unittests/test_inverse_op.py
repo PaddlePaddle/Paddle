@@ -63,14 +63,17 @@ class TestInverseOpFP32(TestInverseOp):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
 
+    def test_grad(self):
+        self.check_grad(['Input'], 'Output', max_relative_error=1e-2)
 
-class TestInverseOpBatchedFP32(TestInverseOp):
+
+class TestInverseOpBatchedFP32(TestInverseOpFP32):
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float32"
 
 
-class TestInverseOpLargeFP32(TestInverseOp):
+class TestInverseOpLargeFP32(TestInverseOpFP32):
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
