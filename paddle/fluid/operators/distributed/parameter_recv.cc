@@ -66,6 +66,7 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   std::vector<distributed::VarHandlePtr> rets;
   for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
     auto &recv_var_name = rpc_ctx.splited_varnames[i];
+    local_scope->Var(recv_var_name);
     VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
     // sparse param in recv_scope is LoDTensor
     rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
