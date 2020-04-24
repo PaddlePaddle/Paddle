@@ -269,18 +269,14 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
     }
   }
 
-  auto conditional_block_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get(
-          "conditional_block_op_eager_deletion_pass");
-  conditional_block_op_eager_deletion_pass->Apply(graph);
+  std::vector<std::string> control_flow_eager_deletion_pass_names{
+      "conditional_block_op_eager_deletion_pass",
+      "while_op_eager_deletion_pass", "recurrent_op_eager_deletion_pass"};
 
-  auto while_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
-  while_op_eager_deletion_pass->Apply(graph);
-
-  auto recurrent_op_eager_deletion_pass =
-      ir::PassRegistry::Instance().Get("recurrent_op_eager_deletion_pass");
-  recurrent_op_eager_deletion_pass->Apply(graph);
+  for (auto &pass_name : control_flow_eager_deletion_pass_names) {
+    auto pass = ir::PassRegistry::Instance().Get(pass_name);
+    graph = pass->Apply(graph);
+  }
 }
 
 }  // namespace ir
