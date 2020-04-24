@@ -149,7 +149,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                     label = data[1]
                     label.stop_gradient = True
 
-                    cost = mnist(inputs=img)
+                    cost = mnist(img)
 
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
@@ -229,7 +229,67 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
         return static_x_data, static_out, static_param_init_value, static_param_value
 
-    def test_mnist_no_params_filename(self):
+    def load_and_infer_dygraph(self):
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        with fluid.dygraph.guard(place):
+            fluid.default_main_program().random_seed = self.seed
+
+            mnist = fluid.dygraph.static_runner.StaticModelRunner(
+                model_dir=self.save_dirname, model_filename=self.model_filename)
+
+            train_reader = paddle.batch(
+                self.reader_decorator(paddle.dataset.mnist.test()),
+                batch_size=self.batch_size,
+                drop_last=True)
+            train_loader = fluid.io.DataLoader.from_generator(capacity=10)
+            train_loader.set_sample_list_generator(train_reader, places=place)
+
+            mnist.eval()
+
+            for batch_id, data in enumerate(train_loader()):
+                img = data[0]
+                cost = mnist(img)
+
+                if batch_id >= 1:
+                    break
+
+            dy_x_data = img.numpy()
+            dy_out = cost.numpy()
+
+        return dy_x_data, dy_out
+
+    def load_and_infer_static(self):
+        with new_program_scope():
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+
+            exe = fluid.Executor(place)
+            [infer_program, feed_target_names,
+             fetch_targets] = fluid.io.load_inference_model(self.save_dirname,
+                                                            exe)
+            infer_program.random_seed = self.seed
+
+            train_reader = paddle.batch(
+                self.reader_decorator(paddle.dataset.mnist.test()),
+                batch_size=self.batch_size,
+                drop_last=True)
+
+            for batch_id, data in enumerate(train_reader()):
+                static_x_data = np.array([x[0] for x in data])
+                out = exe.run(infer_program,
+                              feed={feed_target_names[0]: static_x_data},
+                              fetch_list=fetch_targets)
+
+                if batch_id >= 1:
+                    break
+
+            static_param_value = {}
+            static_out = out[0]
+
+        return static_x_data, static_out
+
+    def test_mnist_train_no_params_filename(self):
         self.save_dirname = "mnist.inference.model.noname"
         self.model_filename = None
         self.params_filename = None
@@ -257,7 +317,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             key += core.loaded_var_suffix()
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
-    def test_mnist_with_params_filename(self):
+    def test_mnist_train_with_params_filename(self):
         self.save_dirname = "mnist.inference.model"
         self.model_filename = "mnist.model"
         self.params_filename = "mnist.params"
@@ -284,6 +344,26 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         for key, value in six.iteritems(static_param_value):
             key += core.loaded_var_suffix()
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
+
+    def test_mnist_infer_no_params_filename(self):
+        self.save_dirname = "mnist.inference.model.noname"
+        self.model_filename = None
+        self.params_filename = None
+        # Phase 1. run and save static model
+        self.train_and_save_model()
+
+        # Phase 2. load model & train dygraph
+        dy_x_data, dy_out = \
+            self.load_and_infer_dygraph()
+
+        static_x_data, static_out = \
+            self.load_and_infer_static()
+
+        # Phase 3. compare
+        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+
+        np.testing.assert_array_almost_equal(static_out, dy_out)
+        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
 
 if __name__ == '__main__':

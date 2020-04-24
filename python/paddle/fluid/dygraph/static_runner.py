@@ -168,8 +168,13 @@ class StaticModelRunner(layers.Layer):
         super(StaticModelRunner, self).__init__()
 
         # Step 0. key variable definitions
-        self._load_program_desc = None
-        self._program_desc = None
+        # loaded inference program desc
+        self._infer_program_desc = None
+        # recovered train program desc
+        self._train_program_desc = None
+        # StaticModelRunner executed program desc,
+        # switch infer or train by train() and eval()
+        self._trace_program_desc = None
         self._inner_scope = core.Scope()
         # the layer outputs var desc
         self._output_descs = []
@@ -182,46 +187,47 @@ class StaticModelRunner(layers.Layer):
 
         # Step 1. load program desc from disk
         # the saved model hold feed, fetch & scale op, no need, can be remove
-        self._load_program_desc = self._load_static_model(model_dir,
-                                                          model_filename)
+        self._infer_program_desc = self._load_static_model(model_dir,
+                                                           model_filename)
 
-        # Step 2. set all `is_test` attributes to False
-        self._change_is_test_status(False)
-
-        # Step 3. load all parameters
+        # Step 2. load all parameters
         self._load_persisitable_dict(model_dir, params_filename)
 
-        # Step 4. generate backwar program desc
-        self._program_desc = self._append_backward_desc()
+        # Step 3. generate backwar program desc
+        self._train_program_desc = self._append_backward_desc()
 
-        # Step 5. recheck parameters stop gradients
+        # Step 4. recheck parameters stop gradients
         self._recheck_stop_gradients()
+
+        # Step 5. set default mode to train
+        self.train()
 
     def train(self):
         self._is_test = False
-        self._change_is_test_status(False)
+        self._trace_program_desc = self._train_program_desc
 
     def eval(self):
         self._is_test = True
-        self._change_is_test_status(True)
+        self._trace_program_desc = self._infer_program_desc
 
-    def forward(self, inputs):
+    def forward(self, *args):
         """
         Executed forward part of StaticModelRunner Layer.
         Generally execute directly using the Layer object.
 
         Args:
-            inputs(np.ndarray|Variable|list[np.ndarray|Variable]): the inputs of StaticModelRunner
+            args(tuple(np.ndarray|Variable)): the inputs of StaticModelRunner.
+                The order of input variables needs to be the same as the order 
+                of feed variables when using `save_inference_model` to save model.
         
         Returns:
             Variable|list[Variable]: The forward outputs of StaticModelRunner Layer.
+                If there is only one output, return Variable;
+                if there are multiple outputs, return list[Variable].
         """
         # Step 1. prepare inputs, outputs, attrs
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
-
         input_vars = []
-        for i, value in enumerate(inputs):
+        for i, value in enumerate(args):
             if not isinstance(value, (np.ndarray, core.VarBase)):
                 raise TypeError(
                     "The type of inputs.value in StaticModelRunner.forward must be numpy array or Variable(VarBase), but received %s."
@@ -265,9 +271,9 @@ class StaticModelRunner(layers.Layer):
             outputs={'Out': output_vars,
                      'OutScope': tmp_scope_vec},
             attrs={
-                'global_block': self._program_desc.block(0),
+                'global_block': self._trace_program_desc.block(0),
                 'start_op_index': 0,
-                'end_op_index': self._load_program_desc.block(0).op_size(),
+                'end_op_index': self._infer_program_desc.block(0).op_size(),
                 'is_test': self._is_test
             })
 
@@ -280,7 +286,7 @@ class StaticModelRunner(layers.Layer):
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = self._program_desc.block(0).find_var(
+            grad_var = self._trace_program_desc.block(0).find_var(
                 cpt.to_bytes(grad_name))
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:
@@ -350,14 +356,20 @@ class StaticModelRunner(layers.Layer):
         for op_idx in reversed(ops_to_remove):
             root_block._remove_op(op_idx, op_idx + 1)
 
+        # NOTE: reverse feed vars
+        self._input_names.reverse()
+
         return program_desc
 
     @switch_to_static_graph
     def _append_backward_desc(self):
-        assert self._load_program_desc is not None, "The StaticModelRunner not initialized properly."
-        program_desc_copy = core.ProgramDesc(self._load_program_desc)
+        assert self._infer_program_desc is not None, "The StaticModelRunner not initialized properly."
+        program_desc_copy = core.ProgramDesc(self._infer_program_desc)
 
-        # Step 1. prepare program and related var
+        # Step 1. set all `is_test` attributes to False
+        self._change_is_test_status(program_desc_copy, False)
+
+        # Step 2. prepare program and related var
         # NOTE: To reuse backward interfaces, build Program firstly.
         # Originally, there is no need to build a program, but need to almost
         # rewrite a series of methods for append_backward for program_desc. 
@@ -370,15 +382,15 @@ class StaticModelRunner(layers.Layer):
         for out in self._output_descs:
             targets.append(program.global_block().var(out.name()))
 
-        # Step 2. append backward
+        # Step 3. append backward
         backward.gradients(targets=targets, inputs=[])
         return program.desc
 
     def _load_persisitable_dict(self, model_dir, params_filename=None):
         load_dirname = os.path.normpath(model_dir)
-        assert self._load_program_desc is not None, "The StaticModelRunner not initialized properly."
+        assert self._infer_program_desc is not None, "The StaticModelRunner not initialized properly."
 
-        persis_vars = self._get_persis_vars(self._load_program_desc)
+        persis_vars = self._get_persis_vars(self._infer_program_desc)
         load_var_map = {}
         for each_var in persis_vars:
             orig_each_name = each_var.name()
@@ -429,12 +441,12 @@ class StaticModelRunner(layers.Layer):
                 self._param_names.append(param.name)
 
     def _recheck_stop_gradients(self):
-        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+        assert self._train_program_desc is not None, "The StaticModelRunner not initialized properly."
         # NOTE: After loading the model, the stop_gradient information 
         # of the original variable is lost, but if a parameter does not
         # have a corresponding @GRAD variable in the backward program,
         # it can be said that it is also stop_gradient
-        all_var_names = self._get_all_var_names(self._program_desc)
+        all_var_names = self._get_all_var_names(self._train_program_desc)
         for param_name in self._parameters:
             param_grad_name = param_name + core.grad_var_suffix()
             if param_grad_name not in all_var_names:
@@ -476,19 +488,19 @@ class StaticModelRunner(layers.Layer):
         return var_desc.persistable()
 
     def _is_parameter(self, persis_var_desc):
-        assert self._load_program_desc is not None, "The StaticModelRunner not initialized properly."
+        assert self._infer_program_desc is not None, "The StaticModelRunner not initialized properly."
         # 1. firstly, param should be input of op
         input_ops = []  # op can be repeated
-        for block_idx in six.moves.range(self._load_program_desc.num_blocks()):
-            block = self._load_program_desc.block(block_idx)
+        for block_idx in six.moves.range(self._infer_program_desc.num_blocks()):
+            block = self._infer_program_desc.block(block_idx)
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 # NOTE: parameter is the input of a certain op
                 if persis_var_desc.name() in op.input_arg_names():
                     input_ops.append(op)
         # 2. secondly, param should not be output of op or be same op's output
-        for block_idx in six.moves.range(self._load_program_desc.num_blocks()):
-            block = self._load_program_desc.block(block_idx)
+        for block_idx in six.moves.range(self._infer_program_desc.num_blocks()):
+            block = self._infer_program_desc.block(block_idx)
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 if persis_var_desc.name() in op.output_arg_names():
@@ -499,11 +511,10 @@ class StaticModelRunner(layers.Layer):
                         return False
         return True
 
-    def _change_is_test_status(self, is_test):
+    def _change_is_test_status(self, program_desc, is_test):
         # change all `is_test` attributes
-        assert self._load_program_desc is not None, "The StaticModelRunner not initialized properly."
-        for i in six.moves.range(self._load_program_desc.num_blocks()):
-            block = self._load_program_desc.block(i)
+        for i in six.moves.range(program_desc.num_blocks()):
+            block = program_desc.block(i)
             for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
@@ -524,8 +535,8 @@ class StaticModelRunner(layers.Layer):
         old_name = param_desc.name()
         new_name = self._append_loaded_suffix(param_desc.name())
         param_desc.set_name(new_name)
-        for block_idx in six.moves.range(self._load_program_desc.num_blocks()):
-            block = self._load_program_desc.block(block_idx)
+        for block_idx in six.moves.range(self._infer_program_desc.num_blocks()):
+            block = self._infer_program_desc.block(block_idx)
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
