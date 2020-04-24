@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from hapi import logger
 from hapi.configure import Config
 from hapi import callbacks
 from hapi import datasets
@@ -22,16 +22,11 @@ from hapi import model
 from hapi import progressbar
 from hapi import text
 from hapi import vision
+from hapi import loss
+
+logger.setup_logger()
 
 __all__ = [
-    'Config',
-    'callbacks',
-    'datasets',
-    'distributed',
-    'download',
-    'metrics',
-    'model',
-    'progressbar',
-    'text',
-    'vision',
+    'Config', 'callbacks', 'datasets', 'distributed', 'download', 'metrics',
+    'model', 'progressbar', 'text', 'vision', 'loss'
 ]
