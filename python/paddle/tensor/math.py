@@ -1415,10 +1415,11 @@ def kron(x, y, out=None, name=None):
     """${comment}
 
     Args:
-        x (Variable): the fist operand of kron op, data type: float32 or 
-            float64.
-        y (Variable): the second operand of kron op, data type: float32 or 
-            float64. Its data type should be the same with x.
+        x (Variable): the fist operand of kron op, data type: float16, float32, 
+            float64, int32 or int64.
+        y (Variable): the second operand of kron op, data type: float16, 
+            float32, float64, int32 or int64. Its data type should be the same 
+            with x.
         out (Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of 
             operation. If out is None, a new Varibale will be create to store 
@@ -1428,7 +1429,7 @@ def kron(x, y, out=None, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: The output of kron op, data type: float32 or float64. Its data is the same with x.
+        Variable: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
 
     Examples:
         .. code-block:: python
@@ -1460,8 +1461,8 @@ def kron(x, y, out=None, name=None):
         return core.ops.kron(x, y)
 
     helper = LayerHelper('kron', **locals())
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'kron')
-    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'kron')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})

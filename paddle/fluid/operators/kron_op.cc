@@ -154,11 +154,15 @@ REGISTER_OP_CPU_KERNEL(
     kron, ops::KronKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KronKernel<paddle::platform::CPUDeviceContext, double>,
     ops::KronKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::float16>);
+                    paddle::platform::float16>,
+    ops::KronKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::KronKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OPERATOR(kron_grad, ops::KronGradOp);
 REGISTER_OP_CPU_KERNEL(
     kron_grad, ops::KronGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::KronGradKernel<paddle::platform::CPUDeviceContext,
-                        paddle::platform::float16>);
+                        paddle::platform::float16>,
+    ops::KronGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::KronGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

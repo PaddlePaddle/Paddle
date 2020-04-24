@@ -20,10 +20,14 @@ REGISTER_OP_CUDA_KERNEL(
     kron, ops::KronKernel<paddle::platform::CUDADeviceContext, float>,
     ops::KronKernel<paddle::platform::CUDADeviceContext, double>,
     ops::KronKernel<paddle::platform::CUDADeviceContext,
-                    paddle::platform::float16>);
+                    paddle::platform::float16>,
+    ops::KronKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::KronKernel<paddle::platform::CUDADeviceContext, int64_t>);
 
 REGISTER_OP_CUDA_KERNEL(
     kron_grad, ops::KronGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::KronGradKernel<paddle::platform::CUDADeviceContext,
-                        paddle::platform::float16>);
+                        paddle::platform::float16>,
+    ops::KronGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::KronGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
