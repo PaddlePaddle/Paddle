@@ -327,7 +327,7 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
 
   if (var->IsType<framework::SelectedRows>()) {
     framework::CopyVariable(*var, tmp_var.get());
-    auto &queue = send_varname_to_queue_.at(table_name);
+    VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
     queue->Push(tmp_var);
   } else if (var->IsType<framework::LoDTensor>()) {
     // push var into send queue by var_name

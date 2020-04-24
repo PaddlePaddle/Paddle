@@ -127,8 +127,9 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
         auto &send_var_name = rpc_ctx.splited_varnames[i];
         VLOG(4) << "send var name: " << send_var_name;
         auto &endpoint = rpc_ctx.epmap[i];
-        VLOG(4) << "send var endpoint: " << endpoint;
-        VLOG(4) << "need send: " << NeedSend(*local_scope.get(), send_var_name);
+        VLOG(4) << " send var endpoint: " << endpoint;
+        VLOG(4) << " need send: "
+                << NeedSend(*local_scope.get(), send_var_name);
         if (NeedSend(*local_scope.get(), send_var_name)) {
           VLOG(3) << "sending " << send_var_name << " to " << endpoint;
           rets.push_back(rpc_client->AsyncSendVar(
@@ -145,8 +146,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
           auto &send_var_name = rpc_ctx.splited_varnames[i];
           VLOG(4) << "send var name: " << send_var_name;
           auto &endpoint = rpc_ctx.epmap[j];
-          VLOG(4) << "send var endpoint: " << endpoint;
-          VLOG(4) << "need send: "
+          VLOG(4) << " send var endpoint: " << endpoint;
+          VLOG(4) << " need send: "
                   << NeedSend(*local_scope.get(), send_var_name);
           if (NeedSend(*local_scope.get(), send_var_name)) {
             VLOG(3) << "sending " << send_var_name << " to " << endpoint;
@@ -241,8 +242,8 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       auto need_send = NeedSend(*local_scope.get(), send_var_name);
 
       VLOG(4) << "send var name: " << send_var_name
-              << "send var endpoint: " << endpoint
-              << "need send: " << need_send;
+              << " send var endpoint: " << endpoint
+              << " need send: " << need_send;
 
       if (need_send) {
         VLOG(4) << "sending " << send_var_name << " to " << endpoint;

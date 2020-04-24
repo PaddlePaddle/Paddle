@@ -73,6 +73,7 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
                                            *local_scope.get(), recv_var_name,
                                            recv_var_name));
   }
+
   for (size_t i = 0; i < rets.size(); i++) {
     PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::ExecutionTimeout(
                                                "internal error in RPCClient"));
@@ -81,11 +82,16 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   std::vector<Variable *> variables;
   for (auto &slice_varname : rpc_ctx.splited_varnames) {
     Variable *var = local_scope->FindVar(slice_varname);
+
+    PADDLE_ENFORCE_EQ(
+        var->IsInitialized(), true,
+        platform::errors::InvalidArgument("recv var should be inited"));
+
     variables.push_back(var);
   }
 
   // merged var's tensor into one
-  auto *merged_var = local_scope->FindVar(rpc_ctx.var_name);
+  auto merged_var = std::make_shared<Variable>();
 
   framework::FlattenVariable(variables, merged_var);
   auto src_ptr = merged_var->Get<framework::LoDTensor>().data<void>();
@@ -95,10 +101,10 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
     framework::Tensor *origin_t = origin_v->GetMutable<framework::LoDTensor>();
     auto size = origin_t->numel() * framework::SizeOfType(origin_t->type());
     memory::Copy(cpu_place, origin_t->data<void>(), cpu_place, src_ptr, size);
-    src_ptr = static_cast<char *>(const_cast<void *>(src_ptr)) + size;
-    // src_ptr = *static_cast< char* >(src_ptr) + size;
+
+    src_ptr = reinterpret_cast<char *>(const_cast<void *>(src_ptr)) + size;
   }
-  VLOG(2) << "ParameterRecv out " << rpc_ctx.var_name;
+  VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
 }
 
 template struct ParameterRecv<float>;
