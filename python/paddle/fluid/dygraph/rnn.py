@@ -70,9 +70,9 @@ class LSTMCell(Layer):
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
-                                  Default: 'fluid.sigmoid'
+                                  Default: 'fluid.layers.sigmoid'
         activation (function|None): The activation function for cells (actNode).
-                             Default: 'fluid.tanh'
+                             Default: 'fluid.layers.tanh'
         forget_bias(float|1.0): forget bias used when computing forget gate. This 
             is not used in default LSTMCell implementation (CUDNN compatiable)
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
@@ -274,9 +274,9 @@ class GRUCell(Layer):
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
-                                  Default: 'fluid.sigmoid'
+                                  Default: 'fluid.layers.sigmoid'
         activation (function|None): The activation function for cell (actNode).
-                             Default: 'fluid.tanh'
+                             Default: 'fluid.layers.tanh'
         use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
         dtype(string): data type used in this cell
     
