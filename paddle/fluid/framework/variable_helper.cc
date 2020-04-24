@@ -94,7 +94,7 @@ void FlattenVariable(const std::vector<Variable *> &src_vars,
   auto &src_tensor = src_vars[0]->Get<framework::LoDTensor>();
 
   auto *dst = dst_var->GetMutable<framework::LoDTensor>();
-  dst->Resize(framework::make_ddim({static_cast<int64_t>(numel), 1}));
+  dst->Resize(framework::make_ddim({static_cast<int64_t>(numel)}));
   dst->mutable_data(cpu_place, src_tensor.type());
   auto dst_ptr = dst->mutable_data(cpu_place, src_tensor.type());
 

@@ -93,7 +93,7 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   // merged var's tensor into one
   auto merged_var = std::make_shared<Variable>();
 
-  framework::FlattenVariable(variables, merged_var);
+  framework::FlattenVariable(variables, merged_var.get());
   auto src_ptr = merged_var->Get<framework::LoDTensor>().data<void>();
   // write tensor to global scope
   for (auto &origin_varname : rpc_ctx.origin_varnames) {

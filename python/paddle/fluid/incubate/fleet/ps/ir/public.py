@@ -144,12 +144,10 @@ class CompileTimeStrategy(object):
             names = []
             eps = []
             sections = []
-            offset = 0
 
             for slice in slices:
                 names.append(slice.name)
-                offset += reduce(lambda x, y: x * y, slice.shape)
-                sections.append(offset)
+                sections.append(slice.shape[0])
 
                 for ep, pairs in self.param_grad_ep_mapping.items():
                     params, grads = pairs["params"], pairs["grads"]
@@ -209,15 +207,14 @@ class CompileTimeStrategy(object):
                 for p in pairs["params"]:
                     if p.name in param_varnames:
                         offset += p.shape[0]
-                        var_distributed.append((p.name, ep, offset))
+                        var_distributed.append((p.name, ep, p.shape[0]))
         else:
             grads = self.grad_var_mapping[varname]
             grad_varnames = [var.name for var in grads]
             for ep, pairs in self.param_grad_ep_mapping.items():
                 for g in pairs["grads"]:
                     if g.name in grad_varnames:
-                        offset += reduce(lambda x, y: x * y, g.shape)
-                        var_distributed.append((g.name, ep, offset))
+                        var_distributed.append((g.name, ep, g.shape[0]))
         return var_distributed
 
     def display(self):
