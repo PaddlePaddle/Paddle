@@ -149,7 +149,7 @@ class MatMulFactory {
 
   bool IsInputFused(const ExecutionContext& ctx) const {
     return !(ctx.Attr<std::vector<int>>("fused_reshape_X").empty() &&
-             ctx.Attr<std::vector<int>>("fused_reshape_Y").empty())
+             ctx.Attr<std::vector<int>>("fused_reshape_Y").empty());
   }
 
   bool IsOutputFused(const ExecutionContext& ctx) const {
