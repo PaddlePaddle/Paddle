@@ -47,7 +47,7 @@ void IndexSampleInner(const framework::ExecutionContext &context,
   TensorToVector(input, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
 
-  std::vector<T> res{};
+  std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
     PADDLE_ENFORCE_GE(
@@ -69,13 +69,13 @@ void IndexSampleInner(const framework::ExecutionContext &context,
     T v = input_vec[v_i];
     VLOG(4) << "Index Sample: batch = " << b << " index = " << v_i
             << " value = " << v;
-    res.push_back(v);
+    res[i] = v;
   }
 
   auto ddim = framework::make_ddim({batch_size, index_length});
-  output->Resize(ddim);
   output->mutable_data<T>(context.GetPlace());
   framework::TensorFromVector(res, context.device_context(), output);
+  output->Resize(ddim);
 }
 
 template <typename DeviceContext, typename T>
