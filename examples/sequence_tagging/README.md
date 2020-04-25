@@ -6,7 +6,7 @@ Sequence Tagging，是一个序列标注模型，模型可用于实现，分词�
 
 |模型|Precision|Recall|F1-score|
 |:-:|:-:|:-:|:-:|
-|Lexical Analysis|88.26%|89.20%|88.73%|
+|Lexical Analysis|89.57%|89.96%|89.76%|
 
 ## 2. 快速开始
 
@@ -22,7 +22,7 @@ Sequence Tagging，是一个序列标注模型，模型可用于实现，分词�
 克隆工具集代码库到本地
 ```bash
  git clone https://github.com/PaddlePaddle/hapi.git
- cd hapi/sequence_tagging
+ cd hapi/examples/sequence_tagging
 ```
 
 #### 3. 环境依赖
@@ -70,7 +70,7 @@ python -u train.py \
           --dynamic False
 
 # --device: 使用gpu设备还是cpu设备
-# --dynamic： 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
+# --dynamic： 是否使用动态图模式进行训练，如果使用静态图训练，设置为False, 动态图设置为True
 ```
 
 GPU上多卡训练
@@ -84,7 +84,7 @@ python -m paddle.distributed.launch --selected_gpus=0,1,2,3  train.py \
           --dynamic False
 
 # --device: 使用gpu设备还是cpu设备
-# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为False, 动态图设置为True
 ```
 
 CPU上训练
@@ -95,7 +95,7 @@ python -u train.py \
           --dynamic False
 
 # --device: 使用gpu设备还是cpu设备
-# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为False, 动态图设置为True
 ```
 
 ### 模型预测
@@ -105,15 +105,13 @@ python -u train.py \
 python predict.py \
       --init_from_checkpoint  model_baseline/params \
       --output_file predict.result  \
-      --mode predict \
       --device cpu  \
       --dynamic False
 
 # --init_from_checkpoint: 初始化模型
 # --output_file: 预测结果文件
 # --device: 使用gpu还是cpu设备
-# --mode: 开启模式, 设置为train时，进行训练，设置为predict时进行预测
-# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为False, 动态图设置为True
 ```
 
 ### 模型评估
@@ -123,14 +121,12 @@ python predict.py \
 # baseline model
 python eval.py \
         --init_from_checkpoint  ./model_baseline/params \
-        --mode predict \
         --device cpu  \
         --dynamic False
 
 # --init_from_checkpoint: 初始化模型
 # --device: 使用gpu还是cpu设备
-# --mode: 开启模式, 设置为train时，进行训练，设置为predict时进行预测
-# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为True, 动态图设置为False
+# --dynamic: 是否使用动态图模式进行训练，如果使用静态图训练，设置为False, 动态图设置为True
 ```
 
 
@@ -168,7 +164,7 @@ Overall Architecture of GRU-CRF-MODEL
 训练使用的数据可以由用户根据实际的应用场景，自己组织数据。除了第一行是 `text_a\tlabel` 固定的开头，后面的每行数据都是由两列组成，以制表符分隔，第一列是 utf-8 编码的中文文本，以 `\002` 分割，第二列是对应每个字的标注，以 `\002` 分隔。我们采用 IOB2 标注体系，即以 X-B 作为类型为 X 的词的开始，以 X-I 作为类型为 X 的词的持续，以 O 表示不关注的字（实际上，在词性、专名联合标注中，不存在 O ）。示例如下：
 
 ```text
-除\002了\002他\002续\002任\002十\002二\002届\002政\002协\002委\002员\002,\002马\002化\002腾\002,\002雷\002军\002,\002李\002彦\002宏\002也\002被\002推\002选\002为\002新\002一\002届\002全\002国\002人\002大\002代\002表\002或\002全\002国\002政\002协\002委\002员	p-B\002p-I\002r-B\002v-B\002v-I\002m-B\002m-I\002m-I\002ORG-B\002ORG-I\002n-B\002n-I\002w-B\002PER-B\002PER-I\002PER-I\002w-B\002PER-B\002PER-I\002w-B\002PER-B\002PER-I\002PER-I\002d-B\002p-B\002v-B\002v-I\002v-B\002a-B\002m-B\002m-I\002ORG-B\002ORG-I\002ORG-I\002ORG-I\002n-B\002n-I\002c-B\002n-B\002n-I\002ORG-B\002ORG-I\002n-B\002n-I
+除\002了\002他\002续\002任\002十\002二\002届\002政\002协\002委\002员\002,\002马\002化\002腾\002,\002雷\002军\002,\002李\002彦\002宏\002也\002被\002推\002选\002为\002新\002一\002届\002全\002国\002人\002大\002代\002表\002或\002全\002国\002政\002协\002委\002员    p-B\002p-I\002r-B\002v-B\002v-I\002m-B\002m-I\002m-I\002ORG-B\002ORG-I\002n-B\002n-I\002w-B\002PER-B\002PER-I\002PER-I\002w-B\002PER-B\002PER-I\002w-B\002PER-B\002PER-I\002PER-I\002d-B\002p-B\002v-B\002v-I\002v-B\002a-B\002m-B\002m-I\002ORG-B\002ORG-I\002ORG-I\002ORG-I\002n-B\002n-I\002c-B\002n-B\002n-I\002ORG-B\002ORG-I\002n-B\002n-I
 ```
 
 + 我们随同代码一并发布了完全版的模型和相关的依赖数据。但是，由于模型的训练数据过于庞大，我们没有发布训练数据，仅在`data`目录下放置少数样本用以示例输入数据格式。
@@ -196,6 +192,7 @@ Overall Architecture of GRU-CRF-MODEL
 ├── eval.py                               # 词法分析评估的脚本
 ├── downloads.py                      # 用于下载数据和模型的脚本
 ├── downloads.sh                      # 用于下载数据和模型的脚本
+├── sequence_tagging.yaml             # 模型训练、预测、评估相关配置参数
 └──reader.py                           # 文件读取相关函数
 ```
 
@@ -207,11 +204,11 @@ Overall Architecture of GRU-CRF-MODEL
 
 ```text
 @article{jiao2018LAC,
-	title={Chinese Lexical Analysis with Deep Bi-GRU-CRF Network},
-	author={Jiao, Zhenyu and Sun, Shuqi and Sun, Ke},
-	journal={arXiv preprint arXiv:1807.01882},
-	year={2018},
-	url={https://arxiv.org/abs/1807.01882}
+    title={Chinese Lexical Analysis with Deep Bi-GRU-CRF Network},
+    author={Jiao, Zhenyu and Sun, Shuqi and Sun, Ke},
+    journal={arXiv preprint arXiv:1807.01882},
+    year={2018},
+    url={https://arxiv.org/abs/1807.01882}
 }
 ```
 ### 如何贡献代码

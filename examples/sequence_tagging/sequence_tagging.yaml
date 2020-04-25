@@ -1,7 +1,7 @@
 word_dict_path: "./conf/word.dic"
 label_dict_path: "./conf/tag.dic"
 word_rep_dict_path: "./conf/q2b.dic"
-device: "cpu"
+device: "gpu"
 dynamic: True
 epoch: 10
 base_learning_rate: 0.001
@@ -14,7 +14,7 @@ batch_size: 300
 max_seq_len: 126
 num_devices: 1
 save_dir: "model"
-init_from_checkpoint: "model_baseline/params"
+init_from_checkpoint: ""
 init_from_pretrain_model: ""
 save_freq: 1
 eval_freq: 1
@@ -22,4 +22,3 @@ output_file: "predict.result"
 test_file: "./data/test.tsv"
 train_file: "./data/train.tsv"
 predict_file: "./data/infer.tsv"
-mode: "train"
