@@ -475,21 +475,48 @@ def index_sample(x, index):
             import paddle.fluid as fluid
             import numpy as np
 
-            # create x value
-            x_shape = (2, 5)
-            x_type = "float64"
-            x_np = np.random.random(x_shape).astype(x_type)
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
 
-            # create index value
-            index_shape = (2, 3)
-            index_type = "int32"
-            index_np = np.random.randint(low=0, 
-                                         high=x_shape[1],
-                                         size=index_shape).astype(index_type)
+            data_index = np.array([[0, 1, 2],
+                                    [1, 2, 3],
+                                    [0, 0, 0]]).astype('int32')
 
-            x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
-            index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
-            output = paddle.index_sample(x=x, index=index)
+            target_data = np.array([[100, 200, 300, 400],
+                                    [500, 600, 700, 800],
+                                    [900, 1000, 1100, 1200]]).astype('int32')
+
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                target = fluid.dygraph.to_variable(target_data)
+
+                out_z1 = paddle.index_sample(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3.]
+                # [6. 7. 8.]
+                # [9. 9. 9.]]
+
+                # Use the index of the maximum value by topk op
+                # get the value of the element of the corresponding index in other tensors
+                top_value, top_index = fluid.layers.topk(x, k=2)
+                out_z2 = paddle.index_sample(target, top_index)
+                print(top_value.numpy())
+                #[[ 4.  3.]
+                # [ 8.  7.]
+                # [12. 11.]]
+
+                print(top_index.numpy())
+                #[[3 2]
+                # [3 2]
+                # [3 2]]
+
+                print(out_z2.numpy())
+                #[[ 400  300]
+                # [ 800  700]
+                # [1200 1100]]
 
 
     """
