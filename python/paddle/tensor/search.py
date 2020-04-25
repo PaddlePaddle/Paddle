@@ -491,6 +491,7 @@ def index_sample(x, index):
             index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
             output = paddle.index_sample(x=x, index=index)
 
+
     """
     helper = LayerHelper("index_sample", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
