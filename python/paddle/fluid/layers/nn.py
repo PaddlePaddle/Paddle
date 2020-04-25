@@ -3406,6 +3406,8 @@ def layer_norm(input,
     assert in_dygraph_mode(
     ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'layer_norm')
     dtype = helper.input_dtype()
 
     # create intput and parameters
@@ -3510,7 +3512,8 @@ def group_norm(input,
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
-
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'group_norm')
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
@@ -8182,6 +8185,10 @@ def random_crop(x, shape, seed=None):
 
     """
     helper = LayerHelper("random_crop", **locals())
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'uint8', 'int16', 'int32'],
+                             'random_crop')
+    check_type(shape, 'shape', (list, Variable), 'random_crop')
     dtype = x.dtype
     out = helper.create_variable_for_type_inference(dtype)
     if seed is None:
@@ -12072,6 +12079,9 @@ def affine_channel(x,
 
     """
     helper = LayerHelper("affine_channel", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'affine_channel')
+    check_type(scale, 'scale', (Variable, type(None)), 'affine_channel')
+    check_type(bias, 'bias', (Variable, type(None)), 'affine_channel')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -12390,6 +12400,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
+    check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
 
     loss = helper.create_variable_for_type_inference(dtype=input.dtype)
 
@@ -14310,7 +14322,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
-    attrs = {'seed': seed, 'min': min, 'max': max}
+    attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     if in_dygraph_mode():
         attrs['shape'] = shape
     else:

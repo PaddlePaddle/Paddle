@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
 
-class TestComplexTraceLayers(unittest.TestCase):
+class TestComplexTraceLayer(unittest.TestCase):
     def setUp(self):
         self._dtype = "float64"
         self._places = [fluid.CPUPlace()]
