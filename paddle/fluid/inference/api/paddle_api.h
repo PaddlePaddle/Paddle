@@ -27,16 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#if defined(_WIN32)
-#ifdef PADDLE_DLL_INFERENCE
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
-#else
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#else
-#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
+#include "paddle_infer_declare.h"  // NOLINT
 
 /*! \namespace paddle
  */
@@ -96,7 +87,7 @@ enum PaddleDType {
 /// delete[] external_memory; // manage the memory lifetime outside.
 /// \endcode
 ///
-class PADDLE_INFENRENCE_EXPORT PaddleBuf {
+class PD_INFER_DECL PaddleBuf {
  public:
   ///
   /// \brief PaddleBuf allocate memory internally, and manage it.
@@ -161,7 +152,7 @@ class PADDLE_INFENRENCE_EXPORT PaddleBuf {
 ///
 /// \brief Basic input and output data structure for PaddlePredictor.
 ///
-struct PADDLE_INFENRENCE_EXPORT PaddleTensor {
+struct PD_INFER_DECL PaddleTensor {
   PaddleTensor() = default;
   std::string name;  ///<  variable name.
   std::vector<int> shape;
@@ -180,7 +171,7 @@ enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
 /// AnalysisPredictor.
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
-class PADDLE_INFENRENCE_EXPORT ZeroCopyTensor {
+class PD_INFER_DECL ZeroCopyTensor {
  public:
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
@@ -257,7 +248,7 @@ class PADDLE_INFENRENCE_EXPORT ZeroCopyTensor {
 
 /// \brief A Predictor for executing inference on a model.
 /// Base class for AnalysisPredictor and NativePaddlePredictor.
-class PADDLE_INFENRENCE_EXPORT PaddlePredictor {
+class PD_INFER_DECL PaddlePredictor {
  public:
   struct Config;
   PaddlePredictor() = default;
@@ -349,7 +340,7 @@ class PADDLE_INFENRENCE_EXPORT PaddlePredictor {
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 ///
-struct PADDLE_INFENRENCE_EXPORT NativeConfig : public PaddlePredictor::Config {
+struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   /// GPU related fields.
   bool use_gpu{false};
   int device{0};
@@ -407,8 +398,8 @@ enum class PaddleEngineKind {
 template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
-PADDLE_INFENRENCE_EXPORT int PaddleDtypeSize(PaddleDType dtype);
+PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
-PADDLE_INFENRENCE_EXPORT std::string get_version();
+PD_INFER_DECL std::string get_version();
 
 }  // namespace paddle

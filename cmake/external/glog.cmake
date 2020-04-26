@@ -42,6 +42,16 @@ cache_third_party(extern_glog
     TAG          ${GLOG_TAG}
     DIR          GLOG_SOURCE_DIR)
 
+if (WIN32)
+   set(GLOG_PRE_DIR ${GLOG_PREFIX_DIR}/src/extern_glog)
+   if(WITH_TP_CACHE)
+      set(GLOG_PRE_DIR ${GLOG_SOURCE_DIR})
+   endif()
+   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/glog/logging.h.in native_glog_src)
+   file(TO_NATIVE_PATH ${GLOG_PRE_DIR}/src/glog/logging.h.in native_glog_dst)
+   set(GLOG_PATCH_COMMAND copy ${native_glog_src} ${native_glog_dst} /Y)
+endif()
+
 ExternalProject_Add(
     extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS}

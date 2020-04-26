@@ -17,16 +17,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle_infer_declare.h"  // NOLINT
 
-#if defined(_WIN32)
-#ifdef PADDLE_DLL_INFERENCE
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
-#else
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#else
-#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
 ///
 /// \file paddle_pass_builder.h
 ///
@@ -52,7 +44,7 @@ namespace paddle {
 /// const vector<string> passes(1, "conv_relu_mkldnn_fuse_pass");
 /// PaddlePassBuilder builder(passes);
 /// \endcode
-class PADDLE_INFENRENCE_EXPORT PaddlePassBuilder {
+class PD_INFER_DECL PaddlePassBuilder {
  public:
   /// \brief Constructor of the class. It stores the input passes.
   /// \param[in] passes passes' types.
@@ -122,7 +114,7 @@ class PADDLE_INFENRENCE_EXPORT PaddlePassBuilder {
 /// \class PassStrategy
 /// \brief This class defines the pass strategies like whether to use gpu/cuDNN
 /// kernel/MKLDNN.
-class PADDLE_INFENRENCE_EXPORT PassStrategy : public PaddlePassBuilder {
+class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
  public:
   /// \brief Constructor of PassStrategy class. It works the same as
   /// PaddlePassBuilder class. \param[in] passes passes' types.
@@ -157,7 +149,7 @@ class PADDLE_INFENRENCE_EXPORT PassStrategy : public PaddlePassBuilder {
 /// \class CpuPassStrategy
 /// \brief The CPU passes controller, it is used in AnalysisPredictor with CPU
 /// mode.
-class PADDLE_INFENRENCE_EXPORT CpuPassStrategy : public PassStrategy {
+class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
  public:
   /// \brief Default constructor of CpuPassStrategy.
   CpuPassStrategy();
@@ -191,7 +183,7 @@ class PADDLE_INFENRENCE_EXPORT CpuPassStrategy : public PassStrategy {
 /// \class GpuPassStrategy
 /// \brief The GPU passes controller, it is used in AnalysisPredictor with GPU
 /// mode.
-class PADDLE_INFENRENCE_EXPORT GpuPassStrategy : public PassStrategy {
+class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
  public:
   /// \brief Default constructor of GpuPassStrategy.
   GpuPassStrategy();
@@ -223,9 +215,9 @@ class PADDLE_INFENRENCE_EXPORT GpuPassStrategy : public PassStrategy {
 };
 
 /// \brief List of tensorRT subgraph passes.
-PADDLE_INFENRENCE_EXPORT extern const std::vector<std::string> kTRTSubgraphPasses;
+PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
 
 /// \brief List of lite subgraph passes.
-PADDLE_INFENRENCE_EXPORT extern const std::vector<std::string> kLiteSubgraphPasses;
+PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
 
 }  // namespace paddle

@@ -32,16 +32,7 @@
 #include <vector>
 
 #include "paddle_api.h"  // NOLINT
-
-#if defined(_WIN32)
-#ifdef PADDLE_DLL_INFERENCE
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
-#else
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#else
-#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
+#include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle {
 
@@ -69,7 +60,7 @@ enum class ScaleAlgo {
 /// It is not recommended to use this config directly, please refer to
 /// AnalysisConfig::mkldnn_quantizer_config()
 ///
-struct PADDLE_INFENRENCE_EXPORT MkldnnQuantizerConfig {
+struct PD_INFER_DECL MkldnnQuantizerConfig {
   ///
   /// \brief Construct a new Mkldnn Quantizer Config object
   ///
