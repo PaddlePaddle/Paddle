@@ -202,7 +202,7 @@ def in_dygraph_mode():
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
         assert not in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
+        ), "We don't support %s in imperative mode" % func.__name__
         return func(*args, **kwargs)
 
     return __impl__
@@ -211,14 +211,31 @@ def _dygraph_not_support_(func):
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
         assert in_dygraph_mode(
-        ), "We Only support %s in Dygraph mode, please use fluid.dygraph.guard() as context to run it in Dygraph Mode" % func.__name__
+        ), "We Only support %s in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative Mode" % func.__name__
         return func(*args, **kwargs)
+
+    return __impl__
+
+
+# NOTE(zhiqiu): This decorator is used for the APIs of Variable which is only
+# used to make Variable and VarBase has same interfaces, like numpy. Since VarBase is not exposed in our
+# official docments, logically, we want to keep VarBase and logically consistent. While, actually,
+# in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
+# So, those APIs are listed under class Variable to generate docs only.
+# TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
+# same base class. 
+def _fake_interface_only_(func):
+    def __impl__(*args, **kwargs):
+        raise AssertionError(
+            "'%s' should be called by imperative Varible in imperative mode, please use fluid.dygraph.guard() as context to run it in imperative mode"
+            % func.__name__)
 
     return __impl__
 
 
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
+fake_interface_only = wrap_decorator(_fake_interface_only_)
 
 
 def _dygraph_tracer():
@@ -591,7 +608,6 @@ class VariableMetaClass(type):
     def __instancecheck__(cls, instance):
         t = type(instance)
         if in_dygraph_mode():
-
             return issubclass(t, core.VarBase)
         else:
             return issubclass(t, Variable)
@@ -953,7 +969,7 @@ class Variable(object):
         self._stop_gradient = stop_gradient
         self.is_data = is_data
 
-    @dygraph_only
+    @fake_interface_only
     def detach(self):
         """
         **Notes**:
@@ -983,7 +999,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def numpy(self):
         """
         **Notes**:
@@ -1015,7 +1031,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def set_value(self, value):
         """
         **Notes**:
@@ -1046,7 +1062,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def backward(self, backward_strategy=None):
         """
         **Notes**:
@@ -1084,7 +1100,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def gradient(self):
         """
         **Notes**:
@@ -1132,7 +1148,7 @@ class Variable(object):
         """
         pass
 
-    @dygraph_only
+    @fake_interface_only
     def clear_gradient(self):
         """
         **Notes**:
@@ -1199,9 +1215,6 @@ class Variable(object):
                 print("=============with detail===============")
                 print(new_variable.to_string(True, True))
         """
-        if in_dygraph_mode():
-            return
-
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         protostr = self.desc.serialize_to_string()
@@ -1248,17 +1261,11 @@ class Variable(object):
                 assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self._stop_gradient
+        return self._stop_gradient
 
     @stop_gradient.setter
     def stop_gradient(self, s):
-        if in_dygraph_mode():
-            pass
-        else:
-            self._stop_gradient = s
+        self._stop_gradient = s
 
     @property
     def persistable(self):
@@ -1283,19 +1290,11 @@ class Variable(object):
                                                 dtype='float32')
             print("persistable of current Var is: {}".format(new_variable.persistable))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.persistable()
+        return self.desc.persistable()
 
     @persistable.setter
     def persistable(self, p):
-        if in_dygraph_mode():
-            logging.warn(
-                "There will be no use to set persistable in Dygraph Mode, since "
-                "you can just do it by hold it as normal Python variable")
-        else:
-            self.desc.set_persistable(p)
+        self.desc.set_persistable(p)
 
     @property
     def name(self):
@@ -1315,10 +1314,7 @@ class Variable(object):
                                                 dtype='float32')
             print("name of current Var is: {}".format(new_variable.name))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return cpt.to_text(self.desc.name())
+        return cpt.to_text(self.desc.name())
 
     @property
     def grad_name(self):
@@ -1342,10 +1338,7 @@ class Variable(object):
 
     @name.setter
     def name(self, new_name):
-        if in_dygraph_mode():
-            pass
-        else:
-            self.desc.set_name(new_name)
+        self.desc.set_name(new_name)
 
     @property
     def shape(self):
@@ -1367,10 +1360,7 @@ class Variable(object):
 
         """
         # convert to tuple, make it as same as numpy API.
-        if in_dygraph_mode():
-            pass
-        else:
-            return tuple(self.desc.shape())
+        return tuple(self.desc.shape())
 
     @property
     def dtype(self):
@@ -1390,13 +1380,9 @@ class Variable(object):
                                                 dtype='float32')
             print("Dtype of current Var is: {}".format(new_variable.dtype))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.dtype()
+        return self.desc.dtype()
 
     @property
-    @dygraph_not_support
     def lod_level(self):
         """
         Indicating ``LoD`` info of current Variable, please refer to  :ref:`api_fluid_LoDTensor_en` to check the meaning
@@ -1419,10 +1405,6 @@ class Variable(object):
                                                 dtype='float32')
             print("LoD Level of current Var is: {}".format(new_variable.lod_level))
         """
-        # TODO(minqiyang): Support lod_level in dygraph mode
-        if in_dygraph_mode():
-            raise Exception("Dygraph model DO NOT supprt lod")
-
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
             raise Exception("SelectedRows DO NOT supprt lod")
 
@@ -1446,10 +1428,7 @@ class Variable(object):
                                                 dtype='float32')
             print("Type of current Var is: {}".format(new_variable.type))
         """
-        if in_dygraph_mode():
-            pass
-        else:
-            return self.desc.type()
+        return self.desc.type()
 
     def _set_error_clip(self, error_clip):
         """
@@ -1935,10 +1914,7 @@ class Operator(object):
 
     @property
     def type(self):
-        if in_dygraph_mode():
-            return self._type
-        else:
-            return self.desc.type()
+        return self.desc.type()
 
     def input(self, name):
         """
@@ -3903,7 +3879,6 @@ class Program(object):
     def _version(self):
         return self.desc._version()
 
-    @dygraph_not_support
     def clone(self, for_test=False):
         """
         **Notes**:
@@ -4579,7 +4554,6 @@ class Program(object):
                 if other_var.stop_gradient:
                     var.stop_gradient = True
 
-    @dygraph_not_support
     def list_vars(self):
         """
         Get all :ref:`api_guide_Variable_en` from this Program. A iterable object is returned.
@@ -4602,7 +4576,6 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
-    @dygraph_not_support
     def all_parameters(self):
         """
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
