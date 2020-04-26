@@ -17,6 +17,8 @@ from __future__ import print_function
 from six.moves import reduce
 from .. import core
 from ..layers import utils
+from ..layers import square
+from ..layers import cross_entropy
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
@@ -3216,21 +3218,21 @@ class CrossEntropyLoss(layers.Layer):
                 "The value of 'reduction' in cross_entropy_loss should be 'sum', 'mean' or 'none',"
                 " but received %s, which is not allowed." % self.reduction)
 
-        softmax_out = layers.softmax(input)
+        softmax_out = F.softmax(input)
         if self.weight is not None:
             if isinstance(self.weight, Variable):
-                softmax_out = layers.elementwise_pow(
+                softmax_out = F.elementwise_pow(
                     softmax_out, self.weight, axis=-1)
             else:
                 raise ValueError(
                     "The weight' is not a Variable, please convert to Variable.")
 
-        out = layers.cross_entropy(softmax_out, label)
+        out = cross_entropy(softmax_out, label)
 
         if self.reduction == 'sum':
-            return layers.reduce_sum(out)
+            return F.reduce_sum(out)
         elif self.reduction == 'mean':
-            return layers.reduce_mean(out)
+            return F.reduce_mean(out)
         else:
             return out
 
@@ -3280,7 +3282,7 @@ class MSELoss(layers.Layer):
             from paddle import fluid
             import paddle.fluid.dygraph as dg
 
-            mse_loss = paddle.dygraph.MSELoss()
+            mse_loss = fluid.dygraph.MSELoss()
             input = fluid.data(name="input", shape=[1])
             label = fluid.data(name="label", shape=[1])
             place = fluid.CPUPlace()
@@ -3321,7 +3323,7 @@ class MSELoss(layers.Layer):
             check_variable_and_dtype(input, 'input', ['float32'], 'MSELoss')
             check_variable_and_dtype(label, 'label', ['float32'], 'MSELoss')
 
-        square_out = layers.square(layers.elementwise_sub(input, label))
+        square_out = square(F.elementwise_sub(input, label))
         if self.reduction == 'none':
             return square_out
 
@@ -3329,7 +3331,7 @@ class MSELoss(layers.Layer):
         if self.reduction == 'sum':
             reduce_op = 'reduce_sum'
 
-        return getattr(layers, reduce_op)(square_out)
+        return getattr(F, reduce_op)(square_out)
 
 
 class L1Loss(layers.Layer):
@@ -3369,7 +3371,7 @@ class L1Loss(layers.Layer):
             import numpy as np
             input = fluid.data(name="input", shape=[1])
             label = fluid.data(name="label", shape=[1])
-            l1_loss = paddle.dygraph.L1Loss(reduction='mean')
+            l1_loss = fluid.dygraph.L1Loss(reduction='mean')
             output = l1_loss(input,label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -3389,7 +3391,7 @@ class L1Loss(layers.Layer):
             with dg.guard(place) as g:
                 input = dg.to_variable(input_data)
                 label = dg.to_variable(label_data)
-                l1_loss = paddle.nn.loss.L1Loss(reduction='mean')
+                l1_loss = fluid.dygraph.L1Loss(reduction='mean')
                 output = l1_loss(input,label)
                 print(output.numpy())  # [0.2]
     """
@@ -3408,12 +3410,12 @@ class L1Loss(layers.Layer):
         check_variable_and_dtype(
             label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
-        unreduced = layers.elementwise_sub(input, label, act='abs')
+        unreduced = F.elementwise_sub(input, label, act='abs')
 
         if self.reduction == 'sum':
-            return layers.reduce_sum(unreduced)
+            return F.reduce_sum(unreduced)
         elif self.reduction == 'mean':
-            return layers.reduce_mean(unreduced)
+            return F.reduce_mean(unreduced)
         else:
             return unreduced
 
@@ -3475,7 +3477,7 @@ class BCELoss(layers.Layer):
             import numpy as np
             input = fluid.data(name="input", shape=[3, 1], dtype='float32')
             label = fluid.data(name="label", shape=[3, 1], dtype='float32')
-            bce_loss = paddle.dygraph.BCELoss()
+            bce_loss = fluid.dygraph.BCELoss()
             output = bce_loss(input, label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -3529,15 +3531,15 @@ class BCELoss(layers.Layer):
         if self.weight is not None:
             if isinstance(self.weight, Variable):
                 w = self.weight
-                out = layers.elementwise_mul(out, w, axis=-1)
+                out = F.elementwise_mul(out, w, axis=-1)
             else:
                 raise ValueError(
                     "The weight is not a Variable, please convert to Variable.")
 
         if self.reduction == 'sum':
-            return layers.reduce_sum(out)
+            return F.reduce_sum(out)
         elif self.reduction == 'mean':
-            return layers.reduce_mean(out)
+            return F.reduce_mean(out)
         else:
             return out
 
@@ -3612,7 +3614,7 @@ class NLLLoss(layers.Layer):
             with fluid.program_guard(prog, startup_prog):
                 input = fluid.data(name='input', shape=[10, 10], dtype='float32')
                 label = fluid.data(name='label', shape=[10], dtype='int64')
-                nll_loss = paddle.dygraph.NLLLoss()
+                nll_loss = fluid.dygraph.NLLLoss()
                 res = nll_loss(input, label)
 
                 exe = fluid.Executor(place)
@@ -3658,8 +3660,8 @@ class NLLLoss(layers.Layer):
             raise ValueError('Expected 2 or more dimensions (got {})'.format(
                 x_dims))
         if x_dims != 2 and x_dims != 4:
-            input = layers.reshape(input, shape=[n, c, 1, -1])
-            label = layers.reshape(label, shape=[n, 1, -1])
+            input = F.reshape(input, shape=[n, c, 1, -1])
+            label = F.reshape(label, shape=[n, 1, -1])
             out_shape = [n] + x_shape[2:]
 
         inputs = {'X': input, 'Label': label}
@@ -3677,6 +3679,6 @@ class NLLLoss(layers.Layer):
         self._helper.append_op(
             type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
         if x_dims != 2 and x_dims != 4 and self.reduction == 'none':
-            out = layers.reshape(out, shape=out_shape)
+            out = F.reshape(out, shape=out_shape)
 
         return out

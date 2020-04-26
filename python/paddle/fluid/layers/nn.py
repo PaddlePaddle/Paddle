@@ -30,7 +30,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, 
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor, cast
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -69,8 +69,8 @@ __all__ = [
     'py_func', 'psroi_pool', 'prroi_pool', 'pixel_shuffle', 'fsp_matrix',
     'continuous_value_model', 'where', 'sign', 'deformable_conv', 'unfold',
     'deformable_roi_pooling', 'filter_by_instag', 'shard_index', 'hard_swish',
-    'gather_tree', 'uniform_random', 'randint', 'randn', 'randperm', 'equal',
-    'allclose', 'elementwise_equal'
+    'gather_tree', 'uniform_random', 'randint', 'randn', 'randperm', 'allclose',
+    'elementwise_equal', 'flip', 'roll', 'log_softmax'
 ]
 
 
@@ -14257,7 +14257,7 @@ def randint(low,
             # example 3:
             # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = padddle.randint(low=-5, high=5, shape=var_shape, dtype="int32")
+            result_3 = fluid.layers.randint(low=-5, high=5, shape=var_shape, dtype="int32")
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = fluid.layers.randint(low=-5, high=5, shape=var_shape_int32, dtype="int64")
 
@@ -14549,71 +14549,6 @@ def randperm(n,
     return out
 
 
-def equal(x, y, axis=-1, name=None):
-    """
-    This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
-
-    **NOTICE**: The output of this OP has no gradient, and this OP supports broadcasting by :attr:`axis`.
-
-    Args:
-        x(Variable): Tensor, data type is float32, float64, int32, int64.
-        y(Variable): Tensor, data type is float32, float64, int32, int64.
-        axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
-            must be a subsequence of x.dimension. And axis is the start 
-            dimension index for broadcasting Y onto X. For more detail, 
-            please refer to OP:`elementwise_add`.
-        name(str, optional): Normally there is no need for user to set this property. 
-            For more information, please refer to :ref:`api_guide_Name`.Default: None.
-
-    Returns:
-        Variable: output Tensor, data type is bool, value is [False] or [True].
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-
-          label = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-          label_1 = fluid.layers.assign(np.array([1, 2], dtype="int32"))
-          limit = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-          out1 = fluid.layers.equal(x=label, y=limit) #out1=[True]
-          out2 = fluid.layers.equal(x=label_1, y=limit) #out2=[False]
-
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-
-          def gen_data():
-              return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-
-          x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-          y = fluid.data(name="y", shape=[3,4], dtype='float32')
-          out = fluid.layers.equal(x, y, axis=1)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-
-          res = exe.run(feed=gen_data(),
-                            fetch_list=[out])
-          print(res[0]) #[False]
-    """
-    helper = LayerHelper("equal_reduce", **locals())
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    attrs = {}
-    attrs['axis'] = axis
-    helper.append_op(
-        type='equal_reduce',
-        inputs={'X': [x],
-                'Y': [y]},
-        attrs=attrs,
-        outputs={'Out': [out]})
-    return out
-
-
 @templatedoc()
 def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
@@ -14730,3 +14665,208 @@ def elementwise_equal(x, y, name=None):
         outputs={'Out': [out]},
         attrs={'force_cpu': False})
     return out
+
+
+def flip(input, dims, name=None):
+    """
+
+    Reverse the order of a n-D tensor along given axis in dims.
+
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64, bool.
+        dims (list): The axis to flip on.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
+          output = fluid.layers.flip(input, dims=[0, 1])
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img = np.arange(12).reshape((3,2,2)).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+          print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+    """
+    helper = LayerHelper("flip", **locals())
+    check_type(input, 'X', (Variable), 'flip')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'X',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+                'flip')
+    check_type(dims, 'dims', (list, tuple), 'flip')
+    assert len(dims) > 0, 'len(dims) must be greater than 0.'
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="flip",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"dims": dims})
+    return out
+
+
+def roll(input, shifts, dims=None):
+    """
+    Roll the `input` tensor along the given dimension(s). Elements that are shifted beyond 
+    the last position are re-introduced at the first position. If a dimension is not specified, 
+    the tensor will be flattened before rolling and then restored to the original shape.
+
+    Args:
+        input (Variable): The input tensor variable.
+        shifts (int|list|tuple): The number of places by which the elements
+                           of the `input` tensor are shifted.
+        dims (int|list|tuple|None): Dimentions along which to roll.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+
+            data = np.array([[1.0, 2.0, 3.0],
+                             [4.0, 5.0, 6.0],
+                             [7.0, 8.0, 9.0]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                out_z1 = fluid.layers.roll(x, shifts=1)
+                print(out_z1.numpy())
+                #[[9. 1. 2.]
+                # [3. 4. 5.]
+                # [6. 7. 8.]]
+                out_z2 = fluid.layers.roll(x, shifts=1, dims=0)
+                print(out_z2.numpy())
+                #[[7. 8. 9.]
+                # [1. 2. 3.]
+                # [4. 5. 6.]]
+    """
+    helper = LayerHelper("roll", **locals())
+    origin_shape = input.shape
+    if type(shifts) == int:
+        shifts = [shifts]
+    if type(dims) == int:
+        dims = [dims]
+
+    if dims:
+        check_type(dims, 'dims', (list, tuple), 'roll')
+    check_type(shifts, 'shifts', (list, tuple), 'roll')
+
+    if in_dygraph_mode():
+        if dims is None:
+            input = core.ops.reshape(input, 'shape', [-1, 1])
+            dims = [0]
+        out = core.ops.roll(input, 'dims', dims, 'shifts', shifts)
+        return core.ops.reshape(out, 'shape', origin_shape)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    if dims is None:
+        input = reshape(input, shape=[-1, 1])
+        dims = [0]
+
+    helper.append_op(
+        type='roll',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'dims': dims,
+               'shifts': shifts})
+    out = reshape(out, shape=origin_shape, inplace=True)
+    return out
+
+
+def log_softmax(input, axis=None, dtype=None, name=None):
+    """
+    This operator implements the log_softmax layer. The calculation process is as follows:
+
+    .. math::
+
+        Out[i, j] = log(softmax(x)) 
+                  = log(\\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+
+    Parameters:
+        input (Variable): The input variable. A multi-dimension Tensor with type float32, or float64.
+        axis (int, optional): The index of dimension to perform softmax calculations, it should be in
+            range :math:`[-1, rank-1]`, while :math:`rank` is the rank of input variable. Default: None. 
+            None and -1 means the last dimension.
+        dtype (np.dtype|core.VarDesc.VarType|str): The desired data type of returned tensor. If specified,
+            the input tensor is casted to dtype before the operation is performed. This is useful for
+            preventing data type overflows. Default: None. Supported dtype: float32 or float64
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+ 
+    Returns:
+        Variable: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input``.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+
+          data = np.array([[[-2.0, 3.0, -4.0, 5.0],
+                            [3.0, -4.0, 5.0, -6.0],
+                            [-7.0, -8.0, 8.0, 9.0]],
+                           [[1.0, -2.0, -3.0, 4.0],
+                            [-5.0, 6.0, 7.0, -8.0],
+                            [6.0, 7.0, 8.0, 9.0]]]).astype('float32')
+          with fluid.dygraph.guard():
+              data = fluid.dygraph.to_variable(data)
+              res = fluid.layers.log_softmax(data, -1)
+              # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+              #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+              #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+              #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+              #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+              #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+    """
+
+    axis = -1 if axis is None else axis
+    dtype = convert_np_dtype_to_dtype_(dtype) if dtype is not None else dtype
+
+    if in_dygraph_mode():
+        outs_cast = input if dtype is None \
+            else core.ops.cast(input, 'in_dtype', input.dtype, 'out_dtype', dtype)
+        outs_softmax = core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn',
+                                        False)
+        return core.ops.log(outs_softmax)
+
+    if dtype is None:
+        check_variable_and_dtype(
+            input, 'input', ['float16', 'float32', 'float64'], 'log_softmax')
+
+    helper = LayerHelper("log_softmax", **locals())
+    outs_cast = input
+    if dtype is not None:
+        outs_cast = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='cast',
+            inputs={'X': input},
+            outputs={'Out': outs_cast},
+            attrs={'in_dtype': input.dtype,
+                   'out_dtype': dtype})
+
+    outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
+    helper.append_op(
+        type='softmax',
+        inputs={'X': outs_cast},
+        outputs={'Out': outs_softmax},
+        attrs={'axis': axis,
+               'use_cudnn': False})
+
+    outs_log = helper.create_variable_for_type_inference(outs_softmax.dtype)
+    helper.append_op(
+        type='log', inputs={'X': outs_softmax}, outputs={'Out': outs_log})
+
+    return outs_log

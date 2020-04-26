@@ -35,7 +35,7 @@ __all__ = [
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
     'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'kron',
-    'full_like', 'arange', 'full', 'tril', 'triu', 'meshgrid'
+    'full_like', 'arange', 'full', 'tril', 'triu'
 ]
 
 
@@ -1843,6 +1843,13 @@ def tril(input, diagonal=0, name=None):
         .. code-block:: python
 
             # example 2, positive diagonal value
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
+
             tril = fluid.layers.tril(x, diagonal=2)
             tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[tril], return_numpy=True)
@@ -1853,6 +1860,13 @@ def tril(input, diagonal=0, name=None):
         .. code-block:: python
 
             # example 3, negative diagonal value
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
+
             tril = fluid.layers.tril(x, diagonal=-1)
             tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[tril], return_numpy=True)
@@ -1907,6 +1921,7 @@ def triu(input, diagonal=0, name=None):
             exe = fluid.Executor(fluid.CPUPlace())
 
             # example 1, default diagonal
+            import paddle.fluid as fluid
             triu = fluid.layers.triu(x)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[triu], return_numpy=True)
@@ -1917,6 +1932,13 @@ def triu(input, diagonal=0, name=None):
         .. code-block:: python
 
             # example 2, positive diagonal value
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
+
             triu = fluid.layers.triu(x, diagonal=2)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[triu], return_numpy=True)
@@ -1927,6 +1949,13 @@ def triu(input, diagonal=0, name=None):
         .. code-block:: python
 
             # example 3, negative diagonal value
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
+
             triu = fluid.layers.triu(x, diagonal=-1)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[triu], return_numpy=True)
@@ -1937,85 +1966,6 @@ def triu(input, diagonal=0, name=None):
     """
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
-
-
-def meshgrid(input, name=None):
-    """
-    This op takes a list of N tensors as input, each of which is 1-dimensional 
-    vector, and creates N-dimensional grids.
-    
-    Args:
-        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
- 
-    Returns:
-         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
-
-    Examples:
-      .. code-block:: python
-
-          import paddle.fluid as fluid
-          import numpy as np
-
-          x = fluid.data(name='x', shape=[100], dtype='int32')
-          y = fluid.data(name='y', shape=[200], dtype='int32')
-
-          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
-
-          exe = fluid.Executor(place=fluid.CPUPlace())
-          grid_x, grid_y = fluid.layers.meshgrid([x, y])
-          res_1, res_2 = exe.run(fluid.default_main_program(),
-                                 feed={'x': input_1,
-                                       'y': input_2},
-                                 fetch_list=[grid_x, grid_y])
-     
-          #the shape of res_1 is (100, 200)
-          #the shape of res_2 is (100, 200)
-
-      .. code-block:: python
-
-          #example 2: in dygraph mode
-
-          import paddle.fluid as fluid
-          import numpy as np
-
-          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
-          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
-          with fluid.dygraph.guard():
-              tensor_3 = fluid.dygraph.to_variable(input_3)
-              tensor_4 = fluid.dygraph.to_variable(input_4)
-              grid_x, grid_y = fluid.layers.meshgrid([tensor_3, tensor_4])
-
-          #the shape of grid_x is (100, 200)
-          #the shape of grid_y is (100, 200)
-
-    """
-
-    if in_dygraph_mode():
-        num = len(input)
-        out = core.ops.meshgrid(input, num)
-        return out
-
-    helper = LayerHelper('meshgrid', **locals())
-
-    if not isinstance(input, list):
-        raise TypeError("The type of input in meshgrid should be list.")
-
-    for id, input_ in enumerate(input):
-        check_dtype(input_.dtype, 'create data type',
-                    ['float16', 'float32', 'float64', 'int32', 'int64'],
-                    'meshgrid')
-
-    num = len(input)
-    out = [
-        helper.create_variable_for_type_inference(dtype=input[i].dtype)
-        for i in range(num)
-    ]
-    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
-    return out
 
 
 @templatedoc(op_type="kron")
