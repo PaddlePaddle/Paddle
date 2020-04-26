@@ -40,12 +40,7 @@ class PrintTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     # NOTE: deal with print in PY3
-    def visit_Expr(self, node):
-        if isinstance(node.value, gast.Call):
-            node.value = self._visit_Call(node.value)
-        return node
-
-    def _visit_Call(self, node):
+    def visit_Call(self, node):
         assert isinstance(node, gast.Call)
         if isinstance(node.func, gast.Name) and node.func.id == 'print':
             var = self._get_print_var(node)
