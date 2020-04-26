@@ -535,24 +535,18 @@ class QuantizationTransformPass(object):
                 _transform_backward(graph, op)
 
         graph.resolve_hazard()
-        '''
         for node in graph.all_var_nodes():
-            if node.name() == 'tmp_62.quantized.dequantized':
-                for op in node.outputs:
-                    if op.name() == 'mul':
-                        for in_node in op.inputs:
-                            print("inputs", in_node.name(), in_node)
-                        for out_node in op.outputs:
-                            print("outputs", out_node.name(), in_node)
-            if node.name() == 'fc_0.tmp_0@GRAD':
-                for op in node.outputs:
-                    if op.name() == 'mul_grad':
-                        for in_node in op.inputs:
-                            print("inputs", in_node.name(), in_node)
-                        for out_node in op.outputs:
-                            print("outputs", out_node.name(), in_node)
+            if node.name() == '_generated_var_0':
+                for in_node in node.inputs:
+                    print("inputs", in_node.name(), in_node)
+                for out_node in node.outputs:
+                    print("outputs op", out_node.name(), in_node)
 
-        '''
+                    for in_node in op.inputs:
+                        print("inputs", in_node.name(), in_node)
+                    for out_node in op.outputs:
+                        print("outputs", out_node.name(), in_node)
+
         return graph
 
     def _create_global_step(self, graph):
