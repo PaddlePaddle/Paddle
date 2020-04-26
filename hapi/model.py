@@ -874,8 +874,16 @@ class Model(fluid.dygraph.Layer):
             global _parallel_context_initialized
             if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
                 if fluid.in_dygraph_mode():
+                    main_prog_seed = fluid.default_main_program().random_seed
+                    startup_prog_seed = fluid.default_startup_program(
+                    ).random_seed
                     fluid.disable_dygraph()
                     fluid.enable_dygraph(self._place)
+                    # enable_dygraph would create and switch to a new program,
+                    # thus also copy seed to the new program
+                    fluid.default_main_program().random_seed = main_prog_seed
+                    fluid.default_startup_program(
+                    ).random_seed = startup_prog_seed
                     fluid.dygraph.parallel.prepare_context()
                 else:
                     prepare_distributed_context(self._place)
