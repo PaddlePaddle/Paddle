@@ -37,10 +37,11 @@ class TestComplexReshape(unittest.TestCase):
         shape = (0, -1)
         shape_ = (2, 12)
 
-        place = fluid.CUDAPlace(0)
+        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
         with dg.guard(place):
             x_var = dg.to_variable(x_np)
-            y_var = cpx.reshape(x_var, shape)
+            y_var = cpx.reshape(x_var, shape, inplace=True)
             y_np = y_var.numpy()
 
         np.testing.assert_allclose(np.reshape(x_np, shape_), y_np)

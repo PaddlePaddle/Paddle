@@ -71,7 +71,7 @@ def reshape(x, shape, inplace=False, name=None):
             refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. It is a new ComplexVariable if ``inplace`` is ``False``, otherwise it is ``x``.
+        ComplexVariable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. It is a new ComplexVariable if ``inplace`` is ``False``, otherwise it is ``x``.
         
     Raises:
         ValueError: If more than one elements of ``shape`` is -1.
