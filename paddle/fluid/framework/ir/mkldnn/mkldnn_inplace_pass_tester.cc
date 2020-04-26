@@ -16,11 +16,20 @@
 
 #include <gtest/gtest.h>
 #include <boost/logic/tribool.hpp>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 USE_OP(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+USE_OP(elementwise_add);
+USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+USE_OP(leaky_relu);
+USE_OP_DEVICE_KERNEL(leaky_relu, MKLDNN);
+USE_OP(gelu);
+USE_OP(relu);
+USE_OP(tanh);
+USE_OP_DEVICE_KERNEL(tanh, MKLDNN);
 
 namespace paddle {
 namespace framework {
@@ -44,7 +53,9 @@ class MKLDNNInplacePassTest {
       op->SetInput("Input", {inputs[0]});
       op->SetInput("Filter", {inputs[1]});
       op->SetInput("Bias", {inputs[2]});
-    } else if (type == "relu") {
+    } else if (std::unordered_set<std::string>{"gelu", "leaky_relu", "relu",
+                                               "tanh"}
+                   .count(type)) {
       op->SetInput("X", inputs);
     } else if (type == "softmax") {
       op->SetAttr("axis", -1);
@@ -62,8 +73,9 @@ class MKLDNNInplacePassTest {
                                bool branched) {
     ProgramDesc prog;
 
-    for (auto& v : std::vector<std::string>(
-             {"a", "weights", "bias", "f", "g", "h", "i", "j", "k"})) {
+    for (auto& v :
+         std::vector<std::string>({"a", "weights", "bias", "f", "g", "h", "i",
+                                   "j", "k", "l", "m", "n", "z"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
       if (v == "weights" || v == "bias") {
@@ -83,9 +95,24 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "elementwise_add", "elementwise_add1",
           std::vector<std::string>({"h", "i"}), std::vector<std::string>({"j"}),
           mkldnn_enabled_op.compare("elementwise_add") == 0);
+    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"j"}),
+          std::vector<std::string>({"k"}),
+          mkldnn_enabled_op.compare("relu") == 0);
+    SetOp(&prog, "tanh", "tanh1", std::vector<std::string>({"k"}),
+          std::vector<std::string>({"l"}),
+          mkldnn_enabled_op.compare("tanh") == 0);
+    SetOp(&prog, "relu", "relu3", std::vector<std::string>({"l"}),
+          std::vector<std::string>({"m"}),
+          mkldnn_enabled_op.compare("relu") == 0);
+    SetOp(&prog, "leaky_relu", "leaky_relu1", std::vector<std::string>({"m"}),
+          std::vector<std::string>({"n"}),
+          mkldnn_enabled_op.compare("leaky_relu") == 0);
+    SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"n"}),
+          std::vector<std::string>({"m"}),
+          mkldnn_enabled_op.compare("gelu") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
-            std::vector<std::string>({"k"}),
+            std::vector<std::string>({"z"}),
             mkldnn_enabled_op.compare("softmax") == 0);
     }
 
@@ -105,12 +132,6 @@ class MKLDNNInplacePassTest {
     unsigned use_mkldnn_true_count = 0;
     std::unordered_map<std::string, std::string> input_names;
     std::unordered_map<std::string, std::string> output_names;
-    input_names["softmax"] = "X";
-    output_names["softmax"] = "Out";
-    input_names["batch_norm"] = "X";
-    output_names["batch_norm"] = "Y";
-    input_names["layer_norm"] = "X";
-    output_names["layer_norm"] = "Y";
 
     VLOG(3) << DebugString(graph);
 
@@ -121,8 +142,9 @@ class MKLDNNInplacePassTest {
           auto ins = op->Inputs();
           auto outs = op->Outputs();
           // Input and output are the same var
-          if (ins[input_names[mkldnn_enabled_op]] ==
-              outs[output_names[mkldnn_enabled_op]]) {
+          // All inplace ops are inplacing input named: X
+          // and output : Out
+          if (ins["X"] == outs["Out"]) {
             ++use_mkldnn_true_count;
           }
         }
@@ -135,15 +157,27 @@ class MKLDNNInplacePassTest {
 
 TEST(MKLDNNInplacePass, inplace_softmax) {
   // softmax to be mkl-dnn enabled and made in-place
-
   MKLDNNInplacePassTest().MainTest("softmax", false, 1);
 }
 
 TEST(MKLDNNInplacePass, inplace_softmax_branched) {
-  // softmax to be mkl-dnn enabled and made in-place
+  // softmax's input is shared by two branches. so no in-place
   MKLDNNInplacePassTest().MainTest("softmax", true, 0);
 }
 
+TEST(MKLDNNInplacePass, inplace_elementwise_add) {
+  // Two elementwise_add mkl-dnn enabled op instances to be made inplace
+  MKLDNNInplacePassTest().MainTest("elementwise_add", false, 1);
+}
+TEST(MKLDNNInplacePass, inplace_tanh) {
+  MKLDNNInplacePassTest().MainTest("tanh", false, 1);
+}
+
+TEST(MKLDNNInplacePass, inplace_leaky_relu) {
+  // Input of leaky_relu is used as output of subsequent gelu, so no inplace
+  // cannot be done
+  MKLDNNInplacePassTest().MainTest("leaky_relu", false, 0);
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

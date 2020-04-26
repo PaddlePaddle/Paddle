@@ -76,6 +76,8 @@ extern void *cublas_dso_handle;
   __macro(cublasSgemmEx);                 \
   __macro(cublasSgeam);                   \
   __macro(cublasDgeam);                   \
+  __macro(cublasStrsm_v2);                \
+  __macro(cublasDtrsm_v2);                \
   __macro(cublasCreate_v2);               \
   __macro(cublasDestroy_v2);              \
   __macro(cublasSetStream_v2);            \

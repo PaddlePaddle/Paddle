@@ -82,7 +82,7 @@ class InverseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Input",
-        "(Tensor) A square matrix (2-D Tensor) or batches of square matrixs"
+        "(Tensor) A square matrix (2-D Tensor) or batches of square matrices"
         " to inverse.");
     AddOutput("Output", "(Tensor) The inverse of input matrix.");
     AddComment(R"DOC(

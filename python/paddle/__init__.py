@@ -38,6 +38,7 @@ import paddle.tensor
 import paddle.nn
 import paddle.framework
 import paddle.imperative
+import paddle.complex
 
 # TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
@@ -91,7 +92,7 @@ from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
 from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import randperm
-# from .tensor.random import rand   #DEFINE_ALIAS
+from .tensor.random import rand  #DEFINE_ALIAS
 from .tensor.random import randint  #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
 # from .tensor.math import acos   #DEFINE_ALIAS
@@ -138,6 +139,7 @@ from .tensor.math import min  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
+from .tensor.math import kron  #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
 from .tensor.math import inverse  #DEFINE_ALIAS
@@ -159,14 +161,14 @@ from .tensor.linalg import norm  #DEFINE_ALIAS
 from .tensor.linalg import dist  #DEFINE_ALIAS
 from .tensor.linalg import t  #DEFINE_ALIAS
 from .tensor.linalg import cross  #DEFINE_ALIAS
-# from .tensor.linalg import cholesky   #DEFINE_ALIAS
+from .tensor.linalg import cholesky  #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS
 # from .tensor.manipulation import cast   #DEFINE_ALIAS
 # from .tensor.manipulation import concat   #DEFINE_ALIAS
 # from .tensor.manipulation import expand   #DEFINE_ALIAS
 # from .tensor.manipulation import expand_as   #DEFINE_ALIAS
 # from .tensor.manipulation import flatten   #DEFINE_ALIAS
-# from .tensor.manipulation import gather   #DEFINE_ALIAS
+from .tensor.manipulation import gather  #DEFINE_ALIAS
 # from .tensor.manipulation import gather_nd   #DEFINE_ALIAS
 # from .tensor.manipulation import reshape   #DEFINE_ALIAS
 # from .tensor.manipulation import reverse   #DEFINE_ALIAS
@@ -175,14 +177,14 @@ from .tensor.linalg import cross  #DEFINE_ALIAS
 # from .tensor.manipulation import scatter_nd   #DEFINE_ALIAS
 # from .tensor.manipulation import shard_index   #DEFINE_ALIAS
 # from .tensor.manipulation import slice   #DEFINE_ALIAS
-# from .tensor.manipulation import split   #DEFINE_ALIAS
-# from .tensor.manipulation import squeeze   #DEFINE_ALIAS
-# from .tensor.manipulation import stack   #DEFINE_ALIAS
+from .tensor.manipulation import split  #DEFINE_ALIAS
+from .tensor.manipulation import squeeze  #DEFINE_ALIAS
+from .tensor.manipulation import stack  #DEFINE_ALIAS
 # from .tensor.manipulation import strided_slice   #DEFINE_ALIAS
 # from .tensor.manipulation import transpose   #DEFINE_ALIAS
 # from .tensor.manipulation import unique   #DEFINE_ALIAS
 # from .tensor.manipulation import unique_with_counts   #DEFINE_ALIAS
-# from .tensor.manipulation import unsqueeze   #DEFINE_ALIAS
+from .tensor.manipulation import unsqueeze  #DEFINE_ALIAS
 # from .tensor.manipulation import unstack   #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.manipulation import unbind   #DEFINE_ALIAS

@@ -49,6 +49,7 @@ __all__ = [
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'Variable',
+    'ComplexVariable',
     'load_op_library',
     'require_version',
     'device_guard',
@@ -1657,6 +1658,88 @@ def get_all_op_protos():
     return ret_values
 
 
+class ComplexVariable(object):
+    """
+    The Variable defined on the complex number domain. It contains two common 
+    real number Variables as its members, :attr:`real` and :attr:`imag` 
+    holding the real part and imaginary part of complex numbers respectively.
+    
+    **Notes**:
+        **The constructor of Variable should not be invoked directly.**
+
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **
+          to create a dygraph ComplexVariable with complex number data.**
+
+    Args:
+        real (Variable): The Variable holding real-part data.
+        imag (Variable): The Variable holding imaginery-part data.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            a = np.array([1.0+2.0j, 0.2])
+            with fluid.dygraph.guard():
+                var = fluid.dygraph.to_variable(a, name="new_var")
+                print(var.name, var.dtype, var.shape)
+                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L]) 
+                print(var.numpy())
+                # [1. +2.j 0.2+0.j]
+    """
+
+    def __init__(self, real, imag):
+        assert real.shape == imag.shape, "The real part and imaginary part " \
+            "of a ComplexVariable should have the same shape!"
+        assert real.dtype == imag.dtype, "The real part and imaginary part " \
+            "of a ComplexVariable should have the same data type!"
+
+        self.real = real
+        self.imag = imag
+        if self.real.dtype in [
+                core.VarDesc.VarType.FP16, core.VarDesc.VarType.FP32
+        ]:
+            self._dtype = "complex64"
+        else:
+            self._dtype = "complex128"
+        self._shape = self.real.shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def name(self):
+        return {"real": self.real.name, "imag": self.imag.name}
+
+    @name.setter
+    def name(self, name):
+        # rename
+        if isinstance(name, str):
+            self.real.name = name + ".real"
+            self.imag.name = name + ".imag"
+        elif (isinstance(name, tuple) or isinstance(name,
+                                                    list)) and len(name) == 2:
+            self.real.name, self.imag.name = name[0], name[1]
+        else:
+            raise ValueError(
+                "An invalid name assigned to the ComplexVariable, "
+                "which must be a string, or a tuple or a list with length 2!")
+
+    def numpy(self):
+        return self.real.numpy() + 1j * self.imag.numpy()
+
+    def __str__(self):
+        return "REAL: " + self.real.__str__() + "IMAG: " + self.imag.__str__()
+
+    __repr__ = __str__
+
+
 class OpProtoHolder(object):
     """
     A global variable to hold all OpProtos from C++ as a map
@@ -2522,16 +2605,7 @@ class Block(object):
         """
         if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
-            if _dygraph_tracer_._train_mode == False:
-                # eval mode
-                if ('trainable_statistics' not in attrs
-                    ) or not attrs['trainable_statistics']:
-                    attrs['is_test'] = True
-                else:
-                    attrs['is_test'] = False
-
             type = kwargs.get("type", None)
-
             op = Operator(
                 block=self,
                 desc=None,
@@ -4163,6 +4237,14 @@ class Program(object):
                     raise ValueError(
                         "All targets of Program._prune_with_input() can only be "
                         "Variable or Operator, but received %s." % type(t))
+
+                # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
+                # (1) the variable is leaf, it has no op that generates it;
+                # (2) the variable is not leaf, and we need to prune the op that generates it.
+                # In both cases, wo can just skip target_op of that it.
+                if name in feeded_var_names:
+                    continue
+
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
                 # and we need to find the current op that generate this
@@ -4179,11 +4261,14 @@ class Program(object):
                         else:
                             target_op = op
                             break
-                t = target_op
-                if t is None:
-                    raise ValueError("The target variable must have an "
-                                     "associated operator that generates it.")
-            targets_idx.append([t.block.idx, t.idx])
+                if target_op is None:
+                    raise ValueError(
+                        "The target variable used for pruning should have an "
+                        "associated operator that generates it.")
+                else:
+                    targets_idx.append([target_op.block.idx, target_op.idx])
+            else:
+                targets_idx.append([t.block.idx, t.idx])
 
         res = Program()
         res.desc, pruned_origin_block_id_map = core.prune(self.desc,

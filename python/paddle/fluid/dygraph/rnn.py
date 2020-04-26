@@ -39,7 +39,6 @@ class LSTMCell(Layer):
             \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + b_c)
             c_t &= f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t}
             h_t &= o_t \\odot tanh(c_t)
-
     Args:
         hidden_size (integer): The hidden size used in the Cell.
         input_size (integer): The input size used in the Cell.
@@ -64,30 +63,25 @@ class LSTMCell(Layer):
     
     Returns:
         None
-
     Examples:
         .. code-block:: python
             from paddle import fluid
             import paddle.fluid.core as core
             from paddle.fluid.dygraph.rnn import LSTMCell
             import numpy as np
-
             batch_size = 64
             input_size = 128
             hidden_size = 256
-
             step_input_np = np.random.uniform(-0.1, 0.1, (
                 batch_size, input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
                 batch_size, hidden_size)).astype('float64')
             pre_cell_np = np.random.uniform(-0.1, 0.1, (
                 batch_size, hidden_size)).astype('float64')
-
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
             else:
                 place = core.CPUPlace()
-
             with fluid.dygraph.guard(place):
                 cudnn_lstm = LSTMCell(hidden_size, input_size)
                 step_input_var = fluid.dygraph.to_variable(step_input_np)
@@ -139,12 +133,12 @@ class LSTMCell(Layer):
 
             self._weight_ih = self.create_parameter(
                 attr=weight_ih_param_attr,
-                shape=[self._input_size, 4 * self._hidden_size],
+                shape=[4 * self._hidden_size, self._input_size],
                 dtype=self._dtype)
 
             self._weight_hh = self.create_parameter(
                 attr=weight_hh_param_attr,
-                shape=[self._hidden_size, 4 * self._hidden_size],
+                shape=[4 * self._hidden_size, self._hidden_size],
                 dtype=self._dtype)
 
             self._bias_ih = self.create_parameter(
@@ -180,10 +174,10 @@ class LSTMCell(Layer):
     def forward(self, input, pre_hidden, pre_cell):
 
         if self._use_cudnn_impl:
-
-            igates = layers.matmul(input, y=self._weight_ih)
+            igates = layers.matmul(input, y=self._weight_ih, transpose_y=True)
             igates = layers.elementwise_add(igates, self._bias_ih)
-            hgates = layers.matmul(pre_hidden, self._weight_hh)
+            hgates = layers.matmul(
+                pre_hidden, self._weight_hh, transpose_y=True)
             hgates = layers.elementwise_add(hgates, self._bias_hh)
 
             chunked_igates = layers.split(igates, num_or_sections=4, dim=1)
@@ -264,28 +258,23 @@ class GRUCell(Layer):
     
     Returns:
         None
-
     Examples:
         .. code-block:: python
             from paddle import fluid
             import paddle.fluid.core as core
             from paddle.fluid.dygraph.rnn import GRUCell
             import numpy as np
-
             batch_size = 64
             input_size = 128
             hidden_size = 256
-
             step_input_np = np.random.uniform(-0.1, 0.1, (
             batch_size, input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
             batch_size, hidden_size)).astype('float64')
-
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
             else:
                 place = core.CPUPlace()
-
             with fluid.dygraph.guard(place):
                 cudnn_gru = GRUCell(hidden_size, input_size)
                 step_input_var = fluid.dygraph.to_variable(step_input_np)
@@ -334,12 +323,12 @@ class GRUCell(Layer):
 
             self._weight_ih = self.create_parameter(
                 attr=weight_ih_param_attr,
-                shape=[self._input_size, 3 * self._hidden_size],
+                shape=[3 * self._hidden_size, self._input_size],
                 dtype=self._dtype)
 
             self._weight_hh = self.create_parameter(
                 attr=weight_hh_param_attr,
-                shape=[self._hidden_size, 3 * self._hidden_size],
+                shape=[3 * self._hidden_size, self._hidden_size],
                 dtype=self._dtype)
 
             self._bias_ih = self.create_parameter(
@@ -402,9 +391,10 @@ class GRUCell(Layer):
 
         if self._use_cudnn_impl:
 
-            igates = layers.matmul(input, y=self._weight_ih)
+            igates = layers.matmul(input, y=self._weight_ih, transpose_y=True)
             igates = layers.elementwise_add(igates, self._bias_ih)
-            hgates = layers.matmul(pre_hidden, self._weight_hh)
+            hgates = layers.matmul(
+                pre_hidden, self._weight_hh, transpose_y=True)
             hgates = layers.elementwise_add(hgates, self._bias_hh)
 
             chunked_igates = layers.split(igates, num_or_sections=3, dim=1)
