@@ -17,12 +17,13 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.jit import dygraph_to_static_func, declarative, ProgramTranslator
 
 SEED = 2020
 np.random.seed(SEED)
 
 
+@declarative
 def test_list_without_control_flow(x):
     # Python list will not be transformed.
     x = fluid.dygraph.to_variable(x)
@@ -57,6 +58,7 @@ def test_list_in_for_loop(x, iter_num):
     return a
 
 
+@declarative
 def test_list_in_for_loop_with_concat(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     a = []
@@ -76,15 +78,13 @@ def test_list_in_while_loop(x, iter_num):
         shape=[1], value=iter_num, dtype="int32")
     a = []
     i = 0
-    # Note: `i < iter_num` can't be supported in dygraph mode now,
-    # but PR22892 is fixing it https://github.com/PaddlePaddle/Paddle/pull/22892.
-    # If PR22892 merged, change `i < iter_num.numpy()[0]` to `i < iter_num`.
-    while i < iter_num.numpy()[0]:
+    while i < iter_num:
         a.append(x)
         i += 1
     return a
 
 
+@declarative
 def test_list_in_while_loop_with_stack(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     iter_num = fluid.layers.fill_constant(
@@ -118,11 +118,10 @@ class TestListWithoutControlFlow(unittest.TestCase):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            tensor_list = dygraph_to_static_func(self.dygraph_func)(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=tensor_list[0])
-
-        return static_res[0]
+            res = self.dygraph_func(self.input)
+        if isinstance(res, (list, tuple)):
+            res = res[0]
+        return res.numpy()
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
@@ -140,11 +139,15 @@ class TestListInIf(TestListWithoutControlFlow):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_func(self.dygraph_func)(self.input)
+            program_translator = ProgramTranslator()
+            tensor_array = program_translator.get_func(self.dygraph_func)(
+                self.input)
             static_out = fluid.layers.array_read(
                 tensor_array,
                 i=fluid.layers.fill_constant(
                     shape=[1], value=0, dtype='int64'))
+            if isinstance(static_out, (list, tuple)):
+                static_out = static_out[0]
         exe = fluid.Executor(self.place)
         numpy_res = exe.run(main_program, fetch_list=static_out)
         return numpy_res[0]
@@ -170,7 +173,8 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_func(self.dygraph_func)(
+            program_translator = ProgramTranslator()
+            tensor_array = program_translator.get_func(self.dygraph_func)(
                 self.input, self.iter_num)
             static_outs = []
             for i in range(self.iter_num):
@@ -198,11 +202,8 @@ class TestListInWhileLoopWithStack(TestListInWhileLoop):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            out_var = dygraph_to_static_func(self.dygraph_func)(self.input,
-                                                                self.iter_num)
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=out_var)
-        return numpy_res[0]
+            out_var = self.dygraph_func(self.input, self.iter_num)
+        return out_var.numpy()
 
 
 class TestListInForLoop(TestListInWhileLoop):
