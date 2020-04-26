@@ -17,15 +17,21 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid import core, layers
 
-# TODO: define searching & indexing functions of a tensor
+# TODO: define searching & indexing functions of a tensor  
+from ..fluid.layers import argmin  #DEFINE_ALIAS
+from ..fluid.layers import argsort  #DEFINE_ALIAS
+from ..fluid.layers import has_inf  #DEFINE_ALIAS
+from ..fluid.layers import has_nan  #DEFINE_ALIAS
+from ..fluid.layers import topk  #DEFINE_ALIAS
+
 __all__ = [
     'argmax',
-    #            'argmin',
-    #            'argsort',
-    #            'has_inf',
-    #            'has_nan',
-    #            'masked_select',
-    #            'topk',
+    'argmin',
+    'argsort',
+    'has_inf',
+    'has_nan',
+    #       'masked_select',
+    'topk',
     'where',
     'index_select',
     'nonzero',

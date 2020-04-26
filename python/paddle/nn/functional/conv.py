@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+
 __all__ = ['conv2d', 'conv2d_transpose', 'conv3d', 'conv3d_transpose']
 
 import numpy as np
