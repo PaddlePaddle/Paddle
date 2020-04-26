@@ -22,7 +22,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 
 class PrintTransformer(gast.NodeTransformer):
     """
-    This class transform python print function to fluid.layers.Print.
+    This class transforms python print function to fluid.layers.Print.
     """
 
     def __init__(self, wrapper_root):
@@ -49,13 +49,13 @@ class PrintTransformer(gast.NodeTransformer):
         assert isinstance(node, gast.Call)
         if isinstance(node.func, gast.Name) and node.func.id == 'print':
             var = self._get_print_var(node)
-            return self._contruct_print_node(var)
+            return self._construct_print_node(var)
         return node
 
     # NOTE: deal with print in PY2
     def visit_Print(self, node):
         var = self._get_print_var(node)
-        print_call_node = self._contruct_print_node(var)
+        print_call_node = self._construct_print_node(var)
         return gast.Expr(value=print_call_node)
 
     def _get_print_var(self, node):
@@ -69,7 +69,7 @@ class PrintTransformer(gast.NodeTransformer):
         assert len(var_list) == 1, "Now only support print one Variable."
         return var_list[0]
 
-    def _contruct_print_node(self, node):
+    def _construct_print_node(self, node):
         if isinstance(node, gast.Name):
             if self._is_tensor_node(node):
                 print_node = gast.Call(

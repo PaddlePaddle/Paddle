@@ -139,14 +139,14 @@ struct Formater {
       summarize = std::min(size, (size_t)summarize);
       if (summarize > 0) {
         logs << d[0];
-        for (int i = 1; i < summarize; i++) {
+        for (int i = 1; i < summarize; ++i) {
           logs << " " << d[i];
         }
       }
     } else {
       if (size > 0) {
         logs << d[0];
-        for (size_t i = 1; i < size; i++) {
+        for (size_t i = 1; i < size; ++i) {
           logs << " " << d[i];
         }
       }
@@ -246,12 +246,17 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
     AddAttr<int>("summarize", "Number of elements printed.");
-    AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.");
-    AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
-    AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");
+    AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.")
+        .SetDefault(true);
     AddAttr<bool>("print_tensor_layout",
-                  "Whether to print the tensor's layout.");
-    AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.");
+                  "Whether to print the tensor's layout.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.")
+        .SetDefault(true);
     AddAttr<std::string>("print_phase",
                          "(string, default 'FORWARD') Which phase to display "
                          "including 'FORWARD' "

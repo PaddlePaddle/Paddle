@@ -4858,7 +4858,7 @@ class ParamBase(core.VarBase):
         if tensor._is_initialized():
             return 'Parameter: %s\n%s' % (self.name, str(tensor))
         else:
-            return 'Parameter: %s, not inited' % (self.name)
+            return 'Parameter: %s, not initialized' % (self.name)
 
     __repr__ = __str__
 

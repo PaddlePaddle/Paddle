@@ -200,7 +200,7 @@ def monkey_patch_varbase():
             if tensor._is_initialized():
                 return 'Variable: %s\n%s' % (self.name, str(tensor))
             else:
-                return 'Variable: %s, not inited' % (self.name)
+                return 'Variable: %s, not initialized' % (self.name)
 
     def __nonzero__(self):
         numel = np.prod(self.shape)
