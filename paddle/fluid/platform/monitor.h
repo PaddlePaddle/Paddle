@@ -36,6 +36,9 @@ class StatValue {
   std::mutex mu_;
   // We use lock rather than atomic for generic values
  public:
+  explicit StatValue(const std::string& n) {
+    StatRegistry<T>::Instance().add(n, this);
+  }
   T increase(T inc) {
     std::lock_guard<std::mutex> lock(mu_);
     return v_ += inc;
@@ -65,22 +68,31 @@ class StatRegistry {
  public:
   ~StatRegistry<T>() {}
 
-  static StatRegistry<T>& get() {
+  static StatRegistry<T>& Instance() {
     static StatRegistry<T> r;
     return r;
   }
-
-  StatValue<T>* add(const std::string& name) {
+  StatValue<T>* get(const std::string& name) {
     std::lock_guard<std::mutex> lg(mutex_);
     auto it = stats_.find(name);
     if (it != stats_.end()) {
-      return it->second.get();
+      return it->second;
+    } else {
+      printf("not register\n");
+      return nullptr;
     }
-    auto v = std::unique_ptr<StatValue<T>>(new StatValue<T>);
-    VLOG(0) << "Register Stats: " << name;
-    auto value = v.get();
-    stats_.insert(std::make_pair(name, std::move(v)));
-    return value;
+  }
+  int add(const std::string& name, StatValue<T>* stat) {
+    std::lock_guard<std::mutex> lg(mutex_);
+    auto it = stats_.find(name);
+    if (it != stats_.end()) {
+      // LOG(WARNING) << name << " has been registerd before, please check it.";
+      return -1;
+    }
+    stats_.insert(std::make_pair(name, stat));
+    // How to print log before Init VLOG?
+    // VLOG(4) << "STAT Register: " << name;
+    return 0;
   }
 
   void publish(std::vector<ExportedStatValue<T>>& exported,  // NOLINT
@@ -103,43 +115,27 @@ class StatRegistry {
 
  private:
   std::mutex mutex_;
-  std::unordered_map<std::string, std::unique_ptr<StatValue<T>>> stats_;
-};
-
-template <typename T>
-class Stat {
- public:
-  explicit Stat(const std::string& n)
-      : name(n), value_(StatRegistry<T>::get().add(n)) {}
-
-  T increase(T inc) { return value_->increase(inc); }
-  T decrease(T inc) { return value_->decrease(inc); }
-  T reset(T value) { return value_->reset(value); }
-  T get() const { return value_->get(); }
-
- private:
-  std::string name;
-  StatValue<T>* value_;
+  std::unordered_map<std::string, StatValue<T>*> stats_;
 };
 
 // Because we only support these two types in pybind
-#define REGISTER_FLOAT_STATUS(item) static Stat<float> _##item(#item);
+#define REGISTER_FLOAT_STATUS(item) extern StatValue<float> _##item;
 
-#define REGISTER_INT_STATUS(item) static Stat<int64_t> _##item(#item);
+#define REGISTER_INT_STATUS(item) extern StatValue<int64_t> _##item;
 
 #define STAT_ADD(item, t) paddle::platform::_##item.increase(t)
 #define STAT_SUB(item, t) paddle::platform::_##item.decrease(t)
 
 // Support add stat value by string
 #define STAT_INT_ADD(item, t) \
-  paddle::platform::StatRegistry<int64_t>::get().add(item)->increase(t)
+  paddle::platform::StatRegistry<int64_t>::Instance().get(item)->increase(t)
 #define STAT_INT_SUB(item, t) \
-  paddle::platform::StatRegistry<int64_t>::get().add(item)->decrease(t)
+  paddle::platform::StatRegistry<int64_t>::Instance().get(item)->decrease(t)
 
 #define STAT_FLOAT_ADD(item, t) \
-  paddle::platform::StatRegistry<float>::get().add(item)->increase(t)
+  paddle::platform::StatRegistry<float>::Instance().get(item)->increase(t)
 #define STAT_FLOAT_SUB(item, t) \
-  paddle::platform::StatRegistry<float>::get().add(item)->decrease(t)
+  paddle::platform::StatRegistry<float>::Instance().get(item)->decrease(t)
 
 #define STAT_RESET(item, t) paddle::platform::_##item.reset(t)
 

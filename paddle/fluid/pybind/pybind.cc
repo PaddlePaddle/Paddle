@@ -1540,7 +1540,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("get_float_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<float>> float_stats;
-    paddle::platform::StatRegistry<float>::get().publish(float_stats);
+    paddle::platform::StatRegistry<float>::Instance().publish(float_stats);
     std::unordered_map<std::string, float> stats_map;
     for (const auto &stat : float_stats) {
       stats_map[stat.key] = stat.value;
@@ -1549,8 +1549,8 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("get_int_stats", []() {
     std::vector<paddle::platform::ExportedStatValue<int64_t>> int_stats;
-    paddle::platform::StatRegistry<int64_t>::get().publish(int_stats);
-    std::unordered_map<std::string, int> stats_map;
+    paddle::platform::StatRegistry<int64_t>::Instance().publish(int_stats);
+    std::unordered_map<std::string, int64_t> stats_map;
     for (const auto &stat : int_stats) {
       stats_map[stat.key] = stat.value;
     }
