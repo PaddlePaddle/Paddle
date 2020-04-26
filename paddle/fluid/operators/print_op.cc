@@ -260,9 +260,7 @@ class PrintOpInferShape : public framework::InferShapeBase {
 class PrintOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto input_type = ctx->GetType(ctx->Input("In")[0]);
-    auto out_name = ctx->Output("Out").front();
-    ctx->SetType(out_name, input_type);
+    ctx->SetOutputType("Out", ctx->GetInputType("In"));
   }
 };
 
