@@ -4237,6 +4237,14 @@ class Program(object):
                     raise ValueError(
                         "All targets of Program._prune_with_input() can only be "
                         "Variable or Operator, but received %s." % type(t))
+
+                # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
+                # (1) the variable is leaf, it has no op that generates it;
+                # (2) the variable is not leaf, and we need to prune the op that generates it.
+                # In both cases, wo can just skip target_op of that it.
+                if name in feeded_var_names:
+                    continue
+
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
                 # and we need to find the current op that generate this
@@ -4253,11 +4261,14 @@ class Program(object):
                         else:
                             target_op = op
                             break
-                t = target_op
-                if t is None:
-                    raise ValueError("The target variable must have an "
-                                     "associated operator that generates it.")
-            targets_idx.append([t.block.idx, t.idx])
+                if target_op is None:
+                    raise ValueError(
+                        "The target variable used for pruning should have an "
+                        "associated operator that generates it.")
+                else:
+                    targets_idx.append([target_op.block.idx, target_op.idx])
+            else:
+                targets_idx.append([t.block.idx, t.idx])
 
         res = Program()
         res.desc, pruned_origin_block_id_map = core.prune(self.desc,
