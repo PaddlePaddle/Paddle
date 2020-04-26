@@ -142,13 +142,8 @@ class FleetTranspiler(Fleet):
                 DistributedMode.HALF_ASYNC
         ]:
             send_ctx = fleet.compiled_config.get_communicator_send_context()
-            for k, v in send_ctx.items():
-                print("k: {}".format(k))
 
             recv_ctx = fleet.compiled_config.get_communicator_recv_context()
-            #recv_ctx = {}
-            for k, v in recv_ctx.items():
-                print("k: {}".format(k))
 
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
