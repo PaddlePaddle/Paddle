@@ -33,7 +33,7 @@ class LayerHelper(LayerHelperBase):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
 
-        if os.environ.get('ENABLE_API_BENCH_LOG'):
+        if os.environ.get('API_INFO_LOG_PATH'):
             APIStr(layer_type, kwargs.items())
 
         # TODO(panyx0718, minqiyang): dygraph mode

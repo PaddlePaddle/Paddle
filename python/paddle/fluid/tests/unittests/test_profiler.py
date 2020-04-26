@@ -25,6 +25,8 @@ import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
+os.environ["API_INFO_LOG_PATH"] = "API_INFO.json"
+
 
 class TestProfiler(unittest.TestCase):
     @classmethod
@@ -130,6 +132,39 @@ class TestProfiler(unittest.TestCase):
     def test_all_profiler(self):
         self.net_profiler('All', "AllOpDetail")
         #self.net_profiler('All', "AllOpDetail", use_parallel_executor=True)
+
+
+class TestProfiler2(unittest.TestCase):
+    def net_profiler(self,
+                     state,
+                     option,
+                     iter_range=None,
+                     use_parallel_executor=False):
+        profile_path = os.path.join(tempfile.gettempdir(), "profile")
+        open(profile_path, "w").write("")
+        startup_program = fluid.Program()
+        main_program = fluid.Program()
+
+        with fluid.program_guard(main_program, startup_program):
+            x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
+            fluid.layers.concat([x_1, x_1], 0)
+
+            x_2 = fluid.data(shape=[None, 2, 4, 5], dtype='float64', name='x_2')
+            fluid.layers.concat([x_2, x_2], 0)
+
+            input_1 = np.random.random([2, 1, 4, 5]).astype("int32")
+            input_2 = np.random.random([2, 2, 4, 5]).astype("float64")
+
+            place = fluid.CPUPlace() if state == 'CPU' else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            with profiler.profiler(state, 'total', profile_path,
+                                   option) as prof:
+                outs = exe.run(main_program,
+                               feed={"x_1": input_1,
+                                     "x_2": input_2})
+
+    def test_cpu_profiler(self):
+        self.net_profiler('CPU', "Default")
 
 
 if __name__ == '__main__':

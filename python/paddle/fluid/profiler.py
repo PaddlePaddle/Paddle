@@ -37,8 +37,11 @@ NVPROF_CONFIG = [
     "conckerneltrace",
 ]
 
-not_record_op = ['data']
-not_record_param = ['name', 'op_type', 'attrs', 'bias_attr', 'param_attr']
+not_record_op = ['data', 'global_var', 'while', 'Optimizer']
+not_record_param = [
+    'name', 'op_type', 'attrs', 'bias_attr', 'param_attr', 'l_type',
+    'channel_last'
+]
 
 op_alias = dict()
 op_alias['depthwise_conv2d'] = 'conv2d'
@@ -54,7 +57,6 @@ op_alias['cross_entropy2'] = 'cross_entropy'
 
 op_str_list = []
 op_params_str_list = []
-op_list = []
 op_json_list = []
 op_params_json_list = []
 
@@ -68,8 +70,6 @@ class APIStr(object):
             op_json_list.append(op_j)
         if op_j != -1:
             op_params_json_list.append(param_j)
-        print(op_j)
-        print(param_j)
 
     def op_trans(self, op, params):
         op_json = ""
@@ -81,16 +81,13 @@ class APIStr(object):
                 valid_op = False
         if valid_op:
             op_json = '"op":' + '"' + op + '",'
-            op_list.append(op)
         else:
             print("API_LOG: return as not valid op:", op)
             return -1, -1
         op_json = '{\n' + op_json + '\n'
-        print(op)
 
         params_json = '"param_info":{\n'
         for param in params:
-            print(param)
             key = param[0]
             values = param[1]
             if key != None and key not in not_record_param and not callable(
@@ -111,11 +108,17 @@ class APIStr(object):
                     v = values[0]
                     if hasattr(v, 'dtype'):
                         data_type_l = self.dtype_to_string(v.dtype)
-                    for lv in values:
-                        strs = strs + '    "' + key + '": {"type": "variable", "dtype": "' + data_type_l + '", "shape":' + str(
-                            lv.shapes) + '"},'
+                    strs = strs + '    "' + key + '": {\n        "type": "list<Variable>",\n'
+                    for i in range(len(values)):
+                        strs = strs + '        "' + key + str(
+                            i
+                        ) + '": {"type": "Variable", "dtype": "' + data_type_l + '", "shape": "' + str(
+                            list(values[i].shape)) + '"},'
+                        if i != len(values) - 1:
+                            strs = strs + '\n'
+                    strs = strs[:-2] + '}\n},'
                 else:
-                    strs = strs + '    "' + key + '": {"dtype": "' + vtype + '", "value": "' + str(
+                    strs = strs + '    "' + key + '": {"type": "' + vtype + '", "value": "' + str(
                         values) + '"},'
 
                 if strs != '':
@@ -125,6 +128,7 @@ class APIStr(object):
         return op_json, params_json
 
     def dtype_to_string(self, dtype):
+        data_type = ""
         if dtype == core.VarDesc.VarType.FP16:
             data_type = "float16"
         elif dtype == core.VarDesc.VarType.FP32:
@@ -132,24 +136,23 @@ class APIStr(object):
         elif dtype == core.VarDesc.VarType.FP64:
             data_type = "float64"
         elif dtype == core.VarDesc.VarType.INT8:
-            data_type = 'int8'
+            data_type = "int8"
         elif dtype == core.VarDesc.VarType.INT16:
-            data_type = 'int16'
+            data_type = "int16"
         elif dtype == core.VarDesc.VarType.INT32:
-            data_type = 'int32'
+            data_type = "int32"
         elif dtype == core.VarDesc.VarType.INT64:
-            data_type = 'int64'
+            data_type = "int64"
         elif dtype == core.VarDesc.VarType.UINT8:
-            data_type = 'uint8'
-        elif dtype == core.VarDesc.VarType.UINT16:
-            data_type = 'uint16'
+            data_type = "uint8"
         elif dtype == core.VarDesc.VarType.BOOL:
-            data_type = 'bool'
+            data_type = "bool"
         else:
-            raise ValueError("Unsupported data type %s" % dtype)
+            print("Unsupported data type %s" % dtype)
         return data_type
 
     def type_to_string(self, values):
+        vtype = ""
         if type(values) is Variable:
             vtype = "Variable"
         elif type(values) is float:
@@ -160,8 +163,6 @@ class APIStr(object):
             vtype = "string"
         elif type(values) is int:
             vtype = "int"
-        elif type(values) is long:
-            vtype = "long"
         elif type(values) is list:
             vtype = "list"
         elif type(values) is tuple:
@@ -170,30 +171,22 @@ class APIStr(object):
             vtype = "dict"
         elif type(values) is np.ndarray:
             vtype = "numpy.ndarray"
-        elif type(values) is ParamAttr:
-            vtype = "ParamAttr"
         else:
-            raise ValueError("Unsupported type %s" % type(values))
+            print("Unsupported type %s" % type(values))
         return vtype
 
 
 def API_info_summary():
-    if os.environ.get('ENABLE_API_BENCH_LOG'):
-        api_json_file = os.environ.get('API_LOG_PATH')
-        info_json_file = os.environ.get('API_INFO_LOG_PATH')
-        if api_json_file is not None:
-            with open(api_json_file, 'a') as fa:
-                for op_l in op_list:
-                    fa.writelines(op_l + '\n')
-        if info_json_file is not None:
-            with open(info_json_file, 'a') as f:
-                f.writelines('[\n')
-                for i in range(len(op_json_list)):
-                    f.writelines(op_json_list[i])
-                    f.writelines(op_params_json_list[i])
-                f.seek(-2, os.SEEK_END)
-                f.truncate()
-                f.writelines('\n]\n')
+    info_json_file = os.environ.get('API_INFO_LOG_PATH')
+    if info_json_file is not None:
+        with open(info_json_file, 'a') as f:
+            f.writelines('[\n')
+            for i in range(len(op_json_list)):
+                f.writelines(op_json_list[i])
+                if i == len(op_json_list) - 1:
+                    op_params_json_list[i] = op_params_json_list[i][:-2]
+                f.writelines(op_params_json_list[i])
+            f.writelines('\n]\n')
 
 
 @signature_safe_contextmanager
