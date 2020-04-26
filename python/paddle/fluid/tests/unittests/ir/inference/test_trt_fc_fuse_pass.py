@@ -25,7 +25,8 @@ from paddle.fluid.core import AnalysisConfig
 class FCFusePassTRTTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
-            data = fluid.data(name="data", shape=[32, 128], dtype="float32")
+            data = fluid.data(
+                name="data", shape=[32, 128, 2, 2], dtype="float32")
             fc_out1 = fluid.layers.fc(input=data,
                                       size=128,
                                       num_flatten_dims=1,
