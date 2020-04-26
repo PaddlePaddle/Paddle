@@ -130,6 +130,18 @@ class Optimizer(object):
                 return True
         return False
 
+    def state_dict(self):
+        return self.optimizer.state_dict()
+
+    def set_dict(self, state_dict):
+        return self.optimizer.set_dict(state_dict)
+
+    def get_opti_var_name_list(self):
+        return self.optimizer.get_opti_var_name_list()
+
+    def current_step_lr(self):
+        return self.optimizer.current_step_lr()
+
     def minimize(self, loss, use_data_parallel=False, model=None):
         param_list = dict()
 

@@ -576,14 +576,15 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(
+                * [to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.model.forward(* [to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -592,9 +593,9 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(
-                *(to_list(outputs) + to_list(labels)))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
+                labels)))
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -606,7 +607,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.forward(* [to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -632,9 +633,9 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(
-                *(to_list(outputs) + to_list(labels)))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
+                labels)))
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -1009,7 +1010,7 @@ class Model(fluid.dygraph.Layer):
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
         metrics_name = self._metrics_name()
-        steps = len(train_loader) if hasattr(train_loader, '__len__') else None
+        steps = self._len_data_loader(train_loader)
         cbks = config_callbacks(
             callbacks,
             model=self,
@@ -1037,8 +1038,7 @@ class Model(fluid.dygraph.Layer):
                 if not isinstance(eval_loader, Iterable):
                     loader = eval_loader()
 
-                eval_steps = len(loader) if hasattr(loader,
-                                                    '__len__') else None
+                eval_steps = self._len_data_loader(loader)
                 cbks.on_begin('eval', {
                     'steps': eval_steps,
                     'metrics_name': metrics_name
@@ -1114,7 +1114,7 @@ class Model(fluid.dygraph.Layer):
         if not isinstance(eval_loader, Iterable):
             loader = eval_loader()
 
-        eval_steps = len(loader) if hasattr(loader, '__len__') else None
+        eval_steps = self._len_data_loader(loader)
         cbks.on_begin('eval',
                       {'steps': eval_steps,
                        'metrics_name': metrics_name})
@@ -1135,7 +1135,7 @@ class Model(fluid.dygraph.Layer):
                 test_data,
                 batch_size=1,
                 num_workers=0,
-                stack_outputs=True):
+                stack_outputs=False):
         """
         FIXME: add more comments and usage
         Args:
@@ -1161,7 +1161,7 @@ class Model(fluid.dygraph.Layer):
         if fluid.in_dygraph_mode():
             feed_list = None
         else:
-            feed_list = [x.forward() for x in self._inputs + self._labels]
+            feed_list = [x.forward() for x in self._inputs]
 
         if test_data is not None and isinstance(test_data, Dataset):
             test_sampler = DistributedBatchSampler(
@@ -1183,20 +1183,29 @@ class Model(fluid.dygraph.Layer):
             loader = test_loader()
 
         outputs = []
+        count = 0
         for data in tqdm.tqdm(loader):
             data = flatten(data)
-            outputs.append(self.test_batch(data[:len(self._inputs)]))
+            out = to_list(self.test_batch(data[:len(self._inputs)]))
+            outputs.append(out)
+            count += out[0].shape[0]
+
+        if test_loader is not None and self._adapter._nranks > 1 \
+                    and isinstance(test_loader, DataLoader) \
+                    and count > len(test_loader.dataset):
+            size = outputs[-1][0].shape[0] - (count - len(test_loader.dataset))
+            outputs[-1] = [o[:size] for o in outputs[-1]]
 
         # NOTE: for lod tensor output, we should not stack outputs
         # for stacking may loss its detail info
+
         outputs = list(zip(*outputs))
+
         if stack_outputs:
-            outputs = [np.stack(outs, axis=0) for outs in outputs]
+            outputs = [np.vstack(outs) for outs in outputs]
 
         self._test_dataloader = None
-        if test_loader is not None and self._adapter._nranks > 1 \
-                    and isinstance(test_loader, DataLoader):
-            outputs = [o[:len(test_loader.dataset)] for o in outputs]
+
         return outputs
 
     def _run_one_epoch(self,
@@ -1205,7 +1214,7 @@ class Model(fluid.dygraph.Layer):
                        mode,
                        metrics_name,
                        epoch=None):
-        size = len(data_loader) if hasattr(data_loader, '__len__') else None
+        size = self._len_data_loader(data_loader)
         logs = {
             'steps': size,
             'metrics_name': metrics_name,
@@ -1236,10 +1245,10 @@ class Model(fluid.dygraph.Layer):
             callbacks.on_batch_begin(mode, step, logs)
             if mode == 'train':
                 outs = self.train_batch(data[:len(self._inputs)],
-                                           data[len(self._inputs):])
+                                        data[len(self._inputs):])
             else:
                 outs = self.eval_batch(data[:len(self._inputs)],
-                                          data[len(self._inputs):])
+                                       data[len(self._inputs):])
 
             # losses
             loss = outs[0] if self._metrics else outs
@@ -1267,7 +1276,7 @@ class Model(fluid.dygraph.Layer):
 
         if mode == 'train':
             assert epoch is not None, 'when mode is train, epoch must be given'
-            callbacks.on_epoch_end(epoch)
+            callbacks.on_epoch_end(epoch, logs)
 
         return logs
 
@@ -1280,3 +1289,10 @@ class Model(fluid.dygraph.Layer):
         for m in self._metrics:
             metrics_name.extend(to_list(m.name()))
         return metrics_name
+
+    def _len_data_loader(self, data_loader):
+        try:
+            steps = len(data_loader)
+        except Exception:
+            steps = None
+        return steps

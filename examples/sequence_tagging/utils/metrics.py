@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 __all__ = ['chunk_count', "build_chunk"]
 
 
-def build_chunk(data_list, id2label_dict): 
+def build_chunk(data_list, id2label_dict):
     """
     Assembly entity
     """
@@ -31,29 +31,29 @@ def build_chunk(data_list, id2label_dict):
     ner_dict = {}
     ner_str = ""
     ner_start = 0
-    for i in range(len(tag_list)): 
+    for i in range(len(tag_list)):
         tag = tag_list[i]
-        if tag == u"O": 
-            if i != 0: 
+        if tag == u"O":
+            if i != 0:
                 key = "%d_%d" % (ner_start, i - 1)
                 ner_dict[key] = ner_str
             ner_start = i
-            ner_str = tag 
-        elif tag.endswith(u"B"): 
-            if i != 0: 
+            ner_str = tag
+        elif tag.endswith(u"B"):
+            if i != 0:
                 key = "%d_%d" % (ner_start, i - 1)
                 ner_dict[key] = ner_str
             ner_start = i
             ner_str = tag.split('-')[0]
-        elif tag.endswith(u"I"): 
-            if tag.split('-')[0] != ner_str: 
-                if i != 0: 
+        elif tag.endswith(u"I"):
+            if tag.split('-')[0] != ner_str:
+                if i != 0:
                     key = "%d_%d" % (ner_start, i - 1)
                     ner_dict[key] = ner_str
                 ner_start = i
                 ner_str = tag.split('-')[0]
     return ner_dict
-                    
+
 
 def chunk_count(infer_numpy, label_numpy, seq_len, id2label_dict):
     """
@@ -62,15 +62,14 @@ def chunk_count(infer_numpy, label_numpy, seq_len, id2label_dict):
     num_infer_chunks, num_label_chunks, num_correct_chunks = 0, 0, 0
     assert infer_numpy.shape[0] == label_numpy.shape[0]
 
-    for i in range(infer_numpy.shape[0]): 
-        infer_list = infer_numpy[i][: seq_len[i]]
-        label_list = label_numpy[i][: seq_len[i]]
+    for i in range(infer_numpy.shape[0]):
+        infer_list = infer_numpy[i][:seq_len[i]]
+        label_list = label_numpy[i][:seq_len[i]]
         infer_dict = build_chunk(infer_list, id2label_dict)
         num_infer_chunks += len(infer_dict)
         label_dict = build_chunk(label_list, id2label_dict)
         num_label_chunks += len(label_dict)
-        for key in infer_dict: 
-            if key in label_dict and label_dict[key] == infer_dict[key]: 
+        for key in infer_dict:
+            if key in label_dict and label_dict[key] == infer_dict[key]:
                 num_correct_chunks += 1
     return num_infer_chunks, num_label_chunks, num_correct_chunks
-

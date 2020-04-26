@@ -105,7 +105,7 @@ def main():
         mode="leveldb",
         phase="train")
 
-    dev_dataloader = BertDataLoader(
+    test_dataloader = BertDataLoader(
         "./data/glue_data/MNLI/dev_matched.tsv",
         tokenizer, ["contradiction", "entailment", "neutral"],
         max_seq_length=config.max_seq_len,

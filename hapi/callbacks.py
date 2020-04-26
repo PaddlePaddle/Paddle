@@ -215,15 +215,13 @@ class ProgBarLogger(Callback):
 
         if self.train_step % self.log_freq == 0 and self.verbose and ParallelEnv(
         ).local_rank == 0:
-            # if steps is not None, last step will update in on_epoch_end
-            if self.steps and self.train_step < self.steps:
-                self._updates(logs, 'train')
-            else:
+            if self.steps is None or self.train_step < self.steps:
                 self._updates(logs, 'train')
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        if self.verbose and ParallelEnv().local_rank == 0:
+        if self.train_step % self.log_freq != 0 and self.verbose and ParallelEnv(
+        ).local_rank == 0:
             self._updates(logs, 'train')
 
     def on_eval_begin(self, logs=None):
@@ -238,20 +236,20 @@ class ProgBarLogger(Callback):
 
     def on_eval_batch_end(self, step, logs=None):
         logs = logs or {}
-        self.eval_step = step
+        self.eval_step += 1
         samples = logs.get('batch_size', 1)
         self.evaled_samples += samples
 
         if self.eval_step % self.log_freq == 0 and self.verbose and ParallelEnv(
         ).local_rank == 0:
-            # if steps is not None, last step will update in on_epoch_end
-            if self.eval_steps and self.eval_step < self.eval_steps:
+            if self.eval_steps is None or self.eval_step < self.eval_steps:
                 self._updates(logs, 'eval')
 
     def on_eval_end(self, logs=None):
         logs = logs or {}
         if self.verbose and ParallelEnv().local_rank == 0:
-            self._updates(logs, 'eval')
+            if self.eval_step % self.log_freq != 0:
+                self._updates(logs, 'eval')
             print('Eval samples: %d' % (self.evaled_samples))
 
 
