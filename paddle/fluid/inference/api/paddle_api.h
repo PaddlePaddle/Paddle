@@ -158,16 +158,10 @@ class PADDLE_INFENRENCE_EXPORT PaddleBuf {
   bool memory_owned_{true};
 };
 
-<<<<<<< HEAD
-/** Basic input and output data structure for PaddlePredictor.
- */
-struct PADDLE_INFENRENCE_EXPORT PaddleTensor {
-=======
 ///
 /// \brief Basic input and output data structure for PaddlePredictor.
 ///
-struct PaddleTensor {
->>>>>>> origin/develop
+struct PADDLE_INFENRENCE_EXPORT PaddleTensor {
   PaddleTensor() = default;
   std::string name;  ///<  variable name.
   std::vector<int> shape;
@@ -178,11 +172,6 @@ struct PaddleTensor {
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
 
-<<<<<<< HEAD
-/** Tensor without copy, currently only supports `AnalysisPredictor`.
- */
-class PADDLE_INFENRENCE_EXPORT ZeroCopyTensor {
-=======
 /// \brief Represents an n-dimensional array of values.
 /// The ZeroCopyTensor is used to store the input or output of the network.
 /// Zero copy means that the tensor supports direct copy of host or device data
@@ -191,8 +180,7 @@ class PADDLE_INFENRENCE_EXPORT ZeroCopyTensor {
 /// AnalysisPredictor.
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
-class ZeroCopyTensor {
->>>>>>> origin/develop
+class PADDLE_INFENRENCE_EXPORT ZeroCopyTensor {
  public:
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
@@ -267,15 +255,9 @@ class ZeroCopyTensor {
   int device_;
 };
 
-<<<<<<< HEAD
-/** A simple Inference API for Paddle.
- */
-class PADDLE_INFENRENCE_EXPORT PaddlePredictor {
-=======
 /// \brief A Predictor for executing inference on a model.
 /// Base class for AnalysisPredictor and NativePaddlePredictor.
-class PaddlePredictor {
->>>>>>> origin/develop
+class PADDLE_INFENRENCE_EXPORT PaddlePredictor {
  public:
   struct Config;
   PaddlePredictor() = default;
@@ -360,10 +342,6 @@ class PaddlePredictor {
   };
 };
 
-<<<<<<< HEAD
-struct PADDLE_INFENRENCE_EXPORT NativeConfig : public PaddlePredictor::Config {
-  // GPU related fields.
-=======
 ///
 /// \brief configuration manager for `NativePredictor`.
 ///
@@ -371,9 +349,8 @@ struct PADDLE_INFENRENCE_EXPORT NativeConfig : public PaddlePredictor::Config {
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 ///
-struct NativeConfig : public PaddlePredictor::Config {
+struct PADDLE_INFENRENCE_EXPORT NativeConfig : public PaddlePredictor::Config {
   /// GPU related fields.
->>>>>>> origin/develop
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{
@@ -421,31 +398,6 @@ struct NativeConfig : public PaddlePredictor::Config {
 template <typename ConfigT>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
-<<<<<<< HEAD
-struct AnalysisConfig;
-struct NativeConfig;
-struct DemoConfig;
-
-template <>
-PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<AnalysisConfig>(const AnalysisConfig& config);
-
-template <>
-PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig>(const NativeConfig& config);
-
-template <>
-PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<DemoConfig>(const DemoConfig& config);
-
-/** NOTE The following APIs are too trivial, we will discard it in the following
- * versions.
- */
-=======
-/// NOTE The following APIs are too trivial, we will discard it in the following
-/// versions.
-///
->>>>>>> origin/develop
 enum class PaddleEngineKind {
   kNative = 0,         ///< Use the native Fluid facility.
   kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
@@ -454,14 +406,6 @@ enum class PaddleEngineKind {
 
 template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
-
-template <>
-PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
-
-template <>
-PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
 
 PADDLE_INFENRENCE_EXPORT int PaddleDtypeSize(PaddleDType dtype);
 
