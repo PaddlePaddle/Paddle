@@ -126,20 +126,21 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     }
   }
 
-  for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    InitVarsInScope(var_infos_, local_scopes_[i], local_exec_scopes_[i]);
+  for (size_t i = local_scopes_.size(); i >= 1; --i) {
+    InitVarsInScope(var_infos_, local_scopes_[i - 1],
+                    local_exec_scopes_[i - 1]);
   }
   ProcessGraph(graphs_, local_scopes_[0]);
 }
 
-void AsyncSSAGraphExecutor::StartOffPythonTrainLoop() {
+void AsyncSSAGraphExecutor::StartOffPythonTrainLoop(bool return_merged) {
   VLOG(3) << "StartOffPythonTrainLoop size = " << places_.size();
   for (size_t i = 1; i < places_.size(); ++i) {
-    auto call = [this, i]() -> void {
+    auto call = [this, i, return_merged]() -> void {
       VLOG(3) << "start off python thread " << i;
       try {
         while (true) {
-          executors_[i]->Run({});
+          executors_[i]->Run({}, return_merged);
         }
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
@@ -164,8 +165,12 @@ void AsyncSSAGraphExecutor::HandleException() {
   }
 }
 
-FeedFetchList AsyncSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType AsyncSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  PADDLE_ENFORCE_EQ(return_merged, true,
+                    platform::errors::InvalidArgument(
+                        "AsyncSSAGraphExecutor does not support unmerged "
+                        "results to be fetched!"));
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
     if (strategy_.thread_barrier_) {
@@ -175,32 +180,44 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
 #endif
     }
     exception_holder_.Clear();
-    StartOffPythonTrainLoop();
+    StartOffPythonTrainLoop(return_merged);
   }
 
   if (places_.size() == 1) {
     exception_holder_.Clear();
-  } else {
-    HandleException();
   }
 
-  FeedFetchList fetch_data;
-  fetch_data.reserve(fetch_tensors.size());
+  FetchResultType fetch_data;
 
   try {
-    fetch_data = executors_[0]->Run(fetch_tensors);
+    fetch_data = executors_[0]->Run(fetch_tensors, return_merged);
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
   }
 
   HandleException();
 
-  FeedFetchList ret;
+  FetchList ret;
+  auto &val = boost::get<FetchList>(fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
-    std::vector<const LoDTensor *> lodtensor_ptrs;
-    lodtensor_ptrs.push_back(&fetch_data.at(fetch_idx));
-    ret.emplace_back();
-    ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+    if (data_is_lod_tensor(val.at(fetch_idx))) {
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+      lodtensor_ptrs.push_back(&(boost::get<LoDTensor>(val.at(fetch_idx))));
+      LoDTensor var;
+      var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      ret.emplace_back(var);
+    } else {
+      auto array = boost::get<LoDTensorArray>(val.at(fetch_idx));
+      LoDTensorArray item_array;
+      item_array.reserve(array.size());
+      for (size_t i = 0; i < array.size(); ++i) {
+        std::vector<const LoDTensor *> lodtensor_ptrs;
+        lodtensor_ptrs.push_back(&array[i]);
+        item_array.emplace_back();
+        item_array.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+      }
+      ret.emplace_back(item_array);
+    }
   }
   return ret;
 }

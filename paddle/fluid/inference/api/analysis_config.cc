@@ -82,6 +82,12 @@ void AnalysisConfig::DisableGpu() {
   Update();
 }
 
+void AnalysisConfig::DisableFCPadding() {
+  use_fc_padding_ = false;
+
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -94,6 +100,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
+  CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(use_cudnn_);
@@ -109,8 +116,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(tensorrt_precision_mode_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
-  // NGRAPH related.
-  CP_MEMBER(use_ngraph_);
   // MKLDNN related.
   CP_MEMBER(use_mkldnn_);
   CP_MEMBER(mkldnn_enabled_op_types_);
@@ -118,6 +123,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
+  CP_MEMBER(min_input_shape_);
+  CP_MEMBER(max_input_shape_);
+  CP_MEMBER(optim_input_shape_);
+  CP_MEMBER(disable_trt_plugin_fp16_);
 
   CP_MEMBER(use_lite_);
   CP_MEMBER(lite_precision_mode_);
@@ -197,16 +206,6 @@ void AnalysisConfig::EnableMkldnnQuantizer() {
   Update();
 }
 
-void AnalysisConfig::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  pass_builder()->EnableNgraph();
-  use_ngraph_ = true;
-#else
-  LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-  use_ngraph_ = false;
-#endif
-}
-
 MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
   PADDLE_ENFORCE_NOT_NULL(mkldnn_quantizer_config_,
                           "MkldnnQuantizer was not enabled yet.");
@@ -236,6 +235,17 @@ void AnalysisConfig::EnableTensorRtEngine(
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::SetTRTDynamicShapeInfo(
+    std::map<std::string, std::vector<int>> min_input_shape,
+    std::map<std::string, std::vector<int>> max_input_shape,
+    std::map<std::string, std::vector<int>> optim_input_shape,
+    bool disable_trt_plugin_fp16) {
+  min_input_shape_ = min_input_shape;
+  max_input_shape_ = max_input_shape;
+  optim_input_shape_ = optim_input_shape;
+  disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
 // TODO(Superjomn) refactor this, buggy.
@@ -269,7 +279,14 @@ void AnalysisConfig::Update() {
 
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
+    bool use_calib_int8 =
+        (tensorrt_precision_mode_ == AnalysisConfig::Precision::kInt8) &&
+        trt_use_calib_mode_;
     for (const auto &pass : kTRTSubgraphPasses) {
+      if (use_calib_int8 &&
+          (pass == "conv_bn_fuse_pass" || pass == "fc_fuse_pass")) {
+        continue;
+      }
       pass_builder()->AppendPass(pass);
     }
   }
@@ -280,20 +297,6 @@ void AnalysisConfig::Update() {
     } else {
       pass_builder()->EnableCUDNN();
     }
-#endif
-  }
-
-  if (use_ngraph_) {
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableNgraph() only works when IR optimization is enabled.";
-    }
-#ifdef PADDLE_WITH_NGRAPH
-    pass_builder()->EnableNgraph();
-    use_ngraph_ = true;
-#else
-    LOG(ERROR) << "Please compile with NGRAPH first to use NGRAPH";
-    use_ngraph_ = false;
 #endif
   }
 
@@ -354,6 +357,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_fc_padding_;
   ss << device_id_;
   ss << memory_pool_init_size_mb_;
 
@@ -363,8 +367,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_min_subgraph_size_;
 
   ss << enable_memory_optim_;
-
-  ss << use_ngraph_;
 
   ss << use_mkldnn_;
   ss << mkldnn_cache_capacity_;

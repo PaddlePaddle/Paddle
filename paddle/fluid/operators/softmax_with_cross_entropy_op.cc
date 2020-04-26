@@ -31,7 +31,7 @@ class SoftmaxWithCrossEntropyOpMaker
              "by softmax.");
     AddInput(
         "Label",
-        "(Tensor) The input tesnor of groud truth label. If :attr:`soft_label` "
+        "(Tensor) The input tensor of groud truth label. If :attr:`soft_label` "
         "is set to false, Label is a Tensor<int64> in same shape with "
         "Input(Logits) except the shape in dimension :attr:`axis` as 1. If "
         "soft_label is set to true, Label is a Tensor<float/double> in same "
@@ -50,7 +50,7 @@ class SoftmaxWithCrossEntropyOpMaker
               "entropy loss.");
     AddAttr<bool>(
         "soft_label",
-        "(bool, default: false), A flag to indicate whether to interpretate "
+        "(bool, default: false), A flag to indicate whether to interpretant "
         "the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<bool>(
@@ -245,8 +245,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("softmax_with_cross_entropy_grad");
     grad_op->SetInput("Label", this->Input("Label"));
     grad_op->SetInput("Softmax", this->Output("Softmax"));
@@ -254,7 +253,6 @@ class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("Logits"),
                        this->InputGrad("Logits"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

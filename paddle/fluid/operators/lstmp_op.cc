@@ -278,8 +278,7 @@ class LSTMPGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("lstmp_grad");
     grad_op->SetInput("Weight", this->Input("Weight"));
     grad_op->SetInput("ProjWeight", this->Input("ProjWeight"));
@@ -307,7 +306,6 @@ class LSTMPGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("C0"), this->InputGrad("C0"));
 
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

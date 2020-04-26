@@ -35,10 +35,10 @@ TEST(test_no_need_buffer_vars_inference, test_static_graph) {
 
 TEST(test_no_need_buffer_vars_inference, test_dygraph) {
   AttributeMap attrs{{"is_test", true}};
-  imperative::NameVarBaseMap inputs;
-  imperative::NameVarBaseMap outputs;
+  imperative::NameVarMap<imperative::VariableWrapper> inputs;
+  imperative::NameVarMap<imperative::VariableWrapper> outputs;
   outputs["Out"].emplace_back(nullptr);
-  outputs["Out"].emplace_back(new imperative::VarBase("tmp_0"));
+  outputs["Out"].emplace_back(new imperative::VariableWrapper("tmp_0"));
 
   DyGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
 
@@ -48,7 +48,7 @@ TEST(test_no_need_buffer_vars_inference, test_dygraph) {
   ASSERT_TRUE(boost::get<bool>(ctx.GetAttr("is_test")));
 }
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(TestNoNeedBufferVarsInferer, "X1", "X2");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(TestNoNeedBufferVarsInferer, "X1", "X2");
 
 TEST(test_no_need_buffer_vars_inference, test_nullptr_comparation) {
   InferNoNeedBufferVarsFN infer_fn;

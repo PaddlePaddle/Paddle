@@ -157,15 +157,13 @@ class SigmoidCrossEntropyWithLogitsGradOpMaker
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sigmoid_cross_entropy_with_logits_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Label", this->Input("Label"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

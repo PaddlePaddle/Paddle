@@ -172,7 +172,7 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(std::vector<LodTensor>) A vector of tensors that is going to "
              "be casted to a big LoDTensor.");
     AddInput("RankTable",
-             "(LoDRankTable) RankTable provides the coarse lod infomation to "
+             "(LoDRankTable) RankTable provides the coarse lod information to "
              "build the output LoDTensor. See "
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
@@ -216,14 +216,12 @@ class ArrayToLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("lod_tensor_to_array");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("RankTable", this->Input("RankTable"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

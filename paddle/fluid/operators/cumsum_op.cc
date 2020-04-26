@@ -33,8 +33,8 @@ class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of cumsum operator");
     AddOutput("Out", "Output of cumsum operator");
     AddAttr<int>("axis",
-                 "The dimenstion to accumulate along. -1 means the last "
-                 "dimenstion [default -1].")
+                 "The dimension to accumulate along. -1 means the last "
+                 "dimension [default -1].")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
     AddAttr<bool>("exclusive",
@@ -58,15 +58,13 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("cumsum");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttr("axis", boost::get<int>(this->GetAttr("axis")));
     grad_op->SetAttr("reverse", !boost::get<bool>(this->GetAttr("reverse")));
     grad_op->SetAttr("exclusive", boost::get<bool>(this->GetAttr("exclusive")));
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

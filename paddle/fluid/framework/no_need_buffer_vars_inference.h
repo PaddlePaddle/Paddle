@@ -56,15 +56,16 @@ class StaticGraphInferNoNeedBufferVarsContext final
 class DyGraphInferNoNeedBufferVarsContext final
     : public InferNoNeedBufferVarsContext {
  public:
-  DyGraphInferNoNeedBufferVarsContext(const imperative::NameVarBaseMap &inputs,
-                                      const imperative::NameVarBaseMap &outputs,
-                                      const AttributeMap &attr);
+  DyGraphInferNoNeedBufferVarsContext(
+      const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
+      const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
+      const AttributeMap &attrs);
 
   bool HasOutput(const std::string &slot) const final;
 
  private:
-  const imperative::NameVarBaseMap &inputs_;
-  const imperative::NameVarBaseMap &outputs_;
+  const imperative::NameVarMap<imperative::VariableWrapper> &inputs_;
+  const imperative::NameVarMap<imperative::VariableWrapper> &outputs_;
 };
 
 class NoNeedBufferVarsInference {
@@ -80,7 +81,7 @@ class NoNeedBufferVarsInference {
   }
 };
 
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)        \
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERER(class_type, ...)          \
   class class_type final                                              \
       : public ::paddle::framework::NoNeedBufferVarsInference {       \
    public:                                                            \
@@ -106,8 +107,8 @@ class InferNoNeedBufferVarsFN {
   }
 
   inline const std::unordered_set<std::string> &operator()(
-      const imperative::NameVarBaseMap &inputs,
-      const imperative::NameVarBaseMap &outputs,
+      const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
+      const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(inferer_);
     DyGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);

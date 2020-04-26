@@ -12,19 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['TracedLayer', 'dygraph_to_static_output']
+from __future__ import print_function
 
-import ast
-import inspect
+__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
-from ..wrapped_decorator import wrap_decorator
-from .base import program_desc_tracing_guard, switch_to_static_graph
-from .dygraph_to_static import DygraphToStaticAst
-from .layers import Layer
+import logging
+
 from paddle.fluid import core
-from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
-from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.executor import Executor, scope_guard
+from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.wrapped_decorator import wrap_decorator
+
+logger = logging.getLogger("fluid")
 
 
 def create_program_from_desc(program_desc):
@@ -50,24 +53,122 @@ def extract_vars(inputs):
     return result_list
 
 
-def _dygraph_to_static_output_(dygraph_func):
+def _dygraph_to_static_func_(dygraph_func):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @dygraph_to_static_func only converts imperative dygraph APIs into
+    declarative net-building APIs, which means it doesn't return immediate
+    digital result as imperative mode. Users should handle Program and Executor
+    by themselves.
+
+    Note:
+    This decorator is NOT our recommended way to transform imperative function
+    to declarative function. We will remove this decorator after we finalize
+    cleaning up code.
+
+    Args:
+        dygraph_func (callable): callable imperative function.
+
+    Returns:
+        Callable: converting imperative dygraph APIs into declarative
+        net-building APIs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import dygraph_to_static_func
+
+          @dygraph_to_static_func
+          def func(x):
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+
+               return x_v
+
+          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+
+          x_v = func(x)
+          exe = fluid.Executor(fluid.CPUPlace())
+          out = exe.run(fetch_list=[x_v])
+          print(out[0])
+          # [[1. 1. 1.]
+          #  [1. 1. 1.]
+          #  [1. 1. 1.]]
+
+    """
+
+    # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
-        # Get AST from dygraph function
-        dygraph_code = inspect.getsource(dygraph_func)
-        root = ast.parse(dygraph_code)
-
-        root = DygraphToStaticAst().get_static_ast(root)
-
-        # TODO static_func should a callable from AST, like
-        # static_func = ast_to_func(root)
-        # currently just use dygraph_func
-        static_func = dygraph_func
+        program_translator = ProgramTranslator()
+        if in_dygraph_mode() or not program_translator.enable_declarative:
+            logger.info(
+                "The decorator 'dygraph_to_static_func' doesn't work in "
+                "dygraph mode or set ProgramTranslator.enable to False. "
+                "We will just return dygraph output.")
+            return dygraph_func(*args, **kwargs)
+        static_func = program_translator.get_func(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
 
 
-dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
+dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
+
+
+def _declarative_(dygraph_func):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @declarative handles the Program and Executor of static mode and returns
+    the result as a dygraph VarBase.
+
+    Args:
+        dygraph_func (callable): callable imperative function.
+
+    Returns:
+        VarBase: containing the numerical result.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import declarative
+
+
+          @declarative
+          def func(x):
+              x = fluid.dygraph.to_variable(x)
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+              return x_v
+
+          x = np.ones([1, 2])
+          x_v = func(x)
+          print(x_v.numpy()) # [[2. 2.]]
+
+    """
+
+    def __impl__(*args, **kwargs):
+        program_translator = ProgramTranslator()
+        if in_dygraph_mode() or not program_translator.enable_declarative:
+            logger.info(
+                "The decorator 'declarative' doesn't work in dygraph "
+                "mode or set ProgramTranslator.enable to False. We will "
+                "just return dygraph output.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        return program_translator.get_output(dygraph_func, *args, **kwargs)
+
+    return __impl__
+
+
+declarative = wrap_decorator(_declarative_)
 
 
 @dygraph_only
@@ -105,17 +206,17 @@ def _trace(layer,
 
 class TracedLayer(object):
     """
-    TracedLayer is used to convert a forward dygraph model to a static 
-    graph model. This is mainly used to save the dygraph model for online 
-    inference using C++. Besides, users can also do inference in Python 
-    using the converted static graph model, which usually has better 
-    performance than the original dygraph model.  
+    TracedLayer is used to convert a forward dygraph model to a static
+    graph model. This is mainly used to save the dygraph model for online
+    inference using C++. Besides, users can also do inference in Python
+    using the converted static graph model, which usually has better
+    performance than the original dygraph model.
 
     TracedLayer would run the static graph model using :code:`Executor`
     and :code:`CompiledProgram` . The static graph model would share
     parameters with the dygraph model.
-    
-    All TracedLayer objects should not be created by constructor and should 
+
+    All TracedLayer objects should not be created by constructor and should
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
@@ -156,7 +257,7 @@ class TracedLayer(object):
     @dygraph_only
     def trace(layer, inputs):
         """
-        This method is the only allowed method to create TracedLayer object. 
+        This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
 
@@ -329,11 +430,11 @@ class TracedLayer(object):
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
                     static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
-                
-                place = fluid.CPUPlace() 
+
+                place = fluid.CPUPlace()
                 exe = fluid.Executor(place)
                 program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
-                                                    exe) 
+                                                    exe)
 
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
                 print(fetch.shape) # (2, 10)

@@ -76,7 +76,7 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         }
       }
 
-      // Since concat is aftern flatten, the output is 2D tensor.
+      // Since concat is after flatten, the output is 2D tensor.
       // If concat_axis is 0, each input's permutated tensor is continuous.
       // If concat_axis is 1, the stride of 0-th dim of each input's
       // permutated tensor is odims()[1].

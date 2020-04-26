@@ -20,12 +20,16 @@ from collections import defaultdict
 from paddle.fluid import core
 from paddle.fluid import framework
 
-__all__ = ['Tracer']
-
 
 class Tracer(core.Tracer):
     """
-    Python wrapper of dygraph tracer
+    Tracer is used to execute and record the operators executed, to construct the 
+    computation graph in dygraph model. Tracer has two mode, :code:`train_mode`
+    and :code:`eval_mode`. In :code:`train_mode`, Tracer would add backward network 
+    automatically and perform AutoGrad by method :code:`loss.backward()`. 
+    In :code:`eval_mode`, Tracer would not add backward network.
+
+    This is a low level API, users don't need to use it directly.
     """
 
     def __init__(self):

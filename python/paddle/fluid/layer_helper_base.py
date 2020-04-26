@@ -81,8 +81,8 @@ class LayerHelperBase(object):
             return value
         else:
             raise TypeError(
-                "to_variable only accepts 'ndarray' or 'Variable' or 'VarBase' as value's input"
-            )
+                "The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received %s"
+                % type(value))
 
     def _create_weight_normalize(self, attr, shape, dtype):
         from .layers import elementwise_mul, elementwise_div, reshape
@@ -285,7 +285,7 @@ class LayerHelperBase(object):
 
            Args:
                attr: [ParamAttr] should be the parameter attribute for this parameter
-               shape: shape of the paramter
+               shape: shape of the parameter
                dtype: data type of this parameter
                is_bias: if this is a bias parameter
                default_initializer: set the default initializer for this parameter

@@ -23,6 +23,7 @@ import paddle.fluid.layers as layers
 from op_test import OpTest
 import random
 from decorator_helper import prog_scope
+from paddle.fluid.op import Operator
 """This is Test Case 1"""
 
 
@@ -71,7 +72,7 @@ class TestFilterByInstagOp(OpTest):
             'IndexMap': (mmap, mmap_lod)
         }
 
-        self.attrs = {'is_lod': True}
+        self.attrs = {'is_lod': True, 'out_val_if_empty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -116,7 +117,7 @@ class TestFilterByInstagOp2(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {'is_lod': True, }
+        self.attrs = {'is_lod': True, 'out_val_if_empty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -158,7 +159,7 @@ class TestFilterByInstagOp3(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {'is_lod': True, }
+        self.attrs = {'is_lod': True, 'out_val_if_empty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -199,7 +200,7 @@ class TestFilterByInstagOp4(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {'is_lod': False, }
+        self.attrs = {'is_lod': False, 'out_val_if_empty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -207,6 +208,80 @@ class TestFilterByInstagOp4(OpTest):
     def test_check_grad(self):
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
+
+
+class TestFilterByInstagOp6(OpTest):
+    def setUp(self):
+        self.op_type = 'filter_by_instag'
+
+        x1 = np.random.random((4, 36)).astype('int64')
+
+        x2 = np.array([[2], [1], [2], [1]]).astype('int64')
+        x2_lod = [[1, 1, 1, 1]]
+
+        x3 = np.array([3]).astype('int64')
+
+        out = np.zeros((1, 36)).astype('double')
+        out_lod = [[1]]
+
+        mmap = np.array([[0, 1, 1]]).astype('int64')
+        mmap_lod = [[1]]
+
+        loss_weight = np.array([[0]]).astype('double')
+        self.inputs = {
+            'Ins': x1,
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
+        }
+        self.outputs = {
+            'Out': (out, out_lod),
+            'LossWeight': (loss_weight, mmap_lod),
+            'IndexMap': (mmap, mmap_lod)
+        }
+        self.attrs = {'is_lod': False, 'out_val_if_empty': 0}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
+
+
+class TestFilterByInstagOp7(OpTest):
+    def setUp(self):
+        self.op_type = 'filter_by_instag'
+
+        x1 = np.random.random((4, 36)).astype('int32')
+
+        x2 = np.array([[2], [1], [2], [1]]).astype('int64')
+        x2_lod = [[1, 1, 1, 1]]
+
+        x3 = np.array([3]).astype('int64')
+
+        out = np.zeros((1, 36)).astype('double')
+        out_lod = [[1]]
+
+        mmap = np.array([[0, 1, 1]]).astype('int64')
+        mmap_lod = [[1]]
+
+        loss_weight = np.array([[0]]).astype('double')
+        self.inputs = {
+            'Ins': x1,
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
+        }
+        self.outputs = {
+            'Out': (out, out_lod),
+            'LossWeight': (loss_weight, mmap_lod),
+            'IndexMap': (mmap, mmap_lod)
+        }
+        self.attrs = {'is_lod': False, 'out_val_if_empty': 0}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
 
 
 if __name__ == '__main__':

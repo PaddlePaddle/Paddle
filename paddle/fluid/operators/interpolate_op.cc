@@ -26,7 +26,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
   PADDLE_ENFORCE(
-      "bilinear" == interp_method || "nearest" == interp_method,
+      "bilinear" == interp_method || "nearest" == interp_method ||
+          "bicubic" == interp_method,
       "Interpolation method can only be \"bilinear\" or \"nearest\" when "
       "Input(X) dimension is 4");
   const DataLayout data_layout = framework::StringToDataLayout(
@@ -264,7 +265,8 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
                          "method, can be \"bilinear\" for "
                          "bilinear interpolation, \"trilinear\" for trilinear "
                          "interpolation and \"nearest\" for nearest "
-                         "neighbor interpolation.")
+                         "neighbor interpolation, and \"bicubic\" for bicubic"
+                         "interpolation.")
         .SetDefault("bilinear");
     AddAttr<bool>(
         "align_corners",
@@ -285,7 +287,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           interpolation.
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+          in both the 3rd dimension(in height direction) and the 4th dimension(in width 
           direction) on input tensor.
             
           Bilinear interpolation is an extension of linear interpolation for 
@@ -299,7 +301,12 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           H-direction and W-direction in this op) on a rectilinear 3D grid. 
           The linear interpolation is performed on three directions.
 
-          Align_corners and align_mode are optinal parameters,the calculation method 
+          Bicubic interpolation is an extension of cubic interpolation for interpolating
+          data points on a two-dimensional regular grid. The interpolated surface is
+          smoother than corresponding surfaces obtained by bilinear interpolation or
+          nearest-neighbor interpolation.
+
+          Align_corners and align_mode are optional parameters,the calculation method 
           of interpolation can be selected by them.
           
           Example:
@@ -376,7 +383,20 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-          
+
+          Bicubic interpolation:
+
+          if:
+              align_corners = False
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
           For details of nearest neighbor interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
@@ -386,6 +406,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
           For details of trilinear interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Trilinear_interpolation
+
+          For details of bicubic interpolation, please refer to Wikipedia:
+          https://en.wikipedia.org/wiki/Bicubic_interpolation
          )DOC");
   }
 };
@@ -429,8 +452,7 @@ class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     if (this->HasInput("SizeTensor") > 0) {
@@ -445,12 +467,11 @@ class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateGradNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -471,6 +492,11 @@ REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
+REGISTER_OPERATOR(bicubic_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(bicubic_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
@@ -485,4 +511,8 @@ REGISTER_OP_CPU_KERNEL(trilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(trilinear_interp_grad, ops::InterpolateGradKernel<float>,
+                       ops::InterpolateGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(bicubic_interp, ops::InterpolateKernel<float>,
+                       ops::InterpolateKernel<double>);
+REGISTER_OP_CPU_KERNEL(bicubic_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);

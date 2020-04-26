@@ -564,7 +564,7 @@ void DownpourWorkerOpt::TrainFiles() {
         writer_ << ars[i];
       }
       if (need_dump_param_ && thread_id_ == 0) {
-        DumpParam();
+        DumpParam(batch_cnt);
       }
     }
 

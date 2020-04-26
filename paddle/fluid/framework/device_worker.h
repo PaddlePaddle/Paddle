@@ -45,6 +45,10 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end);
+std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
+bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+
 class FleetWrapper;
 
 #define SEC_LOG                                                              \
@@ -62,6 +66,8 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  int GetThreadIdByScope(const Scope* scope);
+  void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -69,13 +75,14 @@ class PullDenseWorker {
     return s_instance_;
   }
 
+  static std::shared_ptr<PullDenseWorker> s_instance_;
+
  private:
   PullDenseWorker() : root_scope_(NULL) {}
   void Run();
   bool CheckUpdateParam(uint64_t table_id);
 
  private:
-  static std::shared_ptr<PullDenseWorker> s_instance_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
@@ -101,6 +108,7 @@ class PullDenseWorker {
   float squared_sum_epsilon_ = 1e-4;
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
+  std::unordered_map<const Scope*, int> scope_to_thread_id_;
 };
 
 // should incorporate different type of device
@@ -168,6 +176,8 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
@@ -177,6 +187,8 @@ class HogwildWorker : public CPUWorkerBase {
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
+  virtual void DumpParam(const int batch_id);
+
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
   bool thread_barrier_;
@@ -184,6 +196,12 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
+  // dump params or grads for debug
+  bool need_dump_param_;
+  bool need_dump_field_;
+  std::vector<std::string> dump_param_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -203,13 +221,11 @@ class DownpourWorker : public HogwildWorker {
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
-  void DumpParam();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
-  std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end);
-  std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
-  bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+  virtual void DumpParam(const int batch_id);
+
   DownpourWorkerParameter param_;
   // copy table
   CopyTableConfig copy_table_config_;
@@ -236,16 +252,11 @@ class DownpourWorker : public HogwildWorker {
   std::vector<::std::future<int32_t>> push_sparse_status_;
   bool dump_slot_;
   bool need_to_push_dense_;
-  bool need_dump_field_;
-  bool need_dump_param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   float scale_datanorm_;
   std::vector<::std::future<int32_t>> push_dense_status_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
   // skipped ops
   std::vector<std::string> skip_ops_;
-  std::vector<std::string> dump_param_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;

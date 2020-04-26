@@ -17,7 +17,6 @@ from __future__ import print_function
 from .. import core
 from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
-from ..initializer import force_init_on_cpu
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -58,7 +57,7 @@ def monkey_patch_variable():
                 'dtype': var.dtype,
                 'shape': shape,
                 'value': value,
-                'force_cpu': force_init_on_cpu()
+                'force_cpu': False
             },
             stop_gradient=True)
         var.stop_gradient = True

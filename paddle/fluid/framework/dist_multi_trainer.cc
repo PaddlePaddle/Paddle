@@ -124,6 +124,22 @@ void DistMultiTrainer::FinalizeDumpEnv() {
   queue_.reset();
 }
 
+void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
+                                      const platform::Place &place) {
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->SetPlace(place);
+    workers_[i]->SetReaderPlace(place);
+    workers_[i]->SetRootScope(root_scope_);
+    workers_[i]->CreateDeviceResource(main_program);  // Program
+    workers_[i]->BindingDataFeedMemory();
+  }
+  // Scope* -> thread id, it will be used in push_dense op
+  for (int i = 0; i < thread_num_; ++i) {
+    Scope *thread_scope = workers_[i]->GetThreadScope();
+    pull_dense_worker_->SetThreadIdByScope(thread_scope, i);
+  }
+}
+
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   if (need_dump_field_) {
     InitDumpEnv();

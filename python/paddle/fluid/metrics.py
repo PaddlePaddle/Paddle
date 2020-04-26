@@ -71,7 +71,7 @@ class MetricBase(object):
     2. aggregate the existing evaluation results as the overall performance.
 
     The class Metric is the base class for all classes in paddle.fluid.metrics, it defines
-    the fundmental APIs for all metrics classes, including:
+    the fundamental APIs for all metrics classes, including:
 
     1. update(preds, labels): given the prediction results (preds) and the labels (labels)
     of some mini-batch, compute the evaluation result of that mini-batch, and memorize the
@@ -142,7 +142,7 @@ class MetricBase(object):
             None
 
         Returns:
-            a python dict, which costains the inner states of the metric instance
+            a python dict, which contains the inner states of the metric instance
 
         Return types:
             a python dict
@@ -261,7 +261,7 @@ class CompositeMetric(MetricBase):
 
         Returns:
             list: results of all added metrics. 
-            The shape and dtype of each result depend on the defination of its metric.
+            The shape and dtype of each result depend on the definition of its metric.
         """
         ans = []
         for m in self._metrics:
@@ -275,7 +275,7 @@ class Precision(MetricBase):
     relevant instances among the retrieved instances. Refer to
     https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers
 
-    Noted that this class mangages the precision score only for binary classification task.
+    Noted that this class manages the precision score only for binary classification task.
 
     Args:
        name (str, optional): Metric name. For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -358,7 +358,7 @@ class Recall(MetricBase):
     Refer to:
     https://en.wikipedia.org/wiki/Precision_and_recall
 
-    Noted that this class mangages the recall score only for binary classification task.
+    Noted that this class manages the recall score only for binary classification task.
 
     Args:
        name (str, optional): Metric name. For details, please refer to :ref:`api_guide_Name`. Default is None.
@@ -391,7 +391,7 @@ class Recall(MetricBase):
     def __init__(self, name=None):
         super(Recall, self).__init__(name)
         self.tp = 0  # true positive
-        self.fn = 0  # false negtive
+        self.fn = 0  # false negative
 
     def update(self, preds, labels):
         """
@@ -529,10 +529,10 @@ class ChunkEvaluator(MetricBase):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            # init the chunck-level evaluation manager
+            # init the chunk-level evaluation manager
             metric = fluid.metrics.ChunkEvaluator()
 
-            # suppose the model predict 10 chuncks, while 8 ones are correct and the ground truth has 9 chuncks.
+            # suppose the model predict 10 chucks, while 8 ones are correct and the ground truth has 9 chucks.
             num_infer_chunks = 10
             num_label_chunks = 9 
             num_correct_chunks = 8
@@ -542,7 +542,7 @@ class ChunkEvaluator(MetricBase):
 
             print("precision: %.2f, recall: %.2f, f1: %.2f" % (numpy_precision, numpy_recall, numpy_f1))
 
-            # the next batch, predicting 3 prefectly correct chuncks.
+            # the next batch, predicting 3 perfectly correct chucks.
             num_infer_chunks = 3
             num_label_chunks = 3
             num_correct_chunks = 3

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import math
+import numpy as np
 import unittest
 
 import paddle.fluid as fluid
@@ -89,6 +90,34 @@ def cosine_decay(global_step, learning_rate, step_each_epoch, epochs):
     return decayed_lr
 
 
+def noam_decay(global_step, d_model, warmup_steps, learning_rate=1.0):
+    a = math.pow(global_step, -0.5)
+    b = math.pow(warmup_steps, -1.5) * global_step
+    decayed_lr = learning_rate * math.pow(d_model, -0.5) * min(a, b)
+
+    return decayed_lr
+
+
+class TestNoamLearningRateDecayDygraphMode(unittest.TestCase):
+    def test_dygraph_mode(self):
+        with fluid.dygraph.guard():
+            d_model = 0.01
+            warmup_steps = 200
+            learning_rate = 2.0
+            lr = fluid.layers.noam_decay(d_model, warmup_steps, learning_rate)
+            for step in range(5):
+                step += 1
+                right_result = noam_decay(step, d_model, warmup_steps,
+                                          learning_rate)
+                fluid_result = lr()
+
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result[0],
+                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    format(step, right_result, fluid_result[0]))
+
+
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
         places = [fluid.CPUPlace()]
@@ -112,6 +141,9 @@ class TestLearningRateDecay(unittest.TestCase):
         exe.run(startup_prog)
 
         for step in range(10):
+            # Step of NoamDecay starts from 1.
+            if python_decay_fn.__name__ == 'noam_decay':
+                step += 1
             lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             python_decayed_lr = python_decay_fn(
                 global_step=float(step), **kwargs)
@@ -159,6 +191,11 @@ class TestLearningRateDecay(unittest.TestCase):
                 "step_each_epoch": 100,
                 "epochs": 120
             }),
+            (noam_decay, layers.noam_decay, {
+                "d_model": 0.01,
+                "warmup_steps": 200,
+                "learning_rate": 2.0
+            }),
         ]
 
         for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:
@@ -195,6 +232,9 @@ class TestLinearWamrupLearningRateDecay(TestLearningRateDecay):
         exe.run(startup_prog)
 
         for step in range(20):
+            # Step of NoamDecay starts from 1.
+            if fluid_decay_fn.__name__ == 'noam_decay':
+                step += 1
             lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             if step < warmup_steps:
                 python_decayed_lr = linear_lr_warmup(
@@ -280,7 +320,8 @@ class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
 
                 t = lr()
 
-                self.assertEqual(t[0], right_result[i])
+                self.assertTrue(
+                    np.allclose((t.numpy())[0].item(), right_result[i]))
 
 
 class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):

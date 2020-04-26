@@ -70,6 +70,10 @@ class Communicator(object):
             envs["geo_need_push_nums"] = str(kwargs["push_nums"])
             envs["geo_send_varnames"] = '#'.join(push_var_names)
 
+        if mode == DistributedMode.SYNC:
+            envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
+            envs["trainer_id"] = str(kwargs["trainer_id"])
+
         mode_str = None
 
         if mode == DistributedMode.SYNC:

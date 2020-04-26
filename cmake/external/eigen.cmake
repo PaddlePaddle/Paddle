@@ -14,10 +14,17 @@
 
 include(ExternalProject)
 
+# update eigen to the commit id 4da2c6b1 on 03/19/2020
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
-set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror)
-set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
+set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
+set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
+
+# the recent version of eigen will cause compilation error on windows
+if(WIN32)
+    set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git)
+    set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
+endif()
 
 # eigen on cuda9.1 missing header of math_funtions.hpp
 # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
@@ -35,6 +42,16 @@ if(WIN32)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h native_src)
     file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/CUDA/Half.h native_dst)
     set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y)
+elseif(LINUX)
+    # For gxx=4.8, __GXX_ABI_VERSION is less than 1004
+    # which will cause a compilation error in Geometry_SSE.h:38:
+    # "no matching function for call to 'pmul(Eigen::internal::Packet4f&, __m128)"
+    # refer to: https://gitlab.com/libeigen/eigen/-/blob/4da2c6b1974827b1999bab652a3d4703e1992d26/Eigen/src/Core/arch/SSE/PacketMath.h#L33-60
+    # add -fabi-version=4 could avoid above error, but will cause "double free corruption" when compile with gcc8
+    # so use following patch to solve compilation error with different version of gcc.
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Geometry_SSE.h native_src)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst)
+    set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst})
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})

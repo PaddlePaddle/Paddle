@@ -17,6 +17,7 @@ from . import core
 from . import framework
 from . import executor
 from . import compiler
+from .data_feeder import check_type
 import sys
 
 __all__ = ['ParallelExecutor']
@@ -175,15 +176,6 @@ class ParallelExecutor(object):
         ) if use_cuda else framework.cpu_places()
         self._scope = scope if scope is not None else executor.global_scope()
 
-        if main_program is not None and main_program._enable_dgc:
-            assert build_strategy.num_trainers > 1, "dgc is not useful when num_trainers <= 1"
-            assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "dgc \
-                only used for allreduce"
-
-            assert build_strategy.num_trainers * len(
-                self._places) > 1, "dgc is not useful for single card training"
-            assert use_cuda, "dgc only used under cuda"
-
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
 
@@ -287,7 +279,7 @@ class ParallelExecutor(object):
                                                  loss_name=loss.name)
 
               # If the feed is a dict:
-              # the image will be splitted into devices. If there is two devices
+              # the image will be split into devices. If there is two devices
               # each device will process an image with shape (5, 1)
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = train_exe.run(feed={"X": x},
@@ -366,14 +358,14 @@ class ParallelExecutor(object):
 
               parallel_exe.drop_local_exe_scopes()
         """
-        assert isinstance(
-            self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor.drop_local_exe_scopes")
         self._compiled_program._executor.drop_local_exe_scopes()
 
     # This API is used to check whether DropLocalExeScopes can work.
     def _need_create_local_exe_scopes(self):
-        assert isinstance(
-            self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor._need_create_local_exe_scopes")
         return self._compiled_program._executor._need_create_local_exe_scopes()

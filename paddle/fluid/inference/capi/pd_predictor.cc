@@ -180,7 +180,8 @@ PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
 }
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
-  if (predictor == nullptr) {
+  if (predictor) {
+    predictor->predictor = nullptr;
     delete predictor;
     predictor = nullptr;
   }
@@ -232,7 +233,8 @@ void PD_SetZeroCopyInput(PD_Predictor* predictor,
 
   if (tensor->lod.length) {
     auto* lod_ptr = reinterpret_cast<size_t*>(tensor->lod.data);
-    std::vector<size_t> lod(lod_ptr, lod_ptr + tensor->lod.length);
+    std::vector<size_t> lod;
+    lod.assign(lod_ptr, lod_ptr + tensor->lod.length / sizeof(size_t));
     input->SetLoD({std::move(lod)});
   }
 }
@@ -265,17 +267,19 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
   tensor->data.length = length;
 
   auto lod = output->lod();
-  tensor->lod.length = lod.front().size() * sizeof(size_t);
-  if (tensor->lod.capacity < lod.front().size()) {
-    if (tensor->lod.data) {
-      std::free(tensor->lod.data);
-    }
+  if (!lod.empty()) {
+    tensor->lod.length = lod.front().size() * sizeof(size_t);
+    if (tensor->lod.capacity < lod.front().size()) {
+      if (tensor->lod.data) {
+        std::free(tensor->lod.data);
+      }
 
-    tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
-    tensor->lod.capacity = lod.front().size() * sizeof(size_t);
+      tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
+      tensor->lod.capacity = lod.front().size() * sizeof(size_t);
+    }
+    std::copy(lod.front().begin(), lod.front().end(),
+              reinterpret_cast<size_t*>(tensor->lod.data));
   }
-  std::copy(lod.front().begin(), lod.front().end(),
-            reinterpret_cast<size_t*>(tensor->lod.data));
   switch (tensor->dtype) {
     case PD_FLOAT32:
       output->copy_to_cpu(reinterpret_cast<float*>(tensor->data.data));

@@ -301,8 +301,7 @@ class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("W", this->Input("W"));
@@ -315,8 +314,6 @@ class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 

@@ -59,6 +59,11 @@ std::unique_ptr<Graph> BuildElementwiseListGraph(bool backward = false) {
   }
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
+  for (auto* n : graph->Nodes()) {
+    if (n && n->IsVar() && n->Var()) {
+      n->Var()->SetDataType(proto::VarType::FP32);
+    }
+  }
 #ifdef __clang__
   return graph;
 #else
@@ -116,6 +121,11 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
   }
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
+  for (auto* n : graph->Nodes()) {
+    if (n && n->IsVar() && n->Var()) {
+      n->Var()->SetDataType(proto::VarType::FP32);
+    }
+  }
 #ifdef __clang__
   return graph;
 #else

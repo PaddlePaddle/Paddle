@@ -253,13 +253,18 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
-            inputs = {'X': [x]}
             op = getattr(core.ops, op_type)
-            outs = op(inputs)
-            return outs['Out'][0]
+            return op(x)
 
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
+        if op_type not in ["abs", "exp", "square"]:
+            check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                     op_type)
+        else:
+            # abs exp square ops support dtype(int32, int64, float16, float32, float64)
+            check_variable_and_dtype(
+                x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'],
+                op_type)
+
         helper = LayerHelper(op_type, **locals())
 
         output = helper.create_variable_for_type_inference(dtype=x.dtype)

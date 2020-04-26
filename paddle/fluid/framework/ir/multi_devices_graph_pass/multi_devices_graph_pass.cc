@@ -174,9 +174,15 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   auto nodes = graph->ReleaseNodes();
   ir::Graph &result = *graph;
 
+  std::vector<ir::Node *> isolated_vars;
+
   for (auto &node : nodes) {
     if (node->IsVar() && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
+
+      if (node->inputs.empty() && node->outputs.empty()) {
+        isolated_vars.emplace_back(node.get());
+      }
     }
   }
 
@@ -184,6 +190,10 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   result.Set(details::kGraphVars, new details::GraphVars(places_.size()));
   result.Set(details::kGraphDepVars, new details::GraphDepVars);
   result.Set(kGraphOps, new GraphOps);
+
+  for (auto *var_node : isolated_vars) {
+    CreateIsolatedVarNode(&result, var_node);
+  }
 
   bool is_forwarding = true;
 
@@ -582,6 +592,15 @@ bool MultiDevSSAGraphBuilderBase::IsSparseGradient(
   return all_vars_.at(og)->GetType() == proto::VarType::SELECTED_ROWS;
 }
 
+void MultiDevSSAGraphBuilderBase::CreateIsolatedVarNode(
+    ir::Graph *graph, ir::Node *var_node) const {
+  for (size_t i = 0; i < places_.size(); ++i) {
+    VLOG(10) << "Create isolated var node " << var_node->Name() << " at device "
+             << i;
+    CreateOrGetLatestVarHandle(graph, var_node, places_[i], i);
+  }
+}
+
 void AllReduceSSAGraphBuilder::InsertCollectiveOp(
     ir::Graph *result, const std::string &p_name,
     const std::string &g_name) const {
@@ -857,7 +876,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     op_dev_id = GetVarDeviceID(node->inputs[0]->Name());
     PADDLE_ENFORCE(!ir::IsControlDepVar(*node->inputs[0]),
                    "This hack no longer holds, please fix.");
-    // the variable name which contains .block means it was splited by
+    // the variable name which contains .block means it was split by
     // split_byref op
     if (strategy_.reduce_ ==
             details::BuildStrategy::ReduceStrategy::kAllReduce &&
@@ -1041,7 +1060,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
     // There are 4 conditions:
     // 1. GPU && Reduce: Reduce gradient then broadcast gradient to other GPUS.
     // Need to broadcast received parameters to other GPU.
-    // 2. GPU && AllReduce: AllReduce all graident to each GPU. Need to
+    // 2. GPU && AllReduce: AllReduce all gradient to each GPU. Need to
     // broadcast received parameters to other GPU.
     // 3. CPU && AllReduce: AllReduce all gradient to each thread. Need to
     // broadcast received parameters to other scope.

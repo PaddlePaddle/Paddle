@@ -15,8 +15,6 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
@@ -60,9 +58,6 @@ TEST(PD_AnalysisConfig, use_gpu) {
                           false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   CHECK(trt_enable) << "NO";
-  PD_EnableNgraph(config);
-  bool ngraph_enable = PD_NgraphEnabled(config);
-  LOG(INFO) << ngraph_enable << " Ngraph";
   PD_EnableMemoryOptim(config);
   bool memory_optim_enable = PD_MemoryOptimEnabled(config);
   CHECK(memory_optim_enable) << "NO";
@@ -93,6 +88,8 @@ TEST(PD_AnalysisConfig, trt_fp16) {
                           false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   CHECK(trt_enable) << "NO";
+  PD_Predictor *predictor = PD_NewPredictor(config);
+  PD_DeletePredictor(predictor);
   PD_DeleteAnalysisConfig(config);
 }
 

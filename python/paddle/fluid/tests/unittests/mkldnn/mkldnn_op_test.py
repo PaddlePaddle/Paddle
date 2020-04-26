@@ -128,9 +128,9 @@ def check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
         for arg in grad_op_desc.output_arg_names():
             grad_var = block.desc.find_var(arg.encode("ascii"))
             grad_var.set_dtype(core.VarDesc.VarType.FP32)
+        program._sync_with_cpp()
 
         exe = fluid.Executor(place)
-
         # Do at least 2 iterations
         for i in range(2):
             out = exe.run(

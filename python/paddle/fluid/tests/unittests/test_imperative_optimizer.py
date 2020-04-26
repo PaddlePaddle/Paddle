@@ -148,7 +148,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            img = fluid.layers.reshape(img, shape=[batch_size, -1])
+            img = fluid.layers.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)

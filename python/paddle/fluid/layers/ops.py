@@ -16,7 +16,8 @@ from __future__ import print_function
 import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_np_dtype_to_dtype_, Variable
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __activations_noattr__ = [
     'sigmoid',
@@ -64,6 +65,9 @@ _softshrink_ = generate_layer_fn('softshrink')
 
 
 def softshrink(x, alpha=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softshrink')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -107,6 +111,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_shrink')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -129,6 +136,7 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
+    check_type(x, 'x', (Variable), 'cumsum')
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -142,7 +150,7 @@ The cumulative sum of the elements along a given axis. By default, the first ele
 
 Args:
     x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
-    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    axis (int, optional): The dimension to accumulate along. -1 means the last dimension. Default is -1.
     exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
     reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
 
@@ -163,6 +171,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'thresholded_relu')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -245,7 +256,7 @@ __all__ += ['gelu']
 _gelu_ = generate_layer_fn('gelu')
 
 
-def gelu(x):
+def gelu(x, approximate=False):
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -259,6 +270,11 @@ gelu.__doc__ = """
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
 Equation:
+    if approximate is True
+    ..  math::
+        out = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
     ..  math::
         out = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 

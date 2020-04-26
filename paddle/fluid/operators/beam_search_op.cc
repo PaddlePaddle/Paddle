@@ -52,7 +52,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
               "A LoDTensor containing the accumulated scores corresponding to "
               "Output(selected_ids).");
     AddOutput("parent_idx",
-              "A Tensor preserving the selected_ids' parent indice in pre_ids.")
+              "A Tensor preserving the selected_ids' parent index in pre_ids.")
         .AsDispensable();
 
     // Attributes stored in AttributeMap

@@ -268,8 +268,7 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetInput("Input", this->Input("Input"));
     if (this->HasInput("StartsTensor")) {
       bind->SetInput("StartsTensor", this->Input("StartsTensor"));
@@ -287,7 +286,6 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("slice_grad");
-    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -297,8 +295,7 @@ class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     if (this->HasInput("StartsTensor")) {
       bind->SetInput("StartsTensor", this->Input("StartsTensor"));
     }
@@ -315,12 +312,11 @@ class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("slice");
-    return std::unique_ptr<T>(bind);
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
-                                      "Input");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference,
+                                    "Input");
 
 }  // namespace operators
 }  // namespace paddle

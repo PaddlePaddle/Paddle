@@ -220,21 +220,19 @@ class SequenceExpandOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_expand_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SequenceExpandOpNoNeedBufferVarsInference,
-                                      "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandOpNoNeedBufferVarsInference,
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceExpandGradOpNoNeedBufferVarsInference, "X", "Y");
 
 }  // namespace operators

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace operators {
@@ -61,8 +62,7 @@ class FusedBatchNormActGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Output("Y"));
@@ -79,8 +79,6 @@ class FusedBatchNormActGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-    return op;
   }
 };
 

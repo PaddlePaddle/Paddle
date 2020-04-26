@@ -542,8 +542,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 class GeneralRoleMaker(RoleMakerBase):
     """
     This role maker is for general use, you can set os.environ to customize:
-        PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, seperated by ','
-        PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, seperated by ','
+        PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, separated by ','
+        PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, separated by ','
         TRAINING_ROLE                : TRAINER or PSERVER
         PADDLE_TRAINER_ID            : current trainer id (only for trainer),
                                        it is index in PADDLE_TRAINER_ENDPOINTS

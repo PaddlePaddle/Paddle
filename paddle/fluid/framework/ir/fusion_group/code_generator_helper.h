@@ -20,6 +20,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -30,35 +33,51 @@ namespace fusion_group {
 static inline std::string ArgName(int index) {
   return "arg" + std::to_string(index);
 }
+
 static inline std::string TmpName(int index) {
   return "tmp" + std::to_string(index);
+}
+
+static inline std::string VarName(int index) {
+  return "arg" + std::to_string(index) + "[idx]";
 }
 
 class OperationExpression {
  public:
   explicit OperationExpression(std::string op_type, std::vector<int> input_ids,
-                               std::vector<int> output_ids)
-      : op_type_(op_type), input_ids_(input_ids), output_ids_(output_ids) {}
+                               std::vector<int> output_ids,
+                               std::string rhs_type, std::string lhs_type)
+      : op_type_(op_type),
+        input_ids_(input_ids),
+        output_ids_(output_ids),
+        rhs_type_(rhs_type),
+        lhs_type_(lhs_type) {}
 
   std::string GetOpType() const { return op_type_; }
   std::vector<int> GetInputIds() const { return input_ids_; }
   std::vector<int> GetOutputIds() const { return output_ids_; }
-
+  std::string GetRHSType() const { return rhs_type_; }
+  std::string GetLHSType() const { return lhs_type_; }
+  void SetAttr(AttributeMap attr) { attr_ = attr; }
+  AttributeMap GetAttr() { return attr_; }
   // Check whether this operation type is supported in OperationMap.
   bool IsSupport() const;
 
-  std::string GetExpression(std::string dtype,
-                            std::unordered_set<int>* used) const;
+  std::string GetExpression(std::unordered_set<int>* used) const;
 
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHS(std::unordered_set<int>* used, size_t i = 0) const;
+  std::string GetRHS(std::unordered_set<int>* used,
+                     size_t exprs_index = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
  private:
   std::string op_type_;
   std::vector<int> input_ids_;
   std::vector<int> output_ids_;
+  AttributeMap attr_;
+  std::string rhs_type_;
+  std::string lhs_type_;
 };
 
 class TemplateVariable {
@@ -148,31 +167,6 @@ class CodeTemplate {
  private:
   std::string template_str_;
 };
-
-static const char predefined_cuda_functions[] = R"(
-__device__ float real_exp(float x) { return ::expf(x); }
-__device__ double real_exp(double x) { return ::exp(x); }
-
-__device__ float real_log(float x) { return ::logf(x); }
-__device__ double real_log(double x) { return ::log(x); }
-
-__device__ float real_min(float x, float y) { return ::fminf(x, y); }
-__device__ double real_min(double x, double y) { return ::fmin(x, y); }
-
-__device__ float real_max(float x, float y) { return ::fmaxf(x, y); }
-__device__ double real_max(double x, double y) { return ::fmax(x, y); }
-
-)";
-
-static const char elementwise_cuda_template[] = R"(
-extern "C" __global__ void $func_name($parameters) {
-  for(int idx = blockIdx.x * blockDim.x + threadIdx.x;
-      idx < N;
-      idx += gridDim.x * blockDim.x) {
-    $compute_body
-  }
-}
-)";
 
 static std::string DebugString(const OperationExpression& expr) {
   std::stringstream ret;

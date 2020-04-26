@@ -58,19 +58,28 @@ class CPUQuantizePass : public FusePassBase {
 
   void QuantizeReshape(Graph* graph) const;
 
+  void QuantizeMatmul(Graph* graph) const;
+
   void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
                      double scale_to_one, bool is_unsigned,
                      std::string scale_attr_name = "") const;
 
   // quantize all inputs of given name with the same (minimum) scale
   void QuantizeInputs(Graph* g, Node* op, std::string input_name,
-                      VarQuantScale* scales, bool are_unsigned,
+                      bool are_unsigned,
                       std::string scale_attr_name = "") const;
 
   void DequantizeOutput(Graph* g, Node* op, Node* output,
                         std::string output_name, double scale_to_one,
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
+
+  std::pair<bool, LoDTensor> GetScaleDataForNode(const Node* node) const;
+  LoDTensor GetScaleTensorForNode(const Node* node) const;
+  double GetScaleValueForNode(const Node* node,
+                              bool* is_unsigned = nullptr) const;
+  bool IsOpDequantized(const Node* node) const;
+  bool IsOpQuantized(const Node* node) const;
 
   const std::string name_scope_{"quantize"};
 };

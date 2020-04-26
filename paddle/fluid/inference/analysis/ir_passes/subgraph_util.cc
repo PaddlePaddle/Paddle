@@ -112,7 +112,7 @@ void RenameAndGetOutputs(
     std::unordered_map<std::string, std::string> *output_name_map,
     const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
     bool trt_and_not_int8) {
-  //// In the normal case, the paddle-trt exists bug when runing the googlenet.
+  //// In the normal case, the paddle-trt exists bug when running the googlenet.
   // When there are more than two convolutions of 1 * 1 with the same input, the
   // paddle-tensorrt will do the merging optimization, which fuse those conv
   // into one conv, and then trigger bug. So,  We should use strategy to avoid

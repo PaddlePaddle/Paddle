@@ -420,8 +420,11 @@ class DetectionMAPOpKernel : public framework::OpKernel<T> {
     for (auto it = label_pos_count.begin(); it != label_pos_count.end(); ++it) {
       int label = it->first;
       int label_num_pos = it->second;
-      if (label_num_pos == background_label ||
-          true_pos.find(label) == true_pos.end()) {
+      if (label_num_pos == background_label) {
+        continue;
+      }
+      if (true_pos.find(label) == true_pos.end()) {
+        count++;
         continue;
       }
       auto label_true_pos = true_pos.find(label)->second;

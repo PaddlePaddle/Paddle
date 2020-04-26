@@ -202,7 +202,7 @@ def round(x, d=0):
     """
     if six.PY3:
         # The official walkaround of round in Python3 is incorrect
-        # we implement accroding this answer: https://www.techforgeek.info/round_python.html
+        # we implement according this answer: https://www.techforgeek.info/round_python.html
         if x > 0.0:
             p = 10**d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p

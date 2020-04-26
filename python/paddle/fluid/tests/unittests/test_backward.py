@@ -241,6 +241,26 @@ class TestSimpleNet(TestBackward):
         self._check_all(self.net)
 
 
+class TestGradientsError(unittest.TestCase):
+    def test_error(self):
+        x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
+        x.stop_gradient = False
+        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
+        y = fluid.layers.relu(conv)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients(y.name, x)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients(y, x.name)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients([y], [x], target_gradients=x.name)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients([y], x, no_grad_set=conv)
+
+
 class TestSimpleNetWithErrorParamList(TestBackward):
     def test_parameter_list_type_error(self):
         self.global_block_idx = 0
@@ -265,6 +285,46 @@ class TestSimpleNetWithErrorNoGradSet(TestBackward):
         test = fluid.data(name='test', shape=[None, 90], dtype='float32')
         with self.assertRaises(TypeError):
             self._check_error_no_grad_set(self.net, [test, "test", 3])
+
+
+class TestAppendBackwardWithError(unittest.TestCase):
+    def build_net(self):
+        x = fluid.data(name='x', shape=[None, 13], dtype='int64')
+        y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+        x_emb = fluid.embedding(x, size=[100, 256])
+        y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
+        loss = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_loss = fluid.layers.mean(loss)
+        param_names = [
+            param.name
+            for param in fluid.default_main_program().block(0).all_parameters()
+        ]
+
+        return avg_loss, param_names
+
+    def setUp(self):
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            self.avg_loss, self.param_names = self.build_net()
+
+    def test_loss_type_error(self):
+        with self.assertRaises(TypeError):
+            fluid.backward.append_backward(loss=self.avg_loss.name)
+
+    def test_parameter_list_type_error(self):
+        with self.assertRaises(TypeError):
+            self.param_names[0] = np.random.random([10])
+            fluid.backward.append_backward(
+                loss=self.avg_loss, parameter_list=self.param_names)
+
+    def test_callback_type_error(self):
+        with self.assertRaises(TypeError):
+
+            def callback(block, context):
+                return
+
+            fluid.backward.append_backward(
+                loss=self.avg_loss, callbacks=callback)
 
 
 # TODO(Aurelius84): add conditional network test

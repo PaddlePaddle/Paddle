@@ -22,6 +22,9 @@ namespace tensorrt {
 /*
  * Gelu converter from fluid to tensorRT.
  */
+/*
+ * Gelu converter from fluid to tensorRT.
+ */
 class GeluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
@@ -40,15 +43,21 @@ class GeluOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(output_num, 1,
                       platform::errors::InvalidArgument(
                           "gelu op has only 1 output, but got %d", output_num));
-    // Get input shape and volume
-    nvinfer1::Dims input_shape = input->getDimensions();
-    size_t input_volume = 1;
-    for (int i = 0; i < input_shape.nbDims; i++) {
-      input_volume *= input_shape.d[i];
+
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::GeluPluginDynamic* plugin = new plugin::GeluPluginDynamic();
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+      plugin::GeluPlugin* plugin = new plugin::GeluPlugin();
+      layer = engine_->AddPlugin(&input, input_num, plugin);
     }
-    plugin::GeluPlugin* plugin = new plugin::GeluPlugin(input_volume);
-    nvinfer1::IPluginLayer* layer =
-        engine_->AddPlugin(&input, input_num, plugin);
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "gelu", {output_name}, test_mode);
   }

@@ -35,13 +35,13 @@ int main(int argc, char *argv[]) {
   input->copy_from_cpu(data.data());
   predictor->ZeroCopyRun();
   auto output_name = predictor->GetOutputNames()[0];
-  output = predictor->GetOutputTensor(output_name);
+  auto output = predictor->GetOutputTensor(output_name);
   return 0;
 }
 
 void SetConfig(paddle::AnalysisConfig *config) {
   config->SetModel("data/model/__model__", "data/model/__params__");
-  config->SwitchUseFeedFetchOps(true);
+  config->SwitchUseFeedFetchOps(false);
   config->SwitchSpecifyInputNames(true);
   config->SwitchIrOptim(false);
 }

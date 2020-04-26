@@ -379,7 +379,7 @@ class SingleProcessMultiThread(GradAllReduce):
     '''
 
     def __init__(self):
-        GradAllReduce.__init__(self, -1)
+        GradAllReduce.__init__(self, 1)
         self.mode = "single_process_multi_thread"
 
     def _transpile_startup_program(self):

@@ -50,7 +50,7 @@ void PrintCuptiHint() {
   static bool showed = false;
   if (showed) return;
   showed = true;
-  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
+  LOG(WARNING) << "Invalid timestamp occurred. Please try increasing the "
                   "FLAGS_multiple_of_cupti_buffer_size.";
 }
 
@@ -400,7 +400,7 @@ class DeviceTracerImpl : public DeviceTracer {
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }
-    const std::vector<int> cbids {
+    const std::vector<int> runtime_cbids {
       CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
@@ -414,9 +414,15 @@ class DeviceTracerImpl : public DeviceTracer {
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
 #endif
     };
-    for (auto cbid : cbids)
+    const std::vector<int> driver_cbids{CUPTI_DRIVER_TRACE_CBID_cuLaunch,
+                                        CUPTI_DRIVER_TRACE_CBID_cuLaunchGrid,
+                                        CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel};
+    for (auto cbid : runtime_cbids)
       CUPTI_CALL(dynload::cuptiEnableCallback(
           1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API, cbid));
+    for (auto cbid : driver_cbids)
+      CUPTI_CALL(dynload::cuptiEnableCallback(
+          1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API, cbid));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = true;

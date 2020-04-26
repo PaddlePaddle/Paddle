@@ -80,8 +80,7 @@ class InstanceNormGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("instance_norm_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -94,8 +93,6 @@ class InstanceNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -105,8 +102,7 @@ class InstanceNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("instance_norm_grad_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Scale", this->Input("Scale"));
@@ -121,7 +117,6 @@ class InstanceNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput("DX", this->InputGrad("X"));
     op->SetOutput("DScale", this->InputGrad("Scale"));
     op->SetOutput("DDY", this->InputGrad(framework::GradVarName("Y")));
-    return std::unique_ptr<T>(op);
   }
 };
 

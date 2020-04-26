@@ -23,7 +23,12 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-class ElementwiseGroupDetector {
+class GroupDetector {
+ protected:
+  bool CheckPrecondition(const Node* n);
+};
+
+class ElementwiseGroupDetector : GroupDetector {
  public:
   std::vector<std::vector<Node*>> operator()(Graph* graph);
 

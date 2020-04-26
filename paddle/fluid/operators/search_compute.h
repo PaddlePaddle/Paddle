@@ -83,8 +83,13 @@ static const unsigned int AVX_CUT_LEN_MASK = 7U;
 #define _mm256_store_px _mm256_storeu_ps
 #define _mm256_broadcast_sx _mm256_broadcast_ss
 
-template <typename T>
-inline void avx_axpy(const T* x, T* y, size_t len, const T alpha) {
+#define _mm256_mul_pd _mm256_mul_pd
+#define _mm256_add_pd _mm256_add_pd
+#define _mm256_load_pd _mm256_loadu_pd
+#define _mm256_store_pd _mm256_storeu_pd
+#define _mm256_broadcast_sd _mm256_broadcast_sd
+
+inline void avx_axpy(const float* x, float* y, size_t len, const float alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
@@ -102,8 +107,43 @@ inline void avx_axpy(const T* x, T* y, size_t len, const T alpha) {
   }
 }
 
-template <typename T>
-inline void avx_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
+inline void avx_axpy(const double* x, double* y, size_t len,
+                     const float alpha) {
+  unsigned int jjj, lll;
+  jjj = lll = 0;
+
+  lll = len & ~AVX_CUT_LEN_MASK;
+  double alpha_d = static_cast<double>(alpha);
+
+  __m256d mm_alpha = _mm256_broadcast_sd(&alpha_d);
+  for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
+    _mm256_store_pd(
+        y + jjj,
+        _mm256_add_pd(_mm256_load_pd(y + jjj),
+                      _mm256_mul_pd(mm_alpha, _mm256_load_pd(x + jjj))));
+  }
+
+  for (; jjj < len; jjj++) {
+    y[jjj] += alpha * x[jjj];
+  }
+}
+inline void avx_axpy_noadd(const double* x, double* y, size_t len,
+                           const float alpha) {
+  unsigned int jjj, lll;
+  jjj = lll = 0;
+  double alpha_d = static_cast<double>(alpha);
+  lll = len & ~AVX_CUT_LEN_MASK;
+  __m256d mm_alpha = _mm256_broadcast_sd(&alpha_d);
+  for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
+    _mm256_store_pd(y + jjj, _mm256_mul_pd(mm_alpha, _mm256_load_pd(x + jjj)));
+  }
+
+  for (; jjj < len; jjj++) {
+    y[jjj] = alpha * x[jjj];
+  }
+}
+inline void avx_axpy_noadd(const float* x, float* y, size_t len,
+                           const float alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
@@ -116,6 +156,11 @@ inline void avx_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
   for (; jjj < len; jjj++) {
     y[jjj] = alpha * x[jjj];
   }
+}
+inline void avx_axpy_noadd(const int8_t* x, int8_t* y, size_t len,
+                           const float alpha) {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "int8_t input of avx_axpy_noadd is  not supported"));
 }
 
 }  // namespace operators

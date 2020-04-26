@@ -157,7 +157,7 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
 
   // get shape from Input(ShapeTensor) of Input(Shape)
   std::vector<int> shape = GetShape(context);
-  // out_dims setted by arrt(shape)
+  // out_dims set by arrt(shape)
   if (shape.size() == 0) {
     for (int i = 0; i < out_dims.size(); ++i) {
       shape.push_back(out_dims[i]);

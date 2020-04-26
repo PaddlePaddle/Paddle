@@ -339,9 +339,11 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap* attr_map) const {
-    for (const auto& checker : attr_checkers_) {
-      checker(attr_map, false);
+  void Check(AttributeMap* attr_map, bool explicit_only = false) const {
+    auto checker_num = attr_checkers_.size();
+    if (explicit_only) checker_num = explicit_checker_num_;
+    for (size_t i = 0; i < checker_num; ++i) {
+      attr_checkers_[i](attr_map, false);
     }
   }
 
@@ -353,8 +355,21 @@ class OpAttrChecker {
     return default_values_map;
   }
 
+  void RecordExplicitCheckerNum() {
+    explicit_checker_num_ = attr_checkers_.size();
+  }
+
  private:
   std::vector<AttrChecker> attr_checkers_;
+
+  // in order to improve the efficiency of dynamic graph mode,
+  // we divede the attribute into explicit type and implicit type.
+  // for explicit attribute, we mean the attribute added in the customized
+  // op makers, usually it's defined in the overloaded Make method.
+  // for implicit attribute, we mean the attribute added outside of the Make
+  // method like "op_role", "op_role_var", and they are useless in dynamic graph
+  // mode
+  size_t explicit_checker_num_;
 };
 
 }  // namespace framework
