@@ -146,6 +146,17 @@ class ReadFromArrayOp : public ArrayOp {
                  "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
+      try {
+        PADDLE_ENFORCE_NOT_NULL(
+            x_array[offset].Holder(),
+            platform::errors::InvalidArgument(
+                "The %d-th element in ArrayTensor holds no memory. Please call "
+                "Tensor::mutable_data first.",
+                offset));
+      } catch (std::exception) {
+        return;
+      }
+
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
