@@ -168,8 +168,8 @@ class SliceOp : public framework::OperatorWithKernel {
 class SliceOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto x_name = ctx->Input("Input")[0];
-    auto out_name = ctx->Output("Out")[0];
+    auto x_name = "Input";
+    auto out_name = "Out";
     auto decrease_axis = ctx->GetAttr("decrease_axis");
     auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
     if (not_decrease) {
@@ -178,8 +178,8 @@ class SliceOpVarTypeInference : public framework::VarTypeInference {
       // LoDTensor, the type of out should be the same as input.
       // For example, input is a LoDTensorArray and no axis is decreased, the
       // output should be a LoDTensorArray.
-      ctx->SetType(out_name, ctx->GetType(x_name));
-      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+      ctx->SetOutputType(out_name, ctx->GetInputType(x_name));
+      ctx->SetOutputDataType(out_name, ctx->GetInputDataType(x_name));
     }
   }
 };
@@ -311,15 +311,15 @@ class SliceOpGrad : public framework::OperatorWithKernel {
 class SliceOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto x_name = ctx->Input("Input")[0];
-    auto out_name = ctx->Output(framework::GradVarName("Input"))[0];
-    auto d_out_name = ctx->Input(framework::GradVarName("Out"))[0];
+    auto x = "Input";
+    auto d_out = framework::GradVarName("Out");
+    auto out = framework::GradVarName("Input");
     // The types of grad_input and input should always be the same.
     // The default type of out is LoDTensor, but the type of input can be
     // LoDTensor or LoDTensorArray,
     // so set the type of both to be the same.
-    ctx->SetType(out_name, ctx->GetType(x_name));
-    ctx->SetDataType(out_name, ctx->GetDataType(d_out_name));
+    ctx->SetOutputType(out, ctx->GetInputType(x));
+    ctx->SetOutputDataType(out, ctx->GetInputDataType(d_out));
   }
 };
 

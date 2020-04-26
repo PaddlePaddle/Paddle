@@ -180,7 +180,7 @@ class TestSliceInForLoop(TestSliceInWhileLoop):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            static_out = dygraph_to_static_graph(self.dygraph_func)(
+            static_out = dygraph_to_static_func(self.dygraph_func)(
                 self.input, self.iter_num)
         exe = fluid.Executor(self.place)
         numpy_res = exe.run(main_program, fetch_list=static_out)
