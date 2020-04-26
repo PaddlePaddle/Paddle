@@ -251,7 +251,7 @@ def trace(input, offset=0, dim1=0, dim2=1, name=None):
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
     
     Returns:
-        ComplexVariable: the output data type is the same as input data type.
+        ComplexVariable: The trace result of input tensor, it's data type is the same as input data type.
 
     Examples:
         .. code-block:: python
@@ -273,7 +273,7 @@ def trace(input, offset=0, dim1=0, dim2=1, name=None):
     return ComplexVariable(real, imag)
 
 
-def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
+def sum(input, dim=None, keep_dim=False, name=None):
     """
     The layer to compute the sum for a complex number tensor elements over the given dimension. input :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
@@ -282,11 +282,20 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     Args:
         input(ComplexVariable): The input ComplexVariable with any number of dimensions. 
             The supported data types include complex64 and complex128.
+        dim (list|int, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`input` and return a
+            Tensor variable with a single element, otherwise must be in the
+            range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+            the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        ComplexVariable, results of summation operation on the specified dim of input tensor,
+        ComplexVariable: Results of summation operation on the specified dim of input tensor,
         it's data type is the same as input.
 
     Raises:
@@ -322,8 +331,8 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
 
     """
     complex_variable_exists([input], "sum")
-    real = math.sum(input.real, dim, dtype, keep_dim, name)
-    imag = math.sum(input.imag, dim, dtype, keep_dim, name)
+    real = math.sum(input.real, dim=dim, keep_dim=keep_dim, name=name)
+    imag = math.sum(input.imag, dim=dim, keep_dim=keep_dim, name=name)
     return ComplexVariable(real, imag)
 
 
