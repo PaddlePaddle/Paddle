@@ -82,7 +82,7 @@ class API_TestElementwise_Equal(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
             limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
-            out = paddle.elementwise_equal(x=label, y=limit)
+            out = fluid.layers.elementwise_equal(x=label, y=limit)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             res, = exe.run(fetch_list=[out])
@@ -91,7 +91,7 @@ class API_TestElementwise_Equal(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
             limit = fluid.layers.assign(np.array([3, 3], dtype="int32"))
-            out = paddle.elementwise_equal(x=label, y=limit)
+            out = fluid.layers.elementwise_equal(x=label, y=limit)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             res, = exe.run(fetch_list=[out])

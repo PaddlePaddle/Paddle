@@ -18,8 +18,8 @@ from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..initializer import Initializer
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
-from ..framework import Variable
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from ..framework import Variable, in_dygraph_mode
 from ..initializer import Constant
 from ..core import VarDesc
 from .. import core
@@ -34,7 +34,8 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'full_like',
+    'arange', 'full', 'tril', 'triu', 'meshgrid'
 ]
 
 
@@ -1558,4 +1559,461 @@ def ones_like(x, out=None):
         inputs={'X': [x]},
         attrs={'value': 1.0},
         outputs={'Out': [out]})
+    return out
+
+
+def full_like(input,
+              fill_value,
+              out=None,
+              dtype=None,
+              device=None,
+              stop_gradient=True,
+              name=None):
+    """
+    **full_like**
+    This function creates a tensor filled with `fill_value` which has identical shape and dtype 
+    with `input`.
+    Args:
+        input(Variable): The input tensor which specifies shape and dtype.
+        fill_value: The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
+        out(Variable): The output tensor.
+    Returns:
+        out(Variable): The tensor variable storing the output.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          import numpy as np
+
+          input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+          output = fluid.layers.full_like(input, 2.0)
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
+          print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
+    """
+    helper = LayerHelper("full_like", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [input]},
+        attrs={'value': fill_value},
+        outputs={'Out': [out]})
+    out.stop_gradient = stop_gradient
+
+    return out
+
+
+def arange(start, end, step=1, dtype=None, name=None):
+    """
+    Return evenly spaced values within a given interval.
+    Values are generated within the half-open interval [start, stop) (in other words,
+    the interval including start but excluding stop).
+    Parameters:
+        start(float32 | float64 | int32 | int64 | Variable): Start of interval. The interval includes this value.
+            when start is Variable, it is a 1-D Tensor with shape [1].
+        end(float32 | float64 | int32 | int64 | Variable): End of interval. The interval does not include this
+                                 value, except in some cases where step is not an integer
+                                 and floating point round-off affects the length of out. When end is Variable,
+                                 it is a 1-D Tensor with shape [1].
+        step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
+                                  distance between two adjacent values, out[i+1] - out[i].
+        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
+    Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
+    
+    Return type: Variable
+    examples:
+        .. code-block:: python
+             import paddle.fluid as fluid
+             # expected out put: [0, 2, 4, 6, 8]
+             data = fluid.layers.arange(0, 10, 2, 'int32')
+         #dygraph mode
+             import paddle.fluid as fluid
+             with fluid.dygraph.guard():
+                 x = fluid.layers.arange(0, 6, 2) 
+                 # x: [0, 2, 4]
+                 # x dtype: float32
+             
+    """
+    helper = LayerHelper("range", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'create data type',
+                ['float32', 'float64', 'int32', 'int64'], 'range')
+
+    dtype = convert_dtype(dtype)
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+
+    if not isinstance(end, Variable):
+        end = fill_constant([1], dtype, end)
+
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out
+
+
+def full(shape,
+         fill_value,
+         out=None,
+         dtype=None,
+         device=None,
+         stop_gradient=True,
+         name=None):
+    """
+    This Op return a Tensor with the `fill_value` which size is same as `shape`
+    
+    Args:
+        shape(list|tuple|Variable): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is an Variable, it should be an 1-D Tensor .
+        fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
+            used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
+            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            type of created tensor is `float32`
+        device(str, optional): On which device to run this Op. The :attr:`device` must be
+            None, 'cpu' or 'gpu'. If :attr:`device` is None, the device that the user set in 
+            the paddle program will be chosen. Default value is None.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
+            default value is True.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Variable: Tensor which is created according to shape and dtype.
+
+    Raises:
+        TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
+        TypeError: The `out` must be a Variable.
+        TypeError: The `shape` must be one of Variable, list tuple.
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          data1 = fluid.layers.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = fluid.layers.full(shape=[2,1], fill_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+
+          # attr shape is a list which contains Variable Tensor.
+          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          data3 = fluid.layers.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
+
+          # attr shape is an Variable Tensor.
+          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          data4 = fluid.layers.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
+          
+          # attr value is an Variable Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = fluid.layers.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
+    """
+
+    helper = LayerHelper("full", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'full')
+    check_type(shape, 'shape', (Variable, list, tuple), 'full')
+    if out is not None:
+        check_type(shape, 'out', (Variable), 'full')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    out.stop_gradient = stop_gradient
+
+    with device_guard(device):
+        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
+
+    return out
+
+
+def _tril_triu_op(helper):
+    """Base op of tril_op and triu_op
+    """
+    op_type = helper.layer_type
+    x = helper.kwargs.get('input', None)
+
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+    if len(x.shape) < 2:
+        raise ValueError("input shape in {} must be at least 2-D".format(
+            op_type))
+    diagonal = helper.kwargs.get('diagonal', 0)
+    if not isinstance(diagonal, (int, )):
+        raise TypeError("diagonal in {} must be a python Int".format(op_type))
+    name = helper.kwargs.get('name', None)
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="tril_triu",
+        inputs={"X": x},
+        attrs={
+            "diagonal": diagonal,
+            "lower": True if op_type == 'tril' else False,
+        },
+        outputs={"Out": out}, )
+
+    return out
+
+
+def tril(input, diagonal=0, name=None):
+    """
+    This op returns the lower triangular part of a matrix (2-D tensor) or batch
+    of matrices :attr:`input`, the other elements of the result tensor are set 
+    to 0. The lower triangular part of the matrix is defined as the elements 
+    on and below the diagonal.
+
+    Args:
+        input (Variable): The input variable which is a Tensor.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+        diagonal (int, optional): The diagonal to consider, default value is 0.
+            If :attr:`diagonal` = 0, all elements on and below the main diagonal are
+            retained. A positive value includes just as many diagonals above the main
+            diagonal, and similarly a negative value excludes just as many diagonals below
+            the main diagonal. The main diagonal are the set of indices
+            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
+            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Raises:
+        TypeError: diagonal is not a int type.
+        ValueError: dimension of :attr:`input` is less than 2.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle.fluid as fluid
+
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            # array([[ 1,  2,  3,  4],
+            #        [ 5,  6,  7,  8],
+            #        [ 9, 10, 11, 12]])
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # example 1, default diagonal
+            tril = fluid.layers.tril(x)
+            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[tril], return_numpy=True)
+            # array([[ 1,  0,  0,  0],
+            #        [ 5,  6,  0,  0],
+            #        [ 9, 10, 11,  0]])
+
+        .. code-block:: python
+
+            # example 2, positive diagonal value
+            tril = fluid.layers.tril(x, diagonal=2)
+            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[tril], return_numpy=True)
+            # array([[ 1,  2,  3,  0], 
+            #        [ 5,  6,  7,  8],
+            #        [ 9, 10, 11, 12]])
+
+        .. code-block:: python
+
+            # example 3, negative diagonal value
+            tril = fluid.layers.tril(x, diagonal=-1)
+            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[tril], return_numpy=True)
+            # array([[ 0,  0,  0,  0],
+            #        [ 5,  0,  0,  0],
+            #        [ 9, 10,  0,  0]])
+
+   """
+
+    return _tril_triu_op(LayerHelper('tril', **locals()))
+
+
+def triu(input, diagonal=0, name=None):
+    """
+    This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
+    :attr:`input`, the other elements of the result tensor are set to 0.
+    The upper triangular part of the matrix is defined as the elements on and
+    above the diagonal.
+
+    Args:
+        input (Variable): The input variable which is a Tensor.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+        diagonal (int, optional): The diagonal to consider, default value is 0.
+            If :attr:`diagonal` = 0, all elements on and above the main diagonal are
+            retained. A positive value excludes just as many diagonals above the main
+            diagonal, and similarly a negative value includes just as many diagonals below
+            the main diagonal. The main diagonal are the set of indices
+            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
+            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Raises:
+        TypeError: diagonal is not a int type.
+        ValueError: dimension of :attr:`input` is less than 2.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle.fluid as fluid
+
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            # array([[ 1,  2,  3,  4],
+            #        [ 5,  6,  7,  8],
+            #        [ 9, 10, 11, 12]])
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # example 1, default diagonal
+            triu = fluid.layers.triu(x)
+            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[triu], return_numpy=True)
+            # array([[ 1,  2,  3,  4],
+            #        [ 0,  6,  7,  8],
+            #        [ 0,  0, 11, 12]])
+
+        .. code-block:: python
+
+            # example 2, positive diagonal value
+            triu = fluid.layers.triu(x, diagonal=2)
+            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[triu], return_numpy=True)
+            # array([[0, 0, 3, 4],
+            #        [0, 0, 0, 8],
+            #        [0, 0, 0, 0]])
+
+        .. code-block:: python
+
+            # example 3, negative diagonal value
+            triu = fluid.layers.triu(x, diagonal=-1)
+            triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[triu], return_numpy=True)
+            # array([[ 1,  2,  3,  4],
+            #        [ 5,  6,  7,  8],
+            #        [ 0, 10, 11, 12]])
+
+    """
+
+    return _tril_triu_op(LayerHelper('triu', **locals()))
+
+
+def meshgrid(input, name=None):
+    """
+    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    vector, and creates N-dimensional grids.
+    
+    Args:
+        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+ 
+    Returns:
+         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
+
+    Examples:
+      .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+
+          x = fluid.data(name='x', shape=[100], dtype='int32')
+          y = fluid.data(name='y', shape=[200], dtype='int32')
+
+          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
+          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+
+          exe = fluid.Executor(place=fluid.CPUPlace())
+          grid_x, grid_y = fluid.layers.meshgrid([x, y])
+          res_1, res_2 = exe.run(fluid.default_main_program(),
+                                 feed={'x': input_1,
+                                       'y': input_2},
+                                 fetch_list=[grid_x, grid_y])
+     
+          #the shape of res_1 is (100, 200)
+          #the shape of res_2 is (100, 200)
+
+      .. code-block:: python
+
+          #example 2: in dygraph mode
+
+          import paddle.fluid as fluid
+          import numpy as np
+
+          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
+          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+          with fluid.dygraph.guard():
+              tensor_3 = fluid.dygraph.to_variable(input_3)
+              tensor_4 = fluid.dygraph.to_variable(input_4)
+              grid_x, grid_y = fluid.layers.meshgrid([tensor_3, tensor_4])
+
+          #the shape of grid_x is (100, 200)
+          #the shape of grid_y is (100, 200)
+
+    """
+
+    if in_dygraph_mode():
+        num = len(input)
+        out = core.ops.meshgrid(input, num)
+        return out
+
+    helper = LayerHelper('meshgrid', **locals())
+
+    if not isinstance(input, list):
+        raise TypeError("The type of input in meshgrid should be list.")
+
+    for id, input_ in enumerate(input):
+        check_dtype(input_.dtype, 'create data type',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'meshgrid')
+
+    num = len(input)
+    out = [
+        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        for i in range(num)
+    ]
+    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+
     return out
