@@ -6875,7 +6875,8 @@ def image_resize(input,
     """
     This op resizes a batch of images.
 
-    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
+    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    or a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     and the resizing only applies on the three dimensions(depth, height and width).
@@ -6884,13 +6885,17 @@ def image_resize(input,
     future and only use :attr:`out_shape` instead.
 
     Supporting resample methods:
+        'LINEAR' : Linear interpolation 
 
         'BILINEAR' : Bilinear interpolation
 
         'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
-
+    
+    Linear interpolation is the method of using a line connecting two known quantities 
+    to determine the value of an unknown quantity between the two known quantities.
+    
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -6943,6 +6948,23 @@ def image_resize(input,
 
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
+
+        linear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
+
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              W_out = W_{in} * scale_{factor}
 
         Bilinear interpolation:
 
@@ -7122,6 +7144,7 @@ def image_resize(input,
 
     """
     resample_methods = {
+        'LINEAR': 'linear',
         'BILINEAR': 'bilinear',
         'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
@@ -7152,7 +7175,11 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+    if len(input.shape) == 3 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 3-D input.")
+    elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCHW` or `NHWC` supported for 4-D input.")

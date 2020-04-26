@@ -245,7 +245,7 @@ class UpSample(layers.Layer):
                  scale=None,
                  resample='BILINEAR',
                  actual_shape=None,
-                 align_corners=None,
+                 align_corners=True,
                  align_mode=1,
                  data_format='NCHW'):
         super(UpSample, self).__init__()
