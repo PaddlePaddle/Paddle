@@ -454,30 +454,46 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   s->Prepare(h, time_out);
 
   framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
-    auto* var = p_scope->FindVar(var_name_val);
+    ::grpc::ByteBuffer buf;
 
-    ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
+    if (var_name_val == BATCH_BARRIER_MESSAGE ||
+        var_name_val == FEETCH_BARRIER_MESSAGE) {
+      // prepare input
+      sendrecv::VariableMessage req;
+      req.set_varname(var_name_val);
+      req.set_out_varname(out_varname_val);
+      req.set_trainer_id(trainer_id_);
+      ::grpc::ByteBuffer buf;
+      RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
+    } else {
+      auto* var = p_scope->FindVar(var_name_val);
+      SerializeToByteBuffer(var_name_val, var, *p_ctx, &buf, "", trainer_id_);
+    }
 
     VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
-
-    // stub context
-    s->response_call_back_ = nullptr;
-
     platform::RecordRPCEvent record_event(method);
 
     auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", req,
+        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", buf,
         &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+
+    std::string out_varname;
+
+    operators::distributed::GRPCVariableResponse resp(p_scope, &ctx);
+    PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
+    *out_varname = resp.GetOutVarname();
+
+    if (out_varname == NEED_RETRY_MESSAGE) {
+      h->should_retry = true;
+    }
   });
   req_count_++;
 
   if (UNLIKELY(platform::IsProfileEnabled())) {
     h->Wait();
   }
-
   return h;
 }
 

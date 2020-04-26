@@ -58,13 +58,14 @@ constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
 constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
 constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 constexpr int64_t kPrefetchTimeout = 60000;
-constexpr int64_t kPrefetchRetryTimes = 3;
+constexpr int64_t kMaxRetryTimes = 3;
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
 #define WITHOUT_BARRIER_MESSAGE "@WITHOUT_BARRIER@RECV"
+#define NEED_RETRY_MESSAGE "@RETRY@"
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"

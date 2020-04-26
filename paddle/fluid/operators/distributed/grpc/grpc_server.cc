@@ -28,6 +28,14 @@ DECLARE_int32(rpc_retry_bind_port);
 namespace paddle {
 namespace operators {
 namespace distributed {
+template <typename T>
+void ResponseToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
+  ::grpc::Slice slice(proto.ByteSizeLong());
+  proto.SerializeWithCachedSizesToArray(const_cast<uint8_t*>(slice.begin()));
+  ::grpc::ByteBuffer tmp(&slice, 1);
+  result->Swap(&tmp);
+}
+
 enum CallStatus { PROCESS = 0, FINISH };
 
 // reference:
@@ -420,14 +428,26 @@ class RequestNotify final : public RequestBase {
     auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
-    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
+    bool valid =
+        request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
+
+    sendrecv::VariableMessage reply;
+    reply.set_varname(varname);
+
+    if (valid) {
+      reply.set_out_varname("");
+    } else {
+      reply.set_out_varname(NEED_RETRY_MESSAGE);
+    }
+
+    ResponseToByteBuffer<sendrecv::VariableMessage>(reply, &reply_);
     Finish(reply_, &responder_);
   }
 
  protected:
-  sendrecv::VoidMessage reply_;
   std::shared_ptr<GRPCVariableResponse> request_;
-  ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
+  ::grpc::ByteBuffer reply_;
+  ServerAsyncResponseWriter<::grpc::ByteBuffer> responder_;
 };
 
 void AsyncGRPCServer::WaitServerReady() {
@@ -568,7 +588,6 @@ void AsyncGRPCServer::TryToRegisterNewOne(const std::string& rpc_name,
     b = new RequestSend(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGet) {
     b = new RequestGet(service_.get(), cq.get(), handler, req_id);
-
   } else if (rpc_name == kRequestGetNoBarrier) {
     b = new RequestGetNoBarrier(service_.get(), cq.get(), handler, req_id);
   } else if (rpc_name == kRequestGetMonomerVariable) {

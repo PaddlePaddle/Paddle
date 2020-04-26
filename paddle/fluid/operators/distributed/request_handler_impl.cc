@@ -28,6 +28,7 @@
 #include "paddle/fluid/string/split.h"
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 
 namespace paddle {
@@ -38,26 +39,22 @@ namespace distributed {
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
 
-bool RequestSendHandler::Handle(const std::string& varname,
-                                framework::Scope* scope,
-                                framework::Variable* invar,
-                                framework::Variable** outvar,
+bool RequestSendHandler::Handle(const std::string &varname,
+                                framework::Scope *scope,
+                                framework::Variable *invar,
+                                framework::Variable **outvar,
                                 const int trainer_id,
-                                const std::string& out_var_name,
-                                const std::string& table_name) {
+                                const std::string &out_var_name,
+                                const std::string &table_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
   // Sync
-  if (varname == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
-    rpc_server_->IncreaseBatchBarrier(kRequestSend);
-  } else if (varname == COMPLETE_MESSAGE) {
+  if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
 
     if (HeartBeatMonitor::GetInstance() != nullptr) {
       HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
     }
-
     rpc_server_->Complete();
   } else {
     // Async
@@ -84,7 +81,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
       if (distributed_mode_ == DistributedMode::kGeo &&
           AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(run_varname)) {
-        auto& grad_slr =
+        auto &grad_slr =
             scope->FindVar(run_varname)->Get<framework::SelectedRows>();
         AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
                                                               grad_slr.rows());
@@ -106,25 +103,21 @@ bool RequestSendHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestGetHandler::Handle(const std::string& varname,
-                               framework::Scope* scope,
-                               framework::Variable* invar,
-                               framework::Variable** outvar,
+bool RequestGetHandler::Handle(const std::string &varname,
+                               framework::Scope *scope,
+                               framework::Variable *invar,
+                               framework::Variable **outvar,
                                const int trainer_id,
-                               const std::string& out_var_name,
-                               const std::string& table_name) {
+                               const std::string &out_var_name,
+                               const std::string &table_name) {
   VLOG(3) << "RequestGetHandler:" << varname
           << " out_var_name: " << out_var_name << " trainer_id: " << trainer_id
           << " table_name: " << table_name;
 
   if (distributed_mode_ == DistributedMode::kSync) {
-    if (varname == FETCH_BARRIER_MESSAGE) {
-      VLOG(3) << "sync: recv fetch barrier message";
-      rpc_server_->IncreaseBatchBarrier(kRequestGet);
-    } else {
-      rpc_server_->WaitCond(kRequestGet);
-      *outvar = scope_->FindVar(varname);
-    }
+    rpc_server_->WaitCond(kRequestGet);
+    *outvar = scope_->FindVar(varname);
+
   } else {
     if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
       if (enable_dc_asgd_) {
@@ -155,24 +148,24 @@ bool RequestGetHandler::Handle(const std::string& varname,
         if (VLOG_IS_ON(3)) {
           std::ostringstream sstream;
           sstream << "[";
-          for (auto& row_id : updated_rows) {
+          for (auto &row_id : updated_rows) {
             sstream << row_id << ", ";
           }
           sstream << "]";
           VLOG(3) << "updated_rows size: " << updated_rows.size() << " "
                   << sstream.str();
         }
-        auto& origin_tensor =
+        auto &origin_tensor =
             scope_->FindVar(varname)->Get<framework::LoDTensor>();
-        auto* origin_tensor_data = origin_tensor.data<float>();
-        auto& dims = origin_tensor.dims();
+        auto *origin_tensor_data = origin_tensor.data<float>();
+        auto &dims = origin_tensor.dims();
         *outvar = scope->Var();
-        auto* out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
+        auto *out_slr = (*outvar)->GetMutable<framework::SelectedRows>();
         out_slr->set_rows(updated_rows);
         out_slr->set_height(dims[0]);
         auto out_dims = framework::make_ddim(
             {static_cast<int64_t>(updated_rows.size()), dims[1]});
-        auto* data = out_slr->mutable_value()->mutable_data<float>(
+        auto *data = out_slr->mutable_value()->mutable_data<float>(
             out_dims, origin_tensor.place());
         auto width = dims[1];
         for (size_t i = 0; i < updated_rows.size(); ++i) {
@@ -188,13 +181,13 @@ bool RequestGetHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestGetNoBarrierHandler::Handle(const std::string& varname,
-                                        framework::Scope* scope,
-                                        framework::Variable* invar,
-                                        framework::Variable** outvar,
+bool RequestGetNoBarrierHandler::Handle(const std::string &varname,
+                                        framework::Scope *scope,
+                                        framework::Variable *invar,
+                                        framework::Variable **outvar,
                                         const int trainer_id,
-                                        const std::string& out_var_name,
-                                        const std::string& table_name) {
+                                        const std::string &out_var_name,
+                                        const std::string &table_name) {
   VLOG(4) << "RequestGetNoBarrierHandler:" << varname
           << " out_var_name: " << out_var_name;
 
@@ -214,13 +207,13 @@ bool RequestGetNoBarrierHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestPrefetchHandler::Handle(const std::string& varname,
-                                    framework::Scope* scope,
-                                    framework::Variable* invar,
-                                    framework::Variable** outvar,
+bool RequestPrefetchHandler::Handle(const std::string &varname,
+                                    framework::Scope *scope,
+                                    framework::Variable *invar,
+                                    framework::Variable **outvar,
                                     const int trainer_id,
-                                    const std::string& out_var_name,
-                                    const std::string& table_name) {
+                                    const std::string &out_var_name,
+                                    const std::string &table_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
   if (table_name.empty()) {
@@ -238,19 +231,19 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestCheckpointHandler::Handle(const std::string& varname,
-                                      framework::Scope* scope,
-                                      framework::Variable* invar,
-                                      framework::Variable** outvar,
+bool RequestCheckpointHandler::Handle(const std::string &varname,
+                                      framework::Scope *scope,
+                                      framework::Variable *invar,
+                                      framework::Variable **outvar,
                                       const int trainer_id,
-                                      const std::string& out_var_name,
-                                      const std::string& table_name) {
+                                      const std::string &out_var_name,
+                                      const std::string &table_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
   // TODO(tangwei12): find out why scope will be error.
-  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  auto *lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
@@ -259,33 +252,41 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
   return true;
 }
 
-bool RequestNotifyHandler::Handle(const std::string& varname,
-                                  framework::Scope* scope,
-                                  framework::Variable* invar,
-                                  framework::Variable** outvar,
+bool RequestNotifyHandler::Handle(const std::string &varname,
+                                  framework::Scope *scope,
+                                  framework::Variable *invar,
+                                  framework::Variable **outvar,
                                   const int trainer_id,
-                                  const std::string& out_var_name,
-                                  const std::string& table_name) {
-  VLOG(4) << "RequestNotifyHandler: " << varname;
+                                  const std::string &out_var_name,
+                                  const std::string &table_name) {
   VLOG(3) << "async process var: " << varname << ", trainer_id: " << trainer_id;
 
-  string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
-  string::Piece var_name_piece = string::Piece(varname);
-  if (string::Contains(var_name_piece, decay_piece)) {
-    VLOG(3) << "LearningRate Decay Counter Update";
-    PADDLE_ENFORCE_NE(
-        lr_decay_block_id, -1,
-        "when lr_decay_block_id = -1, there should be no RPC invoke.");
-    auto* origin_var = scope_->FindVar(varname);
-    auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
-    auto* send_var = scope->FindVar(varname);
-    auto send_var_tensor = send_var->Get<framework::LoDTensor>();
-    int64_t* origin_value =
-        origin_var_tensor.mutable_data<int64_t>(origin_var_tensor.place());
-    int64_t* send_value =
-        send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
-    origin_value[0] += send_value[0];
-    executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
+  if (varname == BATCH_BARRIER_MESSAGE) {
+    return BarrierMonitor.GetInstance()->(trainer_id, BATCH_BARRIER_MESSAGE);
+  } else if (varname == FETCH_BARRIER_MESSAGE) {
+    return BarrierMonitor.GetInstance()->(trainer_id, BATCH_BARRIER_MESSAGE);
+  } else if (varname == LEARNING_RATE_DECAY_COUNTER) {
+    string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
+    string::Piece var_name_piece = string::Piece(varname);
+    if (string::Contains(var_name_piece, decay_piece)) {
+      VLOG(3) << "LearningRate Decay Counter Update";
+      PADDLE_ENFORCE_NE(
+          lr_decay_block_id, -1,
+          "when lr_decay_block_id = -1, there should be no RPC invoke.");
+      auto *origin_var = scope_->FindVar(varname);
+      auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
+      auto *send_var = scope->FindVar(varname);
+      auto send_var_tensor = send_var->Get<framework::LoDTensor>();
+      int64_t *origin_value =
+          origin_var_tensor.mutable_data<int64_t>(origin_var_tensor.place());
+      int64_t *send_value =
+          send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
+      origin_value[0] += send_value[0];
+      executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
+    }
+    return true;
+  } else {
+    PADDLE_THROW("unkown varname with RequestNotifyHandler");
   }
   return true;
 }

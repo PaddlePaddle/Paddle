@@ -476,6 +476,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     VLOG(3) << "wait server thread to become ready...";
     rpc_service_->WaitServerReady();
 
+    distributed::BarrierMonitor::Init(fan_in);
+
     CacheVarsType(inputs, recv_scope);
 
     // Write to a file of server selected port for python use.

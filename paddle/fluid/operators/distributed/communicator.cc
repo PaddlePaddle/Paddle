@@ -1227,17 +1227,36 @@ void SyncCommunicator::BarrierSend() {
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
-  std::vector<distributed::VarHandlePtr> rets;
+  int retry = 0;
+  std::vector<std::string> eps(pserver_endpoints_.begin(),
+                               pserver_endpoints_.end());
 
-  for (auto &ep : pserver_endpoints_) {
-    rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
+  while (retry <= kMaxRetryTimes) {
+    if (!running_) break;
+    std::vector<distributed::VarHandlePtr> rets;
+
+    for (auto &ep : eps) {
+      rets.push_back(rpc_client->AsyncDistributeNotify(ep, NULL, NULL,
+                                                       BATCH_BARRIER_MESSAGE));
+    }
+
+    eps.clear();
+
+    for (size_t i = 0; i < rets.size(); i++) {
+      PADDLE_ENFORCE_NE(
+          rets[i]->Wait(), 0U,
+          platform::errors::External("internal error in RPCClient"));
+      if (rets[i]->should_retry) {
+        eps.push_back(rets[i].ep_);
+      }
+    }
+
+    if (eps.empty()) {
+      break;
+    }
+
+    retry++;
   }
-
-  for (size_t i = 0; i < rets.size(); i++) {
-    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::External(
-                                               "internal error in RPCClient"));
-  }
-
   VLOG(4) << "BarrierSend with SyncCommunicator";
 }
 
@@ -1247,14 +1266,35 @@ void SyncCommunicator::BarrierRecv() {
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
-  std::vector<distributed::VarHandlePtr> rets;
-  for (auto &ep : pserver_endpoints_) {
-    rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
-  }
+  int retry = 0;
+  std::vector<std::string> eps(pserver_endpoints_.begin(),
+                               pserver_endpoints_.end());
 
-  for (size_t i = 0; i < rets.size(); i++) {
-    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::External(
-                                               "internal error in RPCClient"));
+  while (retry <= kMaxRetryTimes) {
+    if (!running_) break;
+    std::vector<distributed::VarHandlePtr> rets;
+
+    for (auto &ep : eps) {
+      rets.push_back(rpc_client->AsyncDistributeNotify(ep, NULL, NULL,
+                                                       FETCH_BARRIER_MESSAGE));
+    }
+
+    eps.clear();
+
+    for (size_t i = 0; i < rets.size(); i++) {
+      PADDLE_ENFORCE_NE(
+          rets[i]->Wait(), 0U,
+          platform::errors::External("internal error in RPCClient"));
+      if (rets[i]->should_retry) {
+        eps.push_back(rets[i].ep_);
+      }
+    }
+
+    if (eps.empty()) {
+      break;
+    }
+
+    retry++;
   }
 
   VLOG(4) << "BarrierRecv with SyncCommunicator";
