@@ -32,11 +32,9 @@ class SumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Inputs(X) should not be null");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "sum");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sum");
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SumOp should not be null.");
     if (ctx->IsRuntime() &&
         ctx->GetOutputsVarType("Out")[0] ==
             framework::proto::VarType::LOD_TENSOR_ARRAY) {
@@ -48,11 +46,11 @@ class SumOp : public framework::OperatorWithKernel {
 
     auto N = x_dims.size();
     PADDLE_ENFORCE_GT(
-        N, 0,
-        "ShapeError: The input tensor X's dimensions of SumOp "
-        "should be larger than 0. But received X's dimensions %d, "
-        "X's shape = [%s].",
-        N, &x_dims);
+        N, 0, platform::errors::InvalidArgument(
+                  "The input tensor X's dimensions of SumOp "
+                  "should be larger than 0. But received X's dimensions %d, "
+                  "X's shape = [%s].",
+                  N, &x_dims));
     if (N == 1) {
       VLOG(3) << "Warning: SumOp have only one input, may waste memory";
     }
@@ -72,18 +70,21 @@ class SumOp : public framework::OperatorWithKernel {
         in_dim = x_dim;
       } else {
         if (ctx->IsRuntime()) {
-          PADDLE_ENFORCE_EQ(
-              in_dim, x_dim,
-              "ShapeError: The input tensor X of SumOp must have same shape."
-              "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
-              in_dim, i, x_dim);
+          PADDLE_ENFORCE_EQ(in_dim, x_dim,
+                            platform::errors::InvalidArgument(
+                                "The input tensor X of SumOp must"
+                                " have same shape. But received X[0]'s shape = "
+                                "[%s], X[%d]'s shape = [%s].",
+                                in_dim, i, x_dim));
         } else {
           PADDLE_ENFORCE_EQ(
               in_dim.size(), x_dim.size(),
-              "ShapeError: The input tensor X of SumOp must have same "
-              "dimensions. But received X[0]'s dimensions = %d, X[0]'s shape = "
-              "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
-              in_dim.size(), in_dim, i, x_dim.size(), i, x_dim);
+              platform::errors::InvalidArgument(
+                  "The input tensor X of SumOp must have same "
+                  "dimensions. But received X[0]'s dimensions = %d, X[0]'s "
+                  "shape = "
+                  "[%s], X[%d]'s dimensions = %d, X[%d]'s shape = [%s].",
+                  in_dim.size(), in_dim, i, x_dim.size(), i, x_dim));
           // if in_dim or x_dim has -1, not check equal
           for (int j = 0; j < x_dim.size(); ++j) {
             if (x_dim[j] == -1 || in_dim[j] == -1) {
@@ -91,10 +92,11 @@ class SumOp : public framework::OperatorWithKernel {
             }
             PADDLE_ENFORCE_EQ(
                 in_dim[j], x_dim[j],
-                "ShapeError: The input tensor X of SumOp must have same shape "
-                "if not -1."
-                "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
-                in_dim, i, x_dim);
+                platform::errors::InvalidArgument(
+                    "The input tensor X of SumOp must have same shape "
+                    "if not -1."
+                    "But received X[0]'s shape = [%s], X[%d]'s shape = [%s].",
+                    in_dim, i, x_dim));
           }
         }
       }
@@ -115,9 +117,10 @@ class SumOp : public framework::OperatorWithKernel {
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
-        PADDLE_ENFORCE_NOT_NULL(x_vars[idx],
-                                "Input var[%s] should not be nullptr",
-                                x_vars_name[idx]);
+        PADDLE_ENFORCE_NOT_NULL(
+            x_vars[idx],
+            platform::errors::NotFound("Input var[%s] should not be nullptr",
+                                       x_vars_name[idx]));
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
         if (tensor->numel() <= 0 || (!tensor->IsInitialized())) {
@@ -126,11 +129,14 @@ class SumOp : public framework::OperatorWithKernel {
         if (dtype == -1) {
           dtype = tensor->type();
         } else {
-          PADDLE_ENFORCE_EQ(dtype, tensor->type());
+          PADDLE_ENFORCE_EQ(dtype, tensor->type(),
+                            platform::errors::InvalidArgument(
+                                "The inputs type of sum op must be same"));
         }
       }
       PADDLE_ENFORCE_NE(dtype, -1,
-                        "Sum operator should have at least one tensor");
+                        platform::errors::InvalidArgument(
+                            "Sum operator should have at least one tensor"));
 
 #ifdef PADDLE_WITH_MKLDNN
       if (library == framework::LibraryType::kPlain &&

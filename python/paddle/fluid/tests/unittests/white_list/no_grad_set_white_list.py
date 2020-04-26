@@ -34,6 +34,7 @@ NEED_TO_FIX_OP_LIST = [
     'deformable_conv_v1',
     'depthwise_conv2d',
     'depthwise_conv2d_transpose',
+    'dot',
     'elementwise_add',
     'elementwise_div',
     'elementwise_max',

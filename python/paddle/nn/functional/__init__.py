@@ -14,10 +14,11 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+__all__ = []
 
 # TODO: define alias in functional directory
 from . import conv
+__all__ += conv.__all__
 from .conv import conv2d  #DEFINE_ALIAS
 from .conv import conv2d_transpose  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS
@@ -102,6 +103,8 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .vision import space_to_depth   #DEFINE_ALIAS
 # from .vision import yolo_box   #DEFINE_ALIAS
 # from .vision import yolov3_loss   #DEFINE_ALIAS
+from . import activation
+__all__ += activation.__all__
 # from .activation import brelu   #DEFINE_ALIAS
 # from .activation import elu   #DEFINE_ALIAS
 # from .activation import erf   #DEFINE_ALIAS
@@ -109,15 +112,15 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .activation import hard_shrink   #DEFINE_ALIAS
 # from .activation import hard_sigmoid   #DEFINE_ALIAS
 # from .activation import hard_swish   #DEFINE_ALIAS
-# from .activation import hsigmoid   #DEFINE_ALIAS
+from .activation import hsigmoid  #DEFINE_ALIAS
 # from .activation import leaky_relu   #DEFINE_ALIAS
 # from .activation import logsigmoid   #DEFINE_ALIAS
 # from .activation import maxout   #DEFINE_ALIAS
 # from .activation import prelu   #DEFINE_ALIAS
-# from .activation import relu   #DEFINE_ALIAS
+from .activation import relu  #DEFINE_ALIAS
 # from .activation import relu6   #DEFINE_ALIAS
 # from .activation import selu   #DEFINE_ALIAS
-# from .activation import sigmoid   #DEFINE_ALIAS
+from .activation import sigmoid  #DEFINE_ALIAS
 # from .activation import soft_relu   #DEFINE_ALIAS
 # from .activation import softmax   #DEFINE_ALIAS
 # from .activation import softplus   #DEFINE_ALIAS
@@ -126,7 +129,9 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .activation import swish   #DEFINE_ALIAS
 # from .activation import tanh_shrink   #DEFINE_ALIAS
 # from .activation import thresholded_relu   #DEFINE_ALIAS
-# from .activation import log_softmax   #DEFINE_ALIAS
+from .activation import log_softmax  #DEFINE_ALIAS
+from . import extension
+__all__ += extension.__all__
 # from .extension import add_position_encoding   #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter   #DEFINE_ALIAS
 # from .extension import continuous_value_model   #DEFINE_ALIAS
@@ -136,13 +141,13 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import multiclass_nms   #DEFINE_ALIAS
 # from .extension import polygon_box_transform   #DEFINE_ALIAS
 # from .extension import random_crop   #DEFINE_ALIAS
-# from .extension import row_conv   #DEFINE_ALIAS
+from .extension import row_conv  #DEFINE_ALIAS
 # from .extension import rpn_target_assign   #DEFINE_ALIAS
 # from .extension import similarity_focus   #DEFINE_ALIAS
 # from .extension import target_assign   #DEFINE_ALIAS
 # from .extension import temporal_shift   #DEFINE_ALIAS
 # from .extension import warpctc   #DEFINE_ALIAS
-# from .extension import diag_embed   #DEFINE_ALIAS
+from .extension import diag_embed  #DEFINE_ALIAS
 # from .rnn import gru_unit   #DEFINE_ALIAS
 # from .rnn import lstm   #DEFINE_ALIAS
 # from .rnn import lstm_unit   #DEFINE_ALIAS
@@ -175,6 +180,8 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .lod import dynamic_gru   #DEFINE_ALIAS
 # from .lod import dynamic_lstm   #DEFINE_ALIAS
 # from .lod import dynamic_lstmp   #DEFINE_ALIAS
+from . import common
+__all__ += common.__all__
 # from .common import dropout   #DEFINE_ALIAS
 # from .common import embedding   #DEFINE_ALIAS
 # from .common import fc   #DEFINE_ALIAS
@@ -186,4 +193,4 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .common import unfold   #DEFINE_ALIAS
 # from .common import bilinear_tensor_product   #DEFINE_ALIAS
 # from .common import assign   #DEFINE_ALIAS
-# from .common import interpolate   #DEFINE_ALIAS
+from .common import interpolate  #DEFINE_ALIAS

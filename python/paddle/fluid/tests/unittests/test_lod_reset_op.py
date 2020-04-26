@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 from op_test import OpTest
 from paddle.fluid import Program, program_guard
 
@@ -136,28 +137,26 @@ class TestLodAppendOpByAttr(OpTest):
 class TestLodResetOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
+            # The input must be Variable.
+            x1 = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
+            target_lod = [2, 2]
+            self.assertRaises(TypeError, fluid.layers.lod_reset, x1, target_lod)
 
-            def test_Variable():
-                # The input must be Variable.
-                x1 = fluid.create_lod_tensor(
-                    np.ones([6]), [3, 3], fluid.CPUPlace())
-                y1 = fluid.create_lod_tensor(
-                    np.ones([6]), [2, 2, 2], fluid.CPUPlace())
-                self.assertRaises(TypeError, fluid.layers.lod_reset, [x1, y1])
-
-            def test_type():
-                # dtype must be float32 or float64 or int32 or int64
-                x2 = fluid.layers.data(shape=[4], dtype='uint8', name='x2')
+            # Input(x) dtype must be float32 or float64 or int32 or int64
+            for dtype in ["bool", "float16"]:
+                x2 = fluid.layers.data(
+                    name='x2' + dtype, shape=[4], dtype=dtype)
                 y2 = fluid.layers.data(
-                    shape=[4], dtype='uint8', name='x2', lod_level=2)
-                self.assertRaises(TypeError, fluid.layers.lod_reset, [x2, y2])
+                    name='y2' + dtype, shape=[4], dtype='int32', lod_level=2)
+                self.assertRaises(TypeError, fluid.layers.lod_reset, x2, y2)
 
-            def test_type2():
-                # dtype must be int32 or int64
-                x3 = fluid.layers.data(shape=[4], dtype='float32', name='x3')
+            # Input(y) dtype must be int32 when lod_level=0
+            for dtype in ["bool", "float16", "float32", "float64", "int64"]:
+                x3 = fluid.layers.data(
+                    name='x3' + dtype, shape=[4], dtype='float32')
                 y3 = fluid.layers.data(
-                    shape=[4], dtype='float32', name='x3', lod_level=0)
-                self.assertRaises(TypeError, fluid.layers.lod_reset, [x3, y3])
+                    name='y3' + dtype, shape=[4], dtype=dtype, lod_level=0)
+                self.assertRaises(TypeError, fluid.layers.lod_reset, x3, y3)
 
 
 if __name__ == '__main__':

@@ -110,8 +110,6 @@ class NCCLCommContext {
   // ring id to dev-NCCLComm
   std::map<int, std::map<int, std::unique_ptr<NCCLComm>>> comm_map_;
 
-  std::vector<ncclComm_t> comm_vec_;
-
   void ReleaseNCCLComms();
 
   NCCLCommContext() = default;

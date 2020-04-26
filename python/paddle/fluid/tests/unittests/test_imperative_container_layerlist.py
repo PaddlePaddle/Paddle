@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import numpy as np
+import paddle
 
 
 class MyLayer(fluid.Layer):
@@ -31,12 +32,20 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeContainer(unittest.TestCase):
-    def test_layer_list(self):
+    def fluid_dygraph_list(self):
+        return fluid.dygraph.LayerList(
+            [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
+
+    def paddle_imperative_list(self):
+        return paddle.imperative.LayerList(
+            [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
+
+    def layer_list(self, use_fluid_api):
         data_np = np.random.uniform(-1, 1, [5, 1]).astype('float32')
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(data_np)
-            layerlist = fluid.dygraph.LayerList(
-                [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
+            layerlist = self.fluid_dygraph_list(
+            ) if use_fluid_api else self.paddle_imperative_list()
             size = len(layerlist)
 
             model = MyLayer(layerlist)
@@ -74,6 +83,10 @@ class TestImperativeContainer(unittest.TestCase):
             res8 = model3(x)
             self.assertListEqual(res8.shape, [5, 3**3])
             res8.backward()
+
+    def test_layer_list(self):
+        self.layer_list(True)
+        self.layer_list(False)
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_program
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.nn import Linear
 
 np.random.seed(2020)
@@ -38,7 +38,6 @@ def simple_func(x, weight_numpy):
     return z
 
 
-@dygraph_to_static_program
 def decorated_simple_func(x, weight_numpy):
     weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
     linear = Linear(32, 64, param_attr=weight_initalizer)
@@ -55,8 +54,8 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
         with fluid.dygraph.guard(place):
             dygraph_result = simple_func(x, weight)
 
-        main_program, startup_program, inputs, outputs = decorated_simple_func(
-            x, weight)
+        main_program, startup_program, inputs, outputs = ProgramTranslator(
+        ).get_program(decorated_simple_func, x, weight)
         exe = fluid.Executor(place)
         exe.run(startup_program)
         fluid.save(main_program, "./test_dy2stat_save_load")

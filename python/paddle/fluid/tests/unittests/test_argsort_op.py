@@ -351,5 +351,28 @@ class TestSortOnGPU(TestSortOnCPU):
             self.place = core.CPUPlace()
 
 
+class TestArgsortErrorOnCPU(unittest.TestCase):
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_error(self):
+        self.init_place()
+        with fluid.program_guard(fluid.Program()):
+
+            def test_input_type():
+                x = [1]
+                output = fluid.layers.argsort(input=x)
+
+            self.assertRaises(TypeError, test_input_type)
+
+
+class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
+    def init_place(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+
 if __name__ == "__main__":
     unittest.main()

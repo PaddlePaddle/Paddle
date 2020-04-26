@@ -22,10 +22,19 @@ class FillConstantOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of FillConstantOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FillConstant");
 
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
+      for (size_t i = 0; i < shape.size(); ++i) {
+        PADDLE_ENFORCE_GE(
+            shape[i], 0,
+            platform::errors::InvalidArgument(
+                "Each value of attribute 'shape' is expected to be no less "
+                "than 0. But recieved: shape[%u] = %d; shape = [%s].",
+                i, shape[i], framework::make_ddim(shape)));
+      }
+    }
 
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");

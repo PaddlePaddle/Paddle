@@ -53,7 +53,9 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "precision_recall",                // 1
     "fusion_seqpool_cvm_concat",       // 2
     "fused_batch_norm_act",            // 2
-    "fused_batch_norm_act_grad"        // 2
+    "fused_batch_norm_act_grad",       // 2
+    "data_norm",                       // 0
+    "data_norm_grad",                  // 0
 };
 
 namespace paddle {

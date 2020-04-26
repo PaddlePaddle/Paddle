@@ -38,3 +38,6 @@
 #            'WeightNormParamAttr',
 #            'Model',
 #            'Sequential']
+
+from . import random
+from .random import manual_seed

@@ -21,6 +21,7 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
+from .data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -216,8 +217,10 @@ class UniformInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+                                 "uniform_random")
+
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -303,8 +306,10 @@ class NormalInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+
+        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+                                 "guassian_random")
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -494,8 +499,10 @@ class XavierInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+                                 "xavier_init")
+
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in and fan_out are passed, use them

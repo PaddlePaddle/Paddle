@@ -23,10 +23,8 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FillAnyLikeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FillAnyLikeOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fill_any_like");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fill_any_like");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

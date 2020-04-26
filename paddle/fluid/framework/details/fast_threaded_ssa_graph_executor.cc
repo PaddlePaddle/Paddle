@@ -63,7 +63,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
 
   FetchResultType fetches;
   if (return_merged) {
-    fetches = FeedFetchList(fetch_tensors.size());
+    fetches = FetchList(fetch_tensors.size());
   } else {
     fetches = FetchUnmergedList(fetch_tensors.size());
   }

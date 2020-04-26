@@ -32,9 +32,9 @@ class LoDResetOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GT(
           static_cast<int64_t>(level0.size()), 0,
           platform::errors::InvalidArgument(
-              "If Input(Y) not provided, the target lod should be "
-              "specified by attribute `target_lod`. But the size of "
-              "`target_lod` is 0."));
+              "If Input(Y) is not provided, the output's LoD should be "
+              "specified by attribute 'target_lod'. But the size of "
+              "'target_lod' is 0."));
     } else if (ctx->IsRuntime()) {
       ctx->ShareLoD("Y", "Out");
     }

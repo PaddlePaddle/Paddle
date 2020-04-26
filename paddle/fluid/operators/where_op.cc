@@ -102,7 +102,7 @@ class WhereOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor), The second input tensor of where op. When the "
              "corresponding position of condition is false, the output takes "
              "the element of Y.");
-    AddOutput("Out", "(Tensor), The output tensor of mul op.");
+    AddOutput("Out", "(Tensor), The output tensor of where op.");
     AddComment(R"DOC(
       Where Operator.
       Return a tensor of elements selected from either $X$ or $Y$, depending on condition.
