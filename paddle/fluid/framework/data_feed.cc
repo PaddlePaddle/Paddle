@@ -1072,9 +1072,11 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     } else if (this->input_type_ == 1) {
       if (!use_slots_is_dense_[i]) {
         std::vector<size_t> tmp_offset;
-        PADDLE_ENFORCE_EQ(
-            slot_offset.size(), 2,
-            "In batch reader, the sparse tensor lod size must be 2.");
+        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+                          platform::errors::InvalidArgument(
+                              "In batch reader, the sparse tensor lod size "
+                              "must be 2, but received %d",
+                              slot_offset.size()));
         const auto& max_size = slot_offset[1];
         tmp_offset.reserve(max_size + 1);
         for (unsigned int k = 0; k <= max_size; k++) {
