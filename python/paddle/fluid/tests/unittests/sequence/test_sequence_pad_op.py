@@ -19,6 +19,7 @@ sys.path.append("../")
 from op_test import OpTest
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 class TestSequencePadOp(OpTest):
@@ -172,6 +173,13 @@ class TestSequencePadOpError(unittest.TestCase):
             fluid.layers.sequence_pad(x=x2, pad_value=pad_value2)
 
         self.assertRaises(TypeError, test_dtype)
+
+    def test_length_dtype(self):
+        x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+        pad_value = fluid.layers.assign(input=np.array([0.0], dtype=np.float32))
+        out, length = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+        # check if the dtype of length is int64 in compile time
+        self.assertEqual(length.dtype, core.VarDesc.VarType.INT64)
 
 
 if __name__ == '__main__':
