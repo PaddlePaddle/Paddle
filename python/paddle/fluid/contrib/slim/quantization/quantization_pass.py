@@ -302,9 +302,10 @@ class QuantizationTransformPass(object):
             key = ''
             for inp in in_node.inputs:
                 key = key + inp.name()
+
+            key = key + in_node.name()
             for inp in in_node.outputs:
                 key = key + inp.name()
-            key = key + in_node.name()
 
             if key in create_var_map.keys():
                 new_node = create_var_map[key]
@@ -321,9 +322,10 @@ class QuantizationTransformPass(object):
             key = ''
             for inp in op_node.inputs:
                 key = key + inp.name()
+
+            key = key + op_node.name()
             for inp in op_node.outputs:
                 key = key + inp.name()
-            key = key + op_node.name()
             has_created = False
             if key in create_op_map.keys():
                 new_op_node = create_op_map[key]

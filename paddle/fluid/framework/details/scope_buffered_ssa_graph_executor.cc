@@ -108,10 +108,15 @@ bool ScopeBufferedSSAGraphExecutor::DropScopeOrNot() const {
 }
 
 void ScopeBufferedSSAGraphExecutor::InitVariables() {
+  int ind1 = 0;
   for (auto &info : tmp_var_infos_) {
+    int ind2 = 0;
     for (auto &pair : info) {
+      VLOG(2) << ind1 << " " << ind2;
       InitializeVariable(pair.first, pair.second);
+      ind2++;
     }
+    ind1++;
   }
 
   const ir::Graph &graph = Graph();
@@ -164,10 +169,12 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
     size_t idx = local_scopes_.size() - 1 - (it - local_scopes_.rbegin());
     auto *scope = local_scopes_[idx];
     auto *local_scope = local_exec_scopes_[idx];
+    int ind = 0;
 
     for (auto &info : var_infos_) {
       if (info.persistable_) {  // Persistable
         auto var = scope->FindVar(info.name_);
+        VLOG(2) << "persistable name " << info.name_;
         if (var != nullptr) {
           VLOG(2)
               << info.name_
@@ -179,9 +186,12 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
         Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);
         tmp_var_infos_[idx].emplace_back(tmp_var, info.type_);
+        VLOG(2) << "not persistable " << idx << " " << ind << " name "
+                << info.name_;
         if (info.type_ == proto::VarType::LOD_TENSOR_ARRAY) {
           tensor_array_vars_.emplace_back(tmp_var);
         }
+        ind++;
       }
     }
   }
