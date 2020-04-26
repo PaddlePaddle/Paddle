@@ -16,7 +16,6 @@ from paddle.common_ops_import import *
 from ..helper import is_complex, is_real, complex_variable_exists
 from ...fluid.framework import ComplexVariable
 from ...fluid import layers
-from ...tensor import math
 
 __all__ = [
     'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'elementwise_div',
@@ -282,18 +281,18 @@ def kron(x, y, name=None):
     complex_variable_exists([x, y], "kron")
 
     # X = A + Bi, Y = C+Di
-    # kron(A, B) = kron(A, C) - kron(B, D) + (kron(A, D) + kron(B, C))i
+    # kron(X, Y) = kron(A, C) - kron(B, D) + (kron(A, D) + kron(B, C))i
     (a, b) = (x.real, x.imag) if is_complex(x) else (x, None)
     (c, d) = (y.real, y.imag) if is_complex(y) else (y, None)
 
     if is_real(b) and is_real(d):
-        real = math.kron(a, c) - math.kron(b, d)
-        imag = math.kron(a, d) + math.kron(b, c)
+        real = layers.kron(a, c) - layers.kron(b, d)
+        imag = layers.kron(a, d) + layers.kron(b, c)
     elif is_real(b):
-        real = math.kron(a, c)
-        imag = math.kron(b, c)
+        real = layers.kron(a, c)
+        imag = layers.kron(b, c)
     else:
         # is_real(d)
-        real = math.kron(a, c)
-        imag = math.kron(a, d)
+        real = layers.kron(a, c)
+        imag = layers.kron(a, d)
     return ComplexVariable(real, imag)

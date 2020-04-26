@@ -74,7 +74,7 @@ class TestKronLayer(unittest.TestCase):
         with dg.guard(place):
             a_var = dg.to_variable(a)
             b_var = dg.to_variable(b)
-            c_var = paddle.kron(a_var, b_var)
+            c_var = fluid.layers.kron(a_var, b_var)
             np.testing.assert_allclose(c_var.numpy(), np.kron(a, b))
 
     def test_case_with_output(self):
@@ -88,7 +88,7 @@ class TestKronLayer(unittest.TestCase):
                 a_var = fluid.data("a", [-1, -1], dtype="float64")
                 b_var = fluid.data("b", [-1, -1], dtype="float64")
                 out_var = fluid.layers.create_tensor("float64", "c")
-                paddle.kron(a_var, b_var, out=out_var)
+                fluid.layers.kron(a_var, b_var, out=out_var)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
