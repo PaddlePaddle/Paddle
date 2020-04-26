@@ -387,7 +387,7 @@ def kron(x, y, name=None):
     complex_variable_exists([x, y], "kron")
 
     # X = A + Bi, Y = C+Di
-    # kron(A, B) = kron(A, C) - kron(B, D) + (kron(A, D) + kron(B, C))i
+    # kron(X, Y) = kron(A, C) - kron(B, D) + (kron(A, D) + kron(B, C))i
     (a, b) = (x.real, x.imag) if is_complex(x) else (x, None)
     (c, d) = (y.real, y.imag) if is_complex(y) else (y, None)
 
