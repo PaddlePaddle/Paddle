@@ -289,7 +289,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     });
     req_count_++;
 
-    if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
+    if (retry_times_ < kPrefetchRetryTimes) {
       h->Wait();
       if (h->should_retry) {
         VLOG(3) << "rpc call failed, retry times " << retry_times_;
@@ -501,14 +501,21 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error, error_code:" << c->status_.error_code()
-                 << " error_message:" << c->status_.error_message()
-                 << " error_details:" << c->status_.error_details();
-      {
+      VLOG(3) << c->GetVarHandlePtr()->String()
+              << " meets grpc error, error_code:" << c->status_.error_code()
+              << " error_message:" << c->status_.error_message()
+              << " error_details:" << c->status_.error_details();
+
+      if (c->GetVarHandlePtr()->method() == kPrefetchRPC) {
+        VLOG(0) << c->GetVarHandlePtr()->String()
+                << " meets grpc error, error_code:" << c->status_.error_code()
+                << " should retry!";
+        c->GetVarHandlePtr()->should_retry = true;
+      } else {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
       }
+
       c->Finish(false);
     } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
       VLOG(3) << c->GetVarHandlePtr()->String()
