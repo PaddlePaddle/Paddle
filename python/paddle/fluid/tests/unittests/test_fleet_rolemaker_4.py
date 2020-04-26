@@ -85,6 +85,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         import os
 
         try:
+
             class TmpKVHander(KVHandler):
                 """
                 it is a fake handler only for this test case.
@@ -136,6 +137,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         import sys
 
         try:
+
             class TmpServer(KVHTTPServer):
                 """
                 it is a fake server only for this test case.
@@ -152,6 +154,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             return
 
         try:
+
             class TmpS(KVServer):
                 """
                 it is a fake server only for this test case.
