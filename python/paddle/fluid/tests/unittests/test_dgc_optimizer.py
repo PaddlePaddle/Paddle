@@ -22,7 +22,6 @@ import paddle.fluid.regularizer as regularizer
 import paddle.fluid.clip as clip
 import paddle.compat as cpt
 from paddle.fluid.backward import append_backward
-from paddle.fluid.transpiler.details import program_to_code
 
 
 class TestDGCMomentumOptimizer(unittest.TestCase):
@@ -120,10 +119,6 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
                 coeff = 2e-4 if regularization is None else 1e-4
                 self.assertAlmostEqual(op.attr('regular_coeff'), coeff)
                 print("dgc regular_coeff=" + str(coeff))
-
-        # for local test debug
-        #with open("test_dgc_optimizer_" + name + str(use_recompute) + ".log", "w") as f:
-        #    program_to_code(program, fout=f)
 
     def test_tpyeError(self):
         # the type of DGCMomentumOptimizer(grad_clip=) must be 'GradientClipByNorm'
