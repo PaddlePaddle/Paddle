@@ -95,7 +95,7 @@ from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 # from .layer.common import Pool2D   #DEFINE_ALIAS
 # from .layer.common import Embedding   #DEFINE_ALIAS
 # from .layer.common import Linear   #DEFINE_ALIAS
-# from .layer.common import UpSample   #DEFINE_ALIAS
+from .layer.common import UpSample  #DEFINE_ALIAS
 from .functional.conv import conv2d  #DEFINE_ALIAS
 from .functional.conv import conv2d_transpose  #DEFINE_ALIAS
 from .functional.conv import conv3d  #DEFINE_ALIAS

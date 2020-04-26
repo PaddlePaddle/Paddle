@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -246,6 +247,26 @@ class TestLinearInterpOpAPI(unittest.TestCase):
 
         for res in results:
             self.assertTrue(np.allclose(res, expect_res))
+
+
+class TestLinearInterpOpAPI2_0(unittest.TestCase):
+    def test_case(self):
+
+        x_data = np.random.random((1, 3, 128)).astype("float64")
+
+        us_1 = paddle.nn.UpSample(
+            out_shape=[64, ],
+            resample='LINEAR',
+            align_mode=1,
+            align_corners=False)
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(x_data)
+            interp = us_1(x)
+            dy_result = interp.numpy()
+            expect = linear_interp_np(
+                x_data, out_w=64, align_mode=1, align_corners=False)
+            self.assertTrue(np.allclose(dy_result, expect))
 
 
 class TestLinearInterpOpUint8(OpTest):
