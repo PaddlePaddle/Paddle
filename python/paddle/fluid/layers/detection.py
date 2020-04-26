@@ -2788,9 +2788,9 @@ def generate_proposals(scores,
             width < min_size. The data type must be float32. `0.1` by default.
         eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
             `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes rois's 
-            num of every batch. The N represents the batch size. For example, the tensor has values [4,5,6] that represents
-            the batch 1 has 4 rois, the batch 2 has 4 rois and the batch 3 has 6 rois. It only used in dygraph rcnn model. 
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's 
+            num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
+            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model. 
             'False' by default. 
     Returns:
         tuple:
