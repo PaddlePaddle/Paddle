@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-SequenceTagging network structure
+SequenceTagging eval structure
 """
 
 from __future__ import division
@@ -25,18 +25,16 @@ import math
 import argparse
 import numpy as np
 
-from train import SeqTagging
+from train import SeqTagging, ChunkEval, LacLoss
 from utils.configure import PDConfig
 from utils.check import check_gpu, check_version
-from utils.metrics import chunk_count
-from reader import LacDataset, create_lexnet_data_generator, create_dataloader
+from reader import LacDataset, LacDataLoader
 
 work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(work_dir, "../"))
 from hapi.model import set_device, Input
 
 import paddle.fluid as fluid
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.layers.utils import flatten
 
 
@@ -44,51 +42,33 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [Input([None, None], 'int64', name='words'), 
-              Input([None], 'int64', name='length')] 
+    inputs = [
+        Input(
+            [None, None], 'int64', name='words'), Input(
+                [None], 'int64', name='length'), Input(
+                    [None, None], 'int64', name='target')
+    ]
+    labels = [Input([None, None], 'int64', name='labels')]
 
-    feed_list = None if args.dynamic else [x.forward() for x in inputs]
     dataset = LacDataset(args)
-    eval_path = args.test_file
-
-    chunk_evaluator = fluid.metrics.ChunkEvaluator()
-    chunk_evaluator.reset()
-
-    eval_generator = create_lexnet_data_generator(
-        args, reader=dataset, file_name=eval_path, place=place, mode="test")
-
-    eval_dataset = create_dataloader(
-        eval_generator, place, feed_list=feed_list)
+    eval_dataset = LacDataLoader(args, place, phase="test")
 
     vocab_size = dataset.vocab_size
     num_labels = dataset.num_labels
-    model = SeqTagging(args, vocab_size, num_labels)
-
-    optim = AdamOptimizer(
-        learning_rate=args.base_learning_rate,
-        parameter_list=model.parameters())
+    model = SeqTagging(args, vocab_size, num_labels, mode="test")
 
     model.mode = "test"
-    model.prepare(inputs=inputs)
+    model.prepare(
+        metrics=ChunkEval(num_labels),
+        inputs=inputs,
+        labels=labels,
+        device=place)
     model.load(args.init_from_checkpoint, skip_mismatch=True)
 
-    for data in eval_dataset():
-        if len(data) == 1: 
-            batch_data = data[0]
-            targets = np.array(batch_data[2])
-        else: 
-            batch_data = data
-            targets = batch_data[2].numpy()
-        inputs_data = [batch_data[0], batch_data[1]]
-        crf_decode, length = model.test(inputs=inputs_data)
-        num_infer_chunks, num_label_chunks, num_correct_chunks = chunk_count(crf_decode, targets, length, dataset.id2label_dict)
-        chunk_evaluator.update(num_infer_chunks, num_label_chunks, num_correct_chunks)
-    
-    precision, recall, f1 = chunk_evaluator.eval()
-    print("[test] P: %.5f, R: %.5f, F1: %.5f" % (precision, recall, f1))
+    model.evaluate(eval_dataset.dataloader, batch_size=args.batch_size)
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     args = PDConfig(yaml_file="sequence_tagging.yaml")
     args.build()
     args.Print()

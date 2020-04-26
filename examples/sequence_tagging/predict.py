@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-SequenceTagging network structure
+SequenceTagging predict structure
 """
 
 from __future__ import division
@@ -28,14 +28,13 @@ import numpy as np
 from train import SeqTagging
 from utils.check import check_gpu, check_version
 from utils.configure import PDConfig
-from reader import LacDataset, create_lexnet_data_generator, create_dataloader
+from reader import LacDataset, LacDataLoader
 
 work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(work_dir, "../"))
 from hapi.model import set_device, Input
 
 import paddle.fluid as fluid
-from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.layers.utils import flatten
 
 
@@ -43,26 +42,18 @@ def main(args):
     place = set_device(args.device)
     fluid.enable_dygraph(place) if args.dynamic else None
 
-    inputs = [Input([None, None], 'int64', name='words'), 
-              Input([None], 'int64', name='length')]
+    inputs = [
+        Input(
+            [None, None], 'int64', name='words'), Input(
+                [None], 'int64', name='length')
+    ]
 
-    feed_list = None if args.dynamic else [x.forward() for x in inputs]
     dataset = LacDataset(args)
-    predict_path = args.predict_file
-
-    predict_generator = create_lexnet_data_generator(
-        args, reader=dataset, file_name=predict_path, place=place, mode="predict")
-
-    predict_dataset = create_dataloader(
-        predict_generator, place, feed_list=feed_list)
+    predict_dataset = LacDataLoader(args, place, phase="predict")
 
     vocab_size = dataset.vocab_size
     num_labels = dataset.num_labels
-    model = SeqTagging(args, vocab_size, num_labels)
-
-    optim = AdamOptimizer(
-        learning_rate=args.base_learning_rate,
-        parameter_list=model.parameters())
+    model = SeqTagging(args, vocab_size, num_labels, mode="predict")
 
     model.mode = "test"
     model.prepare(inputs=inputs)
@@ -70,20 +61,20 @@ def main(args):
     model.load(args.init_from_checkpoint, skip_mismatch=True)
 
     f = open(args.output_file, "wb")
-    for data in predict_dataset(): 
-        if len(data) == 1: 
+    for data in predict_dataset.dataloader:
+        if len(data) == 1:
             input_data = data[0]
-        else: 
+        else:
             input_data = data
-        results, length = model.test(inputs=flatten(input_data))
-        for i in range(len(results)): 
+        results, length = model.test_batch(inputs=flatten(input_data))
+        for i in range(len(results)):
             word_len = length[i]
-            word_ids = results[i][: word_len]
+            word_ids = results[i][:word_len]
             tags = [dataset.id2label_dict[str(id)] for id in word_ids]
             f.write("\002".join(tags) + "\n")
-        
 
-if __name__ == '__main__': 
+
+if __name__ == '__main__':
     args = PDConfig(yaml_file="sequence_tagging.yaml")
     args.build()
     args.Print()

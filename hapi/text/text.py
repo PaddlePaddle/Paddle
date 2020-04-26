@@ -49,7 +49,7 @@ __all__ = [
     'BeamSearchDecoder', 'MultiHeadAttention', 'FFN',
     'TransformerEncoderLayer', 'TransformerEncoder', 'TransformerDecoderLayer',
     'TransformerDecoder', 'TransformerBeamSearchDecoder', 'Linear_chain_crf',
-    'Crf_decoding', 'SequenceTagging'
+    'Crf_decoding', 'SequenceTagging', 'GRUEncoderLayer'
 ]
 
 
@@ -763,7 +763,7 @@ class BasicGRUCell(RNNCell):
         c = self._activation(candidate)
         new_hidden = u * pre_hidden + (1 - u) * c
 
-        return new_hidden
+        return new_hidden, new_hidden
 
     @property
     def state_shape(self):
@@ -1741,6 +1741,64 @@ class Crf_decoding(fluid.dygraph.Layer):
         return viterbi_path
 
 
+class GRUEncoderLayer(Layer):
+    def __init__(self,
+                 input_dim,
+                 grnn_hidden_dim,
+                 init_bound,
+                 num_layers=1,
+                 h_0=None,
+                 is_bidirection=False):
+        super(GRUEncoderLayer, self).__init__()
+        self.h_0 = h_0
+        self.num_layers = num_layers
+        self.is_bidirection = is_bidirection
+        self.gru_list = []
+        self.gru_r_list = []
+        for i in range(num_layers):
+            self.basic_gru_cell = BasicGRUCell(
+                input_size=input_dim if i == 0 else input_dim * 2,
+                hidden_size=grnn_hidden_dim,
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.UniformInitializer(
+                        low=-init_bound, high=init_bound),
+                    regularizer=fluid.regularizer.L2DecayRegularizer(
+                        regularization_coeff=1e-4)))
+            self.gru_list.append(
+                self.add_sublayer(
+                    "gru_%d" % i,
+                    RNN(self.basic_gru_cell,
+                        is_reverse=False,
+                        time_major=False)))
+        if self.is_bidirection:
+            for i in range(num_layers):
+                self.basic_gru_cell_r = BasicGRUCell(
+                    input_size=input_dim if i == 0 else input_dim * 2,
+                    hidden_size=grnn_hidden_dim,
+                    param_attr=fluid.ParamAttr(
+                        initializer=fluid.initializer.UniformInitializer(
+                            low=-init_bound, high=init_bound),
+                        regularizer=fluid.regularizer.L2DecayRegularizer(
+                            regularization_coeff=1e-4)))
+                self.gru_r_list.append(
+                    self.add_sublayer(
+                        "gru_r_%d" % i,
+                        RNN(self.basic_gru_cell_r,
+                            is_reverse=True,
+                            time_major=False)))
+
+    def forward(self, input_feature):
+        for i in range(self.num_layers):
+            pre_gru, pre_state = self.gru_list[i](input_feature)
+            if self.is_bidirection:
+                gru_r, r_state = self.gru_r_list[i](input_feature)
+                out = fluid.layers.concat(input=[pre_gru, gru_r], axis=-1)
+            else:
+                out = pre_gru
+            input_feature = out
+        return out
+
+
 class SequenceTagging(fluid.dygraph.Layer):
     def __init__(self,
                  vocab_size,
@@ -1790,26 +1848,13 @@ class SequenceTagging(fluid.dygraph.Layer):
             force_cpu=True,
             name='h_0')
 
-        self.bigru_units = []
-        for i in range(self.bigru_num):
-            if i == 0:
-                self.bigru_units.append(
-                    self.add_sublayer(
-                        "bigru_units%d" % i,
-                        BiGRU(
-                            self.grnn_hidden_dim,
-                            self.grnn_hidden_dim,
-                            self.init_bound,
-                            h_0=h_0)))
-            else:
-                self.bigru_units.append(
-                    self.add_sublayer(
-                        "bigru_units%d" % i,
-                        BiGRU(
-                            self.grnn_hidden_dim * 2,
-                            self.grnn_hidden_dim,
-                            self.init_bound,
-                            h_0=h_0)))
+        self.gru_encoder = GRUEncoderLayer(
+            input_dim=self.grnn_hidden_dim,
+            grnn_hidden_dim=self.grnn_hidden_dim,
+            init_bound=self.init_bound,
+            num_layers=self.bigru_num,
+            h_0=h_0,
+            is_bidirection=True)
 
         self.fc = Linear(
             input_dim=self.grnn_hidden_dim * 2,
@@ -1837,10 +1882,7 @@ class SequenceTagging(fluid.dygraph.Layer):
         word_embed = self.word_embedding(word)
         input_feature = word_embed
 
-        for i in range(self.bigru_num):
-            bigru_output = self.bigru_units[i](input_feature)
-            input_feature = bigru_output
-
+        bigru_output = self.gru_encoder(input_feature)
         emission = self.fc(bigru_output)
 
         if target is not None:
