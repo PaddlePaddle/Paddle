@@ -30,11 +30,32 @@ import numpy
 import warnings
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
-    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
-    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
+    'create_tensor',
+    'create_parameter',
+    'create_global_var',
+    'cast',
+    'tensor_array_to_tensor',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'argmin',
+    'argmax',
+    'argsort',
+    'ones',
+    'zeros',
+    'reverse',
+    'has_inf',
+    'has_nan',
+    'isfinite',
+    'range',
+    'linspace',
+    'zeros_like',
+    'ones_like',
+    'diag',
+    'eye',
+    'kron',
 ]
 
 
@@ -1558,4 +1579,70 @@ def ones_like(x, out=None):
         inputs={'X': [x]},
         attrs={'value': 1.0},
         outputs={'Out': [out]})
+    return out
+
+
+@templatedoc(op_type="kron")
+def kron(x, y, out=None, name=None):
+    """${comment}
+
+    Args:
+        x (Variable): the fist operand of kron op, data type: float16, float32, 
+            float64, int32 or int64.
+        y (Variable): the second operand of kron op, data type: float16, 
+            float32, float64, int32 or int64. Its data type should be the same 
+            with x.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of 
+            operation. If out is None, a new Varibale will be create to store 
+            the result. Defaults to None.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
+
+    Examples:
+        .. code-block:: python
+        
+          import paddle
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          import numpy as np
+
+          a = np.arange(1, 5).reshape(2, 2).astype(np.float32)
+          b = np.arange(1, 10).reshape(3, 3).astype(np.float32)
+
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              a_var = dg.to_variable(a)
+              b_var = dg.to_variable(b)
+              c_var = fluid.layers.kron(a_var, b_var)
+              c_np = c_var.numpy()
+          print(c_np)
+
+          #[[ 1.  2.  3.  2.  4.  6.]
+          # [ 4.  5.  6.  8. 10. 12.]
+          # [ 7.  8.  9. 14. 16. 18.]
+          # [ 3.  6.  9.  4.  8. 12.]
+          # [12. 15. 18. 16. 20. 24.]
+          # [21. 24. 27. 28. 32. 36.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.kron(x, y)
+
+    helper = LayerHelper('kron', **locals())
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    check_variable_and_dtype(
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        check_variable_and_dtype(
+            out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'kron')
+    helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out
