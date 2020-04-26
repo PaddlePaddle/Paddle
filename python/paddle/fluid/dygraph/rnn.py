@@ -80,6 +80,7 @@ class LSTMCell(Layer):
     
     Returns:
         None
+
     Examples:
 
         .. code-block:: python
@@ -285,6 +286,7 @@ class GRUCell(Layer):
     
     Returns:
         None
+
     Examples:
 
         .. code-block:: python
