@@ -7373,14 +7373,13 @@ def resize_linear(input,
 	    import numpy as np
 	    input = fluid.data(name="input", shape=[None,3,100])
 
-	    #1
 	    output = fluid.layers.resize_linear(input=input,out_shape=[50,])
 
 	    place = fluid.CPUPlace()
 	    exe = fluid.Executor(place)
 	    exe.run(fluid.default_startup_program())
  
-	    input_data = np.random.rand(1,3,100).astype("float64")
+	    input_data = np.random.rand(1,3,100).astype("float32")
 
 	    output_data = exe.run(fluid.default_main_program(),
                 feed={"input":input_data},
@@ -7389,7 +7388,6 @@ def resize_linear(input,
  
 	    print(output_data[0].shape)
 
-	    #1
 	    # (1, 3, 50)
 
 	    #imperative mode

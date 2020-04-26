@@ -208,7 +208,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
 class TestLinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.data(name="x", shape=[1, 3, 128], dtype="float64")
+        x = fluid.data(name="x", shape=[1, 3, 128], dtype="float32")
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[1], dtype="int32")
         scale_tensor = fluid.data(
@@ -221,7 +221,7 @@ class TestLinearInterpOpAPI(unittest.TestCase):
         out3 = fluid.layers.resize_linear(
             x, scale=scale_tensor, align_mode=1, align_corners=False)
 
-        x_data = np.random.random((1, 3, 128)).astype("float64")
+        x_data = np.random.random((1, 3, 128)).astype("float32")
         dim_data = np.array([256, ]).astype("int32")
         shape_data = np.array([256, ]).astype("int32")
         scale_data = np.array([2.0, ]).astype("float32")
@@ -252,7 +252,7 @@ class TestLinearInterpOpAPI(unittest.TestCase):
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
     def test_case(self):
 
-        x_data = np.random.random((1, 3, 128)).astype("float64")
+        x_data = np.random.random((1, 3, 128)).astype("float32")
 
         us_1 = paddle.nn.UpSample(
             out_shape=[64, ],
