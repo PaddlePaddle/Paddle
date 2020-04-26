@@ -53,8 +53,8 @@ YOLOv3 的网络结构由基础特征提取网络、multi-scale特征融合层�
     ```bash
     git clone https://github.com/PaddlePaddle/hapi
     cd hapi
-    export PYTHONPATH=$PYTHONPATH:`pwd`
-    cd tsm
+    export PYTHONPATH=`pwd`:$PYTHONPATH
+    cd examples/yolov3
     ```
 
 #### 安装COCO-API
@@ -126,13 +126,13 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --data=
 使用如下方式进行多卡训练:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1,2,3 python main.py -m paddle.distributed.launch --data=<path/to/dataset> --batch_size=16 -d
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --data=<path/to/dataset> --batch_size=16 -d
 ```
 
 
 ### 模型评估
 
-YOLOv3模型输出为LoDTensor，只支持使用batch_size为1进行评估，可通过如下两种方式进行模型评估。
+YOLOv3模型输出为LoDTensor，只支持使用单卡且batch_size为1进行评估，可通过如下两种方式进行模型评估。
 
 1. 自动下载Paddle发布的[YOLOv3-DarkNet53](https://paddlemodels.bj.bcebos.com/hapi/yolov3_darknet53.pdparams)权重评估
 
@@ -180,7 +180,7 @@ python infer.py --label_list=dataset/voc/label_list.txt --infer_image=image/dog.
 2. 加载checkpoint进行精度评估
 
 ```bash
-python infer.py --label_list=dataset/voc/label_list.txt --infer_image=image/dog.jpg --weights=yolo_checkpoint/mo_mixup/final
+python infer.py --label_list=dataset/voc/label_list.txt --infer_image=image/dog.jpg --weights=yolo_checkpoint/no_mixup/final
 ```
 
 推断结果可视化图像会保存于`--output`指定的文件夹下，默认保存于`./output`目录。

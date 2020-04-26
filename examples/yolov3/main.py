@@ -33,6 +33,7 @@ from modeling import yolov3_darknet53, YoloLoss
 from coco import COCODataset
 from coco_metric import COCOMetric
 from transforms import *
+from utils import print_arguments
 
 NUM_MAX_BOXES = 50
 
@@ -171,16 +172,18 @@ def main():
     if FLAGS.resume is not None:
         model.load(FLAGS.resume)
 
+    save_dir = FLAGS.save_dir or 'yolo_checkpoint'
+
     model.fit(train_data=loader,
               epochs=FLAGS.epoch - FLAGS.no_mixup_epoch,
-              save_dir="yolo_checkpoint/mixup",
+              save_dir=os.path.join(save_dir, "mixup"),
               save_freq=10)
 
     # do not use image mixup transfrom in the last FLAGS.no_mixup_epoch epoches
     dataset.mixup = False
     model.fit(train_data=loader,
               epochs=FLAGS.no_mixup_epoch,
-              save_dir="yolo_checkpoint/no_mixup",
+              save_dir=os.path.join(save_dir, "no_mixup"),
               save_freq=5)
 
 
@@ -233,6 +236,13 @@ if __name__ == '__main__':
         default=None,
         type=str,
         help="path to weights for evaluation")
+    parser.add_argument(
+        "-s",
+        "--save_dir",
+        default=None,
+        type=str,
+        help="directory path for checkpoint saving, default ./yolo_checkpoint")
     FLAGS = parser.parse_args()
+    print_arguments(FLAGS)
     assert FLAGS.data, "error: must provide data path"
     main()

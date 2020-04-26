@@ -116,7 +116,7 @@ class Accuracy(Metric):
     def add_metric_op(self, pred, label, *args):
         pred = fluid.layers.argsort(pred, descending=True)[1][:, :self.maxk]
         correct = pred == label
-        return correct
+        return fluid.layers.cast(correct, dtype='float32')
 
     def update(self, correct, *args):
         accs = []
@@ -143,7 +143,7 @@ class Accuracy(Metric):
         if self.maxk != 1:
             self._name = ['{}_top{}'.format(name, k) for k in self.topk]
         else:
-            self._name = ['acc']
+            self._name = [name]
 
     def name(self):
         return self._name
