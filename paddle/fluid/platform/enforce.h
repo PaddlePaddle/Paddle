@@ -438,6 +438,35 @@ struct EnforceNotMet : public std::exception {
                                         __ROLE, __NAME, __OP_TYPE));        \
   } while (0)
 
+/*
+ * Summary: This macro is used to call boost::get safely.
+ *   boost::get is not a completely safe macro, although it will not go wrong
+ *   in most cases, but in extreme case, if may fail and directly throw a
+ *   boost::bad_get exception, without any stack information.
+ *   This kind of problem is difficult to debug, so add this macro to
+ *   enrich boost::get error information.
+ *
+ * Parameters:
+ *     __TYPE: the target variable type
+ *     __VALUE: the target variable to get
+ *
+ * Examples:
+ *    - general: x = boost::get<int>(y);
+ *    - new: x = BOOST_GET_SAFELY(int, y);
+*/
+#define BOOST_GET_SAFELY(__TYPE, __VALUE)                              \
+  (([&]() -> __TYPE {                                                  \
+    try {                                                              \
+      return boost::get<__TYPE>(__VALUE);                              \
+    } catch (boost::bad_get & bad_get) {                               \
+      PADDLE_THROW(paddle::platform::errors::InvalidArgument(          \
+          "boost::get failed, cannot get value "                       \
+          "(%s) by type %s, its type is %s.",                          \
+          #__VALUE, paddle::platform::demangle(typeid(__TYPE).name()), \
+          paddle::platform::demangle(__VALUE.type().name())));         \
+    }                                                                  \
+  })())
+
 /** OTHER EXCEPTION AND ENFORCE **/
 
 struct EOFException : public std::exception {

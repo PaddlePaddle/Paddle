@@ -452,10 +452,10 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            boost::get<platform::CUDAPlace>(place_), max_memory_size));
+            BOOST_GET_SAFELY(platform::CUDAPlace, place_), max_memory_size));
       } else {
         gc.reset(new DefaultStreamGarbageCollector(
-            boost::get<platform::CUDAPlace>(place_), max_memory_size));
+            BOOST_GET_SAFELY(platform::CUDAPlace, place_), max_memory_size));
       }
     } else if (platform::is_cpu_place(place_)) {
 #endif
