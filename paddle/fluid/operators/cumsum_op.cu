@@ -33,27 +33,39 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-
-// inclusive scan
-__global__ void OuterScan(const T* in, T* out, unsigned inner_dim_size,
-                          unsigned outer_dim_size, unsigned scan_dim_size,
-                          bool exclusive) {
+__global__ void OuterScan(const T* in, T* out, int inner_dim_size,
+                          int outer_dim_size, int scan_dim_size, bool exclusive,
+                          bool reverse) {
   int id = blockIdx.y * blockDim.x + threadIdx.x;
 
-  for (unsigned outer_index = blockIdx.x; outer_index < outer_dim_size;
+  for (int outer_index = blockIdx.x; outer_index < outer_dim_size;
        outer_index += gridDim.x) {
-    for (unsigned inner_index = blockIdx.y * blockDim.x + threadIdx.x;
+    for (int inner_index = blockIdx.y * blockDim.x + threadIdx.x;
          inner_index < inner_dim_size; inner_index += gridDim.y * blockDim.x) {
+      int scan_index_init = 0;
+      int forward_direction = 1;
       int src_index =
           outer_index * scan_dim_size * inner_dim_size + inner_index;
       int dst_index =
           outer_index * scan_dim_size * inner_dim_size + inner_index;
+      if (reverse) {
+        src_index = src_index + (scan_dim_size - 1) * inner_dim_size;
+        dst_index = dst_index + (scan_dim_size - 1) * inner_dim_size;
+        forward_direction = -1;
+      }
+      if (exclusive) {
+        scan_index_init = 1;
+        out[dst_index] = 0;
+        dst_index = dst_index + (forward_direction * inner_dim_size);
+      }
       T acc = 0;
-      for (unsigned scan_index = 0; scan_index < scan_dim_size; ++scan_index) {
+
+      for (int scan_index = scan_index_init; scan_index < scan_dim_size;
+           ++scan_index) {
         acc = in[src_index] + acc;
         out[dst_index] = acc;
-        src_index += inner_dim_size;
-        dst_index += inner_dim_size;
+        src_index += (forward_direction * inner_dim_size);
+        dst_index += (forward_direction * inner_dim_size);
       }
     }
   }
@@ -142,9 +154,9 @@ class CumCUDAKernel : public framework::OpKernel<T> {
                                           "dimension(%d) of the input tensor.",
                                           axis, in_dims.size()));
 
-    unsigned scan_dim_size = in_dims[axis];
-    unsigned outer_dim_size = 1;
-    unsigned inner_dim_size = 1;
+    int scan_dim_size = in_dims[axis];
+    int outer_dim_size = 1;
+    int inner_dim_size = 1;
     // treat all dim index < axis as outer_dim_size
     for (size_t i = 0; i < axis; i++) {
       outer_dim_size *= in_dims[i];
@@ -165,11 +177,11 @@ class CumCUDAKernel : public framework::OpKernel<T> {
       dim3 grid((size + block.x - 1) / block.x);
 
     } else {
-      dim3 block(std::min(512u, inner_dim_size));
+      dim3 block(std::min(512, inner_dim_size));
       dim3 grid(outer_dim_size, (inner_dim_size + block.x - 1) / block.x);
       OuterScan<T><<<block, grid, 0, dev_ctx.stream()>>>(
           in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size,
-          exclusive);
+          exclusive, reverse);
     }
   }
 };
