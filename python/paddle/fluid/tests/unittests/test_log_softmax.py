@@ -17,7 +17,6 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.nn as nn
-import paddle.nn.functional as functional
 
 
 def stable_softmax(x):
@@ -84,14 +83,14 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
         mylogsoftmax = nn.LogSoftmax(axis)
         with fluid.program_guard(main_program):
             x = fluid.data(name='x', shape=self.x_shape)
-            y = functional.log_softmax(x, axis, dtype)
+            y = fluid.layers.log_softmax(x, axis, dtype)
         exe = fluid.Executor(place)
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
         self.assertTrue(np.allclose(out[0], ref_out))
 
         with fluid.dygraph.guard(place):
             x = fluid.dygraph.to_variable(self.x)
-            y = functional.log_softmax(x, axis, dtype)
+            y = fluid.layers.log_softmax(x, axis, dtype)
         self.assertTrue(np.allclose(y.numpy(), ref_out))
 
     def test_check_api(self):

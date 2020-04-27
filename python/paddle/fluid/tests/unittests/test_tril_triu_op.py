@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-import paddle.tensor as tensor
 
 
 class TrilTriuOpDefaultTest(OpTest):
@@ -71,7 +70,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
             data = fluid.data(shape=Xshape, dtype='float64', name=cls_name)
             with self.assertRaisesRegexp(
                     eval(expected.split(':')[-1]), errmsg[expected]):
-                getattr(tensor, op_type)(input=data, diagonal=diagonal)
+                getattr(fluid.layers, op_type)(input=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
         def initTestCase(self):
@@ -122,7 +121,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
     def test_api(self):
         data = np.random.random([1, 9, 9, 4]).astype('float32')
         x = fluid.data(shape=[1, 9, -1, 4], dtype='float32', name='x')
-        tril_out, triu_out = tensor.tril(x), tensor.triu(x)
+        tril_out, triu_out = fluid.layers.tril(x), fluid.layers.triu(x)
 
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
