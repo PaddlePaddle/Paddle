@@ -34,13 +34,16 @@ from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.io import DataLoader, Dataset
 
+from hapi.loss import Loss
 from hapi.distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from hapi.metrics import Metric
 from hapi.callbacks import config_callbacks
+from hapi.utils import to_list, to_numpy, flatten_list, restore_flatten_list
 
 __all__ = [
-    'Model', 'Loss', 'CrossEntropy', 'Input', 'set_device',
-    'SoftmaxWithCrossEntropy'
+    'Model',
+    'Input',
+    'set_device',
 ]
 
 
@@ -63,49 +66,6 @@ def set_device(device):
     return place
 
 
-def to_list(value):
-    if value is None:
-        return value
-    if isinstance(value, (list, tuple)):
-        return list(value)
-    return [value]
-
-
-def to_numpy(var):
-    assert isinstance(var, (Variable, fluid.core.VarBase)), "not a variable"
-    if isinstance(var, fluid.core.VarBase):
-        return var.numpy()
-    t = global_scope().find_var(var.name).get_tensor()
-    return np.array(t)
-
-
-def flatten_list(l):
-    assert isinstance(l, list), "not a list"
-    outl = []
-    splits = []
-    for sl in l:
-        assert isinstance(sl, list), "sub content not a list"
-        splits.append(len(sl))
-        outl += sl
-    return outl, splits
-
-
-def restore_flatten_list(l, splits):
-    outl = []
-    for split in splits:
-        assert len(l) >= split, "list length invalid"
-        sl, l = l[:split], l[split:]
-        outl.append(sl)
-    return outl
-
-
-def extract_args(func):
-    if hasattr(inspect, 'getfullargspec'):
-        return inspect.getfullargspec(func)[0]
-    else:
-        return inspect.getargspec(func)[0]
-
-
 class Input(fluid.dygraph.Layer):
     def __init__(self, shape=None, dtype=None, name=None):
         super(Input, self).__init__()
@@ -115,47 +75,6 @@ class Input(fluid.dygraph.Layer):
 
     def forward(self):
         return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
-
-
-class Loss(object):
-    def __init__(self, average=True):
-        super(Loss, self).__init__()
-        self.average = average
-
-    def forward(self, outputs, labels):
-        raise NotImplementedError()
-
-    def __call__(self, outputs, labels=None):
-        labels = to_list(labels)
-        if in_dygraph_mode() and labels:
-            labels = [to_variable(l) for l in labels]
-        losses = to_list(self.forward(to_list(outputs), labels))
-        if self.average:
-            losses = [fluid.layers.reduce_mean(l) for l in losses]
-        else:
-            losses = [fluid.layers.reduce_sum(l) for l in losses]
-        return losses
-
-
-class CrossEntropy(Loss):
-    def __init__(self, average=True):
-        super(CrossEntropy, self).__init__()
-
-    def forward(self, outputs, labels):
-        return [
-            fluid.layers.cross_entropy(o, l) for o, l in zip(outputs, labels)
-        ]
-
-
-class SoftmaxWithCrossEntropy(Loss):
-    def __init__(self, average=True):
-        super(SoftmaxWithCrossEntropy, self).__init__()
-
-    def forward(self, outputs, labels):
-        return [
-            fluid.layers.softmax_with_cross_entropy(
-                o, l, return_softmax=False) for o, l in zip(outputs, labels)
-        ]
 
 
 class StaticGraphAdapter(object):
@@ -576,15 +495,14 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(
-                * [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -593,9 +511,9 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -607,7 +525,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -633,9 +551,9 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -1215,6 +1133,51 @@ class Model(fluid.dygraph.Layer):
         self._test_dataloader = None
 
         return outputs
+
+    def save_inference_model(self,
+                             save_dir,
+                             model_filename=None,
+                             params_filename=None,
+                             program_only=False):
+        """
+        Save inference model must in static mode.
+
+        Args:
+            dirname(str): The directory path to save the inference model.
+            model_filename(str|None): The name of file to save the inference program
+                                        itself. If is set None, a default filename
+                                        :code:`__model__` will be used.
+            params_filename(str|None): The name of file to save all related parameters.
+                                            If it is set None, parameters will be saved
+                                            in separate files .
+            program_only(bool): If True, It will save inference program only, and do not 
+                                        save params of Program.
+                                        Default: False.
+
+        Returns:
+            list: The fetch variables' name list
+        """
+        assert not fluid.in_dygraph_mode(
+        ), 'Save inference model must in static mode!'
+
+        prog = self._adapter._progs.get('test', None)
+        assert prog, \
+            "Model is not ready, please call `model.prepare()` first"
+
+        infer_prog = prog.clone(for_test=True)
+
+        input_names = [v.name for v in self._adapter._input_vars['test']]
+        endpoints = self._adapter._endpoints['test']['output']
+
+        return fluid.io.save_inference_model(
+            save_dir,
+            input_names,
+            endpoints,
+            self._adapter._executor,
+            main_program=infer_prog,
+            model_filename=model_filename,
+            params_filename=params_filename,
+            program_only=program_only)
 
     def _run_one_epoch(self,
                        data_loader,
