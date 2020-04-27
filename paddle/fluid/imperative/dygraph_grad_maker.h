@@ -30,7 +30,17 @@
 namespace paddle {
 namespace imperative {
 
-enum TracedVarRole { kForward = 0, kBackward = 1 };
+enum TracedVarRole {
+  kInput = 0,      // Forward input
+  kOutput = 1,     // Forward output
+  kInputGrad = 2,  // Forward input grad
+  kOutputGrad = 3  // Forward output grad
+};
+
+constexpr inline bool IsBackwardRole(TracedVarRole role) {
+  return role == TracedVarRole::kInputGrad ||
+         role == TracedVarRole::kOutputGrad;
+}
 
 template <typename T, TracedVarRole kRole>
 class TracedVarList : public std::vector<std::shared_ptr<T>> {
@@ -56,39 +66,39 @@ class GradOpBaseMakerBase {
 
   virtual std::shared_ptr<GradOpNode> operator()() const = 0;
 
-  TracedVarList<VarBase, TracedVarRole::kBackward> InputGrad(
+  TracedVarList<VarBase, TracedVarRole::kInputGrad> InputGrad(
       const std::string& name, bool drop_empty_grad = true) const {
-    return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/true);
+    return GetVarBaseList<TracedVarRole::kInputGrad>(name);
   }
 
-  TracedVarList<VarBase, TracedVarRole::kBackward> OutputGrad(
+  TracedVarList<VarBase, TracedVarRole::kOutputGrad> OutputGrad(
       const std::string& name) const {
-    return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/false);
+    return GetVarBaseList<TracedVarRole::kOutputGrad>(name);
   }
 
-  TracedVarList<VarBase, TracedVarRole::kForward> Input(
+  TracedVarList<VarBase, TracedVarRole::kInput> Input(
       const std::string& name) const {
-    return GetVarBaseList<TracedVarRole::kForward>(name, /*is_input=*/true);
+    return GetVarBaseList<TracedVarRole::kInput>(name);
   }
 
-  TracedVarList<VarBase, TracedVarRole::kForward> Output(
+  TracedVarList<VarBase, TracedVarRole::kOutput> Output(
       const std::string& name) const {
-    return GetVarBaseList<TracedVarRole::kForward>(name, /*is_input=*/false);
+    return GetVarBaseList<TracedVarRole::kOutput>(name);
   }
 
-  static TracedVarList<VarBase, TracedVarRole::kForward> EmptyInput() {
+  static TracedVarList<VarBase, TracedVarRole::kInput> EmptyInput() {
     return {};
   }
 
-  static TracedVarList<VarBase, TracedVarRole::kForward> EmptyOutput() {
+  static TracedVarList<VarBase, TracedVarRole::kOutput> EmptyOutput() {
     return {};
   }
 
-  static TracedVarList<VarBase, TracedVarRole::kBackward> EmptyOutputGrad() {
+  static TracedVarList<VarBase, TracedVarRole::kOutputGrad> EmptyOutputGrad() {
     return {};
   }
 
-  static TracedVarList<VarBase, TracedVarRole::kBackward> EmptyInputGrad() {
+  static TracedVarList<VarBase, TracedVarRole::kInputGrad> EmptyInputGrad() {
     return {};
   }
 
@@ -143,9 +153,10 @@ class GradOpBaseMakerBase {
 
  private:
   template <TracedVarRole kRole>
-  TracedVarList<VarBase, kRole> GetVarBaseList(const std::string& name,
-                                               bool is_input) const {
-    const auto& data_map = is_input ? var_base_map_in_ : var_base_map_out_;
+  TracedVarList<VarBase, kRole> GetVarBaseList(const std::string& name) const {
+    constexpr bool kIsInput =
+        (kRole == TracedVarRole::kInput || kRole == TracedVarRole::kInputGrad);
+    const auto& data_map = kIsInput ? var_base_map_in_ : var_base_map_out_;
     auto iterator = data_map.find(name);
 
     TracedVarList<VarBase, kRole> vec_temp;
@@ -159,7 +170,7 @@ class GradOpBaseMakerBase {
           continue;
         }
 
-        if (kRole == TracedVarRole::kBackward) {
+        if (IsBackwardRole(kRole)) {
           if (!var_base_temp->HasGradVar()) {
             VLOG(6) << "GradVarBase of var " << var_base_temp->Name()
                     << " in OP " << type_ << " is null";
@@ -167,7 +178,7 @@ class GradOpBaseMakerBase {
           }
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
 
-          if (!is_input) {
+          if (!kIsInput) {
             auto* tensor = grad_var_base_tmp->MutableVar()
                                ->GetMutable<framework::LoDTensor>();
             tensor->Resize(
@@ -213,11 +224,14 @@ class TracedGradOp {
   template <TracedVarRole kRole>
   void SetInput(const std::string& name,
                 const TracedVarList<VarBase, kRole>& vars) {
+    static_assert(kRole != TracedVarRole::kInputGrad,
+                  "kRole cannot be kInputGrad");
+
     if (vars.empty()) {
       return;
     }
 
-    if (kRole == TracedVarRole::kBackward) {
+    if (IsBackwardRole(kRole)) {
       for (auto& var : vars) {
         if (var && !var->OverridedStopGradient()) {
           var->SetGradNode(node_);
@@ -227,19 +241,24 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
-      op_->SetInput(name, std::move(var_wrappers),
-                    kRole == TracedVarRole::kBackward);
+      op_->SetInput(name, std::move(var_wrappers), IsBackwardRole(kRole));
     }
   }
 
   template <TracedVarRole kRole>
   void SetOutput(const std::string& name,
                  const TracedVarList<VarBase, kRole>& vars) {
+    // FIXME(paddle-dev): fix some grad ops that would modify forward input
+    // static_assert(kRole != TracedVarRole::kInput, "kRole cannot be kInput");
+    static_assert(kRole != TracedVarRole::kOutput, "kRole cannot be kOutput");
+    static_assert(kRole != TracedVarRole::kOutputGrad,
+                  "kRole cannot be kOutputGrad");
+
     if (vars.empty()) {
       return;
     }
 
-    if (kRole == TracedVarRole::kBackward) {
+    if (IsBackwardRole(kRole)) {
       if (vars.size() == 1 && vars.front()->OverridedStopGradient()) {
         return;
       } else {
@@ -253,8 +272,7 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
-      op_->SetOutput(name, std::move(var_wrappers),
-                     kRole == TracedVarRole::kBackward);
+      op_->SetOutput(name, std::move(var_wrappers), IsBackwardRole(kRole));
     }
   }
 
@@ -287,8 +305,8 @@ class TracedGradOp {
     result.reserve(vars.size());
     bool has_valid = false;
     for (auto& var : vars) {
-      if (UNLIKELY(!var || (kRole == TracedVarRole::kBackward &&
-                            var->OverridedStopGradient()))) {
+      if (UNLIKELY(!var ||
+                   (IsBackwardRole(kRole) && var->OverridedStopGradient()))) {
         result.emplace_back();
       } else {
         result.emplace_back(var->SharedVar());
