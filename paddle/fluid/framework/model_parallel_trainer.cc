@@ -28,9 +28,9 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
   num_macrobatches_ = section_params.queue_size();
   VLOG(3) << "Number of macrobatches per minibatch: " << num_macrobatches_;
   section_num_ = section_params.section_config_size();
-  VLOG(3) << "Number of training devices: " << section_num_;
+  VLOG(3) << "Number of program sections: " << section_num_;
   trainer_desc_ = trainer_desc;
-  _start_cpu_core_id = section_params.start_cpu_core_id();
+  start_cpu_core_id_ = section_params.start_cpu_core_id();
 
   SetDataset(dataset);
   const std::vector<paddle::framework::DataFeed*> readers =
@@ -53,6 +53,10 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         place = platform::CPUPlace();
         break;
       case SectionConfig::CUDAPlace:
+        PADDLE_ENFORCE_GE(place_id, 0,
+                          "The place_id value for CUDAPlace shoud be greater "
+                          "than or equal to 0, but the value you give is %d.",
+                          place_id);
         place = platform::CUDAPlace(place_id);
         break;
       case SectionConfig::CUDAPinnedPlace:
@@ -62,9 +66,9 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         PADDLE_ENFORCE(false, "Unkown place type in SectionConfig: %d.",
                        section_config.place());
     }
-    _places.emplace_back(place);
+    places_.emplace_back(place);
     VLOG(3) << "Device worker place: " << place << ", device id: " << place_id
-            << " for section: " << i;
+            << ", section: " << i;
 
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -72,7 +76,7 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         std::dynamic_pointer_cast<paddle::framework::ModelParallelWorker>(
             workers_[i]);
     if (i == 0) {
-      // for the first section
+      // we only set reader for the first section
       this_worker->SetDataFeed(reader);
       this_worker->SetReaderPlace(place);
     }
@@ -84,31 +88,30 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
   // set debug here
   SetDebug(trainer_desc.debug());
-  VLOG(3) << "Initialized model parallel trainer.";
 }
 
-bool ModelParallelTrainer::isPersistableVarGrad(std::string name) {
-  std::size_t pos = name.rfind(framework::kGradVarSuffix);
-  if (pos == std::string::npos) {
-    return false;
-  }
-  std::string var_name = name.substr(0, pos);
-  if (persistable_var_names_.find(var_name) != persistable_var_names_.end()) {
-    return true;
-  }
-  return false;
-}
+// bool ModelParallelTrainer::isPersistableVarGrad(std::string name) {
+//  std::size_t pos = name.rfind(framework::kGradVarSuffix);
+//  if (pos == std::string::npos) {
+//    return false;
+//  }
+//  std::string var_name = name.substr(0, pos);
+//  if (persistable_var_names_.find(var_name) != persistable_var_names_.end()) {
+//    return true;
+//  }
+//  return false;
+//}
 
-bool ModelParallelTrainer::isPersistable(VarDesc* var) {
-  if (!var->Persistable()) {
-    return false;
-  }
-  auto name = var->Name();
-  if (name.find("learning_rate") != std::string::npos) {
-    return false;
-  }
-  return true;
-}
+// bool ModelParallelTrainer::isPersistable(VarDesc* var) {
+//  if (!var->Persistable()) {
+//    return false;
+//  }
+//  auto name = var->Name();
+//  if (name.find("learning_rate") != std::string::npos) {
+//    return false;
+//  }
+//  return true;
+//}
 
 void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
                                           const ProgramDesc& program,
@@ -117,35 +120,28 @@ void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
-    // if (var->Persistable() && macrobatch_id == 0) {
-    if (isPersistable(var) && macrobatch_id == 0) {
+    // if (isPersistable(var) && macrobatch_id == 0) {
+    if ((var->Persistable() || is_feed_var) && macrobatch_id == 0) {
       auto* ptr = root_scope_->FindVar(var->Name());
+      auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
       // InitializeVariable(ptr, var->GetType());
-      const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
-      auto* new_ptr = minibatch_scope_->Var(var->Name());
+      VLOG(3) << "Create persistable var or feed var " << var->Name()
+              << " for minibatch " << section_id << ", which pointer is "
+              << new_ptr;
       InitializeVariable(new_ptr, var->GetType());
-      LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
-      TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
-                 static_cast<Tensor*>(minibatch_tensor));
-      VLOG(3) << "Create persistable var " << var->Name()
-              << " for minibatch, which pointer is " << new_ptr;
-    } else if (is_feed_var && macrobatch_id == 0) {
-      auto* ptr = minibatch_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create feed var " << var->Name()
-              << " for minibatch scope, which pointer is " << ptr;
-      //} else if (isPersistableVarGrad(var->Name())) {
-      //  auto* ptr = minibatch_scope_->Var(var->Name());
-      //  InitializeVariable(ptr, var->GetType());
-      //  VLOG(3) << "Create feed var " << var->Name()
-      //          << " for minibatch scope, which pointer is " << ptr;
+      if (!is_feed_var) {
+        const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
+        LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
+        TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
+                   static_cast<Tensor*>(minibatch_tensor));
+      }
     } else if (!var->Persistable() && !is_feed_var) {
       auto* ptr =
           macrobatch_scopes_[section_id][macrobatch_id]->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create variable " << var->Name() << " for section "
               << section_id << " macrobatch " << macrobatch_id
               << ", which pointer is " << ptr;
+      InitializeVariable(ptr, var->GetType());
     }
   }
 }
@@ -156,39 +152,28 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                           "root_scope_ for "
                           "ModelParallelTrainer::InitTrainerEnv should not "
                           "be null.");
-  ModelParallelWorker::cpu_id_.store(_start_cpu_core_id);
+  ModelParallelWorker::cpu_id_.store(start_cpu_core_id_);
+  minibatch_scopes_.resize(section_num_);
   macrobatch_scopes_.resize(section_num_);
-  minibatch_scope_ = &root_scope_->NewScope();
-  auto& global_block = main_program.Block(0);
-  for (auto& var : global_block.AllVars()) {
-    if (var->Persistable()) {
-      persistable_var_names_.insert(var->Name());
-      persistable_var_grad_names_.insert(framework::GradVarName(var->Name()));
-    }
-  }
+
   for (int i = 0; i < section_num_; ++i) {
+    minibatch_scopes_[i] = &root_scope_->NewScope();
     std::shared_ptr<framework::ProgramDesc> program;
     program.reset(new ProgramDesc(
         trainer_desc_.section_param().section_config(i).program_desc()));
-    // const framework::ProgramDesc& program =
-    // trainer_desc_.section_param().section_config(i).program_desc();
-    VLOG(3) << "program size for section " << i << " is: " << program->Size();
-    // VLOG(3) << "program size for section " << i << " is: " << program.Size();
     macrobatch_scopes_[i].resize(num_macrobatches_);
     for (int j = 0; j < num_macrobatches_; ++j) {
-      macrobatch_scopes_[i][j] = &minibatch_scope_->NewScope();
-      CopyParameters(i, j, *program, _places[i]);
-      // CopyParameters(i, j, program, _places[i]);
+      macrobatch_scopes_[i][j] = &minibatch_scopes_[i]->NewScope();
+      CopyParameters(i, j, *program, places_[i]);
     }
   }
-  VLOG(3) << "Created all scopes.";
 
   for (int i = 0; i < section_num_; ++i) {
     auto this_worker =
         std::dynamic_pointer_cast<paddle::framework::ModelParallelWorker>(
             workers_[i]);
     this_worker->SetRootScope(root_scope_);
-    this_worker->SetMinibatchScope(minibatch_scope_);
+    this_worker->SetMinibatchScope(minibatch_scopes_[i]);
     this_worker->SetMacrobatchScopes(macrobatch_scopes_[i]);
   }
 }
@@ -199,12 +184,11 @@ void ModelParallelTrainer::Run() {
     if (!debug_) {
       threads_.push_back(
           std::thread(&DeviceWorker::TrainFiles, workers_[i].get()));
+    } else {
+      VLOG(3) << "Run with profiler";
+      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
+                                     workers_[i].get()));
     }
-    // else {
-    //  section_threads_.push_back(std::thread(
-    //      &DeviceWorker::TrainFilesWithProfiler, workers_[i][j].get()));
-    //}
-    //}
   }
 }
 
@@ -212,8 +196,8 @@ void ModelParallelTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
-  VLOG(3) << "trainer finalized. ";
 
+  VLOG(3) << "copying back parameters. ";
   for (int i = 0; i < section_num_; ++i) {
     std::shared_ptr<framework::ProgramDesc> program;
     program.reset(new ProgramDesc(
@@ -224,11 +208,11 @@ void ModelParallelTrainer::Finalize() {
         if (var->Persistable()) {
           auto* ptr = root_scope_->FindVar(var->Name());
           LoDTensor* root_tensor = ptr->GetMutable<LoDTensor>();
-          auto* minibatch_ptr = minibatch_scope_->Var(var->Name());
+          auto* minibatch_ptr = minibatch_scopes_[i]->Var(var->Name());
           const LoDTensor& minibatch_tensor = minibatch_ptr->Get<LoDTensor>();
-          TensorCopy(*static_cast<const Tensor*>(&minibatch_tensor), _places[0],
+          TensorCopy(*static_cast<const Tensor*>(&minibatch_tensor), places_[0],
                      static_cast<Tensor*>(root_tensor));
-          VLOG(3) << "Copy persitable var " << var->Name() << " to root scope";
+          VLOG(4) << "Copy persitable var " << var->Name() << " to root scope";
         }
       }
     }
@@ -237,6 +221,7 @@ void ModelParallelTrainer::Finalize() {
 }
 
 Scope* ModelParallelTrainer::GetWorkerScope(int thread_id) {
+  // Trick: can only get the first macrobatch scope for every section.
   return macrobatch_scopes_[thread_id][0];
 }
 

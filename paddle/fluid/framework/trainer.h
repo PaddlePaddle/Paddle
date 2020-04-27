@@ -189,19 +189,18 @@ class ModelParallelTrainer : public TrainerBase {
  protected:
   int section_num_;
   int num_macrobatches_;
-  int _start_cpu_core_id;
+  int start_cpu_core_id_;
   std::vector<std::string> feed_var_names_;
-  std::set<std::string> persistable_var_names_;
-  std::set<std::string> persistable_var_grad_names_;
-  std::vector<platform::Place> _places;
+  std::vector<platform::Place> places_;
   TrainerDesc trainer_desc_;
 
   // worker: [section_id]
   std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
   std::vector<std::thread> threads_;
-  // macrobatch_scope: [macrobatch_id][section_id]
+  // minibatch_scopes_: [section_id]
+  std::vector<Scope*> minibatch_scopes_;
+  // macrobatch_scopes_: [section_id][macrobatch_id]
   std::vector<std::vector<Scope*>> macrobatch_scopes_;
-  Scope* minibatch_scope_;
 
   void CopyParameters(int section_id, int macrobatch_id,
                       const ProgramDesc& program, const platform::Place& place);

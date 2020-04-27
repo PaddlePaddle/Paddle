@@ -423,14 +423,22 @@ class ModelParallelWorker : public DeviceWorker {
   int num_macrobatches_;
   std::vector<Scope*> macrobatch_scopes_;
   const Scope* minibatch_scope_;
-  void AutoSetCPUAffinity(bool reuse);
+
   std::vector<std::unique_ptr<OperatorBase>> ops_;
   static std::mutex thread_mutex;
   static std::condition_variable thread_condition;
   static bool threads_completed;
   std::shared_ptr<framework::ProgramDesc> program_;
-  // Todo: How to deal with the case that batch_id is
-  // greater than the maximum number of uint64_t
+
+  void AutoSetCPUAffinity(bool reuse);
+  void ForwardPass(int macrobatch_id);
+  void BackwardPass(int macrobatch_id);
+  void OptimizePass();
+  void ForwardPassProfile(int macrobatch_id);
+  void BackwardPassProfile(int macrobatch_id);
+  void OptimizePassProfile();
+
+  // uint64_t is large enough to track all batches
   static uint64_t batch_id_;
   uint64_t local_batch_id_;
 
