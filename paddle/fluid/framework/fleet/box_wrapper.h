@@ -44,6 +44,8 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 #define BUF_SIZE 1024 * 1024
 
+extern void comlog_set_log_level(int log_level);
+extern int com_logstatus();
 namespace paddle {
 namespace framework {
 
@@ -167,9 +169,11 @@ class AfsManager {
     _afshandler = new afs::AfsFileSystem(fs_name.c_str(), user.c_str(),
                                          pwd.c_str(), conf_path.c_str());
     VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
-    int ret = _afshandler->Init(true, true);
+    int ret = _afshandler->Init(true, (com_logstatus() == 0));
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "Called AFSAPI Init Interface Failed."));
+    // Too high level will hurt the performance
+    comlog_set_log_level(4);
     ret = _afshandler->Connect();
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "Called AFSAPI Connect Interface Failed"));
@@ -334,6 +338,7 @@ class BoxWrapper {
   void EndFeedPass(boxps::PSAgentBase* agent) const;
   void BeginPass() const;
   void EndPass(bool need_save_delta) const;
+  void SetTestMode(bool is_test) const;
   void PullSparse(const paddle::platform::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,

@@ -126,6 +126,10 @@ class DDim {
 
   std::string to_str() const;
 
+  DDim reshape(const std::vector<int>& shape) const;
+
+  DDim transpose(const std::vector<int>& axis) const;
+
  private:
   template <int D>
   inline Dim<D>& UnsafeCast() {

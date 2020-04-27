@@ -27,6 +27,7 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
+template <typename T>
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
@@ -98,7 +99,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   // data on devices
   float* bias_gpu_;
   float* scale_gpu_;
-  std::vector<float*> embs_gpu_;
+  std::vector<T*> embs_gpu_;
 
   std::vector<int> emb_sizes_;
   int bias_size_;

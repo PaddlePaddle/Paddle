@@ -118,8 +118,8 @@ void ThreadRunInfer(
       inference_program->GetFetchTargetNames();
 
   PADDLE_ENFORCE_EQ(fetch_target_names.size(), 1UL);
-  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
-  paddle::framework::LoDTensor outtensor;
+  std::map<std::string, paddle::framework::FetchType*> fetch_targets;
+  paddle::framework::FetchType outtensor;
   fetch_targets[fetch_target_names[0]] = &outtensor;
 
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
@@ -150,7 +150,8 @@ void ThreadRunInfer(
       std::string fetch_target_name = op->Input("X")[0];
       int idx = boost::get<int>(op->GetAttr("col"));
       *fetch_targets[fetch_target_name] =
-          paddle::framework::GetFetchVariable(*scope, "fetch", idx);
+          boost::get<paddle::framework::LoDTensor>(
+              paddle::framework::GetFetchVariable(*scope, "fetch", idx));
     }
   }
 
@@ -215,8 +216,8 @@ TEST(inference, nlp) {
     const std::vector<std::string>& fetch_target_names =
         inference_program->GetFetchTargetNames();
     PADDLE_ENFORCE_EQ(fetch_target_names.size(), 1UL);
-    std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
-    paddle::framework::LoDTensor outtensor;
+    std::map<std::string, paddle::framework::FetchType*> fetch_targets;
+    paddle::framework::FetchType outtensor;
     fetch_targets[fetch_target_names[0]] = &outtensor;
 
     // prepare feed
