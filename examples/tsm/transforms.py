@@ -21,24 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 __all__ = ['GroupScale', 'GroupMultiScaleCrop', 'GroupRandomCrop',
-           'GroupRandomFlip', 'GroupCenterCrop', 'NormalizeImage',
-           'Compose']
-
-
-class Compose(object):
-    def __init__(self, transforms=[]):
-        self.transforms = transforms
-
-    def __call__(self, *data):
-        for f in self.transforms:
-            try:
-                data = f(*data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                logger.info("fail to perform transform [{}] with error: "
-                        "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
-        return data
+           'GroupRandomFlip', 'GroupCenterCrop', 'NormalizeImage']
 
 
 class GroupScale(object):

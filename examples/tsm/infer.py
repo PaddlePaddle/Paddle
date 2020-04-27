@@ -20,6 +20,7 @@ import argparse
 import numpy as np
 
 from hapi.model import Input, set_device
+from hapi.vision.transforms import Compose
 
 from check import check_gpu, check_version
 from modeling import tsm_resnet50

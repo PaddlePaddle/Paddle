@@ -29,8 +29,10 @@ import traceback
 from . import functional as F
 
 if sys.version_info < (3, 3):
+    Sequence = collections.Sequence
     Iterable = collections.Iterable
 else:
+    Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
 __all__ = [
@@ -54,20 +56,45 @@ __all__ = [
 
 
 class Compose(object):
-    """Composes several transforms together.
+    """
+    Composes several transforms together use for composing list of transforms
+    together for a dataset transform.
 
     Args:
         transforms (list of ``Transform`` objects): list of transforms to compose.
+
+    Returns:
+        A compose object which is callable, __call__ for this Compose
+        object will call each given :attr:`transforms` sequencely.
+
+    Examples:
+    
+        .. code-block:: python
+
+            from hapi.datasets import Flowers
+            from hapi.vision.transforms import Compose, ColorJitter, Resize
+
+            transform = Compose([ColorJitter(), Resize(size=608)])
+            flowers = Flowers(mode='test', transform=transform)
+
+            for i in range(10):
+                sample = flowers[i]
+                print(sample[0].shape, sample[1])
 
     """
 
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, data):
+    def __call__(self, *data):
         for f in self.transforms:
             try:
-                data = f(data)
+                # multi-fileds in a sample
+                if isinstance(data, Sequence):
+                    data = f(*data)
+                # single field in a sample, call transform directly
+                else:
+                    data = f(data)
             except Exception as e:
                 stack_info = traceback.format_exc()
                 print("fail to perform transform [{}] with error: "
