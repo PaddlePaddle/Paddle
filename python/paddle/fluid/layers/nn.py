@@ -26,11 +26,11 @@ import six
 import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, device_guard, _varbase_creator
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor, cast
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -39,168 +39,40 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 
 __all__ = [
-    'log1p',
-    'logsumexp',
-    'clamp',
-    'addmm',
-    'addcmul',
-    'bmm',
-    'nonzero',
-    'index_select',
-    'dist',
-    'dot',
-    't',
-    'cross',
-    'interpolate',
-    'diag_embed',
-    'fc',
-    'embedding',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'chunk_eval',
-    'conv2d',
-    'conv3d',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'adaptive_pool2d',
-    'adaptive_pool3d',
-    'batch_norm',
-    'inplace_abn',
-    'instance_norm',
-    'data_norm',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'reduce_all',
-    'reduce_any',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'transpose',
-    'im2sequence',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'group_norm',
-    'spectral_norm',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'squeeze',
-    'unsqueeze',
-    'lod_reset',
-    'lod_append',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'roi_pool',
-    'roi_align',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'resize_trilinear',
-    'resize_nearest',
-    'gather',
-    'gather_nd',
-    'scatter',
-    'scatter_nd_add',
-    'scatter_nd',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'selu',
-    'log',
-    'crop',
-    'crop_tensor',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
-    'prelu',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
-    'flatten',
-    'stack',
-    'pad2d',
-    'unstack',
-    'unique',
-    'unique_with_counts',
-    'expand',
-    'expand_as',
-    'scale',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
-    'elementwise_mod',
-    'elementwise_floordiv',
-    'uniform_random_batch_size_like',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'strided_slice',
-    'shape',
-    'rank',
-    'size',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
-    'clip',
-    'clip_by_norm',
-    'mean',
-    'mul',
-    'bmm',
-    'maxout',
-    'space_to_depth',
-    'affine_grid',
-    'affine_channel',
-    'similarity_focus',
-    'hash',
-    'grid_sampler',
-    'log_loss',
-    'add_position_encoding',
-    'bilinear_tensor_product',
-    'merge_selected_rows',
-    'get_tensor_from_selected_rows',
-    'shuffle_channel',
-    'temporal_shift',
-    'py_func',
-    'psroi_pool',
-    'prroi_pool',
-    'pixel_shuffle',
-    'fsp_matrix',
-    'continuous_value_model',
-    'where',
-    'sign',
-    'deformable_conv',
-    'unfold',
-    'deformable_roi_pooling',
-    'filter_by_instag',
-    'shard_index',
-    'hard_swish',
-    'gather_tree',
-    'uniform_random',
+    'log1p', 'logsumexp', 'clamp', 'addmm', 'addcmul', 'bmm', 'nonzero',
+    'index_select', 'dist', 'dot', 't', 'cross', 'interpolate', 'diag_embed',
+    'fc', 'embedding', 'linear_chain_crf', 'crf_decoding', 'cos_sim',
+    'chunk_eval', 'conv2d', 'conv3d', 'softmax', 'pool2d', 'pool3d',
+    'adaptive_pool2d', 'adaptive_pool3d', 'batch_norm', 'inplace_abn',
+    'instance_norm', 'data_norm', 'conv2d_transpose', 'conv3d_transpose',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'reduce_all', 'reduce_any', 'dropout', 'split', 'ctc_greedy_decoder',
+    'l2_normalize', 'matmul', 'topk', 'transpose', 'im2sequence', 'row_conv',
+    'multiplex', 'layer_norm', 'group_norm', 'spectral_norm', 'smooth_l1',
+    'one_hot', 'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
+    'lod_reset', 'lod_append', 'lrn', 'pad', 'pad_constant_like',
+    'label_smooth', 'roi_pool', 'roi_align', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'resize_trilinear',
+    'resize_nearest', 'gather', 'gather_nd', 'scatter', 'scatter_nd_add',
+    'scatter_nd', 'random_crop', 'mean_iou', 'relu', 'selu', 'log', 'crop',
+    'crop_tensor', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid', 'swish',
+    'prelu', 'brelu', 'leaky_relu', 'soft_relu', 'flatten', 'stack', 'pad2d',
+    'unstack', 'unique', 'unique_with_counts', 'expand', 'expand_as', 'scale',
+    'elementwise_add', 'elementwise_div', 'elementwise_sub', 'elementwise_mul',
+    'elementwise_max', 'elementwise_min', 'elementwise_pow', 'elementwise_mod',
+    'elementwise_floordiv', 'uniform_random_batch_size_like', 'gaussian_random',
+    'sampling_id', 'gaussian_random_batch_size_like', 'sum', 'slice',
+    'strided_slice', 'shape', 'rank', 'size', 'logical_and', 'logical_or',
+    'logical_xor', 'logical_not', 'clip', 'clip_by_norm', 'mean', 'mul', 'bmm',
+    'maxout', 'space_to_depth', 'affine_grid', 'affine_channel',
+    'similarity_focus', 'hash', 'grid_sampler', 'log_loss',
+    'add_position_encoding', 'bilinear_tensor_product', 'merge_selected_rows',
+    'get_tensor_from_selected_rows', 'shuffle_channel', 'temporal_shift',
+    'py_func', 'psroi_pool', 'prroi_pool', 'pixel_shuffle', 'fsp_matrix',
+    'continuous_value_model', 'where', 'sign', 'deformable_conv', 'unfold',
+    'deformable_roi_pooling', 'filter_by_instag', 'shard_index', 'hard_swish',
+    'gather_tree', 'uniform_random', 'randint', 'randn', 'randperm', 'allclose',
+    'elementwise_equal', 'flip', 'roll', 'log_softmax'
 ]
 
 
@@ -13847,6 +13719,11 @@ def get_tensor_from_selected_rows(x, name=None):
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
+    check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
+    if x.type != core.VarDesc.VarType.SELECTED_ROWS:
+        raise TypeError(
+            "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
+        )
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -15601,3 +15478,681 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def randint(low,
+            high=None,
+            shape=None,
+            out=None,
+            dtype=None,
+            device=None,
+            stop_gradient=False,
+            seed=0,
+            name=None):
+    """
+    This function returns a Tensor filled with random integers from the "discrete uniform" distribution of the
+    specified data type in the interval [low, high). If high is None (the default), then results are from [0, low).
+
+    Args:
+        low (int): The lower bound on the range of random values to generate, the low is included in the range.
+            (unless high=None, in which case this parameter is one above the highest such integer).
+        high (int, optional): The upper bound on the range of random values to generate, the high is excluded 
+            in the range. Default None(see above for behavior if high=None).
+        shape (list|tuple|Variable, optional): The shape of the output Tensor,  if the shape is a list or tuple, 
+                                     its elements can be an integer
+                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be 
+                                     int32 or int64. Default is None, in which case the shape is [1].
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
+            which can be int32, int64, if dytpe is `None`, the data
+            type of created Tensor is `int64`
+        device(str, optional): This parameter specifies that the Tensor is created 
+            on the GPU or CPU.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
+            default value is False.
+        seed (int, optional): Random seed used for permute samples. If seed is 
+            equal to 0, it means use a seed generated by the system. Note that 
+            if seed is not 0, this operator will always generate the same random 
+            permutation every time. Default: 0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns: 
+        Variable: A Tensor of the specified shape filled with random integers.
+
+    Raises:
+        TypeError: Randint's low must less then high.
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = fluid.layers.randint(low=-5, high=5, shape=[3, 4], dtype="int64")
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            dim_1 = fluid.layers.fill_constant([1],"int64",3)
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.randint(low=-5, high=5, shape=[dim_1, dim_2], dtype="int32")
+
+            # example 3:
+            # attr shape is a Variable, the data type must be int64 or int32.
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            result_3 = fluid.layers.randint(low=-5, high=5, shape=var_shape, dtype="int32")
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.randint(low=-5, high=5, shape=var_shape_int32, dtype="int64")
+
+            # example 4:
+            # Input only one parameter
+            # low=0, high=10, shape=[1], dtype='int64'
+            result_4 = fluid.layers.randint(10)
+     """
+
+    def get_new_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                assert isinstance(dim, int) or isinstance(dim, long)
+                temp_out = helper.create_variable_for_type_inference('int64')
+                fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    def get_attr_shape(list_shape):
+        unk_dim_idx = -1
+        attrs_shape = []
+        for dim_idx, dim_size in enumerate(list_shape):
+            if isinstance(dim_size, Variable):
+                attrs_shape.append(-1)
+            else:
+                attrs_shape.append(dim_size)
+                assert dim_size > 0, (
+                    "Each dimension size given in shape must not be negative "
+                    "except one unknown dimension.")
+        return attrs_shape
+
+    if dtype is None:
+        dtype = 'int64'
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
+
+    inputs = dict()
+    attrs = dict()
+
+    if shape is None:
+        shape = [1]
+        assert len(shape) > 0, ("The size of argument(shape) can't be zero.")
+
+    helper = LayerHelper("randint", **locals())
+
+    if in_dygraph_mode():
+        attrs['shape'] = shape
+    else:
+        if isinstance(shape, Variable):
+            shape.stop_gradient = True
+            inputs["ShapeTensor"] = shape
+        elif isinstance(shape, (list, tuple)):
+            assert len(shape) > 0, (
+                "The size of argument(shape) can't be zero.")
+            if utils._contain_var(shape):
+                inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
+            else:
+                attrs["shape"] = get_attr_shape(shape)
+    check_type(shape, 'shape', (list, tuple, Variable), 'randint')
+
+    if high is None:
+        high = low
+        low = 0
+    attrs['low'] = low
+    attrs['high'] = high
+    attrs['seed'] = seed
+    if (low >= high):
+        raise ValueError(
+            "randint's low must less then high, but received low = {0}, "
+            "high = {1}".format(low, high))
+
+    if out is None:
+        if name is None:
+            out = helper.create_variable_for_type_inference(dtype=dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=dtype, persistable=False)
+    else:
+        check_dtype(dtype, 'dtype',
+                    convert_dtype(out.dtype), 'randint',
+                    "(The dtype in randint must be the same with out's dtype.)")
+    attrs['dtype'] = out.dtype
+    out.stop_gradient = stop_gradient
+
+    if device is None:
+        helper.append_op(
+            type='randint', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    else:
+        with device_guard(device):
+            helper.append_op(
+                type='randint',
+                inputs=inputs,
+                outputs={'Out': out},
+                attrs=attrs)
+    return out
+
+
+def randn(shape,
+          out=None,
+          dtype=None,
+          device=None,
+          stop_gradient=True,
+          name=None):
+    """
+    This function returns a tensor filled with random numbers from a normal 
+    distribution with mean 0 and variance 1 (also called the standard normal
+    distribution).
+
+    Args:
+        shape(list|tuple): Shape of the generated random tensor.
+        out(Variable, optional): Optional output which can be any created Variable 
+            that meets the requirements to store the result of operation. If the 
+            out is `None`, a new Variable wiil be returned to store the result.
+            Default is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output 
+            tensor, which can be float32, float64. if dtype is `None` , the data 
+            type of output tensor is `float32` .
+            Default is None.
+        device(str, optional): Specific the output variable to be saved in cpu
+            or gpu memory. Supported None, 'cpu', 'gpu'. If it is None, the output
+            variable will be automatically assigned devices. 
+            Default: None.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) 
+            Variable. Default is True.
+        name(str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            Default is None.
+
+    Returns:
+        Random tensor whose data is drawn from a Gaussian distribution, 
+        dtype: flaot32 or float64 as specified.
+
+    Return type:
+        Variable
+
+    Raises:
+        TypeError: If the type of `shape` is not list or tuple.
+        TypeError: If the data type of `dtype` is not float32 or float64.
+        ValueError: If the length of `shape` is not bigger than 0.
+
+    Examples:
+        .. code-block:: python
+
+            # declarative mode
+            import paddle.fluid as fluid
+
+            data = fluid.layers.randn([2, 4])
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res, = exe.run(fluid.default_main_program(), feed={}, fetch_list=[data])
+            print(res)
+            # [[-1.4187592   0.7368311  -0.53748125 -0.0146909 ]
+            #  [-0.66294265 -1.3090698   0.1898754  -0.14065823]]
+
+        .. code-block:: python
+
+            # imperative mode
+            import paddle.fluid as fluid
+            import paddle.fluid.dygraph as dg
+
+            place = fluid.CPUPlace()
+            with dg.guard(place) as g:
+                x = fluid.layers.randn([2, 4])
+                x_np = x.numpy()
+                print(x_np)
+                # [[ 1.5149173  -0.26234224 -0.592486    1.4523455 ]
+                #  [ 0.04581212 -0.85345626  1.1687907  -0.02512913]]
+    """
+    helper = LayerHelper("randn", **locals())
+    check_type(shape, 'shape', (list, tuple), 'randn')
+    assert len(shape) > 0, ("The size of argument(shape) can't be zero.")
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'create data type', ['float32', 'float64'], 'randn')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        check_variable_and_dtype(out, 'out', [dtype], 'randn')
+
+    out.stop_gradient = stop_gradient
+
+    dtype = convert_np_dtype_to_dtype_(dtype)
+    seed = np.random.randint(0, 100)
+
+    with device_guard(device):
+        helper.append_op(
+            type='gaussian_random',
+            outputs={'Out': out},
+            attrs={
+                'shape': shape,
+                'mean': 0.0,
+                'std': 1.0,
+                'seed': seed,
+                'dtype': dtype,
+                'use_mkldnn': False
+            })
+    return out
+
+
+@templatedoc()
+def randperm(n,
+             out=None,
+             dtype="int64",
+             device=None,
+             stop_gradient=True,
+             seed=0):
+    """
+    ${comment}
+
+    Args:
+        n (int): The upper bound (exclusive), and it should be greater than 0.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            If out is None, a new Varibale will be create to store the result. 
+            Default: None.
+        dtype (np.dtype|core.VarDesc.VarType|str, optional): The type of the 
+            output Tensor. Supported data types: int64, int32. Default: int32.
+        device (str, optional): Specific the output variable to be saved in cpu
+            or gpu memory. Supported None, 'cpu', 'gpu'. If it is None, the output
+            variable will be automatically assigned devices.
+            Default: None.
+        stop_gradient (bool, optional): Whether grad should record operations 
+            on the returned tensor. Default: True.
+        seed (int, optional): Random seed used for permute samples. If seed is 
+            equal to 0, it means use a seed generated by the system. Note that 
+            if seed is not 0, this operator will always generate the same random 
+            permutation every time. Default: 0.
+
+    Returns:
+        ${out_comment}.
+
+    Return Type:
+        ${out_type}
+
+    Examples:
+        .. code-block:: python
+
+	    import paddle.fluid as fluid
+
+	    num = 6
+	    is_use_gpu = False
+
+	    data_1 = fluid.layers.randperm(num)
+	    fluid.layers.Print(data_1)
+
+	    data_2 = fluid.layers.randperm(num, dtype="int32", seed=1)
+	    fluid.layers.Print(data_2)
+
+	    data_3 = fluid.layers.randperm(num, stop_gradient=False, device="cpu")
+	    fluid.layers.Print(data_3)
+
+	    fluid.layers.randperm(num, out=data_3)
+	    fluid.layers.Print(data_3)
+
+	    place = fluid.CUDAPlace(0) if is_use_gpu else fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+	    exe.run()
+ 
+    """
+
+    if n < 1:
+        raise ValueError("The input n should be greater than 0 in randperm op.")
+    check_dtype(dtype, 'dtype', ['int64', 'int32'], 'randperm')
+    dtype = convert_dtype(dtype)
+    if device not in [None, 'cpu', 'gpu']:
+        raise ValueError("The input device should in [None, 'cpu', 'gpu'].")
+    check_type(stop_gradient, 'stop_gradient', bool, 'randperm')
+
+    helper = LayerHelper("randperm", **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        check_variable_and_dtype(out, 'out', [dtype], 'randperm')
+    if stop_gradient:
+        out.stop_gradient = True
+    inputs = dict()
+    outputs = {'Out': [out]}
+    attrs = {'n': n, 'dtype': out.dtype, 'seed': seed}
+    with device_guard(device):
+        helper.append_op(
+            type='randperm', inputs=inputs, outputs=outputs, attrs=attrs)
+    return out
+
+
+@templatedoc()
+def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(inputtype):{input_comment}.
+        other(othertype):{other_comment}.
+        rtol(rtoltype,optional):{rtol_comment}.
+        atol(atoltype,optional):{atol_comment}.
+        equal_nan(equalnantype,optional):{equal_nan_comment}.
+        name(STR, optional): The default value is None.
+                        Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        ${out_comment}.
+
+    Return Type:
+        ${out_type}
+        
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+
+          use_cuda = fluid.core.is_compiled_with_cuda()
+
+          a = fluid.data(name="a", shape=[2], dtype='float32')
+          b = fluid.data(name="b", shape=[2], dtype='float32')
+
+          result = fluid.layers.allclose(a, b, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          result_nan = fluid.layers.allclose(a, b, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          exe = fluid.Executor(place)
+          exe.run(fluid.default_startup_program())
+
+          x = np.array([10000., 1e-07]).astype("float32")
+          y = np.array([10000.1, 1e-08]).astype("float32")
+          result_v, result_nan_v = exe.run(
+              feed={'a': x, 'b': y},
+              fetch_list=[result, result_nan])
+          print(result_v, result_nan_v)
+          # Output: (array([False]), array([False]))
+
+          x = np.array([10000., 1e-08]).astype("float32")
+          y = np.array([10000.1, 1e-09]).astype("float32")
+          result_v, result_nan_v = exe.run(
+              feed={'a': x, 'b': y},
+              fetch_list=[result, result_nan])
+          print(result_v, result_nan_v)
+          # Output: (array([ True]), array([ True]))
+
+          x = np.array([1.0, float('nan')]).astype("float32")
+          y = np.array([1.0, float('nan')]).astype("float32")
+          result_v, result_nan_v = exe.run(
+              feed={'a': x, 'b': y},
+              fetch_list=[result, result_nan])
+          print(result_v, result_nan_v)
+          # Output: (array([False]), array([ True]))
+    """
+
+    check_type(rtol, 'rtol', float, 'allclose')
+    check_type(atol, 'atol', float, 'allclose')
+    check_type(equal_nan, 'equal_nan', bool, 'allclose')
+
+    helper = LayerHelper("allclose", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+
+    inputs = {'Input': input, 'Other': other}
+    outputs = {'Out': out}
+    attrs = {'rtol': rtol, 'atol': atol, 'equal_nan': equal_nan}
+    helper.append_op(
+        type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
+
+    return out
+
+
+def elementwise_equal(x, y, name=None):
+    """
+    This layer returns the truth value of :math:`x == y` elementwise.
+
+    Args:
+        x(Variable): Tensor, data type is float32, float64, int32, int64.
+        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: output Tensor, it's shape is the same as the input's Tensor,
+        and the data type is bool. The result of this op is stop_gradient. 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+          limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+          out1 = fluid.layers.elementwise_equal(x=label, y=limit) #out1=[True, False]
+    """
+    helper = LayerHelper("elementwise_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]},
+        attrs={'force_cpu': False})
+    return out
+
+
+def flip(input, dims, name=None):
+    """
+
+    Reverse the order of a n-D tensor along given axis in dims.
+
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64, bool.
+        dims (list): The axis to flip on.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
+          output = fluid.layers.flip(input, dims=[0, 1])
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img = np.arange(12).reshape((3,2,2)).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+          print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+    """
+    helper = LayerHelper("flip", **locals())
+    check_type(input, 'X', (Variable), 'flip')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'X',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+                'flip')
+    check_type(dims, 'dims', (list, tuple), 'flip')
+    assert len(dims) > 0, 'len(dims) must be greater than 0.'
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="flip",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"dims": dims})
+    return out
+
+
+def roll(input, shifts, dims=None):
+    """
+    Roll the `input` tensor along the given dimension(s). Elements that are shifted beyond 
+    the last position are re-introduced at the first position. If a dimension is not specified, 
+    the tensor will be flattened before rolling and then restored to the original shape.
+
+    Args:
+        input (Variable): The input tensor variable.
+        shifts (int|list|tuple): The number of places by which the elements
+                           of the `input` tensor are shifted.
+        dims (int|list|tuple|None): Dimentions along which to roll.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+
+            data = np.array([[1.0, 2.0, 3.0],
+                             [4.0, 5.0, 6.0],
+                             [7.0, 8.0, 9.0]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                out_z1 = fluid.layers.roll(x, shifts=1)
+                print(out_z1.numpy())
+                #[[9. 1. 2.]
+                # [3. 4. 5.]
+                # [6. 7. 8.]]
+                out_z2 = fluid.layers.roll(x, shifts=1, dims=0)
+                print(out_z2.numpy())
+                #[[7. 8. 9.]
+                # [1. 2. 3.]
+                # [4. 5. 6.]]
+    """
+    helper = LayerHelper("roll", **locals())
+    origin_shape = input.shape
+    if type(shifts) == int:
+        shifts = [shifts]
+    if type(dims) == int:
+        dims = [dims]
+
+    if dims:
+        check_type(dims, 'dims', (list, tuple), 'roll')
+    check_type(shifts, 'shifts', (list, tuple), 'roll')
+
+    if in_dygraph_mode():
+        if dims is None:
+            input = core.ops.reshape(input, 'shape', [-1, 1])
+            dims = [0]
+        out = core.ops.roll(input, 'dims', dims, 'shifts', shifts)
+        return core.ops.reshape(out, 'shape', origin_shape)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    if dims is None:
+        input = reshape(input, shape=[-1, 1])
+        dims = [0]
+
+    helper.append_op(
+        type='roll',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'dims': dims,
+               'shifts': shifts})
+    out = reshape(out, shape=origin_shape, inplace=True)
+    return out
+
+
+def log_softmax(input, axis=None, dtype=None, name=None):
+    """
+    This operator implements the log_softmax layer. The calculation process is as follows:
+
+    .. math::
+
+        Out[i, j] = log(softmax(x)) 
+                  = log(\\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])})
+
+    Parameters:
+        input (Variable): The input variable. A multi-dimension Tensor with type float32, or float64.
+        axis (int, optional): The index of dimension to perform softmax calculations, it should be in
+            range :math:`[-1, rank-1]`, while :math:`rank` is the rank of input variable. Default: None. 
+            None and -1 means the last dimension.
+        dtype (np.dtype|core.VarDesc.VarType|str): The desired data type of returned tensor. If specified,
+            the input tensor is casted to dtype before the operation is performed. This is useful for
+            preventing data type overflows. Default: None. Supported dtype: float32 or float64
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+ 
+    Returns:
+        Variable: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input``.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+
+          data = np.array([[[-2.0, 3.0, -4.0, 5.0],
+                            [3.0, -4.0, 5.0, -6.0],
+                            [-7.0, -8.0, 8.0, 9.0]],
+                           [[1.0, -2.0, -3.0, 4.0],
+                            [-5.0, 6.0, 7.0, -8.0],
+                            [6.0, 7.0, 8.0, 9.0]]]).astype('float32')
+          with fluid.dygraph.guard():
+              data = fluid.dygraph.to_variable(data)
+              res = fluid.layers.log_softmax(data, -1)
+              # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
+              #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
+              #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
+              #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
+              #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
+              #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+    """
+
+    axis = -1 if axis is None else axis
+    dtype = convert_np_dtype_to_dtype_(dtype) if dtype is not None else dtype
+
+    if in_dygraph_mode():
+        outs_cast = input if dtype is None \
+            else core.ops.cast(input, 'in_dtype', input.dtype, 'out_dtype', dtype)
+        outs_softmax = core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn',
+                                        False)
+        return core.ops.log(outs_softmax)
+
+    if dtype is None:
+        check_variable_and_dtype(
+            input, 'input', ['float16', 'float32', 'float64'], 'log_softmax')
+
+    helper = LayerHelper("log_softmax", **locals())
+    outs_cast = input
+    if dtype is not None:
+        outs_cast = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='cast',
+            inputs={'X': input},
+            outputs={'Out': outs_cast},
+            attrs={'in_dtype': input.dtype,
+                   'out_dtype': dtype})
+
+    outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
+    helper.append_op(
+        type='softmax',
+        inputs={'X': outs_cast},
+        outputs={'Out': outs_softmax},
+        attrs={'axis': axis,
+               'use_cudnn': False})
+
+    outs_log = helper.create_variable_for_type_inference(outs_softmax.dtype)
+    helper.append_op(
+        type='log', inputs={'X': outs_softmax}, outputs={'Out': outs_log})
+
+    return outs_log

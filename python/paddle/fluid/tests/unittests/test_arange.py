@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
@@ -71,7 +70,7 @@ class TestInt32ArangeOpCase2(TestArangeOp):
 class TestArangeAPI(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            data = paddle.arange(0, 5, 1)
+            data = fluid.layers.arange(0, 5, 1)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])
@@ -79,7 +78,7 @@ class TestArangeAPI(unittest.TestCase):
         self.assertEqual((result == expected_data).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = paddle.arange(0.0, 5.0, 1.0, 'int32')
+            data = fluid.layers.arange(0.0, 5.0, 1.0, 'int32')
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])

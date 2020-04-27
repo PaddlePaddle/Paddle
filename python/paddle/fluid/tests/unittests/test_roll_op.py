@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-import paddle
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
@@ -66,7 +65,7 @@ class TestRollAPI(unittest.TestCase):
         # case 1:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 3])
-            z = paddle.roll(x, shifts=1)
+            z = fluid.layers.roll(x, shifts=1)
             exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={'x': self.data_x},
                            fetch_list=[z.name],
@@ -78,7 +77,7 @@ class TestRollAPI(unittest.TestCase):
         # case 2:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 3])
-            z = paddle.roll(x, shifts=1, dims=0)
+            z = fluid.layers.roll(x, shifts=1, dims=0)
             exe = fluid.Executor(fluid.CPUPlace())
             res, = exe.run(feed={'x': self.data_x},
                            fetch_list=[z.name],
@@ -92,7 +91,7 @@ class TestRollAPI(unittest.TestCase):
         # case 1:
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(self.data_x)
-            z = paddle.roll(x, shifts=1)
+            z = fluid.layers.roll(x, shifts=1)
             np_z = z.numpy()
         expect_out = np.array([[9.0, 1.0, 2.0], [3.0, 4.0, 5.0],
                                [6.0, 7.0, 8.0]])
@@ -101,7 +100,7 @@ class TestRollAPI(unittest.TestCase):
         # case 2:
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(self.data_x)
-            z = paddle.roll(x, shifts=1, dims=0)
+            z = fluid.layers.roll(x, shifts=1, dims=0)
             np_z = z.numpy()
         expect_out = np.array([[7.0, 8.0, 9.0], [1.0, 2.0, 3.0],
                                [4.0, 5.0, 6.0]])

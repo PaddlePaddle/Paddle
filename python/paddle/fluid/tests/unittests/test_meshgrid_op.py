@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
-import paddle
 from paddle.fluid import compiler, Program, program_guard, core
+import paddle
 
 
 class TestMeshgridOp(OpTest):
@@ -79,7 +79,7 @@ class TestMeshgridOp3(unittest.TestCase):
         out_2 = np.broadcast_to(out_2, [100, 200])
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+        grid_x, grid_y = paddle.meshgrid([x, y])
         res_1, res_2 = exe.run(fluid.default_main_program(),
                                feed={'x': input_1,
                                      'y': input_2},
@@ -95,7 +95,7 @@ class TestMeshgridOp4(unittest.TestCase):
 
             def test_input_type():
                 x = fluid.data(shape=[200], dtype='float32', name='x2')
-                paddle.tensor.meshgrid(x)
+                paddle.meshgrid(x)
 
         self.assertRaises(TypeError, test_input_type)
 
@@ -108,7 +108,7 @@ class TestMeshgridOp5(unittest.TestCase):
         with fluid.dygraph.guard():
             tensor_3 = fluid.dygraph.to_variable(input_3)
             tensor_4 = fluid.dygraph.to_variable(input_4)
-            res_3, res_4 = paddle.tensor.meshgrid([tensor_3, tensor_4])
+            res_3, res_4 = paddle.meshgrid([tensor_3, tensor_4])
 
             assert np.array_equal(res_3.shape, [100, 200])
             assert np.array_equal(res_4.shape, [100, 200])
