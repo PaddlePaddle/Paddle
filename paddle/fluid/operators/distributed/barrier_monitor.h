@@ -43,9 +43,9 @@ enum BarrierType { kSendBarrier, kRecvBarrier };
 constexpr int64_t kMaxWaitMS = 1000;
 
 template <typename T>
-class BlockingQueue {
+class BlockingQueueForBarrier {
  public:
-  explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
+  explicit BlockingQueueForBarrier(size_t capacity) : capacity_(capacity) {
     PADDLE_ENFORCE_GT(capacity_, 0, "The capacity must be greater than 0.");
   }
 
@@ -108,11 +108,11 @@ class BarrierMonitor {
   explicit BarrierMonitor(int workers) : workers_(workers) {
     PADDLE_ENFORCE_GT(workers, 0, "trainers must have one or more");
 
-    barrier_type = kRecvBarrier;
-    send_barrier_queue =
-        std::make_shared<BlockingQueue<int>>(new BlockingQueue<int>(workers));
-    recv_barrier_queue =
-        std::make_shared<BlockingQueue<int>>(new BlockingQueue<int>(workers));
+    barrier_type = BarrierType::kRecvBarrier;
+    send_barrier_queue = std::make_shared<BlockingQueueForBarrier<int>>(
+        new BlockingQueueForBarrier<int>(workers));
+    recv_barrier_queue = std::make_shared<BlockingQueueForBarrier<int>>(
+        new BlockingQueueForBarrier<int>(workers));
 
     running_ = true;
     monitor_thread_.reset(
@@ -166,8 +166,8 @@ class BarrierMonitor {
   std::mutex mutex_;
   BarrierType barrier_type;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
-  std::shared_ptr<BlockingQueue<int>> send_barrier_queue;
-  std::shared_ptr<BlockingQueue<int>> recv_barrier_queue;
+  std::shared_ptr<BlockingQueueForBarrier<int>> send_barrier_queue;
+  std::shared_ptr<BlockingQueueForBarrier<int>> recv_barrier_queue;
 };
 
 }  // namespace distributed

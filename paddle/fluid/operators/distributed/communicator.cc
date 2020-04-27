@@ -1228,10 +1228,9 @@ void SyncCommunicator::BarrierSend() {
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
   int retry = 0;
+  platform::CPUDeviceContext ctx;
   std::vector<std::string> eps(pserver_endpoints_.begin(),
                                pserver_endpoints_.end());
-
-  platform::CPUDeviceContext ctx;
 
   while (retry <= kMaxRetryTimes) {
     if (!running_) break;
@@ -1269,6 +1268,7 @@ void SyncCommunicator::BarrierRecv() {
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
   int retry = 0;
+  platform::CPUDeviceContext ctx;
   std::vector<std::string> eps(pserver_endpoints_.begin(),
                                pserver_endpoints_.end());
 

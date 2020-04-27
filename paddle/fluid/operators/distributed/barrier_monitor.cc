@@ -73,7 +73,7 @@ void BarrierMonitor::Monitor() {
 }
 
 bool BarrierMonitor::IsReady() {
-  if (barrier_type == kSendBarrier) {
+  if (barrier_type == BarrierType::kSendBarrier) {
     return static_cast<int>(send_barrier_queue->Size()) == workers_;
   } else {
     return static_cast<int>(recv_barrier_queue->Size()) == workers_;
@@ -90,10 +90,10 @@ void BarrierMonitor::Invalid() {
 }
 
 void BarrierMonitor::Swap() {
-  if (barrier_type == kSendBarrier) {
-    Swap(kRecvBarrier);
+  if (barrier_type == BarrierType::kSendBarrier) {
+    Swap(BarrierType::kRecvBarrier);
   } else {
-    Swap(kSendBarrier);
+    Swap(BarrierType::kSendBarrier);
   }
 }
 
@@ -103,11 +103,11 @@ void BarrierMonitor::Swap(BarrierType barrier) {
   valid_ = true;
   release_ = true;
 
-  if (barrier == kSendBarrier) {
-    barrier_type = kRecvBarrier;
+  if (barrier == BarrierType::kSendBarrier) {
+    barrier_type = BarrierType::kRecvBarrier;
     send_barrier_queue->Clear();
   } else {
-    barrier_type = kSendBarrier;
+    barrier_type = BarrierType::kSendBarrier;
     recv_barrier_queue->Clear();
   }
   cv_.notify_all();
