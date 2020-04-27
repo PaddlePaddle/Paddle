@@ -190,6 +190,12 @@ class TestUniformRandomOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
+            def test_out_dtype():
+                out = fluid.layers.uniform_random(shape=[3, 4], dtype='float64')
+                self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
+
+            test_out_dtype()
+
 
 class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
     def init_attrs(self):

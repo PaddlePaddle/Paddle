@@ -25,61 +25,95 @@ import sys
 
 # TODO: define math functions
 # yapf: disable
+from ..fluid.layers import abs    #DEFINE_ALIAS
+from ..fluid.layers import acos    #DEFINE_ALIAS
+from ..fluid.layers import asin    #DEFINE_ALIAS
+from ..fluid.layers import ceil    #DEFINE_ALIAS
+from ..fluid.layers import cos    #DEFINE_ALIAS
+from ..fluid.layers import cumsum    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_max    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_min    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
+from ..fluid.layers import exp    #DEFINE_ALIAS
+from ..fluid.layers import floor    #DEFINE_ALIAS
+from ..fluid.layers import log    #DEFINE_ALIAS
+from ..fluid.layers import reciprocal    #DEFINE_ALIAS
+from ..fluid.layers import reduce_max    #DEFINE_ALIAS
+from ..fluid.layers import reduce_min    #DEFINE_ALIAS
+from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
+from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
+from ..fluid.layers import round    #DEFINE_ALIAS
+from ..fluid.layers import rsqrt    #DEFINE_ALIAS
+from ..fluid.layers import scale    #DEFINE_ALIAS
+from ..fluid.layers import sign    #DEFINE_ALIAS
+from ..fluid.layers import square    #DEFINE_ALIAS
+from ..fluid.layers import stanh    #DEFINE_ALIAS
+from ..fluid.layers import atan    #DEFINE_ALIAS
+from ..fluid.layers import erf    #DEFINE_ALIAS
+
 __all__ = [
-#            'abs',
-#            'acos',
-#            'asin',
-           'atan',
-#            'ceil',
-#            'cos',
-#            'cumsum',
-#            'elementwise_add',
-#            'elementwise_div',
-#            'elementwise_floordiv',
-#            'elementwise_max',
-#            'elementwise_min',
-#            'elementwise_mod',
-#            'elementwise_mul',
-#            'elementwise_pow',
-#            'elementwise_sub',
-#            'exp',
-#            'floor',
-#            'increment',
-#            'log',
-           'mul',
-#            'multiplex',
-           'pow',
-#            'reciprocal',
-#            'reduce_max',
-#            'reduce_min',
-#            'reduce_prod',
-#            'reduce_sum',
-#            'round',
-#            'rsqrt',
-#            'scale',
-#            'sign',
-           'sin',
-           'sqrt',
-#            'square',
-#            'stanh',
-           'sum',
-#            'sums',
-           'tanh',
-           'elementwise_sum',
-           'max',
-           'min',
-           'mm',
-           'div',
-           'add',
-#            'atan',
-           'logsumexp',
-#            'inverse',
-           'log1p',
-#            'erf',
-           'addcmul',
-           'addmm',
-           'clamp',
+        'abs',
+        'acos',
+        'asin',
+        'atan',
+        'ceil',
+        'cos',
+        'cumsum',
+        'elementwise_add',
+        'elementwise_div',
+        'elementwise_floordiv',
+        'elementwise_max',
+        'elementwise_min',
+        'elementwise_mod',
+        'elementwise_mul',
+        'elementwise_pow',
+        'elementwise_sub',
+        'exp',
+        'floor',
+#       'increment',
+        'log',
+        'mul',
+#       'multiplex',
+        'pow',
+        'reciprocal',
+        'reduce_max',
+        'reduce_min',
+        'reduce_prod',
+        'reduce_sum',
+        'round',
+        'rsqrt',
+        'scale',
+        'sign',
+        'sin',
+        'sqrt',
+        'square',
+        'stanh',
+        'sum',
+#       'sums',
+        'tanh',
+        'elementwise_sum',
+        'max',
+        'min',
+        'mm',
+        'div',
+        'add',
+        'atan',
+        'logsumexp',
+#       'inverse',
+        'log1p',
+        'erf',
+        'addcmul',
+        'addmm',
+        'clamp',
+        'kron'
 ]
+
 # yapf: enable.
 
 
@@ -1000,6 +1034,10 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    if in_dygraph_mode():
+        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        return out
+
     inputs = {'Input': input, "X": x, "Y": y}
     attrs = {'Alpha': alpha, 'Beta': beta}
 
@@ -1408,3 +1446,64 @@ def clamp(input, min=None, max=None, output=None, name=None):
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
     return output
+
+@templatedoc(op_type="kron")
+def kron(x, y, out=None, name=None):
+    """${comment}
+
+    Args:
+        x (Variable): the fist operand of kron op, data type: float16, float32, 
+            float64, int32 or int64.
+        y (Variable): the second operand of kron op, data type: float16, 
+            float32, float64, int32 or int64. Its data type should be the same 
+            with x.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of 
+            operation. If out is None, a new Varibale will be create to store 
+            the result. Defaults to None.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
+
+    Examples:
+        .. code-block:: python
+        
+          import paddle
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          import numpy as np
+
+          a = np.arange(1, 5).reshape(2, 2).astype(np.float32)
+          b = np.arange(1, 10).reshape(3, 3).astype(np.float32)
+
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              a_var = dg.to_variable(a)
+              b_var = dg.to_variable(b)
+              c_var = paddle.kron(a_var, b_var)
+              c_np = c_var.numpy()
+          print(c_np)
+
+          #[[ 1.  2.  3.  2.  4.  6.]
+          # [ 4.  5.  6.  8. 10. 12.]
+          # [ 7.  8.  9. 14. 16. 18.]
+          # [ 3.  6.  9.  4.  8. 12.]
+          # [12. 15. 18. 16. 20. 24.]
+          # [21. 24. 27. 28. 32. 36.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.kron(x, y)
+
+    helper = LayerHelper('kron', **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
+    return out

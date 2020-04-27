@@ -1276,12 +1276,12 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if in_dygraph_mode():
-            _is_test = not self.training and not self._trainable_statistics
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", _is_test, "data_layout", self._data_layout,
-                     "use_mkldnn", False, "fuse_with_relu",
+                     "is_test", not self.training, "data_layout",
+                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
                      self._fuse_with_relu, "use_global_stats",
-                     self._use_global_stats)
+                     self._use_global_stats, 'trainable_statistics',
+                     self._trainable_statistics)
             batch_norm_out, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
@@ -1298,7 +1298,8 @@ class BatchNorm(layers.Layer):
             "data_layout": self._data_layout,
             "use_mkldnn": False,
             "fuse_with_relu": self._fuse_with_relu,
-            "use_global_stats": self._use_global_stats
+            "use_global_stats": self._use_global_stats,
+            "trainable_statistics": self._trainable_statistics,
         }
 
         inputs = {
