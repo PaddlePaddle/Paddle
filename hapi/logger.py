@@ -15,12 +15,10 @@
 import os
 import sys
 import logging
-import functools
 
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
 
-@functools.lru_cache()
 def setup_logger(output=None, name="hapi", log_level=logging.INFO):
     """
     Initialize logger of hapi and set its verbosity level to "INFO".
@@ -36,9 +34,7 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
     """
     logger = logging.getLogger(name)
     logger.propagate = False
-
-    format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(format=format_str, level=log_level)
+    logger.setLevel(log_level)
 
     # stdout logging: only local rank==0
     local_rank = ParallelEnv().local_rank
@@ -46,6 +42,7 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
         ch = logging.StreamHandler(stream=sys.stdout)
         ch.setLevel(log_level)
 
+        format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         ch.setFormatter(logging.Formatter(format_str))
         logger.addHandler(ch)
 
