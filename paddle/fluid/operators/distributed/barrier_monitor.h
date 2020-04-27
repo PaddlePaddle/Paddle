@@ -109,10 +109,10 @@ class BarrierMonitor {
     PADDLE_ENFORCE_GT(workers, 0, "trainers must have one or more");
 
     barrier_type = BarrierType::kRecvBarrier;
-    send_barrier_queue = std::make_shared<BlockingQueueForBarrier<int>>(
-        new BlockingQueueForBarrier<int>(workers));
-    recv_barrier_queue = std::make_shared<BlockingQueueForBarrier<int>>(
-        new BlockingQueueForBarrier<int>(workers));
+    send_barrier_queue =
+        std::make_shared<BlockingQueueForBarrier<int>>(workers);
+    recv_barrier_queue =
+        std::make_shared<BlockingQueueForBarrier<int>>(workers);
 
     running_ = true;
     monitor_thread_.reset(
