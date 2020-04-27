@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_serde.h"
+#include "paddle/fluid/operators/distributed/grpc/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -289,7 +290,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     });
     req_count_++;
 
-    if (retry_times_ < kPrefetchRetryTimes) {
+    if (retry_times_ < kMaxRetryTimes) {
       h->Wait();
       if (h->should_retry) {
         VLOG(3) << "rpc call failed, retry times " << retry_times_;
@@ -457,13 +458,12 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
     ::grpc::ByteBuffer buf;
 
     if (var_name_val == BATCH_BARRIER_MESSAGE ||
-        var_name_val == FEETCH_BARRIER_MESSAGE) {
+        var_name_val == FETCH_BARRIER_MESSAGE) {
       // prepare input
       sendrecv::VariableMessage req;
       req.set_varname(var_name_val);
-      req.set_out_varname(out_varname_val);
+      req.set_out_varname(var_name_val);
       req.set_trainer_id(trainer_id_);
-      ::grpc::ByteBuffer buf;
       RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
     } else {
       auto* var = p_scope->FindVar(var_name_val);
@@ -481,9 +481,9 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
 
     std::string out_varname;
 
-    operators::distributed::GRPCVariableResponse resp(p_scope, &ctx);
-    PADDLE_ENFORCE(resp.Parse(msg) == 0, "parse bytebuffer to tensor error!");
-    *out_varname = resp.GetOutVarname();
+    operators::distributed::GRPCVariableResponse resp(p_scope, p_ctx);
+    resp.Parse(*(&s->reply_));
+    out_varname = resp.OutVarname();
 
     if (out_varname == NEED_RETRY_MESSAGE) {
       h->should_retry = true;

@@ -262,9 +262,11 @@ bool RequestNotifyHandler::Handle(const std::string &varname,
   VLOG(3) << "async process var: " << varname << ", trainer_id: " << trainer_id;
 
   if (varname == BATCH_BARRIER_MESSAGE) {
-    return BarrierMonitor.GetInstance()->(trainer_id, BATCH_BARRIER_MESSAGE);
+    return BarrierMonitor::GetInstance()->IncreaseBarrier(
+        trainer_id, BATCH_BARRIER_MESSAGE);
   } else if (varname == FETCH_BARRIER_MESSAGE) {
-    return BarrierMonitor.GetInstance()->(trainer_id, BATCH_BARRIER_MESSAGE);
+    return BarrierMonitor::GetInstance()->IncreaseBarrier(
+        trainer_id, FETCH_BARRIER_MESSAGE);
   } else if (varname == LEARNING_RATE_DECAY_COUNTER) {
     string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
     string::Piece var_name_piece = string::Piece(varname);
