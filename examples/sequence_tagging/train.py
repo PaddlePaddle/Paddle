@@ -29,7 +29,8 @@ work_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(work_dir, "../"))
 
 from hapi.metrics import Metric
-from hapi.model import Model, Input, Loss, set_device
+from hapi.model import Model, Input, set_device
+from hapi.loss import Loss
 from hapi.text.text import SequenceTagging
 
 from utils.check import check_gpu, check_version

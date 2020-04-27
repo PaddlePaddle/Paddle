@@ -12,24 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# when test, you should add hapi root path to the PYTHONPATH,
-# export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
-
 import unittest
+import os
 import numpy as np
+import tempfile
+import shutil
+import cv2
 
 from hapi.datasets import *
 
 
 class TestFolderDatasets(unittest.TestCase):
+    def makedata(self):
+        self.data_dir = tempfile.mkdtemp()
+        for i in range(2):
+            sub_dir = os.path.join(self.data_dir, 'class_' + str(i))
+            if not os.path.exists(sub_dir):
+                os.makedirs(sub_dir)
+            for j in range(2):
+                fake_img = (np.random.random(
+                    (32, 32, 3)) * 255).astype('uint8')
+                cv2.imwrite(os.path.join(sub_dir, str(j) + '.jpg'), fake_img)
+
     def test_dataset(self):
-        dataset_folder = DatasetFolder('tests/test_data')
+        self.makedata()
+        dataset_folder = DatasetFolder(self.data_dir)
 
         for _ in dataset_folder:
             pass
 
-        assert len(dataset_folder) == 3
+        assert len(dataset_folder) == 4
         assert len(dataset_folder.classes) == 2
+
+        shutil.rmtree(self.data_dir)
 
 
 class TestMNISTTest(unittest.TestCase):

@@ -20,8 +20,9 @@ from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from hapi.model import Model, Loss
-from hapi.download import get_weights_path
+from hapi.model import Model
+from hapi.loss import Loss
+from hapi.download import get_weights_path_from_url
 from hapi.vision.models import darknet53
 
 __all__ = ['YoloLoss', 'YOLOv3', 'yolov3_darknet53']
@@ -315,7 +316,7 @@ def _yolov3_darknet(num_layers=53,
         assert num_layers in pretrain_infos.keys(), \
                 "YOLOv3-DarkNet{} do not have pretrained weights now, " \
                 "pretrained should be set as False".format(num_layers)
-        weight_path = get_weights_path(*(pretrain_infos[num_layers]))
+        weight_path = get_weights_path_from_url(*(pretrain_infos[num_layers]))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
         model.load(weight_path)

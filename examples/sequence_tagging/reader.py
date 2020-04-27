@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import io
 import os
-import leveldb
 import numpy as np
 import shutil
 from functools import partial
