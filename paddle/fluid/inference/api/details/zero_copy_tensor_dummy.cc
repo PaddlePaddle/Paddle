@@ -28,9 +28,9 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   return nullptr;
 }
 
-template PADDLE_INFENRENCE_EXPORT float *ZeroCopyTensor::data<float>(
+template PD_INFER_DECL float *ZeroCopyTensor::data<float>(
     PaddlePlace *place, int *size) const;
-template PADDLE_INFENRENCE_EXPORT int64_t *ZeroCopyTensor::data<int64_t>(
+template PD_INFER_DECL int64_t *ZeroCopyTensor::data<int64_t>(
     PaddlePlace *place, int *size) const;
 template float *ZeroCopyTensor::mutable_data(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data(PaddlePlace place);

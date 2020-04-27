@@ -389,6 +389,9 @@ struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
 template <typename ConfigT>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
+/// NOTE The following APIs are too trivial, we will discard it in the following
+/// versions.
+///
 enum class PaddleEngineKind {
   kNative = 0,         ///< Use the native Fluid facility.
   kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
