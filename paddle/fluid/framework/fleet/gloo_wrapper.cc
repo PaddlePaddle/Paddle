@@ -144,8 +144,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
         }
       }
       PADDLE_THROW(platform::errors::ExecutionTimeout(
-          "TIMEOUT self_rank = %d pair_rank = %d",
-          self_rank_, last_check_rank));
+          "TIMEOUT self_rank = %d pair_rank = %d", self_rank_,
+          last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
