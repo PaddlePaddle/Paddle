@@ -167,12 +167,13 @@ from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
-# from .tensor.math import inverse        #DEFINE_ALIAS
+from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
 from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clamp  #DEFINE_ALIAS
+from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
 # from .tensor.random import gaussin        #DEFINE_ALIAS
 # from .tensor.random import uniform        #DEFINE_ALIAS
