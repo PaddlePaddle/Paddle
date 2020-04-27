@@ -15,7 +15,6 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -120,12 +119,12 @@ class TestRandpermOpError(unittest.TestCase):
 
             def test_Variable():
                 out = np.arange(10)
-                paddle.randperm(n=10, out=out)
+                fluid.layers.randperm(n=10, out=out)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_value():
-                paddle.randperm(n=-3)
+                fluid.layers.randperm(n=-3)
 
             self.assertRaises(ValueError, test_value)
 
@@ -139,9 +138,9 @@ class TestRandpermOp_attr_out(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             n = 10
             data_1 = fluid.layers.fill_constant([n], "int64", 3)
-            paddle.randperm(n=n, out=data_1)
+            fluid.layers.randperm(n=n, out=data_1)
 
-            data_2 = paddle.randperm(n=n, dtype="int32", device="cpu")
+            data_2 = fluid.layers.randperm(n=n, dtype="int32", device="cpu")
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -160,12 +159,12 @@ class TestRandpermDygraphMode(unittest.TestCase):
     def test_check_output(self):
         with fluid.dygraph.guard():
             n = 10
-            data_1 = paddle.randperm(n, dtype="int64")
+            data_1 = fluid.layers.randperm(n, dtype="int64")
             data_1_np = data_1.numpy()
             self.assertTrue(
                 check_randperm_out(n, data_1_np), msg=error_msg(data_1_np))
 
-            data_2 = paddle.randperm(n, dtype="int32", device="cpu")
+            data_2 = fluid.layers.randperm(n, dtype="int32", device="cpu")
             data_2_np = data_2.numpy()
             self.assertTrue(
                 check_randperm_out(n, data_2_np), msg=error_msg(data_2_np))

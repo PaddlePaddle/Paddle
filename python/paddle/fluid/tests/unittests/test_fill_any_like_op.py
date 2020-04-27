@@ -106,7 +106,7 @@ class TestFillAnyLikeOp_attr_out(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             fill_value = 2.0
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-            output = paddle.full_like(input, fill_value)
+            output = fluid.layers.full_like(input, fill_value)
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -132,20 +132,20 @@ class TestFillAnyLikeOpError(unittest.TestCase):
             #for ci coverage
 
             input_data = fluid.data(name='input', dtype='float32', shape=[2, 3])
-            output = paddle.full_like(input_data, 2.0)
+            output = fluid.layers.full_like(input_data, 2.0)
 
             def test_input_dtype():
-                paddle.full_like
+                fluid.layers.full_like
 
             self.assertRaises(
                 ValueError,
-                paddle.full_like,
+                fluid.layers.full_like,
                 input=input_data,
                 fill_value=2,
                 dtype='uint4')
             self.assertRaises(
                 TypeError,
-                paddle.full_like,
+                fluid.layers.full_like,
                 input=input_data,
                 fill_value=2,
                 dtype='int16')
