@@ -35,14 +35,17 @@ from hapi.text.text import SequenceTagging
 
 from utils.check import check_gpu, check_version
 from utils.configure import PDConfig
-from reader import LacDataset, create_lexnet_data_generator, create_dataloader
+from reader import LacDataset, LacDataLoader
 
 import paddle.fluid as fluid
 from paddle.fluid.optimizer import AdamOptimizer
 
+__all__ = ["SeqTagging", "LacLoss", "ChunkEval"]
+
 
 class SeqTagging(Model):
-    def __init__(self, args, vocab_size, num_labels, length=None):
+    def __init__(self, args, vocab_size, num_labels, length=None,
+                 mode="train"):
         super(SeqTagging, self).__init__()
         """
         define the lexical analysis network structure
@@ -53,7 +56,7 @@ class SeqTagging(Model):
             for infer: return the prediction
             otherwise: return the prediction
         """
-        self.mode_type = args.mode
+        self.mode_type = mode
         self.word_emb_dim = args.word_emb_dim
         self.vocab_size = vocab_size
         self.num_labels = num_labels
@@ -219,23 +222,13 @@ def main(args):
     feed_list = None if args.dynamic else [
         x.forward() for x in inputs + labels
     ]
+
     dataset = LacDataset(args)
-    train_path = args.train_file
-    test_path = args.test_file
-
-    train_generator = create_lexnet_data_generator(
-        args, reader=dataset, file_name=train_path, place=place, mode="train")
-    test_generator = create_lexnet_data_generator(
-        args, reader=dataset, file_name=test_path, place=place, mode="test")
-
-    train_dataset = create_dataloader(
-        train_generator, place, feed_list=feed_list)
-    test_dataset = create_dataloader(
-        test_generator, place, feed_list=feed_list)
+    train_dataset = LacDataLoader(args, place, phase="train")
 
     vocab_size = dataset.vocab_size
     num_labels = dataset.num_labels
-    model = SeqTagging(args, vocab_size, num_labels)
+    model = SeqTagging(args, vocab_size, num_labels, mode="train")
 
     optim = AdamOptimizer(
         learning_rate=args.base_learning_rate,
@@ -255,8 +248,7 @@ def main(args):
     if args.init_from_pretrain_model:
         model.load(args.init_from_pretrain_model, reset_optimizer=True)
 
-    model.fit(train_dataset,
-              test_dataset,
+    model.fit(train_dataset.dataloader,
               epochs=args.epoch,
               batch_size=args.batch_size,
               eval_freq=args.eval_freq,

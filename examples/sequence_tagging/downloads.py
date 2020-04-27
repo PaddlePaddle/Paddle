@@ -35,7 +35,7 @@ FILE_INFO = {
     },
     'MODEL': {
         'name': 'sequence_tagging_dy.tar.gz',
-        'md5': "1125d374c03c8218b6e47325dcf607e3"
+        'md5': "6ba37ceea8f1f764ba1fe227295a6a3b"
     },
 }
 

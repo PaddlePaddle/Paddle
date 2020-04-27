@@ -553,8 +553,8 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(
-                *(to_list(outputs) + to_list(labels)))
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -593,8 +593,8 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(
-                *(to_list(outputs) + to_list(labels)))
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -834,8 +834,16 @@ class Model(fluid.dygraph.Layer):
             global _parallel_context_initialized
             if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
                 if fluid.in_dygraph_mode():
+                    main_prog_seed = fluid.default_main_program().random_seed
+                    startup_prog_seed = fluid.default_startup_program(
+                    ).random_seed
                     fluid.disable_dygraph()
                     fluid.enable_dygraph(self._place)
+                    # enable_dygraph would create and switch to a new program,
+                    # thus also copy seed to the new program
+                    fluid.default_main_program().random_seed = main_prog_seed
+                    fluid.default_startup_program(
+                    ).random_seed = startup_prog_seed
                     fluid.dygraph.parallel.prepare_context()
                 else:
                     prepare_distributed_context(self._place)
@@ -970,7 +978,7 @@ class Model(fluid.dygraph.Layer):
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
         metrics_name = self._metrics_name()
-        steps = len(train_loader) if hasattr(train_loader, '__len__') else None
+        steps = self._len_data_loader(train_loader)
         cbks = config_callbacks(
             callbacks,
             model=self,
@@ -998,8 +1006,7 @@ class Model(fluid.dygraph.Layer):
                 if not isinstance(eval_loader, Iterable):
                     loader = eval_loader()
 
-                eval_steps = len(loader) if hasattr(loader,
-                                                    '__len__') else None
+                eval_steps = self._len_data_loader(loader)
                 cbks.on_begin('eval', {
                     'steps': eval_steps,
                     'metrics_name': metrics_name
@@ -1075,7 +1082,7 @@ class Model(fluid.dygraph.Layer):
         if not isinstance(eval_loader, Iterable):
             loader = eval_loader()
 
-        eval_steps = len(loader) if hasattr(loader, '__len__') else None
+        eval_steps = self._len_data_loader(loader)
         cbks.on_begin('eval',
                       {'steps': eval_steps,
                        'metrics_name': metrics_name})
@@ -1228,7 +1235,7 @@ class Model(fluid.dygraph.Layer):
                        mode,
                        metrics_name,
                        epoch=None):
-        size = len(data_loader) if hasattr(data_loader, '__len__') else None
+        size = self._len_data_loader(data_loader)
         logs = {
             'steps': size,
             'metrics_name': metrics_name,
@@ -1303,3 +1310,10 @@ class Model(fluid.dygraph.Layer):
         for m in self._metrics:
             metrics_name.extend(to_list(m.name()))
         return metrics_name
+
+    def _len_data_loader(self, data_loader):
+        try:
+            steps = len(data_loader)
+        except Exception:
+            steps = None
+        return steps
