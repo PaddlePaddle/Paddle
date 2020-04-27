@@ -73,15 +73,15 @@ class TestDotOpError(unittest.TestCase):
             # float16 only can be set on GPU place
             x1 = fluid.layers.data(name='x1', shape=[120], dtype="uint8")
             y1 = fluid.layers.data(name='y1', shape=[120], dtype="uint8")
-            self.assertRaises(Exception, paddle.dot, x1, y1)
+            self.assertRaises(Exception, fluid.layers.dot, x1, y1)
 
             x2 = fluid.layers.data(name='x2', shape=[2, 3], dtype="float32")
             y2 = fluid.layers.data(name='y2', shape=[2, 3], dtype="float32")
-            self.assertRaises(Exception, paddle.dot, x2, y2)
+            self.assertRaises(Exception, fluid.layers.dot, x2, y2)
 
             x3 = fluid.layers.data(name='x3', shape=[3], dtype="float32")
             y3 = fluid.layers.data(name='y3', shape=[2, 3], dtype="float32")
-            self.assertRaises(Exception, paddle.dot, x2, y3)
+            self.assertRaises(Exception, fluid.layers.dot, x2, y3)
 
 
 class TestDygraph(unittest.TestCase):
@@ -90,7 +90,7 @@ class TestDygraph(unittest.TestCase):
             x1 = fluid.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
             y1 = fluid.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
             self.assertTrue(
-                np.allclose(paddle.dot(x1, y1).numpy(), np.array([17])))
+                np.allclose(fluid.layers.dot(x1, y1).numpy(), np.array([17])))
 
             x1 = fluid.dygraph.to_variable(
                 np.array([[1, 3], [3, 5]]).astype(np.float32))
@@ -98,7 +98,7 @@ class TestDygraph(unittest.TestCase):
                 np.array([[2, 5], [6, 8]]).astype(np.float32))
             self.assertTrue(
                 np.array_equal(
-                    paddle.dot(x1, y1).numpy(), np.array([[17], [58]])))
+                    fluid.layers.dot(x1, y1).numpy(), np.array([[17], [58]])))
 
 
 if __name__ == '__main__':

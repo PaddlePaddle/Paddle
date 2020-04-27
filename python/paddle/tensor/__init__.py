@@ -76,15 +76,6 @@ from .random import randperm
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
-from .linalg import matmul  #DEFINE_ALIAS
-from .linalg import dot  #DEFINE_ALIAS
-from .linalg import bmm  #DEFINE_ALIAS
-# from .linalg import einsum   #DEFINE_ALIAS
-from .linalg import norm  #DEFINE_ALIAS
-# from .linalg import transpose   #DEFINE_ALIAS
-from .linalg import dist  #DEFINE_ALIAS
-from .linalg import t  #DEFINE_ALIAS
-from .linalg import cross  #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
 # from .manipulation import cast   #DEFINE_ALIAS
 # from .manipulation import concat   #DEFINE_ALIAS

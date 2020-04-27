@@ -47,6 +47,10 @@ __all__ = [
     'bmm',
     'nonzero',
     'index_select',
+    'dist',
+    'dot',
+    't',
+    'cross',
     'fc',
     'embedding',
     'linear_chain_crf',
@@ -716,6 +720,270 @@ def index_select(input, index, dim=0):
                 'Index': index},
         outputs={'Out': out},
         attrs={'dim': dim})
+    return out
+
+
+def dist(x, y, p=2):
+    """
+    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    of distance. The shapes of x and y must be broadcastable.
+
+    Where, z = x - y,
+
+    When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
+
+    .. math::
+
+        ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
+
+    When p = inf, the inf-norm of z is the maximum element of z.
+
+    .. math::
+
+        ||z||_\infty=\max_i |z_i|
+
+    When p = -inf, the negative-inf-norm of z is the minimum element of z.
+
+    .. math::
+
+        ||z||_{-\infty}=\min_i |z_i|
+
+    Otherwise, the p-norm of z follows the formula,
+
+    .. math::
+
+        ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
+
+    Args:
+        x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+
+    Returns:
+        Variable: Tensor that is the p-norm of (x - y).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
+                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
+                out = fluid.layers.dist(x, y, 0)
+                print(out.numpy()) # out = [1.]
+
+                out = fluid.layers.dist(x, y, 2)
+                print(out.numpy()) # out = [2.]
+
+                out = fluid.layers.dist(x, y, float("inf"))
+                print(out.numpy()) # out = [2.]
+
+                out = fluid.layers.dist(x, y, float("-inf"))
+                print(out.numpy()) # out = [0.]
+    """
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_type(p, 'p', (float, int), 'dist')
+    helper = LayerHelper("dist", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {"X": [x], "Y": [y]}
+    outputs = {'Out': [out]}
+    attrs = {"p": float(p)}
+    helper.append_op(
+        type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+def dot(x, y, name=None):
+    """
+    This operator calculates inner product for vectors.
+   
+    .. note::
+       Only support 1-d Tensor(vector).
+
+    Parameters:
+        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        Variable: the calculated result Tensor/LoDTensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+        
+        with fluid.dygraph.guard():
+          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
+          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
+          z = fluid.layers.dot(x, y)
+          print(z.numpy())
+
+    """
+    op_type = 'dot'
+    # skip var type check in dygraph mode to improve efficiency
+    if in_dygraph_mode():
+        op = getattr(core.ops, op_type)
+        return op(x, y)
+
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert y is not None, 'y cannot be None in {}'.format(op_type)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+    check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+
+    helper = LayerHelper(op_type, **locals())
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+    helper.append_op(
+        type="dot", inputs={'X': x,
+                            'Y': y}, attrs={}, outputs={"Out": out})
+    return out
+
+
+def t(input, name=None):
+    """
+    Transpose <=2-D tensor. 
+    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
+    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    
+    Args:
+        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+    
+    For Example:
+        .. code-block:: text
+        # Example 1 (0-D tensor)
+         x = tensor([0.79])
+         fluid.layers.t(x) = tensor([0.79])
+         # Example 2 (1-D tensor)
+         x = tensor([0.79, 0.84, 0.32])
+         fluid.layers.t(x) = tensor([0.79, 0.84, 0.32])
+        
+         # Example 3 (2-D tensor)
+         x = tensor([0.79, 0.84, 0.32],
+                    [0.64, 0.14, 0.57])
+         fluid.layers.t(x) = tensor([0.79, 0.64],
+                              [0.84, 0.14],
+                              [0.32, 0.57])
+    
+     Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[2, 3],
+                            dtype='float32')
+            x_transposed = fluid.layers.t(x)
+            print x_transposed.shape
+            #(3L, 2L)
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape))
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out, _ = core.ops.transpose2(input, 'axis', perm)
+        return out
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'transpose')
+
+    helper = LayerHelper('t', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    input_shape = helper.create_variable_for_type_inference(input.dtype)
+    if len(input.shape) == 1:
+        out = input
+    else:
+        helper.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [out],
+                     'XShape': [input_shape]},
+            attrs={'axis': [1, 0]})
+    return out
+
+
+def cross(input, other, dim=None):
+    """
+    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
+    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
+    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    
+    Args:
+        input (Variable): The first input tensor variable.
+        other (Variable): The second input tensor variable.
+        dim (int): The dimension to take the cross-product in.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data_x = np.array([[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0],
+                               [3.0, 3.0, 3.0]])
+            data_y = np.array([[1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0]])
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_x)
+                y = fluid.dygraph.to_variable(data_y)
+                out_z1 = fluid.layers.cross(x, y)
+                print(out_z1.numpy())
+                #[[-1. -1. -1.]
+                # [ 2.  2.  2.]
+                # [-1. -1. -1.]]
+                out_z2 = fluid.layers.cross(x, y, dim=1)
+                print(out_z2.numpy())
+                #[[0. 0. 0.]
+                # [0. 0. 0.]
+                # [0. 0. 0.]]
+    """
+    helper = LayerHelper("cross", **locals())
+    if in_dygraph_mode():
+        if dim:
+            return core.ops.cross(input, other, 'dim', dim)
+        else:
+            return core.ops.cross(input, other)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+    attrs = dict()
+    if dim:
+        attrs['dim'] = dim
+
+    helper.append_op(
+        type='cross',
+        inputs={'X': input,
+                'Y': other},
+        outputs={'Out': out},
+        attrs=attrs)
     return out
 
 
