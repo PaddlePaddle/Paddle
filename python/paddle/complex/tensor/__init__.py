@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from . import math
+from . import manipulation
 from .math import *
+from .manipulation import *
 
 __all__ = math.__all__ + []
+__all__ += manipulation.__all__
