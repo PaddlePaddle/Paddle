@@ -65,11 +65,10 @@ TEST(AnalysisPredictor, thread_local_stream) {
   Barrier barrier(thread_num);
   for (size_t i = 0; i < threads.size(); ++i) {
     threads[i] = std::thread([&barrier, i]() {
-      bool high_priority = i % 2 ? true : false;
       AnalysisConfig config;
       config.EnableUseGpu(100, 0);
       config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-      config.BindGpuStreamToThread(high_priority);
+      config.BindGpuStreamToThread();
       test_main(config, &barrier);
     });
   }

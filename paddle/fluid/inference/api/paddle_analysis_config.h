@@ -405,14 +405,6 @@ struct AnalysisConfig {
   bool thread_local_stream_enabled() const { return thread_local_stream_; }
 
   ///
-  /// \brief A boolean state telling whether the current calculation flow is set
-  /// to high priority.
-  ///
-  /// \return bool Whether the current calculation flow is set to high priority.
-  ///
-  bool high_priority_stream_enabled() const { return high_priority_stream_; }
-
-  ///
   /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
   ///
   /// \return bool Whether the MKLDNN quantization is enabled.
@@ -504,7 +496,7 @@ struct AnalysisConfig {
   PassStrategy* pass_builder() const;
   void PartiallyRelease();
 
-  void BindGpuStreamToThread(bool high_priority = false);
+  void BindGpuStreamToThread();
 
  protected:
   // Update the config.
@@ -582,7 +574,6 @@ struct AnalysisConfig {
   Precision lite_precision_mode_;
 
   bool thread_local_stream_{false};
-  bool high_priority_stream_{false};
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

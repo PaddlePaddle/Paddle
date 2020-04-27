@@ -221,15 +221,9 @@ bool AnalysisPredictor::CreateExecutor() {
     if (config_.thread_local_stream_enabled()) {
       auto *ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place_));
-      if (config_.high_priority_stream_enabled()) {
-        VLOG(3) << "The prediction process will be completed using a separate "
-                   "high-priority stream on each thread.";
-        ctx->ResetThreadContext(platform::stream::Priority::kHigh);
-      } else {
-        VLOG(3) << "The prediction process will be completed using a separate "
-                   "normal-priority stream on each thread.";
-        ctx->ResetThreadContext(platform::stream::Priority::kNormal);
-      }
+      VLOG(3) << "The prediction process will be completed using a separate "
+                 "normal-priority stream on each thread.";
+      ctx->ResetThreadContext(platform::stream::Priority::kNormal);
     }
 #endif
   } else {
