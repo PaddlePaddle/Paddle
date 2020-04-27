@@ -121,7 +121,7 @@ class Flowers(Dataset):
         image = np.array(Image.open(io.BytesIO(image)))
 
         if self.transform is not None:
-            image, label = self.transform(image, label)
+            image = self.transform(image)
 
         return image, label
 
