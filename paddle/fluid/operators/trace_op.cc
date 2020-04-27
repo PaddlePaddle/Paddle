@@ -121,6 +121,14 @@ class TraceOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("Input"),
                       ctx->GetInputDim("Input"));
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+  }
 };
 
 template <typename T>
