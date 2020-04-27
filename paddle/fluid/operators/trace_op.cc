@@ -139,6 +139,9 @@ class TraceGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(TraceGradNoNeedBufferVarsInference,
+                                    "Input");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -147,7 +150,8 @@ REGISTER_OPERATOR(trace, ops::TraceOp, ops::TraceOpMaker,
                   ops::TraceGradOpMaker<paddle::framework::OpDesc>,
                   ops::TraceGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(trace_grad, ops::TraceOpGrad);
+REGISTER_OPERATOR(trace_grad, ops::TraceOpGrad,
+                  ops::TraceGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     trace, ops::TraceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TraceKernel<paddle::platform::CPUDeviceContext, float>,
