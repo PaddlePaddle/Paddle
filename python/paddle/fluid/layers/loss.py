@@ -473,7 +473,7 @@ def edit_distance(input,
         label = erased_label
 
     this_inputs = {"Hyps": [input], "Refs": [label]}
-    if input_length and label_length:
+    if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
         this_inputs['RefsLength'] = [label_length]
 
