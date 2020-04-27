@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 
 from hapi.metrics import *
-from hapi.model import to_list
+from hapi.utils import to_list
 
 
 def accuracy(pred, label, topk=(1, )):
