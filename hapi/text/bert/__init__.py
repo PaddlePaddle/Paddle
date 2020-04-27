@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from hapi.text.bert.bert import BertConfig as BertConfig
-from hapi.text.bert.optimization import Optimizer as Optimizer
+from hapi.text.bert.dygraph_optimization import DyOptimizer as DyOptimizer
+from hapi.text.bert.static_optimization import StOptimizer as StOptimizer
+from hapi.text.bert.optimization import make_optimizer as make_optimizer
 from hapi.text.bert.dataloader import BertDataLoader as BertDataLoader
 from hapi.text.bert.dataloader import BertInputExample as BertInputExample
 from hapi.text.tokenizer import tokenization as tokenization
