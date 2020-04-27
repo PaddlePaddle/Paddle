@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..fluid.framework import Variable, in_dygraph_mode
+from ..fluid.framework import Variable
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
