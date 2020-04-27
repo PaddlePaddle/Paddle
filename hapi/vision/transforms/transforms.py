@@ -89,8 +89,10 @@ class Compose(object):
     def __call__(self, *data):
         for f in self.transforms:
             try:
+                # multi-fileds in a sample
                 if isinstance(data, Sequence):
                     data = f(*data)
+                # single field in a sample, call transform directly
                 else:
                     data = f(data)
             except Exception as e:
