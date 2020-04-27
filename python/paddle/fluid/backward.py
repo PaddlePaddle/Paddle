@@ -1103,6 +1103,34 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
             grad_to_var.pop(g)
 
 
+def _rename_all_grad_(block, start_op_idx, grad_to_var, target_grad_map):
+    grad_order = block.program._appending_grad_times
+
+    def _rename_(name):
+        return 'grad/' * grad_order + name
+
+    var_map = copy.copy(target_grad_map)
+    for op_idx in range(start_op_idx, block.desc.op_size()):
+        op_desc = block.desc.op(op_idx)
+        for name in op_desc.input_arg_names():
+            if name in var_map:
+                op_desc._rename_input(name, var_map[name])
+
+        for name in op_desc.output_arg_names():
+            if "@GRAD" not in name:
+                continue
+            # new grad var generated in current backward
+            if not block.desc.find_var(name.encode("ascii")):
+                new_name = _rename_(name)
+                op_desc._rename_output(name, new_name)
+                var_map[name] = new_name
+
+    for g, ng in six.iteritems(var_map):
+        if g in grad_to_var:
+            grad_to_var[ng] = grad_to_var[g]
+            grad_to_var.pop(g)
+
+
 def _get_stop_gradients_(program):
     no_grad_dict = dict()
     assert isinstance(program, framework.Program)
@@ -1659,7 +1687,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
+    _rename_all_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
