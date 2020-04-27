@@ -41,7 +41,7 @@ from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
-import paddle.fluid.proto.serving_model_config_pb2 as serving_model_config_pb2
+from paddle.fluid.proto import serving_model_config_pb2
 
 batch = paddle.batch
 
@@ -2058,7 +2058,7 @@ def save_serving_model(server_model_folder_name,
             fetch_var.shape.extend(tmp_shape)
         config.fetch_var.extend([fetch_var])
 
-    os.makedirs(client_config_folder)
+    os.makedirs(client_config_folder_name)
     with open("{}/serving_client_conf.prototxt".format(client_config_folder_name), "w") as fout:
         fout.write(str(config))
     with open("{}/serving_server_conf.prototxt".format(server_model_folder_name), "w") as fout:

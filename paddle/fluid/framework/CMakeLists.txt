@@ -152,7 +152,7 @@ cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
 if(WITH_PYTHON)
-  py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
+  py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto serving_model_config.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
