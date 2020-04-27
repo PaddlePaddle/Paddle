@@ -38,6 +38,7 @@ from hapi.loss import Loss
 from hapi.distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from hapi.metrics import Metric
 from hapi.callbacks import config_callbacks
+from hapi.utils import to_list, to_numpy, flatten_list, restore_flatten_list
 
 __all__ = [
     'Model',
@@ -63,49 +64,6 @@ def set_device(device):
                 else fluid.CPUPlace()
 
     return place
-
-
-def to_list(value):
-    if value is None:
-        return value
-    if isinstance(value, (list, tuple)):
-        return list(value)
-    return [value]
-
-
-def to_numpy(var):
-    assert isinstance(var, (Variable, fluid.core.VarBase)), "not a variable"
-    if isinstance(var, fluid.core.VarBase):
-        return var.numpy()
-    t = global_scope().find_var(var.name).get_tensor()
-    return np.array(t)
-
-
-def flatten_list(l):
-    assert isinstance(l, list), "not a list"
-    outl = []
-    splits = []
-    for sl in l:
-        assert isinstance(sl, list), "sub content not a list"
-        splits.append(len(sl))
-        outl += sl
-    return outl, splits
-
-
-def restore_flatten_list(l, splits):
-    outl = []
-    for split in splits:
-        assert len(l) >= split, "list length invalid"
-        sl, l = l[:split], l[split:]
-        outl.append(sl)
-    return outl
-
-
-def extract_args(func):
-    if hasattr(inspect, 'getfullargspec'):
-        return inspect.getfullargspec(func)[0]
-    else:
-        return inspect.getargspec(func)[0]
 
 
 class Input(fluid.dygraph.Layer):
@@ -1180,7 +1138,6 @@ class Model(fluid.dygraph.Layer):
                              save_dir,
                              model_filename=None,
                              params_filename=None,
-                             export_for_deployment=True,
                              program_only=False):
         """
         Save inference model must in static mode.
@@ -1193,12 +1150,6 @@ class Model(fluid.dygraph.Layer):
             params_filename(str|None): The name of file to save all related parameters.
                                             If it is set None, parameters will be saved
                                             in separate files .
-            export_for_deployment(bool): If True, programs are modified to only support
-                                        direct inference deployment. Otherwise,
-                                        more information will be stored for flexible
-                                        optimization and re-training. Currently, only
-                                        True is supported.
-                                        Default: True.
             program_only(bool): If True, It will save inference program only, and do not 
                                         save params of Program.
                                         Default: False.
@@ -1226,7 +1177,6 @@ class Model(fluid.dygraph.Layer):
             main_program=infer_prog,
             model_filename=model_filename,
             params_filename=params_filename,
-            export_for_deployment=export_for_deployment,
             program_only=program_only)
 
     def _run_one_epoch(self,

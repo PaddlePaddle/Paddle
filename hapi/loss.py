@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,15 +20,9 @@ from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.dygraph.base import to_variable
 
+from hapi.utils import to_list
+
 __all__ = ['Loss', 'CrossEntropy', 'SoftmaxWithCrossEntropy']
-
-
-def to_list(value):
-    if value is None:
-        return value
-    if isinstance(value, (list, tuple)):
-        return list(value)
-    return [value]
 
 
 class Loss(object):
