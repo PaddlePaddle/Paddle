@@ -171,7 +171,7 @@ class QuantizationTransformPass(object):
                  act_quantize_func=None,
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
-                 optimizer=None,
+                 optimizer_func=None,
                  for_test=False,
                  exe=None):
         """
@@ -229,7 +229,7 @@ class QuantizationTransformPass(object):
         self._act_quantize_func = act_quantize_func
         self._weight_preprocess_func = weight_preprocess_func
         self._act_preprocess_func = act_preprocess_func
-        self._optimizer = optimizer
+        self._optimizer_func = optimizer_func
         self._for_test = for_test
         self._exe = exe
 
@@ -337,13 +337,9 @@ class QuantizationTransformPass(object):
                 return
             for in_node in op_node.inputs:
                 new_node = _create_new_node(in_node)
-                #if new_node == None:
-                #    continue
                 graph.link_to(new_node, new_op_node)
             for in_node in op_node.outputs:
                 new_node = _create_new_node(in_node)
-                #if new_node == None:
-                #    continue
                 graph.link_to(new_op_node, new_node)
             for var_node in op_node.outputs:
                 for next_op_node in var_node.outputs:
@@ -365,7 +361,7 @@ class QuantizationTransformPass(object):
                     #if self._optimizer is not None:
                     if not self._for_test:
                         in_node.stop_gradient = False
-                        optimizer = MomentumOptimizer(0.001, 0.9)
+                        optimizer = self._optimizer_func()
                         optimizer.minimize(loss)
             self._exe.run(startup_program)
             tmp_graph = IrGraph(
