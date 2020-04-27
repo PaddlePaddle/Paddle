@@ -95,7 +95,6 @@ def start_local_trainers(cluster,
         print("trainer proc env:{}".format(current_env))
 
         cmd = "python -m coverage run --branch -p " + training_script
-        # cmd = [sys.executable, "-u", training_script] + training_script_args
 
         print("start trainer proc:{} env:{}".format(cmd, proc_env))
 
