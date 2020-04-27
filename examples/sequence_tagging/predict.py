@@ -21,6 +21,7 @@ from __future__ import print_function
 import io
 import os
 import sys
+import six
 import math
 import argparse
 import numpy as np
@@ -71,7 +72,12 @@ def main(args):
             word_len = length[i]
             word_ids = results[i][:word_len]
             tags = [dataset.id2label_dict[str(id)] for id in word_ids]
-            f.write("\002".join(tags) + "\n")
+            if six.PY3:
+                tags = [bytes(tag, encoding="utf8") for tag in tags]
+                out = b"\002".join(tags) + b"\n"
+                f.write(out)
+            else:
+                f.write("\002".join(tags) + "\n")
 
 
 if __name__ == '__main__':
