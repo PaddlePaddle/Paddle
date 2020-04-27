@@ -44,7 +44,7 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
     local_rank = ParallelEnv().local_rank
     if local_rank == 0:
         ch = logging.StreamHandler(stream=sys.stdout)
-        ch.setLevel(logging.DEBUG)
+        ch.setLevel(log_level)
 
         ch.setFormatter(logging.Formatter(format_str))
         logger.addHandler(ch)
@@ -62,7 +62,7 @@ def setup_logger(output=None, name="hapi", log_level=logging.INFO):
             os.makedirs(os.path.dirname(filename))
 
         fh = logging.StreamHandler(filename)
-        fh.setLevel(logging.DEBUG)
+        fh.setLevel(log_level)
         fh.setFormatter(logging.Formatter(format_str))
         logger.addHandler(fh)
 
