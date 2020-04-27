@@ -31,7 +31,7 @@ from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor, cast
-from .tensor import search
+from .tensor import where as search_where
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -4442,7 +4442,7 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
         if not in_dygraph_mode():
             n = cast(n, dtype)
             zero_const = fill_constant(shape=[1], dtype=dtype, value=0.0)
-            factor = search.where(n > 1.0, n / (n - 1.0), zero_const)
+            factor = search_where(n > 1.0, n / (n - 1.0), zero_const)
         else:
             factor = n / (n - 1.0) if n > 1.0 else 0.0
         tmp *= factor
