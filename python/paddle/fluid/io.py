@@ -1949,6 +1949,7 @@ def set_program_state(program, state_dict):
             "This list is not set, Because of Paramerter not found in program. There are: {}".
             format(" ".join(unused_para_list)))
 
+
 def save_serving_model(server_model_folder_name,
                        client_config_folder_name,
                        feed_var_dict,
@@ -2059,9 +2060,13 @@ def save_serving_model(server_model_folder_name,
         config.fetch_var.extend([fetch_var])
 
     os.makedirs(client_config_folder_name)
-    with open("{}/serving_client_conf.prototxt".format(client_config_folder_name), "w") as fout:
+    with open(
+            "{}/serving_client_conf.prototxt".format(client_config_folder_name),
+            "w") as fout:
         fout.write(str(config))
-    with open("{}/serving_server_conf.prototxt".format(server_model_folder_name), "w") as fout:
+    with open(
+            "{}/serving_server_conf.prototxt".format(server_model_folder_name),
+            "w") as fout:
         fout.write(str(config))
     with open("{}/serving_client_conf.stream.prototxt".format(
             client_config_folder_name), "wb") as fout:
