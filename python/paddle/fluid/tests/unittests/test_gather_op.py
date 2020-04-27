@@ -113,7 +113,7 @@ class API_TestGather(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data('data1', shape=[-1, 2], dtype='float64')
             index = fluid.layers.data('index', shape=[-1, 1], dtype='float64')
-            out = paddle.gather(data1, index)
+            out = fluid.layers.gather(data1, index)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input = np.array([[1, 2], [3, 4], [5, 6]])

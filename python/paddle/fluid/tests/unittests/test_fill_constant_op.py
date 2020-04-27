@@ -87,7 +87,7 @@ class TestFillConstantOp5(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.zeros(shape=[1], out=data, dtype="float32")
+            out = fluid.layers.zeros(shape=[1], out=data, dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array(
@@ -96,7 +96,7 @@ class TestFillConstantOp5(unittest.TestCase):
             self.assertEqual(result[0], result[1])
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.ones(shape=[1], out=data, dtype="float32")
+            out = fluid.layers.ones(shape=[1], out=data, dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array(
@@ -392,7 +392,7 @@ class TestFillConstantOpError(unittest.TestCase):
 class ApiZerosTest(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="float64")
+            zeros = fluid.layers.zeros(shape=[10], dtype="float64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[zeros])
@@ -400,7 +400,7 @@ class ApiZerosTest(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="int64")
+            zeros = fluid.layers.zeros(shape=[10], dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[zeros])
@@ -408,7 +408,7 @@ class ApiZerosTest(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            zeros = paddle.zeros(shape=[10], dtype="int64", device="cpu")
+            zeros = fluid.layers.zeros(shape=[10], dtype="int64", device="cpu")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[zeros])
@@ -419,7 +419,7 @@ class ApiZerosTest(unittest.TestCase):
 class ApiOnesTest(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            ones = paddle.ones(shape=[10], dtype="float64")
+            ones = fluid.layers.ones(shape=[10], dtype="float64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[ones])
@@ -427,7 +427,7 @@ class ApiOnesTest(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            ones = paddle.ones(shape=[10], dtype="int64")
+            ones = fluid.layers.ones(shape=[10], dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[ones])
@@ -435,7 +435,7 @@ class ApiOnesTest(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            ones = paddle.ones(shape=[10], dtype="int64", device="cpu")
+            ones = fluid.layers.ones(shape=[10], dtype="int64", device="cpu")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[ones])
@@ -447,13 +447,13 @@ class ApiOnesZerosError(unittest.TestCase):
     def test_errors(self):
         def test_error1():
             with fluid.program_guard(fluid.Program()):
-                ones = paddle.ones(shape=10, dtype="int64", device="opu")
+                ones = fluid.layers.ones(shape=10, dtype="int64", device="opu")
 
         self.assertRaises(ValueError, test_error1)
 
         def test_error2():
             with fluid.program_guard(fluid.Program()):
-                ones = paddle.ones(shape=10, dtype="int64", device="opu")
+                ones = fluid.layers.ones(shape=10, dtype="int64", device="opu")
 
         self.assertRaises(ValueError, test_error2)
 

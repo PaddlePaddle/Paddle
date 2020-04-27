@@ -75,7 +75,7 @@ class TestEyeOp2(OpTest):
 class API_TestTensorEye(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            data = paddle.eye(10)
+            data = fluid.layers.eye(10)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])
@@ -83,7 +83,7 @@ class API_TestTensorEye(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = paddle.eye(10, num_columns=7, dtype="float64")
+            data = fluid.layers.eye(10, num_columns=7, dtype="float64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])
@@ -91,7 +91,7 @@ class API_TestTensorEye(unittest.TestCase):
         self.assertEqual((result == expected_result).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = paddle.eye(10, dtype="int64")
+            data = fluid.layers.eye(10, dtype="int64")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])
@@ -102,12 +102,12 @@ class API_TestTensorEye(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_num_rows_type_check():
-                paddle.eye(-1, dtype="int64")
+                fluid.layers.eye(-1, dtype="int64")
 
             self.assertRaises(TypeError, test_num_rows_type_check)
 
             def test_num_columns_type_check():
-                paddle.eye(10, num_columns=5.2, dtype="int64")
+                fluid.layers.eye(10, num_columns=5.2, dtype="int64")
 
             self.assertRaises(TypeError, test_num_columns_type_check)
 

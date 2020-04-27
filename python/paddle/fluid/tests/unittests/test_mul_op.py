@@ -182,7 +182,7 @@ class TestMulOpAttr(unittest.TestCase):
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
 
             res = fluid.data(name="output", shape=[2, 2], dtype="float32")
-            y_1 = paddle.mul(x, y, out=res)
+            y_1 = fluid.layers.mul(x, y, out=res)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -200,8 +200,8 @@ class TestMulOpAttr(unittest.TestCase):
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
 
             res = fluid.data(name="output", shape=[2, 2], dtype="float32")
-            y_1 = paddle.mul(x, y, name='mul_res')
-            y_2 = paddle.mul(x, y, out=res, name='mul_res')
+            y_1 = fluid.layers.mul(x, y, name='mul_res')
+            y_2 = fluid.layers.mul(x, y, out=res, name='mul_res')
             self.assertEqual(('mul_res' in y_1.name), True)
 
 

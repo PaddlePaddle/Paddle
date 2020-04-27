@@ -155,7 +155,7 @@ class ApiOnesLikeTest(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            ones = paddle.ones_like(data, device="cpu")
+            ones = fluid.layers.ones_like(data, device="cpu")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(feed={"data": np.random.rand(10)},
@@ -165,7 +165,7 @@ class ApiOnesLikeTest(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            ones = paddle.ones_like(data, device="cpu", dtype="float32")
+            ones = fluid.layers.ones_like(data, device="cpu", dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(feed={"data": np.random.rand(10)},
@@ -175,7 +175,7 @@ class ApiOnesLikeTest(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            ones = paddle.ones_like(data)
+            ones = fluid.layers.ones_like(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(feed={"data": np.random.rand(10)},
@@ -188,7 +188,7 @@ class ApiZerosLikeTest(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            zeros = paddle.zeros_like(data, device="cpu")
+            zeros = fluid.layers.zeros_like(data, device="cpu")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(feed={"data": np.random.rand(10)},
@@ -198,7 +198,7 @@ class ApiZerosLikeTest(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            zeros = paddle.zeros_like(data, device="cpu", dtype="float32")
+            zeros = fluid.layers.zeros_like(data, device="cpu", dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(feed={"data": np.random.rand(10)},
@@ -208,7 +208,7 @@ class ApiZerosLikeTest(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            zeros = paddle.zeros_like(data)
+            zeros = fluid.layers.zeros_like(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(feed={"data": np.random.rand(10)},
@@ -222,28 +222,28 @@ class TestOnesZerosError(unittest.TestCase):
         def test_device_error1():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.ones_like(data, device="opu")
+                fluid.layers.ones_like(data, device="opu")
 
         self.assertRaises(ValueError, test_device_error1)
 
         def test_device_error2():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.ones_like(data, dtype="float")
+                fluid.layers.ones_like(data, dtype="float")
 
         self.assertRaises(ValueError, test_device_error2)
 
         def test_device_error3():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.zeros_like(data, device="opu")
+                fluid.layers.zeros_like(data, device="opu")
 
         self.assertRaises(ValueError, test_device_error3)
 
         def test_device_error4():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.zeros_like(data, dtype="float")
+                fluid.layers.zeros_like(data, dtype="float")
 
         self.assertRaises(ValueError, test_device_error4)
 

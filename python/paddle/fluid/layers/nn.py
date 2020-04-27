@@ -716,11 +716,9 @@ def index_select(input, index, dim=0):
     if in_dygraph_mode():
         return core.ops.index_select(input, index, 'dim', dim)
 
-    check_variable_and_dtype(input, 'x',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(
+        input, 'x', ['float32', 'float64', 'int32', 'int64'], 'index_select')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'index_select')
 
     out = helper.create_variable_for_type_inference(input.dtype)
 
@@ -6275,7 +6273,65 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
+    attrs = {
+        'transpose_X': transpose_x,
+        'transpose_Y': transpose_y,
+        'alpha': float(alpha),
+    }
+
+    if in_dygraph_mode():
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                        transpose_y, 'alpha', float(alpha))
+        return out
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+        # check the inner 2 dimensions
+        if transpose_x:
+            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+        if transpose_y:
+            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+        if x_shape[-1] != y_shape[-2]:
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
+
+        if len(y_shape) > 2 and len(x_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
+                if dim_x != y_shape[i]:
+                    raise ValueError(
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
+
+    __check_input(x, y)
+
+    helper = LayerHelper('matmul', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
 
 
 def topk(input, k, name=None):
@@ -11503,7 +11559,28 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    return paddle.elementwise_sum(x)
+    helper = LayerHelper('elementwise_sum', **locals())
+    check_type(inputs, 'inputs', (Variable, tuple, list), 'elementwise_sum')
+    if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if len(inputs) > 0:
+            for input in inputs:
+                check_variable_and_dtype(
+                    input, "inputs", ['float32', 'float64', 'int32', 'int64'],
+                    'elementwise_sum')
+    else:
+        check_variable_and_dtype(inputs, "inputs",
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'elementwise_sum')
+
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('inputs'))
+    helper.append_op(
+        type='sum',
+        inputs={'X': inputs},
+        outputs={'Out': out},
+        attrs={'use_mkldnn': False})
+
+    return out
 
 
 @templatedoc()

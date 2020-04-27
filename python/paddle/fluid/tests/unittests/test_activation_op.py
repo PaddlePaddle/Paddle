@@ -73,7 +73,7 @@ class TestParameter(object):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.layers.data(name="X", shape=[1])
-            out = eval("paddle.%s(data, out=data)" % self.op_type)
+            out = eval("fluid.layers.%s(data, out=data)" % self.op_type)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array([0.1])},
@@ -83,7 +83,8 @@ class TestParameter(object):
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.layers.data(name="X", shape=[1])
-            out = eval("paddle.%s(data, name='Y', out=data)" % self.op_type)
+            out = eval("fluid.layers.%s(data, name='Y', out=data)" %
+                       self.op_type)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array([0.1])},
@@ -94,7 +95,7 @@ class TestParameter(object):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
             x = fluid.dygraph.to_variable(np_x)
-            z = eval("paddle.%s(x).numpy()" % self.op_type)
+            z = eval("fluid.layers.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             self.assertEqual(z, z_expected)
 
@@ -178,7 +179,7 @@ class TestAtan(TestActivation, TestParameter):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
             x = fluid.dygraph.to_variable(np_x)
-            z = paddle.atan(x).numpy()
+            z = fluid.layers.atan(x).numpy()
             z_expected = np.arctan(np_x)
             self.assertEqual(z, z_expected)
 

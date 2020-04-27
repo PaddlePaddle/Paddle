@@ -206,7 +206,7 @@ class APT_ArgMaxTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
             data1 = fluid.data(name="X", shape=[3, 4], dtype="float32")
             data2 = fluid.data(name="Y", shape=[3], dtype="int64")
-            out = paddle.argmax(input=data1, out=data2)
+            out = fluid.layers.argmax(input=data1, out=data2)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -218,7 +218,7 @@ class APT_ArgMaxTest(unittest.TestCase):
     def test_basic(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[3, 4], dtype="float32")
-            out = paddle.argmax(input=data)
+            out = fluid.layers.argmax(input=data)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -230,7 +230,7 @@ class APT_ArgMaxTest(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[3, 4], dtype="float32")
-            out = paddle.argmax(input=data, axis=0)
+            out = fluid.layers.argmax(input=data, axis=0)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -242,7 +242,7 @@ class APT_ArgMaxTest(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[3, 4], dtype="float32")
-            out = paddle.argmax(input=data, dtype="int32")
+            out = fluid.layers.argmax(input=data, dtype="int32")
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -255,7 +255,7 @@ class APT_ArgMaxTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
             data1 = fluid.data(name="X", shape=[3, 4], dtype="float32")
             data2 = fluid.data(name="Y", shape=[3], dtype="int64")
-            out = paddle.argmax(input=data, out=data2)
+            out = fluid.layers.argmax(input=data, out=data2)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -267,21 +267,21 @@ class APT_ArgMaxTest(unittest.TestCase):
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[100], dtype="float32")
-            y_1 = paddle.argmax(x, name='arg_max_res')
+            y_1 = fluid.layers.argmax(x, name='arg_max_res')
             self.assertEqual(('arg_max_res' in y_1.name), True)
 
     def test_errors(self):
         def test_dtype1():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.argmax(data, dtype="float32")
+                fluid.layers.argmax(data, dtype="float32")
 
         self.assertRaises(TypeError, test_dtype1)
 
         def test_dtype2():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float64")
-                paddle.argmax(data, dtype="float32")
+                fluid.layers.argmax(data, dtype="float32")
 
         self.assertRaises(TypeError, test_dtype2)
 

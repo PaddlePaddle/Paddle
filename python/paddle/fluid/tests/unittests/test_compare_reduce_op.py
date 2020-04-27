@@ -148,7 +148,7 @@ class TestEqualReduceAPI(unittest.TestCase):
     def test_name(self):
         x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
         y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-        out = paddle.equal(x, y, name='equal_res')
+        out = fluid.layers.equal(x, y, name='equal_res')
         assert 'equal_res' in out.name
 
 
