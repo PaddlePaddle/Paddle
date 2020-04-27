@@ -149,7 +149,7 @@ class MNIST(Dataset):
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]
         if self.transform is not None:
-            image, label = self.transform(image, label)
+            image = self.transform(image)
         return image, label
 
     def __len__(self):

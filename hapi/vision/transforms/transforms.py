@@ -61,6 +61,24 @@ class Compose(object):
     Args:
         transforms (list of ``Transform`` objects): list of transforms to compose.
 
+    Returns:
+        A compose object which is callable, __call__ for this Compose
+        object will call each given :attr:`transforms` sequencely.
+
+    Examples:
+    
+        .. code-block:: python
+
+            from hapi.datasets import Flowers
+            from hapi.vision.transforms import Compose, ColorJitter, Resize
+
+            transform = Compose([ColorJitter(), Resize(size=608)])
+            flowers = Flowers(mode='test', transform=transform)
+
+            for i in range(10):
+                sample = flowers[i]
+                print(sample[0].shape, sample[1])
+
     """
 
     def __init__(self, transforms):
