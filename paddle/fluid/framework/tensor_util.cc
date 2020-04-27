@@ -638,7 +638,7 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
   auto inspect = tensor.data<T>();
   auto element_num = tensor.numel();
 
-  os << "\tdata: [";
+  os << "  - data: [";
   if (element_num > 0) {
     os << inspect[0];
     for (int j = 1; j < element_num; ++j) {
@@ -650,8 +650,9 @@ std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
 }
 
 std::ostream& operator<<(std::ostream& os, const Tensor& t) {
-  os << "\tdim: " << t.dims() << "\n";
-  os << "\tlayout: " << DataLayoutToString(t.layout()) << "\n";
+  os << "  - place: " << t.place() << "\n";
+  os << "  - shape: [" << t.dims() << "]\n";
+  os << "  - layout: " << DataLayoutToString(t.layout()) << "\n";
 
   Tensor tensor;
   tensor.Resize(t.dims());
@@ -668,7 +669,7 @@ std::ostream& operator<<(std::ostream& os, const Tensor& t) {
 #define PrintTensorCallback(cpp_type, proto_type) \
   do {                                            \
     if (tensor.type() == proto_type) {            \
-      os << "\tdtype: " << proto_type << "\n";    \
+      os << "  - dtype: " << proto_type << "\n";  \
       print_tensor<cpp_type>(os, tensor);         \
       return os;                                  \
     }                                             \
