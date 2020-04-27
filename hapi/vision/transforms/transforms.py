@@ -29,8 +29,10 @@ import traceback
 from . import functional as F
 
 if sys.version_info < (3, 3):
+    Sequence = collections.Sequence
     Iterable = collections.Iterable
 else:
+    Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
 __all__ = [
@@ -64,10 +66,13 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, data):
+    def __call__(self, *data):
         for f in self.transforms:
             try:
-                data = f(data)
+                if isinstance(data, Sequence):
+                    data = f(*data)
+                else:
+                    data = f(data)
             except Exception as e:
                 stack_info = traceback.format_exc()
                 print("fail to perform transform [{}] with error: "

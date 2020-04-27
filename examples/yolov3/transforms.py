@@ -20,7 +20,6 @@ import traceback
 import numpy as np
 
 __all__ = [
-    "Compose",
     'ColorDistort',
     'RandomExpand',
     'RandomCrop',
@@ -32,37 +31,6 @@ __all__ = [
     'BboxXYXY2XYWH',
     'ResizeImage',
 ]
-
-
-class Compose(object):
-    """Composes several transforms together.
-
-    Args:
-        transforms (list of ``Transform`` objects): list of transforms to compose.
-
-    """
-
-    def __init__(self, transforms):
-        self.transforms = transforms
-
-    def __call__(self, *data):
-        for f in self.transforms:
-            try:
-                data = f(*data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                print("fail to perform transform [{}] with error: "
-                      "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
-        return data
-
-    def __repr__(self):
-        format_string = self.__class__.__name__ + '('
-        for t in self.transforms:
-            format_string += '\n'
-            format_string += '    {0}'.format(t)
-        format_string += '\n)'
-        return format_string
 
 
 class ColorDistort(object):

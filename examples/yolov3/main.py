@@ -27,7 +27,7 @@ from paddle.io import DataLoader
 
 from hapi.model import Model, Input, set_device
 from hapi.distributed import DistributedBatchSampler
-from hapi.vision.transforms import BatchCompose
+from hapi.vision.transforms import Compose, BatchCompose
 
 from modeling import yolov3_darknet53, YoloLoss
 from coco import COCODataset
