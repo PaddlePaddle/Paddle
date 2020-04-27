@@ -54,10 +54,10 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
       paddle::framework::fs_remove(tmp);
       if (i == retry_times_) {
         VLOG(0) << "fs_open_write failed, retry times reaches limit";
-        PADDLE_ENFORCE_EQ(0, 1, platform::errors::PreconditionNotMet(
-                                    "fs_open_write failed, retry times reaches"
-                                    " limit ",
-                                    retry_times_));
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+                         "fs_open_write failed, retry times reaches"
+                         " limit ",
+                         retry_times_));
       }
     } else {
       break;
@@ -70,17 +70,15 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
 #ifdef PADDLE_WITH_GLOO
 int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
                   uint32_t retry_interval_ms) {
-  int ret = -1;
   for (uint32_t i = 0; i < max_try_time; ++i) {
-    ret = func();
-    if (ret == 0) {
-      break;
+    if (func() == 0) {
+      return 0;
     }
 #ifdef _LINUX
     usleep(retry_interval_ms * 1000);
 #endif
   }
-  return ret;
+  return -1;
 }
 #endif
 
@@ -90,7 +88,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
 #ifdef PADDLE_WITH_GLOO
   // block until key is set
   wait({key});
-  bool ret = retry_do_func(
+  int ret = retry_do_func(
       [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; }, 5,
       wait_sleep_ms_);
   bool is_exists = (ret == 0);
@@ -145,9 +143,9 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
           break;
         }
       }
-      PADDLE_ENFORCE_EQ(0, 1, platform::errors::ExecutionTimeout(
-                                  "TIMEOUT self_rank = %d pair_rank = %d",
-                                  self_rank_, last_check_rank));
+      PADDLE_THROW(platform::errors::ExecutionTimeout(
+                       "TIMEOUT self_rank = %d pair_rank = %d",
+                       self_rank_, last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
@@ -191,6 +189,8 @@ bool HdfsStore::Check(const std::vector<std::string>& keys,
     (*keys_check_status)[i] = is_exists;
   }
   return ret;
+#else
+  VLOG(0) << "HdfsStore::Check does nothing when no gloo";
 #endif
   return true;
 }

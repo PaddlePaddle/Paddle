@@ -1168,8 +1168,10 @@ int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
 
 void FleetWrapper::Confirm() {
 #ifdef PADDLE_WITH_PSLIB
-// auto ret = pslib_ptr_->_worker_ptr->confirm();
-// ret.wait();
+  // FIXME(xujiaqi01): will later support confirm
+  // auto ret = pslib_ptr_->_worker_ptr->confirm();
+  // ret.wait();
+  VLOG(0) << "disable FleetWrapper::Confirm temporarily";
 #else
   VLOG(0) << "FleetWrapper::Confirm does nothing when no pslib";
 #endif
@@ -1177,8 +1179,10 @@ void FleetWrapper::Confirm() {
 
 void FleetWrapper::Revert() {
 #ifdef PADDLE_WITH_PSLIB
-// auto ret = pslib_ptr_->_worker_ptr->revert();
-// ret.wait();
+  // FIXME(xujiaqi01): will later support revert
+  // auto ret = pslib_ptr_->_worker_ptr->revert();
+  // ret.wait();
+  VLOG(0) << "disable FleetWrapper::Revert temporarily";
 #else
   VLOG(0) << "FleetWrapper::Revert does nothing when no pslib";
 #endif
