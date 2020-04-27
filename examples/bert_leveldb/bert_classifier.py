@@ -18,10 +18,10 @@ from hapi.metrics import Accuracy
 from hapi.configure import Config
 from hapi.text.bert import BertEncoder
 from paddle.fluid.dygraph import Linear, Layer
-from hapi.model import set_device, Model, Input
 from hapi.loss import SoftmaxWithCrossEntropy
+from hapi.model import set_device, Model, Input
 import hapi.text.tokenizer.tokenization as tokenization
-from hapi.text.bert import Optimizer, BertConfig, BertDataLoader, BertInputExample
+from hapi.text.bert import BertConfig, BertDataLoader, BertInputExample, make_optimizer
 
 
 class ClsModelLayer(Model):
@@ -99,12 +99,12 @@ def main():
 
     train_dataloader = BertDataLoader(
         "./data/glue_data/MNLI/train.tsv",
-        tokenizer, ["contradiction", "entailment", "neutral"],
+        tokenizer,
+        ["contradiction", "entailment", "neutral"],
         max_seq_length=config.max_seq_len,
         batch_size=config.batch_size,
         line_processor=mnli_line_processor,
-        mode="leveldb",
-        phase="train")
+        mode="leveldb", )
 
     test_dataloader = BertDataLoader(
         "./data/glue_data/MNLI/dev_matched.tsv",
@@ -130,7 +130,7 @@ def main():
             [None, None], 'int64', name='src_ids'), Input(
                 [None, None], 'int64', name='pos_ids'), Input(
                     [None, None], 'int64', name='sent_ids'), Input(
-                        [None, None], 'float32', name='input_mask')
+                        [None, None, 1], 'float32', name='input_mask')
     ]
 
     labels = [Input([None, 1], 'int64', name='label')]
@@ -141,13 +141,13 @@ def main():
         len(["contradiction", "entailment", "neutral"]),
         return_pooled_out=True)
 
-    optimizer = Optimizer(
+    optimizer = make_optimizer(
         warmup_steps=warmup_steps,
         num_train_steps=max_train_steps,
         learning_rate=config.learning_rate,
-        model_cls=cls_model,
         weight_decay=config.weight_decay,
         scheduler=config.lr_scheduler,
+        model=cls_model,
         loss_scaling=config.loss_scaling,
         parameter_list=cls_model.parameters())
 
@@ -159,8 +159,7 @@ def main():
         labels,
         device=device)
 
-    cls_model.bert_layer.init_parameters(
-        config.init_pretraining_params, verbose=config.verbose)
+    cls_model.bert_layer.load("./bert_small", reset_optimizer=True)
 
     # do train
     cls_model.fit(train_data=train_dataloader.dataloader,
