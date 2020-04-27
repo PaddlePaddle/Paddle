@@ -107,7 +107,11 @@ class TrainerDesc(object):
     def _set_dump_param(self, dump_param):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
-
+    
+    def _set_worker_places(self, worker_places):
+        for place in worker_places:
+            self.proto_desc.worker_places.append(place)
+    
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
 

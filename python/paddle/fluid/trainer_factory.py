@@ -72,6 +72,8 @@ class TrainerFactory(object):
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("worker_places") is not None:
+                    trainer._set_worker_places(opt_info["worker_places"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])

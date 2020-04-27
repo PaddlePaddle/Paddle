@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/heter_service.h"
+#include <timer.h>
 
 namespace paddle {
 namespace framework {
@@ -121,7 +122,11 @@ class DistMultiTrainer : public MultiTrainer {
 
 class HeterServiceContext {
 public:
+  HeterServiceContext() {}
+  virtual ~HeterServiceContext() {}
+  int place_num_;
   Scope* scope_{nullptr};
+  cudaEvent_t event_;
 };
 
 class HeterXpuTrainer : public TrainerBase {
@@ -146,6 +151,11 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void CacheProgram(const ProgramDesc &main_program) {
     new(&program_) ProgramDesc(main_program);
   }
+  template <typename T>
+  void HeterMemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
+              const paddle::platform::Place& thread_place,
+              cudaStream_t stream);
+  void CreateThreadParam(const ProgramDesc& program, int num);
  protected:
   DownpourWorkerParameter param_;
   std::vector<::std::future<int32_t>> push_dense_status_;
@@ -163,7 +173,11 @@ class HeterXpuTrainer : public TrainerBase {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   std::vector<OperatorBase*> ops_;
   std::vector<std::string> op_names_;
+  std::vector<Scope*> place_scopes_;
   HeterObjectPool<HeterServiceContext> object_pool_;
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<platform::Place> places_;
+  std::vector<cudaEvent_t> events_;
 };
 
 #if defined(PADDLE_WITH_NCCL)

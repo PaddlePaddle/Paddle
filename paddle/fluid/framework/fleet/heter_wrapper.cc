@@ -46,6 +46,7 @@ void HeterWrapper::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
+  options.timeout_ms = 2000;
   
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
@@ -112,7 +113,17 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope, Vari
   req_data->resize(tensor->numel() * SizeOfType(tensor->type()));
   char* data_ptr = const_cast<char*>(req_data->data());
 
+  #ifdef PADDLE_WITH_CUDA
+  memory::Copy(
+      platform::CPUPlace(),
+      data_ptr,
+      boost::get<platform::CUDAPlace>(tensor->place()),
+      tensor->data<void>(),
+      tensor->numel() * SizeOfType(tensor->type()), nullptr);
+
+  #else
   memcpy(data_ptr, tensor->data<void>(), tensor->numel() * SizeOfType(tensor->type()));
+  #endif
 }
 
 //void HeterWrapper::DeSerializeToTensor(Scope* scope, const HeterRequest* request) {

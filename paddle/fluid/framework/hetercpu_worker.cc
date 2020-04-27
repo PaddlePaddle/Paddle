@@ -586,58 +586,6 @@ void HeterCpuWorker::CopyDenseTable() {
   }
 }
 
-void HeterCpuWorker::CreateThreadParam(const ProgramDesc& program) {
-  #ifdef PADDLE_WITH_CUDA
-  auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
-  platform::CUDADeviceGuard guard(dev_id);
-  auto &block = program.Block(0);
-  for (auto& var : block.AllVars()) {
-    if (var->Persistable()) {
-      auto name = var->Name();
-      Variable* root_var = root_scope_->FindVar(name);
-      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
-      auto *ptr = thread_scope_->Var(name);
-      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-      LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
-
-#define MemcpyCallback(cpp_type, proto_type)                              \
-  do {                                                                    \
-    if (root_tensor->type() == proto_type) {                              \
-      MemCpy<cpp_type>(thread_tensor, root_tensor, place_, copy_stream_); \
-    }                                                                     \
-  } while (0)
-        _ForEachDataType_(MemcpyCallback);
-
-    }
-  }
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, copy_stream_));
-  cudaEventSynchronize(event_);
-  #endif
-}
-
-#ifdef PADDLE_WITH_CUDA
-template <typename T>
-void HeterCpuWorker::MemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
-                            const paddle::platform::Place& thread_place, 
-                            cudaStream_t stream) {
-  T* thread_ptr = thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
-  T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(thread_place),
-        thread_ptr,
-        platform::CPUPlace(),
-        root_ptr, sizeof(T) * root_tensor->numel(), stream);
-  }
-  else {
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(thread_place),
-        thread_ptr,
-        boost::get<platform::CUDAPlace>(root_tensor->place()),
-        root_ptr, sizeof(T) * root_tensor->numel(), stream);
-  }
-}
-#endif
 
 void HeterCpuWorker::CopyDenseVars() {
   if (thread_id_ != 0) {

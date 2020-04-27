@@ -23,7 +23,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/heter_service.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/device_worker.h"

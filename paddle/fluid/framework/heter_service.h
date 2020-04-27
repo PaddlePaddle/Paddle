@@ -40,7 +40,6 @@ public:
                ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     int ret = handler_(request, response);
-    //response->set_data("wxx");
     //response->set_err_code(0);
     //response->set_err_msg("");
     if (ret != 0) {

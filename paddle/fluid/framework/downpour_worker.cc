@@ -413,9 +413,9 @@ void DownpourWorker::CopyDenseTable() {
     if (copy_table_config_.dense_pull_after_copy()) {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
-                                     dense_value_names_[dest_table],
-                                     &pull_dense_status);
+      //fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
+      //                               dense_value_names_[dest_table],
+      //                               &pull_dense_status);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();

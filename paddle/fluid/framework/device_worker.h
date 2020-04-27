@@ -62,6 +62,19 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
+  #ifdef PADDLE_WITH_CUDA
+  void AddStream(const cudaStream_t stream) { 
+    copy_streams_.push_back(stream);
+  }
+
+  void AddPlace(const paddle::platform::Place place) {
+      places_.push_back(place);
+  }
+  
+  void AddThreadScope(Scope* scope) {
+    thread_scopes_.push_back(scope);
+  }
+  #endif
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -69,6 +82,7 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  void CreatePinVar();
   int GetThreadIdByScope(const Scope* scope);
   void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
@@ -112,6 +126,12 @@ class PullDenseWorker {
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
+  
+  #ifdef PADDLE_WITH_CUDA
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<paddle::platform::Place> places_;
+  std::vector<Scope*> thread_scopes_;
+  #endif
 };
 
 // should incorporate different type of device
@@ -358,6 +378,8 @@ public:
 template <class T>
 class HeterObjectPool {
 public:
+  HeterObjectPool() {}
+  virtual ~HeterObjectPool() {};
   std::shared_ptr<T> Get() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
@@ -543,7 +565,6 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
-  virtual void CreateThreadParam(const ProgramDesc &main_program);
   virtual void Schedule(int taskid);
   virtual void JumpContext(std::shared_ptr<HeterTask> task);
   virtual void CacheProgram(const ProgramDesc &main_program) {
