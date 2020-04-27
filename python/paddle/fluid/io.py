@@ -2050,7 +2050,7 @@ def save_serving_model(server_model_folder_name,
                                         client_config_folder_name=client_config_folder,
                                         feed_var_dict={"x": x},
                                         fetch_var_dict={"y": predict},
-                                        fluid.default_main_program())
+                                        main_program=fluid.default_main_program())
     """
     executor = Executor(place=paddle.fluid.CPUPlace())
 
