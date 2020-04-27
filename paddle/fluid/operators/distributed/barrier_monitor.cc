@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
 #include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include <gflags/gflags.h>
 
@@ -47,10 +45,10 @@ bool BarrierMonitor::IncreaseBarrier(const int worker_id,
   } else {
     PADDLE_THROW("unknown status");
   }
-  Wait();
+  return Wait();
 }
 
-BarrierMonitor::Monitor() {
+void BarrierMonitor::Monitor() {
   while (!working_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1200));
     VLOG(4) << "Barrier not working currently";
@@ -76,33 +74,33 @@ BarrierMonitor::Monitor() {
 
 bool BarrierMonitor::IsReady() {
   if (barrier_type == kSendBarrier) {
-    return send_barrier_queue.size() == workers_;
+    return static_cast<int>(send_barrier_queue->Size()) == workers_;
   } else {
-    return recv_barrier_queue.size() == workers_;
+    return static_cast<int>(recv_barrier_queue->Size()) == workers_;
   }
 }
 
-BarrireMonitor::Invalid() {
+void BarrierMonitor::Invalid() {
   std::unique_lock<std::mutex> lck(mutex_);
   valid_ = false;
   release_ = true;
-  send_barrier_queue.Clear();
-  recv_barrier_queue.Clear();
+  send_barrier_queue->Clear();
+  recv_barrier_queue->Clear();
   cv_.notify_all();
 }
 
-BarrierMonitor::Swap() {
+void BarrierMonitor::Swap() {
   std::unique_lock<std::mutex> lck(mutex_);
 
   valid_ = true;
   release_ = true;
 
   if (barrier_type == kSendBarrier) {
-    barrier_type == kRecvBarrier;
-    send_barrier_queue.Clear();
+    barrier_type = kRecvBarrier;
+    send_barrier_queue->Clear();
   } else {
-    barrier_type == kSendBarrier;
-    recv_barrier_queue.Clear();
+    barrier_type = kSendBarrier;
+    recv_barrier_queue->Clear();
   }
   cv_.notify_all();
 }
