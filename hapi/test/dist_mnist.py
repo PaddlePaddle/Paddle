@@ -24,11 +24,9 @@ import contextlib
 
 import paddle
 from paddle import fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from paddle.io import BatchSampler, DataLoader
 
 from hapi.model import Model, Input, set_device
-from hapi.loss import Loss, CrossEntropy
+from hapi.loss import CrossEntropy
 from hapi.vision.models import LeNet
 from hapi.metrics import Accuracy
 from hapi.callbacks import ProgBarLogger
