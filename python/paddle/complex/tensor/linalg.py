@@ -38,7 +38,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             will be named automatically.
    
     Returns:
-        ComplexVariable: The product result, with the same data types as inputs.
+        ComplexVariable: The product result, with the same data type as inputs.
 
     Examples:
         .. code-block:: python

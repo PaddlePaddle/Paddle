@@ -1689,7 +1689,7 @@ class ComplexVariable(object):
     **Notes**:
         **The constructor of Variable should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **
+        **Only support dygraph mode at present. Please use :ref:`api_fluid_dygraph_to_variable`
           to create a dygraph ComplexVariable with complex number data.**
 
     Args:
