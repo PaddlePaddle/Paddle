@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
@@ -32,7 +31,7 @@ class TestFlipOp_API(unittest.TestCase):
         with fluid.program_guard(train_program, startup_program):
             dims = [0]
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-            output = paddle.flip(input, dims)
+            output = fluid.layers.flip(input, dims)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -52,7 +51,7 @@ class TestFlipOp_API(unittest.TestCase):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
         with fluid.dygraph.guard():
             inputs = fluid.dygraph.to_variable(img)
-            ret = paddle.flip(inputs, [0])
+            ret = fluid.layers.flip(inputs, [0])
             out_ref = np.array([[4, 5, 6], [1, 2, 3]]).astype(np.float32)
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
