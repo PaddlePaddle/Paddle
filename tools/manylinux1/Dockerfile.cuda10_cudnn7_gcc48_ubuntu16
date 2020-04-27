@@ -225,8 +225,7 @@ RUN wget https://paddle-ci.cdn.bcebos.com/ccache-3.6.tar.gz && \
     tar xf ccache-3.6.tar.gz && mkdir /usr/local/ccache-3.6 && cd ccache-3.6 && \
     ./configure -prefix=/usr/local/ccache-3.6 && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache && \
-    echo "max_size = 10.0G" > /root/.ccache/ccache.conf
+    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
