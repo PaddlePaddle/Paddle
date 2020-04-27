@@ -37,6 +37,8 @@ from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+from .ops import exp
+import sys
 
 __all__ = [
     'log1p',
@@ -53,6 +55,7 @@ __all__ = [
     'cross',
     'interpolate',
     'diag_embed',
+    'meshgrid',
     'fc',
     'embedding',
     'linear_chain_crf',
@@ -524,7 +527,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
           input = fluid.data(name='input', dtype='float32', shape=[3, 4])
           tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
           tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
-          data = fludi.layers.addcmul(input, tensor1, tensor2, value=1.0)
+          data = fluid.layers.addcmul(input, tensor1, tensor2, value=1.0)
     """
 
     check_variable_and_dtype(
@@ -1500,6 +1503,77 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
                'dim2': dim2},
         outputs={'Out': [out]})
     out.stop_gradient = True
+    return out
+
+
+def meshgrid(input, name=None):
+    """	
+    This op takes a list of N tensors as input, each of which is 1-dimensional 	
+    vector, and creates N-dimensional grids.	
+    	
+    Args:	
+        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 	
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.	
+        name (str, optional): The default value is None. Normally there is no need for	
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.	
+ 	
+    Returns:	
+         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)	
+    Examples:	
+      .. code-block:: python	
+          import paddle	
+          import paddle.fluid as fluid	
+          import numpy as np	
+          x = fluid.data(name='x', shape=[100], dtype='int32')	
+          y = fluid.data(name='y', shape=[200], dtype='int32')	
+          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')	
+          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')	
+          exe = fluid.Executor(place=fluid.CPUPlace())	
+          grid_x, grid_y = fluid.layers.meshgrid([x, y])	
+          res_1, res_2 = exe.run(fluid.default_main_program(),	
+                                 feed={'x': input_1,	
+                                       'y': input_2},	
+                                 fetch_list=[grid_x, grid_y])	
+     	
+          #the shape of res_1 is (100, 200)	
+          #the shape of res_2 is (100, 200)	
+      .. code-block:: python	
+          #example 2: in dygraph mode	
+          import paddle	
+          import paddle.fluid as fluid	
+          import numpy as np	
+          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')	
+          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')	
+          with fluid.dygraph.guard():	
+              tensor_3 = fluid.dygraph.to_variable(input_3)	
+              tensor_4 = fluid.dygraph.to_variable(input_4)	
+              grid_x, grid_y = fluid.layers.meshgrid([tensor_3, tensor_4])	
+          #the shape of grid_x is (100, 200)	
+          #the shape of grid_y is (100, 200)	
+    """
+
+    if in_dygraph_mode():
+        num = len(input)
+        out = core.ops.meshgrid(input, num)
+        return out
+
+    helper = LayerHelper('meshgrid', **locals())
+
+    if not isinstance(input, list):
+        raise TypeError("The type of input in meshgrid should be list.")
+
+    for id, input_ in enumerate(input):
+        check_dtype(input_.dtype, 'create data type',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'meshgrid')
+
+    num = len(input)
+    out = [
+        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        for i in range(num)
+    ]
+    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+
     return out
 
 
@@ -11559,24 +11633,22 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    helper = LayerHelper('elementwise_sum', **locals())
-    check_type(inputs, 'inputs', (Variable, tuple, list), 'elementwise_sum')
-    if isinstance(inputs, list) or isinstance(inputs, tuple):
-        if len(inputs) > 0:
-            for input in inputs:
+    helper = LayerHelper('sum', **locals())
+    check_type(x, 'x', (Variable, tuple, list), 'sum')
+    if isinstance(x, list) or isinstance(x, tuple):
+        if len(x) > 0:
+            for input in x:
                 check_variable_and_dtype(
-                    input, "inputs", ['float32', 'float64', 'int32', 'int64'],
-                    'elementwise_sum')
+                    input, "x", ['float32', 'float64', 'int32', 'int64'], 'sum')
     else:
-        check_variable_and_dtype(inputs, "inputs",
-                                 ['float32', 'float64', 'int32', 'int64'],
-                                 'elementwise_sum')
+        check_variable_and_dtype(
+            x, "x", ['float32', 'float64', 'int32', 'int64'], 'sum')
 
     out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('inputs'))
+        dtype=helper.input_dtype('x'))
     helper.append_op(
         type='sum',
-        inputs={'X': inputs},
+        inputs={'X': x},
         outputs={'Out': out},
         attrs={'use_mkldnn': False})
 
