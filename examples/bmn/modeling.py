@@ -17,8 +17,9 @@ from paddle.fluid import ParamAttr
 import numpy as np
 import math
 
-from hapi.model import Model, Loss
-from hapi.download import get_weights_path
+from hapi.model import Model
+from hapi.loss import Loss
+from hapi.download import get_weights_path_from_url
 
 __all__ = ["BMN", "BmnLoss", "bmn"]
 
@@ -459,7 +460,7 @@ def bmn(tscale,
     model = BMN(tscale, dscale, prop_boundary_ratio, num_sample,
                 num_sample_perbin)
     if pretrained:
-        weight_path = get_weights_path(*(pretrain_infos['bmn']))
+        weight_path = get_weights_path_from_url(*(pretrain_infos['bmn']))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"
         model.load(weight_path)

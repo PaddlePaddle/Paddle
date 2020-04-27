@@ -23,7 +23,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
 
 from hapi.model import Model
-from hapi.download import get_weights_path
+from hapi.download import get_weights_path_from_url
 
 __all__ = [
     'ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'
@@ -267,11 +267,11 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
-        weight_path = get_weights_path(model_urls[arch][0],
-                                       model_urls[arch][1])
+        weight_path = get_weights_path_from_url(model_urls[arch][0],
+                                                model_urls[arch][1])
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
-        model.load(weight_path[:-9])
+        model.load(weight_path)
     return model
 
 

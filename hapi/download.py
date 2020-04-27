@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 import logging
 logger = logging.getLogger(__name__)
 
-__all__ = ['get_weights_path', 'is_url']
+__all__ = ['get_weights_path_from_url', 'is_url']
 
 WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
@@ -45,48 +45,56 @@ def is_url(path):
     return path.startswith('http://') or path.startswith('https://')
 
 
-def get_weights_path(url, md5sum=None):
+def get_weights_path_from_url(url, md5sum=None):
     """Get weights path from WEIGHT_HOME, if not exists,
     download it from url.
+
+    Args:
+        url (str): download url
+        md5sum (str): md5 sum of download package
+    
+    Returns:
+        str: a local path to save downloaded weights.
     """
-    path, _ = get_path(url, WEIGHTS_HOME, md5sum)
+    path = get_path_from_url(url, WEIGHTS_HOME, md5sum)
     return path
 
 
-def map_path(url, root_dir):
+def _map_path(url, root_dir):
     # parse path after download under root_dir
     fname = osp.split(url)[-1]
     fpath = fname
     return osp.join(root_dir, fpath)
 
 
-def get_path(url, root_dir, md5sum=None, check_exist=True):
+def get_path_from_url(url, root_dir, md5sum=None, check_exist=True):
     """ Download from given url to root_dir.
     if file or directory specified by url is exists under
     root_dir, return the path directly, otherwise download
     from url and decompress it, return the path.
 
-    url (str): download url
-    root_dir (str): root dir for downloading, it should be
-                    WEIGHTS_HOME or DATASET_HOME
-    md5sum (str): md5 sum of download package
+    Args:
+        url (str): download url
+        root_dir (str): root dir for downloading, it should be
+                        WEIGHTS_HOME or DATASET_HOME
+        md5sum (str): md5 sum of download package
+    
+    Returns:
+        str: a local path to save downloaded models & weights & datasets.
     """
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
-    fullpath = map_path(url, root_dir)
+    fullpath = _map_path(url, root_dir)
 
-    exist_flag = False
     if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):
-        exist_flag = True
-        if ParallelEnv().local_rank == 0:
-            logger.info("Found {}".format(fullpath))
+        logger.info("Found {}".format(fullpath))
     else:
         if ParallelEnv().local_rank == 0:
             fullpath = _download(url, root_dir, md5sum)
         else:
             while not os.path.exists(fullpath):
                 time.sleep(1)
-    return fullpath, exist_flag
+    return fullpath
 
 
 def _download(url, path, md5sum=None):
@@ -109,8 +117,8 @@ def _download(url, path, md5sum=None):
         else:
             raise RuntimeError("Download from {} failed. "
                                "Retry limit reached".format(url))
-        if ParallelEnv().local_rank == 0:
-            logger.info("Downloading {} from {}".format(fname, url))
+
+        logger.info("Downloading {} from {}".format(fname, url))
 
         req = requests.get(url, stream=True)
         if req.status_code != 200:
@@ -141,8 +149,8 @@ def _download(url, path, md5sum=None):
 def _md5check(fullname, md5sum=None):
     if md5sum is None:
         return True
-    if ParallelEnv().local_rank == 0:
-        logger.info("File {} md5 checking...".format(fullname))
+
+    logger.info("File {} md5 checking...".format(fullname))
     md5 = hashlib.md5()
     with open(fullname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -150,8 +158,7 @@ def _md5check(fullname, md5sum=None):
     calc_md5sum = md5.hexdigest()
 
     if calc_md5sum != md5sum:
-        if ParallelEnv().local_rank == 0:
-            logger.info("File {} md5 check failed, {}(calc) != "
-                        "{}(base)".format(fullname, calc_md5sum, md5sum))
+        logger.info("File {} md5 check failed, {}(calc) != "
+                    "{}(base)".format(fullname, calc_md5sum, md5sum))
         return False
     return True
