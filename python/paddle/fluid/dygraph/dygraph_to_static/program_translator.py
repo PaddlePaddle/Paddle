@@ -19,9 +19,10 @@ import logging
 import numpy
 import six
 import textwrap
+import collections
 import threading
 import numpy as np
-from paddle.fluid import framework, backward
+from paddle.fluid import framework
 from paddle.fluid import core, executor
 from paddle.fluid.dygraph import guard, to_variable, layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
@@ -48,12 +49,12 @@ class FunctionCache(object):
         self._static_func_to_transformer = dict()
 
     def get_or_cache_func(self, func):
-        code = self._get_dedent_code_string(func)
-        static_func = self._dycode_to_static_func.get(code, None)
+        # code = self._get_dedent_code_string(func)
+        static_func = self._dycode_to_static_func.get(func, None)
 
         if static_func is None:
             static_func, dygraph_to_static_transformer = convert_to_static(func)
-            self._dycode_to_static_func[code] = static_func
+            self._dycode_to_static_func[func] = static_func
             self._static_func_to_transformer[
                 static_func] = dygraph_to_static_transformer
 
@@ -68,8 +69,7 @@ class FunctionCache(object):
         return dedent_code
 
     def exist(self, func):
-        return self._dycode_to_static_func.get(
-            self._get_dedent_code_string(func), None) is not None
+        return self._dycode_to_static_func.get(func, None) is not None
 
 
 _CACHE_LOCK = threading.Lock()
@@ -85,6 +85,15 @@ def convert_function_with_cache(dygraph_func):
         return static_func
 
 
+def transformer_from_converted_func(dygraph_func):
+    """
+    Returns the transformer of dygraph function.
+    """
+    if not _FUNCTION_CACHE.exist(dygraph_func):
+        convert_function_with_cache(dygraph_func)
+    return _FUNCTION_CACHE.get_transformer(dygraph_func)
+
+
 def synchronized(func):
     func.__lock__ = threading.Lock()
 
@@ -95,146 +104,18 @@ def synchronized(func):
     return lock_func
 
 
-class PartialProgramLayer(layers.Layer):
-    def __init__(self, program_cache):
-        super(PartialProgramLayer, self).__init__()
-        self._program_cache = program_cache
-        self._input_names = [var.name for var in self._program_cache._inputs]
-        self._output_names = [var.name for var in self._program_cache._outputs]
-        self.program = self._program_cache.main_program
+class DygraphFunc(object):
+    def __init__(self, func_obj, args=None, kwargs=None):
+        self.function = func_obj
+        self.args = args
+        self.kwargs = kwargs
 
-        self._params = []
-        self._output_descs = [var.desc for var in self._program_cache._outputs]
-        self._is_test = False
-        self._inner_scope = core.Scope()
+    def __hash__(self):
+        return id(self.function)
 
-        self._program_desc = self._append_backward_desc()
-
-        self.out_vars = []
-        self.tmp_scope_vec = None
-        self._set_type = False
-
-    @switch_to_static_graph
-    def _append_backward_desc(self):
-        program_desc_copy = core.ProgramDesc(self.program.desc)
-
-        # Step 1. prepare program and related var
-        # NOTE: To reuse backward interfaces, build Program firstly.
-        # Originally, there is no need to build a program, but need to almost
-        # rewrite a series of methods for append_backward for program_desc.
-        # Therefore, in order to reuse the method of backward.py, build the program here.
-        program = self._build_program_by_desc(program_desc_copy)
-
-        # TODO: could the targets be in sub block?
-        targets = []
-        for out in self._output_names:
-            targets.append(program.global_block().var(out))
-
-        # Step 2. append backward
-        backward.gradients(targets=targets, inputs=[])
-        self._parse_parameter(program)
-
-        return program.desc
-
-    def _parse_parameter(self, program):
-        _candi_param_names = self._program_cache._old_parameters.keys()
-        for name in _candi_param_names:
-            if name + '@GRAD' in program.block(0).vars:
-                param = self._program_cache._old_parameters[name]
-                self._params.append(param)
-
-    @switch_to_static_graph
-    def _build_program_by_desc(self, program_desc):
-        prog = framework.Program()
-        prog.desc = program_desc
-        prog.blocks = [
-            framework.Block(prog, i)
-            for i in six.moves.range(prog.desc.num_blocks())
-        ]
-        prog._sync_with_cpp()
-        return prog
-
-    def forward(self, *inputs, **kwargs):
-        # Step 1. prepare inputs, outputs, attrs
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
-
-        input_vars = []
-        for i, value in enumerate(inputs):
-            if not isinstance(value, (np.ndarray, core.VarBase)):
-                raise TypeError(
-                    "The type of inputs.value in StaticModelRunner.forward must be numpy array or Variable(VarBase), but received %s."
-                    % type(value))
-            # NOTE: In order to unify the API, firstly convert the input to VarBase
-            if isinstance(value, np.ndarray):
-                var = core.VarBase(
-                    value=value,
-                    name=self._input_names[i],
-                    persistable=False,
-                    place=framework._current_expected_place(),
-                    zero_copy=True)
-            else:
-                var = value
-                # TODO: here may have important name set by user
-                var.name = self._input_names[i]
-            input_vars.append(var)
-
-        # params = []
-        # for param in self._parameters.values():
-        #     params.append(param)
-
-        # if not self.out_vars:
-        out_vars = []
-        for var_desc in self._output_descs:
-            var = core.VarBase(var_desc.dtype(),
-                               var_desc.shape(),
-                               var_desc.name(), var_desc.type(), False)
-            out_vars.append(var)
-
-        # hold forward variables
-        # if not self.tmp_scope_vec:
-        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                     "program_out_scope",
-                                     core.VarDesc.VarType.STEP_SCOPES, True)
-        tmp_scope_vec.value().set_scope(self._inner_scope)
-
-        # Step 2. run prorgam by op
-        framework._dygraph_tracer().trace_op(
-            type='run_program',
-            inputs={'X': input_vars,
-                    'Params': self._params},
-            outputs={'Out': out_vars,
-                     'OutScope': tmp_scope_vec},
-            attrs={
-                'global_block': self._program_desc.block(0),
-                'start_op_index': 0,
-                'end_op_index': self.program.desc.block(0).op_size(),
-                'is_test': self._is_test
-            })
-
-        # NOTE: [ why need set param's gradient type here ]
-        # if user set sparse gradient mode, the param's gradient
-        # will be SelectedRows, not LoDTensor. But tracer will just
-        # set param grad VarBase by forward VarBase(LoDTensor)
-        # If we don't change grad_var type here, RunProgramOp need
-        # transform SelectedRows to LoDTensor forcely, it may not
-        # be user wanted result.
-        # if not self._set_type:
-        for param in self._params:
-            grad_name = param.name + core.grad_var_suffix()
-            grad_var = self._program_desc.block(0).find_var(
-                cpt.to_bytes(grad_name))
-            # NOTE: cannot find var desc maybe no problem, such as in batch_norm
-            if grad_var is None:
-                continue
-            param._set_grad_type(grad_var.type())
-            # self._set_type=True
-
-        # Step 3. prepare output, keep same form with inputs
-        outs = out_vars
-        if len(out_vars) == 1:
-            outs = out_vars[0]
-        return outs
+    def __eq__(self, other):
+        return isinstance(
+            other, DygraphFunc) and id(self.function) == id(other.function)
 
 
 class ProgramCache(object):
@@ -245,24 +126,13 @@ class ProgramCache(object):
     def __init__(self):
         self._inputs = []
         self._outputs = []
-        # Always set program to default_main_program. Because once `__call__` is called,
-        # it means layers(or Ops) are added into default_main_program switched by outer
-        # `with` statement.
-        self._main_program = framework.default_main_program()
-        self._startup_program = framework.default_startup_program()
-        self._func_cache = FunctionCache()
+        self._main_program = framework.Program()
+        self._startup_program = framework.Program()
         self._feed_name_to_idx = {}
-        # Stores the entry function of Net or Model.
+
+        self._parameters = collections.OrderedDict()
         self._forward_func = None
-        self._is_repeated = False
-        # Indicates whether the function call is still building program.
-        # Because user can call recursively when `Net` has sub class in
-        # `forward()`.
-        self._in_build_process = True
-        self._cache = False
-        import collections
-        self._old_parameters = collections.OrderedDict()
-        self._instance = None
+        self._dyfunc = None
 
     @switch_to_static_graph
     def build_program_and_return_output(self, dyfunc, *args, **kwargs):
@@ -270,113 +140,49 @@ class ProgramCache(object):
         Builds the main_program with specialized inputs and returns outputs
         of program as fetch_list.
         """
-        # Transforms dygraph function into static function and caches it.
-        static_func = self._transform_or_cache_layers(dyfunc)
-        if not self._cache:
-            self._instance = args[0]
-            self.paramBase_to_parameter(self._instance)
+        if self._dyfunc is not None:
+            raise ValueError(
+                "dyfunc has already been set. Please do not call `build_program_and_return_output` twice."
+            )
 
-        # 1. Adds `fluid.data` layers for input if needed
-        if not self._inputs:
+        self._dyfunc = DygraphFunc(dyfunc, args, kwargs)
+
+        if isinstance(args[0], layers.Layer):
+            self._parameters = args[0].parameters()
+
+        # Transforms dygraph function into static function and caches it.
+        static_func = convert_function_with_cache(dyfunc)
+        self._forward_func = static_func
+
+        with framework.program_guard(self._main_program, self._startup_program):
+            # 1. Adds `fluid.data` layers for input if needed
             self._add_feed_layers(args, kwargs)
 
-        # 2. Avoids inserting forward ops repeatedly.
-        if self._is_repeated:
-            return self.outputs
-
-        # 3. Builds program only once and returns the output Variables.
-        outputs = self._get_or_build_program(static_func, args, kwargs)
-
-        if static_func == self._forward_func:
-            self._in_build_process = False
-            self.parameter_to_paramBase(self._instance)
+            # 2. Builds program only once and returns the output Variables.
+            outputs = self._build_program(static_func, args, kwargs)
 
         return outputs
 
-    def _transform_or_cache_layers(self, dyfunc):
-        """
-        Transforms dygraph function into static function.
-        """
-        static_func = self._func_cache.get_or_cache_func(dyfunc)
-
-        if self._forward_func is None:
-            self._forward_func = static_func
-        else:
-            # self._forward_func is entry function of Net or Model.
-            # It can be called for multiple times, but layers from these functions
-            # call stack will be added into self._main_program only once.
-            # After that, cached program will be always returned by default.
-            if static_func == self._forward_func:
-                self._is_repeated = True
-            # If a independent function is received after the build process
-            # has finished, feed layers should be reset.
-            # TODO(Aurelius84): Switch main_program without specifying program_guard.
-            elif not self._in_build_process:
-                self._inputs = []
-                self._is_repeated = False
-                self._forward_func = static_func
-
-        return static_func
-
-    def paramBase_to_parameter(self, layer_instance):
-        def to_parameter(var_base):
-            return framework.Parameter(
-                var_base.block,
-                var_base.shape,
-                var_base.dtype,
-                var_base.type,
-                name=var_base.name)
-
-        self._cache = True
-        _parameters = layer_instance._parameters
-        for name, var_base in _parameters.items():
-            self._old_parameters[var_base.name] = var_base
-            _parameters[name] = to_parameter(var_base)
-
-        _sub_layers = layer_instance._sub_layers
-        for layer_name, instance in _sub_layers.items():
-            self.paramBase_to_parameter(instance)
-
-    def parameter_to_paramBase(self, layer_instance):
-        _parameters = layer_instance._parameters
-        for name, var_base in _parameters.items():
-            _parameters[name] = self._old_parameters[var_base.name]
-
-        _sub_layers = layer_instance._sub_layers
-        for layer_name, instance in _sub_layers.items():
-            self.parameter_to_paramBase(instance)
-
     @switch_to_static_graph
-    def _get_or_build_program(self, func, args, kwargs):
+    def _build_program(self, func, args, kwargs):
         """
         Returns program of the input function. If called at first time,
         builds a new program and caches it.
         """
-        with framework.program_guard(self._main_program, self._startup_program):
-            if func == self._forward_func:
-                # Replaces input data with `layers.data`
-                args = list(args)
-                for feed_layer in self._inputs:
-                    idx = self.feed_name_to_idx[feed_layer.name]
-                    args[idx] = feed_layer
-                fetch_list = func(*args, **kwargs)
-                if not isinstance(fetch_list, tuple):
-                    # func just returns one reuslt
-                    fetch_list = [fetch_list]
-                fetch_list = list(fetch_list)
-                # NOTE: avoid fetch_list is [None]
-                if len(fetch_list) == 1 and fetch_list[0] is None:
-                    fetch_list = None
-                self._outputs = fetch_list
-            else:
-                fetch_list = func(*args, **kwargs)
-                if not isinstance(fetch_list, tuple):
-                    # func just returns one reuslt
-                    fetch_list = [fetch_list]
-                fetch_list = list(fetch_list)
-                # NOTE: avoid fetch_list is [None]
-                if len(fetch_list) == 1 and fetch_list[0] is None:
-                    fetch_list = None
+        # Replaces input data with `layers.data`
+        args = list(args)
+        for feed_layer in self._inputs:
+            idx = self.feed_name_to_idx[feed_layer.name]
+            args[idx] = feed_layer
+        fetch_list = func(*args, **kwargs)
+        if not isinstance(fetch_list, tuple):
+            # func just returns one reuslt
+            fetch_list = [fetch_list]
+        fetch_list = list(fetch_list)
+        # NOTE: avoid fetch_list is [None]
+        if len(fetch_list) == 1 and fetch_list[0] is None:
+            fetch_list = None
+        self._outputs = fetch_list
 
         return fetch_list
 
@@ -386,35 +192,33 @@ class ProgramCache(object):
         by `to_variable()`, it makes program to be executed dynamically.
         """
         self._feed_name_to_idx = self._get_name_to_idx(self._forward_func, args)
-        with framework.program_guard(self._main_program, self._startup_program):
-            for feed_name, idx in sorted(
-                    self.feed_name_to_idx.items(), key=lambda x: x[1]):
-                batch_data = args[idx]
-                assert isinstance(batch_data, (
-                    numpy.ndarray, framework.Variable, core.VarBase
-                )), "Input {} should be numpy.ndarray, but received {}.".format(
-                    feed_name, type(batch_data))
-                # TODO: dtype parsing
-                dtype = batch_data.dtype
-                if isinstance(batch_data, core.VarBase):
-                    dtype = 'float32'
+        for feed_name, idx in sorted(
+                self.feed_name_to_idx.items(), key=lambda x: x[1]):
+            batch_data = args[idx]
+
+            if isinstance(batch_data, (np.ndarray, core.VarBase)):
                 feed_layer = data_layer_not_check(
                     name=feed_name,
                     shape=list(batch_data.shape),
-                    dtype=str(dtype))
-                self._inputs.append(feed_layer)
+                    dtype=batch_data.dtype)
+                if isinstance(batch_data, core.VarBase):
+                    feed_layer.stop_gradient = batch_data.stop_gradient
+            else:
+                raise ValueError(
+                    "Input {} should be numpy.ndarray, but received {}.".format(
+                        feed_name, type(batch_data)))
+
+            self._inputs.append(feed_layer)
 
     def _get_name_to_idx(self, func, args=None):
         """
         Returns name and index of input args from `forward(args)`
         that need to be replaced with `fluid.data`.
         """
-        transformer = self._func_cache.get_transformer(func)
+        transformer = transformer_from_converted_func(func)
         feed_name_to_idx = transformer.get_feed_name_to_idx()
         if not feed_name_to_idx and args is not None:
-            # offset = 0
             for i, arg in enumerate(args):
-                # if i == 0 and isinstance(arg, layers.Layer): offset = -1
                 if isinstance(arg, (framework.Variable, core.VarBase)):
                     feed_name_to_idx[arg.name] = i
 
@@ -439,10 +243,6 @@ class ProgramCache(object):
     @property
     def feed_name_to_idx(self):
         return self._feed_name_to_idx
-
-    @property
-    def in_build_process(self):
-        return self._in_build_process
 
 
 class ProgramTranslator(object):
@@ -507,7 +307,7 @@ class ProgramTranslator(object):
         # Once startup_program is changed, should run startup_program.
         self._prev_startup = None
         self.enable_declarative = True
-        self.partial_program_layer = None
+        self.partial_program_dict = {}
 
     def enable(self, enable_declarative):
         """
@@ -583,51 +383,38 @@ class ProgramTranslator(object):
                 print(x_v.numpy()) # [[0. 0.]]
 
         """
-        # assert callable(
-        #     dygraph_func
-        # ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
-        # if in_dygraph_mode() or not self.enable_declarative:
-        #     logger.info(
-        #         "The ProgramTranslator.get_output doesn't work in dygraph "
-        #         "mode or set ProgramTranslator.enable to False. We will "
-        #         "just return dygraph output.")
-        #     return dygraph_func(*args, **kwargs)
+        assert callable(
+            dygraph_func
+        ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
+        if not self.enable_declarative:
+            logger.info(
+                "The ProgramTranslator.get_output doesn't work in dygraph "
+                "mode or set ProgramTranslator.enable to False. We will "
+                "just return dygraph output.")
+            return dygraph_func(*args, **kwargs)
 
-        # program_cache = self.get_program_cache()
-        # outputs = program_cache.build_program_and_return_output(dygraph_func,
-        #                                                         *args, **kwargs)
-        if self.partial_program_layer is not None:
+        if dygraph_func in self.partial_program_dict:
+            partial_program_layer = self.partial_program_dict[dygraph_func]
+            # TODO: parse input
+            if isinstance(args[0], layers.Layer):
+                args = args[1:]
+            return partial_program_layer(args)
+        # Builds program only once for the same dygraph function.
+        self._build_once(dygraph_func, *args, **kwargs)
+
+        if isinstance(args[0], layers.Layer):
             args = args[1:]
-            return self.partial_program_layer(*args, **kwargs)
 
-        outputs = self._build_once(dygraph_func, *args, **kwargs)
-        if not self._program_cache.in_build_process:
-            # self._exe.run(self._program_cache.startup_program)
-            # partial_program_layer = PartialProgramLayer(self._program_cache)
-            args = args[1:]
-            # print(len(args))
-            return self.partial_program_layer(*args, **kwargs)
-
-            outputs = self._run(*args, **kwargs)
-            with guard():
-                if len(outputs) == 1:
-                    outputs = to_variable(outputs[0])
-                else:
-                    outputs = tuple(to_variable(x) for x in outputs)
-        return outputs
+        return self.partial_program_dict[dygraph_func](args, **kwargs)
 
     @switch_to_static_graph
     def _build_once(self, dygraph_func, *args, **kwargs):
-        program_cache = self.get_program_cache()
-        outputs = program_cache.build_program_and_return_output(dygraph_func,
-                                                                *args, **kwargs)
-        if not self._program_cache.in_build_process:
-            # self._exe.run(self._program_cache.startup_program)
-            self.partial_program_layer = PartialProgramLayer(
-                self._program_cache)
-            return None
+        program_cache = ProgramCache()
+        program_cache.build_program_and_return_output(dygraph_func, *args,
+                                                      **kwargs)
 
-        return outputs
+        partial_program_layer = partial_program_from(program_cache)
+        self.partial_program_dict[dygraph_func] = partial_program_layer
 
     def get_func(self, dygraph_func):
         """
@@ -727,10 +514,10 @@ class ProgramTranslator(object):
                 "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
-        program_cache = self.get_program_cache()
+        program_cache = ProgramCache()
         outputs = program_cache.build_program_and_return_output(dygraph_func,
                                                                 *args, **kwargs)
-        return self.main_program, self.startup_program, program_cache.inputs, outputs
+        return program_cache.main_program, program_cache.startup_program, program_cache.inputs, outputs
 
     def get_code(self, dygraph_func):
         """
