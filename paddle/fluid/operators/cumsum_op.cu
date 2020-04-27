@@ -72,62 +72,69 @@ __global__ void OuterScan(const T* in, T* out, int inner_dim_size,
 }
 
 // exclusive scan
-template <typename T>
-__global__ void BlellochScan(const T* in, T* out, unsigned inner_dim_size,
-                             unsigned outer_dim_size, unsigned scan_dim_size,
-                             int size) {
-  // https://stackoverflow.com/questions/27570552/templated-cuda-kernel-with-dynamic-shared-memory
-  extern __shared__ __align__(sizeof(T)) unsigned char raw_tmp[];
-  T* share_tmp = reinterpret_cast<T*>(raw_tmp);
+template <typename T, int num_threads_x, int num_threads_y>
+__global__ void InnerMostDimScan(const T* in, T* out, int inner_dim_size,
+                                 int outer_dim_size, int scan_dim_size,
+                                 bool exclusive, bool reverse) {
+  __shared__ T share_data[num_threads_y][num_threads_x * 2];
+  T* share_row = share_data[threadIdx.y];
 
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int thread_idx = threadIdx.x;
-  int offset = 1;
-  int element_size = inner_dim_size;
-  int active_thread_size = inner_dim_size / 2;
-  if (idx > active_thread_size) return;
+  for (unsigned block_row = blockIdx.x * blockDim.y; block_row < outer_dim_size;
+       block_row += blockDim.y * gridDim.x) {
+    unsigned row = block_row + threadIdx.y;
+    T acc = 0;
+    const T* row_src = in + row * scan_dim_size;
+    T* row_dst = out + row * scan_dim_size;
+    for (unsigned block_col = 0; block_col < scan_dim_size;
+         block_col += 2 * num_threads_x) {
+      // Load data into share memory(two value per thread)
+      unsigned col1 = block_col + threadIdx.x;
+      unsigned col2 = block_col + num_threads_x + threadIdx.x;
+      if (row < outer_dim_size) {
+        if (col1 < scan_dim_size) {
+          share_row[threadIdx.x] = row_src[col1];
+        } else {
+          share_row[threadIdx.x] = 0;
+        }
 
-  for (; idx < active_thread_size; idx += blockDim.x * gridDim.x) {
-    for (size_t i = 0; i < outer_dim_size; i++) {
-      // load data to share memory
-      share_tmp[2 * thread_idx] = in[(2 * idx) + inner_dim_size * i];
-      if ((2 * thread_idx + 1) < element_size) {
-        share_tmp[2 * thread_idx + 1] = in[(2 * idx + 1) + inner_dim_size * i];
+        if (col2 < scan_dim_size) {
+          share_row[num_threads_x + threadIdx.x] = row_src[col2];
+        } else {
+          share_row[num_threads_x + threadIdx.x] = 0;
+        }
+
+        // Add the previous block acc to the result
+        if (threadIdx.x == 0) {
+          share_row[0] = share_row[0] + acc;
+        }
       }
       __syncthreads();
 
-      // parallel reduction(up-sweep)
-      for (int s = element_size >> 1; s > 0; s >>= 1) {
-        if (thread_idx < s && idx < active_thread_size) {
-          int ai = offset * (2 * thread_idx + 1) - 1;
-          int bi = offset * (2 * thread_idx + 2) - 1;
-          share_tmp[bi] += share_tmp[ai];
+      // Up-Sweep
+      for (unsigned s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
+        if (row < outer_dim_size && threadIdx.x < s) {
+          unsigned offset = (2 * threadIdx.x + 1) * d - 1;
+          share_row[offset + d] = share_row[offset] + share_row[offset + d];
         }
-        offset *= 2;
         __syncthreads();
       }
-      // set the last element to be zero
-      if (thread_idx == 0) share_tmp[element_size - 1] = 0;
+      // Down-Sweep
+      for (unsigned s = 2, d = blockDim.x / 2; d >= 1; s <<= 1, d >>= 1) {
+        if (row < outer_dim_size && threadIdx.x < s - 1) {
+          unsigned offset = 2 * (threadIdx.x + 1) * d - 1;
+          share_row[offset + d] = share_row[offset] + share_row[offset + d];
+        }
+        __syncthreads();
+      }
+
+      // Write to the output
+      if (row < outer_dim_size) {
+        if (col1 < scan_dim_size) row_dst[col1] = share_row[threadIdx.x];
+        if (col2 < scan_dim_size)
+          row_dst[col2] = share_row[num_threads_x + threadIdx.x];
+      }
+      acc = share_row[2 * num_threads_x - 1];
       __syncthreads();
-
-      // Down-sweep
-      for (int s = 1; s < element_size; s <<= 1) {
-        offset >>= 1;
-        if (thread_idx < s && idx < active_thread_size) {
-          int ai = offset * (2 * thread_idx + 1) - 1;
-          int bi = offset * (2 * thread_idx + 2) - 1;
-          T tmp = share_tmp[ai];
-          share_tmp[ai] = share_tmp[bi];
-          share_tmp[bi] += tmp;
-        }
-        __syncthreads();
-      }
-
-      // write back to memory
-      if (thread_idx < active_thread_size) {
-        out[(2 * idx) + inner_dim_size * i] = share_tmp[2 * thread_idx];
-        out[(2 * idx + 1) + inner_dim_size * i] = share_tmp[2 * thread_idx + 1];
-      }
     }
   }
 }
@@ -155,6 +162,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
                                           axis, in_dims.size()));
 
     int scan_dim_size = in_dims[axis];
+    bool optimize_condition = (axis == (in_dims.size() - 1)) ? true : false;
     int outer_dim_size = 1;
     int inner_dim_size = 1;
     // treat all dim index < axis as outer_dim_size
@@ -170,12 +178,12 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     const T* in_data = in->data<T>();
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    bool optimize_condition = false;
     if (optimize_condition) {
-      int mem_per_block = size * sizeof(T);
-      dim3 block(1024);
-      dim3 grid((size + block.x - 1) / block.x);
-
+      dim3 block(32, 16);
+      dim3 grid((outer_dim_size + block.y - 1) / block.y);
+      InnerMostDimScan<T, 32, 16><<<grid, block, 0, dev_ctx.stream()>>>(
+          in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size,
+          exclusive, reverse);
     } else {
       dim3 block(std::min(512, inner_dim_size));
       dim3 grid(outer_dim_size, (inner_dim_size + block.x - 1) / block.x);
