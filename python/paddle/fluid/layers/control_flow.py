@@ -2001,6 +2001,9 @@ class ConditionalBlock(object):
         intermediate = set()
         params = set()
 
+        # NOTE: Here assumes that all variables are input or output of Ops,
+        # but some variables are created without appendding a real op.
+        # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
         for each_op in inside_block.ops:
             assert isinstance(each_op, Operator)
             for iname in each_op.input_names:
