@@ -4497,7 +4497,7 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'std')
 
     tmp = var(input, axis=axis, keepdim=keepdim, unbiased=unbiased, name=name)
-    tmp = sqrt(tmp)
+    tmp = paddle.fluid.layers.sqrt(tmp)
     if out is not None:
         assign(input=tmp, output=out)
         return out
