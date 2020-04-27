@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid as fluid
 from hapi.model import set_device, Model, CrossEntropy, Input
 from hapi.configure import Config
-from hapi.text.senta import SentaProcessor, Optimizer
+from hapi.text.senta import SentaProcessor
 from hapi.metrics import Accuracy
 from models import CNN, BOW, GRU, BiGRU
 import json
@@ -78,11 +78,7 @@ def train():
         model = BiGRU( args.vocab_size, args.batch_size,
                        args.padding_size)
     
-    optimizer = Optimizer(
-        num_train_steps=max_train_steps,
-        model_cls=model,
-        learning_rate=args.lr,
-        parameter_list=model.parameters())
+    optimizer = fluid.optimizer.Adagrad(learning_rate=args.lr, parameter_list=model.parameters()) 
     
     inputs = [Input([None, None], 'int64', name='doc')]
     labels = [Input([None, 1], 'int64', name='label')]

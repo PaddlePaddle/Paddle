@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from hapi.text.senta.data_processer import SentaProcessor
-from hapi.text.senta.optimization import Optimizer as Optimizer
