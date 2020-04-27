@@ -983,12 +983,11 @@ def dropout(x,
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        seed = seed if seed is not None else 0
         _is_test = not _dygraph_tracer()._train_mode
-        out, mask = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
-                                     _is_test, 'fix_seed', seed is not None,
-                                     'seed', seed, 'dropout_implementation',
-                                     dropout_implementation)
+        out, mask = core.ops.dropout(
+            x, 'dropout_prob', dropout_prob, 'is_test', _is_test, 'fix_seed',
+            seed is not None, 'seed', seed if seed is not None else 0,
+            'dropout_implementation', dropout_implementation)
         return out
 
     helper = LayerHelper('dropout', **locals())
@@ -12586,6 +12585,11 @@ def get_tensor_from_selected_rows(x, name=None):
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
+    check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
+    if x.type != core.VarDesc.VarType.SELECTED_ROWS:
+        raise TypeError(
+            "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
+        )
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
