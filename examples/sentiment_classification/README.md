@@ -22,14 +22,14 @@ python版本依赖python 2.7或python 3.5及以上版本。
 
 #### 代码下载及环境变量设置
 
-    克隆代码库到本地，并设置`PYTHONPATH`环境变量
+克隆代码库到本地，并设置`PYTHONPATH`环境变量
 
-    ```bash
-    git clone https://github.com/PaddlePaddle/hapi
-    cd hapi
-    export PYTHONPATH=$PYTHONPATH:`pwd`
-    cd examples/sentiment_classification
-    ```
+```shell
+git clone https://github.com/PaddlePaddle/hapi
+cd hapi
+export PYTHONPATH=$PYTHONPATH:`pwd`
+cd examples/sentiment_classification
+```
 
 #### 数据准备
 
@@ -55,7 +55,7 @@ python sentiment_classifier.py
 
 利用已有模型，可以运行下面命令，对未知label的数据（test.tsv）进行预测。
 
-模型预测需确保`senta.yaml`中`do_infer`属性为`True`。
+模型预测需确保`senta.yaml`中`do_infer`属性置为`True`。
 
 ```shell
 python sentiment_classifier.py
@@ -92,8 +92,8 @@ python sentiment_classifier.py
 
 ```text
 特 喜欢 这种 好看的 狗狗                  1
-这 真是 惊艳 世界 的 中国 黑科技          1
-环境 特别 差 ，脏兮兮 的，再也 不去 了     0
+这 真是 惊艳 世界 的 中国 黑科技           1
+环境 特别 差 ，脏兮兮 的，再也 不去 了      0
 ```
 
 #### 代码结构说明

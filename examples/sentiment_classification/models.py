@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear, Embedding
+from paddle.fluid.dygraph.nn import Linear, Embedding
 from paddle.fluid.dygraph.base import to_variable
 import numpy as np
 from hapi.model import Model
 from hapi.text.text import GRUEncoderLayer as BiGRUEncoder
-from hapi.text.text import BOWEncoder, CNNEncoder, GRUEncoder
+from hapi.text.test import BOWEncoder, CNNEncoder, GRUEncoder
 
 
 class CNN(Model):
