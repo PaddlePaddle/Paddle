@@ -400,7 +400,7 @@ TEST(OP_INOUT_CHECK_MACRO, FAIL) {
 TEST(BOOST_GET_SAFELY, SUCCESS) {
   paddle::framework::Attribute attr;
   attr = true;
-  bool rlt = BOOST_GET_SAFELY(bool, attr);
+  bool rlt = BOOST_GET(bool, attr);
   EXPECT_EQ(rlt, true);
 }
 
@@ -409,7 +409,7 @@ TEST(BOOST_GET_SAFELY, FAIL) {
   attr = true;
   bool caught_exception = false;
   try {
-    BOOST_GET_SAFELY(int, attr);
+    BOOST_GET(int, attr);
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
   }

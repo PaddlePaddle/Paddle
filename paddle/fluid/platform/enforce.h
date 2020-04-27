@@ -439,7 +439,7 @@ struct EnforceNotMet : public std::exception {
   } while (0)
 
 /*
- * Summary: This macro is used to call boost::get safely.
+ * Summary: This BOOST_GET(_**) series macro is used to call boost::get safely.
  *   boost::get is not a completely safe macro, although it will not go wrong
  *   in most cases, but in extreme case, if may fail and directly throw a
  *   boost::bad_get exception, without any stack information.
@@ -451,11 +451,12 @@ struct EnforceNotMet : public std::exception {
  *     __VALUE: the target variable to get
  *
  * Examples:
- *    - general: x = boost::get<int>(y);
- *    - new: x = BOOST_GET_SAFELY(int, y);
+ *    - unsafe writing: int x = boost::get<int>(y);
+ *    - safe writing: int x = BOOST_GET(int, y);
 */
-#define BOOST_GET_SAFELY(__TYPE, __VALUE)                              \
-  (([&]() -> __TYPE {                                                  \
+
+#define __BOOST_GET_SAFELY(__TYPE, __VALUE)                            \
+  do {                                                                 \
     try {                                                              \
       return boost::get<__TYPE>(__VALUE);                              \
     } catch (boost::bad_get & bad_get) {                               \
@@ -465,7 +466,16 @@ struct EnforceNotMet : public std::exception {
           #__VALUE, paddle::platform::demangle(typeid(__TYPE).name()), \
           paddle::platform::demangle(__VALUE.type().name())));         \
     }                                                                  \
-  })())
+  } while (0)
+
+#define BOOST_GET(__TYPE, __VALUE) \
+  (([&]() -> __TYPE { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
+#define BOOST_GET_CONST(__TYPE, __VALUE) \
+  (([&]() -> const __TYPE { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
+#define BOOST_GET_REF(__TYPE, __VALUE) \
+  (([&]() -> __TYPE& { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
+#define BOOST_GET_CONST_REF(__TYPE, __VALUE) \
+  (([&]() -> const __TYPE& { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
 
 /** OTHER EXCEPTION AND ENFORCE **/
 
