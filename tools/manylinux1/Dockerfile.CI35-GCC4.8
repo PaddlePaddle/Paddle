@@ -34,6 +34,13 @@ RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
     cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
 
+# ccache 3.6
+RUN wget https://paddle-ci.cdn.bcebos.com/ccache-3.6.tar.gz && \
+    tar xf ccache-3.6.tar.gz && mkdir /usr/local/ccache-3.6 && cd ccache-3.6 && \
+    ./configure -prefix=/usr/local/ccache-3.6 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache
+
 RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
 
 RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install setuptools -U && \

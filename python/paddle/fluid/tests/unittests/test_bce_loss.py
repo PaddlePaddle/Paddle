@@ -36,7 +36,7 @@ class TestBCELoss(unittest.TestCase):
                         name='input', shape=[None, 30], dtype='float64')
                     label = fluid.data(
                         name='label', shape=[None, 30], dtype='float64')
-                    bce_loss = paddle.nn.loss.BCELoss(reduction=red)
+                    bce_loss = fluid.dygraph.BCELoss(reduction=red)
                     res = bce_loss(input, label)
 
                     exe = fluid.Executor(place)
@@ -47,7 +47,7 @@ class TestBCELoss(unittest.TestCase):
                         fetch_list=[res])
 
                 with fluid.dygraph.guard():
-                    bce_loss = paddle.nn.loss.BCELoss(reduction=red)
+                    bce_loss = fluid.dygraph.BCELoss(reduction=red)
                     dy_res = bce_loss(
                         fluid.dygraph.to_variable(input_np),
                         fluid.dygraph.to_variable(label_np))
@@ -80,7 +80,7 @@ class TestBCELoss(unittest.TestCase):
                 name='label', shape=[None, 3, 4, 10], dtype='float64')
             weight = fluid.data(
                 name='weight', shape=[3, 4, 10], dtype='float64')
-            bce_loss = paddle.nn.loss.BCELoss(weight=weight)
+            bce_loss = fluid.dygraph.BCELoss(weight=weight)
             res = bce_loss(input, label)
 
             exe = fluid.Executor(place)
@@ -93,7 +93,7 @@ class TestBCELoss(unittest.TestCase):
                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
-            bce_loss = paddle.nn.loss.BCELoss(
+            bce_loss = fluid.dygraph.BCELoss(
                 weight=fluid.dygraph.to_variable(weight_np))
             dy_res = bce_loss(
                 fluid.dygraph.to_variable(input_np),

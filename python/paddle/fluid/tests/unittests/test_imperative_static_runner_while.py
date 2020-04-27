@@ -136,7 +136,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
-                cost = while_net(inputs=img)
+                cost = while_net(img)
 
                 loss = fluid.layers.cross_entropy(cost, label)
                 avg_loss = fluid.layers.mean(loss)
