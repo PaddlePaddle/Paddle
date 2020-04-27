@@ -36,9 +36,6 @@ def get_cluster_from_args(selected_gpus):
 
     node_rank = node_ips.index(node_ip)
 
-    logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
-        node_ips, node_ip, node_rank))
-
     free_ports = None
     if not use_paddlecloud and len(node_ips) <= 1 and started_port is None:
         free_ports = find_free_ports(len(selected_gpus))
@@ -54,24 +51,67 @@ def get_cluster_from_args(selected_gpus):
 
 
 def get_gpus(selected_gpus):
-    if selected_gpus is None:
-        gpus_num = fluid.core.get_cuda_device_count()
-        selected_gpus = [str(x) for x in range(0, gpus_num)]
+    cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+    if cuda_visible_devices is None or cuda_visible_devices == "":
+        selected_gpus = [x.strip() for x in selected_gpus.split(',')]
     else:
-        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices is None or cuda_visible_devices == "":
-            selected_gpus = [x.strip() for x in selected_gpus.split(',')]
-        else:
-            cuda_visible_devices_list = cuda_visible_devices.split(',')
-            for x in selected_gpus.split(','):
-                assert x in cuda_visible_devices_list, "Can't find "\
-                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
-            selected_gpus = [
-                cuda_visible_devices_list.index(x.strip())
-                for x in selected_gpus.split(',')
-            ]
+        cuda_visible_devices_list = cuda_visible_devices.split(',')
+        for x in selected_gpus.split(','):
+            assert x in cuda_visible_devices_list, "Can't find "\
+            "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+            % (x, cuda_visible_devices)
+        selected_gpus = [
+            cuda_visible_devices_list.index(x.strip())
+            for x in selected_gpus.split(',')
+        ]
     return selected_gpus
+
+
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         log_dir=None):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    procs = []
+    for idx, t in enumerate(pod.trainers):
+        proc_env = {
+            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % t.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+
+        current_env.update(proc_env)
+
+        print("trainer proc env:{}".format(current_env))
+
+        cmd = "python -m coverage run --branch -p " + training_script
+        # cmd = [sys.executable, "-u", training_script] + training_script_args
+
+        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+
+        fn = None
+
+        proc = subprocess.Popen(cmd.split(" "), env=current_env)
+
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = t.rank
+        tp.log_fn = fn
+        tp.cmd = cmd
+
+        procs.append(tp)
+
+    return procs
 
 
 class TestMultipleGpus(unittest.TestCase):
@@ -95,7 +135,7 @@ class TestMultipleGpus(unittest.TestCase):
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
             if not alive:
-                logger.info("Local procs complete, POD info:{}".format(pod))
+                print("Local procs complete, POD info:{}".format(pod))
                 break
             time.sleep(3)
 

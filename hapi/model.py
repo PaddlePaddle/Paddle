@@ -41,7 +41,6 @@ from hapi.callbacks import config_callbacks
 
 __all__ = [
     'Model',
-    'Loss',
     'Input',
     'set_device',
 ]
