@@ -83,11 +83,8 @@ class GetTensorFromSelectedRowsOpVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const {  // NOLINT
-    auto out_var_name = ctx->Output("Out").front();
-    auto in_var_name = ctx->Input("X").front();
-
-    ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
-    ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
+    ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR);
+    ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
   }
 };
 
