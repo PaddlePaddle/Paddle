@@ -76,7 +76,8 @@ class BarrierMonitor {
 
   bool Wait() {
     std::unique_lock<std::mutex> lk(mutex_);
-    cv_.wait(lk, [this] { return (valid); });
+    cv_.wait(lk, [this] { return (release_); });
+    return valid_;
   }
 
  private:
@@ -92,7 +93,8 @@ class BarrierMonitor {
   int workers_;
   bool working_ = false;
   bool running_ = false;
-  bool valid = false;
+  bool valid_ = false;
+  bool release_ = false;
 
   std::condition_variable cv_;
   std::mutex mutex_;

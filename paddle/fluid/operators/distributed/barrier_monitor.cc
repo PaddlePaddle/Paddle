@@ -38,6 +38,7 @@ namespace distributed {
 bool BarrierMonitor::IncreaseBarrier(const int worker_id,
                                      const std::string &barrier) {
   working_ = true;
+  release_ = false;
 
   if (barrier == BATCH_BARRIER_MESSAGE) {
     send_barrier_queue->Push(worker_id);
@@ -83,7 +84,8 @@ bool BarrierMonitor::IsReady() {
 
 BarrireMonitor::Invalid() {
   std::unique_lock<std::mutex> lck(mutex_);
-  valid = false;
+  valid_ = false;
+  release_ = true;
   send_barrier_queue.Clear();
   recv_barrier_queue.Clear();
   cv_.notify_all();
@@ -92,13 +94,14 @@ BarrireMonitor::Invalid() {
 BarrierMonitor::Swap() {
   std::unique_lock<std::mutex> lck(mutex_);
 
+  valid_ = true;
+  release_ = true;
+
   if (barrier_type == kSendBarrier) {
     barrier_type == kRecvBarrier;
-    valid = true;
     send_barrier_queue.Clear();
   } else {
     barrier_type == kSendBarrier;
-    valid = true;
     recv_barrier_queue.Clear();
   }
   cv_.notify_all();
