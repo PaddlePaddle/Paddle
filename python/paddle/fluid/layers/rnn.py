@@ -2166,6 +2166,7 @@ def lstm(input,
             rnn_out.shape  # (-1, 100, 150)
             last_h.shape  # (1, 20, 150)
             last_c.shape  # (1, 20, 150)
+
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
