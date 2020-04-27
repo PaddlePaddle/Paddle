@@ -30,7 +30,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, 
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor, cast
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -4431,7 +4431,7 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
         for i in axes:
             n *= inp_shape[i]
         if not in_dygraph_mode():
-            n = layers.cast(n, dtype)
+            n = cast(n, dtype)
             zero_const = fill_constant(shape=[1], dtype=dtype, value=0.0)
             factor = where(n > 1.0, n / (n - 1.0), zero_const)
         else:
