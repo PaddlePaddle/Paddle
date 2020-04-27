@@ -390,7 +390,6 @@ class QuantizationTransformPass(object):
                     _copy_graph(tmp_graph, op_node)
             for node in in_op_node:
                 _copy_graph(tmp_graph, node)
-
             target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
                                                       in_node.name())
             target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
