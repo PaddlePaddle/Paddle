@@ -608,13 +608,13 @@ class TestDataset(unittest.TestCase):
         Use float type id
         """
         with open("test_queue_dataset_run_a.txt", "w") as f:
-            data += "2 1 2 2 5 4 2 2 7 2 1 3\n"
+            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
             data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
             data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
             data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
             f.write(data)
         with open("test_queue_dataset_run_b.txt", "w") as f:
-            data += "2 1 2 2 5 4 2 2 7 2 1 3\n"
+            data = "2 1 2 2 5 4 2 2 7 2 1 3\n"
             data += "2 6 2 2 1 4 2 2 4 2 2 3\n"
             data += "2 5 2 2 9 9 2 2 7 2 1 3\n"
             data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
