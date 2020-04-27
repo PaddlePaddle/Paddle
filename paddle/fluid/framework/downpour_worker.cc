@@ -1024,9 +1024,11 @@ void DownpourWorker::TrainFiles() {
         if (var == nullptr) {
           continue;
         }
+        VLOG(1) << "dump field: " << field << " is not null";
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         if (!CheckValidOutput(tensor, batch_size)) {
           continue;
+          VLOG(1) << "dump field " << field << " is valid";
         }
         for (size_t i = 0; i < batch_size; ++i) {
           auto output_dim = tensor->dims()[1];

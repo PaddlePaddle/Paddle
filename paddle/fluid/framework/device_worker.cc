@@ -77,9 +77,16 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
 
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
+  VLOG(1) << "dims.size() = " << dims.size() << "; details = [";
+  for (auto i = 0; i < dims.size(); i++) {
+    VLOG(1) << dims[i];
+  }
+  VLOG(1) << "]";
+
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
+    VLOG(1) << "lod.size() = " << lod.size() << "; batch_size = " << batch_size;
     if (lod.size() != batch_size + 1) {
       return false;
     }
