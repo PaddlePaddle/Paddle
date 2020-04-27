@@ -352,20 +352,22 @@ class QuantizationTransformPass(object):
 
         def _insert_func(graph, func, var_node, op):
             tmp_program = Program()
-            with program_guard(tmp_program):
+            startup_program = Program()
+            with program_guard(tmp_program, startup_program):
                 with unique_name.guard(var_node.name() + "_"):
                     in_node = data(
                         var_node.name() + '_tmp_input',
                         shape=var_node.shape(),
                         dtype='float32')
-                    out_node = func(in_node)
+                    out_node = func(in_node, name=var_node.name() + '_')
                     # loss shape must be 1 when minimize
-                    loss = mean(out_node)
-                #if self._optimizer is not None:
-                if not self._for_test:
-                    in_node.stop_gradient = False
-                    optimizer = MomentumOptimizer(0.001, 0.9)
-                    optimizer.minimize(loss)
+                    loss = mean(out_node, name=var_node.name() + '_')
+                    #if self._optimizer is not None:
+                    if not self._for_test:
+                        in_node.stop_gradient = False
+                        optimizer = MomentumOptimizer(0.001, 0.9)
+                        optimizer.minimize(loss)
+            self._exe.run(startup_program)
             tmp_graph = IrGraph(
                 core.Graph(tmp_program.desc), for_test=self._for_test)
             in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
@@ -388,7 +390,6 @@ class QuantizationTransformPass(object):
                     _copy_graph(tmp_graph, op_node)
             for node in in_op_node:
                 _copy_graph(tmp_graph, node)
-
             target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
                                                       in_node.name())
             target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
@@ -472,12 +473,13 @@ class QuantizationTransformPass(object):
                     if is_weight and self._weight_quantize_func is not None:
                         target_out_node = _insert_func(
                             graph, self._weight_quantize_func, var_node, op)
-                        dequantized_vars[name] = target_out_node
+                        #dequantized_vars[name] = target_out_node
                         continue
                     elif not is_weight and self._act_quantize_func is not None:
                         target_out_node = _insert_func(
                             graph, self._act_quantize_func, var_node, op)
-                        dequantized_vars[name] = target_out_node
+
+                        #dequantized_vars[name] = target_out_node
                         continue
 
                     quant_bits = self._weight_bits if is_weight \
@@ -535,18 +537,6 @@ class QuantizationTransformPass(object):
                 _transform_backward(graph, op)
 
         graph.resolve_hazard()
-        for node in graph.all_var_nodes():
-            if node.name() == '_generated_var_0':
-                for in_node in node.inputs:
-                    print("inputs", in_node.name(), in_node)
-                for out_node in node.outputs:
-                    print("outputs op", out_node.name(), in_node)
-
-                    for in_node in op.inputs:
-                        print("inputs", in_node.name(), in_node)
-                    for out_node in op.outputs:
-                        print("outputs", out_node.name(), in_node)
-
         return graph
 
     def _create_global_step(self, graph):
