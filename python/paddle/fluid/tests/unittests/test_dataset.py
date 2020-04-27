@@ -628,6 +628,7 @@ class TestDataset(unittest.TestCase):
             slots_vars.append(var)
 
         dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+        dataset.set_input_type(1)
         dataset.set_batch_size(1)
         dataset.set_thread(2)
         dataset.set_filelist(
