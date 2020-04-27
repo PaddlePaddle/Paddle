@@ -14,13 +14,12 @@
 """
 math functions
 """
+
 from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..fluid.framework import core, _varbase_creator
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 import sys
 
