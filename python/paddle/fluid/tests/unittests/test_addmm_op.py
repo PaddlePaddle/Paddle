@@ -143,7 +143,7 @@ class TestAddMMOp4(unittest.TestCase):
             input = fluid.dygraph.to_variable(np_input)
             x = fluid.dygraph.to_variable(np_x)
             y = fluid.dygraph.to_variable(np_y)
-            out = paddle.tensor.addmm(input, x, y)
+            out = fluid.layers.addmm(input, x, y)
             assert np.allclose(np_input + np.dot(np_x, np_y), out.numpy())
 
 

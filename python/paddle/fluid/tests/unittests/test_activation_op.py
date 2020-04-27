@@ -805,8 +805,8 @@ class TestLog1p(TestActivation):
                 append_batch_size=False,
                 dtype="float64")
 
-            out1 = paddle.log1p(data_x)
-            out2 = paddle.log1p(data_x, out=res_log1p)
+            out1 = fluid.layers.log1p(data_x)
+            out2 = fluid.layers.log1p(data_x, out=res_log1p)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             res1, res_in = exe.run(fluid.default_main_program(),
@@ -820,7 +820,7 @@ class TestLog1p(TestActivation):
         with fluid.dygraph.guard():
             np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
             data_x = fluid.dygraph.to_variable(np_x)
-            z = paddle.log1p(data_x)
+            z = fluid.layers.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
         np.testing.assert_allclose(np_z, z_expected)

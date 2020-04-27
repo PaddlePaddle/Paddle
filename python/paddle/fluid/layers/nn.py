@@ -39,6 +39,14 @@ from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, c
 import paddle
 
 __all__ = [
+    'log1p',
+    'logsumexp',
+    'clamp',
+    'addmm',
+    'addcmul',
+    'bmm',
+    'nonzero',
+    'index_select',
     'fc',
     'embedding',
     'linear_chain_crf',
@@ -156,6 +164,7 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
+    'bmm',
     'maxout',
     'space_to_depth',
     'affine_grid',
@@ -201,6 +210,513 @@ def _elementwise_op_in_dygraph(x,
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
+
+
+def log1p(x, out=None, name=None):
+    """
+    Calculates the natural log of the given input tensor, element-wise.
+    .. math::
+        Out = \\ln(x+1)
+    Args:
+        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            # Graph Organizing
+            x = fluid.data(name="x", shape=[2,1], dtype="float32")
+            res = fluid.layers.log1p(x)
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            # Execute
+            x_i = np.array([[0], [1]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[0.], [0.6931472]]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.log1p(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log1p', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
+    """
+    This operator calculates the log of the sum of exponentials of the input Tensor.
+
+    .. math::
+       logsumexp(x) = \log\sum exp(x)
+
+
+    Parameters:
+       x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+       dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`,
+         sum all elements of :attr:`input` and return a Tensor variable with a single element,
+         otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+         the dimension to reduce is :math:`rank + dim[i]`.
+       keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor.
+         The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim`
+         is true, default value is False.
+       out (Variable), optional):  Enable user to explicitly specify an output variable to save result.
+       name (str, optional): The default value is None.  Normally there is no need for user to
+         set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+       Variable: The calcuated result Tensor/LoDTensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+          np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+          x = fluid.dygraph.to_variable(np_x)
+          print(fluid.layers.logsumexp(x).numpy())
+
+    ..  code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
+            x = fluid.dygraph.to_variable(np_x)
+            print(fluid.layers.logsumexp(x, dim=1).numpy())
+            print(fluid.layers.logsumexp(x, dim=[0, 2]).numpy())
+
+    """
+    op_type = 'logsumexp'
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+
+    # reduce_sum does not support float16
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+
+    exp_out = exp(x)
+    sum_out = reduce_sum(exp_out, dim, keepdim)
+
+    if out is not None:
+        check_variable_and_dtype(out, 'out', [x.dtype], op_type)
+        helper = LayerHelper(op_type, **locals())
+        helper.append_op(
+            type="log", inputs={"X": sum_out}, outputs={"Out": out})
+        return out
+
+    return log(sum_out, name)
+
+
+def clamp(input, min=None, max=None, output=None, name=None):
+    """
+    **clampe layer**
+
+    This operator clamps all elements in input into the range [ min, max ] and return
+    a resulting tensor as the following equation:
+
+    .. math::
+
+        Out = MIN(MAX(x, min), max) 
+
+    Args:
+        input (Variable): An input N-D Tensor or LoDTensor 
+            with data type float32, float64.   
+        min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
+            with shape [1] and type ``int32``, ``float32``, ``float64``.
+        max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
+            with shape [1] and type ``int32``, ``float32``, ``float64``.
+        output (Variable, optional): A tensor or LoDTensor. If :attr:`output` is None, 
+            a new tensor will be created as :attr:`output`. Default: None. 
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: A Tensor or LodTensor with the same data type and data shape as input's.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            in1 = np.array([[1.2,3.5],
+                            [4.5,6.4]]).astype('float32')
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.clamp(x1, min=3.5, max=5.0)
+                out2 = fluid.layers.clamp(x1, min=2.5)
+                print(out1.numpy())
+                # [[3.5, 3.5]
+                # [4.5, 5.0]]
+                print(out2.numpy())
+                # [[2.5, 3.5]
+                # [[4.5, 6.4]
+    """
+
+    assert min is not None or max is not None, "either min or max should be defined."
+
+    if min is not None:
+        check_type(min, 'min', (float, Variable), 'clamp')
+        if isinstance(min, Variable):
+            check_dtype(min.dtype, 'min', ['float32', 'float64', 'int32'],
+                        'clamp', '(When the type of min in clamp is Variable.)')
+    if max is not None:
+        check_type(max, 'max', (float, Variable), 'clamp')
+        if isinstance(max, Variable):
+            check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
+                        'clamp', '(When the type of max in clamp is Variable.)')
+
+    inputs = {'X': input}
+    attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+
+    if isinstance(min, Variable):
+        min.stop_gradient = True
+        inputs['Min'] = min
+    elif min is not None:
+        attrs['min'] = min
+
+    if isinstance(max, Variable):
+        max.stop_gradient = True
+        inputs['Max'] = max
+    elif max is not None:
+        attrs['max'] = max
+
+    helper = LayerHelper('clamp', **locals())
+    if output is None:
+        output = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+    helper.append_op(
+        type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
+
+    return output
+
+
+def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
+    """
+    **addmm**
+
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Variable): The input Tensor/LoDTensor to be added to the final result.
+        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
+        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        alpha (float): Coefficient of $x*y$.
+        beta (float): Coefficient of $input$.
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+
+    Examples:
+        ..  code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            input = fluid.data(name='input', shape=[2, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2], dtype='float32')
+            out = fluid.layers.addmm( input=input, x=x, y=y, alpha=5.0, beta=0.5 )
+
+            data_x = np.ones((2, 2)).astype(np.float32)
+            data_y = np.ones((2, 2)).astype(np.float32)
+            data_input = np.ones((2, 2)).astype(np.float32)
+
+            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(fluid.default_main_program(), 
+                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
+            print( np.array(results[0]) )
+            # [[10.5 10.5]
+            # [10.5 10.5]]
+    """
+    if in_dygraph_mode():
+        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        return out
+
+    inputs = {'Input': input, "X": x, "Y": y}
+    attrs = {'Alpha': alpha, 'Beta': beta}
+
+    helper = LayerHelper("addmm", **locals())
+    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    return out
+
+
+def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
+    """
+    Calculate the element-wise multiplication of tensor1 and tensor2,
+    then multiply the result by value, and add it to input. The shape of input,
+    tensor1, tensor2 should be broadcastable.
+    The equation is:
+
+    ..  math::
+        out = input + value * tensor1 * tensor2
+
+    Args:
+        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
+        out(Variable, Optional): The variable that specifies the output of the
+            operator, which can be Variable that has been created in the
+            program. The default value is None, and a new Variable will be
+            created to save the output. Default: None.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
+
+    Returns:
+        out(Variable): The output result. A Tensor with the same data type as input's.
+
+    Examples:
+        .. code-block:: python
+
+
+          import paddle
+          import paddle.fluid as fluid
+          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
+          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
+          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
+          data = fludi.layers.addcmul(input, tensor1, tensor2, value=1.0)
+    """
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(
+        tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(
+        tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    if convert_dtype(input.dtype) in ['float32', 'float64']:
+        check_type(value, 'value', float, 'addcmul')
+    if convert_dtype(input.dtype) in ['int32', 'int64']:
+        check_type(value, 'value', int, 'addcmul')
+
+    if out is not None:
+        assign(
+            elementwise_add(input, elementwise_mul(tensor1, tensor2) * value),
+            out)
+    else:
+        out = elementwise_add(input, elementwise_mul(tensor1, tensor2) * value)
+    return out
+
+
+def bmm(x, y, name=None):
+    """
+    Applies batched matrix multiplication to two tensors.
+    Both of the two input tensors must be three-dementional and share the same batch size.
+    if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+    Examples:
+        import paddle
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
+        out = fluid.layers.bmm(x, y)
+    
+        # In dygraph mode:
+        # size input1: (2, 2, 3) and input2: (2, 3, 2)
+        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = fluid.layers.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+    """
+
+    helper = LayerHelper('bmm', **locals())
+    if in_dygraph_mode():
+        return core.ops.bmm(x, y)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def nonzero(input, as_tuple=False):
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input` 
+    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
+    in `input`, each containing the indices (in that dimension) of all non-zero elements 
+    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If 
+    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
+    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
+    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
+
+    Args:
+        inputs (Variable): The input tensor variable.
+        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+
+    Returns:
+        Variable. The data type is int64.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data1 = np.array([[1.0, 0.0, 0.0],
+                              [0.0, 2.0, 0.0],
+                              [0.0, 0.0, 3.0]])
+            data2 = np.array([0.0, 1.0, 0.0, 3.0])
+            data3 = np.array([0.0, 0.0, 0.0])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(data1)
+                x2 = fluid.dygraph.to_variable(data2)
+                x3 = fluid.dygraph.to_variable(data3)
+                out_z1 = fluid.layers.nonzero(x1)
+                print(out_z1.numpy())
+                #[[0 0]
+                # [1 1]
+                # [2 2]]
+                out_z1_tuple = fluid.layers.nonzero(x1, as_tuple=True)
+                for out in out_z1_tuple:
+                    print(out.numpy())
+                #[[0]
+                # [1]
+                # [2]]
+                #[[0]
+                # [1]
+                # [2]]
+                out_z2 = fluid.layers.nonzero(x2)
+                print(out_z2.numpy())
+                #[[1]
+                # [3]]
+                out_z2_tuple = fluid.layers.nonzero(x2, as_tuple=True)
+                for out in out_z2_tuple:
+                    print(out.numpy())
+                #[[1]
+                # [3]]
+                out_z3 = fluid.layers.nonzero(x3)
+                print(out_z3.numpy())
+                #[]
+                out_z3_tuple = fluid.layers.nonzero(x3, as_tuple=True)
+                for out in out_z3_tuple:
+                    print(out.numpy())
+                #[]                    
+    """
+    list_out = []
+    shape = input.shape
+    rank = len(shape)
+
+    if in_dygraph_mode():
+        outs = core.ops.where_index(input)
+    else:
+        outs = where(input)
+
+    if not as_tuple:
+        return outs
+    elif rank == 1:
+        return tuple([outs])
+    else:
+        for i in range(rank):
+            list_out.append(
+                slice(
+                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+        return tuple(list_out)
+
+
+def index_select(input, index, dim=0):
+    """
+    Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
+    the entries in `index` which is a Tensor. The returned tensor has the same number 
+    of dimensions as the original `input` tensor. The dim-th dimension has the same 
+    size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
+
+    Args:
+        input (Variable): The input tensor variable.
+        index (Variable): The 1-D tensor containing the indices to index.
+        dim (int): The dimension in which we index.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                             [5.0, 6.0, 7.0, 8.0],
+                             [9.0, 10.0, 11.0, 12.0]])
+            data_index = np.array([0, 1, 1]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                out_z1 = fluid.layers.index_select(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3. 4.]
+                # [5. 6. 7. 8.]
+                # [5. 6. 7. 8.]]
+                out_z2 = fluid.layers.index_select(x, index, dim=1)
+                print(out_z2.numpy())
+                #[[ 1.  2.  2.]
+                # [ 5.  6.  6.]
+                # [ 9. 10. 10.]]
+    """
+    helper = LayerHelper("index_select", **locals())
+    if in_dygraph_mode():
+        return core.ops.index_select(input, index, 'dim', dim)
+
+    check_variable_and_dtype(input, 'x',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    helper.append_op(
+        type='index_select',
+        inputs={'X': input,
+                'Index': index},
+        outputs={'Out': out},
+        attrs={'dim': dim})
+    return out
 
 
 def fc(input,
