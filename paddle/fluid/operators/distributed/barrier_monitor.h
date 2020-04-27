@@ -17,6 +17,7 @@
 #include <gflags/gflags.h>
 
 #include <chrono>  // NOLINT
+#include <deque>
 #include <functional>
 #include <future>  // NOLINT
 #include <memory>
@@ -30,7 +31,6 @@
 
 #include <ThreadPool.h>
 
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -42,14 +42,77 @@ enum BarrierType { kSendBarrier, kRecvBarrier };
 
 constexpr int64_t kMaxWaitMS = 1000;
 
+template <typename T>
+class BlockingQueue {
+ public:
+  explicit BlockingQueue(size_t capacity) : capacity_(capacity) {
+    PADDLE_ENFORCE_GT(capacity_, 0, "The capacity must be greater than 0.");
+  }
+
+  bool Push(const T &elem) {
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      queue_.push_back(elem);
+    }
+    cv_.notify_one();
+    return true;
+  }
+
+  bool Push(T &&elem) {
+    {
+      std::unique_lock<std::mutex> lock(mutex_);
+      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
+      queue_.emplace_back(std::move(elem));
+    }
+    cv_.notify_one();
+    return true;
+  }
+
+  T Pop() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [=] { return !queue_.empty(); });
+    T rc(std::move(queue_.front()));
+    queue_.pop_front();
+    cv_.notify_one();
+    return rc;
+  }
+
+  size_t Cap() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return capacity_;
+  }
+
+  size_t Size() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return queue_.size();
+  }
+
+  void Clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::deque<T>().swap(queue_);
+  }
+
+ private:
+  const size_t capacity_;
+  std::deque<T> queue_;
+
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
+};
+
 class BarrierMonitor {
  public:
   explicit BarrierMonitor(int workers) : workers_(workers) {
     PADDLE_ENFORCE_GT(workers, 0, "trainers must have one or more");
 
     barrier_type = kRecvBarrier;
-    send_barrier_queue = std::make_shared<BlockingQueue<int>>(workers);
-    recv_barrier_queue = std::make_shared<BlockingQueue<int>>(workers);
+    send_barrier_queue =
+        std::make_shared<BlockingQueue<int>>(new BlockingQueue<int>(workers));
+    recv_barrier_queue =
+        std::make_shared<BlockingQueue<int>>(new BlockingQueue<int>(workers));
 
     running_ = true;
     monitor_thread_.reset(
@@ -61,7 +124,7 @@ class BarrierMonitor {
     if (monitor_thread_) monitor_thread_->join();
   }
 
-  static BarrierMonitor Init(int workers) {
+  static BarrierMonitor *Init(int workers) {
     std::call_once(init_flag_, &BarrierMonitor::InitImpl, workers);
     return GetInstance();
   }
@@ -73,7 +136,7 @@ class BarrierMonitor {
   void Monitor();
 
   void Swap();
-  void Swap(std::string barrier_status);
+  void Swap(BarrierType barrier);
 
   bool IsReady();
 
@@ -81,7 +144,7 @@ class BarrierMonitor {
 
   bool Wait();
 
-  void WaitBarrierDone(barrier);
+  void WaitBarrierDone(BarrierType barrier);
 
  private:
   // Init is called by GetInstance.
@@ -103,8 +166,8 @@ class BarrierMonitor {
   std::mutex mutex_;
   BarrierType barrier_type;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
-  std::shared_ptr<framework::BlockingQueue<int>> send_barrier_queue;
-  std::shared_ptr<framework::BlockingQueue<int>> recv_barrier_queue;
+  std::shared_ptr<BlockingQueue<int>> send_barrier_queue;
+  std::shared_ptr<BlockingQueue<int>> recv_barrier_queue;
 };
 
 }  // namespace distributed
