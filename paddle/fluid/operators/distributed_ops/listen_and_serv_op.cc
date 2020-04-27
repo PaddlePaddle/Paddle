@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
@@ -124,6 +125,7 @@ void ListenAndServOp::RunSyncLoop(
   for (size_t i = 1; i < program->Size(); ++i) {
     optimize_blocks_list.push_back(i);
   }
+
   auto optimize_prepared = executor->Prepare(*program, optimize_blocks_list);
   // Insert placeholder for block0 which holds current op itself,
   // NOTE the first block in `optimize_prepared` should never be ran.
@@ -133,21 +135,18 @@ void ListenAndServOp::RunSyncLoop(
 
   // Trainers will get all parameters from pserver in the
   // startup program, so we will wait RequestGet first
-  rpc_service_->SetCond(distributed::kRequestGet);
-  rpc_service_->WaitBarrier(distributed::kRequestGet);
-  rpc_service_->ResetBarrierCounter();
+  auto *barrier = distributed::BarrierMonitor::GetInstance();
 
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    VLOG(3) << "wait all clients to send gradient";
-    rpc_service_->SetCond(distributed::kRequestSend);
-    VLOG(3) << "wait all clients to send send_barrier";
-    rpc_service_->WaitBarrier(distributed::kRequestSend);
+    VLOG(3) << "switch to kSendBarrier to receive Grad from trainers";
+    barrier->WaitBarrierDone(kSendBarrier);
+    VLOG(3) << "wait kSendBarrier to receive Grad from trainers done";
 
     if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      rpc_service_->SetCond(distributed::kRequestGet);
+      barrier->Swap(kRecvBarrier);
       break;
     }
 
@@ -178,12 +177,9 @@ void ListenAndServOp::RunSyncLoop(
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
-    VLOG(3) << "wait all clients to get parameters back";
-    rpc_service_->SetCond(distributed::kRequestGet);
-    VLOG(3) << "wait all clients to send fetch_barrier";
-    rpc_service_->WaitBarrier(distributed::kRequestGet);
-    VLOG(3) << "ResetBarrierCounter";
-    rpc_service_->ResetBarrierCounter();
+    VLOG(3) << "switch to kRecvBarrier to push params to trainers";
+    barrier->WaitBarrierDone(kRecvBarrier);
+    VLOG(3) << "kRecvBarrier to push params to trainers done";
   }  // while(true)
 }
 
@@ -472,11 +468,15 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   if (distributed_mode == distributed::DistributedMode::kSync) {
     // start the server listening after all member initialized.
+
+    auto *barrier = distributed::BarrierMonitor::Init(fan_in);
+    barrier->Swap(kRecvBarrier);
+
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
     rpc_service_->WaitServerReady();
 
-    distributed::BarrierMonitor::Init(fan_in);
+    barrier->WaitBarrierDone(kRecvBarrier);
 
     CacheVarsType(inputs, recv_scope);
 

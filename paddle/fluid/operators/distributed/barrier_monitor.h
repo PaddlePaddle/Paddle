@@ -48,6 +48,9 @@ class BarrierMonitor {
     PADDLE_ENFORCE_GT(workers, 0, "trainers must have one or more");
 
     barrier_type = kRecvBarrier;
+    send_barrier_queue = std::make_shared<BlockingQueue<int>>(workers);
+    recv_barrier_queue = std::make_shared<BlockingQueue<int>>(workers);
+
     running_ = true;
     monitor_thread_.reset(
         new std::thread(std::bind(&BarrierMonitor::Monitor, this)));
@@ -58,8 +61,9 @@ class BarrierMonitor {
     if (monitor_thread_) monitor_thread_->join();
   }
 
-  static void Init(int workers) {
+  static BarrierMonitor Init(int workers) {
     std::call_once(init_flag_, &BarrierMonitor::InitImpl, workers);
+    return GetInstance();
   }
 
   static BarrierMonitor *GetInstance() { return monitor_.get(); }
@@ -69,16 +73,15 @@ class BarrierMonitor {
   void Monitor();
 
   void Swap();
+  void Swap(std::string barrier_status);
 
   bool IsReady();
 
   void Invalid();
 
-  bool Wait() {
-    std::unique_lock<std::mutex> lk(mutex_);
-    cv_.wait(lk, [this] { return (release_); });
-    return valid_;
-  }
+  bool Wait();
+
+  void WaitBarrierDone(barrier);
 
  private:
   // Init is called by GetInstance.

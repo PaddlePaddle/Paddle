@@ -90,6 +90,14 @@ void BarrierMonitor::Invalid() {
 }
 
 void BarrierMonitor::Swap() {
+  if (barrier_type == kSendBarrier) {
+    Swap(kRecvBarrier);
+  } else {
+    Swap(kSendBarrier);
+  }
+}
+
+void BarrierMonitor::Swap(std::string barrier_status) {
   std::unique_lock<std::mutex> lck(mutex_);
 
   valid_ = true;
@@ -103,6 +111,17 @@ void BarrierMonitor::Swap() {
     recv_barrier_queue->Clear();
   }
   cv_.notify_all();
+}
+
+bool BarrierMonitor::Wait() {
+  std::unique_lock<std::mutex> lk(mutex_);
+  cv_.wait(lk, [this] { return (release_); });
+  return valid_;
+}
+
+void BarrierMonitor::WaitBarrierDone(barrier) {
+  std::unique_lock<std::mutex> lk(mutex_);
+  cv_.wait(lk, [this] { return (barrier_type != barrier); });
 }
 
 std::once_flag BarrierMonitor::init_flag_;
