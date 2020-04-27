@@ -14,7 +14,8 @@
 
 from __future__ import print_function
 
-from paddle.fluid.dygraph.jit import declarative
+from jit import declarative
+from dygraph_to_static import ProgramTranslator
 
 import numpy as np
 import unittest
@@ -67,7 +68,7 @@ class TestPool2D(unittest.TestCase):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
-    def run_dygraph_mode(self):
+    def train(self, to_static=False):
         with fluid.dygraph.guard():
             dy_layer = self.dygraph_class()
             prediction = dy_layer(x=self.data)
@@ -76,19 +77,15 @@ class TestPool2D(unittest.TestCase):
 
             return prediction.numpy()
 
-    def run_static_mode(self):
-        startup_prog = fluid.Program()
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog, startup_prog):
-            dy_layer = self.dygraph_class()
-            out = dy_layer(x=self.data)
-            if isinstance(out, tuple):
-                return out[0].numpy()
-            return out.numpy()
+    def train_static(self):
+        return self.train(to_static=True)
 
-    def test_static_output(self):
-        dygraph_res = self.run_dygraph_mode()
-        static_res = self.run_static_mode()
+    def train_dygraph(self):
+        return self.train(to_static=False)
+
+    def test_declarative(self):
+        dygraph_res = self.train_dygraph()
+        static_res = self.train_static()
 
         self.assertTrue(
             np.allclose(dygraph_res, static_res),

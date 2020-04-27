@@ -32,7 +32,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
-import paddle.compat as cpt
+from dygraph_to_static.partial_program import partial_program_from
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -204,9 +204,9 @@ class ProgramCache(object):
                 if isinstance(batch_data, core.VarBase):
                     feed_layer.stop_gradient = batch_data.stop_gradient
             else:
-                raise ValueError(
-                    "Input {} should be numpy.ndarray, but received {}.".format(
-                        feed_name, type(batch_data)))
+                print("Input {} should be numpy.ndarray, but received {}.".
+                      format(feed_name, type(batch_data)))
+                feed_layer = batch_data
 
             self._inputs.append(feed_layer)
 
@@ -387,14 +387,17 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
-            logger.info(
-                "The ProgramTranslator.get_output doesn't work in dygraph "
-                "mode or set ProgramTranslator.enable to False. We will "
-                "just return dygraph output.")
+            # print(self.enable_declarative)
+            # logger.info(
+            #     "The ProgramTranslator.get_output doesn't work in dygraph "
+            #     "mode or set ProgramTranslator.enable to False. We will "
+            #     "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-
-        if dygraph_func in self.partial_program_dict:
-            partial_program_layer = self.partial_program_dict[dygraph_func]
+        #TODO: hash key
+        hash_key = (dygraph_func, args[0]) if isinstance(
+            args[0], layers.Layer) else dygraph_func
+        if hash_key in self.partial_program_dict:
+            partial_program_layer = self.partial_program_dict[hash_key]
             # TODO: parse input
             if isinstance(args[0], layers.Layer):
                 args = args[1:]
@@ -405,16 +408,18 @@ class ProgramTranslator(object):
         if isinstance(args[0], layers.Layer):
             args = args[1:]
 
-        return self.partial_program_dict[dygraph_func](args, **kwargs)
+        return self.partial_program_dict[hash_key](args, **kwargs)
 
     @switch_to_static_graph
     def _build_once(self, dygraph_func, *args, **kwargs):
+        hash_key = (dygraph_func, args[0]) if isinstance(
+            args[0], layers.Layer) else dygraph_func
         program_cache = ProgramCache()
         program_cache.build_program_and_return_output(dygraph_func, *args,
                                                       **kwargs)
 
         partial_program_layer = partial_program_from(program_cache)
-        self.partial_program_dict[dygraph_func] = partial_program_layer
+        self.partial_program_dict[hash_key] = partial_program_layer
 
     def get_func(self, dygraph_func):
         """

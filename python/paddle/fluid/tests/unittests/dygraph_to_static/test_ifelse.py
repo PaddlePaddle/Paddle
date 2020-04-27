@@ -17,8 +17,8 @@ from __future__ import print_function
 import numpy as np
 import paddle.fluid as fluid
 import unittest
-
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from dygraph_to_static.program_translator import ProgramTranslator
+from jit import declarative
 
 from ifelse_simple_func import *
 
@@ -41,16 +41,15 @@ class TestDygraphIfElse(unittest.TestCase):
         self.dyfunc = dyfunc_with_if_else
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(self.x)
-            # Transform into static graph
-            out = dygraph_to_static_func(self.dyfunc)(x_v)
-            exe = fluid.Executor(place)
-            ret = exe.run(main_program, fetch_list=out)
-            return ret
+        return self._run(to_static=True)
 
     def _run_dygraph(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+
         with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             ret = self.dyfunc(x_v)
@@ -187,18 +186,15 @@ class TestDygraphIfElseNet(unittest.TestCase):
         self.Net = NetWithControlFlowIf
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            net = self.Net()
-            x_v = fluid.layers.assign(self.x)
-            # Transform into static graph
-            out = net(x_v)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            ret = exe.run(main_program, fetch_list=out)
-            return ret[0]
+        return self._run(to_static=True)
 
     def _run_dygraph(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+
         with fluid.dygraph.guard(place):
             net = self.Net()
             x_v = fluid.dygraph.to_variable(self.x)
@@ -214,6 +210,7 @@ def relu(x):
     return fluid.layers.relu(x)
 
 
+@declarative
 def call_external_func(x, label=None):
     if fluid.layers.mean(x) < 0:
         x_v = x - 1
@@ -234,7 +231,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 
 
 class NetWithExternalFunc(fluid.dygraph.Layer):
-    @dygraph_to_static_func
+    @declarative
     def forward(self, x, label=None):
         if fluid.layers.mean(x) < 0:
             x_v = x - 1

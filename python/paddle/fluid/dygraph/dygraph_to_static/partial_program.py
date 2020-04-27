@@ -32,8 +32,12 @@ class PartialProgramLayer(layers.Layer):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
-        self._input_names = [var.name for var in inputs]
-        self._output_names = [var.name for var in outputs]
+        self._input_names = [
+            var.name for var in inputs if isinstance(var, framework.Variable)
+        ]
+        self._output_names = [
+            var.name for var in outputs if isinstance(var, framework.Variable)
+        ]
         self._forward_program = main_program
 
         self._program = self._append_backward_desc()
@@ -51,7 +55,9 @@ class PartialProgramLayer(layers.Layer):
             targets.append(program.global_block().var(out))
 
         # Step 2. append backward
-        backward.gradients(targets=targets, inputs=[])
+        # TODO: add warning
+        if targets:
+            backward.gradients(targets=targets, inputs=[])
 
         return program
 
@@ -60,57 +66,24 @@ class PartialProgramLayer(layers.Layer):
         for param in parameters:
             if append_grad_suffix(param.name) in self._program.block(0).vars:
                 params.append(param)
+
+        # NOTE: if user set sparse gradient mode, the param's gradient
+        # will be SelectedRows, not LoDTensor. But tracer will just
+        # set param grad VarBase by forward VarBase(LoDTensor)
+        # If we don't change grad_var type here, RunProgramOp need
+        # transform SelectedRows to LoDTensor forcibly, it may not
+        # be user wanted result.
+        # if not self._set_type:
+        self._set_grad_type(params)
+
         return params
 
     def forward(self, inputs):
-        # Step 1. prepare inputs, outputs, attrs
-        # todo: only feed data right data
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
-
-        input_vars = []
-        for i, value in enumerate(inputs):
-            if not isinstance(value, (np.ndarray, core.VarBase)):
-                print(
-                    "The type of inputs.value in forward must be numpy array or Variable(VarBase), but received %s."
-                    % type(value))
-                continue
-            # NOTE: In order to unify the API, firstly convert the input to VarBase
-            if isinstance(value, np.ndarray):
-                var = core.VarBase(
-                    value=value,
-                    name=self._input_names[i],
-                    persistable=False,
-                    place=framework._current_expected_place(),
-                    zero_copy=True)  # TODO: zero_copy only used in CPU
-            else:
-                var = value
-                # TODO: here may have important name set by user
-                var.name = self._input_names[i]
-            input_vars.append(var)
-
-        out_vars = []
-        for var in self.outputs:
-            var_desc = var.desc
-            var_base = core.VarBase(var_desc.dtype(),
-                                    var_desc.shape(),
-                                    var_desc.name(), var_desc.type(), False)
-            out_vars.append(var_base)
-
-        # hold forward variables
-        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                     "program_out_scope",
-                                     core.VarDesc.VarType.STEP_SCOPES, True)
-        tmp_scope_vec.value().set_scope(self._inner_scope)
-
-        # Step 2. run program by op
-        # TODO: Params can be null.
-        if not self._params:
-            self._params = input_vars
+        in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
 
         framework._dygraph_tracer().trace_op(
             type='run_program',
-            inputs={'X': input_vars,
+            inputs={'X': in_vars,
                     'Params': self._params},
             outputs={'Out': out_vars,
                      'OutScope': tmp_scope_vec},
@@ -121,15 +94,60 @@ class PartialProgramLayer(layers.Layer):
                 'is_test': self._is_test
             })
 
-        # NOTE: [ why need set param's gradient type here ]
-        # if user set sparse gradient mode, the param's gradient
-        # will be SelectedRows, not LoDTensor. But tracer will just
-        # set param grad VarBase by forward VarBase(LoDTensor)
-        # If we don't change grad_var type here, RunProgramOp need
-        # transform SelectedRows to LoDTensor forcely, it may not
-        # be user wanted result.
-        # if not self._set_type:
-        for param in self._params:
+        outs = out_vars
+        if len(out_vars) == 1:
+            outs = out_vars[0]
+        return outs
+
+    def _prepare(self, inputs):
+        """
+        prepare inputs, outputs, attrs
+        """
+        if not isinstance(inputs, (list, tuple)):
+            inputs = [inputs]
+
+        input_vars = []
+        for i, value in enumerate(inputs):
+            if isinstance(value, np.ndarray):
+                var = core.VarBase(
+                    value=value,
+                    name=self._input_names[i],
+                    persistable=False,
+                    place=framework._current_expected_place(),
+                    zero_copy=True)  # TODO: zero_copy only used in CPU
+            elif isinstance(value, core.VarBase):
+                var = value
+                var.name = self._input_names[i]
+            else:
+                continue
+            input_vars.append(var)
+
+        out_vars = []
+        for var in self.outputs:
+            var_desc = var.desc
+            var_base = core.VarBase(var_desc.dtype(),
+                                    var_desc.shape(),
+                                    var_desc.name(), var_desc.type(), False)
+            out_vars.append(var_base)
+        # TODO: remove this.
+        if not out_vars:
+            out_vars = fake_var_base()
+        if not input_vars:
+            input_vars = fake_var_base()
+        if not self._params:
+            self._params = fake_var_base()
+
+        # hold forward variables
+        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
+                                     "program_out_scope",
+                                     core.VarDesc.VarType.STEP_SCOPES, True)
+
+        tmp_scope_vec.value().set_scope(self._inner_scope)
+
+        return input_vars, out_vars, tmp_scope_vec
+
+    def _set_grad_type(self, params):
+        for param in params:
             grad_name = param.name + core.grad_var_suffix()
             grad_var = self._program.desc.block(0).find_var(
                 cpt.to_bytes(grad_name))
@@ -138,11 +156,16 @@ class PartialProgramLayer(layers.Layer):
                 continue
             param._set_grad_type(grad_var.type())
 
-        # Step 3. prepare output, keep same form with inputs
-        outs = out_vars
-        if len(out_vars) == 1:
-            outs = out_vars[0]
-        return outs
+
+# TODO: remove it.
+def fake_var_base():
+    var = core.VarBase(
+        value=[1],
+        name='fake',
+        persistable=False,
+        place=framework._current_expected_place())
+
+    return var
 
 
 def append_grad_suffix(name):

@@ -36,9 +36,9 @@ class TestCacheProgram(unittest.TestCase):
     def test_cache(self):
         prev_ops, cur_ops = Counter(), Counter()
         prev_out, cur_out = None, None
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             static_net = self.dygraph_class()
+            print("cache: ", id(static_net.forward))
             for batch_id in range(self.batch_num):
                 out = static_net(self.data)
                 # Check outputs
@@ -51,9 +51,9 @@ class TestCacheProgram(unittest.TestCase):
                 ])
                 if batch_id > 0:
                     prev_out_numpy = prev_out[0].numpy() if isinstance(
-                        prev_out, tuple) else prev_out.numpy()
+                        prev_out, (tuple, list)) else prev_out.numpy()
                     cur_out_numpy = cur_out[0].numpy() if isinstance(
-                        cur_out, tuple) else cur_out.numpy()
+                        cur_out, (tuple, list)) else cur_out.numpy()
                     self.assertTrue(
                         np.allclose(prev_out_numpy, cur_out_numpy),
                         msg='Output in previous batch is {}\n Output in current batch is \n{}'
@@ -75,24 +75,18 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         self.batch_num = 5
 
     def train_static(self):
-        main_program = fluid.Program()
-        loss_data = []
-        with fluid.program_guard(main_program):
-            static_net = self.dygraph_class()
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-            # set optimizer
-            program_translator = ProgramTranslator()
-            program_translator.set_optimizer(adam, index_of_loss=1)
-
-            for batch_id in range(self.batch_num):
-                pred, avg_loss = static_net(self.data)
-                loss_data.append(np.array(avg_loss.numpy()))
-
-        return loss_data
+        return self.train(to_static=True)
 
     def train_dygraph(self):
+        return self.train(to_static=False)
+
+    def train(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
+
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
+            print(to_static, id(dygraph_net.forward))
             adam = fluid.optimizer.AdamOptimizer(
                 learning_rate=0.001, parameter_list=dygraph_net.parameters())
             loss_data = []
@@ -114,19 +108,19 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
 
-    def test_exception(self):
-        main_program = fluid.Program()
-        loss_data = []
-        with fluid.program_guard(main_program):
-            static_net = self.dygraph_class()
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-            # set optimizer
-            program_translator = ProgramTranslator()
-
-            with self.assertRaisesRegexp(ValueError, "has already been set"):
-                for batch_id in range(self.batch_num):
-                    program_translator.set_optimizer(adam, index_of_loss=1)
-                    static_net(self.data)
+    # def test_exception(self):
+    #     main_program = fluid.Program()
+    #     loss_data = []
+    #     with fluid.program_guard(main_program):
+    #         static_net = self.dygraph_class()
+    #         adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
+    #         # set optimizer
+    #         program_translator = ProgramTranslator()
+    #
+    #         with self.assertRaisesRegexp(ValueError, "has already been set"):
+    #             for batch_id in range(self.batch_num):
+    #                 program_translator.set_optimizer(adam, index_of_loss=1)
+    #                 static_net(self.data)
 
 
 def simple_func(x):
@@ -168,11 +162,12 @@ def sum_under_while(limit):
 
 class TestToOutputWithCache(unittest.TestCase):
     def test_output(self):
-        ret = sum_even_util_limit(80, 10)
-        self.assertEqual(ret.numpy(), 30)
+        with fluid.dygraph.guard():
+            ret = sum_even_util_limit(80, 10)
+            self.assertEqual(ret.numpy(), 30)
 
-        ret = sum_under_while(100)
-        self.assertEqual(ret.numpy(), 5050)
+            ret = sum_under_while(100)
+            self.assertEqual(ret.numpy(), 5050)
 
 
 if __name__ == '__main__':
