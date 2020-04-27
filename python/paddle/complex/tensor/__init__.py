@@ -14,5 +14,9 @@
 
 from . import math
 from .math import *
+from . import manipulation
+from .manipulation import *
+from . import linalg
+from .linalg import *
 
-__all__ = math.__all__ + []
+__all__ = math.__all__ + manipulation.__all__ + linalg.__all__
