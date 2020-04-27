@@ -36,7 +36,7 @@ from .creation import arange  #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
-from .creation import full_like  #DEFINE_ALIAS
+# from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
 from .creation import meshgrid  #DEFINE_ALIAS

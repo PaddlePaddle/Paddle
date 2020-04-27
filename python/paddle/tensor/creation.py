@@ -40,62 +40,11 @@ __all__ = [
     'arrange',
     'eye',
     'full',
-    'full_like',
+    #'full_like',
     'triu',
     'tril',
     'meshgrid',
 ]
-
-
-def full_like(input,
-              fill_value,
-              out=None,
-              dtype=None,
-              device=None,
-              stop_gradient=True,
-              name=None):
-    """
-    **full_like**
-    This function creates a tensor filled with `fill_value` which has identical shape and dtype 
-    with `input`.
-    Args:
-        input(Variable): The input tensor which specifies shape and dtype.
-        fill_value: The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
-        out(Variable): The output tensor.
-    Returns:
-        out(Variable): The tensor variable storing the output.
-    Examples:
-        .. code-block:: python
-          import paddle
-          import paddle.fluid as fluid
-          import numpy as np
-
-          input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-          output = paddle.full_like(input, 2.0)
-          exe = fluid.Executor(fluid.CPUPlace())
-          exe.run(fluid.default_startup_program())
-          img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-          res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
-          print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
-    """
-    helper = LayerHelper("full_like", **locals())
-
-    if dtype is None:
-        dtype = 'float32'
-
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    helper.append_op(
-        type='fill_any_like',
-        inputs={'X': [input]},
-        attrs={'value': fill_value},
-        outputs={'Out': [out]})
-    out.stop_gradient = stop_gradient
-
-    return out
 
 
 def linspace(start, stop, num, dtype, out=None, device=None, name=None):
