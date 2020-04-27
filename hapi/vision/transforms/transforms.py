@@ -56,7 +56,9 @@ __all__ = [
 
 
 class Compose(object):
-    """Composes several transforms together.
+    """
+    Composes several transforms together use for composing list of transforms
+    together for a dataset transform.
 
     Args:
         transforms (list of ``Transform`` objects): list of transforms to compose.
