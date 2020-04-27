@@ -162,25 +162,25 @@ Image classification models performance was measured using a single thread. The 
 
 >**Intel(R) Xeon(R) Gold 6271**
 
-|    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32) |
-| :----------: | :-------------: | :-----------------: | :---------------: |
-| MobileNet-V1 |      74.36      |       210.68        |       2.83        |
-| MobileNet-V2 |      89.59      |       186.55        |       2.08        |
-|  ResNet101   |      7.21       |        26.41        |       3.67        |
-|   ResNet50   |      13.23      |        48.89        |       3.70        |
-|    VGG16     |      3.49       |        10.11        |       2.90        |
-|    VGG19     |      2.84       |        8.69         |       3.06        |
+|    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32)  |
+| :----------: | :-------------: | :-----------------: | :---------------:  |
+| MobileNet-V1 |      77.00      |       210.76        |      2.74          |
+| MobileNet-V2 |      88.43      |       182.47        |      2.06          |
+|  ResNet101   |      7.20       |        25.88        |      3.60          |
+|   ResNet50   |      13.26      |        47.44        |      3.58          |
+|    VGG16     |      3.48       |        10.11        |      2.90          |
+|    VGG19     |      2.83       |        8.77         |      3.10          |
 
 >**Intel(R) Xeon(R) Gold 6148**
 
 |    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32) |
 | :----------: | :-------------: | :-----------------: | :---------------: |
-| MobileNet-V1 |      75.23      |       111.15        |       1.48        |
-| MobileNet-V2 |      86.65      |       127.21        |       1.47        |
-|  ResNet101   |      6.61       |        10.60        |       1.60        |
-|   ResNet50   |      12.42      |        19.74        |       1.59        |
-|    VGG16     |      3.31       |        4.74         |       1.43        |
-|    VGG19     |      2.68       |        3.91         |       1.46        |
+| MobileNet-V1 |      75.23      |       103.63        |      1.38         |
+| MobileNet-V2 |      86.65      |       128.14        |      1.48         |
+|  ResNet101   |      6.61       |       10.79         |      1.63         |
+|   ResNet50   |      12.42      |       19.65         |      1.58         |
+|    VGG16     |      3.31       |        4.74         |      1.43         |
+|    VGG19     |      2.68       |        3.91         |      1.46         |
 
 Notes:
 
@@ -209,16 +209,16 @@ Notes:
 
 |  Model  |     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Ratio (FP32/INT8) |
 |:------------:|:----------------------:|:-------------------:|:---------:|:---------:|
-| Ernie | 1 thread     |        256.11        |     93.80    |   2.73   |
-| Ernie | 20 threads   |        30.06        |    16.88    |   1.78   |
+| Ernie | 1 thread     |       236.72        |     83.70    |   2.82x   |
+| Ernie | 20 threads   |       27.40         |     15.01    |   1.83x   |
 
 
 >**Intel(R) Xeon(R) Gold 6148**
 
 | Model |  Threads   | FP32 Latency (ms) | QAT INT8 Latency (ms) | Ratio (FP32/INT8) |
 | :---: | :--------: | :---------------: | :-------------------: | :---------------: |
-| Ernie |  1 thread  |      254.20       |        169.54         |       1.50        |
-| Ernie | 20 threads |       30.99       |         21.81         |       1.42        |
+| Ernie |  1 thread  |    248.42         |       169.30           |       1.46       |
+| Ernie | 20 threads |    28.92          |       20.83            |       1.39       |
 
 ## 6. How to reproduce the results
 

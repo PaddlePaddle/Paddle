@@ -8,7 +8,6 @@ Follow PaddlePaddle [installation instruction](https://github.com/PaddlePaddle/m
 
 ```bash
 cmake ..  -DWITH_TESTING=ON -WITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_MKL=ON -DWITH_MKLDNN=ON -DWITH_INFERENCE_API_TEST=ON -DON_INFER=ON
-
 ```
 
 Note: MKL-DNN and MKL are required.
@@ -84,7 +83,7 @@ Available options in the above command and their descriptions are as follows:
 - **No parameters set:** The script will download the ILSVRC2012_img_val data from server and convert it into a binary file.
 - **local:** Once set, the script will process user local data.
 - **data_dir:** Path to user local dataset. Default value: None.
-- **label_list:** Path to path_to_one_image-path_to_its_label list file. Default value: `val_list.txt`.
+- **label_list:** Path to image_label list file. Default value: `val_list.txt`.
 - **output_file:** Path to the generated binary file. Default value: `imagenet_small.bin`.
 - **data_dim:** The length and width of the preprocessed image. The default value: 224.
 
@@ -145,7 +144,7 @@ Available options in the above command and their descriptions are as follows:
 - **No parameters set:** The script will download the full pascalvoc test dataset and preprocess and convert it into a binary file.
 - **local:** Once set, the script will process user local data.
 - **data_dir:** Path to user local dataset. Default value: None.
-- **img_annotation_list:** Path to image_path-image categ list. Default value: `test_100.txt`.
+- **img_annotation_list:** Path to img_annotation list file. Default value: `test_100.txt`.
 - **label_file:** Path to labels list. Default value: `label_list`.
 - **output_file:** Path to generated binary file. Default value: `pascalvoc_small.bin`.
 
