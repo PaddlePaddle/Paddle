@@ -6,7 +6,7 @@ set(CPU_NUM_THREADS_ON_CI 4 CACHE STRING "Run multi-threads on CI to reduce CI t
 set(WARMUP_BATCH_SIZE 100 CACHE STRING "Default warmup_batch_size.")
 
 function(inference_download INSTALL_DIR URL FILENAME)
-  message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
+  message(STATUS "Download inference test stuff from ${URL}/${FILENAME} to ${INSTALL_DIR}/${FILENAME}")
   string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
   ExternalProject_Add(
       extern_inference_download_${FILENAME_EX}
@@ -24,7 +24,7 @@ function(inference_download INSTALL_DIR URL FILENAME)
 endfunction()
 
 function(inference_download_and_uncompress INSTALL_DIR URL FILENAME)
-  message(STATUS "Download inference test stuff from ${URL}/${FILENAME}")
+  message(STATUS "Download inference test stuff from ${URL}/${FILENAME} to ${INSTALL_DIR}/${FILENAME}")
   string(REGEX REPLACE "[-%.]" "_" FILENAME_EX ${FILENAME})
   set(EXTERNAL_PROJECT_NAME "extern_inference_download_${FILENAME_EX}")
   set(UNPACK_DIR "${INSTALL_DIR}/src/${EXTERNAL_PROJECT_NAME}")
