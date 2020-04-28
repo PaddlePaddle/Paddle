@@ -362,6 +362,7 @@ class LSTMCell(RNNCell):
             dtype(string, optional): The data type used in this cell. Default float32.
             name(string, optional) : The name scope used to identify parameters and biases.
         """
+
         check_type(hidden_size, 'hidden_size', (int), 'LSTMCell')
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'LSTMCell')
         self.hidden_size = hidden_size
