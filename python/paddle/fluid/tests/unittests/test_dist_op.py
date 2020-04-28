@@ -150,7 +150,7 @@ class TestDistAPI(unittest.TestCase):
             p = 2
             x_i = np.random.random((2, 3, 4, 5)).astype("float64")
             y_i = np.random.random((3, 1, 5)).astype("float64")
-            result = paddle.dist(x, y, p)
+            result = fluid.layers.dist(x, y, p)
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)

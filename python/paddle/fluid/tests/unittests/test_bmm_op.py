@@ -19,7 +19,6 @@ import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.tensor as tensor
 from paddle.fluid import Program, program_guard
 
 
@@ -46,7 +45,7 @@ class API_TestBmm(unittest.TestCase):
                 'data1', shape=[-1, 3, 4], dtype='float64')
             data2 = fluid.layers.data(
                 'data2', shape=[-1, 4, 5], dtype='float64')
-            result_bmm = paddle.bmm(data1, data2)
+            result_bmm = fluid.layers.bmm(data1, data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([10, 3, 4]).astype('float64')
@@ -67,7 +66,7 @@ class API_TestDygraphBmm(unittest.TestCase):
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(input1)
             y = fluid.dygraph.to_variable(input2)
-            out = paddle.bmm(x, y)
+            out = fluid.layers.bmm(x, y)
             out_np = out.numpy()
         expected_result = np.matmul(input1, input2)
         self.assertTrue(np.allclose(expected_result, out_np))
