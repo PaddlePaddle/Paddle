@@ -735,9 +735,6 @@ class TestLog(TestActivation):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        import paddle
-        import paddle.fluid as fluid
-
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
