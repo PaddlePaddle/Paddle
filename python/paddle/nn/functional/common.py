@@ -382,6 +382,7 @@ def interpolate(input,
                         new_size_tensor.append(temp_out)
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
+
             if len(input.shape) == 3:
                 if len(out_shape) != 1:
                     raise ValueError(

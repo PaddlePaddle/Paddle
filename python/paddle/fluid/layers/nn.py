@@ -7168,17 +7168,15 @@ def image_resize(input,
     }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
+            "The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR', 'TRILINEAR' "
             "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
 
-    if resample in ['LINEAR'] and len(input.shape) != 3:
+    if resample == 'LINEAR' and len(input.shape) != 3:
         raise ValueError("'LINER only support 3-D tensor.")
-
-    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+    elif resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
         raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
-
-    if resample == 'TRILINEAR' and len(input.shape) != 5:
+    elif resample == 'TRILINEAR' and len(input.shape) != 5:
         raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
