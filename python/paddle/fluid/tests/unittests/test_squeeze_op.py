@@ -90,7 +90,7 @@ class API_TestSqueeze(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             data1 = fluid.layers.data(
                 'data1', shape=[-1, 1, 10], dtype='float64')
-            result_squeeze = paddle.squeeze(data1, axes=[1])
+            result_squeeze = fluid.layers.squeeze(data1, axes=[1])
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
@@ -105,7 +105,7 @@ class API_TestDygraphSqueeze(unittest.TestCase):
         with fluid.dygraph.guard():
             input_1 = np.random.random([5, 1, 10]).astype("int32")
             input = fluid.dygraph.to_variable(input_1)
-            output = paddle.squeeze(input, axes=[1])
+            output = fluid.layers.squeeze(input, axes=[1])
             out_np = output.numpy()
             expected_out = np.squeeze(input_1, axis=1)
             self.assertTrue(np.allclose(expected_out, out_np))

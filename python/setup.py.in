@@ -182,7 +182,6 @@ packages=['paddle',
           'paddle.nn.functional',
           'paddle.nn.layer',
           'paddle.imperative',
-          'paddle.tensor',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:

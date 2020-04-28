@@ -150,7 +150,7 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             for i in range(self.iter_num):
                 fluid.layers.array_write(input, zero + i, tensor_array)
 
-            self.out_var = paddle.stack(tensor_array, axis=self.axis)
+            self.out_var = fluid.layers.stack(tensor_array, axis=self.axis)
 
     def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
@@ -168,7 +168,7 @@ class API_test(unittest.TestCase):
             data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float64')
             data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float64')
             data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float64')
-            result_stack = paddle.stack([data1, data2, data3], axis=0)
+            result_stack = fluid.layers.stack([data1, data2, data3], axis=0)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([1, 2]).astype('float64')
@@ -192,14 +192,14 @@ class API_DygraphTest(unittest.TestCase):
             x1 = fluid.dygraph.to_variable(data1)
             x2 = fluid.dygraph.to_variable(data2)
             x3 = fluid.dygraph.to_variable(data3)
-            result = paddle.stack([x1, x2, x3], axis=0)
+            result = fluid.layers.stack([x1, x2, x3], axis=0)
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3], axis=0)
         self.assertTrue(np.allclose(expected_result, result_np))
 
         with fluid.dygraph.guard():
             y1 = fluid.dygraph.to_variable(data1)
-            result = paddle.stack(y1, axis=0)
+            result = fluid.layers.stack(y1, axis=0)
             result_np_2 = result.numpy()
         expected_result_2 = np.stack(data1, axis=0)
         self.assertTrue(np.allclose(expected_result_2, result_np_2))

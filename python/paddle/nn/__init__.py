@@ -16,11 +16,9 @@
 # including layers, linear, conv, rnn etc.
 
 from .layer import norm
-from .functional import extension
 
 __all__ = []
 __all__ += norm.__all__
-__all__ += extension.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
@@ -206,22 +204,6 @@ from .functional.activation import sigmoid  #DEFINE_ALIAS
 # from .functional.activation import tanh_shrink   #DEFINE_ALIAS
 # from .functional.activation import thresholded_relu   #DEFINE_ALIAS
 from .functional.activation import log_softmax  #DEFINE_ALIAS
-# from .functional.extension import add_position_encoding   #DEFINE_ALIAS
-# from .functional.extension import autoincreased_step_counter   #DEFINE_ALIAS
-# from .functional.extension import continuous_value_model   #DEFINE_ALIAS
-# from .functional.extension import filter_by_instag   #DEFINE_ALIAS
-# from .functional.extension import linear_chain_crf   #DEFINE_ALIAS
-# from .functional.extension import merge_selected_rows   #DEFINE_ALIAS
-# from .functional.extension import multiclass_nms   #DEFINE_ALIAS
-# from .functional.extension import polygon_box_transform   #DEFINE_ALIAS
-# from .functional.extension import random_crop   #DEFINE_ALIAS
-from .functional.extension import row_conv  #DEFINE_ALIAS
-# from .functional.extension import rpn_target_assign   #DEFINE_ALIAS
-# from .functional.extension import similarity_focus   #DEFINE_ALIAS
-# from .functional.extension import target_assign   #DEFINE_ALIAS
-# from .functional.extension import temporal_shift   #DEFINE_ALIAS
-# from .functional.extension import warpctc   #DEFINE_ALIAS
-from .functional.extension import diag_embed  #DEFINE_ALIAS
 # from .functional.rnn import gru_unit   #DEFINE_ALIAS
 # from .functional.rnn import lstm   #DEFINE_ALIAS
 # from .functional.rnn import lstm_unit   #DEFINE_ALIAS
