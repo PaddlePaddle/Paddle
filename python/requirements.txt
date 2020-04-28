@@ -20,3 +20,4 @@ prettytable
 objgraph
 astor
 pathlib
+cryptography

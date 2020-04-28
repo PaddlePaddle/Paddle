@@ -363,10 +363,24 @@ struct NativeConfig : public PaddlePredictor::Config {
     return cpu_math_library_num_threads_;
   }
 
+  /// \brief Enable decryption option to load a encryted model
+  void enable_decrypt() { decrypt_ = true; }
+
+  //// Set key used for decrypting/encrypting model
+  void set_key(std::string key) { key_ = key; }
+
+  bool need_decrypt() { return decrypt_; }
+
+  std::string get_key() { return key_; }
+
  protected:
   int cpu_math_library_num_threads_{1};  ///< number of cpu math library (such
                                          ///< as MKL, OpenBlas) threads for each
                                          ///< instance.
+
+  // secure model related
+  bool decrypt_{false};
+  std::string key_;
 };
 
 ///

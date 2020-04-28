@@ -24,6 +24,7 @@ import contextlib
 from functools import reduce
 
 import numpy as np
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 import paddle
 import paddle.reader
@@ -61,6 +62,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
+    'gen_key',
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -217,7 +219,9 @@ def save_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              encrypt=False,
+              key=None):
     """
     This API saves specific variables in the `Program` to files.
 
@@ -246,6 +250,13 @@ def save_vars(executor,
         filename(str, optional): If you prefer to save all variables in a single file,
                                  use `filename` to specify it. Otherwise, let `filename` be None. 
                                  Default: None
+        encrypt(bool, optional): You can encrypt variables before save them in file
+                                 for security reason, must input encryption `key` when set
+                                 `encrypt = True`
+                                 Default: False
+        key(str, optional): Encryption key for encrypting variables, recommmand key lenth >=128
+                            for security concern
+                            Default: None
 
     Returns:
         str: When saving parameters to a file, returns None.
@@ -298,7 +309,9 @@ def save_vars(executor,
             main_program=main_program,
             dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
-            filename=filename)
+            filename=filename,
+            encrypt=encrypt,
+            key=key)
     else:
         params_var_name = unique_name.generate("saved_params")
         # give warning when there is no var in model
@@ -324,7 +337,11 @@ def save_vars(executor,
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': os.path.normpath(save_file_path)})
+                    attrs={
+                        'file_path': os.path.normpath(save_file_path),
+                        'encrypt': encrypt,
+                        'key': key
+                    })
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -346,7 +363,9 @@ def save_vars(executor,
                 outputs={'Y': saved_params},
                 attrs={
                     'file_path': save_path,
-                    'save_to_memory': save_to_memory
+                    'save_to_memory': save_to_memory,
+                    'encrypt': encrypt,
+                    'key': key
                 })
 
         #NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
@@ -580,7 +599,12 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 main_program._endpoints)
 
 
-def save_persistables(executor, dirname, main_program=None, filename=None):
+def save_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      encrypt=False,
+                      key=None):
     """
     This operator saves all persistable variables from :code:`main_program` to 
     the folder :code:`dirname` or file :code:`filename`. You can refer to 
@@ -608,6 +632,13 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         filename(str, optional): The file to save all variables. If you prefer to
                                  save variables in different files, set it to None.
                                  Default: None.
+        encrypt(bool, optional): You can encrypt variables before save them in file
+                                 for security reason, must input encryption `key` when set
+                                 `encrypt = True`
+                                 Default: False
+        key(str, optional): Encryption key for encrypting variables, recommmand key lenth >=128
+                            for security concern
+                            Default: None
 
     Returns:
         str: When saving parameters to a file, returns None.
@@ -644,7 +675,9 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             main_program=main_program,
             vars=None,
             predicate=is_persistable,
-            filename=filename)
+            filename=filename,
+            encrypt=encrypt,
+            key=key)
 
 
 def load_vars(executor,
@@ -652,7 +685,9 @@ def load_vars(executor,
               main_program=None,
               vars=None,
               predicate=None,
-              filename=None):
+              filename=None,
+              decrypt=False,
+              key=None):
     """
     This API loads variables from files by executor.
 
@@ -681,6 +716,13 @@ def load_vars(executor,
         filename(str, optional): The file which saved all required variables. If variables
                                 were saved in separate files, set it to be None.
                                 Default: None
+        decrypt(bool, optional): If variables have been encrypted,
+                                 make `decrypt = True` to decrypt them,
+                                 must input decryption `key` when set `decrypt = True`
+                                 Default: False
+        key(str, optional): Decryption key used to decrypt variables, recommmand key lenth >=128
+                            for security concern
+                            Default: None
 
     Returns:
         None
@@ -747,7 +789,9 @@ def load_vars(executor,
             dirname=dirname,
             main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
-            filename=filename)
+            filename=filename,
+            decrypt=decrypt,
+            key=key)
     else:
         load_prog = Program()
         load_block = load_prog.global_block()
@@ -781,7 +825,11 @@ def load_vars(executor,
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={
+                        'file_path': os.path.join(dirname, new_var.name),
+                        'decrypt': decrypt,
+                        'key': key
+                    })
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -799,7 +847,9 @@ def load_vars(executor,
                 outputs={"Out": load_var_list},
                 attrs={
                     'file_path': filename,
-                    'model_from_memory': vars_from_memory
+                    'model_from_memory': vars_from_memory,
+                    'decrypt': decrypt,
+                    'key': key
                 })
         executor.run(load_prog)
 
@@ -876,7 +926,12 @@ def load_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def load_persistables(executor, dirname, main_program=None, filename=None):
+def load_persistables(executor,
+                      dirname,
+                      main_program=None,
+                      filename=None,
+                      decrypt=False,
+                      key=None):
     """
     This API filters out all variables with ``persistable==True`` from the
     given ``main_program`` and then tries to load these variables from the
@@ -899,6 +954,13 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         filename(str, optional): The file which saved all persistable variables. If variables
                                  were saved in separated files, set it to None.
                                  Default: None.
+        decrypt(bool, optional): If variables have been encrypted,
+                                 make `decrypt = True` to decrypt them,
+                                 must input decryption `key` when set `decrypt = True`
+                                 Default: False
+        key(str, optional): Decryption key used to decrypt variables, recommmand key lenth >=128
+                            for security concern
+                            Default: None
 
     Returns:
         None
@@ -924,7 +986,9 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
             dirname=dirname,
             main_program=main_program,
             predicate=is_persistable,
-            filename=filename)
+            filename=filename,
+            decrypt=decrypt,
+            key=key)
 
 
 def _load_distributed_persistables(executor, dirname, main_program=None):
@@ -1072,7 +1136,9 @@ def save_inference_model(dirname,
                          model_filename=None,
                          params_filename=None,
                          export_for_deployment=True,
-                         program_only=False):
+                         program_only=False,
+                         encrypt=False,
+                         key=None):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .
@@ -1113,6 +1179,13 @@ def save_inference_model(dirname,
         program_only(bool, optional): If True, It will save inference program only, and do not 
                                       save params of Program.
                                       Default: False.
+        encrypt(bool, optional): You can encrypt variables before save them in file
+                                 for security reason, must input encryption `key` when set
+                                 `encrypt = True`
+                                 Default: False
+        key(str, optional): Encryption key for encrypting variables, recommmand key lenth >=128
+                            for security concern
+                            Default: None
 
     Returns:
         The fetch variables' name list
@@ -1123,7 +1196,7 @@ def save_inference_model(dirname,
     Raises:
         ValueError: If `feed_var_names` is not a list of basestring, an exception is thrown.
         ValueError: If `target_vars` is not a list of Variable, an exception is thrown.
-
+        ValueError: If `encrypt = True` while not specify arg `key`, an exception is thrown.
     Examples:
         .. code-block:: python
 
@@ -1174,6 +1247,9 @@ def save_inference_model(dirname,
         if not (bool(target_vars) and
                 all(isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
+    if encrypt:
+        if not key:
+            raise ValueError("must specify 'key' for encrypting model.")
 
     main_program = _get_valid_program(main_program)
 
@@ -1249,7 +1325,17 @@ def save_inference_model(dirname,
         main_program.desc._set_version()
         paddle.fluid.core.save_op_compatible_info(main_program.desc)
         with open(model_basename, "wb") as f:
-            f.write(main_program.desc.serialize_to_string())
+            prog_desc_str = main_program.desc.serialize_to_string()
+            if (encrypt):
+                #encrypt iv and program desc
+                iv_size = 12
+                iv = os.urandom(iv_size)
+                f.write(iv)
+                aesgcm = AESGCM(key)
+                ct = aesgcm.encrypt(iv, prog_desc_str, None)
+                f.write(ct)
+            else:
+                f.write(prog_desc_str)
     else:
         # TODO(panyx0718): Save more information so that it can also be used
         # for training and more flexible post-processing.
@@ -1267,7 +1353,13 @@ def save_inference_model(dirname,
     if params_filename is not None:
         params_filename = os.path.basename(params_filename)
 
-    save_persistables(executor, save_dirname, main_program, params_filename)
+    save_persistables(
+        executor,
+        save_dirname,
+        main_program,
+        params_filename,
+        encrypt=encrypt,
+        key=key)
     return target_var_name_list
 
 
@@ -1275,7 +1367,9 @@ def load_inference_model(dirname,
                          executor,
                          model_filename=None,
                          params_filename=None,
-                         pserver_endpoints=None):
+                         pserver_endpoints=None,
+                         decrypt=False,
+                         key=None):
     """
     Load the inference model from a given directory. By this API, you can get the model
     structure(Inference Program) and model parameters. If you just want to load
@@ -1304,6 +1398,13 @@ def load_inference_model(dirname,
                                     If using a distributed look up table during the training,
                                     this table is also needed by the inference process. Its value is
                                     a list of pserver endpoints.
+        decrypt(bool, optional): If variables have been encrypted,
+                                 make `decrypt = True` to decrypt them,
+                                 must input decryption `key` when set `decrypt = True`
+                                 Default: False
+        key(str, optional): Decryption key used to decrypt variables, recommmand key lenth >=128
+                            for security concern
+                            Default: None
 
     Returns:
         list: The return of this API is a list with three elements:
@@ -1316,7 +1417,7 @@ def load_inference_model(dirname,
 
     Raises:
         ValueError: If `dirname` is not a existing directory.
-
+        ValueError: If `decrypt = True` while no `key` input, an exception is thrown.
     Examples:
         .. code-block:: python
 
@@ -1367,6 +1468,10 @@ def load_inference_model(dirname,
             # program for getting the inference result.
     """
     load_from_memory = False
+    if decrypt:
+        if not key:
+            raise ValueError("must specify 'key' for decrypting model.")
+
     if dirname is not None:
         load_dirname = os.path.normpath(dirname)
         if not os.path.isdir(load_dirname):
@@ -1382,7 +1487,16 @@ def load_inference_model(dirname,
             params_filename = os.path.basename(params_filename)
 
         with open(model_filename, "rb") as f:
-            program_desc_str = f.read()
+            program_desc_str_orig = f.read()
+            if decrypt:
+                iv_size = 12
+                iv = program_desc_str_orig[0:iv_size]
+                aesgcm = AESGCM(key)
+                program_desc_str = aesgcm.decrypt(
+                    iv, program_desc_str_orig[iv_size:], None)
+            else:
+                program_desc_str = program_desc_str_orig
+
     else:
         load_from_memory = True
         if params_filename is None:
@@ -1391,6 +1505,12 @@ def load_inference_model(dirname,
             )
         load_dirname = dirname
         program_desc_str = model_filename
+        if decrypt:
+            iv_size = 12
+            iv = program_desc_str[0:iv_size]
+            aesgcm = AESGCM(key)
+            program_desc_str = aesgcm.decrypt(iv, program_desc_str[iv_size:],
+                                              None)
         params_filename = params_filename
 
     program = Program.parse_from_string(program_desc_str)
@@ -1398,7 +1518,8 @@ def load_inference_model(dirname,
         raise ValueError("Unsupported program version: %d\n" %
                          program._version())
     # Binary data also need versioning.
-    load_persistables(executor, load_dirname, program, params_filename)
+    load_persistables(executor, load_dirname, program, params_filename, decrypt,
+                      key)
 
     if pserver_endpoints:
         program = _endpoints_replacement(program, pserver_endpoints)
@@ -1995,3 +2116,32 @@ def set_program_state(program, state_dict):
         warnings.warn(
             "This list is not set, Because of Paramerter not found in program. There are: {}".
             format(" ".join(unused_para_list)))
+
+
+def gen_key(length=256, filename=None):
+    """
+    Generate encrypt/decrypt key
+    
+    Args:
+        length(int, optional): Length of key that generated, recommand 128 or 256
+                                default: 256
+        filename(str, optional): If specify, generated key will be store to the file,
+                                 Otherwise, key will not be store to file.
+                                 default: None
+    Returns:
+        key(str): The generated key
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            key = fluid.framework.io.gen_key(256, "keyfile")
+
+    """
+
+    key = AESGCM.generate_key(length)
+    if (filename):
+        with open(filename, "wb") as f:
+            f.write(key)
+    return key

@@ -75,6 +75,17 @@ to a file on disk.
                   "(boolean, default false)"
                   "If true, the variables will be saved to binary strings.")
         .SetDefault(false);
+    AddAttr<bool>("encrypt",
+                  "(boolean, default false)"
+                  "If true, the tensor will be encrypted and then saved. "
+                  "Otherwise, the tensor will be "
+                  "directly saved as plaintext.")
+        .SetDefault(false);
+    AddAttr<std::string>("key",
+                         "(string)"
+                         "Input key, that used for encrypting."
+                         "If encrypt = true, requre input key.")
+        .SetDefault(std::string());
     AddOutput("Y",
               "(RAW, default empty)."
               "This output is used when saving variables to binary strings.")

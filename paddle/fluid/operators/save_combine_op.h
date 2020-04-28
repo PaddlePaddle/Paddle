@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <fstream>
+#include <memory>
 #include <numeric>
 #include <sstream>
 #include <string>
@@ -23,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/io/fstream_ext.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -100,12 +102,22 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       *output = ss.str();
     } else {
       MkDirRecursively(DirName(filename).c_str());
-      std::ofstream fout(filename, std::ios::binary);
-      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+      std::shared_ptr<paddle::framework::OfstreamExt> fout;
+      const size_t TAG_SIZE = 16;
+      if (ctx.Attr<bool>("encrypt")) {
+        std::string key = ctx.Attr<std::string>("key");
+        fout = std::make_shared<paddle::framework::OfstreamExt>(
+            filename.data(), std::ios::binary, true,
+            (unsigned char *)key.data(), key.size(), TAG_SIZE);
+      } else {
+        fout = std::make_shared<paddle::framework::OfstreamExt>(
+            filename.data(), std::ios::binary);
+      }
+      PADDLE_ENFORCE_EQ(static_cast<bool>(*fout), true,
                         platform::errors::Unavailable(
                             "Cannot open %s to save variables.", filename));
-      fout << ss.str();
-      fout.close();
+      fout->write(ss.str().data(), ss.str().size());
+      fout->close();
     }
   }
 };

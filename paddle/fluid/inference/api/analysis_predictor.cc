@@ -23,6 +23,7 @@
 #include <vector>
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/io/fstream_ext.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -415,6 +416,8 @@ void AnalysisPredictor::PrepareArgument() {
   // Analyze inference_program
   argument_.SetPredictorID(predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
+  argument_.SetNeedDecrypt(config_.need_decrypt());
+  argument_.SetDecryptKey(config_.get_key());
   if (!config_.model_dir().empty()) {
     argument_.SetModelDir(config_.model_dir());
   } else {
@@ -698,14 +701,32 @@ bool AnalysisPredictor::LoadProgramDesc() {
   if (!config_.model_from_memory()) {
     std::string pb_content;
     // Read binary
-    std::ifstream fin(filename, std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin.is_open()), "Cannot open file %s",
-                   filename);
-    fin.seekg(0, std::ios::end);
-    pb_content.resize(fin.tellg());
-    fin.seekg(0, std::ios::beg);
-    fin.read(&(pb_content.at(0)), pb_content.size());
-    fin.close();
+    std::shared_ptr<paddle::framework::IfstreamExt> fin;
+    if (config_.need_decrypt()) {
+      std::string key = config_.get_key();
+      size_t TAG_SIZE = 16;
+      size_t IV_SIZE = 12;
+      fin = std::make_shared<paddle::framework::IfstreamExt>(
+          filename.data(), std::ios::in | std::ios::binary, true,
+          (unsigned char *)key.data(), key.size(), TAG_SIZE);
+      PADDLE_ENFORCE(static_cast<bool>(fin->is_open()), "Cannot open file %s",
+                     filename);
+      fin->seekg(0, std::ios::end);
+      pb_content.resize((size_t)fin->tellg() - TAG_SIZE - IV_SIZE);
+      fin->seekg(IV_SIZE, std::ios::beg);
+      fin->read(&(pb_content.at(0)), pb_content.size());
+      fin->close();
+    } else {
+      fin = std::make_shared<paddle::framework::IfstreamExt>(
+          filename.data(), std::ios::in | std::ios::binary);
+      PADDLE_ENFORCE(static_cast<bool>(fin->is_open()), "Cannot open file %s",
+                     filename);
+      fin->seekg(0, std::ios::end);
+      pb_content.resize(fin->tellg());
+      fin->seekg(0, std::ios::beg);
+      fin->read(&(pb_content.at(0)), pb_content.size());
+      fin->close();
+    }
 
     proto.ParseFromString(pb_content);
   } else {
@@ -747,6 +768,8 @@ bool AnalysisPredictor::LoadParameters() {
         op->SetType("load");
         op->SetOutput("Out", {new_var->Name()});
         op->SetAttr("file_path", {config_.model_dir() + "/" + new_var->Name()});
+        op->SetAttr("decrypt", config_.need_decrypt());
+        op->SetAttr("key", config_.get_key());
         op->CheckAttrs();
       }
     }
@@ -760,6 +783,8 @@ bool AnalysisPredictor::LoadParameters() {
     op->SetType("load_combine");
     op->SetOutput("Out", params);
     op->SetAttr("file_path", {config_.params_file()});
+    op->SetAttr("decrypt", config_.need_decrypt());
+    op->SetAttr("key", config_.get_key());
     op->CheckAttrs();
   }
 

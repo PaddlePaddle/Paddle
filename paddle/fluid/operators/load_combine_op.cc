@@ -59,6 +59,17 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "If true, file_path is in memory, and LoDTensors will be "
                   "loaded directly from memory")
         .SetDefault(false);
+    AddAttr<bool>("decrypt",
+                  "(boolean, default false)"
+                  "If true, the tensor will be decrypted after being loaded. "
+                  "Otherwise, the tensor will be "
+                  "directly loaded as plaintext.")
+        .SetDefault(false);
+    AddAttr<std::string>("key",
+                         "(string)"
+                         "Input key, that used for decrypting."
+                         "If decrypt = true, requre input key.")
+        .SetDefault(std::string());
     AddComment(R"DOC(
 LoadCombine Operator.
 

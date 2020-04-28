@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
@@ -35,11 +36,11 @@ class IrGraphBuildPass : public AnalysisPass {
  private:
   std::unique_ptr<framework::ProgramDesc> LoadModel(
       const std::string &path, framework::Scope *scope,
-      const platform::Place &place);
+      const platform::Place &place, bool decrypt = false, std::string key = "");
   std::unique_ptr<framework::ProgramDesc> LoadModel(
       const std::string &program_path, const std::string &params_path,
       framework::Scope *scope, const platform::Place &place,
-      bool model_from_memory);
+      bool model_from_memory, bool decrypt = false, std::string key = "");
 
   std::string model_binary_str_;
 };

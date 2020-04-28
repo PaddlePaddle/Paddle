@@ -28,7 +28,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
+from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables, gen_key
 from paddle.fluid.transpiler import memory_optimize
 
 
@@ -39,7 +39,16 @@ class TestBook(unittest.TestCase):
             self.feed_var_names = list[1]
             self.fetch_vars = list[2]
 
-    def test_fit_line_inference_model(self):
+    def test_fit_line_inference_model(self, sec_model_test=False):
+
+        enable_encrypt = False
+        enable_decrypt = False
+        key = None
+        if sec_model_test:
+            enable_decrypt = True
+            enable_encrypt = True
+            key = gen_key()
+
         MODEL_DIR = "./tmp/inference_model"
         UNI_MODEL_DIR = "./tmp/inference_model1"
 
@@ -74,9 +83,20 @@ class TestBook(unittest.TestCase):
                     fetch_list=[avg_cost])
 
         # Separated model and unified model
-        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
-        save_inference_model(UNI_MODEL_DIR, ["x", "y"], [avg_cost], exe,
-                             program, 'model', 'params')
+        save_inference_model(
+            MODEL_DIR, ["x", "y"], [avg_cost],
+            exe,
+            program,
+            encrypt=enable_encrypt,
+            key=key)
+        save_inference_model(
+            UNI_MODEL_DIR, ["x", "y"], [avg_cost],
+            exe,
+            program,
+            'model',
+            'params',
+            encrypt=enable_encrypt,
+            key=key)
         main_program = program.clone()._prune_with_input(
             feeded_var_names=["x", "y"], targets=[avg_cost])
         params_str = save_persistables(exe, None, main_program, None)
@@ -88,11 +108,19 @@ class TestBook(unittest.TestCase):
 
         six.moves.reload_module(executor)  # reload to build a new scope
 
-        model_0 = self.InferModel(load_inference_model(MODEL_DIR, exe))
+        model_0 = self.InferModel(
+            load_inference_model(
+                MODEL_DIR, exe, decrypt=enable_decrypt, key=key))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
             model_str = f.read()
         model_1 = self.InferModel(
-            load_inference_model(None, exe, model_str, params_str))
+            load_inference_model(
+                None,
+                exe,
+                model_str,
+                params_str,
+                decrypt=enable_decrypt,
+                key=key))
 
         for model in [model_0, model_1]:
             outs = exe.run(model.program,
@@ -110,6 +138,9 @@ class TestBook(unittest.TestCase):
 
         self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
                           model_str, None)
+
+    def test_fit_line_secure_inference_model(self):
+        self.test_fit_line_inference_model(sec_model_test=True)
 
 
 class TestSaveInferenceModel(unittest.TestCase):

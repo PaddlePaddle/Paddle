@@ -488,6 +488,16 @@ struct AnalysisConfig {
   PassStrategy* pass_builder() const;
   void PartiallyRelease();
 
+  /// \brief Enable decryption option to load a encryted model
+  void enable_decrypt() { decrypt_ = true; }
+
+  /// Set key used for decrypting model
+  void set_key(std::string key) { key_ = key; }
+
+  bool need_decrypt() { return decrypt_; }
+
+  std::string get_key() { return key_; }
+
  protected:
   // Update the config.
   void Update();
@@ -574,6 +584,12 @@ struct AnalysisConfig {
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
+
+  // enable decrypt model
+  bool decrypt_{false};
+
+  // enc/dec key
+  std::string key_;
 };
 
 }  // namespace paddle

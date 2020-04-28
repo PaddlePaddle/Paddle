@@ -214,6 +214,10 @@ struct Argument {
 
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
 
+  // Whether to decrypt the model
+  DECL_ARGUMENT_FIELD(need_decrypt, NeedDecrypt, bool);
+  DECL_ARGUMENT_FIELD(dec_key, DecryptKey, std::string);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };

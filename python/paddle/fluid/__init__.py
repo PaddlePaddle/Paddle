@@ -127,6 +127,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'save',
         'load',
         'VarBase'
+        'gen_key'
     ]
 
 
