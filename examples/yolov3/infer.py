@@ -28,7 +28,7 @@ from hapi.model import Model, Input, set_device
 
 from modeling import yolov3_darknet53, YoloLoss
 from transforms import *
-
+from utils import print_arguments
 from visualizer import draw_bbox
 
 import logging
@@ -91,7 +91,7 @@ def main():
     img_id = np.array([0]).astype('int64')[np.newaxis, :]
     img_shape = np.array([h, w]).astype('int32')[np.newaxis, :]
 
-    _, bboxes = model.test([img_id, img_shape, img])
+    _, bboxes = model.test_batch([img_id, img_shape, img])
 
     vis_img = draw_bbox(orig_img, cat2name, bboxes, FLAGS.draw_threshold)
     save_name = get_save_image_name(FLAGS.output_dir, FLAGS.infer_image)
@@ -121,6 +121,7 @@ if __name__ == '__main__':
         "-w", "--weights", default=None, type=str,
         help="path to weights for inference")
     FLAGS = parser.parse_args()
+    print_arguments(FLAGS)
     assert os.path.isfile(FLAGS.infer_image), \
             "infer_image {} not a file".format(FLAGS.infer_image)
     assert os.path.isfile(FLAGS.label_list), \

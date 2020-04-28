@@ -113,7 +113,7 @@ class KineticsDataset(Dataset):
 
         if self.transform:
             imgs, label = self.transform(imgs, label)
-        return imgs, np.array([label])
+        return imgs, np.array([label]).astype('int64')
 
     @property
     def num_classes(self):

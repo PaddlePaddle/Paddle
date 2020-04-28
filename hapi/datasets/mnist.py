@@ -144,7 +144,7 @@ class MNIST(Dataset):
 
                     for i in range(buffer_size):
                         self.images.append(images[i, :])
-                        self.labels.append(np.array([labels[i]]))
+                        self.labels.append(np.array([labels[i]]).astype('int64'))
 
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]
