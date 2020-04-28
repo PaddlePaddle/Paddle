@@ -143,14 +143,5 @@ def np_broadcast_equal(_x, _y):
 for args in broadcast_args:
     create_test_broadcast_class('equal_reduce', args, np_broadcast_equal)
 
-
-class TestEqualReduceAPI(unittest.TestCase):
-    def test_name(self):
-        x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-        y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-        out = paddle.equal(x, y, name='equal_res')
-        assert 'equal_res' in out.name
-
-
 if __name__ == '__main__':
     unittest.main()

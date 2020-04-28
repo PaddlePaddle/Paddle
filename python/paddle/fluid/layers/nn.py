@@ -37,40 +37,181 @@ from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 import paddle
+from .ops import exp
+import sys
 
 __all__ = [
-    'fc', 'embedding', 'linear_chain_crf', 'crf_decoding', 'cos_sim',
-    'chunk_eval', 'conv2d', 'conv3d', 'softmax', 'pool2d', 'pool3d',
-    'adaptive_pool2d', 'adaptive_pool3d', 'batch_norm', 'inplace_abn',
-    'instance_norm', 'data_norm', 'conv2d_transpose', 'conv3d_transpose',
-    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
-    'reduce_all', 'reduce_any', 'dropout', 'split', 'ctc_greedy_decoder',
-    'l2_normalize', 'matmul', 'topk', 'transpose', 'im2sequence', 'row_conv',
-    'multiplex', 'layer_norm', 'group_norm', 'spectral_norm', 'smooth_l1',
-    'one_hot', 'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
-    'lod_reset', 'lod_append', 'lrn', 'pad', 'pad_constant_like',
-    'label_smooth', 'roi_pool', 'roi_align', 'dice_loss', 'image_resize',
-    'image_resize_short', 'resize_bilinear', 'resize_trilinear',
-    'resize_nearest', 'gather', 'gather_nd', 'scatter', 'scatter_nd_add',
-    'scatter_nd', 'random_crop', 'mean_iou', 'relu', 'selu', 'log', 'crop',
-    'crop_tensor', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid', 'swish',
-    'prelu', 'brelu', 'leaky_relu', 'soft_relu', 'flatten', 'stack', 'pad2d',
-    'unstack', 'unique', 'unique_with_counts', 'expand', 'expand_as', 'scale',
-    'elementwise_add', 'elementwise_div', 'elementwise_sub', 'elementwise_mul',
-    'elementwise_max', 'elementwise_min', 'elementwise_pow', 'elementwise_mod',
-    'elementwise_floordiv', 'uniform_random_batch_size_like', 'gaussian_random',
-    'sampling_id', 'gaussian_random_batch_size_like', 'sum', 'slice',
-    'strided_slice', 'shape', 'rank', 'size', 'logical_and', 'logical_or',
-    'logical_xor', 'logical_not', 'clip', 'clip_by_norm', 'mean', 'mul',
-    'maxout', 'space_to_depth', 'affine_grid', 'affine_channel',
-    'similarity_focus', 'hash', 'grid_sampler', 'log_loss',
-    'add_position_encoding', 'bilinear_tensor_product', 'merge_selected_rows',
-    'get_tensor_from_selected_rows', 'shuffle_channel', 'temporal_shift',
-    'py_func', 'psroi_pool', 'prroi_pool', 'pixel_shuffle', 'fsp_matrix',
-    'continuous_value_model', 'where', 'sign', 'deformable_conv', 'unfold',
-    'deformable_roi_pooling', 'filter_by_instag', 'shard_index', 'hard_swish',
-    'gather_tree', 'uniform_random', 'randint', 'randn', 'randperm', 'allclose',
-    'elementwise_equal', 'flip', 'roll', 'log_softmax'
+    'log1p',
+    'logsumexp',
+    'clamp',
+    'addmm',
+    'addcmul',
+    'bmm',
+    'nonzero',
+    'index_select',
+    'dist',
+    'dot',
+    't',
+    'cross',
+    'interpolate',
+    'diag_embed',
+    'meshgrid',
+    'fc',
+    'embedding',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'chunk_eval',
+    'conv2d',
+    'conv3d',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'adaptive_pool2d',
+    'adaptive_pool3d',
+    'batch_norm',
+    'inplace_abn',
+    'instance_norm',
+    'data_norm',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'reduce_all',
+    'reduce_any',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'transpose',
+    'im2sequence',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'group_norm',
+    'spectral_norm',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'squeeze',
+    'unsqueeze',
+    'lod_reset',
+    'lod_append',
+    'lrn',
+    'pad',
+    'pad_constant_like',
+    'label_smooth',
+    'roi_pool',
+    'roi_align',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'resize_trilinear',
+    'resize_nearest',
+    'gather',
+    'gather_nd',
+    'scatter',
+    'scatter_nd_add',
+    'scatter_nd',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'selu',
+    'log',
+    'crop',
+    'crop_tensor',
+    'elu',
+    'relu6',
+    'pow',
+    'stanh',
+    'hard_sigmoid',
+    'swish',
+    'prelu',
+    'brelu',
+    'leaky_relu',
+    'soft_relu',
+    'flatten',
+    'stack',
+    'pad2d',
+    'unstack',
+    'unique',
+    'unique_with_counts',
+    'expand',
+    'expand_as',
+    'scale',
+    'elementwise_add',
+    'elementwise_div',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_max',
+    'elementwise_min',
+    'elementwise_pow',
+    'elementwise_mod',
+    'elementwise_floordiv',
+    'uniform_random_batch_size_like',
+    'gaussian_random',
+    'sampling_id',
+    'gaussian_random_batch_size_like',
+    'sum',
+    'slice',
+    'strided_slice',
+    'shape',
+    'rank',
+    'size',
+    'logical_and',
+    'logical_or',
+    'logical_xor',
+    'logical_not',
+    'clip',
+    'clip_by_norm',
+    'mean',
+    'mul',
+    'bmm',
+    'maxout',
+    'space_to_depth',
+    'affine_grid',
+    'affine_channel',
+    'similarity_focus',
+    'hash',
+    'grid_sampler',
+    'log_loss',
+    'add_position_encoding',
+    'bilinear_tensor_product',
+    'merge_selected_rows',
+    'get_tensor_from_selected_rows',
+    'shuffle_channel',
+    'temporal_shift',
+    'py_func',
+    'psroi_pool',
+    'prroi_pool',
+    'pixel_shuffle',
+    'fsp_matrix',
+    'continuous_value_model',
+    'where',
+    'sign',
+    'deformable_conv',
+    'unfold',
+    'deformable_roi_pooling',
+    'filter_by_instag',
+    'shard_index',
+    'hard_swish',
+    'gather_tree',
+    'uniform_random',
+    'randint',
+    'randn',
+    'randperm',
+    'allclose',
+    'elementwise_equal',
+    'flip',
+    'roll',
+    'log_softmax',
 ]
 
 
@@ -86,6 +227,1354 @@ def _elementwise_op_in_dygraph(x,
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
+
+
+def log1p(x, out=None, name=None):
+    """
+    Calculates the natural log of the given input tensor, element-wise.
+    .. math::
+        Out = \\ln(x+1)
+    Args:
+        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            # Graph Organizing
+            x = fluid.data(name="x", shape=[2,1], dtype="float32")
+            res = fluid.layers.log1p(x)
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            # Execute
+            x_i = np.array([[0], [1]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[0.], [0.6931472]]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.log1p(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log1p', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
+    """
+    This operator calculates the log of the sum of exponentials of the input Tensor.
+
+    .. math::
+       logsumexp(x) = \log\sum exp(x)
+
+
+    Parameters:
+       x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+       dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`,
+         sum all elements of :attr:`input` and return a Tensor variable with a single element,
+         otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+         the dimension to reduce is :math:`rank + dim[i]`.
+       keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor.
+         The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim`
+         is true, default value is False.
+       out (Variable), optional):  Enable user to explicitly specify an output variable to save result.
+       name (str, optional): The default value is None.  Normally there is no need for user to
+         set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+       Variable: The calcuated result Tensor/LoDTensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+          np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+          x = fluid.dygraph.to_variable(np_x)
+          print(fluid.layers.logsumexp(x).numpy())
+
+    ..  code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
+            x = fluid.dygraph.to_variable(np_x)
+            print(fluid.layers.logsumexp(x, dim=1).numpy())
+            print(fluid.layers.logsumexp(x, dim=[0, 2]).numpy())
+
+    """
+    op_type = 'logsumexp'
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+
+    # reduce_sum does not support float16
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+
+    exp_out = exp(x)
+    sum_out = reduce_sum(exp_out, dim, keepdim)
+
+    if out is not None:
+        check_variable_and_dtype(out, 'out', [x.dtype], op_type)
+        helper = LayerHelper(op_type, **locals())
+        helper.append_op(
+            type="log", inputs={"X": sum_out}, outputs={"Out": out})
+        return out
+
+    return log(sum_out, name)
+
+
+def clamp(input, min=None, max=None, output=None, name=None):
+    """
+    **clampe layer**
+
+    This operator clamps all elements in input into the range [ min, max ] and return
+    a resulting tensor as the following equation:
+
+    .. math::
+
+        Out = MIN(MAX(x, min), max) 
+
+    Args:
+        input (Variable): An input N-D Tensor or LoDTensor 
+            with data type float32, float64.   
+        min (float32|Variable): The lower bound with type ``float32`` or a ``Tensor``
+            with shape [1] and type ``int32``, ``float32``, ``float64``.
+        max (float32|Variable): The upper bound with type ``float32`` or a ``Tensor``
+            with shape [1] and type ``int32``, ``float32``, ``float64``.
+        output (Variable, optional): A tensor or LoDTensor. If :attr:`output` is None, 
+            a new tensor will be created as :attr:`output`. Default: None. 
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: A Tensor or LodTensor with the same data type and data shape as input's.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            in1 = np.array([[1.2,3.5],
+                            [4.5,6.4]]).astype('float32')
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.clamp(x1, min=3.5, max=5.0)
+                out2 = fluid.layers.clamp(x1, min=2.5)
+                print(out1.numpy())
+                # [[3.5, 3.5]
+                # [4.5, 5.0]]
+                print(out2.numpy())
+                # [[2.5, 3.5]
+                # [[4.5, 6.4]
+    """
+
+    assert min is not None or max is not None, "either min or max should be defined."
+
+    if min is not None:
+        check_type(min, 'min', (float, Variable), 'clamp')
+        if isinstance(min, Variable):
+            check_dtype(min.dtype, 'min', ['float32', 'float64', 'int32'],
+                        'clamp', '(When the type of min in clamp is Variable.)')
+    if max is not None:
+        check_type(max, 'max', (float, Variable), 'clamp')
+        if isinstance(max, Variable):
+            check_dtype(max.dtype, 'max', ['float32', 'float64', 'int32'],
+                        'clamp', '(When the type of max in clamp is Variable.)')
+
+    inputs = {'X': input}
+    attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+
+    if isinstance(min, Variable):
+        min.stop_gradient = True
+        inputs['Min'] = min
+    elif min is not None:
+        attrs['min'] = min
+
+    if isinstance(max, Variable):
+        max.stop_gradient = True
+        inputs['Max'] = max
+    elif max is not None:
+        attrs['max'] = max
+
+    helper = LayerHelper('clamp', **locals())
+    if output is None:
+        output = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+    helper.append_op(
+        type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
+
+    return output
+
+
+def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
+    """
+    **addmm**
+
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Variable): The input Tensor/LoDTensor to be added to the final result.
+        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
+        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        alpha (float): Coefficient of $x*y$.
+        beta (float): Coefficient of $input$.
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+
+    Examples:
+        ..  code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            input = fluid.data(name='input', shape=[2, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2], dtype='float32')
+            out = fluid.layers.addmm( input=input, x=x, y=y, alpha=5.0, beta=0.5 )
+
+            data_x = np.ones((2, 2)).astype(np.float32)
+            data_y = np.ones((2, 2)).astype(np.float32)
+            data_input = np.ones((2, 2)).astype(np.float32)
+
+            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(fluid.default_main_program(), 
+                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
+            print( np.array(results[0]) )
+            # [[10.5 10.5]
+            # [10.5 10.5]]
+    """
+    if in_dygraph_mode():
+        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        return out
+
+    inputs = {'Input': input, "X": x, "Y": y}
+    attrs = {'Alpha': alpha, 'Beta': beta}
+
+    helper = LayerHelper("addmm", **locals())
+    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    return out
+
+
+def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
+    """
+    Calculate the element-wise multiplication of tensor1 and tensor2,
+    then multiply the result by value, and add it to input. The shape of input,
+    tensor1, tensor2 should be broadcastable.
+    The equation is:
+
+    ..  math::
+        out = input + value * tensor1 * tensor2
+
+    Args:
+        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        value(int|float): The multiplier for tensor1*tensor2. For float32 and float64 type input, value must be float, otherwise an integer.
+        out(Variable, Optional): The variable that specifies the output of the
+            operator, which can be Variable that has been created in the
+            program. The default value is None, and a new Variable will be
+            created to save the output. Default: None.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
+
+    Returns:
+        out(Variable): The output result. A Tensor with the same data type as input's.
+
+    Examples:
+        .. code-block:: python
+
+
+          import paddle
+          import paddle.fluid as fluid
+          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
+          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
+          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
+          data = fluid.layers.addcmul(input, tensor1, tensor2, value=1.0)
+    """
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(
+        tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(
+        tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    if convert_dtype(input.dtype) in ['float32', 'float64']:
+        check_type(value, 'value', float, 'addcmul')
+    if convert_dtype(input.dtype) in ['int32', 'int64']:
+        check_type(value, 'value', int, 'addcmul')
+
+    if out is not None:
+        assign(
+            elementwise_add(input, elementwise_mul(tensor1, tensor2) * value),
+            out)
+    else:
+        out = elementwise_add(input, elementwise_mul(tensor1, tensor2) * value)
+    return out
+
+
+def bmm(x, y, name=None):
+    """
+    Applies batched matrix multiplication to two tensors.
+    Both of the two input tensors must be three-dementional and share the same batch size.
+    if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+    Examples:
+        import paddle
+        import paddle.fluid as fluid
+        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
+        out = fluid.layers.bmm(x, y)
+    
+        # In dygraph mode:
+        # size input1: (2, 2, 3) and input2: (2, 3, 2)
+        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = fluid.layers.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+    """
+
+    helper = LayerHelper('bmm', **locals())
+    if in_dygraph_mode():
+        return core.ops.bmm(x, y)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def nonzero(input, as_tuple=False):
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input` 
+    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
+    in `input`, each containing the indices (in that dimension) of all non-zero elements 
+    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If 
+    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
+    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
+    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
+
+    Args:
+        inputs (Variable): The input tensor variable.
+        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+
+    Returns:
+        Variable. The data type is int64.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data1 = np.array([[1.0, 0.0, 0.0],
+                              [0.0, 2.0, 0.0],
+                              [0.0, 0.0, 3.0]])
+            data2 = np.array([0.0, 1.0, 0.0, 3.0])
+            data3 = np.array([0.0, 0.0, 0.0])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(data1)
+                x2 = fluid.dygraph.to_variable(data2)
+                x3 = fluid.dygraph.to_variable(data3)
+                out_z1 = fluid.layers.nonzero(x1)
+                print(out_z1.numpy())
+                #[[0 0]
+                # [1 1]
+                # [2 2]]
+                out_z1_tuple = fluid.layers.nonzero(x1, as_tuple=True)
+                for out in out_z1_tuple:
+                    print(out.numpy())
+                #[[0]
+                # [1]
+                # [2]]
+                #[[0]
+                # [1]
+                # [2]]
+                out_z2 = fluid.layers.nonzero(x2)
+                print(out_z2.numpy())
+                #[[1]
+                # [3]]
+                out_z2_tuple = fluid.layers.nonzero(x2, as_tuple=True)
+                for out in out_z2_tuple:
+                    print(out.numpy())
+                #[[1]
+                # [3]]
+                out_z3 = fluid.layers.nonzero(x3)
+                print(out_z3.numpy())
+                #[]
+                out_z3_tuple = fluid.layers.nonzero(x3, as_tuple=True)
+                for out in out_z3_tuple:
+                    print(out.numpy())
+                #[]                    
+    """
+    list_out = []
+    shape = input.shape
+    rank = len(shape)
+
+    if in_dygraph_mode():
+        outs = core.ops.where_index(input)
+    else:
+        outs = where(input)
+
+    if not as_tuple:
+        return outs
+    elif rank == 1:
+        return tuple([outs])
+    else:
+        for i in range(rank):
+            list_out.append(
+                slice(
+                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+        return tuple(list_out)
+
+
+def index_select(input, index, dim=0):
+    """
+    Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
+    the entries in `index` which is a Tensor. The returned tensor has the same number 
+    of dimensions as the original `input` tensor. The dim-th dimension has the same 
+    size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
+
+    Args:
+        input (Variable): The input tensor variable.
+        index (Variable): The 1-D tensor containing the indices to index.
+        dim (int): The dimension in which we index.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                             [5.0, 6.0, 7.0, 8.0],
+                             [9.0, 10.0, 11.0, 12.0]])
+            data_index = np.array([0, 1, 1]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                out_z1 = fluid.layers.index_select(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3. 4.]
+                # [5. 6. 7. 8.]
+                # [5. 6. 7. 8.]]
+                out_z2 = fluid.layers.index_select(x, index, dim=1)
+                print(out_z2.numpy())
+                #[[ 1.  2.  2.]
+                # [ 5.  6.  6.]
+                # [ 9. 10. 10.]]
+    """
+    helper = LayerHelper("index_select", **locals())
+    if in_dygraph_mode():
+        return core.ops.index_select(input, index, 'dim', dim)
+
+    check_variable_and_dtype(
+        input, 'x', ['float32', 'float64', 'int32', 'int64'], 'index_select')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'index_select')
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    helper.append_op(
+        type='index_select',
+        inputs={'X': input,
+                'Index': index},
+        outputs={'Out': out},
+        attrs={'dim': dim})
+    return out
+
+
+def dist(x, y, p=2):
+    """
+    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    of distance. The shapes of x and y must be broadcastable.
+
+    Where, z = x - y,
+
+    When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
+
+    .. math::
+
+        ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
+
+    When p = inf, the inf-norm of z is the maximum element of z.
+
+    .. math::
+
+        ||z||_\infty=\max_i |z_i|
+
+    When p = -inf, the negative-inf-norm of z is the minimum element of z.
+
+    .. math::
+
+        ||z||_{-\infty}=\min_i |z_i|
+
+    Otherwise, the p-norm of z follows the formula,
+
+    .. math::
+
+        ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
+
+    Args:
+        x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+
+    Returns:
+        Variable: Tensor that is the p-norm of (x - y).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
+                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
+                out = fluid.layers.dist(x, y, 0)
+                print(out.numpy()) # out = [1.]
+
+                out = fluid.layers.dist(x, y, 2)
+                print(out.numpy()) # out = [2.]
+
+                out = fluid.layers.dist(x, y, float("inf"))
+                print(out.numpy()) # out = [2.]
+
+                out = fluid.layers.dist(x, y, float("-inf"))
+                print(out.numpy()) # out = [0.]
+    """
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_type(p, 'p', (float, int), 'dist')
+    helper = LayerHelper("dist", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {"X": [x], "Y": [y]}
+    outputs = {'Out': [out]}
+    attrs = {"p": float(p)}
+    helper.append_op(
+        type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+def dot(x, y, name=None):
+    """
+    This operator calculates inner product for vectors.
+   
+    .. note::
+       Only support 1-d Tensor(vector).
+
+    Parameters:
+        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Returns:
+        Variable: the calculated result Tensor/LoDTensor.
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+        
+        with fluid.dygraph.guard():
+          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
+          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
+          z = fluid.layers.dot(x, y)
+          print(z.numpy())
+
+    """
+    op_type = 'dot'
+    # skip var type check in dygraph mode to improve efficiency
+    if in_dygraph_mode():
+        op = getattr(core.ops, op_type)
+        return op(x, y)
+
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert y is not None, 'y cannot be None in {}'.format(op_type)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+    check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+
+    helper = LayerHelper(op_type, **locals())
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+    helper.append_op(
+        type="dot", inputs={'X': x,
+                            'Y': y}, attrs={}, outputs={"Out": out})
+    return out
+
+
+def t(input, name=None):
+    """
+    Transpose <=2-D tensor. 
+    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
+    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    
+    Args:
+        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+    
+    For Example:
+        .. code-block:: text
+        # Example 1 (0-D tensor)
+         x = tensor([0.79])
+         fluid.layers.t(x) = tensor([0.79])
+         # Example 2 (1-D tensor)
+         x = tensor([0.79, 0.84, 0.32])
+         fluid.layers.t(x) = tensor([0.79, 0.84, 0.32])
+        
+         # Example 3 (2-D tensor)
+         x = tensor([0.79, 0.84, 0.32],
+                    [0.64, 0.14, 0.57])
+         fluid.layers.t(x) = tensor([0.79, 0.64],
+                              [0.84, 0.14],
+                              [0.32, 0.57])
+    
+     Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[2, 3],
+                            dtype='float32')
+            x_transposed = fluid.layers.t(x)
+            print x_transposed.shape
+            #(3L, 2L)
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape))
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out, _ = core.ops.transpose2(input, 'axis', perm)
+        return out
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'transpose')
+
+    helper = LayerHelper('t', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    input_shape = helper.create_variable_for_type_inference(input.dtype)
+    if len(input.shape) == 1:
+        out = input
+    else:
+        helper.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [out],
+                     'XShape': [input_shape]},
+            attrs={'axis': [1, 0]})
+    return out
+
+
+def cross(input, other, dim=None):
+    """
+    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
+    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
+    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    
+    Args:
+        input (Variable): The first input tensor variable.
+        other (Variable): The second input tensor variable.
+        dim (int): The dimension to take the cross-product in.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data_x = np.array([[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0],
+                               [3.0, 3.0, 3.0]])
+            data_y = np.array([[1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0]])
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_x)
+                y = fluid.dygraph.to_variable(data_y)
+                out_z1 = fluid.layers.cross(x, y)
+                print(out_z1.numpy())
+                #[[-1. -1. -1.]
+                # [ 2.  2.  2.]
+                # [-1. -1. -1.]]
+                out_z2 = fluid.layers.cross(x, y, dim=1)
+                print(out_z2.numpy())
+                #[[0. 0. 0.]
+                # [0. 0. 0.]
+                # [0. 0. 0.]]
+    """
+    helper = LayerHelper("cross", **locals())
+    if in_dygraph_mode():
+        if dim:
+            return core.ops.cross(input, other, 'dim', dim)
+        else:
+            return core.ops.cross(input, other)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+    attrs = dict()
+    if dim:
+        attrs['dim'] = dim
+
+    helper.append_op(
+        type='cross',
+        inputs={'X': input,
+                'Y': other},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
+
+
+def interpolate(input,
+                out_shape=None,
+                scale=None,
+                name=None,
+                resample='BILINEAR',
+                actual_shape=None,
+                align_corners=True,
+                align_mode=1,
+                data_format='NCHW'):
+    """
+    This op resizes a batch of images.
+    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
+    or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
+    (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
+    and the resizing only applies on the three dimensions(depth, height and width).
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
+    future and only use :attr:`out_shape` instead.
+    Supporting resample methods:
+        'BILINEAR' : Bilinear interpolation
+        'TRILINEAR' : Trilinear interpolation
+        'NEAREST' : Nearest neighbor interpolation
+        'BICUBIC' : Bicubic interpolation
+
+    Nearest neighbor interpolation is to perform nearest neighbor interpolation
+    in both the 3rd dimension(in height direction) and the 4th dimension(in width
+    direction) on input tensor.
+
+    Bilinear interpolation is an extension of linear interpolation for
+    interpolating functions of two variables (e.g. H-direction and
+    W-direction in this op) on a rectilinear 2D grid. The key idea is
+    to perform linear interpolation first in one direction, and then
+    again in the other direction.
+
+    Trilinear interpolation is an extension of linear interpolation for
+    interpolating functions of three variables (e.g. D-direction,
+    H-direction and W-direction in this op) on a rectilinear 3D grid.
+    The linear interpolation is performed on three directions.
+    Align_corners and align_mode are optional parameters,the calculation method
+    of interpolation can be selected by them.
+
+    Bicubic interpolation is an extension of cubic interpolation for interpolating
+    data points on a two-dimensional regular grid. The interpolated surface is
+    smoother than corresponding surfaces obtained by bilinear interpolation or
+    nearest-neighbor interpolation.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+
+            if align_corners = True && out_size > 1 :
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+
+            else:
+
+              scale_factor = float(in_size/out_size)
+
+
+        Nearest neighbor interpolation:
+
+          if:
+              align_corners = False
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = floor (H_{in} * scale_{factor})
+              W_out = floor (W_{in} * scale_{factor})
+          else:
+              align_corners = True
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = round(H_{in} * scale_{factor})
+              W_out = round(W_{in} * scale_{factor})
+        Bilinear interpolation:
+          if:
+              align_corners = False , align_mode = 0
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+        Bicubic interpolation:
+
+          if:
+              align_corners = False
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+        Trilinear interpolation:
+          if:
+              align_corners = False , align_mode = 0
+
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = D_{in} * scale_{factor}
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+    For details of nearest neighbor interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+    For details of bilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bilinear_interpolation.
+    For details of trilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+    For details of bicubic interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bicubic_interpolation
+    Parameters:
+        input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
+             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If
+             a list, each element can be an integer or a Tensor Variable of shape: [1].
+             If a Tensor Variable, its dimensions size should be a 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale`.
+             Default: None.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR' ,
+                       'BICUBIC' and 'NEAREST' currently. Default: 'BILINEAR'
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                :attr:`out_shape` if you want to specify output
+                                shape dynamically, because :attr:`actual_shape`
+                                will be deprecated. When using actual_shape to
+                                specify output shape, one of :attr:`out_shape`
+                                and :attr:`scale` should also be set, otherwise
+                                errors would be occurred in graph constructing stage.
+                                Default: None
+        align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
+                               input and output tensors are aligned, preserving the values at the
+                               corner pixels.
+                               Default: True
+        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
+                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            src_idx = scale*dst_index.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
+    Returns:
+        A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
+        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
+    Raises:
+        TypeError: out_shape should be a list or tuple or Variable.
+        TypeError: actual_shape should either be Variable or None.
+        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
+                    'TRILINEAR', 'BICUBIC', or 'NEAREST' currently.
+        ValueError: 'BILINEAR', 'BICUBIC' and 'NEAREST' only support 4-D tensor.
+        ValueError: 'TRILINEAR' only support 5-D tensor.
+        ValueError: One of out_shape and scale must not be None.
+        ValueError: out_shape length should be 2 for input 4-D tensor.
+        ValueError: out_shape length should be 3 for input 5-D tensor.
+        ValueError: scale should be greater than zero.
+        TypeError: align_corners should be a bool value
+        ValueError: align_mode can only be '0' or '1'
+        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+    Examples:
+        .. code-block:: python
+
+	    #declarative mode
+	    import paddle
+        import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[None,3,6,10])
+	    #1
+	    output = fluid.layers.interpolate(input=input,out_shape=[12,12])
+	    #2
+	    #x = np.array([2]).astype("int32")
+	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
+	    #fluid.layers.assign(input=x, output=dim1)
+	    #output = fluid.layers.interpolate(input=input,out_shape=[12,dim1])
+	    #3
+	    #x = np.array([3,12]).astype("int32")
+	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+	    #fluid.layers.assign(input=x, output=shape_tensor)
+	    #output = pfluid.layers.interpolate(input=input,out_shape=shape_tensor)
+	    #4
+	    #x = np.array([0.5]).astype("float32")
+	    #scale_tensor = fluid.data(name="scale", shape=[1], dtype="float32")
+	    #fluid.layers.assign(x,scale_tensor)
+	    #output = fluid.layers.interpolate(input=input,scale=scale_tensor)
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+
+	    input_data = np.random.rand(2,3,6,10).astype("float32")
+	    output_data = exe.run(fluid.default_main_program(),
+                feed={"input":input_data},
+                fetch_list=[output],
+                return_numpy=True)
+
+	    print(output_data[0].shape)
+	    #1
+	    # (2, 3, 12, 12)
+	    #2
+	    # (2, 3, 12, 2)
+	    #3
+	    # (2, 3, 3, 12)
+	    #4
+	    # (2, 3, 3, 5)
+	    #imperative mode
+	    import paddle.fluid.dygraph as dg
+        import paddle.fluid as fluid
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		output = fluid.layers.interpolate(input=input, out_shape=[12,12])
+    		print(output.shape)
+		# [2L, 3L, 12L, 12L]
+    """
+    resample_methods = {
+        'BILINEAR': 'bilinear',
+        'TRILINEAR': 'trilinear',
+        'NEAREST': 'nearest',
+        'BICUBIC': 'bicubic',
+    }
+    if resample not in resample_methods:
+        raise ValueError(
+            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR', "
+            " 'BICUBIC' or 'NEAREST' currently.")
+    resample_type = resample_methods[resample]
+
+    if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(input.shape) != 4:
+        raise ValueError(
+            "'BILINEAR', 'BICUBIC' and 'NEAREST' only support 4-D tensor.")
+    if resample == 'TRILINEAR' and len(input.shape) != 5:
+        raise ValueError("'TRILINEAR'only support 5-D tensor.")
+
+    if not isinstance(align_corners, bool):
+        raise TypeError("Attr align_corners should be a bool value")
+    if align_mode != 0 and align_mode != 1:
+        raise ValueError("align_mode can only be 0 or 1")
+
+    if out_shape is None and scale is None:
+        raise ValueError("One of out_shape and scale must not be None.")
+    helper = LayerHelper('{}_interp'.format(resample_type), **locals())
+    dtype = helper.input_dtype()
+
+    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 4-D input.")
+    elif len(input.shape) == 5 and data_format not in ['NCDHW', 'NDHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCDHW` or `NDHWC` supported for 5-D input.")
+
+    def _is_list_or_turple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if data_format == 'NCHW' or data_format == 'NCDHW':
+        data_layout = 'NCHW'
+    if data_format == 'NHWC' or data_format == 'NDHWC':
+        data_layout = 'NHWC'
+
+    inputs = {"X": input}
+    attrs = {
+        "out_d": -1,
+        "out_h": -1,
+        "out_w": -1,
+        "interp_method": resample_type,
+        "align_corners": align_corners,
+        "align_mode": align_mode,
+        "data_layout": data_layout
+    }
+
+    if out_shape is not None:
+        if isinstance(out_shape, Variable):
+            out_shape.stop_gradient = True
+            inputs['OutSize'] = out_shape
+        else:
+            if not (_is_list_or_turple_(out_shape)):
+                raise TypeError(
+                    "out_shape should be a list or tuple or Variable.")
+            # Validate the shape
+            contain_var = False
+            for dim_idx, dim_size in enumerate(out_shape):
+                if isinstance(dim_size, Variable):
+                    contain_var = True
+                    continue
+                assert dim_size > 0, (
+                    "Each dimension size given in out_shape must be greater than 0."
+                )
+
+            if contain_var:
+                new_size_tensor = []
+                size_list = []
+                for dim in out_shape:
+                    if isinstance(dim, Variable):
+                        dim.stop_gradient = True
+                        new_size_tensor.append(dim)
+                        size_list.append(-1)
+                    else:
+                        assert (isinstance(dim, int))
+                        temp_out = helper.create_variable_for_type_inference(
+                            'int32')
+                        fill_constant(
+                            [1], 'int32', dim, force_cpu=True, out=temp_out)
+                        new_size_tensor.append(temp_out)
+                        size_list.append(dim)
+                inputs['SizeTensor'] = new_size_tensor
+
+            if len(input.shape) == 4:
+                if len(out_shape) != 2:
+                    raise ValueError("out_shape length should be 2 for "
+                                     "input 4-D tensor.")
+                if contain_var:
+                    attrs['out_h'] = size_list[0]
+                    attrs['out_w'] = size_list[1]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_h'] = out_shape[0]
+                    attrs['out_w'] = out_shape[1]
+            if len(input.shape) == 5:
+                if len(out_shape) != 3:
+                    raise ValueError("out_shape length should be 3 for "
+                                     "input 5-D tensor.")
+                if contain_var:
+                    attrs['out_d'] = size_list[0]
+                    attrs['out_h'] = size_list[1]
+                    attrs['out_w'] = size_list[2]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_d'] = out_shape[0]
+                    attrs['out_h'] = out_shape[1]
+                    attrs['out_w'] = out_shape[2]
+
+    else:
+        if isinstance(scale, Variable):
+            scale.stop_gradient = True
+            inputs["Scale"] = scale
+        elif isinstance(scale, float) or isinstance(scale, int):
+            if scale <= 0:
+                raise ValueError("Attr(scale) should be greater than zero.")
+            attrs['scale'] = float(scale)
+        else:
+            raise TypeError(
+                "Attr(scale)'s type should be float, int or Variable.")
+
+    if isinstance(actual_shape, Variable):
+        warnings.warn(
+            "actual_shape will be deprecated, it is recommended to use "
+            "out_shape instead of actual_shape to specify output shape dynamically."
+        )
+        actual_shape.stop_gradient = True
+        inputs["OutSize"] = actual_shape
+    elif actual_shape is not None:
+        raise TypeError("actual_shape should either be Variable or None.")
+
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='{}_interp'.format(resample_type),
+        inputs=inputs,
+        outputs={"Out": out},
+        attrs=attrs)
+    return out
+
+
+def diag_embed(input, offset=0, dim1=-2, dim2=-1):
+    """
+    This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2) 
+    are filled by ``input``. By default, a 2D plane formed by the last two dimensions 
+    of the returned tensor will be selected.
+
+    The argument ``offset`` determines which diagonal is generated:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+
+    Args:
+        input(Variable|numpy.ndarray): The input tensor. Must be at least 1-dimensional. The input data type should be float32, float64, int32, int64.
+        offset(int, optional): Which diagonal to consider. Default: 0 (main diagonal).
+        dim1(int, optional): The first dimension with respect to which to take diagonal. Default: -2.
+        dim2(int, optional): The second dimension with respect to which to take diagonal. Default: -1.
+    
+    Returns:
+        Variable, the output data type is the same as input data type.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.dygraph as dg
+            import numpy as np
+            
+            diag_embed = np.random.randn(2, 3).astype('float32')
+            # [[ 0.7545889 , -0.25074545,  0.5929117 ],
+            #  [-0.6097662 , -0.01753256,  0.619769  ]]
+            with dg.guard():
+                data1 = fluid.layers.diag_embed(diag_embed)
+                data1.numpy()
+                # [[[ 0.7545889 ,  0.        ,  0.        ],
+                #  [ 0.        , -0.25074545,  0.        ],
+                #   [ 0.        ,  0.        ,  0.5929117 ]],
+
+                # [[-0.6097662 ,  0.        ,  0.        ],
+                #  [ 0.        , -0.01753256,  0.        ],
+                #  [ 0.        ,  0.        ,  0.619769  ]]]
+
+                data2 = fluid.layers.diag_embed(diag_embed, offset=-1, dim1=0, dim2=2)
+                data2.numpy()
+                # [[[ 0.        ,  0.        ,  0.        ,  0.        ],
+                #   [ 0.7545889 ,  0.        ,  0.        ,  0.        ],
+                #   [ 0.        , -0.25074545,  0.        ,  0.        ],
+                #   [ 0.        ,  0.        ,  0.5929117 ,  0.        ]],
+                #
+                #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
+                #   [-0.6097662 ,  0.        ,  0.        ,  0.        ],
+                #   [ 0.        , -0.01753256,  0.        ,  0.        ],
+                #   [ 0.        ,  0.        ,  0.619769  ,  0.        ]]]
+
+                data3 = fluid.layers.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
+                data3.numpy()
+                # [[[ 0.        ,  0.7545889 ,  0.        ,  0.        ],
+                #   [ 0.        , -0.6097662 ,  0.        ,  0.        ]],
+                #
+                #  [[ 0.        ,  0.        , -0.25074545,  0.        ],
+                #   [ 0.        ,  0.        , -0.01753256,  0.        ]],
+                #
+                #  [[ 0.        ,  0.        ,  0.        ,  0.5929117 ],
+                #   [ 0.        ,  0.        ,  0.        ,  0.619769  ]],
+                #
+                #  [[ 0.        ,  0.        ,  0.        ,  0.        ],
+                #   [ 0.        ,  0.        ,  0.        ,  0.        ]]]
+    """
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+
+    if not isinstance(input, Variable):
+        input = assign(input)
+
+    def __check_input(input, offset, dim1, dim2):
+        check_dtype(input.dtype, 'Input',
+                    ['int32', 'int64', 'float16', 'float32', 'float64'],
+                    'diag_embed')
+
+        input_shape = list(input.shape)
+        assert len(input_shape) >= 1,                     \
+                "Input must be at least 1-dimensional, "   \
+                "But received Input's dimensional: %s.\n" %  \
+                len(input_shape)
+
+        assert np.abs(dim1) <= len(input_shape),    \
+            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape) + 1), len(input_shape), dim1)
+
+        assert np.abs(dim2) <= len(input_shape),      \
+            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape) + 1), len(input_shape), dim2)
+
+        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
+        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
+        assert dim1_ != dim2_,       \
+               "dim1 and dim2 cannot be the same dimension." \
+                "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
+
+    if not in_dygraph_mode():
+        __check_input(input, offset, dim1, dim2)
+    helper = LayerHelper("diag_embed", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    helper.append_op(
+        type='diag_embed',
+        inputs={'Input': [input]},
+        attrs={'offset': offset,
+               'dim1': dim1,
+               'dim2': dim2},
+        outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out
+
+
+def meshgrid(input, name=None):
+    """	
+    This op takes a list of N tensors as input, each of which is 1-dimensional 	
+    vector, and creates N-dimensional grids.	
+    	
+    Args:	
+        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 	
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.	
+        name (str, optional): The default value is None. Normally there is no need for	
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.	
+ 	
+    Returns:	
+         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)	
+    Examples:	
+      .. code-block:: python	
+          import paddle	
+          import paddle.fluid as fluid	
+          import numpy as np	
+          x = fluid.data(name='x', shape=[100], dtype='int32')	
+          y = fluid.data(name='y', shape=[200], dtype='int32')	
+          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')	
+          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')	
+          exe = fluid.Executor(place=fluid.CPUPlace())	
+          grid_x, grid_y = fluid.layers.meshgrid([x, y])	
+          res_1, res_2 = exe.run(fluid.default_main_program(),	
+                                 feed={'x': input_1,	
+                                       'y': input_2},	
+                                 fetch_list=[grid_x, grid_y])	
+     	
+          #the shape of res_1 is (100, 200)	
+          #the shape of res_2 is (100, 200)	
+      .. code-block:: python	
+          #example 2: in dygraph mode	
+          import paddle	
+          import paddle.fluid as fluid	
+          import numpy as np	
+          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')	
+          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')	
+          with fluid.dygraph.guard():	
+              tensor_3 = fluid.dygraph.to_variable(input_3)	
+              tensor_4 = fluid.dygraph.to_variable(input_4)	
+              grid_x, grid_y = fluid.layers.meshgrid([tensor_3, tensor_4])	
+          #the shape of grid_x is (100, 200)	
+          #the shape of grid_y is (100, 200)	
+    """
+
+    if in_dygraph_mode():
+        num = len(input)
+        out = core.ops.meshgrid(input, num)
+        return out
+
+    helper = LayerHelper('meshgrid', **locals())
+
+    if not isinstance(input, list):
+        raise TypeError("The type of input in meshgrid should be list.")
+
+    for id, input_ in enumerate(input):
+        check_dtype(input_.dtype, 'create data type',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'meshgrid')
+
+    num = len(input)
+    out = [
+        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        for i in range(num)
+    ]
+    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+
+    return out
 
 
 def fc(input,
@@ -1022,7 +2511,7 @@ def chunk_eval(input,
 
     this_input = {"Inference": [input], "Label": [label]}
 
-    if seq_length:
+    if seq_length is not None:
         this_input["SeqLength"] = [seq_length]
 
     helper.append_op(
@@ -4857,7 +6346,65 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
+    attrs = {
+        'transpose_X': transpose_x,
+        'transpose_Y': transpose_y,
+        'alpha': float(alpha),
+    }
+
+    if in_dygraph_mode():
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                        transpose_y, 'alpha', float(alpha))
+        return out
+
+    def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
+        x_shape = list(x.shape)
+        y_shape = list(y.shape)
+        if len(x_shape) == 1:
+            x_shape = [1] + x_shape
+        if len(y_shape) == 1:
+            y_shape = y_shape + [1]
+
+        # check the inner 2 dimensions
+        if transpose_x:
+            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
+        if transpose_y:
+            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
+        if x_shape[-1] != y_shape[-2]:
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
+
+        if len(y_shape) > 2 and len(x_shape) > 2:
+            for i, dim_x in enumerate(x_shape[:-2]):
+                # don't check neg shape
+                if dim_x < 0 or y_shape[i] < 0:
+                    continue
+                if dim_x != y_shape[i]:
+                    raise ValueError(
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
+
+    __check_input(x, y)
+
+    helper = LayerHelper('matmul', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matmul',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs=attrs)
+    return out
 
 
 def topk(input, k, name=None):
@@ -10074,7 +11621,26 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    return paddle.elementwise_sum(x)
+    helper = LayerHelper('sum', **locals())
+    check_type(x, 'x', (Variable, tuple, list), 'sum')
+    if isinstance(x, list) or isinstance(x, tuple):
+        if len(x) > 0:
+            for input in x:
+                check_variable_and_dtype(
+                    input, "x", ['float32', 'float64', 'int32', 'int64'], 'sum')
+    else:
+        check_variable_and_dtype(
+            x, "x", ['float32', 'float64', 'int32', 'int64'], 'sum')
+
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('x'))
+    helper.append_op(
+        type='sum',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'use_mkldnn': False})
+
+    return out
 
 
 @templatedoc()
