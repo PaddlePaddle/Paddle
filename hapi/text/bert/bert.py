@@ -23,8 +23,8 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
+from hapi.model import Model
 from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, to_variable, Layer, guard
-
 from hapi.text.text import PrePostProcessLayer, TransformerEncoder
 from hapi.text.bert.utils.init import init_from_static_model
 
@@ -52,7 +52,7 @@ class BertConfig(object):
         print('------------------------------------------------')
 
 
-class BertEncoder(Layer):
+class BertEncoder(Model):
     """
     bert
     """

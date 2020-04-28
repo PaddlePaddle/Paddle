@@ -642,7 +642,7 @@ class Model(fluid.dygraph.Layer):
     An Model object is network with training and inference features.
     Dynamic graph and static graph are supported at the same time,
     switched by `fluid.enable_dygraph()`. The usage is as follows.
-    The switching between dynamic and static should be before
+    But note, the switching between dynamic and static should be before
     instantiating a Model. The input description, i.e, hapi.Input,
     must be required for static graph.
 
@@ -993,8 +993,25 @@ class Model(fluid.dygraph.Layer):
         Returns a list of parameters of the model.
 
         Returns:
-            list of :ref:`api_guide_Variable_en` : a list of parameters.
-        
+            list of Parameter in static graph.
+            list of ParamBase in dynamic graph.
+
+        Examples:
+
+            .. code-block:: python
+
+              from hapi.model import Model, Input, set_device
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = fluid.dygraph.Linear(20, 10, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+
+              fluid.enable_dygraph()
+              model = MyModel()
+              params = model.parameters()
         """
         return self._adapter.parameters()
 
@@ -1006,27 +1023,32 @@ class Model(fluid.dygraph.Layer):
                 labels=None,
                 device=None):
         """
-        FIXME: add comments
+        Configures the model before runing.
+
         Args:
-            optimizer (Optimizer|None): optimizer must be set in training
+            optimizer (Optimizer|None): Optimizer must be set in training
                 and should be a Optimizer instance. It can be None in eval
                 and test mode.
-            loss_function (Loss|None): loss function must be set in training
+            loss_function (Loss|None): Loss function must be set in training
                 and should be a Loss instance. It can be None when there is
                 no loss.
-            metrics (Metric|list of Metric|None): if metrics is set, all
-                metric will be calculate and output in train/eval mode.
+            metrics (Metric|list of Metric|None): If metrics is set, all
+                metrics will be calculated and output in train/eval mode.
             inputs (Input|list|dict|None): inputs, entry points of network,
                 could be a Input layer, or lits of Input layers,
                 or dict (name: Input), or None. For static graph,
                 inputs must be set. For dynamic graph, it could be None.
             labels (Input|list|None): labels, entry points of network,
                 could be a Input layer or lits of Input layers, or None.
-                For static graph, if set loss_function in Model.prepare(), it
-                must be set. Otherwise, it could be None.
-            device (str|None): specify device type, 'CPU' or 'GPU'.
+                For static graph, if labels is required in loss_function,
+                labels must be set. Otherwise, it could be None.
+            device (str|fluid.CUDAPlace|fluid.CPUPlace|None): specify device
+                type, 'CPU', 'GPU', fluid.CUDAPlace or fluid.CPUPlace.
                 If None, automatically select device according to
                 installation package version.
+
+        Returns:
+            None
         """
 
         if isinstance(device, fluid.CUDAPlace) or \
@@ -1108,7 +1130,9 @@ class Model(fluid.dygraph.Layer):
             num_workers=0,
             callbacks=None, ):
         """
-        FIXME: add more comments and usage
+        Trains the model for a fixed number of epochs. If `eval_data` is set,
+        evaluation will be done at the end of each epoch.
+
         Args:
             train_data (Dataset|DataLoader): An iterable data loader is used for 
                 train. An instance of paddle paddle.io.Dataset or 
@@ -1141,6 +1165,87 @@ class Model(fluid.dygraph.Layer):
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
+
+        Returns:
+            None
+
+        Examples:
+            1. An example use Dataset and set btch size, shuffle in fit.
+               How to make a batch is done internally.
+
+            .. code-block:: python
+
+              from hapi.model import Model, Input, set_device
+              from hapi.loss import CrossEntropy
+              from hapi.metrics import Accuracy
+              from hapi.datasets import MNIST
+              from hapi.vision.models import LeNet
+
+              dynamic = True
+              device = set_device(FLAGS.device)
+              fluid.enable_dygraph(device) if dynamic else None
+           
+              train_dataset = MNIST(mode='train')
+              val_dataset = MNIST(mode='test')
+           
+              inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+              labels = [Input([None, 1], 'int64', name='label')]
+           
+              model = LeNet()
+              optim = fluid.optimizer.Adam(
+                  learning_rate=0.001, parameter_list=model.parameters())
+              model.prepare(
+                  optim,
+                  CrossEntropy(),
+                  Accuracy(topk=(1, 2)),
+                  inputs=inputs,
+                  labels=labels,
+                  device=device)
+              model.fit(train_dataset,
+                        val_dataset,
+                        epochs=2,
+                        batch_size=64,
+                        save_dir='mnist_checkpoint')
+
+            2. An example use DataLoader, batch size and shuffle is set in
+               DataLoader.
+
+            .. code-block:: python
+
+              from hapi.model import Model, Input, set_device
+              from hapi.loss import CrossEntropy
+              from hapi.metrics import Accuracy
+              from hapi.datasets import MNIST
+              from hapi.vision.models import LeNet
+
+              dynamic = True
+              device = set_device(FLAGS.device)
+              fluid.enable_dygraph(device) if dynamic else None
+           
+              train_dataset = MNIST(mode='train')
+              train_loader = fluid.io.DataLoader(train_dataset,
+                  places=device, batch_size=64)
+              val_dataset = MNIST(mode='test')
+              val_loader = fluid.io.DataLoader(val_dataset,
+                  places=device, batch_size=64)
+           
+              inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+              labels = [Input([None, 1], 'int64', name='label')]
+           
+              model = LeNet()
+              optim = fluid.optimizer.Adam(
+                  learning_rate=0.001, parameter_list=model.parameters())
+              model.prepare(
+                  optim,
+                  CrossEntropy(),
+                  Accuracy(topk=(1, 2)),
+                  inputs=inputs,
+                  labels=labels,
+                  device=device)
+              model.fit(train_loader,
+                        val_loader,
+                        epochs=2,
+                        save_dir='mnist_checkpoint')
         """
 
         assert train_data is not None, \
@@ -1235,26 +1340,29 @@ class Model(fluid.dygraph.Layer):
             num_workers=0,
             callbacks=None, ):
         """
-        FIXME: add more comments and usage
+        Evaluate the loss and metrics of the model on input dataset.
+
         Args:
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
-            batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When eval_data is the instance of Dataloader, this argument will be ignored.
-                Default: 1.
+            batch_size (int): Integer number. The batch size of train_data
+                and eval_data.  When eval_data is the instance of Dataloader,
+                this argument will be ignored. Default: 1.
             log_freq (int): The frequency, in number of steps, the eval logs
                 are printed. Default: 10.
-            verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
-            num_workers (int): The number of subprocess to load data, 0 for no subprocess 
-                used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored. Default: 0.
+            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+                1 = progress bar, 2 = one line per epoch. Default: 2.
+            num_workers (int): The number of subprocess to load data,
+                0 for no subprocess used and loading data in main process. When
+                train_data and eval_data are both the instance of Dataloader,
+                this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
         Returns:
-            dict: Result of metric.
+            dict: Result of metric. The key is the names of Metric,
+                value is a scalar or numpy.array.
         """
 
         if fluid.in_dygraph_mode():
@@ -1312,7 +1420,8 @@ class Model(fluid.dygraph.Layer):
                 num_workers=0,
                 stack_outputs=False):
         """
-        FIXME: add more comments and usage
+        Compute the output predictions on testing data.
+
         Args:
             test_data (Dataset|DataLoader): An iterable data loader is used for
                 predict. An instance of paddle.io.Dataset or paddle.io.Dataloader 
@@ -1387,21 +1496,20 @@ class Model(fluid.dygraph.Layer):
                              save_dir,
                              model_filename=None,
                              params_filename=None,
-                             program_only=False):
+                             model_only=False):
         """
         Save inference model must in static mode.
 
         Args:
             dirname(str): The directory path to save the inference model.
-            model_filename(str|None): The name of file to save the inference program
-                                        itself. If is set None, a default filename
-                                        :code:`__model__` will be used.
-            params_filename(str|None): The name of file to save all related parameters.
-                                            If it is set None, parameters will be saved
-                                            in separate files .
-            program_only(bool): If True, It will save inference program only, and do not 
-                                        save params of Program.
-                                        Default: False.
+            model_filename(str|None): The name of file to save the inference
+                model itself. If is set None, a default filename
+                :code:`__model__` will be used.
+            params_filename(str|None): The name of file to save all related
+                parameters. If it is set None, parameters will be saved
+                in separate files .
+            model_only(bool): If True, It will save inference model only,
+                and do not save parameters. Default: False.
 
         Returns:
             list: The fetch variables' name list
@@ -1426,7 +1534,7 @@ class Model(fluid.dygraph.Layer):
             main_program=infer_prog,
             model_filename=model_filename,
             params_filename=params_filename,
-            program_only=program_only)
+            program_only=model_only)
 
     def _run_one_epoch(self,
                        data_loader,

@@ -39,8 +39,8 @@ TSM模型是将Temporal Shift Module插入到ResNet网络中构建的视频分�
     ```bash
     git clone https://github.com/PaddlePaddle/hapi
     cd hapi
-    export PYTHONPATH=$PYTHONPATH:`pwd`
-    cd tsm
+    export PYTHONPATH=`pwd`:$PYTHONPATH
+    cd examples/tsm
     ```
 
 ### 数据准备
@@ -140,6 +140,8 @@ python infer.py --data=<path/to/dataset> --label_list=<path/to/label_list> --inf
 ```text
 2020-04-03 07:37:16,321-INFO: Sample ./kineteics/val_10/data_batch_10-042_6 predict label: 6, ground truth label: 6
 ```
+
+**注意：** 推断时`--infer_file`需要指定到pickle文件路径。
 
 ## 参考论文
 

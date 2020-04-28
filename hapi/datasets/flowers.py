@@ -123,7 +123,7 @@ class Flowers(Dataset):
         if self.transform is not None:
             image = self.transform(image)
 
-        return image, label
+        return image, label.astype('int64')
 
     def __len__(self):
         return len(self.indexes)

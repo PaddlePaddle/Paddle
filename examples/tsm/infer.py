@@ -26,6 +26,7 @@ from check import check_gpu, check_version
 from modeling import tsm_resnet50
 from kinetics_dataset import KineticsDataset
 from transforms import *
+from utils import print_arguments
 
 import logging
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ def main():
         model.load(FLAGS.weights, reset_optimizer=True)
 
     imgs, label = dataset[0]
-    pred = model.test([imgs[np.newaxis, :]])
+    pred = model.test_batch([imgs[np.newaxis, :]])
     pred = labels[np.argmax(pred)]
     logger.info("Sample {} predict label: {}, ground truth label: {}" \
                 .format(FLAGS.infer_file, pred, labels[int(label)]))
@@ -86,6 +87,7 @@ if __name__ == '__main__':
         type=str,
         help="weights path for evaluation")
     FLAGS = parser.parse_args()
+    print_arguments(FLAGS)
 
     check_gpu(str.lower(FLAGS.device) == 'gpu')
     check_version()

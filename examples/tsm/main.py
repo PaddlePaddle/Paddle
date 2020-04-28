@@ -31,6 +31,7 @@ from modeling import tsm_resnet50
 from check import check_gpu, check_version
 from kinetics_dataset import KineticsDataset
 from transforms import *
+from utils import print_arguments
 
 
 def make_optimizer(step_per_epoch, parameter_list=None):
@@ -106,7 +107,7 @@ def main():
               eval_data=val_dataset,
               epochs=FLAGS.epoch,
               batch_size=FLAGS.batch_size,
-              save_dir='tsm_checkpoint',
+              save_dir=FLAGS.save_dir or 'tsm_checkpoint',
               num_workers=FLAGS.num_workers,
               drop_last=True,
               shuffle=True)
@@ -150,7 +151,14 @@ if __name__ == '__main__':
         default=None,
         type=str,
         help="weights path for evaluation")
+    parser.add_argument(
+        "-s",
+        "--save_dir",
+        default=None,
+        type=str,
+        help="directory path for checkpoint saving, default ./yolo_checkpoint")
     FLAGS = parser.parse_args()
+    print_arguments(FLAGS)
 
     check_gpu(str.lower(FLAGS.device) == 'gpu')
     check_version()

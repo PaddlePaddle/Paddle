@@ -17,6 +17,7 @@ from __future__ import print_function
 
 import unittest
 
+import os
 import numpy as np
 import shutil
 import tempfile
@@ -72,7 +73,8 @@ class MnistDataset(MNIST):
             self.labels = self.labels[:sample_num]
 
     def __getitem__(self, idx):
-        img = np.reshape(self.images[idx], [1, 28, 28])
+        img, label = self.images[idx], self.labels[idx]
+        img = np.reshape(img, [1, 28, 28])
         if self.return_label:
             return img, np.array(self.labels[idx]).astype('int64')
         return img,
@@ -141,12 +143,20 @@ class TestModel(unittest.TestCase):
         cls.init_param = dy_lenet.state_dict()
         dynamic_train(dy_lenet, cls.train_loader)
 
-        cls.trained_param = dy_lenet.state_dict()
-
         cls.acc1 = dynamic_evaluate(dy_lenet, cls.val_loader)
+
         cls.inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
         cls.labels = [Input([None, 1], 'int64', name='label')]
+
+        cls.save_dir = tempfile.mkdtemp()
+        cls.weight_path = os.path.join(cls.save_dir, 'lenet')
+        fluid.dygraph.save_dygraph(dy_lenet.state_dict(), cls.weight_path)
+
         fluid.disable_dygraph()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.save_dir)
 
     def test_fit_dygraph(self):
         self.fit(True)
@@ -154,21 +164,40 @@ class TestModel(unittest.TestCase):
     def test_fit_static(self):
         self.fit(False)
 
-    def not_test_evaluate_dygraph(self):
+    def test_evaluate_dygraph(self):
         self.evaluate(True)
 
-    def not_test_evaluate_static(self):
+    def test_evaluate_static(self):
         self.evaluate(False)
 
-    def not_test_predict_dygraph(self):
+    def test_predict_dygraph(self):
         self.predict(True)
 
-    def not_test_predict_static(self):
+    def test_predict_static(self):
         self.predict(False)
+
+    def predict(self, dynamic):
+        fluid.enable_dygraph(self.device) if dynamic else None
+
+        inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
+        labels = [Input([None, 1], 'int64', name='label')]
+
+        test_dataloader = fluid.io.DataLoader(
+            self.test_dataset,
+            places=self.device,
+            batch_size=64,
+            return_list=True)
+
+        model = LeNet()
+
+        model.load(self.weight_path)
+
+        model.prepare(metrics=Accuracy(), inputs=inputs, labels=labels)
+
+        output = model.predict(test_dataloader, stack_outputs=True)
 
     def fit(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
-
         seed = 333
         fluid.default_startup_program().random_seed = seed
         fluid.default_main_program().random_seed = seed
@@ -193,7 +222,7 @@ class TestModel(unittest.TestCase):
         model = LeNet()
         model.prepare(
             metrics=Accuracy(), inputs=self.inputs, labels=self.labels)
-        model.load_dict(self.trained_param)
+        model.load(self.weight_path)
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
         fluid.disable_dygraph() if dynamic else None
@@ -202,7 +231,7 @@ class TestModel(unittest.TestCase):
         fluid.enable_dygraph(self.device) if dynamic else None
         model = LeNet()
         model.prepare(inputs=self.inputs)
-        model.load_dict(self.trained_param)
+        model.load(self.weight_path)
         output = model.predict(
             self.test_dataset, batch_size=64, stack_outputs=True)
         np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
@@ -269,11 +298,10 @@ class TestModelFunction(unittest.TestCase):
                 device=device)
             loss, = model.train_batch([data], [label])
 
-            print(loss, ref)
             np.testing.assert_allclose(loss.flatten(), ref.flatten())
             fluid.disable_dygraph() if dynamic else None
 
-    def not_test_test_batch(self, dynamic=True):
+    def test_test_batch(self, dynamic=True):
         dim = 20
         data = np.random.random(size=(4, dim)).astype(np.float32)
 
@@ -288,9 +316,9 @@ class TestModelFunction(unittest.TestCase):
 
         ref = get_expect()
         for dynamic in [True, False]:
-            self.set_seed()
             device = set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
+            self.set_seed()
             model = MyModel()
             inputs = [Input([None, dim], 'float32', name='x')]
             model.prepare(inputs=inputs, device=device)
@@ -299,24 +327,29 @@ class TestModelFunction(unittest.TestCase):
             np.testing.assert_allclose(out, ref)
             fluid.disable_dygraph() if dynamic else None
 
-    def not_test_save_load(self):
+    def test_save_load(self):
         path = tempfile.mkdtemp()
         for dynamic in [True, False]:
             device = set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             model = MyModel()
+            inputs = [Input([None, 20], 'float32', name='x')]
+            model.prepare(inputs=inputs)
             model.save(path + '/test')
             model.load(path + '/test')
             shutil.rmtree(path)
             fluid.disable_dygraph() if dynamic else None
 
-    def not_test_parameters(self):
+    def test_parameters(self):
         for dynamic in [True, False]:
             device = set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             model = MyModel()
+            inputs = [Input([None, 20], 'float32', name='x')]
+            model.prepare(inputs=inputs)
             params = model.parameters()
-            self.assertTrue(params[0].shape == [20, 10])
+            self.assertTrue(params[0].shape[0] == 20)
+            self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
 
