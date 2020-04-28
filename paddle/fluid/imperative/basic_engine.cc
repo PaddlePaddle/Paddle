@@ -23,6 +23,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -212,6 +213,12 @@ void BasicEngine::Execute() {
 
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
+        if (!cur_op.InnerOp().HasAttr(
+                framework::OpProtoAndCheckerMaker::OpRoleAttrName())) {
+          const_cast<framework::OperatorBase&>(cur_op.InnerOp())
+              .SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+                       static_cast<int>(framework::OpRole::kBackward));
+        }
         OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
                     cur_op.place());
       }

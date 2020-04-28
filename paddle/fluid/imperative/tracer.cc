@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_set>
 #include <utility>
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -51,6 +52,13 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     attr_checker->Check(&attrs, true);
+  }
+
+  if (!op->HasAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName())) {
+    op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(framework::OpRole::kForward));
+    VLOG(3) << "Op has op role: "
+            << op->HasAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName());
   }
 
   OpBase::Run(*op, ins, outs, attrs, place);

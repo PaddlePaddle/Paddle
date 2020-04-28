@@ -19,6 +19,10 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/variable_wrapper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -26,13 +30,25 @@ namespace framework {
 namespace details {
 // assert false when meets NAN or inf
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::Variable* var,
                          const std::string& var_name,
                          const platform::Place& place);
 
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& scope,
                         const platform::Place& place);
+
+void CheckDynamicOpHasNanOrInf(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<imperative::VarBase>& ins,
+    const imperative::NameVarMap<imperative::VarBase>& outs,
+    const platform::Place& place);
+
+void CheckDynamicOpHasNanOrInf(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<imperative::VariableWrapper>& ins,
+    const imperative::NameVarMap<imperative::VariableWrapper>& outs,
+    const platform::Place& place);
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

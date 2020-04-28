@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
@@ -227,13 +228,62 @@ void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
   VisitDataType(tensor.type(), vistor);
 }
 
+bool IsSkipOp(const framework::OperatorBase& op) {
+  if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
+  if (!op.HasAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName())) {
+    VLOG(5) << "Unknow op role. It will be checked by default. op type: "
+            << op.Type();
+    return false;
+  }
+  int op_role = op.template Attr<int>(
+      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+
+  // kForward=0, can't filter
+  if (op_role == static_cast<int>(framework::OpRole::kForward)) {
+    op_role = FORWARD;
+  }
+  if (op_role_nan_inf_white_list & op_role) return true;
+
+  return false;
+}
+
+void CheckOpHasNanOrInf(const framework::OperatorBase& op,
+                        const framework::Scope& exec_scope,
+                        const platform::Place& place) {
+  std::call_once(white_list_init_flag, InitWhiteListFormEnv);
+
+  if (IsSkipOp(op)) return;
+
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
+    // NOTE. vname may destruct in the end of this func.
+    for (auto& vname : op.OutputVars(true)) {
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      CheckVarHasNanOrInf(op.Type(), var, vname, place);
+    }
+  } else {
+    for (auto& vname : op.OutputVars(true)) {
+      bool need_check = true;
+      for (auto& white_vname : op_var_nan_inf_white_list().at(op.Type())) {
+        if (vname.find(white_vname) != std::string::npos) {
+          need_check = false;
+          break;
+        }
+      }
+      if (!need_check) continue;
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      CheckVarHasNanOrInf(op.Type(), var, vname, place);
+    }
+  }
+}
+
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::Scope& scope,
+                         const framework::Variable* var,
                          const std::string& var_name,
                          const platform::Place& place) {
-  auto* var = scope.FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("In op=%s, can't find var:%s", op_type,
+      var, platform::errors::NotFound("In op=%s, var:%s is NULL. ", op_type,
                                       var_name));
 
   const Tensor* tensor{nullptr};
@@ -269,50 +319,55 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
 }
 
-bool IsSkipOp(const framework::OperatorBase& op) {
-  if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
-
-  int op_role = op.template Attr<int>(
-      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
-
-  // kForward=0, can't filter
-  if (op_role == static_cast<int>(framework::OpRole::kForward)) {
-    op_role = FORWARD;
-  }
-  if (op_role_nan_inf_white_list & op_role) return true;
-
-  return false;
-}
-
-void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::Scope& exec_scope,
-                        const platform::Place& place) {
+template <typename VarType>
+void CheckDynamicOpHasNanOrInfImpl(const framework::OperatorBase& op,
+                                   const imperative::NameVarMap<VarType>& ins,
+                                   const imperative::NameVarMap<VarType>& outs,
+                                   const platform::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
 
   if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
-    // NOTE. vname may destruct in the end of this func.
-    for (auto& vname : op.OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      CheckVarHasNanOrInf(op.Type(), exec_scope, vname, place);
+    for (auto& var_pair : outs) {
+      for (auto& var : var_pair.second) {
+        auto& framework_var = var->Var();
+        CheckVarHasNanOrInf(op.Type(), &framework_var, var->Name(), place);
+      }
     }
   } else {
-    for (auto& vname : op.OutputVars(true)) {
-      bool need_check = true;
-      for (auto& white_vname : op_var_nan_inf_white_list().at(op.Type())) {
-        if (vname.find(white_vname) != std::string::npos) {
-          need_check = false;
-          break;
+    for (auto& var_pair : outs) {
+      for (auto& var : var_pair.second) {
+        bool need_check = true;
+        for (auto& white_vname : op_var_nan_inf_white_list().at(op.Type())) {
+          if (var->Name().find(white_vname) != std::string::npos) {
+            need_check = false;
+            break;
+          }
         }
+        if (!need_check) continue;
+        auto& framework_var = var->Var();
+        CheckVarHasNanOrInf(op.Type(), &framework_var, var->Name(), place);
       }
-      if (!need_check) continue;
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      CheckVarHasNanOrInf(op.Type(), exec_scope, vname, place);
     }
   }
+}
+
+void CheckDynamicOpHasNanOrInf(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<imperative::VarBase>& ins,
+    const imperative::NameVarMap<imperative::VarBase>& outs,
+    const platform::Place& place) {
+  CheckDynamicOpHasNanOrInfImpl<imperative::VarBase>(op, ins, outs, place);
+}
+
+void CheckDynamicOpHasNanOrInf(
+    const framework::OperatorBase& op,
+    const imperative::NameVarMap<imperative::VariableWrapper>& ins,
+    const imperative::NameVarMap<imperative::VariableWrapper>& outs,
+    const platform::Place& place) {
+  CheckDynamicOpHasNanOrInfImpl<imperative::VariableWrapper>(op, ins, outs,
+                                                             place);
 }
 
 }  // namespace details

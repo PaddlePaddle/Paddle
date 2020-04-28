@@ -23,12 +23,15 @@ import subprocess
 
 class TestNanInf(unittest.TestCase):
     def setUp(self):
+        self.config()
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             self._python_interp += " -m coverage run --branch -p"
-        self._python_interp += " check_nan_inf_base.py"
-
+        self._python_interp += " check_nan_inf_base.py" if not self.dygraph else " check_dygraph_nan_inf_base.py"
         self.env = os.environ.copy()
+
+    def config(self):
+        self.dygraph = False
 
     def test_nan_inf(self):
         cmd = self._python_interp
@@ -59,6 +62,16 @@ class TestNanInfEnv(TestNanInf):
         self.env[str("PADDLE_INF_NAN_SKIP_ROLE")] = str("loss")
         self.env[str("PADDLE_INF_NAN_SKIP_VAR")] = str(
             "elementwise_add:fc_0.tmp_1")
+
+
+class TestDygraphNanInf(TestNanInf):
+    def config(self):
+        self.dygraph = True
+
+
+class TestDygraphNanInfEnv(TestNanInfEnv):
+    def config(self):
+        self.dygraph = True
 
 
 if __name__ == '__main__':

@@ -159,6 +159,11 @@ class OperatorBase {
                    "%s should be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
+
+  void SetAttr(const std::string& name, const Attribute& v) {
+    attrs_[name] = v;
+  }
+
   const AttributeMap& Attrs() const { return attrs_; }
 
   const VariableNameMap& Inputs() const { return inputs_; }
@@ -484,8 +489,8 @@ class OperatorWithKernel : public OperatorBase {
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
 
-  platform::Place GetExecutionPlace(
-      const platform::Place& platform) const override {
+  virtual platform::Place GetExecutionPlace(
+      const platform::Place& platform) const {
     return kernel_type_->place_;
   }
 

@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -28,6 +29,8 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace imperative {
@@ -305,6 +308,11 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
 
   prepared_op.Run(ins, outs, attrs);
+
+  VLOG(10) << "FLAGS_check_nan_inf: " << FLAGS_check_nan_inf;
+  if (FLAGS_check_nan_inf) {
+    framework::details::CheckDynamicOpHasNanOrInf(op, ins, outs, place);
+  }
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
 }
