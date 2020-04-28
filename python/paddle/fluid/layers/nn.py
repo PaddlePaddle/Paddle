@@ -1137,7 +1137,7 @@ def chunk_eval(input,
 
     this_input = {"Inference": [input], "Label": [label]}
 
-    if seq_length:
+    if seq_length is not None:
         this_input["SeqLength"] = [seq_length]
 
     helper.append_op(
