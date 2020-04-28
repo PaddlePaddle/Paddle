@@ -67,14 +67,6 @@ class TestLodAppendOpError(unittest.TestCase):
                 name='level3' + dtype, shape=[4], dtype='int32', lod_level=2)
             self.assertRaises(TypeError, fluid.layers.lod_append, x3, level3)
 
-        # Input(level) dtype must be int32 when lod_level=0
-        for dtype in ["bool", "float16", "float32", "float64", "int64"]:
-            x4 = fluid.layers.data(
-                name='x4' + dtype, shape=[4], dtype='float32')
-            level4 = fluid.layers.data(
-                name='level4_' + dtype, shape=[4], dtype=dtype, lod_level=0)
-            self.assertRaises(TypeError, fluid.layers.lod_append, x4, level4)
-
 
 if __name__ == "__main__":
     unittest.main()
