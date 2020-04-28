@@ -88,14 +88,14 @@ def bicubic_interp_np(input,
             h = ratio_h * k
         else:
             h = ratio_h * (k + 0.5) - 0.5
-        input_y = int(h)
+        input_y = np.floor(h)
         y_t = h - input_y
         for l in range(out_w):
             if (align_corners):
                 w = ratio_w * l
             else:
                 w = ratio_w * (l + 0.5) - 0.5
-            input_x = int(w)
+            input_x = np.floor(w)
             x_t = w - input_x
             for i in range(batch_size):
                 for j in range(channel):
@@ -265,7 +265,7 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
     def test_case(self):
-
+        np.random.seed(200)
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
         shape_data = np.array([12, 12]).astype("int32")

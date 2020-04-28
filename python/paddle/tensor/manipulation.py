@@ -22,30 +22,44 @@ from ..fluid.layers.tensor import fill_constant
 from ..fluid.layers import utils
 import numpy as np
 # TODO: define functions to manipulate a tensor  
+from ..fluid.layers import cast  #DEFINE_ALIAS
+from ..fluid.layers import concat  #DEFINE_ALIAS
+from ..fluid.layers import expand  #DEFINE_ALIAS
+from ..fluid.layers import expand_as  #DEFINE_ALIAS
+from ..fluid.layers import flatten  #DEFINE_ALIAS
+from ..fluid.layers import reshape  #DEFINE_ALIAS
+from ..fluid.layers import reverse  #DEFINE_ALIAS
+from ..fluid.layers import scatter  #DEFINE_ALIAS
+from ..fluid.layers import slice  #DEFINE_ALIAS
+from ..fluid.layers import strided_slice  #DEFINE_ALIAS
+from ..fluid.layers import transpose  #DEFINE_ALIAS
+from ..fluid.layers import unique  #DEFINE_ALIAS
+from ..fluid.layers import unstack  #DEFINE_ALIAS
+
 __all__ = [
-    #            'cast',
-    #            'concat',
-    #            'expand',
-    #            'expand_as',
-    #            'flatten',
+    'cast',
+    'concat',
+    'expand',
+    'expand_as',
+    'flatten',
     'gather',
-    #            'gather_nd',
-    #            'reshape',
-    #            'reverse',
-    #            'scatter',
-    #            'scatter_nd_add',
-    #            'scatter_nd',
-    #            'shard_index',
-    #            'slice',
+    #       'gather_nd',
+    'reshape',
+    'reverse',
+    'scatter',
+    #       'scatter_nd_add',
+    #       'scatter_nd',
+    #       'shard_index',
+    'slice',
     'split',
     'squeeze',
     'stack',
-    #            'strided_slice',
-    #            'transpose',
-    #            'unique',
-    #            'unique_with_counts',
+    'strided_slice',
+    'transpose',
+    'unique',
+    #       'unique_with_counts',
     'unsqueeze',
-    #            'unstack',
+    'unstack',
     'flip',
     'unbind',
     'roll'
