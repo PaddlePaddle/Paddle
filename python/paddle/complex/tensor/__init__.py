@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import math
-from .math import *
-from . import manipulation
-from .manipulation import *
 from . import linalg
+from . import math
+from . import manipulation
 from .linalg import *
+from .math import *
+from .manipulation import *
 
-__all__ = math.__all__ + manipulation.__all__ + linalg.__all__
+__all__ = math.__all__
+__all__ += linalg.__all__
+__all__ += manipulation.__all__
