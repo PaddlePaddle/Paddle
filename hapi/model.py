@@ -653,28 +653,30 @@ class Model(fluid.dygraph.Layer):
         import paddle
         import paddle.fluid as fluid
         #import paddle.incubate.hapi as hapi
-        import hapi as hapi
+        from hapi import Model, Input, set_device
+        from hapi.loss import CrossEntropy
+        from hapi.dataset import MNIST
 
-        class MyModel(hapi.model.Model):
+        class MyModel(Model):
             def __init__(self):
                 super(MyModel, self).__init__()
                 self._fc = fluid.dygraph.Linear(784, 10, act='softmax')
             def forward(self, x):
                 y = self._fc(x)
                 return y
-        device = hapi.model.set_device('gpu')
+        device = set_device('gpu')
         # if use static graph, do not set
         fluid.enable_dygraph(device)
         model = MyModel()
         optim = fluid.optimizer.SGD(learning_rate=1e-3,
             parameter_list=model.parameters())
         
-        inputs = [hapi.model.Input([None, 784], 'float32', name='x')]
-        labels = [hapi.model.Input([None, 1], 'int64', name='label')]
+        inputs = [Input([None, 784], 'float32', name='x')]
+        labels = [Input([None, 1], 'int64', name='label')]
         
-        mnist_data = hapi.datasets.MNIST(mode='train')
+        mnist_data = MNIST(mode='train')
         model.prepare(optim,
-                      hapi.model.CrossEntropy(),
+                      CrossEntropy(average=True),
                       hapi.metrics.Accuracy(),
                       inputs,
                       labels,
@@ -721,9 +723,9 @@ class Model(fluid.dygraph.Layer):
             
               import numpy as np
               import paddle.fluid as fluid
-              import paddle.incubate.hapi as hapi
+              from hapi import Model, Input, set_device
 
-              class MyModel(hapi.Model):
+              class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
                       self._fc = Linear(784, 1, act='softmax')
@@ -738,10 +740,10 @@ class Model(fluid.dygraph.Layer):
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
 
-              inputs = [hapi.model.Input([None, 784], 'float32', name='x')]
-              labels = [hapi.model.Input([None, 1], 'int64', name='label')]
+              inputs = [Input([None, 784], 'float32', name='x')]
+              labels = [Input([None, 1], 'int64', name='label')]
               model.prepare(optim,
-                            hapi.model.CrossEntropy(),
+                            CrossEntropy(average=True),
                             inputs=inputs,
                             labels=labels,
                             device=device)
@@ -750,7 +752,7 @@ class Model(fluid.dygraph.Layer):
               loss = model.train_batch([data], [label])
               print(loss)
         """
-        return self._adapter.train_batch(*args, **kwargs)
+        return self._adapter.train_batch(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
         """
@@ -773,9 +775,9 @@ class Model(fluid.dygraph.Layer):
             
               import numpy as np
               import paddle.fluid as fluid
-              import paddle.incubate.hapi as hapi
+              from hapi import Model, Input, set_device
 
-              class MyModel(hapi.model.Model):
+              class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -783,17 +785,17 @@ class Model(fluid.dygraph.Layer):
                       y = self._fc(x)
                       return y
 
-              device = hapi.model.set_device('gpu')
+              device = set_device('gpu')
               fluid.enable_dygraph(device)
 
               model = MyModel()
               optim = fluid.optimizer.SGD(learning_rate=1e-3,
                   parameter_list=model.parameters())
 
-              inputs = [hapi.model.Input([None, 784], 'float32', name='x')]
-              labels = [hapi.model.Input([None, 1], 'int64', name='label')]
+              inputs = [Input([None, 784], 'float32', name='x')]
+              labels = [Input([None, 1], 'int64', name='label')]
               model.prepare(optim,
-                            hapi.model.CrossEntropy(),
+                            CrossEntropy(average=True),
                             inputs=inputs,
                             labels=labels,
                             device=device)
@@ -802,7 +804,7 @@ class Model(fluid.dygraph.Layer):
               loss = model.eval_batch([data], [label])
               print(loss)
         """
-        return self._adapter.eval_batch(*args, **kwargs)
+        return self._adapter.eval_batch(inputs, labels)
 
     def test_batch(self, inputs):
         """
@@ -822,9 +824,9 @@ class Model(fluid.dygraph.Layer):
             
               import numpy as np
               import paddle.fluid as fluid
-              import paddle.incubate.hapi as hapi
+              from hapi import Model, Input, set_device
 
-              class MyModel(hapi.model.Model):
+              class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -832,18 +834,18 @@ class Model(fluid.dygraph.Layer):
                       y = self._fc(x)
                       return y
 
-              device = hapi.model.set_device('gpu')
+              device = set_device('gpu')
               fluid.enable_dygraph(device)
 
               model = MyModel()
-              inputs = [hapi.model.Input([None, 784], 'float32', name='x')]
+              inputs = [Input([None, 784], 'float32', name='x')]
               model.prepare(inputs=inputs,
                             device=device)
               data = np.random.random(size=(4,784)).astype(np.float32)
               out = model.eval_batch([data])
               print(out)
         """
-        return self._adapter.test_batch(*args, **kwargs)
+        return self._adapter.test_batch(inputs)
 
     def save(self, path):
         """
@@ -872,9 +874,9 @@ class Model(fluid.dygraph.Layer):
             .. code-block:: python
             
               import paddle.fluid as fluid
-              import hapi as hapi
+              from hapi import Model, set_device
               
-              class MyModel(hapi.model.Model):
+              class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -882,13 +884,13 @@ class Model(fluid.dygraph.Layer):
                       y = self._fc(x)
                       return y
               
-              device = hapi.model.set_device('cpu')
+              device = set_device('cpu')
               fluid.enable_dygraph(device)
               model = MyModel()
               model.save('checkpoint/test')
         """
         if ParallelEnv().local_rank == 0:
-            return self._adapter.save(path)
+            self._adapter.save(path)
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
@@ -924,9 +926,9 @@ class Model(fluid.dygraph.Layer):
             .. code-block:: python
             
               import paddle.fluid as fluid
-              import hapi as hapi
+              from hapi import Model, set_device
               
-              class MyModel(hapi.model.Model):
+              class MyModel(Model):
                   def __init__(self):
                       super(MyModel, self).__init__()
                       self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
@@ -934,7 +936,7 @@ class Model(fluid.dygraph.Layer):
                       y = self._fc(x)
                       return y
               
-              device = hapi.model.set_device('cpu')
+              device = set_device('cpu')
               fluid.enable_dygraph(device)
               model = MyModel()
               model.load('checkpoint/test')
@@ -987,7 +989,14 @@ class Model(fluid.dygraph.Layer):
         return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
-        return self._adapter.parameters(*args, **kwargs)
+        """
+        Returns a list of parameters of the model.
+
+        Returns:
+            list of :ref:`api_guide_Variable_en` : a list of parameters.
+        
+        """
+        return self._adapter.parameters()
 
     def prepare(self,
                 optimizer=None,

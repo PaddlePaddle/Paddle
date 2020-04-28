@@ -185,6 +185,9 @@ class ProgBarLogger(Callback):
         self.verbose = verbose
         self.log_freq = log_freq
 
+    def _is_print(self):
+        return self.verbose and ParallelEnv().local_rank == 0
+
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
         assert self.epochs
@@ -195,7 +198,7 @@ class ProgBarLogger(Callback):
         self.steps = self.params['steps']
         self.epoch = epoch
         self.train_step = 0
-        if self.verbose and self.epochs and ParallelEnv().local_rank == 0:
+        if self.epochs and self._is_print():
             print('Epoch %d/%d' % (epoch + 1, self.epochs))
         self.train_progbar = ProgressBar(num=self.steps, verbose=self.verbose)
 
@@ -213,15 +216,13 @@ class ProgBarLogger(Callback):
         logs = logs or {}
         self.train_step += 1
 
-        if self.train_step % self.log_freq == 0 and self.verbose and ParallelEnv(
-        ).local_rank == 0:
+        if self._is_print() and self.train_step % self.log_freq == 0:
             if self.steps is None or self.train_step < self.steps:
                 self._updates(logs, 'train')
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        if self.train_step % self.log_freq != 0 and self.verbose and ParallelEnv(
-        ).local_rank == 0:
+        if self._is_print() and (self.steps is not None):
             self._updates(logs, 'train')
 
     def on_eval_begin(self, logs=None):
@@ -231,7 +232,7 @@ class ProgBarLogger(Callback):
         self.evaled_samples = 0
         self.eval_progbar = ProgressBar(
             num=self.eval_steps, verbose=self.verbose)
-        if ParallelEnv().local_rank == 0:
+        if self._is_print():
             print('Eval begin...')
 
     def on_eval_batch_end(self, step, logs=None):
@@ -240,16 +241,14 @@ class ProgBarLogger(Callback):
         samples = logs.get('batch_size', 1)
         self.evaled_samples += samples
 
-        if self.eval_step % self.log_freq == 0 and self.verbose and ParallelEnv(
-        ).local_rank == 0:
+        if self._is_print() and self.eval_step % self.log_freq == 0:
             if self.eval_steps is None or self.eval_step < self.eval_steps:
                 self._updates(logs, 'eval')
 
     def on_eval_end(self, logs=None):
         logs = logs or {}
-        if self.verbose and ParallelEnv().local_rank == 0:
-            if self.eval_step % self.log_freq != 0:
-                self._updates(logs, 'eval')
+        if self._is_print() and (self.steps is not None):
+            self._updates(logs, 'eval')
             print('Eval samples: %d' % (self.evaled_samples))
 
 
