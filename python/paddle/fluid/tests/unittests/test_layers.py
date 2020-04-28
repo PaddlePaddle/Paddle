@@ -3433,7 +3433,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='float32')
 
-            out = paddle.addmm(input=input, x=x, y=y)
+            out = fluid.layers.addmm(input=input, x=x, y=y)
             return (out)
 
     def test_retinanet_detection_output(self):

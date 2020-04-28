@@ -27,15 +27,15 @@ class TestLogSumOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
 
             x1 = fluid.layers.data(name='x1', shape=[120], dtype="uint8")
-            self.assertRaises(Exception, paddle.logsumexp, x1)
+            self.assertRaises(Exception, fluid.layers.logsumexp, x1)
 
             x2 = fluid.layers.data(name='x2', shape=[2, 3], dtype="int")
-            self.assertRaises(Exception, paddle.logsumexp, x2)
+            self.assertRaises(Exception, fluid.layers.logsumexp, x2)
 
             x3 = fluid.layers.data(name='x3', shape=[3], dtype="float16")
-            self.assertRaises(Exception, paddle.logsumexp, x3)
+            self.assertRaises(Exception, fluid.layers.logsumexp, x3)
 
-            self.assertRaises(AssertionError, paddle.logsumexp, None)
+            self.assertRaises(AssertionError, fluid.layers.logsumexp, None)
 
 
 class TestLogSumExpOp(unittest.TestCase):
@@ -45,13 +45,14 @@ class TestLogSumExpOp(unittest.TestCase):
             x = fluid.dygraph.to_variable(np_x)
             self.assertTrue(
                 np.allclose(
-                    paddle.logsumexp(x).numpy(), np.log(np.sum(np.exp(np_x)))))
+                    fluid.layers.logsumexp(x).numpy(),
+                    np.log(np.sum(np.exp(np_x)))))
 
             np_x = np.random.uniform(0.1, 1, [2, 3, 4]).astype(np.float32)
             x = fluid.dygraph.to_variable(np_x)
             self.assertTrue(
                 np.allclose(
-                    paddle.logsumexp(
+                    fluid.layers.logsumexp(
                         x, dim=[1, 2]).numpy(),
                     np.log(np.sum(np.exp(np_x), axis=(1, 2)))))
 
@@ -59,7 +60,7 @@ class TestLogSumExpOp(unittest.TestCase):
             x = fluid.dygraph.to_variable(np_x)
             self.assertTrue(
                 np.allclose(
-                    paddle.logsumexp(
+                    fluid.layers.logsumexp(
                         x, dim=[2]).numpy(),
                     np.log(np.sum(np.exp(np_x), axis=(2)))))
 
@@ -67,7 +68,7 @@ class TestLogSumExpOp(unittest.TestCase):
             x = fluid.dygraph.to_variable(np_x)
             self.assertTrue(
                 np.allclose(
-                    paddle.logsumexp(
+                    fluid.layers.logsumexp(
                         x, keepdim=True).numpy(),
                     np.log(np.sum(np.exp(np_x), keepdims=True))))
 
@@ -76,7 +77,7 @@ class TestLogSumExpOp(unittest.TestCase):
             helper = LayerHelper("test_logsumexp")
             out = helper.create_variable(
                 type=x.type, name='out', dtype=x.dtype, persistable=False)
-            paddle.logsumexp(x, out=out)
+            fluid.layers.logsumexp(x, out=out)
             self.assertTrue(
                 np.allclose(out.numpy(), np.log(np.sum(np.exp(np_x)))))
 

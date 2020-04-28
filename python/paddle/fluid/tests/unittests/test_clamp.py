@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-import paddle.tensor as tensor
 import paddle.fluid as fluid
 import numpy as np
 import unittest
@@ -31,12 +30,12 @@ class TestClampAPI(unittest.TestCase):
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
-        out_1 = tensor.clamp(images, min=min, max=max)
-        out_2 = tensor.clamp(images, min=0.2, max=0.9)
-        out_3 = tensor.clamp(images, min=0.3)
-        out_4 = tensor.clamp(images, max=0.7)
-        out_5 = tensor.clamp(images, min=min)
-        out_6 = tensor.clamp(images, max=max)
+        out_1 = fluid.layers.clamp(images, min=min, max=max)
+        out_2 = fluid.layers.clamp(images, min=0.2, max=0.9)
+        out_3 = fluid.layers.clamp(images, min=0.3)
+        out_4 = fluid.layers.clamp(images, max=0.7)
+        out_5 = fluid.layers.clamp(images, min=min)
+        out_6 = fluid.layers.clamp(images, max=max)
 
         res1, res2, res3, res4, res5, res6 = exe.run(
             fluid.default_main_program(),
@@ -59,8 +58,8 @@ class TestClampError(unittest.TestCase):
     def test_errors(self):
         x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
         x2 = fluid.layers.data(name='x2', shape=[1], dtype="int8")
-        self.assertRaises(TypeError, tensor.clamp, x=x1, min=0.2, max=0.8)
-        self.assertRaises(TypeError, tensor.clamp, x=x2, min=0.2, max=0.8)
+        self.assertRaises(TypeError, fluid.layers.clamp, x=x1, min=0.2, max=0.8)
+        self.assertRaises(TypeError, fluid.layers.clamp, x=x2, min=0.2, max=0.8)
 
 
 if __name__ == '__main__':
