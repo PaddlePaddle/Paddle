@@ -170,8 +170,8 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
                   found_requant_squash_count);
 }
 
-// op+requant squash if op has Scale_in, Scale_x, Scale_y attr
-// conv2d and fc
+// requant-op squash if op has Scale_in, Scale_x, Scale_y attr
+// conv2d, fc, matmul
 void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::RequantOp requant_op_pattern{gpd.mutable_pattern(), "requant_op"};

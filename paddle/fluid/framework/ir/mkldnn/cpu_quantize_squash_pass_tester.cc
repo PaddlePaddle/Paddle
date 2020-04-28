@@ -30,7 +30,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   op->SetAttr("use_mkldnn", use_mkldnn);
   op->SetAttr("name", name);
   if (type == "conv2d") {
-    if (scale.size() > 0) op->SetAttr("Scale_out", scale[0]);
+    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetInput("Input", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2) op->SetInput("Bias", {inputs[2]});
@@ -60,7 +61,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
                           inputs.size()));
     op->SetInput("W", {inputs[1]});
     op->SetOutput("Out", outputs);
-    op->SetAttr("Scale_out", scale[0]);
+    if (scale.size() > 0) op->SetAttr("Scale_in", scale[0]);
+    if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
   } else if (type == "scale") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -71,7 +73,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
     if (scale.size() > 0) op->SetAttr("Scale_x", scale[0]);
-    if (scale.size() > 1) op->SetAttr("Scale_out", scale[0]);
+    if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
   }
 }
 
@@ -91,11 +93,11 @@ ProgramDesc BuildConvRequantProgramDesc(bool use_mkldnn, float scale_out,
   }
 
   SetOp(&prog, "conv2d", "Conv1", {"a", "w1", "b1"}, {"d"}, use_mkldnn,
-        {scale_out});
+        {1.23f, scale_out});
   SetOp(&prog, "dequantize", "Dequant", {"d"}, {"e"}, use_mkldnn, {scale1});
   SetOp(&prog, "quantize", "Quant", {"e"}, {"f"}, use_mkldnn, {scale2});
   SetOp(&prog, "conv2d", "Conv2", {"f", "w2", "b2"}, {"i"}, use_mkldnn,
-        {scale_out});
+        {1.23f, scale_out});
   return prog;
 }
 
@@ -106,7 +108,7 @@ static const std::initializer_list<std::string> variable_names{
 // b->Dequant(scale1)->c
 // c->Quant1(scale2)->d and d->Conv2->e
 // c->Conv3->f
-// c->Quant2(scale3)->g and g->Conv4->h
+// c->Quant2(scale3)->g and g->Concat->h
 ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn, float scale_out,
                                             float scale1, float scale2,
                                             float scale3) {
@@ -115,16 +117,16 @@ ProgramDesc BuildConvMultiOutputProgramDesc(bool use_mkldnn, float scale_out,
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
   SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, {scale1});
 
   SetOp(&prog, "quantize", "Quant1", {"c"}, {"d"}, use_mkldnn, {scale2});
-  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, {1.23f, scale_out});
 
-  SetOp(&prog, "conv2d", "Conv3", {"c"}, {"f"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv3", {"c"}, {"f"}, use_mkldnn, {1.23f, scale_out});
 
   SetOp(&prog, "quantize", "Quant2", {"c"}, {"g"}, use_mkldnn, {scale3});
-  SetOp(&prog, "conv2d", "Conv4", {"g"}, {"h"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "concat", "Concat", {"g"}, {"h"}, use_mkldnn);
 
   return prog;
 }
@@ -143,10 +145,10 @@ ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn, float conv_scale,
     prog.MutableBlock(0)->Var(v);
   }
 
-  SetOp(&prog, "conv2d", "Conv", {"a"}, {"b"}, use_mkldnn, {conv_scale});
+  SetOp(&prog, "conv2d", "Conv", {"a"}, {"b"}, use_mkldnn, {1.23f, conv_scale});
   SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn,
         {1.0f, requant_scale1});
-  SetOp(&prog, "fc", "Fc", {"d", "w1"}, {"e"}, use_mkldnn, {fc_scale});
+  SetOp(&prog, "fc", "Fc", {"d", "w1"}, {"e"}, use_mkldnn, {1.23f, fc_scale});
   SetOp(&prog, "requantize", "Requant2", {"e"}, {"f"}, use_mkldnn,
         {1.0f, requant_scale2});
   SetOp(&prog, "matmul", "Matmul", {"x", "y"}, {"g"}, use_mkldnn,
@@ -161,7 +163,8 @@ ProgramDesc BuildOpRequantProgramDesc(bool use_mkldnn, float conv_scale,
 // a->Concat->b
 // b->Dequant(scale1)->c
 // c->Quant(scale2)->d
-// d->Conv->e
+// d->Conv1->e
+// d->Conv2->f
 ProgramDesc BuildConcatDequantQuantProgramDesc(bool use_mkldnn, float scale_out,
                                                float scale1, float scale2) {
   ProgramDesc prog;
@@ -172,7 +175,8 @@ ProgramDesc BuildConcatDequantQuantProgramDesc(bool use_mkldnn, float scale_out,
   SetOp(&prog, "concat", "Concat", {"a"}, {"b"}, use_mkldnn);
   SetOp(&prog, "dequantize", "Dequant", {"b"}, {"c"}, use_mkldnn, {scale1});
   SetOp(&prog, "quantize", "Quant", {"c"}, {"d"}, use_mkldnn, {scale2});
-  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"e"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv1", {"d"}, {"e"}, use_mkldnn, {1.23f, scale_out});
+  SetOp(&prog, "conv2d", "Conv2", {"d"}, {"f"}, use_mkldnn, {1.23f, scale_out});
   return prog;
 }
 
@@ -185,7 +189,7 @@ ProgramDesc BuildConvMultiRequantProgramDesc(bool use_mkldnn, float scale_out,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
   SetOp(&prog, "requantize", "Requant1", {"b"}, {"c"}, use_mkldnn,
         {1.23f, scale1});
   SetOp(&prog, "requantize", "Requant2", {"b"}, {"d"}, use_mkldnn,
@@ -202,7 +206,7 @@ ProgramDesc BuildConvDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
   SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
   SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
   return prog;
@@ -217,7 +221,7 @@ ProgramDesc BuildFcDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, {1.23f, scale_out});
   SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
   SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
   return prog;
@@ -232,7 +236,7 @@ ProgramDesc BuildFcDequantFcProgramDesc(bool use_mkldnn, float scale_out,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, {1.23f, scale_out});
   SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
   SetOp(&prog, "concat", "Concat1", {"b"}, {"d"}, use_mkldnn);
   return prog;
@@ -247,9 +251,9 @@ ProgramDesc BuildConvDequantConvProgramDesc(bool use_mkldnn, float scale_out,
   for (auto& v : variable_names) {
     prog.MutableBlock(0)->Var(v);
   }
-  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {scale_out});
+  SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, {1.23f, scale_out});
   SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, {scale});
-  SetOp(&prog, "conv2d", "Conv2", {"b"}, {"d"}, use_mkldnn, {1.0f});
+  SetOp(&prog, "conv2d", "Conv2", {"b"}, {"d"}, use_mkldnn, {1.23f, 1.23f});
   return prog;
 }
 
@@ -271,8 +275,10 @@ ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_mkldnn, float first_scale,
   SetOp(&prog, "quantize", "Quantize2", {"b"}, {"d"}, use_mkldnn,
         {second_scale});
   SetOp(&prog, "concat", "Concat2", {"b"}, {"e"}, use_mkldnn);
-  SetOp(&prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_mkldnn, {first_scale});
-  SetOp(&prog, "fc", "Fc2", {"d", "w2"}, {"g"}, use_mkldnn, {second_scale});
+  SetOp(&prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_mkldnn,
+        {1.23f, first_scale});
+  SetOp(&prog, "fc", "Fc2", {"d", "w2"}, {"g"}, use_mkldnn,
+        {1.23f, second_scale});
 
   return prog;
 }
@@ -318,6 +324,12 @@ ProgramDesc BuildRequantMatmulProgramDesc(bool use_mkldnn, float scale_in,
   SetOp(&prog, "requantize", "Requant", {"a"}, {"x"}, use_mkldnn,
         {scale_in, scale_out});
   SetOp(&prog, "matmul", "Matmul", {"x", "y"}, {"b"}, use_mkldnn, {scale_x});
+  SetOp(&prog, "requantize", "Requant", {"b"}, {"c"}, use_mkldnn,
+        {scale_in, scale_out});
+  SetOp(&prog, "fc", "Fc", {"c", "w1"}, {"d"}, use_mkldnn, {scale_x});
+  SetOp(&prog, "requantize", "Requant", {"d"}, {"e"}, use_mkldnn,
+        {scale_in, scale_out});
+  SetOp(&prog, "conv2d", "Conv", {"e"}, {"f"}, use_mkldnn, {scale_x});
 
   return prog;
 }
@@ -658,16 +670,18 @@ TEST(CpuQuantizeSquashPass, matmul_with_dequant) {
       BuildMatmulDequantProgramDesc(use_mkldnn, dequant_scale), "matmul", true);
 }
 
-TEST(CpuQuantizeSquashPass, requantize_matmul) {
+TEST(CpuQuantizeSquashPass, requantize_matmul_fc_conv) {
   auto use_mkldnn = true;
   auto scale_in = 1.2345f;
   auto scale_out = 1.5432f;
   // remove: requant_op, requant_out
-  auto remove_nodes = 2;
+  auto remove_nodes = 6;
   auto program_desc =
       BuildRequantMatmulProgramDesc(use_mkldnn, scale_in, scale_out, scale_out);
   CountNodeTest(program_desc, remove_nodes);
   EqualScaleTest(program_desc, "Matmul", "Scale_x", scale_in);
+  EqualScaleTest(program_desc, "Fc", "Scale_in", scale_in);
+  EqualScaleTest(program_desc, "Conv", "Scale_in", scale_in);
 }
 
 }  // namespace ir
