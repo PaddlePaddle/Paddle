@@ -29,6 +29,7 @@ void* GetCublasDsoHandle();
 void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
+void* GetCusolverDsoHandle();
 void* GetNVRTCDsoHandle();
 void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();

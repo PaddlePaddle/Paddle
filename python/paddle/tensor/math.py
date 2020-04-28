@@ -14,72 +14,108 @@
 """
 math functions
 """
-
 from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core, _varbase_creator
+from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 import sys
 
 # TODO: define math functions
 # yapf: disable
+from ..fluid.layers import abs    #DEFINE_ALIAS
+from ..fluid.layers import acos    #DEFINE_ALIAS
+from ..fluid.layers import asin    #DEFINE_ALIAS
+from ..fluid.layers import ceil    #DEFINE_ALIAS
+from ..fluid.layers import cos    #DEFINE_ALIAS
+from ..fluid.layers import cumsum    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_add    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_div    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_floordiv    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_max    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_min    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_mod    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_mul    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_pow    #DEFINE_ALIAS
+from ..fluid.layers import elementwise_sub    #DEFINE_ALIAS
+from ..fluid.layers import exp    #DEFINE_ALIAS
+from ..fluid.layers import floor    #DEFINE_ALIAS
+from ..fluid.layers import log    #DEFINE_ALIAS
+from ..fluid.layers import reciprocal    #DEFINE_ALIAS
+from ..fluid.layers import reduce_max    #DEFINE_ALIAS
+from ..fluid.layers import reduce_min    #DEFINE_ALIAS
+from ..fluid.layers import reduce_prod    #DEFINE_ALIAS
+from ..fluid.layers import reduce_sum    #DEFINE_ALIAS
+from ..fluid.layers import round    #DEFINE_ALIAS
+from ..fluid.layers import rsqrt    #DEFINE_ALIAS
+from ..fluid.layers import scale    #DEFINE_ALIAS
+from ..fluid.layers import sign    #DEFINE_ALIAS
+from ..fluid.layers import square    #DEFINE_ALIAS
+from ..fluid.layers import stanh    #DEFINE_ALIAS
+from ..fluid.layers import atan    #DEFINE_ALIAS
+from ..fluid.layers import erf    #DEFINE_ALIAS
+
 __all__ = [
-#            'abs',
-#            'acos',
-#            'asin',
-           'atan',
-#            'ceil',
-#            'cos',
-#            'cumsum',
-#            'elementwise_add',
-#            'elementwise_div',
-#            'elementwise_floordiv',
-#            'elementwise_max',
-#            'elementwise_min',
-#            'elementwise_mod',
-#            'elementwise_mul',
-#            'elementwise_pow',
-#            'elementwise_sub',
-#            'exp',
-#            'floor',
-#            'increment',
-#            'log',
-           'mul',
-#            'multiplex',
-           'pow',
-#            'reciprocal',
-#            'reduce_max',
-#            'reduce_min',
-#            'reduce_prod',
-#            'reduce_sum',
-#            'round',
-#            'rsqrt',
-#            'scale',
-#            'sign',
-           'sin',
-           'sqrt',
-#            'square',
-#            'stanh',
-           'sum',
-#            'sums',
-           'tanh',
-           'elementwise_sum',
-           'max',
-           'min',
-           'mm',
-           'div',
-           'add',
-#            'atan',
-           'logsumexp',
-#            'inverse',
-           'log1p',
-#            'erf',
-           'addcmul',
-           'addmm',
-           'clamp',
+        'abs',
+        'acos',
+        'asin',
+        'atan',
+        'ceil',
+        'cos',
+        'cumsum',
+        'elementwise_add',
+        'elementwise_div',
+        'elementwise_floordiv',
+        'elementwise_max',
+        'elementwise_min',
+        'elementwise_mod',
+        'elementwise_mul',
+        'elementwise_pow',
+        'elementwise_sub',
+        'exp',
+        'floor',
+#       'increment',
+        'log',
+        'mul',
+#       'multiplex',
+        'pow',
+        'reciprocal',
+        'reduce_max',
+        'reduce_min',
+        'reduce_prod',
+        'reduce_sum',
+        'round',
+        'rsqrt',
+        'scale',
+        'sign',
+        'sin',
+        'sqrt',
+        'square',
+        'stanh',
+        'sum',
+#       'sums',
+        'tanh',
+        'elementwise_sum',
+        'max',
+        'min',
+        'mm',
+        'div',
+        'add',
+        'atan',
+        'logsumexp',
+        'inverse',
+        'log1p',
+        'erf',
+        'addcmul',
+        'addmm',
+        'clamp',
+        'trace',
+        'kron'
 ]
+
 # yapf: enable.
 
 
@@ -952,6 +988,7 @@ def mm(input, mat2, out=None, name=None):
                                'Y': mat2}, outputs={'Out': out})
     return out
 
+
 def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     """
     **addmm**
@@ -1000,6 +1037,10 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
             # [[10.5 10.5]
             # [10.5 10.5]]
     """
+    if in_dygraph_mode():
+        out = core.ops.addmm(input, x, y, "Alpha", alpha, "Beta", beta)
+        return out
+
     inputs = {'Input': input, "X": x, "Y": y}
     attrs = {'Alpha': alpha, 'Beta': beta}
 
@@ -1080,6 +1121,78 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
         return out
 
     return layers.log(sum_out, name)
+
+
+def inverse(input, out=None, name=None):
+    """
+    Takes the inverse of the square matrix. A square matrix is a matrix with
+    the same number of rows and columns. The input can be a square matrix
+    (2-D Tensor) or batches of square matrices.
+
+    Args:
+        input (Variable): The input Variable which holds a Tensor. The last two
+            dimensions should be equal. When the number of dimensions is
+            greater than 2, it is treated as batches of square matrix. The data
+            type can be float32 and float64.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            If out is None, a new Varibale will be create to store the result.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information,
+            please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: A Tensor holds the inverse of input. The shape and data type
+            is the same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
+
+            # example for static graph
+            input = fluid.data("input", shape=[2, 2], dtype="float32")
+            out = paddle.inverse(input)
+        
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(feed={"input": mat_np },
+                              fetch_list=[out.name])
+            print(results[0]) # [[0.5, 0], [0, 0.5]]
+
+            # example for dynamic graph
+            with fluid.dygraph.guard():
+                mat = fluid.dygraph.to_variable(mat_np)
+                inv = paddle.inverse(mat)
+                print(inv) # [[0.5, 0], [0, 0.5]]
+    """
+    if in_dygraph_mode():
+        return core.ops.inverse(input)
+
+    def _check_input(input):
+        check_variable_and_dtype(input, 'input',
+                                 ['float32', 'float64'], 'inverse')
+        if len(input.shape) < 2:
+            raise ValueError(
+                "The input of inverse is expected to be a Tensor whose number "
+                "of dimensions is no less than 2. But reviced: %d, "
+                "input's shape: %s." % (len(input.shape), input.shape))
+
+        if out is not None:
+            check_variable_and_dtype(out, 'out', input.dtype, 'inverse')
+
+    _check_input(input)
+
+    helper = LayerHelper('inverse', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='inverse', inputs={'Input': [input] }, outputs={'Output': [out]})
+    return out
 
 
 def max(input, dim=None, keep_dim=False, out=None, name=None):
@@ -1408,3 +1521,157 @@ def clamp(input, min=None, max=None, output=None, name=None):
         type='clip', inputs=inputs, outputs={'Out': [output]}, attrs=attrs)
 
     return output
+
+def trace(input, offset=0, dim1=0, dim2=1, out=None, name=None):
+    """
+    This OP computes the sum along diagonals of the input tensor.
+    
+    If ``input`` is 2D, returns the sum of diagonal. 
+
+    If ``input`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
+    the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
+    of the input tensor.
+
+    The argument ``offset`` determines where diagonals are taken from input tensor:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+    
+    Args:
+        input(Variable): The input tensor. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
+        dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
+        dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+        name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Variable: the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid.dygraph as dg
+            import numpy as np
+            
+            case1 = np.random.randn(2, 3).astype('float32')
+            case2 = np.random.randn(3, 10, 10).astype('float32')
+            case3 = np.random.randn(3, 10, 5, 10).astype('float32')
+            
+            with dg.guard():
+                case1 = dg.to_variable(case1)
+                case2 = dg.to_variable(case2)
+                case3 = dg.to_variable(case3)
+                data1 = paddle.trace(case1) # data1.shape = [1]
+                data2 = paddle.trace(case2, offset=1, dim1=1, dim2=2) # data2.shape = [3]
+                data3 = paddle.trace(case3, offset=-3, dim1=1, dim2=-1) # data2.shape = [3, 5]
+    """
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+
+    def __check_input(input, offset, dim1, dim2):
+        check_dtype(input.dtype, 'Input',
+                    ['int32', 'int64', 'float16', 'float32', 'float64'],
+                    'trace')
+
+        input_shape = list(input.shape)
+        assert len(input_shape) >= 2,                     \
+                "The input must be at least 2-dimensional, "   \
+                "But received Input's dimensional: %s.\n" %  \
+                len(input_shape)
+
+        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1
+        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2
+
+        assert dim1_ < len(input_shape),     \
+            "The argument dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape)), len(input_shape) - 1, dim1)
+
+        assert dim2_ < len(input_shape),   \
+            "The argument dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
+            % (-(len(input_shape)), len(input_shape) - 1, dim2)
+
+
+        assert  dim1_ != dim2_,   \
+               "dim1 and dim2 cannot be the same dimension." \
+                "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
+
+    if not in_dygraph_mode():
+        __check_input(input, offset, dim1, dim2)
+    helper = LayerHelper('trace', **locals())
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'trace')
+
+    helper.append_op(
+        type='trace',
+        inputs={'Input': [input]},
+        attrs={'offset': offset,
+               'dim1': dim1,
+               'dim2': dim2},
+        outputs={'Out': [out]})
+    return out
+
+@templatedoc(op_type="kron")
+def kron(x, y, out=None, name=None):
+    """${comment}
+
+    Args:
+        x (Variable): the fist operand of kron op, data type: float16, float32, 
+            float64, int32 or int64.
+        y (Variable): the second operand of kron op, data type: float16, 
+            float32, float64, int32 or int64. Its data type should be the same 
+            with x.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of 
+            operation. If out is None, a new Varibale will be create to store 
+            the result. Defaults to None.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: The output of kron op, data type: float16, float32, float64, int32 or int64. Its data is the same with x.
+
+    Examples:
+        .. code-block:: python
+        
+          import paddle
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          import numpy as np
+
+          a = np.arange(1, 5).reshape(2, 2).astype(np.float32)
+          b = np.arange(1, 10).reshape(3, 3).astype(np.float32)
+
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              a_var = dg.to_variable(a)
+              b_var = dg.to_variable(b)
+              c_var = paddle.kron(a_var, b_var)
+              c_np = c_var.numpy()
+          print(c_np)
+
+          #[[ 1.  2.  3.  2.  4.  6.]
+          # [ 4.  5.  6.  8. 10. 12.]
+          # [ 7.  8.  9. 14. 16. 18.]
+          # [ 3.  6.  9.  4.  8. 12.]
+          # [12. 15. 18. 16. 20. 24.]
+          # [21. 24. 27. 28. 32. 36.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.kron(x, y)
+
+    helper = LayerHelper('kron', **locals())
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'kron')
+    helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
+    return out

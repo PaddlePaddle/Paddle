@@ -254,10 +254,11 @@ class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{
+    static std::unordered_map<std::string, std::string> m{
         {"Input", /*->*/ "Output"}};
+    return m;
   }
 };
 

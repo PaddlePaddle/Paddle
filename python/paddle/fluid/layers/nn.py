@@ -983,12 +983,11 @@ def dropout(x,
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        seed = seed if seed is not None else 0
         _is_test = not _dygraph_tracer()._train_mode
-        out, mask = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
-                                     _is_test, 'fix_seed', seed is not None,
-                                     'seed', seed, 'dropout_implementation',
-                                     dropout_implementation)
+        out, mask = core.ops.dropout(
+            x, 'dropout_prob', dropout_prob, 'is_test', _is_test, 'fix_seed',
+            seed is not None, 'seed', seed if seed is not None else 0,
+            'dropout_implementation', dropout_implementation)
         return out
 
     helper = LayerHelper('dropout', **locals())
@@ -1138,7 +1137,7 @@ def chunk_eval(input,
 
     this_input = {"Inference": [input], "Label": [label]}
 
-    if seq_length:
+    if seq_length is not None:
         this_input["SeqLength"] = [seq_length]
 
     helper.append_op(
@@ -3406,6 +3405,8 @@ def layer_norm(input,
     assert in_dygraph_mode(
     ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'layer_norm')
     dtype = helper.input_dtype()
 
     # create intput and parameters
@@ -3510,7 +3511,8 @@ def group_norm(input,
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
-
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'group_norm')
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
@@ -6261,8 +6263,7 @@ def lod_reset(x, y=None, target_lod=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
         check_type(y, 'y', (Variable), 'lod_reset')
-        if y.lod_level == 0:
-            check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
+        #TODO: check y.lod_level = 0 dtype
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6333,8 +6334,7 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
-        if level.lod_level == 0:
-            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
+        #TODO: check y.lod_level = 0 dtype
     else:
         attrs['target_lod'] = level
     helper.append_op(
@@ -8182,6 +8182,10 @@ def random_crop(x, shape, seed=None):
 
     """
     helper = LayerHelper("random_crop", **locals())
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'uint8', 'int16', 'int32'],
+                             'random_crop')
+    check_type(shape, 'shape', (list, Variable), 'random_crop')
     dtype = x.dtype
     out = helper.create_variable_for_type_inference(dtype)
     if seed is None:
@@ -10046,6 +10050,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10139,6 +10146,12 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    check_type(input, 'input', (Variable),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'int'],
+                'fluid.layers.gaussian_random_batch_size_like')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -12063,6 +12076,9 @@ def affine_channel(x,
 
     """
     helper = LayerHelper("affine_channel", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'affine_channel')
+    check_type(scale, 'scale', (Variable, type(None)), 'affine_channel')
+    check_type(bias, 'bias', (Variable, type(None)), 'affine_channel')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -12381,6 +12397,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
+    check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
 
     loss = helper.create_variable_for_type_inference(dtype=input.dtype)
 
@@ -12565,6 +12583,11 @@ def get_tensor_from_selected_rows(x, name=None):
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
+    check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
+    if x.type != core.VarDesc.VarType.SELECTED_ROWS:
+        raise TypeError(
+            "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
+        )
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -14301,7 +14324,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
-    attrs = {'seed': seed, 'min': min, 'max': max}
+    attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     if in_dygraph_mode():
         attrs['shape'] = shape
     else:

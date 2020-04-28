@@ -234,19 +234,21 @@ void CUDAContext::InitEigenContext() {
 }
 
 CUDAContext::CUDAContext(const CUDAPlace& place,
-                         const enum stream::Priority& priority) {
+                         const stream::Priority& priority) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
   stream_.reset(new stream::CUDAStream(place, priority));
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();
+  InitCuSolverContext();
 }
 
 CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
+  DestoryCuSolverContext();
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
@@ -338,6 +340,10 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
+}
+
+cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
+  return context()->CusolverDnHandle();
 }
 
 cudaStream_t CUDADeviceContext::stream() const {

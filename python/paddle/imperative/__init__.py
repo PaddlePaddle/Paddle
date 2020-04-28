@@ -19,7 +19,7 @@ __all__ = [
     'ParameterList', 'Sequential'
 ]
 
-from paddle.fluid import cora
+from paddle.fluid import core
 from ..fluid.dygraph.base import enabled, guard, no_grad, to_variable, grad
 from ..fluid.dygraph.layers import Layer
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential
