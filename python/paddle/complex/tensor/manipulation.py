@@ -17,7 +17,10 @@ from ..helper import is_complex, is_real, complex_variable_exists
 from ...fluid.framework import ComplexVariable
 from ...fluid import layers
 
-__all__ = ['reshape', ]
+__all__ = [
+    'reshape',
+    'transpose',
+]
 
 
 def reshape(x, shape, inplace=False, name=None):
@@ -104,3 +107,39 @@ def reshape(x, shape, inplace=False, name=None):
     out_real = fluid.layers.reshape(x.real, shape, inplace=inplace, name=name)
     out_imag = fluid.layers.reshape(x.imag, shape, inplace=inplace, name=name)
     return ComplexVariable(out_real, out_imag)
+
+
+def transpose(x, perm, name=None):
+    """
+    Permute the data dimensions for complex number :attr:`input` according to `perm`.
+
+    See :ref:`api_fluid_layers_transpose` for the real number API.
+
+    Args:
+        x (ComplexVariable): The input n-D ComplexVariable with data type
+            complex64 or complex128.
+        perm (list): Permute the input according to the value of perm.
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        ComplexVariable: A transposed n-D ComplexVariable, with the same data type as :attr:`input`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+            import paddle.fluid.dygraph as dg
+
+            with dg.guard():
+                a = np.array([[1.0 + 1.0j, 2.0 + 1.0j], [3.0+1.0j, 4.0+1.0j]])
+                x = dg.to_variable(a)
+                y = paddle.complex.transpose(x, [1, 0])
+                print(y.numpy())
+                # [[1.+1.j 3.+1.j]
+                #  [2.+1.j 4.+1.j]]
+    """
+    complex_variable_exists([x], "transpose")
+    real = layers.transpose(x.real, perm, name)
+    imag = layers.transpose(x.imag, perm, name)
+    return ComplexVariable(real, imag)

@@ -1644,10 +1644,9 @@ class ComplexVariable(object):
     holding the real part and imaginary part of complex numbers respectively.
     
     **Notes**:
-        **The constructor of Variable should not be invoked directly.**
+        **The constructor of ComplexVariable should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **
-          to create a dygraph ComplexVariable with complex number data.**
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexVariable with complex number data.**
 
     Args:
         real (Variable): The Variable holding real-part data.
