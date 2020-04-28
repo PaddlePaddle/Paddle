@@ -270,15 +270,17 @@ You can use the `qat2_int8_image_classification_comparison.py` script to reprodu
 
 * `--qat_model` - a path to a QAT model that will be transformed into INT8 model.
 * `--fp32_model` - a path to an FP32 model whose accuracy will be measured and compared to the accuracy of the INT8 model.
-* `--quantized_ops` - a comma-separated list of names of operators to be quantized. When deciding which operators to put on the list, the following have to be considered:
-  * Only operators which support quantization will be taken into account.
-  * All the quantizable operators from the list, which are present in the model, must have quantization scales provided in the model. Otherwise, the quantization procedure will fail with a message saying which variable is missing a quantization scale.
-  * Sometimes it may be suboptimal to quantize all quantizable operators in the model (cf. *Notes* in the **Gathering scales** section above). To find the optimal configuration for this option, user can run benchmark a few times with different lists of quantized operators present in the model and compare the results. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
 * `--infer_data` - a path to the validation dataset.
+
+The following option is also accepted:
+* `--quantized_ops` - a comma-separated list of operator types to quantize. If the option is not used, an attempt to quantize all quantizable operators will be made, and in that case only quantizable operators which have quantization scales provided in the QAT model will be quantized. When deciding which operators to put on the list, the following have to be considered:
+  * Only operators which support quantization will be taken into account.
+  * All the quantizable operators from the list, which are present in the model, must have quantization scales provided in the model. Otherwise, quantization of the operator will be skipped with a message saying which variable is missing a quantization scale.
+  * Sometimes it may be suboptimal to quantize all quantizable operators in the model (cf. *Notes* in the **Gathering scales** section above). To find the optimal configuration for this option, user can run benchmark a few times with different lists of quantized operators present in the model and compare the results. For Image Classification models mentioned above the list usually comprises of `conv2d` and `pool2d` operators.
 
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat2_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOADED/QAT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --quantized_ops="conv2d,pool2d"
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat2_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOADED/QAT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --ops_to_quantize="conv2d,pool2d"
 ```
 
 > Notes: Due to a large amount of images in the `int8_full_val.bin` dataset (50 000), the accuracy benchmark may last long. To accelerate accuracy measuring, it is recommended to set `OMP_NUM_THREADS` to the maximum number of physical cores available on the server.
@@ -287,11 +289,11 @@ OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim
 
 To reproduce the performance results, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
 
-1. Transform the QAT model into INT8 model by applying the `Qat2Int8MkldnnPass` pass and save the result. You can use the script `save_qat_model.py` for this purpose. It also requires the option `--quantized_ops`  with a list of operators to be quantized.
+1. Transform the QAT model into INT8 model by applying the `Qat2Int8MkldnnPass` pass and save the result. You can use the script `save_qat_model.py` for this purpose. It also accepts the option `--ops_to_quantize` with a list of operators to quantize.
 
    ```bash
    cd /PATH/TO/PADDLE/build
-   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOADED/QAT/MODEL --int8_model_save_path=/PATH/TO/SAVE/QAT/INT8/MODEL --quantized_ops="conv2d,pool2d"
+   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOADED/QAT/MODEL --int8_model_save_path=/PATH/TO/SAVE/QAT/INT8/MODEL --ops_to_quantize="conv2d,pool2d"
    ```
 
 2. Run the C-API test for performance benchmark.
