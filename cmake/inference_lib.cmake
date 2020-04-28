@@ -61,9 +61,9 @@ function(copy_part_of_thrid_party TARGET DST)
         if(WIN32)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
-                    ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                    ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
                     DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-                    ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                    ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
