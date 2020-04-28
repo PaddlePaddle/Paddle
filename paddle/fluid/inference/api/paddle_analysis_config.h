@@ -494,9 +494,14 @@ struct AnalysisConfig {
   ///
   ///
   PassStrategy* pass_builder() const;
-  void PartiallyRelease();
 
-  void BindGpuStreamToThread();
+  ///
+  /// \brief Enable the GPU multi-computing stream feature.
+  /// NOTE: The current behavior of this interface is to bind the computation
+  /// stream to the thread, and this behavior may be changed in the future.
+  ///
+  void EnableGpuMultiStream();
+  void PartiallyRelease();
 
  protected:
   // Update the config.

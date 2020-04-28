@@ -68,7 +68,7 @@ TEST(AnalysisPredictor, thread_local_stream) {
       AnalysisConfig config;
       config.EnableUseGpu(100, 0);
       config.SetModel(FLAGS_infer_model + "/" + "mul_model");
-      config.BindGpuStreamToThread();
+      config.EnableGpuMultiStream();
       test_main(config, &barrier);
     });
   }

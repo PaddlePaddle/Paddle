@@ -477,6 +477,6 @@ void AnalysisConfig::PartiallyRelease() {
   params_file_.shrink_to_fit();
 }
 
-void AnalysisConfig::BindGpuStreamToThread() { thread_local_stream_ = true; }
+void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
 }  // namespace paddle
