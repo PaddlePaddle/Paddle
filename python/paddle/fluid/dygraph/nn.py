@@ -776,6 +776,7 @@ class Pool2D(layers.Layer):
             ``[batch_size, input_channels, input_height, input_width]``. When it is `"NHWC"`, the data is 
             stored in the order of: ``[batch_size, input_height, input_width, input_channels]``
 
+
     Returns:
         None
 

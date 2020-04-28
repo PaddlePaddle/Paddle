@@ -1368,5 +1368,26 @@ class TestDygraphPool2DAPI(unittest.TestCase):
             self.assertTrue(np.allclose(out1.numpy(), out2))
 
 
+class TestDygraphPool2DAPI(unittest.TestCase):
+    def test_errors(self):
+        with fluid.dygraph.guard():
+            data = np.random.random((3, 32, 32, 5)).astype('float32')
+            x = fluid.dygraph.to_variable(data)
+            pool2d = fluid.dygraph.Pool2D(
+                pool_size=2,
+                pool_type='max',
+                pool_stride=1,
+                pool_padding=[0, 0],
+                global_pooling=False,
+                data_format='NHWC')
+            out1 = pool2d(x)
+            out2 = pool2D_forward_naive(
+                data, [2, 2], [1, 1],
+                paddings=[0, 0],
+                pool_type='max',
+                data_format='NHWC')
+            self.assertTrue(np.allclose(out1.numpy(), out2))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -89,7 +89,7 @@ class Scaler(object):
                 if layers.isfinite(param._grad_ivar()):
                     self.scale_inplace(param._grad_ivar(), inv_scale)
                 else:
-                    print(param._grad_ivar())
+                    #print(param._grad_ivar())
                     self._found_inf = True
                     return
         self._found_inf = False
