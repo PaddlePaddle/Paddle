@@ -5530,6 +5530,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
     dtype = helper.input_dtype()
     filter_shape = [future_context_size + 1, input.shape[-1]]
     filter_param = helper.create_parameter(
