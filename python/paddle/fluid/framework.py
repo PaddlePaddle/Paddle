@@ -5133,10 +5133,9 @@ class ParamBase(core.VarBase):
                                                                bool)
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
-            return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
-                                                        self.shape, str(tensor))
+            return 'Parameter: %s\n%s' % (self.name, str(tensor))
         else:
-            return 'name %s, shape: %s, not inited' % (self.name, self.shape)
+            return 'Parameter: %s, not initialized' % (self.name)
 
     __repr__ = __str__
 
