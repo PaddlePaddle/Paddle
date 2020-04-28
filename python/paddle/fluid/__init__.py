@@ -47,7 +47,6 @@ from .dataset import *
 from .data import *
 
 from . import trainer_desc
-from . import inferencer
 
 from . import io
 from . import evaluator
@@ -92,7 +91,7 @@ from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
     data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
         'io',
@@ -182,9 +181,6 @@ def __bootstrap__():
 
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
-
-    if core.is_compiled_with_ngraph():
-        read_env_flags.append('use_ngraph')
 
     if core.is_compiled_with_dist():
         #env for rpc

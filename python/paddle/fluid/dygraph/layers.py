@@ -76,6 +76,7 @@ class Layer(core.Layer):
     """
 
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+        self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
         self._full_name = unique_name.generate(name_scope)
@@ -91,10 +92,34 @@ class Layer(core.Layer):
         self._forward_post_hooks = collections.OrderedDict()
 
     def train(self):
+        """
+        Sets this Layer and all its sublayers to training mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # global setting
         framework._dygraph_tracer().train_mode()
+        # Layer-level setting
+        self.training = True
+        for layer in self.sublayers():
+            layer.train()
 
     def eval(self):
+        """
+        Sets this Layer and all its sublayers to evaluation mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # global setting
         framework._dygraph_tracer().eval_mode()
+        # Layer-level setting
+        self.training = False
+        for layer in self.sublayers():
+            layer.eval()
 
     def full_name(self):
         """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
@@ -122,6 +147,7 @@ class Layer(core.Layer):
             .. code-block:: python
 
               import paddle.fluid as fluid
+              import numpy as np
 
               # the forward_post_hook change the output of the layer: output = output * 2 
               def forward_post_hook(layer, input, output):
@@ -136,15 +162,15 @@ class Layer(core.Layer):
                   # register the hook
                   forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
                   
-                  value = np.arange(26).reshape(2, 13).astype("float32")
-                  in = fluid.dygraph.to_variable(value0)
+                  value1 = np.arange(26).reshape(2, 13).astype("float32")
+                  in1 = fluid.dygraph.to_variable(value1)
                   
-                  out0 = linear(in)
+                  out0 = linear(in1)
                   
                   # remove the hook
                   forward_post_hook_handle.remove()
 
-                  out1 = linear(in)
+                  out1 = linear(in1)
 
                   # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
                   assert (out0.numpy() == (out1.numpy()) * 2).any()
@@ -173,6 +199,7 @@ class Layer(core.Layer):
             .. code-block:: python
 
               import paddle.fluid as fluid
+              import numpy as np
 
               # the forward_post_hook change the input of the layer: input = input * 2
               def forward_pre_hook(layer, input):

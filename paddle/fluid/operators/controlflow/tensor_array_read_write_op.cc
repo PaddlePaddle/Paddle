@@ -83,8 +83,7 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
         context->HasInput("I"), true,
-        platform::errors::InvalidArgument(
-            "Read/Write array operation must set the subscript index."));
+        platform::errors::NotFound("Input(I) of WriteToArrayOp is not found."));
 
     // TODO(wangchaochaohu) control flow Op do not support runtime infer shape
     // Later we add [ontext->GetInputDim("I")) == 1] check when it's supported
@@ -93,11 +92,9 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
-            "Read/Write array operation must set the output Tensor "
-            "to get the result."));
+    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Out) of WriteToArrayOp is not found."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
     // When compile time, we need to:
@@ -114,15 +111,15 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
   }
 };
 
-class WriteToArrayInferVarType : public framework::VarTypeInference {
+class WriteToArrayInferVarType : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto x_name = ctx->Input("X")[0];
-    auto out_name = ctx->Output("Out")[0];
+    auto x_name = Input(ctx, "X")[0];
+    auto out_name = Output(ctx, "Out")[0];
     VLOG(10) << "Set Variable " << out_name << " as LOD_TENSOR_ARRAY";
-    ctx->SetType(out_name, framework::proto::VarType::LOD_TENSOR_ARRAY);
-    if (ctx->HasVar(x_name)) {
-      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+    SetType(ctx, out_name, framework::proto::VarType::LOD_TENSOR_ARRAY);
+    if (HasVar(ctx, x_name)) {
+      SetDataType(ctx, out_name, GetDataType(ctx, x_name));
     }
   }
 };
@@ -139,15 +136,14 @@ class ReadFromArrayOp : public ArrayOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE_NOT_NULL(
-        x,
-        platform::errors::InvalidArgument(
-            "X(Input Variable) must be set when we call read array operation"));
+    PADDLE_ENFORCE_NOT_NULL(x,
+                            platform::errors::NotFound(
+                                "Input(X) of ReadFromArrayOp is not found."));
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE_NOT_NULL(out, platform::errors::InvalidArgument(
-                                     "Out(Output Varibale) must be set when we "
-                                     "call read array operation"));
+    PADDLE_ENFORCE_NOT_NULL(
+        out, platform::errors::NotFound(
+                 "Output(Out) of ReadFromArrayOp is not found."));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();

@@ -23,6 +23,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+import numpy as np
 
 
 # Situation 1: Attr(shape) is a list(without tensor)
@@ -263,12 +264,12 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
-        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
 
+        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32")
-
         shape_tensor_int64 = fluid.data(
             name="shape_tensor_int64", shape=[2], dtype="int64")
 
@@ -348,6 +349,15 @@ class TestFillConstantOpError(unittest.TestCase):
                 value=5,
                 dtype='float64',
                 out=x2)
+
+            x3 = np.random.randn(100, 100).astype('int32')
+            self.assertRaises(
+                TypeError,
+                fluid.layers.fill_constant,
+                shape=[100, 100],
+                value=5,
+                dtype='float64',
+                out=x3)
 
             # The argument shape's type of fill_constant_op must be list, tuple or Variable.
             def test_shape_type():
@@ -446,6 +456,30 @@ class ApiOnesZerosError(unittest.TestCase):
                 ones = paddle.ones(shape=10, dtype="int64", device="opu")
 
         self.assertRaises(ValueError, test_error2)
+
+        def test_error3():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.ones(shape=10, dtype="int64")
+
+        self.assertRaises(TypeError, test_error3)
+
+        def test_error4():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.ones(shape=[10], dtype="int8")
+
+        self.assertRaises(TypeError, test_error4)
+
+        def test_error5():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.zeros(shape=10, dtype="int64")
+
+        self.assertRaises(TypeError, test_error5)
+
+        def test_error6():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.zeros(shape=[10], dtype="int8")
+
+        self.assertRaises(TypeError, test_error6)
 
 
 if __name__ == "__main__":

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import decorator
 import contextlib
+import functools
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -146,12 +148,12 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
-def _no_grad_(func):
+def no_grad(func=None):
     """
-    This Decorator will avoid the func being decorated creating backward network in dygraph mode
+    Create a context which disables dygraph gradient calculation.
+    In this mode, the result of every computation will have `stop_gradient=True`.
 
-    Parameter:
-        - **func** (python func): the func don't need grad
+    Also functions as a decorator. (Make sure to instantiate without parenthesis.)
 
     Examples:
 
@@ -159,6 +161,24 @@ def _no_grad_(func):
 
         import numpy as np
         import paddle.fluid as fluid
+
+        # use as generator
+
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad():
+                # l1.weight.stop_gradient is False
+                tmp = l1.weight * 2  # tmp.stop_gradient is True
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+            print(tmp.gradient() is None)  # True
+            print(l0.weight.gradient() is None)  # False
+
+        # use as decorator
 
         @fluid.dygraph.no_grad
         def test_layer():
@@ -173,17 +193,16 @@ def _no_grad_(func):
         test_layer()
 
     """
+    if func is None:
+        return _switch_tracer_mode_guard_(is_train=False)
+    else:
 
-    def __impl__(*args, **kwargs):
-        with _switch_tracer_mode_guard_(is_train=False):
-            return func(*args, **kwargs)
+        @decorator.decorator
+        def __impl__(func, *args, **kwargs):
+            with _switch_tracer_mode_guard_(is_train=False):
+                return func(*args, **kwargs)
 
-    return __impl__
-
-
-no_grad = wrap_decorator(_no_grad_)
-# for fluidDoc
-no_grad.__doc__ = _no_grad_.__doc__
+        return __impl__(func)
 
 
 @signature_safe_contextmanager
@@ -473,15 +492,24 @@ def grad(outputs,
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None):
     """
-    The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
+    The API will create a ``Variable`` or ``ComplexVariable`` object from 
+    numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable): The numpy\.ndarray or Variable object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
+        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
+            or ComplexVariable object that needs to be converted, it can be 
+            multi-dimension, and the data type is one of numpy\.{float16, 
+            float32, float64, int16, int32, int64, uint8, uint16, complex64, 
+            complex128}.
+        name(str, optional): The default value is None. Normally there is no 
+            need for user to set this property. For more information, please 
+            refer to :ref:`api_guide_Name` .
+        zero_copy(bool, optional): Whether to share memory with the input numpy 
+            array. This parameter only works with CPUPlace and will be set to 
+            True when it is None. Default: None.
 
     Returns:
-        Variable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable object, just return ``value``.
+        Variable or ComplexVariable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable object, just return ``value``.
 
 
     Examples:
@@ -499,7 +527,10 @@ def to_variable(value, name=None, zero_copy=None):
             y = fluid.dygraph.to_variable(x)
             x[0][0] = 0
             y[0][0].numpy()  # array([0.], dtype=float32)
-
+            c = np.array([2+1j, 2])
+            z = fluid.dygraph.to_variable(c)
+            z.numpy() # array([2.+1.j, 2.+0.j])
+            z.dtype # 'complex128'
     """
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
@@ -511,15 +542,34 @@ def to_variable(value, name=None, zero_copy=None):
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
             zero_copy = False
-        py_var = core.VarBase(
-            value=value,
-            place=framework._current_expected_place(),
-            persistable=False,
-            zero_copy=zero_copy,
-            name=name if name else '')
-        return py_var
-    elif isinstance(value, (core.VarBase, framework.Variable)):
+        if np.iscomplexobj(value):
+            if not name:
+                name = framework.unique_name.generate('_generated_var')
+            real_var = core.VarBase(
+                value=value.real,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name + ".real")
+            imag_var = core.VarBase(
+                value=value.imag,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name + ".imag")
+            return framework.ComplexVariable(real_var, imag_var)
+        else:
+            py_var = core.VarBase(
+                value=value,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name if name else '')
+            return py_var
+    elif isinstance(value, (core.VarBase, framework.Variable,
+                            framework.ComplexVariable)):
         return value
     else:
         raise TypeError(
-            "to_variable only accepts 'ndarray' and 'Variable' as value's input")
+            "The type of input value is invalid, expected type is 'ndarray', "
+            "'Variable' or 'ComplexVariable', but received %s." % type(value))

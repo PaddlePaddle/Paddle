@@ -41,9 +41,13 @@ class SelectOutputOp : public framework::OperatorBase {
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &out_names = Outputs("Out");
-    PADDLE_ENFORCE_LT(output_branch, out_names.size(),
-                      "Selected branch number is greater than actual branch "
-                      "num in SelectOutputOp");
+    PADDLE_ENFORCE_LT(
+        output_branch, out_names.size(),
+        platform::errors::InvalidArgument(
+            "Input 'Mask' in SelectOutputOp is invalid. "
+            "'Mask' must be less than the size of output vector 'Out'. "
+            "But received Mask = %d, Out's size = %d.",
+            output_branch, out_names.size()));
 
     const framework::Variable *x = scope.FindVar(Input("X"));
     framework::Variable *selected_out = scope.FindVar(out_names[output_branch]);

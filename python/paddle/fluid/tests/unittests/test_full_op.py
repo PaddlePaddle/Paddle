@@ -68,14 +68,18 @@ class TestFullAPI(unittest.TestCase):
         out_6 = paddle.full(
             shape=shape_tensor_int64, dtype=np.float32, fill_value=1.1)
 
+        val = fluid.layers.fill_constant(shape=[1], dtype=np.float32, value=1.1)
+        out_7 = paddle.full(
+            shape=shape_tensor_int64, dtype=np.float32, fill_value=val)
+
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
+        res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
             fluid.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7])
 
         assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
@@ -83,6 +87,7 @@ class TestFullAPI(unittest.TestCase):
         assert np.array_equal(res_4, np.full([1, 2], 1.2, dtype="float32"))
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_7, np.full([1, 2], 1.1, dtype="float32"))
 
 
 class TestFullOpError(unittest.TestCase):
@@ -90,8 +95,16 @@ class TestFullOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             #for ci coverage
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
+            x2 = np.random.randn(1, 2).astype('int32')
             self.assertRaises(
                 ValueError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                fill_value=5,
+                dtype='int32',
+                out=x2)
             self.assertRaises(
                 TypeError,
                 paddle.full,

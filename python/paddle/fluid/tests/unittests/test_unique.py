@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
@@ -66,6 +67,20 @@ class TestRandom(TestUniqueOp):
             dtype='int64')
 
         self.outputs = {'Out': target_out, 'Index': target_index}
+
+
+class TestUniqueRaiseError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.unique([10])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data = fluid.data(shape=[10], dtype="float16", name="input")
+            fluid.layers.unique(data)
+
+        self.assertRaises(TypeError, test_dtype)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
