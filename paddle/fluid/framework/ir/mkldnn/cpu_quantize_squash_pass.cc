@@ -152,7 +152,7 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
       PADDLE_ENFORCE_NE(
           any_op_output_name.empty(), true,
           platform::errors::NotFound("Operator before requantize operator "
-                                     "should has requantize input as output"));
+                                     "should have requantize input as output"));
 
       float requant_scale_out =
           boost::get<float>(requant_op->Op()->GetAttr("Scale_out"));
@@ -195,17 +195,21 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
 
       PADDLE_ENFORCE_NE(
           any_op_input_name.empty(), true,
-          platform::errors::NotFound("Operator after requantize operator "
-                                     "should has requantize output as input"));
+          platform::errors::NotFound("The operator after requantize operator "
+                                     "should have requantize output as input"));
       float requant_scale_in =
           boost::get<float>(requant_op->Op()->GetAttr("Scale_in"));
 
-      if (any_op->Op()->Type() == "matmul") {
-        any_op->Op()->SetAttr(any_op_input_name == "X" ? "Scale_x" : "Scale_y",
-                              requant_scale_in);
-      } else {
-        any_op->Op()->SetAttr("Scale_in", requant_scale_in);
-      }
+      auto scale_name = "Scale_in";
+      if (any_op->Op()->Type() == "matmul")
+        scale_name = any_op_input_name == "X" ? "Scale_x" : "Scale_y";
+
+      PADDLE_ENFORCE_EQ(requant_op->Op()->GetAttrIfExists<float>("Scale_out"),
+                        any_op->Op()->GetAttrIfExists<float>(scale_name),
+                        platform::errors::InvalidArgument(
+                            "The operator after requantize should have input "
+                            "scale equal to requantize output scale"));
+      any_op->Op()->SetAttr(scale_name, requant_scale_in);
       any_op->Op()->SetInput(any_op_input_name,
                              std::vector<std::string>({requant_in->Name()}));
       IR_NODE_LINK_TO(requant_in, any_op);
