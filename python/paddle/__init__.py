@@ -197,7 +197,7 @@ from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
 # from .framework.framework import get_default_dtype   #DEFINE_ALIAS
-# from .framework.random import manual_seed   #DEFINE_ALIAS
+from .framework.random import manual_seed   #DEFINE_ALIAS
 # from .framework import append_backward   #DEFINE_ALIAS
 # from .framework import gradients   #DEFINE_ALIAS
 # from .framework import Executor   #DEFINE_ALIAS
