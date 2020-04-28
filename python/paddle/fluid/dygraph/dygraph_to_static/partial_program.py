@@ -18,8 +18,11 @@ from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
+from paddle.fluid.layers.utils import map_structure
 
-__all__ = ['partial_program_from']
+#TODO: support nested input and output
+
+__all__ = ['partial_program_from', 'PartialProgramLayer']
 
 
 class PartialProgramLayer(layers.Layer):
@@ -32,30 +35,21 @@ class PartialProgramLayer(layers.Layer):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
-        self._input_names = [
-            var.name for var in inputs if isinstance(var, framework.Variable)
-        ]
-        self._output_names = [
-            var.name for var in outputs if isinstance(var, framework.Variable)
-        ]
         self._forward_program = main_program
 
         self._program = self._append_backward_desc()
         self._params = self._parse_parameter(parameters)
-        # TODO: deal with is_test
         self._is_test = is_test
         self._inner_scope = core.Scope()
 
     @switch_to_static_graph
     def _append_backward_desc(self):
         program = self._forward_program.clone()
-        # TODO: could the targets be in sub block?
         targets = []
-        for out in self._output_names:
-            targets.append(program.global_block().var(out))
+        for out in self.outputs:
+            if isinstance(out, framework.Variable):
+                targets.append(program.global_block().var(out.name))
 
-        # Step 2. append backward
-        # TODO: add warning
         if targets:
             backward.gradients(targets=targets, inputs=[])
 
@@ -73,7 +67,6 @@ class PartialProgramLayer(layers.Layer):
         # If we don't change grad_var type here, RunProgramOp need
         # transform SelectedRows to LoDTensor forcibly, it may not
         # be user wanted result.
-        # if not self._set_type:
         self._set_grad_type(params)
 
         return params
@@ -83,9 +76,11 @@ class PartialProgramLayer(layers.Layer):
 
         framework._dygraph_tracer().trace_op(
             type='run_program',
-            inputs={'X': in_vars,
-                    'Params': self._params},
-            outputs={'Out': out_vars,
+            inputs={
+                'X': valid_vars(in_vars),
+                'Params': valid_vars(self._params)
+            },
+            outputs={'Out': valid_vars(out_vars),
                      'OutScope': tmp_scope_vec},
             attrs={
                 'global_block': self._program.desc.block(0),
@@ -95,47 +90,40 @@ class PartialProgramLayer(layers.Layer):
             })
 
         outs = out_vars
-        if len(out_vars) == 1:
-            outs = out_vars[0]
+        if len(outs) == 1:
+            outs = outs[0]
         return outs
 
     def _prepare(self, inputs):
         """
         prepare inputs, outputs, attrs
         """
-        if not isinstance(inputs, (list, tuple)):
-            inputs = [inputs]
-
+        assert isinstance(inputs, (tuple, list))
+        # Convert variable into VarBase and feed in training data.
         input_vars = []
         for i, value in enumerate(inputs):
             if isinstance(value, np.ndarray):
                 var = core.VarBase(
                     value=value,
-                    name=self._input_names[i],
+                    name=self.inputs[i].desc.name(),
                     persistable=False,
                     place=framework._current_expected_place(),
-                    zero_copy=True)  # TODO: zero_copy only used in CPU
+                    zero_copy=True)
             elif isinstance(value, core.VarBase):
                 var = value
-                var.name = self._input_names[i]
+                var.name = self.inputs[i].desc.name()
             else:
                 continue
             input_vars.append(var)
-
+        # Create VarBase to receive output data.
         out_vars = []
         for var in self.outputs:
+            if not isinstance(var, framework.Variable): continue
             var_desc = var.desc
             var_base = core.VarBase(var_desc.dtype(),
                                     var_desc.shape(),
                                     var_desc.name(), var_desc.type(), False)
             out_vars.append(var_base)
-        # TODO: remove this.
-        if not out_vars:
-            out_vars = fake_var_base()
-        if not input_vars:
-            input_vars = fake_var_base()
-        if not self._params:
-            self._params = fake_var_base()
 
         # hold forward variables
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
@@ -157,15 +145,20 @@ class PartialProgramLayer(layers.Layer):
             param._set_grad_type(grad_var.type())
 
 
-# TODO: remove it.
-def fake_var_base():
-    var = core.VarBase(
-        value=[1],
-        name='fake',
-        persistable=False,
-        place=framework._current_expected_place())
-
-    return var
+def valid_vars(vars):
+    """
+    Note: run_program_op.InferShape requires `X`/'Out' not be null.
+    But it's common in dy2static, fake varBase is created to handle the
+    problem.
+    """
+    if vars:
+        return vars
+    return [
+        core.VarBase(
+            value=[1],
+            name='Fake_var',
+            place=framework._current_expected_place())
+    ]
 
 
 def append_grad_suffix(name):
@@ -181,5 +174,9 @@ def append_grad_suffix(name):
 
 
 def partial_program_from(program_cache):
-    return PartialProgramLayer(program_cache.main_program, program_cache.inputs,
-                               program_cache.outputs, program_cache._parameters)
+    inputs = program_cache.inputs
+    if inputs and isinstance(inputs[0], layers.Layer):
+        inputs = inputs[1:]
+
+    return PartialProgramLayer(program_cache.main_program, inputs,
+                               program_cache.outputs, program_cache.parameters)

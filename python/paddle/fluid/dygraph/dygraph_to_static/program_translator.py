@@ -23,16 +23,16 @@ import collections
 import threading
 import numpy as np
 from paddle.fluid import framework
-from paddle.fluid import core, executor
-from paddle.fluid.dygraph import guard, to_variable, layers
+from paddle.fluid import core
+from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
+from dygraph_to_static.ast_transformer import convert_to_static
+from dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
 from dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid import unique_name
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -56,7 +56,7 @@ class FunctionCache(object):
             static_func, dygraph_to_static_transformer = convert_to_static(func)
             self._dycode_to_static_func[func] = static_func
             self._static_func_to_transformer[
-                static_func] = dygraph_to_static_transformer
+                func] = dygraph_to_static_transformer
 
         return static_func
 
@@ -85,13 +85,134 @@ def convert_function_with_cache(dygraph_func):
         return static_func
 
 
-def transformer_from_converted_func(dygraph_func):
+class FunctionSpec(object):
+    def __init__(self, func, args, kwargs):
+        self._dyfunc = func
+        self._args = args
+        self._kwargs = kwargs
+
+    def is_method(self):
+        return self._args and isinstance(self._args[0], layers.Layer)
+
+    def parameters(self):
+        if self.is_method():
+            return self._args[0].parameters()
+        else:
+            return {}
+
+    @switch_to_static_graph
+    def to_static_inputs(self, main_program):
+        inputs = []
+        block = main_program.global_block()
+        for input_var in self.args:
+            if isinstance(input_var, np.ndarray):
+                feed_layer = block.create_var(
+                    name=unique_name.generate('feed'),
+                    shape=list(input_var.shape),
+                    dtype=input_var.dtype,
+                    is_data=True,
+                    need_check_feed=False)
+            elif isinstance(input_var, core.VarBase):
+                feed_layer = block.create_var(
+                    name=input_var.name,
+                    shape=list(input_var.shape),
+                    dtype=input_var.dtype,
+                    stop_gradient=input_var.stop_gradient,
+                    need_check_feed=False)
+            else:
+                feed_layer = input_var
+
+            inputs.append(feed_layer)
+        return inputs
+
+    @property
+    def dyfunc(self):
+        return self._dyfunc
+
+    @property
+    def args(self):
+        return self._args
+
+    def __key(self):
+        # Note: if dygraph function is a method of class,
+        # consider instance info as hash key.
+        if self.is_method():
+            return self._dyfunc, self._args[0]
+        else:
+            return self._dyfunc
+
+    def __hash__(self):
+        return hash(self.__key())
+
+    def __eq__(self, other):
+        return self.__key() == self.__key()
+
+
+class ConcreteProgram(object):
+    def __init__(self,
+                 inputs,
+                 outputs,
+                 parameters,
+                 func,
+                 main_program,
+                 start_up=None):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.main_program = main_program
+        self.startup_program = start_up
+        self.parameters = parameters
+        self.func_spec = func
+
+    @staticmethod
+    @switch_to_static_graph
+    def from_func_spec(func_spec):
+        """
+        Builds the main_program with specialized inputs and returns outputs
+        of program as fetch_list.
+        """
+        # Transforms dygraph function into static function and caches it.
+        dygaph_function = func_spec.dyfunc
+        static_func = convert_function_with_cache(dygaph_function)
+
+        main_program, start_up = framework.Program(), framework.Program()
+        with framework.program_guard(main_program, start_up):
+            # 1. Adds `fluid.data` layers for input if needed
+            inputs = func_spec.to_static_inputs(main_program)
+
+            parameters = func_spec.parameters()
+
+            # 2. Builds program only once and returns the output Variables.
+            outputs = static_func(*inputs)
+            if not isinstance(outputs, tuple):
+                outputs = [outputs] if outputs else []
+
+        return ConcreteProgram(
+            inputs=inputs,
+            outputs=outputs,
+            parameters=parameters,
+            func=dygaph_function,
+            main_program=main_program,
+            start_up=start_up)
+
+
+class ProgramCache(object):
     """
-    Returns the transformer of dygraph function.
+    Wrapper class for the program functions defined by dygraph function.
     """
-    if not _FUNCTION_CACHE.exist(dygraph_func):
-        convert_function_with_cache(dygraph_func)
-    return _FUNCTION_CACHE.get_transformer(dygraph_func)
+
+    def __init__(self):
+        self._caches = {}
+
+    def _build_once(self, func_spec):
+        concrete_program = ConcreteProgram.from_func_spec(func_spec)
+        return partial_program_from(concrete_program)
+
+    def __getitem__(self, item):
+        if not isinstance(item, FunctionSpec):
+            raise ValueError('Not FunctionSpec.')
+        if item not in self._caches:
+            self._caches[item] = self._build_once(item)
+        return self._caches[item]
 
 
 def synchronized(func):
@@ -102,147 +223,6 @@ def synchronized(func):
             return func(*args, **kwargs)
 
     return lock_func
-
-
-class DygraphFunc(object):
-    def __init__(self, func_obj, args=None, kwargs=None):
-        self.function = func_obj
-        self.args = args
-        self.kwargs = kwargs
-
-    def __hash__(self):
-        return id(self.function)
-
-    def __eq__(self, other):
-        return isinstance(
-            other, DygraphFunc) and id(self.function) == id(other.function)
-
-
-class ProgramCache(object):
-    """
-    Wrapper class for the program functions defined by dygraph function.
-    """
-
-    def __init__(self):
-        self._inputs = []
-        self._outputs = []
-        self._main_program = framework.Program()
-        self._startup_program = framework.Program()
-        self._feed_name_to_idx = {}
-
-        self._parameters = collections.OrderedDict()
-        self._forward_func = None
-        self._dyfunc = None
-
-    @switch_to_static_graph
-    def build_program_and_return_output(self, dyfunc, *args, **kwargs):
-        """
-        Builds the main_program with specialized inputs and returns outputs
-        of program as fetch_list.
-        """
-        if self._dyfunc is not None:
-            raise ValueError(
-                "dyfunc has already been set. Please do not call `build_program_and_return_output` twice."
-            )
-
-        self._dyfunc = DygraphFunc(dyfunc, args, kwargs)
-
-        if isinstance(args[0], layers.Layer):
-            self._parameters = args[0].parameters()
-
-        # Transforms dygraph function into static function and caches it.
-        static_func = convert_function_with_cache(dyfunc)
-        self._forward_func = static_func
-
-        with framework.program_guard(self._main_program, self._startup_program):
-            # 1. Adds `fluid.data` layers for input if needed
-            self._add_feed_layers(args, kwargs)
-
-            # 2. Builds program only once and returns the output Variables.
-            outputs = self._build_program(static_func, args, kwargs)
-
-        return outputs
-
-    @switch_to_static_graph
-    def _build_program(self, func, args, kwargs):
-        """
-        Returns program of the input function. If called at first time,
-        builds a new program and caches it.
-        """
-        # Replaces input data with `layers.data`
-        args = list(args)
-        for feed_layer in self._inputs:
-            idx = self.feed_name_to_idx[feed_layer.name]
-            args[idx] = feed_layer
-        fetch_list = func(*args, **kwargs)
-        if not isinstance(fetch_list, tuple):
-            # func just returns one reuslt
-            fetch_list = [fetch_list]
-        fetch_list = list(fetch_list)
-        # NOTE: avoid fetch_list is [None]
-        if len(fetch_list) == 1 and fetch_list[0] is None:
-            fetch_list = None
-        self._outputs = fetch_list
-
-        return fetch_list
-
-    def _add_feed_layers(self, args, kwargs):
-        """
-        Adds `fluid.data` if the input `numpy.ndarray` is converted into `Variable`
-        by `to_variable()`, it makes program to be executed dynamically.
-        """
-        self._feed_name_to_idx = self._get_name_to_idx(self._forward_func, args)
-        for feed_name, idx in sorted(
-                self.feed_name_to_idx.items(), key=lambda x: x[1]):
-            batch_data = args[idx]
-
-            if isinstance(batch_data, (np.ndarray, core.VarBase)):
-                feed_layer = data_layer_not_check(
-                    name=feed_name,
-                    shape=list(batch_data.shape),
-                    dtype=batch_data.dtype)
-                if isinstance(batch_data, core.VarBase):
-                    feed_layer.stop_gradient = batch_data.stop_gradient
-            else:
-                print("Input {} should be numpy.ndarray, but received {}.".
-                      format(feed_name, type(batch_data)))
-                feed_layer = batch_data
-
-            self._inputs.append(feed_layer)
-
-    def _get_name_to_idx(self, func, args=None):
-        """
-        Returns name and index of input args from `forward(args)`
-        that need to be replaced with `fluid.data`.
-        """
-        transformer = transformer_from_converted_func(func)
-        feed_name_to_idx = transformer.get_feed_name_to_idx()
-        if not feed_name_to_idx and args is not None:
-            for i, arg in enumerate(args):
-                if isinstance(arg, (framework.Variable, core.VarBase)):
-                    feed_name_to_idx[arg.name] = i
-
-        return feed_name_to_idx
-
-    @property
-    def main_program(self):
-        return self._main_program
-
-    @property
-    def startup_program(self):
-        return self._startup_program
-
-    @property
-    def inputs(self):
-        return self._inputs
-
-    @property
-    def outputs(self):
-        return self._outputs
-
-    @property
-    def feed_name_to_idx(self):
-        return self._feed_name_to_idx
 
 
 class ProgramTranslator(object):
@@ -290,24 +270,13 @@ class ProgramTranslator(object):
             cls._instance._initialized = False
             cls._instance.__init__()
 
-    def __init__(self, exe=None, place=None):
+    def __init__(self):
         # To make sure that calls __init__ only once.
         if self._initialized:
             return
         self._initialized = True
-        self._place = core.CPUPlace() if place is None else place
-        if exe is None:
-            self._exe = executor.Executor(self._place)
-        else:
-            self._exe = exe
         self._program_cache = ProgramCache()
-        self._optimizer_info = None
-        self._optimizer = None
-        self._loss_name = None
-        # Once startup_program is changed, should run startup_program.
-        self._prev_startup = None
         self.enable_declarative = True
-        self.partial_program_dict = {}
 
     def enable(self, enable_declarative):
         """
@@ -387,39 +356,18 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
-            # print(self.enable_declarative)
-            # logger.info(
-            #     "The ProgramTranslator.get_output doesn't work in dygraph "
-            #     "mode or set ProgramTranslator.enable to False. We will "
-            #     "just return dygraph output.")
+            logger.info(
+                "The ProgramTranslator.get_output doesn't work when ProgramTranslator.enable = False. "
+                "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
-        #TODO: hash key
-        hash_key = (dygraph_func, args[0]) if isinstance(
-            args[0], layers.Layer) else dygraph_func
-        if hash_key in self.partial_program_dict:
-            partial_program_layer = self.partial_program_dict[hash_key]
-            # TODO: parse input
-            if isinstance(args[0], layers.Layer):
-                args = args[1:]
-            return partial_program_layer(args)
-        # Builds program only once for the same dygraph function.
-        self._build_once(dygraph_func, *args, **kwargs)
 
-        if isinstance(args[0], layers.Layer):
+        function_spec = FunctionSpec(dygraph_func, args, kwargs)
+        partial_program_layer = self._program_cache[function_spec]
+
+        if args and isinstance(args[0], layers.Layer):
             args = args[1:]
 
-        return self.partial_program_dict[hash_key](args, **kwargs)
-
-    @switch_to_static_graph
-    def _build_once(self, dygraph_func, *args, **kwargs):
-        hash_key = (dygraph_func, args[0]) if isinstance(
-            args[0], layers.Layer) else dygraph_func
-        program_cache = ProgramCache()
-        program_cache.build_program_and_return_output(dygraph_func, *args,
-                                                      **kwargs)
-
-        partial_program_layer = partial_program_from(program_cache)
-        self.partial_program_dict[hash_key] = partial_program_layer
+        return partial_program_layer(args)
 
     def get_func(self, dygraph_func):
         """
@@ -570,69 +518,6 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
-    def _run(self, *args, **kwargs):
-        """
-        Executes main_program and returns output Tensors.
-        """
-        feed_dict, fetch_list = self._prepare(args)
-
-        main_program = self._program_cache.main_program
-        outputs = self._exe.run(main_program,
-                                feed=feed_dict,
-                                fetch_list=fetch_list)
-
-        return outputs
-
-    def set_optimizer(self, optimizer, index_of_loss=0):
-        """
-        Supports to set or update the optimizer used to minimize loss.
-
-        Note: this method is an experimental API and may be changed in the near
-        future.
-
-        Parameters:
-            optimizer (fluid optimizer): the training optimizer.
-            index_of_loss (int): the index of return variable as loss to be
-                minimized by optimizer. The default value is 0.
-
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                import numpy as np
-
-                from paddle.fluid.dygraph.nn import Linear
-
-                @fluid.dygraph.declarative
-                def linear_func(x):
-                    x = fluid.dygraph.to_variable(x)
-                    linear = Linear(32, 1)
-                    y = linear(x)
-                    z = linear(x)
-                    return y, z
-
-                prog_trans = fluid.dygraph.ProgramTranslator()
-
-                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-                prog_trans.set_optimizer(adam,index_of_loss=1) # minimize on 'z'
-
-                for i in range(10):
-                    y, z_loss = linear_func(np.ones(32).astype('float32'))
-                    print(z_loss.numpy())
-
-        """
-        check_type(index_of_loss, "index_of_loss", int,
-                   "ProgramTranslator.set_optimizer")
-        self._check_cache_valid()
-        if self._optimizer and self._loss_name:
-            raise ValueError(
-                "{} for {} has already been set before. Please confirm not to call `set_optimizer` in for loop. ".
-                format(self._optimizer, self._loss_name))
-        self._optimizer_info = (optimizer, index_of_loss)
-
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
         Saves current model as the inference model. The saved
@@ -706,94 +591,6 @@ class ProgramTranslator(object):
             executor=self._exe,
             main_program=self.main_program.clone())
 
-    def _prepare(self, args):
-        """
-        Prepares with feed_dict, fetch_list, optimizer and initialize vars
-        by running startup_program.
-        """
-
-        # Updates batch_data for feed_dict
-        feed_dict = self._update_batch_data(args)
-        fetch_list = self._program_cache.outputs
-
-        # Adds optimizer if needed.
-        if self._optimizer_info and self._optimizer is None:
-            self._add_optimizer()
-
-        if self._need_startup():
-            self._exe.run(self.startup_program)
-            self._prev_startup = self.startup_program
-
-        return feed_dict, fetch_list
-
-    def _need_startup(self):
-        """
-        Determines whether needy to run startup_program.
-        """
-        if self.startup_program != self._prev_startup:
-            check_type(self.startup_program, "startup_program",
-                       framework.Program, "_need_startup")
-            return len(self.startup_program.global_block().ops) > 0
-
-        return False
-
-    def _check_cache_valid(self):
-        """
-        Checks whether the current program is consistent with `default_main_program`.
-        In some models and unittest, program will be switched frequently by `program_guard`.
-        If does, the cached program and other properties are not available and should be reset.
-        """
-        if self._program_cache.main_program:
-            if self._program_cache.main_program != framework.default_main_program(
-            ):
-                ProgramTranslator.reset()
-
-    def _update_batch_data(self, args):
-        """
-        Updates cached batch data while training program.
-        """
-        feed_name_to_idx = self._program_cache.feed_name_to_idx
-        feed_vars = self._program_cache.inputs
-        feed_dict = {}
-        for feed_var in feed_vars:
-            idx = feed_name_to_idx[feed_var.name]
-            feed_dict[feed_var.name] = args[idx]
-
-        return feed_dict
-
-    def _add_optimizer(self):
-        """
-        Supports to set or update the optimizer used to minimize loss.
-        """
-        optimizer, index_of_loss = self._optimizer_info
-
-        outputs = self._program_cache.outputs
-        outputs = [outputs] if not isinstance(outputs,
-                                              (list, tuple)) else outputs
-
-        assert abs(index_of_loss) < len(outputs), \
-            "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
-            index_of_loss, len(outputs))
-
-        loss_var = outputs[index_of_loss]
-        check_type(loss_var, "loss_var", framework.Variable,
-                   "ProgramTranslator._add_optimizer")
-
-        main_program = self._program_cache.main_program
-        startup_program = self._program_cache.startup_program
-        all_vars = main_program.block(0).vars
-
-        if all_vars.get(loss_var.name, None) is None:
-            raise ValueError(
-                "Can't find {} in main_program, please confirm whether the input loss is correct."
-                .format(loss_var.name))
-        # Adds optimizer to minimize loss
-        with framework.program_guard(main_program, startup_program):
-            optimizer.minimize(loss_var)
-
-        self._optimizer = optimizer
-        self._loss_name = loss_var.name
-
     def get_program_cache(self):
         """
         Returns the ProgramCache instance. This method is used by PaddlePaddle
@@ -805,20 +602,11 @@ class ProgramTranslator(object):
 
         Examples:
             .. code-block:: python
-                
+
                 import paddle.fluid as fluid
 
                 prog_trans = fluid.dygraph.ProgramTranslator()
                 prog_cache = prog_trans.get_program_cache()
 
         """
-        self._check_cache_valid()
         return self._program_cache
-
-    @property
-    def main_program(self):
-        return self._program_cache.main_program
-
-    @property
-    def startup_program(self):
-        return self._program_cache.startup_program
