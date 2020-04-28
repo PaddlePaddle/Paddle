@@ -21,10 +21,9 @@ from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
 import numpy as np
 import paddle.fluid.core as core
-import paddle
 
 
-class SimpleNet(paddle.imperative.Layer):
+class SimpleNet(fluid.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
         super(SimpleNet, self).__init__()
         self.emb = fluid.dygraph.Embedding(
@@ -47,13 +46,13 @@ class TestSimpleNet(unittest.TestCase):
         for place in places:
             for dtype in ["float32", "float64"]:
                 for sort_sum_gradient in [True, False]:
-                    with paddle.imperative.guard(place):
-                        backward_strategy = paddle.imperative.BackwardStrategy()
+                    with fluid.dygraph.guard(place):
+                        backward_strategy = fluid.dygraph.BackwardStrategy()
                         backward_strategy.sort_sum_gradient = sort_sum_gradient
                         # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                         input_word = np.array([[1, 2], [2, 1]]).astype('int64')
-                        input = paddle.imperative.to_variable(input_word)
+                        input = to_variable(input_word)
 
                         simplenet = SimpleNet(20, 32, dtype)
                         adam = SGDOptimizer(

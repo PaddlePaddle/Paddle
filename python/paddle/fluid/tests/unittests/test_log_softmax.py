@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.nn as nn
 
 
 def stable_softmax(x):
@@ -35,40 +34,6 @@ def ref_log_softmax(x, axis=None, dtype=None):
     return np.log(out)
 
 
-class TestNNLogSoftmaxAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [2, 3, 4, 5]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-
-    def check_api(self, place=fluid.CPUPlace(), axis=None):
-        ref_out = ref_log_softmax(self.x, axis)
-
-        main_program = fluid.Program()
-        mylogsoftmax = nn.LogSoftmax(axis)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = mylogsoftmax(x)
-        exe = fluid.Executor(place)
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], ref_out))
-
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = mylogsoftmax(x)
-        self.assertTrue(np.allclose(y.numpy(), ref_out))
-
-    def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            for axis in [None, 2]:
-                self.check_api(place, axis)
-
-
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.init_data()
@@ -80,7 +45,6 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
     def check_api(self, place=fluid.CPUPlace(), axis=None, dtype=None):
         ref_out = ref_log_softmax(self.x, axis, dtype)
         main_program = fluid.Program()
-        mylogsoftmax = nn.LogSoftmax(axis)
         with fluid.program_guard(main_program):
             x = fluid.data(name='x', shape=self.x_shape)
             y = fluid.layers.log_softmax(x, axis, dtype)
