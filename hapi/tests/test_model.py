@@ -20,6 +20,8 @@ import unittest
 import os
 import cv2
 import numpy as np
+import tempfile
+import shutil
 
 import paddle
 from paddle import fluid
@@ -36,14 +38,6 @@ from hapi.download import get_weights_path_from_url
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
-    """LeNet model from
-    `"LeCun Y, Bottou L, Bengio Y, et al. Gradient-based learning applied to document recognition[J]. Proceedings of the IEEE, 1998, 86(11): 2278-2324.`_
-
-    Args:
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
-                            will not be defined. Default: 10.
-        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
-    """
 
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super(LeNetDygraph, self).__init__()
@@ -137,6 +131,15 @@ class TestEvaluatePredict(unittest.TestCase):
         low_level_lenet_dygraph_train(self.lenet_dygraph, train_dataloader)
         self.acc1 = low_level_dynamic_evaluate(self.lenet_dygraph,
                                                val_dataloader)
+        self.save_dir = tempfile.mkdtemp()
+        
+        self.weight_path = os.path.join(self.save_dir, 'lenet')
+        fluid.dygraph.save_dygraph(self.lenet_dygraph.state_dict(), self.weight_path)
+
+        fluid.disable_dygraph()
+
+    def tearDown(self):
+        shutil.rmtree(self.save_dir)
 
     def evaluate(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
@@ -144,34 +147,24 @@ class TestEvaluatePredict(unittest.TestCase):
         inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
         labels = [Input([None, 1], 'int64', name='label')]
 
-        if fluid.in_dygraph_mode():
-            feed_list = None
-        else:
-            feed_list = [x.forward() for x in inputs + labels]
-
-        self.train_dataloader = fluid.io.DataLoader(
-            self.train_dataset,
-            places=self.device,
-            batch_size=64,
-            feed_list=feed_list)
-        self.val_dataloader = fluid.io.DataLoader(
+        val_dataloader = fluid.io.DataLoader(
             self.val_dataset,
             places=self.device,
             batch_size=64,
-            feed_list=feed_list)
-        self.test_dataloader = fluid.io.DataLoader(
-            self.test_dataset,
-            places=self.device,
-            batch_size=64,
-            feed_list=feed_list)
+            return_list=True)
 
         model = LeNet()
-        model.load_dict(self.lenet_dygraph.state_dict())
+
+        model.load(self.weight_path)
+
         model.prepare(metrics=Accuracy(), inputs=inputs, labels=labels)
 
-        result = model.evaluate(self.val_dataloader)
+        result = model.evaluate(val_dataloader)
 
         np.testing.assert_allclose(result['acc'], self.acc1)
+
+        if fluid.in_dygraph_mode():
+            fluid.disable_dygraph()
 
     def predict(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
@@ -179,38 +172,28 @@ class TestEvaluatePredict(unittest.TestCase):
         inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
         labels = [Input([None, 1], 'int64', name='label')]
 
-        if fluid.in_dygraph_mode():
-            feed_list = None
-        else:
-            feed_list = [x.forward() for x in inputs + labels]
-
-        self.train_dataloader = fluid.io.DataLoader(
-            self.train_dataset,
-            places=self.device,
-            batch_size=64,
-            feed_list=feed_list)
-        self.val_dataloader = fluid.io.DataLoader(
-            self.val_dataset,
-            places=self.device,
-            batch_size=64,
-            feed_list=feed_list)
-        self.test_dataloader = fluid.io.DataLoader(
+        test_dataloader = fluid.io.DataLoader(
             self.test_dataset,
             places=self.device,
             batch_size=64,
-            feed_list=feed_list)
+            return_list=True)
 
         model = LeNet()
-        model.load_dict(self.lenet_dygraph.state_dict())
+
+        model.load(self.weight_path)
+
         model.prepare(metrics=Accuracy(), inputs=inputs, labels=labels)
 
-        output = model.predict(self.test_dataloader, stack_outputs=True)
+        output = model.predict(test_dataloader, stack_outputs=True)
 
         np.testing.assert_equal(output[0].shape[0], len(self.test_dataset))
 
         acc = get_predict_accuracy(output[0], self.val_dataset.labels)
 
         np.testing.assert_allclose(acc, self.acc1)
+
+        if fluid.in_dygraph_mode():
+            fluid.disable_dygraph()
 
     def test_evaluate_dygraph(self):
         self.evaluate(True)
