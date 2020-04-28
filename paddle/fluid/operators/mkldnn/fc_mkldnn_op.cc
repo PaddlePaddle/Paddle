@@ -541,6 +541,8 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
                          fuse_relu, force_fp32_output);
 
     output->set_layout(DataLayout::kMKLDNN);
+
+    output->dump("fc_mkldnn_fwd");
   }
 };
 }  // namespace operators
