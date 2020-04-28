@@ -26,28 +26,28 @@ def transpose(x, perm, name=None):
     See :ref:`api_fluid_layers_transpose` for the real number API. 
     
     Args:
-        x (ComplexVariable): The input n-D ComplexVariable with data types 
+        x (ComplexVariable): The input n-D ComplexVariable with data type 
             complex64 or complex128.
         perm (list): Permute the input according to the value of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: A transposed n-D ComplexVariable, with the same data type as :attr:`input`.
+        ComplexVariable: A transposed n-D ComplexVariable, with the same data type as :attr:`input`.
 
     Examples:
         .. code-block:: python
  
-        import paddle
-        import numpy as np
-        import paddle.fluid.dygraph as dg
+            import paddle
+            import numpy as np
+            import paddle.fluid.dygraph as dg
  
-        with dg.guard():
-            a = np.array([[1.0 + 1.0j, 2.0 + 1.0j], [3.0+1.0j, 4.0+1.0j]])
-            x = dg.to_variable(a)
-            y = paddle.complex.transpose(x, [1, 0])
-            print(y.numpy())
-            # [[1.+1.j 3.+1.j]
-            #  [2.+1.j 4.+1.j]]
+            with dg.guard():
+                a = np.array([[1.0 + 1.0j, 2.0 + 1.0j], [3.0+1.0j, 4.0+1.0j]])
+                x = dg.to_variable(a)
+                y = paddle.complex.transpose(x, [1, 0])
+                print(y.numpy())
+                # [[1.+1.j 3.+1.j]
+                #  [2.+1.j 4.+1.j]]
     """
     complex_variable_exists([x], "transpose")
     real = layers.transpose(x.real, perm, name)

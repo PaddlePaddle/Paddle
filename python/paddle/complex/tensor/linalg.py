@@ -26,10 +26,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
     Args:
         x (ComplexVariable|Variable): The first input, can be a ComplexVariable 
-            with data type complex32 or complex64, or a Variable with data tyoe 
+            with data type complex32 or complex64, or a Variable with data type 
             float32 or float64.
         y (ComplexVariable|Variable): The second input, can be a ComplexVariable 
-            with data type complex32 or complex64, or a Variable with data tyoe 
+            with data type complex32 or complex64, or a Variable with data type 
             float32 or float64.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
@@ -43,18 +43,17 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     Examples:
         .. code-block:: python
 
-
-        import numpy as np
-        import paddle
-        import paddle.fluid.dygraph as dg
-        with dg.guard():
-            x = np.array([[1.0 + 1j, 2.0 + 1j], [3.0+1j, 4.0+1j]])
-            y = np.array([1.0 + 1j, 1.0 + 1j])
-            x_var = dg.to_variable(x)
-            y_var = dg.to_variable(y)
-            result = paddle.complex.matmul(x_var, y_var)
-            print(result.numpy())
-            # [1.+5.j 5.+9.j]         
+            import numpy as np
+            import paddle
+            import paddle.fluid.dygraph as dg
+            with dg.guard():
+                x = np.array([[1.0 + 1j, 2.0 + 1j], [3.0+1j, 4.0+1j]])
+                y = np.array([1.0 + 1j, 1.0 + 1j])
+                x_var = dg.to_variable(x)
+                y_var = dg.to_variable(y)
+                result = paddle.complex.matmul(x_var, y_var)
+                print(result.numpy())
+                # [1.+5.j 5.+9.j]         
     """
     # x = a + bi, y = c + di
     # mm(x, y) = mm(a, c) - mm(b, d) + (mm(a, d) + mm(b, c))i
