@@ -29,6 +29,7 @@ from ..layer_helper import LayerHelper
 from ..framework import in_dygraph_mode
 from ..param_attr import ParamAttr
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+
 __all__ = [
     'RNNCell',
     'GRUCell',
