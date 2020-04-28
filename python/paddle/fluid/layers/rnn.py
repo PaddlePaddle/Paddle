@@ -117,18 +117,24 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
+        if sys.version_info < (3, ):
+            integer_types = (
+                int,
+                long, )
+        else:
+            integer_types = (int, )
         check_variable_and_dtype(batch_ref, 'batch_ref',
                                  ['float32', 'float64'], 'RNNCell')
-        check_type(shape, 'shape', (list, tuple, type(None), int, long),
+        check_type(shape, 'shape', (list, tuple, type(None), integer_types),
                    'RNNCell')
         if isinstance(shape, (list, tuple)):
             shapes = map_structure(lambda x: x, shape)
             if isinstance(shape, list):
                 for i, _shape in enumerate(shapes):
-                    check_type(_shape, 'shapes[' + str(i) + ']', (int, long),
+                    check_type(_shape, 'shapes[' + str(i) + ']', integer_types,
                                'RNNCell')
             else:
-                check_type(shapes, 'shapes', (int, long), 'RNNCell')
+                check_type(shapes, 'shapes', integer_types, 'RNNCell')
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'RNNCell')
 
         # TODO: use inputs and batch_size
