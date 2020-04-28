@@ -23,9 +23,9 @@ class TestAllcloseLayer(unittest.TestCase):
         a = fluid.data(name="a", shape=[2], dtype='float32')
         b = fluid.data(name="b", shape=[2], dtype='float32')
 
-        result = paddle.allclose(
+        result = fluid.layers.allclose(
             a, b, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
-        result_nan = paddle.allclose(
+        result_nan = fluid.layers.allclose(
             a, b, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -82,7 +82,7 @@ class TestAllcloseLayer(unittest.TestCase):
         with fluid.dygraph.guard():
             x_v_1 = fluid.dygraph.to_variable(x_1)
             y_v_1 = fluid.dygraph.to_variable(y_1)
-            ret_1 = paddle.allclose(
+            ret_1 = fluid.layers.allclose(
                 x_v_1,
                 y_v_1,
                 rtol=1e-05,
@@ -90,7 +90,7 @@ class TestAllcloseLayer(unittest.TestCase):
                 equal_nan=False,
                 name='test_1')
             self.assertEqual(ret_1.numpy()[0], False)
-            ret_1 = paddle.allclose(
+            ret_1 = fluid.layers.allclose(
                 x_v_1,
                 y_v_1,
                 rtol=1e-05,
@@ -100,7 +100,7 @@ class TestAllcloseLayer(unittest.TestCase):
             self.assertEqual(ret_1.numpy()[0], False)
             x_v_2 = fluid.dygraph.to_variable(x_2)
             y_v_2 = fluid.dygraph.to_variable(y_2)
-            ret_2 = paddle.allclose(
+            ret_2 = fluid.layers.allclose(
                 x_v_2,
                 y_v_2,
                 rtol=1e-05,
@@ -108,7 +108,7 @@ class TestAllcloseLayer(unittest.TestCase):
                 equal_nan=False,
                 name='test_3')
             self.assertEqual(ret_2.numpy()[0], True)
-            ret_2 = paddle.allclose(
+            ret_2 = fluid.layers.allclose(
                 x_v_2,
                 y_v_2,
                 rtol=1e-05,
@@ -118,7 +118,7 @@ class TestAllcloseLayer(unittest.TestCase):
             self.assertEqual(ret_2.numpy()[0], True)
             x_v_3 = fluid.dygraph.to_variable(x_3)
             y_v_3 = fluid.dygraph.to_variable(y_3)
-            ret_3 = paddle.allclose(
+            ret_3 = fluid.layers.allclose(
                 x_v_3,
                 y_v_3,
                 rtol=1e-05,
@@ -126,7 +126,7 @@ class TestAllcloseLayer(unittest.TestCase):
                 equal_nan=False,
                 name='test_5')
             self.assertEqual(ret_3.numpy()[0], False)
-            ret_3 = paddle.allclose(
+            ret_3 = fluid.layers.allclose(
                 x_v_3,
                 y_v_3,
                 rtol=1e-05,

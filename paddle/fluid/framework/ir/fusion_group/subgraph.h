@@ -170,7 +170,7 @@ class SubGraph {
       }
 
       for (auto* n : nodes_set_) {
-        if (n && n->IsVar() && n->Var()) {
+        if (n && ((n->IsVar() && n->Var()) || n->IsCtrlVar())) {
           // Set the input of subgraph's input var node to null.
           std::vector<Node*> inputs;
           for (auto* in : n->inputs) {

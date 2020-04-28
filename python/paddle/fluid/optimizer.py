@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import logging
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -67,27 +68,31 @@ class Optimizer(object):
                  grad_clip=None,
                  name=None):
         self._parameter_list = parameter_list
+        self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
-            if name is not None:
-                self._name = unique_name.generate(name)
-            else:
-                self._name = unique_name.generate(self.__class__.__name__)
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
+            if regularization is not None:
+                for param in self._parameter_list:
+                    if param.regularizer is not None:
+                        logging.info(
+                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                            % regularization.__str__())
+                        break
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
-            self._name = name
 
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
@@ -3908,6 +3913,8 @@ class RecomputeOptimizer(Optimizer):
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
+        self._learning_rate = self._optimizer._learning_rate
+        self._learning_rate_map = self._optimizer._learning_rate_map
 
     def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
@@ -4059,7 +4066,8 @@ class RecomputeOptimizer(Optimizer):
                 checkpoints=self._checkpoints)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
-            self._optimizer._append_dgc_ops(params_grads)
+            if hasattr(self._optimizer, "_append_dgc_ops"):
+                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):

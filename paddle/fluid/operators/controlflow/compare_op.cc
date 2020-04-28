@@ -60,7 +60,7 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
                   "device [default true].")
-        .SetDefault(true);
+        .SetDefault(false);
     AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
                                      comment.equation));
     AddComment(string::Sprintf(R"DOC(
@@ -80,14 +80,16 @@ class CompareOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must have input X",
-                   comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must have input Y",
-                   comment.type);
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
+    OP_INOUT_CHECK(context->HasInput("Y"), "Output", "Y", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
+
     PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
-                      "The size of dim_y should not be greater than dim_x's.");
+                      platform::errors::InvalidArgument(
+                          "The size of dim_y should not be greater than "
+                          "dim_x's, but received dim_y: %d > dim_x: %d",
+                          dim_y.size(), dim_x.size()));
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");

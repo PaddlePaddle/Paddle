@@ -206,8 +206,10 @@ def relu(input, inplace=False, name=None):
             )
         return core.ops.relu(input)
 
-    helper = LayerHelper('relu', **locals())
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'relu')
 
+    helper = LayerHelper('relu', **locals())
     outs = input if inplace else helper.create_variable_for_type_inference(
         input.dtype)
     helper.append_op(type='relu', inputs={'X': [input]}, outputs={'Out': outs})
@@ -263,7 +265,7 @@ def sigmoid(input, inplace=False, name=None):
             )
         return core.ops.sigmoid(input)
 
-    check_variable_and_dtype(input, 'X', ['float16', 'float32', 'float64'],
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid')
     helper = LayerHelper("sigmoid", **locals())
     outputs = helper.create_variable_for_type_inference(input.dtype)
@@ -329,8 +331,11 @@ def log_softmax(input, axis=None, dtype=None, name=None):
                                         False)
         return core.ops.log(outs_softmax)
 
-    helper = LayerHelper("log_softmax", **locals())
+    if dtype is None:
+        check_variable_and_dtype(
+            input, 'input', ['float16', 'float32', 'float64'], 'log_softmax')
 
+    helper = LayerHelper("log_softmax", **locals())
     outs_cast = input
     if dtype is not None:
         outs_cast = helper.create_variable_for_type_inference(dtype)

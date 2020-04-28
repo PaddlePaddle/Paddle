@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+from paddle.fluid import Program, program_guard
 import paddle.fluid.core as core
 import numpy as np
 import paddle.fluid.layers as layers
@@ -219,6 +220,60 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
         g_out_sum = np.array(g_out).sum()
 
         self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
+
+
+class TestMergeLodTensorOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = layers.data(
+                name='x', shape=[1], dtype='float32', stop_gradient=False)
+            y = layers.data(
+                name='y', shape=[1], dtype='bool', stop_gradient=False)
+            x_true = layers.data(
+                name='x_true', shape=[1], dtype='float32', stop_gradient=False)
+            x_false = layers.data(
+                name='x_false', shape=[1], dtype='float32', stop_gradient=False)
+            level = 0
+
+            def test_x():
+                out = merge_lod_tensor(
+                    int_true=x_true,
+                    in_false=x_false,
+                    x=set(),
+                    mask=y,
+                    level=level)
+
+            self.assertRaises(TypeError, test_x)
+
+            def test_mask():
+                out = merge_lod_tensor(
+                    int_true=x_true,
+                    in_false=x_false,
+                    x=input_data,
+                    mask=set(),
+                    level=level)
+
+            self.assertRaises(TypeError, test_mask)
+
+            def test_xtrue():
+                out = merge_lod_tensor(
+                    int_true=set(),
+                    in_false=x_false,
+                    x=input_data,
+                    mask=y,
+                    level=level)
+
+            self.assertRaises(TypeError, test_xtrue)
+
+            def test_xfalse():
+                out = merge_lod_tensor(
+                    int_true=x_true,
+                    in_false=set(),
+                    x=input_data,
+                    mask=y,
+                    level=level)
+
+            self.assertRaises(TypeError, test_xfalse)
 
 
 class TestSplitLodTensorWithError(unittest.TestCase):

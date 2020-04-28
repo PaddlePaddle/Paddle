@@ -383,8 +383,9 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     int idx = boost::get<int>(fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
-    framework::LoDTensor &fetch =
+    framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+    auto &fetch = boost::get<framework::LoDTensor>(fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -583,9 +584,9 @@ void AnalysisPredictor::PrepareFeedFetch() {
 void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope);
   auto *var = scope->Var("feed");
-  var->GetMutable<framework::FeedFetchList>();
+  var->GetMutable<framework::FeedList>();
   var = scope->Var("fetch");
-  var->GetMutable<framework::FeedFetchList>();
+  var->GetMutable<framework::FetchList>();
 }
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
@@ -961,6 +962,8 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(hard_sigmoid);
+USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
@@ -973,5 +976,6 @@ USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
+USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 #endif

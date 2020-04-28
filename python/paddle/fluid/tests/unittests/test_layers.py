@@ -3033,7 +3033,7 @@ class TestBook(LayerTest):
             z = layers.lod_reset(x=x, y=y)
             self.assertTrue(z.lod_level == 2)
             # case 2
-            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int64')
+            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int32')
             z = layers.lod_reset(x=x, y=lod_tensor_in)
             self.assertTrue(z.lod_level == 1)
             # case 3

@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import six
 import warnings
+import sys
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
+from paddle.fluid.data_feeder import check_type
 
 __all__ = [
     'ParamAttr',
@@ -77,8 +79,17 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  do_model_average=True):
+
+        if sys.version_info.major == 2:
+            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
+        else:
+            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
+        check_type(trainable, "trainable", (bool), "ParamAttr")
+        check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+
         self.name = name
-        if isinstance(self.name, six.string_types) and self.name == "":
+        if self.name == "":
             raise ValueError("name of ParamAttr can not be empty str")
 
         self.initializer = initializer

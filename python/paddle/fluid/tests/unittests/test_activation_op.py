@@ -463,7 +463,7 @@ class TestReluOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program()):
             # The input type must be Variable.
-            self.assertRaises(TypeError, fluid.layers.sqrt, 1)
+            self.assertRaises(TypeError, fluid.layers.relu, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
             self.assertRaises(TypeError, fluid.layers.relu, x_int32)

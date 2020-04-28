@@ -117,10 +117,7 @@ void SynchronizeAllDevice() {
   int count = GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaDeviceSynchronize(),
-        platform::errors::External(
-            "Device synchronize failed in cudaDeviceSynchronize()"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
   }
 #endif
 }

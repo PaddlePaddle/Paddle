@@ -109,12 +109,6 @@ class TestWhereRaiseError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_type)
 
-        def test_dtype():
-            data = fluid.data(shape=[10], dtype="float32", name="input")
-            fluid.layers.where(data)
-
-        self.assertRaises(TypeError, test_dtype)
-
 
 if __name__ == "__main__":
     unittest.main()

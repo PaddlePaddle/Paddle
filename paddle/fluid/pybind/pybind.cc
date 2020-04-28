@@ -97,7 +97,9 @@ DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
-PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensor2DArray);
+PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
+PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
+PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 namespace paddle {
 namespace pybind {
@@ -955,6 +957,10 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_bytes",
+           [](Variable &self) {
+             return py::bytes(*self.GetMutable<std::string>());
+           })
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
@@ -965,6 +971,9 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference)
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
+           py::return_value_policy::reference)
+      .def("get_fetch_list",
+           [](Variable &self) { return self.GetMutable<FetchList>(); },
            py::return_value_policy::reference)
 #if (defined(PADDLE_WITH_NCCL))
       .def("get_communicator",
@@ -1443,7 +1452,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               std::map<std::string, const LoDTensor *> *feed_targets,
-              std::map<std::string, LoDTensor *> *fetch_targets,
+              std::map<std::string, FetchType *> *fetch_targets,
               bool create_local_scope = true, bool create_vars = true,
               const std::string &feed_holder_name = "feed",
               const std::string &fetch_holder_name = "fetch") {
@@ -1503,7 +1512,16 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
-  m.def("get_fetch_variable", framework::GetFetchVariable);
+  m.def("get_fetch_variable",
+        [](const Scope &scope, const std::string &var_name,
+           size_t index) -> py::object {
+          auto &var = framework::GetFetchVariable(scope, var_name, index);
+          if (data_is_lod_tensor(var)) {
+            return py::cast(boost::get<LoDTensor>(var));
+          } else {
+            return py::cast(boost::get<LoDTensorArray>(var));
+          }
+        });
   m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
@@ -1583,16 +1601,70 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::take_ownership);
 
-  py::class_<LoDTensor2DArray>(m, "LoDTensor2DArray", R"DOC(
-        LoDTensor2DArray is 2-D array of LoDTensor.
+  py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
+        vector of boost::variant<LoDTensor, LoDTensorArray>.
         )DOC")
       .def("_move_to_list",
-           [](LoDTensor2DArray &self) -> py::list {
+           [](FetchList &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               if (data_is_lod_tensor(self[i])) {
+                 auto &data = boost::get<LoDTensor>(self[i]);
+                 res[i] = py::cast(std::move(data));
+               } else {
+                 auto &data = boost::get<LoDTensorArray>(self[i]);
+                 py::list tmp(data.size());
+                 for (size_t j = 0; j < data.size(); ++j) {
+                   tmp[j] = py::cast(std::move(data[j]));
+                 }
+                 res[i] = std::move(tmp);
+               }
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership)
+
+      .def("append",
+           [](FetchList &self, const LoDTensor &t) {
+             self.emplace_back();
+             auto &lod_tensor = boost::get<LoDTensor>(self.back());
+             lod_tensor.ShareDataWith(t);
+             lod_tensor.set_lod(t.lod());
+           },
+           py::arg("var"))
+
+      .def("append",
+           [](FetchList &self, const LoDTensorArray &t) {
+             self.emplace_back();
+             auto &lod_tensor_array = boost::get<LoDTensorArray>(self.back());
+             for (size_t i = 0; i < t.size(); ++i) {
+               lod_tensor_array[i].ShareDataWith(t[i]);
+               lod_tensor_array[i].set_lod(t[i].lod());
+             }
+           },
+           py::arg("var"));
+
+  py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
+        FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
+        )DOC")
+      .def("_move_to_list",
+           [](FetchUnmergedList &self) -> py::list {
              py::list res(self.size());
              for (size_t i = 0; i < self.size(); ++i) {
                py::list tmp(self[i].size());
                for (size_t j = 0; j < self[i].size(); ++j) {
-                 tmp[j] = py::cast(std::move(self[i][j]));
+                 if (data_is_lod_tensor(self[i][j])) {
+                   auto &var = boost::get<LoDTensor>(self[i][j]);
+                   tmp[j] = py::cast(std::move(var));
+                 } else {
+                   auto &var = boost::get<LoDTensorArray>(self[i][j]);
+                   py::list tmp_array(var.size());
+                   for (size_t k = 0; k < var.size(); ++k) {
+                     tmp_array[k] = std::move(var[k]);
+                   }
+                   tmp[j] = std::move(tmp_array);
+                 }
                }
                res[i] = std::move(tmp);
                self[i].clear();
@@ -2326,8 +2398,8 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(fetch_tensors, return_merged);
              }
              if (return_merged) {
-               return py::cast(std::move(
-                   boost::get<paddle::framework::FeedFetchList>(ret)));
+               return py::cast(
+                   std::move(boost::get<paddle::framework::FetchList>(ret)));
              } else {
                return py::cast(std::move(
                    boost::get<paddle::framework::FetchUnmergedList>(ret)));

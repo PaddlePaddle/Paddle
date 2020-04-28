@@ -61,6 +61,10 @@ def is_api_in_module(node, module_prefix):
 
 
 def is_dygraph_api(node):
+    # Note: A api in module dygraph_to_static is not a real dygraph api.
+    if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
+        return False
+
     return is_api_in_module(node, "paddle.fluid.dygraph")
 
 

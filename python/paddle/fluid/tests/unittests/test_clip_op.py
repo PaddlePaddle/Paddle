@@ -16,12 +16,15 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 from op_test import OpTest
 
 
 class TestClipOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
+        self.inputs = {}
         self.initTestCase()
         input = np.random.random(self.shape).astype("float32")
         input[np.abs(input - self.min) < self.max_relative_error] = 0.5
@@ -31,10 +34,21 @@ class TestClipOp(OpTest):
         self.attrs = {}
         self.attrs['min'] = self.min
         self.attrs['max'] = self.max
-        self.outputs = {
-            'Out': np.clip(self.inputs['X'], self.attrs['min'],
-                           self.attrs['max'])
-        }
+        if 'Min' in self.inputs:
+            min_v = self.inputs['Min']
+        else:
+            min_v = self.attrs['min']
+
+        if 'Max' in self.inputs:
+            max_v = self.inputs['Max']
+        else:
+            max_v = self.attrs['max']
+
+        input = np.random.random(self.shape).astype("float32")
+        input[np.abs(input - min_v) < self.max_relative_error] = 0.5
+        input[np.abs(input - max_v) < self.max_relative_error] = 0.5
+        self.inputs['X'] = input
+        self.outputs = {'Out': np.clip(self.inputs['X'], min_v, max_v)}
 
     def test_check_output(self):
         self.check_output()
@@ -44,8 +58,10 @@ class TestClipOp(OpTest):
 
     def initTestCase(self):
         self.shape = (10, 10)
-        self.max = 0.7
-        self.min = 0.1
+        self.max = 0.8
+        self.min = 0.3
+        self.inputs['Max'] = np.array([0.8]).astype('float32')
+        self.inputs['Min'] = np.array([0.1]).astype('float32')
 
 
 class TestCase1(TestClipOp):
@@ -67,6 +83,32 @@ class TestCase3(TestClipOp):
         self.shape = (4, 8, 16)
         self.max = 0.7
         self.min = 0.2
+
+
+class TestCase4(TestClipOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 8)
+        self.max = 0.7
+        self.min = 0.2
+        self.inputs['Max'] = np.array([0.8]).astype('float32')
+        self.inputs['Min'] = np.array([0.3]).astype('float32')
+
+
+class TestClipOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                fluid.layers.clip(x=input_data, min=-1.0, max=1.0)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
+                fluid.layers.clip(x=x2, min=-1.0, max=1.0)
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':
