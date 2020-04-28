@@ -767,6 +767,9 @@ class Pool2D(layers.Layer):
         ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default: False.
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         None
@@ -802,7 +805,8 @@ class Pool2D(layers.Layer):
                  global_pooling=False,
                  use_cudnn=True,
                  ceil_mode=False,
-                 exclusive=True):
+                 exclusive=True,
+                 data_format="NCHW"):
         if pool_type not in ["max", "avg"]:
             raise ValueError(
                 "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -816,6 +820,11 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
+        if data_format not in ["NCHW", "NHWC"]:
+            raise ValueError(
+                "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+                "Attr(data_format): %s." % str(data_format))
+
         super(Pool2D, self).__init__()
 
         self._pool_type = pool_type
@@ -827,6 +836,7 @@ class Pool2D(layers.Layer):
         self._use_cudnn = use_cudnn
         self._ceil_mode = ceil_mode
         self._exclusive = exclusive
+        self._data_format = data_format
         self._l_type = 'pool2d'
 
     def forward(self, input):
@@ -835,7 +845,8 @@ class Pool2D(layers.Layer):
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
-                     'use_mkldnn', False, 'exclusive', self._exclusive)
+                     'use_mkldnn', False, 'exclusive', self._exclusive,
+                     'data_format', self._data_format)
             return core.ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
@@ -852,6 +863,7 @@ class Pool2D(layers.Layer):
             "ceil_mode": self._ceil_mode,
             "use_mkldnn": False,
             "exclusive": self._exclusive,
+            "data_format": self._data_format,
         }
         inputs = {"X": [input]}
 
