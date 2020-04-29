@@ -61,14 +61,9 @@ class CPUQuantizeSquashPass : public FusePassBase {
   void RequantOpSquash(Graph* graph) const;
 
   /*
-  *  Squash conv2d with dequant when dequant is the only op after conv2d
+  *  Squash dequant if the previous operator has force_fp32_output attribute
   */
-  void ConvDequantSquash(Graph* graph) const;
-
-  /*
-  *  Squash fc with dequant when dequant is the next op after fc
-  */
-  void FcDequantSquash(Graph* graph) const;
+  void OpDequantSquash(Graph* graph) const;
 
   /*
   *  Squash quantize if several quatize ops have the same scale
@@ -79,11 +74,6 @@ class CPUQuantizeSquashPass : public FusePassBase {
   *  Squash scale if dequantize is before scale
   */
   void DequantScaleSquash(Graph* graph) const;
-
-  /*
-   *  Squash dequantize if it is after matmul
-   */
-  void MatmulDequantSquash(Graph* graph) const;
 
   const std::string name_scope_{"squash"};
 };
