@@ -157,8 +157,7 @@ def _declarative_(dygraph_func):
         program_translator = ProgramTranslator()
         if not program_translator.enable_declarative:
             logger.info(
-                "The decorator 'declarative' doesn't work in dygraph "
-                "mode or set ProgramTranslator.enable to False. We will "
+                "The decorator 'declarative' doesn't work when set ProgramTranslator.enable to False. We will "
                 "just return dygraph output.")
             return dygraph_func(*args, **kwargs)
         return program_translator.get_output(dygraph_func, *args, **kwargs)

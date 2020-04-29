@@ -73,7 +73,7 @@ def check_param_type_guard(parameters):
                     name=var_base.name)
                 parameters[name] = new_var
         yield
-        parameters = origin_parameters
+        parameters.update(origin_parameters)
     else:
         yield
 
