@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, assign_skip_lod_tensor_array
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, _sorted
 import numpy
 import warnings
 import six
@@ -974,6 +974,23 @@ class While(object):
                      'StepScopes': [step_scope]},
             attrs={'sub_block': while_block,
                    "is_test": self.is_test})
+
+
+def assign_skip_lod_tensor_array(inputs, outputs):
+    """
+    Skip the process of copying LoDTensorArray.
+    """
+    if isinstance(inputs, (list, tuple)):
+        for i in range(len(inputs)):
+            assign_skip_lod_tensor_array(inputs[i], outputs[i])
+    elif isinstance(inputs, dict):
+        for key in _sorted(inputs):
+            assign(inputs[key], outputs[key])
+    else:
+        if inputs.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            pass
+        else:
+            assign(inputs, outputs)
 
 
 def while_loop(cond, body, loop_vars, is_test=False, name=None):

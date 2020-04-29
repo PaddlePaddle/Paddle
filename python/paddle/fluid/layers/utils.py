@@ -17,8 +17,6 @@ import collections
 import copy
 import six
 import numpy as np
-from .tensor import assign
-from .. import core
 from ..framework import Variable
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..layer_helper import LayerHelper
@@ -325,17 +323,3 @@ def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
 
     return inputs
-
-
-def assign_skip_lod_tensor_array(inputs, outputs):
-    if isinstance(inputs, (list, tuple)):
-        for i in range(len(inputs)):
-            assign_skip_lod_tensor_array(inputs[i], outputs[i])
-    elif isinstance(inputs, dict):
-        for key in _sorted(inputs):
-            assign(inputs[key], outputs[key])
-    else:
-        if inputs.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            pass
-        else:
-            assign(inputs, outputs)
