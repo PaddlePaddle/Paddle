@@ -122,8 +122,8 @@ def test_list_pop_without_control_flow_2(x):
     a = []
     if 2 > 1:
         a.append(x)
-        a.append(x)
-    last_tiem = a.pop()
+        a.append(x + 1)
+    last_tiem = a.pop(1)
     return last_tiem
 
 
@@ -133,15 +133,11 @@ def test_list_pop_in_if(x):
     a = []
     if x.numpy()[0] > 0:
         a.append(x)
-        a.append(
-            fluid.layers.fill_constant(
-                shape=[1, 2], value=9, dtype="int64"))
+        a.append(fluid.layers.fill_constant(shape=[1], value=1, dtype="int64"))
     else:
-        a.append(x)
-        a.append(
-            fluid.layers.fill_constant(
-                shape=[1, 2], value=9, dtype="int64"))
-    item1 = a.pop()
+        a.append(x + 1)
+        a.append(fluid.layers.fill_constant(shape=[2], value=2, dtype="int64"))
+    item1 = a.pop(1)
     a.pop()
     return a, item1
 
@@ -156,7 +152,7 @@ def test_list_pop_in_for_loop(x, iter_num):
 
     a = []
     for i in range(iter_num):
-        a.append(x)
+        a.append(x + i)
 
     one = fluid.layers.ones(shape=[1], dtype="int32")
     for i in range(one.numpy()[0]):
@@ -173,7 +169,7 @@ def test_list_pop_in_while_loop(x, iter_num):
     a = []
     i = 0
     while i < iter_num:
-        a.append(x)
+        a.append(x + i)
         i += 1
         if i % 2 == 1:
             a.pop()

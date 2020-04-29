@@ -20,9 +20,9 @@ import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
 from paddle.fluid.framework import core, default_main_program, Variable
-from paddle.fluid.layers import array_length, array_read, create_array
-from paddle.fluid.layers import assign, cast, cond, fill_constant, slice
-from paddle.fluid.layers.control_flow import equal
+from paddle.fluid.layers import array_length, array_read, array_write, create_array
+from paddle.fluid.layers import assign, cast, fill_constant, slice
+from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 
 __all__ = ['convert_list_pop']
 
@@ -42,30 +42,50 @@ def create_array_in_parent_blcok(null_array):
         parent_idx = parent_block.parent_idx
 
 
-def tensor_array_pop(array):
-    last_idx = array_length(array) - 1
-    last_item = array_read(array, last_idx)
+# TODO(liym27): A better way to slice tensor array.
+#  Maybe support start == end for slice op.
+def slice_tensor_array(array, start, end):
+    end = cast(end, "int32")
 
     def true_fn():
         null_array = create_array("float32")
         create_array_in_parent_blcok(null_array)
         return null_array
 
-    def false_fn(array, last_idx):
-        new_array = slice(array, starts=[0], ends=[last_idx], axes=[0])
+    def false_fn(array, start, end):
+        new_array = slice(array, starts=[start], ends=[end], axes=[0])
         return new_array
 
-    last_idx = cast(last_idx, "int32")  # TODO: to support int64
-    zero = fill_constant(shape=[1], dtype="int32", value=0)
+    new_array = cond(start == end, true_fn, lambda: false_fn(array, start, end))
+    return new_array
 
-    # NOTE(liym27): If last_idx == 0, ends[0] == starts[0] in slice op, which reports error.
-    # That's why to call `cond`.
-    new_array = cond(
-        equal(last_idx, zero), true_fn, lambda: false_fn(array, last_idx))
 
-    assign(new_array, array)  # TODO(liym27): The infer-shape of array is wrong
+def tensor_array_pop(array, idx):
+    assert isinstance(idx, int)
 
-    return last_item
+    def cond(i, new_array):
+        return less_than(i, arr_len)
+
+    def body(i, new_array):
+        item = array_read(array=array, i=i)
+        array_write(item, array_length(new_array), new_array)
+        i = increment(i)
+        return i, new_array
+
+    arr_len = array_length(array)
+    if idx < 0:
+        idx = idx + arr_len
+    else:
+        idx = fill_constant(shape=[1], dtype="int64", value=idx)
+
+    pop_item = array_read(array, idx)
+
+    new_array = slice_tensor_array(array, 0, idx)
+    i = idx + 1
+    _, new_array = while_loop(cond, body, [i, new_array])
+    assign(input=new_array, output=array)
+
+    return pop_item
 
 
 def convert_list_pop(target, idx=None):
@@ -80,12 +100,7 @@ def convert_list_pop(target, idx=None):
     if is_variable:
         is_tensor_array = target.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
     if is_variable and is_tensor_array:
-        if idx != -1:
-            raise ValueError(
-                "The list which is converted to TensorArray only supports removing "
-                "and returning the last item")
-        result = tensor_array_pop(target)
-
+        result = tensor_array_pop(target, idx)
     else:
         result = target.pop(idx)
     return result
