@@ -41,11 +41,11 @@ class Pool2D(fluid.dygraph.Layer):
 
 
 class Linear(fluid.dygraph.Layer):
-    def __init__(self):
+    def __init__(self, input_dim=10, output_dim=5):
         super(Linear, self).__init__()
         self.fc = fluid.dygraph.Linear(
-            input_dim=10,
-            output_dim=5,
+            input_dim,
+            output_dim,
             act='relu',
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.99)),
