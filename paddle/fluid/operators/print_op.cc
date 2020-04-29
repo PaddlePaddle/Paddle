@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/assign_op.h"
+#include "paddle/fluid/operators/tensor_formatter.h"
 
 namespace paddle {
 namespace operators {
@@ -26,114 +27,6 @@ using framework::GradVarName;
 const char kForward[] = "FORWARD";
 const char kBackward[] = "BACKWARD";
 const char kBoth[] = "BOTH";
-
-class LogGuard {
- public:
-  inline LogGuard() { LogMutex().lock(); }
-
-  inline ~LogGuard() { LogMutex().unlock(); }
-
- private:
-  static std::mutex &LogMutex() {
-    static std::mutex mtx;
-    return mtx;
-  }
-};
-
-struct Formater {
-  std::string message;
-  std::string name;
-  std::vector<int> dims;
-  std::type_index dtype{typeid(const char)};
-  framework::LoD lod;
-  int summarize;
-  void *data{nullptr};
-  platform::Place place;
-  std::stringstream logs;
-
-  void operator()(size_t size) {
-    PrintMessage();
-    PrintPlaceInfo();
-    PrintName();
-    PrintDims();
-    PrintDtype();
-    PrintLod();
-    PrintData(size);
-    LogGuard guard;
-    CLOG << logs.str();
-  }
-
- private:
-  void PrintPlaceInfo() { logs << "The place is:" << place << std::endl; }
-  void PrintMessage() { logs << std::time(nullptr) << "\t" << message << "\t"; }
-  void PrintName() {
-    if (!name.empty()) {
-      logs << "Tensor[" << name << "]" << std::endl;
-    }
-  }
-  void PrintDims() {
-    if (!dims.empty()) {
-      logs << "\tshape: [";
-      for (auto i : dims) {
-        logs << i << ",";
-      }
-      logs << "]" << std::endl;
-    }
-  }
-  void PrintDtype() {
-    if (!framework::IsType<const char>(dtype)) {
-      logs << "\tdtype: " << dtype.name() << std::endl;
-    }
-  }
-  void PrintLod() {
-    if (!lod.empty()) {
-      logs << "\tLoD: [";
-      for (auto level : lod) {
-        logs << "[ ";
-        for (auto i : level) {
-          logs << i << ",";
-        }
-        logs << " ]";
-      }
-      logs << "]" << std::endl;
-    }
-  }
-
-  void PrintData(size_t size) {
-    PADDLE_ENFORCE_NOT_NULL(data);
-    // print float
-    if (framework::IsType<const float>(dtype)) {
-      Display<float>(size);
-    } else if (framework::IsType<const double>(dtype)) {
-      Display<double>(size);
-    } else if (framework::IsType<const int>(dtype)) {
-      Display<int>(size);
-    } else if (framework::IsType<const int64_t>(dtype)) {
-      Display<int64_t>(size);
-    } else if (framework::IsType<const bool>(dtype)) {
-      Display<bool>(size);
-    } else {
-      logs << "\tdata: unprintable type: " << dtype.name() << std::endl;
-    }
-  }
-
-  template <typename T>
-  void Display(size_t size) {
-    auto *d = reinterpret_cast<T *>(data);
-    logs << "\tdata: ";
-    if (summarize != -1) {
-      summarize = std::min(size, (size_t)summarize);
-      for (int i = 0; i < summarize; i++) {
-        logs << d[i] << ",";
-      }
-    } else {
-      for (size_t i = 0; i < size; i++) {
-        logs << d[i] << ",";
-      }
-    }
-    logs << std::endl;
-  }
-};
 
 // TODO(ChunweiYan) there should be some other printers for TensorArray
 class PrintOp : public framework::OperatorBase {
@@ -191,26 +84,15 @@ class PrintOp : public framework::OperatorBase {
       TensorCopy(in_tensor, place, &printed_tensor);
     }
 
-    Formater formater;
-    formater.place = place;
-    formater.message = Attr<std::string>("message");
-    if (Attr<bool>("print_tensor_name")) {
-      formater.name = printed_var_name;
-    }
-    if (Attr<bool>("print_tensor_type")) {
-      formater.dtype = framework::ToTypeIndex(printed_tensor.type());
-    }
-    if (Attr<bool>("print_tensor_shape")) {
-      auto &dims = printed_tensor.dims();
-      formater.dims.resize(dims.size());
-      for (int i = 0; i < dims.size(); ++i) formater.dims[i] = dims[i];
-    }
-    if (Attr<bool>("print_tensor_lod")) {
-      formater.lod = printed_tensor.lod();
-    }
-    formater.summarize = Attr<int>("summarize");
-    formater.data = reinterpret_cast<void *>(printed_tensor.data<void>());
-    formater(printed_tensor.numel());
+    TensorFormatter formatter;
+    const string &name =
+        Attr<bool>("print_tensor_name") ? printed_var_name : "";
+    formatter.SetPrintTensorType(Attr<bool>("print_tensor_type"));
+    formatter.SetPrintTensorShape(Attr<bool>("print_tensor_shape"));
+    formatter.SetPrintTensorLoD(Attr<bool>("print_tensor_lod"));
+    formatter.SetPrintTensorLayout(Attr<bool>("print_tensor_layout"));
+    formatter.SetSummarize(static_cast<int64_t>(Attr<int>("summarize")));
+    formatter.Print(printed_tensor, place, name, Attr<std::string>("message"));
   }
 
  private:
