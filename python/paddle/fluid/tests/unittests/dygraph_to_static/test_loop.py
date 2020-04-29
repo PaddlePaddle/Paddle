@@ -28,7 +28,10 @@ np.random.seed(SEED)
 
 
 def while_loop_dyfunc(x):
-    i = x
+    i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while x < 10:
         i = i + x
         x = x + 1
@@ -171,11 +174,10 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            x = fluid.dygraph.to_variable(self.x)
             if to_static:
-                ret = declarative(self.dyfunc)(x)
+                ret = declarative(self.dyfunc)(self.x)
             else:
-                ret = self.dyfunc(x)
+                ret = self.dyfunc(self.x)
             return ret.numpy()
 
     def test_ast_to_func(self):
