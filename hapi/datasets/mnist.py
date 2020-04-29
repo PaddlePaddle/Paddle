@@ -46,7 +46,7 @@ class MNIST(Dataset):
         label_path(str): path to label file, can be set None if
             :attr:`download` is True. Default None
         chw_format(bool): If set True, the output shape is [1, 28, 28],
-            otherwise, output shape is [1, 784].
+            otherwise, output shape is [1, 784]. Default True.
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether auto download mnist dataset if
             :attr:`image_path`/:attr:`label_path` unset. Default

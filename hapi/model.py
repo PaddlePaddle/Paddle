@@ -993,8 +993,8 @@ class Model(fluid.dygraph.Layer):
         Returns a list of parameters of the model.
 
         Returns:
-            list of Parameter in static graph.
-            list of ParamBase in dynamic graph.
+            A list of Parameter in static graph.
+            A list of ParamBase in dynamic graph.
 
         Examples:
 
@@ -1034,15 +1034,15 @@ class Model(fluid.dygraph.Layer):
                 no loss.
             metrics (Metric|list of Metric|None): If metrics is set, all
                 metrics will be calculated and output in train/eval mode.
-            inputs (Input|list|dict|None): inputs, entry points of network,
+            inputs (Input|list|dict|None): `inputs`, entry points of network,
                 could be a Input layer, or lits of Input layers,
                 or dict (name: Input), or None. For static graph,
                 inputs must be set. For dynamic graph, it could be None.
-            labels (Input|list|None): labels, entry points of network,
+            labels (Input|list|None): `labels`, entry points of network,
                 could be a Input layer or lits of Input layers, or None.
                 For static graph, if labels is required in loss_function,
                 labels must be set. Otherwise, it could be None.
-            device (str|fluid.CUDAPlace|fluid.CPUPlace|None): specify device
+            device (str|fluid.CUDAPlace|fluid.CPUPlace|None): Specify device
                 type, 'CPU', 'GPU', fluid.CUDAPlace or fluid.CPUPlace.
                 If None, automatically select device according to
                 installation package version.
@@ -1141,27 +1141,33 @@ class Model(fluid.dygraph.Layer):
                 evaluation at the end of epoch. If None, will not do evaluation. 
                 An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended. Default: None.
-            batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored. Default: 1.
-            epochs (int): Integer number. The number of epochs to train the model. Default: 1.
+            batch_size (int): Integer number. The batch size of train_data
+                and eval_data. When train_data and eval_data are both the
+                instance of Dataloader, this parameter will be ignored.
+                Default: 1.
+            epochs (int): Integer number. The number of epochs to train
+                the model. Default: 1.
             eval_freq (int): The frequency, in number of epochs, an evalutation
                 is performed. Default: 1.
             log_freq (int): The frequency, in number of steps, the training logs
                 are printed. Default: 10.
             save_dir(str|None): The directory to save checkpoint during training.
                 If None, will not save checkpoint. Default: None.
-            save_freq (int): The frequency, in number of epochs, to save checkpoint. Default: 1.
-            verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
-            drop_last (bool): whether drop the last incomplete batch of train_data 
-                when dataset size is not divisible by the batch size. When train_data 
-                is an instance of Dataloader, this parameter will be ignored. Default: False.
-            shuffle (bool): whther to shuffle train_data. When train_data is an instance 
-                of Dataloader, this parameter will be ignored. Default: True.
-            num_workers (int): the number of subprocess to load data, 0 for no subprocess 
-                used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored. Default: 0.
+            save_freq (int): The frequency, in number of epochs, to save
+                checkpoint. Default: 1.
+            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+                1 = progress bar, 2 = one line per epoch. Default: 2.
+            drop_last (bool): Whether drop the last incomplete batch of
+                train_data when dataset size is not divisible by the batch size.
+                When train_data is an instance of Dataloader, this parameter
+                will be ignored. Default: False.
+            shuffle (bool): Whther to shuffle train_data. When train_data is
+                an instance of Dataloader, this parameter will be ignored.
+                Default: True.
+            num_workers (int): The number of subprocess to load data, 0 for no
+                subprocess used and loading data in main process.
+                When train_data and eval_data are both the instance of
+                Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
@@ -1424,15 +1430,15 @@ class Model(fluid.dygraph.Layer):
 
         Args:
             test_data (Dataset|DataLoader): An iterable data loader is used for
-                predict. An instance of paddle.io.Dataset or paddle.io.Dataloader 
+                predict. An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended.
-            batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When train_data and eval_data are both the instance of Dataloader, this 
+            batch_size (int): Integer number. The batch size of train_data and eval_data.
+                When train_data and eval_data are both the instance of Dataloader, this
                 argument will be ignored. Default: 1.
-            num_workers (int): the number of subprocess to load data, 0 for no subprocess 
+            num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this argument will be ignored. Default: 0.
-            stack_output (bool): whether stack output field like a batch, as for an output
+            stack_output (bool): Whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
