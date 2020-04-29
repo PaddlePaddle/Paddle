@@ -186,6 +186,17 @@ size_t VarBase::GradOpNum() const {
   return grad_node_ ? grad_node_->size() : 0;
 }
 
+void VarBase::SetOverridedStopGradient(bool stop_gradient) {
+  var_->SetOverridedStopGradient(stop_gradient);
+  if (grad_var_) {
+    grad_var_->SetOverridedStopGradient(stop_gradient);
+    if (grad_var_->grad_node_) {
+      grad_var_->grad_node_->ClearGradPendingNode();
+      grad_var_->grad_node_ = nullptr;
+    }
+  }
+}
+
 void VarBase::ClearGradient() {
   if (grad_var_) {
     if (grad_var_->Var().IsType<framework::SelectedRows>()) {

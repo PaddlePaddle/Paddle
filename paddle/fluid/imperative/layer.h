@@ -129,7 +129,8 @@ class VarBase {
     return grad_var_->MutableVar();
   }
 
-  void SetOverridedStopGradient(bool stop_gradient) {
+  void SetOverridedStopGradient(bool stop_gradient);
+  /*{
     var_->SetOverridedStopGradient(stop_gradient);
     if (grad_var_) {
       grad_var_->SetOverridedStopGradient(stop_gradient);
@@ -139,6 +140,7 @@ class VarBase {
       }
     }
   }
+  */
 
   bool OverridedStopGradient() const { return var_->OverridedStopGradient(); }
 
