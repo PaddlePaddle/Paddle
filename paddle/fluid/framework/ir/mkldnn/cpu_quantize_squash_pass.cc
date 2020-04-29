@@ -227,8 +227,7 @@ void CPUQuantizeSquashPass::RequantOpSquash(Graph* graph) const {
 // conv2d, fc, matmul
 void CPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::OpDequant op_dequant_pattern{gpd.mutable_pattern(),
-                                             "op_dequant"};
+  patterns::OpDequant op_dequant_pattern{gpd.mutable_pattern(), "op_dequant"};
   op_dequant_pattern();
 
   int found_op_dequant_squash_count = 0;
