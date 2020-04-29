@@ -362,7 +362,8 @@ TEST(test_layer, test_dygraph_execution_context) {
   ASSERT_EQ(dy_exe_context.InputName("X"), "vin");
   ASSERT_EQ(dy_exe_context.HasAttr("axis"), true);
   auto attr_map = dy_exe_context.Attrs();
-  ASSERT_EQ(boost::get<int>(attr_map["axis"]), 1);
+  auto& axis_attr = BOOST_GET(int, attr_map["axis"]);
+  ASSERT_EQ(axis_attr, 1);
   ASSERT_EQ(dy_exe_context.OutputSize("Out"), 1u);
   ASSERT_EQ(dy_exe_context.HasOutput("Out"), true);
 }

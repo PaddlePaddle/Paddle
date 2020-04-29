@@ -363,16 +363,16 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+            BOOST_GET(platform::CUDAPlace, place), max_memory_size));
       } else {
         gc.reset(new StreamGarbageCollector(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+            BOOST_GET(platform::CUDAPlace, place), max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
     } else {
 #endif
       if (platform::is_cpu_place(place)) {
-        gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place),
+        gc.reset(new CPUGarbageCollector(BOOST_GET(platform::CPUPlace, place),
                                          max_memory_size));
         VLOG(10) << "Created GarbageCollector at " << place;
       } else {

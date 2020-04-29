@@ -531,7 +531,8 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
   ASSERT_EQ(exe_context.OutputSize("output"), 1u);
 
   auto attr_map = exe_context.Attrs();
-  ASSERT_EQ(boost::get<float>(attr_map["scale"]), 3.14f);
+  auto& scale_arr = BOOST_GET(float, attr_map["scale"]);
+  ASSERT_EQ(scale_arr, 3.14f);
   ASSERT_EQ(exe_context.Type(), "test_operator");
 }
 

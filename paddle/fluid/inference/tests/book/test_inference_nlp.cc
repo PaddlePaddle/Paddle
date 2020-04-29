@@ -129,7 +129,7 @@ void ThreadRunInfer(
   for (auto* op : inference_program->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       std::string feed_target_name = op->Output("Out")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET(int, op->GetAttr("col"));
       paddle::framework::SetFeedVariable(scope, *feed_targets[feed_target_name],
                                          "feed", idx);
     }
@@ -148,10 +148,10 @@ void ThreadRunInfer(
   for (auto* op : inference_program->Block(0).AllOps()) {
     if (op->Type() == "fetch") {
       std::string fetch_target_name = op->Input("X")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET(int, op->GetAttr("col"));
       *fetch_targets[fetch_target_name] =
-          boost::get<paddle::framework::LoDTensor>(
-              paddle::framework::GetFetchVariable(*scope, "fetch", idx));
+          BOOST_GET(paddle::framework::LoDTensor,
+                    paddle::framework::GetFetchVariable(*scope, "fetch", idx));
     }
   }
 

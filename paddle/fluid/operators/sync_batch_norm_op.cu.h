@@ -183,7 +183,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     Tensor c_g_st;
     auto *c_g_st_d = c_g_st.mutable_data<BatchNormParamType<T>>(
         {2 * C + 1}, platform::CPUPlace());
-    auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    auto gplace = BOOST_GET(platform::CUDAPlace, ctx.GetPlace());
     memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
 
 #ifndef WIN32

@@ -35,7 +35,7 @@ struct ExtractAttribute {
   T* operator()(Attribute& attr) const {
     T* attr_value = nullptr;
     try {
-      attr_value = &boost::get<T>(attr);
+      attr_value = &BOOST_GET(T, attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type %s, its type is %s",
                    attr_name_, paddle::platform::demangle(typeid(T).name()),
@@ -60,15 +60,15 @@ struct ExtractAttribute<bool> {
 
   bool* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET(int, attr);
       attr = static_cast<bool>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      float val = boost::get<float>(attr);
+      float val = BOOST_GET(float, attr);
       attr = static_cast<bool>(val);
     }
     bool* attr_value = nullptr;
     try {
-      attr_value = &boost::get<bool>(attr);
+      attr_value = &BOOST_GET(bool, attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type bool, its type is %s",
                    attr_name_, paddle::platform::demangle(attr.type().name()));
@@ -86,15 +86,15 @@ struct ExtractAttribute<int64_t> {
 
   int64_t* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET(int, attr);
       attr = static_cast<int64_t>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      int val = boost::get<float>(attr);
+      int val = BOOST_GET(float, attr);
       attr = static_cast<int64_t>(val);
     }
     int64_t* attr_value = nullptr;
     try {
-      attr_value = &boost::get<int64_t>(attr);
+      attr_value = &BOOST_GET(int64_t, attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
                    attr_name_, paddle::platform::demangle(attr.type().name()));
@@ -112,17 +112,17 @@ struct ExtractAttribute<std::vector<int64_t>> {
 
   std::vector<int64_t>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = boost::get<std::vector<int>>(attr);
+      std::vector<int> val = BOOST_GET(std::vector<int>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = boost::get<std::vector<float>>(attr);
+      std::vector<float> val = BOOST_GET(std::vector<float>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     }
     std::vector<int64_t>* attr_value = nullptr;
     try {
-      attr_value = &boost::get<std::vector<int64_t>>(attr);
+      attr_value = &BOOST_GET(std::vector<int64_t>, attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
                    attr_name_, paddle::platform::demangle(attr.type().name()));
@@ -140,15 +140,15 @@ struct ExtractAttribute<float> {
 
   float* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET(int, attr);
       attr = static_cast<float>(val);
     } else if (attr.type() == typeid(int64_t)) {  // NOLINT
-      int64_t val = boost::get<int64_t>(attr);
+      int64_t val = BOOST_GET(int64_t, attr);
       attr = static_cast<float>(val);
     }
     float* attr_value = nullptr;
     try {
-      attr_value = &boost::get<float>(attr);
+      attr_value = &BOOST_GET(float, attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type float, its type is %s",
                    attr_name_, paddle::platform::demangle(attr.type().name()));

@@ -194,10 +194,9 @@ class Vector {
     std::mutex &Mutex() const { return mtx_; }
 
     boost::optional<platform::CUDAPlace> CUDAPlace() const {
-      return gpu_ == nullptr
-                 ? boost::none
-                 : boost::optional<platform::CUDAPlace>(
-                       boost::get<platform::CUDAPlace>(gpu_->place()));
+      return gpu_ == nullptr ? boost::none
+                             : boost::optional<platform::CUDAPlace>(BOOST_GET(
+                                   platform::CUDAPlace, gpu_->place()));
     }
 
    private:
@@ -386,7 +385,7 @@ class Vector {
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
       if (cuda_place == boost::none ||
-          cuda_place == boost::get<platform::CUDAPlace>(place)) {
+          cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
         return m_.Data().CUDAData(place);
       }
     }
@@ -402,7 +401,7 @@ class Vector {
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
       if (cuda_place == boost::none ||
-          cuda_place == boost::get<platform::CUDAPlace>(place)) {
+          cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
         return m_.MutableData()->CUDAMutableData(place);
       }
     }

@@ -75,7 +75,7 @@ void BroadcastOpHandle::BroadcastOneVar(
   } else {
 #if defined(PADDLE_WITH_NCCL)
     VarHandle *out_handle = nullptr;
-    int root_id = boost::get<platform::CUDAPlace>(in_tensor.place()).device;
+    int root_id = BOOST_GET(platform::CUDAPlace, in_tensor.place()).device;
     std::vector<std::function<void()>> broadcast_calls;
 
     int type = platform::ToNCCLDataType(in_tensor.type());
@@ -86,7 +86,7 @@ void BroadcastOpHandle::BroadcastOneVar(
                               ->FindVar(out_var_handle->name());
 
       int dst_id =
-          boost::get<platform::CUDAPlace>(out_var_handle->place()).device;
+          BOOST_GET(platform::CUDAPlace, out_var_handle->place()).device;
 
       auto &nccl_ctx = nccl_ctxs_->at(dst_id);
 

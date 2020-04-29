@@ -25,9 +25,9 @@ TEST(Tuple, Make) {
 
   paddle::framework::Tuple* tuple = paddle::framework::make_tuple(element_type);
 
-  EXPECT_EQ(boost::get<int>(tuple->get(0)), 12);
-  EXPECT_EQ(boost::get<float>(tuple->get(1)), 12.0f);
-  EXPECT_EQ(boost::get<std::string>(tuple->get(2)), "ElementVar");
+  EXPECT_EQ(tuple->GetT<int>(0), 12);
+  EXPECT_EQ(tuple->GetT<float>(1), 12.0f);
+  EXPECT_EQ(tuple->GetT<std::string>(2), "ElementVar");
 
   delete tuple;
 }

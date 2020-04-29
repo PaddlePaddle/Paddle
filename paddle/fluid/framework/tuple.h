@@ -43,6 +43,11 @@ class Tuple {
 
   ElementVar& get(int idx) { return var_[idx]; }
 
+  template <typename T>
+  T& GetT(int idx) {
+    return BOOST_GET(T, get(idx));
+  }
+
   bool isSameType(const Tuple& t) const;
 
   size_t getSize() const { return var_.size(); }

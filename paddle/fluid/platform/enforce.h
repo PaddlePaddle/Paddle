@@ -789,5 +789,39 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #undef DEFINE_CUDA_STATUS_TYPE
 #endif  // PADDLE_WITH_CUDA
 
+namespace details {
+template <typename ValueType, typename ReturnType>
+struct BoostGetReturnTypeTrait {
+ private:
+  static constexpr bool kIsConst =
+      std::is_const<typename std::remove_reference<ValueType>::type>::value;
+
+  static constexpr bool kIsPointer = std::is_pointer<ValueType>::value;
+
+ private:
+  using NonPointerType = typename std::conditional<
+      std::is_lvalue_reference<ValueType>::value,
+      typename std::conditional<kIsConst, const ReturnType&, ReturnType&>::type,
+      ReturnType>::type;
+
+  using PointerType =
+      typename std::conditional<kIsConst, const ReturnType*, ReturnType*>::type;
+
+ public:
+  using Type =
+      typename std::conditional<kIsPointer, PointerType, NonPointerType>::type;
+};
+}  // namespace details
+
+#define BOOST_GET(__TYPE, __VALUE)                                          \
+  (([&]() -> typename ::paddle::platform::details::BoostGetReturnTypeTrait< \
+        decltype((__VALUE)), __TYPE>::Type {                                \
+    try {                                                                   \
+      return ::boost::get<__TYPE>(__VALUE);                                 \
+    } catch (::boost::bad_get&) {                                           \
+      PADDLE_THROW("boost::bad_get error");                                 \
+    }                                                                       \
+  })())
+
 }  // namespace platform
 }  // namespace paddle

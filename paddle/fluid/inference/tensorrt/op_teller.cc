@@ -83,7 +83,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
                     bool use_no_calib_int8) {
   // do not support the op which is labeled the `skip_quant`
   if ((desc.HasAttr("namescope") &&
-       boost::get<std::string>(desc.GetAttr("op_namescope")) ==
+       BOOST_GET(std::string, desc.GetAttr("op_namescope")) ==
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
     return false;
@@ -92,7 +92,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
     if (op_type == "pool2d" || op_type == "conv2d" ||
         op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
       std::vector<int> paddings =
-          boost::get<std::vector<int>>(desc.GetAttr("paddings"));
+          BOOST_GET(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
     }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
