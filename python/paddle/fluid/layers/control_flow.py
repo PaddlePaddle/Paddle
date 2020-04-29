@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars, assign_skip_lod_tensor_array
 import numpy
 import warnings
 import six
@@ -1063,7 +1063,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            loop_vars = output_vars
+            assign_skip_lod_tensor_array(output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1087,7 +1087,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                              "(length and structure) as loop_vars: {0}".format(
                                  e))
         now_cond = cond(*output_vars)
-        map_structure(assign, output_vars, loop_vars)
+        assign_skip_lod_tensor_array(output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 
