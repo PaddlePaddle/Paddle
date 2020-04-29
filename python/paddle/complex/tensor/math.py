@@ -368,7 +368,6 @@ def kron(x, y, name=None):
     
             import numpy as np
             import paddle
-            from paddle import fluid
             import paddle.fluid.dygraph as dg
 
             a = np.array([[1.0+1.0j, 2.0+1.0j], [3.0+1.0j, 4.0+1.0j]])

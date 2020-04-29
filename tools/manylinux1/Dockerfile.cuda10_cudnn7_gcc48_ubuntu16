@@ -64,7 +64,7 @@ RUN apt-get update && \
     automake locales clang-format swig  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
-    net-tools libtool ccache && \
+    net-tools libtool && \
     apt-get clean -y
 
 # install cmake
@@ -112,7 +112,7 @@ RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
     rm -r Python-$version setuptools-40.6.2 pip-18.0
 
 # Install Go and glide
-RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+RUN wget -qO- https://paddle-ci.cdn.bcebos.com/go1.8.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
@@ -219,6 +219,13 @@ RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz
     rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh && \
     apt-get install libprotobuf-dev -y
 RUN pip --no-cache-dir install -U netifaces==0.10.9
+
+# ccache 3.6
+RUN wget https://paddle-ci.cdn.bcebos.com/ccache-3.6.tar.gz && \
+    tar xf ccache-3.6.tar.gz && mkdir /usr/local/ccache-3.6 && cd ccache-3.6 && \
+    ./configure -prefix=/usr/local/ccache-3.6 && \
+    make -j8 && make install && \
+    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
