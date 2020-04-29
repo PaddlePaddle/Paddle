@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.jit import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -108,21 +109,22 @@ class TestListWithoutControlFlow(unittest.TestCase):
     def init_dygraph_func(self):
         self.dygraph_func = test_list_without_control_flow
 
+    def run_static_mode(self):
+        return self._run(to_static=True)
+
     def run_dygraph_mode(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static=False):
+
         with fluid.dygraph.guard():
-            res = self.dygraph_func(self.input)
+            if to_static:
+                res = declarative(self.dygraph_func)(self.input)
+            else:
+                res = self.dygraph_func(self.input)
             if isinstance(res, (list, tuple)):
                 res = res[0]
             return res.numpy()
-
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            tensor_list = dygraph_to_static_func(self.dygraph_func)(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=tensor_list[0])
-
-        return static_res[0]
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()

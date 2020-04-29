@@ -16,23 +16,21 @@ from __future__ import print_function
 import gast
 import inspect
 import logging
-import numpy
-import six
 import textwrap
-import collections
 import threading
 import numpy as np
-from paddle.fluid import framework
 from paddle.fluid import core
+from paddle.fluid import framework
+from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from dygraph_to_static.ast_transformer import convert_to_static
-from dygraph_to_static.ast_transformer import DygraphToStaticAst
+from paddle.fluid.dygraph.base import check_param_type_guard
+from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
-from dygraph_to_static.partial_program import partial_program_from
-from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -94,11 +92,14 @@ class FunctionSpec(object):
     def is_method(self):
         return self._args and isinstance(self._args[0], layers.Layer)
 
-    def parameters(self):
+    def parameters(self, include_sublayer=True):
+        params = {}
         if self.is_method():
-            return self._args[0].parameters()
-        else:
-            return {}
+            if include_sublayer:
+                params = self._args[0].parameters()
+            else:
+                params = self._args[0]._parameters
+        return params
 
     @switch_to_static_graph
     def to_static_inputs(self, main_program):
@@ -179,17 +180,19 @@ class ConcreteProgram(object):
             # 1. Adds `fluid.data` layers for input if needed
             inputs = func_spec.to_static_inputs(main_program)
 
-            parameters = func_spec.parameters()
+            # 2. Gets all ParamBases in the function
+            all_parameters = func_spec.parameters()
 
-            # 2. Builds program only once and returns the output Variables.
-            outputs = static_func(*inputs)
-            if not isinstance(outputs, tuple):
+            # 3. Builds program only once and returns the output Variables.
+            with check_param_type_guard(func_spec.parameters(False)):
+                outputs = static_func(*inputs)
+            if not isinstance(outputs, (tuple, list)):
                 outputs = [outputs] if outputs else []
 
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
-            parameters=parameters,
+            parameters=all_parameters,
             func=dygaph_function,
             main_program=main_program,
             start_up=start_up)

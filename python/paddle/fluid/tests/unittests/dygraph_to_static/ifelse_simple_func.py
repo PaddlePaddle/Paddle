@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from jit import declarative
 
 
 def add_fn(x):
@@ -28,7 +27,6 @@ def loss_fn(x, lable):
     return loss
 
 
-@declarative
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -41,7 +39,6 @@ def dyfunc_with_if_else(x_v, label=None):
     return x_v
 
 
-@declarative
 def dyfunc_with_if_else2(x, col=100):
     row = 0
     if abs(col) > x.shape[-1]:
@@ -54,7 +51,6 @@ def dyfunc_with_if_else2(x, col=100):
     return y
 
 
-@declarative
 def nested_if_else(x_v):
     batch_size = 16
     feat_size = x_v.shape[-1]
@@ -79,7 +75,6 @@ def nested_if_else(x_v):
     return y
 
 
-@declarative
 def nested_if_else_2(x):
     y = fluid.layers.reshape(x, [-1, 1])
     b = 2
@@ -101,7 +96,6 @@ def nested_if_else_2(x):
     return res
 
 
-@declarative
 def nested_if_else_3(x):
     y = fluid.layers.reshape(x, [-1, 1])
     b = 2
@@ -147,7 +141,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
-    @declarative
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
@@ -185,7 +178,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         return loss
 
 
-@declarative
 def if_with_and_or(x_v, label=None):
     batch_size = fluid.layers.shape(x_v)
     if x_v is not None and (fluid.layers.mean(x_v).numpy()[0] > 0 or
@@ -200,7 +192,6 @@ def if_with_and_or(x_v, label=None):
     return x_v
 
 
-@declarative
 def if_with_and_or_1(x, y=None):
     batch_size = fluid.layers.shape(x)
     if batch_size[0] > 1 and y is not None:
@@ -210,7 +201,6 @@ def if_with_and_or_1(x, y=None):
     return x
 
 
-@declarative
 def if_with_and_or_2(x, y=None):
     batch_size = fluid.layers.shape(x)
     if x is not None and batch_size[0] > 1 and y is not None:
@@ -220,7 +210,6 @@ def if_with_and_or_2(x, y=None):
     return x
 
 
-@declarative
 def if_with_and_or_3(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
@@ -232,7 +221,6 @@ def if_with_and_or_3(x, y=None):
     return x
 
 
-@declarative
 def if_with_and_or_4(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
@@ -245,7 +233,6 @@ def if_with_and_or_4(x, y=None):
     return x
 
 
-@declarative
 def if_with_class_var(x, y=None):
     class Foo(object):
         def __init__(self):

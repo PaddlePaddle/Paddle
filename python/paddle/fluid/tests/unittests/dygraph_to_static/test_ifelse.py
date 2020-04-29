@@ -15,10 +15,10 @@
 from __future__ import print_function
 
 import numpy as np
-import paddle.fluid as fluid
 import unittest
-from dygraph_to_static.program_translator import ProgramTranslator
-from jit import declarative
+
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 from ifelse_simple_func import *
 
@@ -41,18 +41,16 @@ class TestDygraphIfElse(unittest.TestCase):
         self.dyfunc = dyfunc_with_if_else
 
     def _run_static(self):
-        return self._run(to_static=True)
+        return self._run_dygraph(to_static=True)
 
-    def _run_dygraph(self):
-        return self._run(to_static=False)
-
-    def _run(self, to_static=False):
-        prog_trans = ProgramTranslator()
-        prog_trans.enable(to_static)
+    def _run_dygraph(self, to_static=False):
 
         with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
-            ret = self.dyfunc(x_v)
+            if to_static:
+                ret = declarative(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
             return ret.numpy()
 
     def test_ast_to_func(self):
@@ -210,7 +208,6 @@ def relu(x):
     return fluid.layers.relu(x)
 
 
-@declarative
 def call_external_func(x, label=None):
     if fluid.layers.mean(x) < 0:
         x_v = x - 1

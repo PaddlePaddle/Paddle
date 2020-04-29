@@ -38,7 +38,6 @@ class TestCacheProgram(unittest.TestCase):
         prev_out, cur_out = None, None
         with fluid.dygraph.guard(fluid.CPUPlace()):
             static_net = self.dygraph_class()
-            print("cache: ", id(static_net.forward))
             for batch_id in range(self.batch_num):
                 out = static_net(self.data)
                 # Check outputs
@@ -86,12 +85,12 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
-            print(to_static, id(dygraph_net.forward))
             adam = fluid.optimizer.AdamOptimizer(
                 learning_rate=0.001, parameter_list=dygraph_net.parameters())
             loss_data = []
             for batch_id in range(self.batch_num):
-                pred, avg_loss = dygraph_net(self.data)
+                input = fluid.dygraph.to_variable(self.data)
+                pred, avg_loss = dygraph_net(input)
 
                 loss_data.append(avg_loss.numpy())
                 avg_loss.backward()
@@ -107,20 +106,6 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
-
-    # def test_exception(self):
-    #     main_program = fluid.Program()
-    #     loss_data = []
-    #     with fluid.program_guard(main_program):
-    #         static_net = self.dygraph_class()
-    #         adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-    #         # set optimizer
-    #         program_translator = ProgramTranslator()
-    #
-    #         with self.assertRaisesRegexp(ValueError, "has already been set"):
-    #             for batch_id in range(self.batch_num):
-    #                 program_translator.set_optimizer(adam, index_of_loss=1)
-    #                 static_net(self.data)
 
 
 def simple_func(x):
@@ -150,7 +135,6 @@ def sum_even_util_limit(max_len, limit):
     return ret_sum
 
 
-@declarative
 def sum_under_while(limit):
     i = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
     ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
@@ -166,7 +150,7 @@ class TestToOutputWithCache(unittest.TestCase):
             ret = sum_even_util_limit(80, 10)
             self.assertEqual(ret.numpy(), 30)
 
-            ret = sum_under_while(100)
+            ret = declarative(sum_under_while)(100)
             self.assertEqual(ret.numpy(), 5050)
 
 

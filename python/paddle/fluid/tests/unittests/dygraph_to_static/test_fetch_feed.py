@@ -14,13 +14,12 @@
 
 from __future__ import print_function
 
-from jit import declarative
-from dygraph_to_static import ProgramTranslator
-
 import numpy as np
 import unittest
 
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 
 SEED = 2020
 
@@ -33,13 +32,11 @@ class Pool2D(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x):
-        inputs = fluid.dygraph.to_variable(x)
-
         # Add func `get_result` for testing arg_name_to_idx in ast transformation.
         def get_result(x):
             return self.pool2d(x)
 
-        pre = get_result(inputs)
+        pre = get_result(x)
         return pre
 
 
@@ -57,8 +54,7 @@ class Linear(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x):
-        inputs = fluid.dygraph.to_variable(x)
-        pre = self.fc(inputs)
+        pre = self.fc(x)
         loss = fluid.layers.mean(pre)
         return pre, loss
 
@@ -69,9 +65,13 @@ class TestPool2D(unittest.TestCase):
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
 
     def train(self, to_static=False):
+        program_translator = ProgramTranslator()
+        program_translator.enable(to_static)
+
         with fluid.dygraph.guard():
             dy_layer = self.dygraph_class()
-            prediction = dy_layer(x=self.data)
+            x = fluid.dygraph.to_variable(self.data)
+            prediction = dy_layer(x)
             if isinstance(prediction, (list, tuple)):
                 prediction = prediction[0]
 
