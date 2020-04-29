@@ -68,7 +68,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 fluid.nets.scaled_dot_product_attention(queries, keys_error_dim,
                                                         values_error_dim)
 
-            self.assertRaises(TypeError, test_diff_dim)
+            self.assertRaises(ValueError, test_diff_dim)
 
             def test_diff_hidden_size():
                 queries_error_hs = fluid.data(
@@ -78,7 +78,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 fluid.nets.scaled_dot_product_attention(queries_error_hs,
                                                         keys_error_hs, values)
 
-            self.assertRaises(TypeError, test_diff_hidden_size)
+            self.assertRaises(ValueError, test_diff_hidden_size)
 
             def test_diff_max_len():
                 keys_error_len = fluid.data(
@@ -88,7 +88,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                 fluid.nets.scaled_dot_product_attention(queries, keys_error_len,
                                                         values_error_len)
 
-            self.assertRaises(TypeError, test_diff_max_len)
+            self.assertRaises(ValueError, test_diff_max_len)
 
 
 if __name__ == "__main__":

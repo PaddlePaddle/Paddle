@@ -15,7 +15,7 @@
 from __future__ import print_function
 import six
 from . import layers
-from .data_feeder import check_variable_and_dtype
+from .data_feeder import check_variable_and_dtype, convert_dtype
 
 __all__ = [
     "simple_img_conv_pool",
@@ -411,6 +411,7 @@ def scaled_dot_product_attention(queries,
             Multi-Head Attention.
 
     Raises:
+        TypeError: The dtype of inputs keys, values and queries should be the same.
         ValueError: Inputs queries, keys and values should all be 3-D tensors.
         ValueError: The hidden size of queries and keys should be the same.
         ValueError: The max sequence length in value batch and in key batch should be the same.
@@ -430,10 +431,18 @@ def scaled_dot_product_attention(queries,
     """
     check_variable_and_dtype(queries, 'queries', ['float32', 'float64'],
                              "scaled_dot_product_attention")
-    check_variable_and_dtype(keys, 'keys', [queries.dtype],
+    check_variable_and_dtype(keys, 'keys', ['float32', 'float64'],
                              "scaled_dot_product_attention")
-    check_variable_and_dtype(values, 'values', [queries.dtype],
+    check_variable_and_dtype(values, 'values', ['float32', 'float64'],
                              "scaled_dot_product_attention")
+
+    if not (queries.dtype == keys.dtype == values.dtype):
+        raise TypeError(
+            "The dtype of keys, values and queries should be the same."
+            "But received queries.dtype = %s, "
+            " keys.dtype = %s, values.dtype) = %s." %
+            (convert_dtype(queries.dtype), convert_dtype(keys.dtype),
+             convert_dtype(values.dtype)))
 
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(

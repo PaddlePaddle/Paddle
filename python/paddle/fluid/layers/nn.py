@@ -12465,7 +12465,7 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     helper = LayerHelper('add_position_encoding', **locals())
-    check_variable_and_dtype(input, 'X', ['float32', 'float64'],
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              "add_position_encoding")
     dtype = helper.input_dtype()
 
