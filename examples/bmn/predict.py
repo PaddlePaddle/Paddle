@@ -46,7 +46,10 @@ def parse_args():
         default='bmn.yaml',
         help='path to config file of model')
     parser.add_argument(
-        '--device', type=str, default='GPU', help='default use gpu.')
+        '--device',
+        type=str,
+        default='gpu',
+        help='gpu or cpu, default use gpu.')
     parser.add_argument(
         '--weights',
         type=str,
@@ -56,18 +59,18 @@ def parse_args():
     parser.add_argument(
         '--filelist',
         type=str,
-        default="infer.list",
-        help='infer file list, default to use ./infer.list')
+        default=None,
+        help='infer file list, None to use config file setting.')
     parser.add_argument(
         '--output_path',
         type=str,
-        default="output/INFER/BMN_results",
-        help='output dir path, default to use output/INFER/BMN_results')
+        default=None,
+        help='output dir path, None to use config file setting.')
     parser.add_argument(
         '--result_path',
         type=str,
-        default="predict_results/",
-        help='output dir path after post processing, default to use ./predict_results/'
+        default=None,
+        help='output dir path after post processing,  None to use config file setting.'
     )
     parser.add_argument(
         '--log_interval',

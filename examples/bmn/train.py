@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument(
         '--learning_rate',
         type=float,
-        default=0.001,
+        default=None,
         help='learning rate use for training. None to use config file setting.')
     parser.add_argument(
         '--resume',

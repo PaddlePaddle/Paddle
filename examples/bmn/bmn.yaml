@@ -15,7 +15,6 @@ TRAIN:
   batch_size: 4 
   num_workers: 4
   use_shuffle: True
-  device: "gpu"
   learning_rate: 0.001
   learning_rate_decay: 0.1
   lr_decay_iter: 4200
@@ -28,14 +27,14 @@ TEST:
   subset: "validation"
   batch_size: 1
   num_workers: 1
-  output_path: "output/EVAL/BMN_results"
-  result_path: "evaluate_results"
+  output_path: "./output/EVAL/BMN_results"
+  result_path: "./evaluate_results"
 
 INFER:
   subset: "test"
   batch_size: 1
   num_workers: 1
   filelist: './infer.list'
-  output_path: "output/INFER/BMN_results"
-  result_path: "predict_results"
+  output_path: "./output/INFER/BMN_results"
+  result_path: "./predict_results"
 

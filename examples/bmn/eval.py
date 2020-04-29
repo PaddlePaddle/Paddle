@@ -54,18 +54,18 @@ def parse_args():
         '--weights',
         type=str,
         default=None,
-        help='weight path, None to automatically download weights provided by Paddle.'
+        help='weight path. None to automatically download weights provided by Paddle.'
     )
     parser.add_argument(
         '--output_path',
         type=str,
-        default="output/EVAL/BMN_results",
-        help='output dir path, default to use output/EVAL/BMN_results')
+        default=None,
+        help='output dir path. None to use config file setting.')
     parser.add_argument(
         '--result_path',
         type=str,
-        default="evaluate_results/",
-        help='output dir path after post processing, default to use ./evaluate_results/'
+        default=None,
+        help='output dir path after post processing. None to use config file setting.'
     )
     parser.add_argument(
         '--log_interval',

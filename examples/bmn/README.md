@@ -4,7 +4,7 @@
 ## 内容
 
 - [模型简介](#模型简介)
-- [代码结构](#代码结构)
+- [代码获取](#代码获取)
 - [数据准备](#数据准备)
 - [模型训练](#模型训练)
 - [模型评估](#模型评估)
@@ -22,7 +22,21 @@ BMN Overview
 </p>
 
 
-## 代码结构
+## 代码获取
+
+### 代码下载及环境变量设置
+
+    克隆代码库到本地，并设置`PYTHONPATH`环境变量
+
+    ```bash
+    git clone https://github.com/PaddlePaddle/hapi
+    cd hapi
+    export PYTHONPATH=`pwd`:$PYTHONPATH
+    cd examples/bmn
+    ```
+
+
+### 代码结构
 ```
 ├── bmn.yaml           # 网络配置文件，快速配置参数
 ├── run.sh             # 快速运行脚本，可直接开始多卡训练
@@ -74,6 +88,8 @@ BMN的训练数据采用ActivityNet1.3提供的数据集，我们提供了处理
 
 - 上述程序会将运行结果保存在`--output_path`参数指定的文件夹下，默认为output/EVAL/BMN\_results；测试结果保存在`--result_path`参数指定的文件夹下，默认为evaluate\_results。
 
+- 暂不支持多卡评估。
+
 - 注：评估时可能会出现loss为nan的情况。这是由于评估时用的是单个样本，可能存在没有iou>0.6的样本，所以为nan，对最终的评估结果没有影响。
 
 
@@ -107,6 +123,8 @@ BMN的训练数据采用ActivityNet1.3提供的数据集，我们提供了处理
 - 使用python命令行启动程序时，`--filelist`参数指定待推断的文件列表，如果不设置，默认为./infer.list。`--weights`参数为训练好的权重参数，若未指定，脚本会下载已发布的模型[model](https://paddlemodels.bj.bcebos.com/hapi/bmn.pdparams)进行预测。
 
 - 上述程序会将运行结果保存在`--output_path`参数指定的文件夹下，默认为output/INFER/BMN\_results；测试结果保存在`--result_path`参数指定的文件夹下，默认为predict\_results。
+
+- 暂不支持多卡预测。
 
 
 ## 参考论文
