@@ -269,6 +269,22 @@ __CUDA_FP16_DECL__ __half hsqrt(const __half a) {
     __APPROX_FCAST(sqrt);
 }
 
+#if defined(__cplusplus) && (__CUDA_ARCH__ >= 320 || !defined(__CUDA_ARCH__))
+#if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+#define __LDG_PTR   "l"
+#else
+#define __LDG_PTR   "r"
+#endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
+__CUDA_FP16_DECL__ __half __ldg(const __half *ptr)
+{
+    __half ret;
+    asm ("ld.global.nc.b16 %0, [%1];"  : "=h"(__HALF_TO_US(ret)) : __LDG_PTR(ptr));
+    return ret;
+}
+
+#undef __LDG_PTR
+#endif /*defined(__cplusplus) && (__CUDA_ARCH__ >= 320 || !defined(__CUDA_ARCH__))*/
+
 __device__ inline __half Exp(const __half x) { return hexp(x); }
 __device__ inline __half Log(const __half x) { return hlog(x); }
 __device__ inline __half Sqrt(const __half x) { return hsqrt(x); }

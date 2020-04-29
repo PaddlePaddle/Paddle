@@ -218,6 +218,7 @@ def Print(input,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
+          print_tensor_layout=True,
           print_tensor_lod=True,
           print_phase='both'):
     '''
@@ -238,6 +239,7 @@ def Print(input,
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will 
@@ -291,6 +293,7 @@ def Print(input,
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
+            'print_tensor_layout': print_tensor_layout,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
@@ -1140,6 +1143,12 @@ def lod_rank_table(x, level=0):
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
     """
+    check_type(x, 'x', (Variable, list), 'lod_rank_table')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_rank_table')
+
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,

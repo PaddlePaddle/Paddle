@@ -26,7 +26,9 @@ function(detect_installed_gpus out_variable)
     set(cufile ${PROJECT_BINARY_DIR}/detect_cuda_archs.cu)
 
     file(WRITE ${cufile} ""
-      "#include <cstdio>\n"
+      "#include \"stdio.h\"\n"
+      "#include \"cuda.h\"\n"
+      "#include \"cuda_runtime.h\"\n"
       "int main() {\n"
       "  int count = 0;\n"
       "  if (cudaSuccess != cudaGetDeviceCount(&count)) return -1;\n"
@@ -34,12 +36,12 @@ function(detect_installed_gpus out_variable)
       "  for (int device = 0; device < count; ++device) {\n"
       "    cudaDeviceProp prop;\n"
       "    if (cudaSuccess == cudaGetDeviceProperties(&prop, device))\n"
-      "      std::printf(\"%d.%d \", prop.major, prop.minor);\n"
+      "      printf(\"%d.%d \", prop.major, prop.minor);\n"
       "  }\n"
       "  return 0;\n"
       "}\n")
 
-    execute_process(COMMAND "${CUDA_NVCC_EXECUTABLE}" "-ccbin=${CUDA_HOST_COMPILER}"
+    execute_process(COMMAND "${CUDA_NVCC_EXECUTABLE}"
                     "--run" "${cufile}"
                     WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
                     RESULT_VARIABLE nvcc_res OUTPUT_VARIABLE nvcc_out

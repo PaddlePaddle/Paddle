@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -85,7 +86,7 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const enum stream::Priority& priority = stream::Priority::kNormal);
+      const stream::Priority& priority = stream::Priority::kNormal);
 
   ~CUDAContext();
 
@@ -104,6 +105,10 @@ class CUDAContext {
   const cudaStream_t& RawStream() { return stream_->raw_stream(); }
 
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
+
+  const cusolverDnHandle_t& CusolverDnHandle() const {
+    return cusolver_dn_handle_;
+  }
 
   const std::unique_ptr<CublasHandleHolder>& CublasHandle() const {
     return cublas_handle_;
@@ -162,24 +167,24 @@ class CUDAContext {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnCreate(&cudnn_handle_),
-          platform::errors::Fatal(
-              "Failed to create Cudnn handle in DeviceContext"));
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnSetStream(cudnn_handle_, RawStream()),
-          platform::errors::Fatal(
-              "Failed to set stream for Cudnn handle in DeviceContext"));
+          dynload::cudnnSetStream(cudnn_handle_, RawStream()));
     } else {
       cudnn_handle_ = nullptr;
     }
   }
 
+  void InitCuSolverContext() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnCreate(&cusolver_dn_handle_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
+  }
+
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnDestroy(cudnn_handle_),
-          platform::errors::Fatal("Failed to destory Cudnn handle"));
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
     }
     cudnn_handle_ = nullptr;
   }
@@ -189,6 +194,13 @@ class CUDAContext {
     cublas_tensor_core_handle_.reset();
   }
 
+  void DestoryCuSolverContext() {
+    if (cusolver_dn_handle_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cusolverDnDestroy(cusolver_dn_handle_));
+    }
+  }
+
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
@@ -196,6 +208,7 @@ class CUDAContext {
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
@@ -256,6 +269,8 @@ class CUDADeviceContext : public DeviceContext {
    *  sequential cudnn function calls. */
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
+  cusolverDnHandle_t cusolver_dn_handle() const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
@@ -281,11 +296,11 @@ class CUDADeviceContext : public DeviceContext {
     return context()->Stream()->WaitCallback();
   }
 
-  void ResetDefaultContext(const enum stream::Priority& priority) {
+  void ResetDefaultContext(const stream::Priority& priority) {
     default_ctx_.reset(new CUDAContext(place_, priority));
   }
 
-  void ResetThreadContext(const enum stream::Priority& priority) {
+  void ResetThreadContext(const stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
     thread_ctx_[this].reset(new CUDAContext(place_, priority));
   }

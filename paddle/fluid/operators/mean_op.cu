@@ -59,20 +59,14 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
 
     auto err = cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, trans_x,
                                       out_data, size_prob, stream);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        err, platform::errors::External(
-                 "MeanOP failed to get reduce workspace size %s.",
-                 cudaGetErrorString(err)));
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
     framework::Tensor tmp;
     auto* temp_storage = tmp.mutable_data<uint8_t>(
         framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
         context.GetPlace());
     err = cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, trans_x,
                                  out_data, size_prob, stream);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        err, platform::errors::External(
-                 "MeanOP failed to run CUDA reduce computation: %s.",
-                 cudaGetErrorString(err)));
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
   }
 };
 

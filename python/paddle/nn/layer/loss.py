@@ -14,8 +14,9 @@
 
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
+
 __all__ = [
-    #'NCELoss',
+    #       'NCELoss',
     'CrossEntropyLoss',
     'MSELoss',
     'L1Loss',
@@ -26,20 +27,22 @@ __all__ = [
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
-    This operator implements the cross entropy loss function. This OP combines `softmax`,
-    `cross_entropy`, and `reduce_sum`/`reduce_mean` together.
+    This operator implements the cross entropy loss function. This OP combines ``softmax``,
+    ``cross_entropy``, and ``reduce_sum``/``reduce_mean`` together.
 
-    It is useful when training a classification problem with `C` classes.
-    If provided, the optional argument `weight` should be a 1D Variable assigning
+    It is useful when training a classification problem with ``C`` classes.
+    If provided, the optional argument ``weight`` should be a 1D Variable assigning
     weight to each of the classes.
 
     For predictions label, and target label, the loss is calculated as follows.
+
     .. math::
 
         loss_j =  -\\text{input[class]} +
         \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right), j = 1,..., K
 
-    If weight is not `None`:
+    If weight is not ``None``:
+
     .. math::
 
         loss_j =  \\text{weight[class]}(-\\text{input[class]} +
@@ -59,9 +62,12 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+
     Returns:
         The tensor variable storing the cross_entropy_loss of input and label.
+
     Return type: Variable.
+
     Examples:
         .. code-block:: python
 
@@ -155,48 +161,58 @@ class MSELoss(fluid.dygraph.layers.Layer):
     .. math::
         Out = \operatorname{sum}((input - label)^2)
 
-    where `input` and `label` are `float32` tensors of arbitrary shapes.
+    where `input` and `label` are `float32` tensors of same shape.
 
     Parameters:
+        input (Variable): Input tensor, the data type is float32,
+        label (Variable): Label tensor, the data type is float32,
         reduction (string, optional): The reduction method for the output,
             could be 'none' | 'mean' | 'sum'.
-            'none': no reduction will be applied
-            'mean': the output will be averaged
-            'sum': the output will be summed
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned. 
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned. 
+            Default is ``'mean'``.
+
+    Returns:
+        The tensor variable storing the MSE loss of input and label.
+
+    Return type:
+        Variable.
 
     Examples:
         .. code-block:: python
-        import numpy as np
-        import paddle
-        from paddle import fluid
-        import paddle.fluid.dygraph as dg
 
-        mse_loss = paddle.nn.loss.MSELoss()
-        input = fluid.data(name="input", shape=[1])
-        label = fluid.data(name="label", shape=[1])
-        place = fluid.CPUPlace()
-        input_data = np.array([1.5]).astype("float32")
-        label_data = np.array([1.7]).astype("float32")
+            import numpy as np
+            import paddle
+            from paddle import fluid
+            import paddle.fluid.dygraph as dg
 
-        # declarative mode
-        output = mse_loss(input,label)
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        output_data = exe.run(
-            fluid.default_main_program(),
-            feed={"input":input_data, "label":label_data},
-            fetch_list=[output],
-            return_numpy=True)
-        print(output_data)
-        # [array([0.04000002], dtype=float32)]
+            mse_loss = paddle.nn.loss.MSELoss()
+            input = fluid.data(name="input", shape=[1])
+            label = fluid.data(name="label", shape=[1])
+            place = fluid.CPUPlace()
+            input_data = np.array([1.5]).astype("float32")
+            label_data = np.array([1.7]).astype("float32")
 
-        # imperative mode
-        with dg.guard(place) as g:
-            input = dg.to_variable(input_data)
-            label = dg.to_variable(label_data)
-            output = mse_loss(input, label)
-            print(output.numpy())
-            # [0.04000002]
+            # declarative mode
+            output = mse_loss(input,label)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            output_data = exe.run(
+                fluid.default_main_program(),
+                feed={"input":input_data, "label":label_data},
+                fetch_list=[output],
+                return_numpy=True)
+            print(output_data)
+            # [array([0.04000002], dtype=float32)]
+
+            # imperative mode
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                label = dg.to_variable(label_data)
+                output = mse_loss(input, label)
+                print(output.numpy())
+                # [0.04000002]
     """
 
     def __init__(self, reduction='mean'):
@@ -315,40 +331,56 @@ class L1Loss(fluid.dygraph.Layer):
 
 class BCELoss(fluid.dygraph.Layer):
     """
-    This op accepts input predictions and target label and returns binary 
-    cross entropy error.
-    For predictions label, and target label, the loss is calculated as follows.
+    This interface is used to construct a callable object of the ``BCELoss`` class.
+    The BCELoss layer measures the binary_cross_entropy loss between input predictions 
+    and target labels. The binary_cross_entropy loss can be described as:
+
     If :attr:`weight` is set, the loss is:
+
+    .. math::
         Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
     If :attr:`weight` is None, the loss is:
+
+    .. math::
         Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
 
     If :attr:`reduction` set to ``'none'``, the unreduced loss is:
+
     .. math::
         Out = Out
     If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
     .. math::
         Out = MEAN(Out)
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
     .. math::
         Out = SUM(Out)
+
+    Note that the input predictions always be the output of sigmoid, and the target labels 
+    should be numbers between 0 and 1.
+
+    The shape of input predictions and target labels are [N, *], where N is batch_size and `*` 
+    means any number of additional dimensions. If ``reduction`` is ``'none'``, the shape of 
+    output is scalar, else the shape of output is same as input.
+
     Parameters:
-        input (Variable): Input tensor, the data type is float32,
-            float64. Input must in (0, 1).
-        label (Variable): Label tensor, has the same shape with input, 
-            the data type is float32, float64.
-        weight (Variable, optional): Weight tensor, a manual rescaling weight given
-            to each class. It has the same dimensions as class number and the data type
-            is float32, float64, int32, int64. Default is ``'None'``.
+        weight (Variable, optional): A manual rescaling weight given to the loss of each 
+            batch element. If given, has to be a Variable of size nbatch and the data type
+            is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned;
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`reduction` is ``'sum'``, the summed loss is returned.
             Default is ``'mean'``.
-    Returns:
-        The tensor variable storing the bce_loss of input and label.
-    Return type: Variable.
+
+    Returns: 
+        A callable object of BCELoss.
+
     Examples:
         .. code-block:: python
+
             # declarative mode
             import paddle.fluid as fluid
             import numpy as np
@@ -409,7 +441,7 @@ class BCELoss(fluid.dygraph.Layer):
         if self.weight is not None:
             if isinstance(self.weight, fluid.framework.Variable):
                 w = self.weight
-                out = fluid.layers.elementwise_mul(out, w, axis=0)
+                out = fluid.layers.elementwise_mul(out, w, axis=-1)
             else:
                 raise ValueError(
                     "The weight is not a Variable, please convert to Variable.")
