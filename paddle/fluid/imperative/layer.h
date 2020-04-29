@@ -132,6 +132,9 @@ class VarBase {
     var_->SetOverridedStopGradient(stop_gradient);
     if (grad_var_) {
       grad_var_->SetOverridedStopGradient(stop_gradient);
+      if (grad_var_->grad_node_) {
+        grad_var_->grad_node_ = nullptr;
+      }
     }
   }
 
