@@ -160,19 +160,20 @@ class LookupTableV2OpGrad : public framework::OperatorWithKernel {
 class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
+    auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      ctx->SetType(out_var_name, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(out_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     }
-    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("W")[0]));
+    ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }
 };
 

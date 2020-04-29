@@ -263,12 +263,17 @@ std::string CodeGenerator::EmitParameters(
   }
 
   size_t index = 0;
+  std::vector<std::string> output_args;
   for (auto id : output_ids) {
     if (intermediate_ids.find(id) == intermediate_ids.end()) {
-      ret << dtypes.at(id) << "* " << ArgName(id);
-      if (index != output_ids.size() - 1) {
-        ret << ", ";
-      }
+      std::string args_str = dtypes.at(id) + "* " + ArgName(id);
+      output_args.push_back(args_str);
+    }
+  }
+  for (auto args : output_args) {
+    ret << args;
+    if (index != output_args.size() - 1) {
+      ret << ", ";
     }
     index++;
   }

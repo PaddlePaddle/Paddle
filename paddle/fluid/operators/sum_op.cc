@@ -210,43 +210,36 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
 class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    auto& inputs = ctx->Input("X");
-    auto var_type = framework::proto::VarType::SELECTED_ROWS;
-    for (auto& name : ctx->Input("X")) {
-      VLOG(10) << name << " " << ctx->GetType(name);
-    }
-
-    bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [ctx](const std::string& name) {
-          return ctx->GetType(name) == framework::proto::VarType::LOD_TENSOR;
-        });
-
-    auto is_tensor_array = [ctx](const std::string& name) {
-      return ctx->GetType(name) == framework::proto::VarType::LOD_TENSOR_ARRAY;
-    };
-
-    bool any_input_is_tensor_array =
-        std::any_of(inputs.begin(), inputs.end(), is_tensor_array);
-    bool all_inputs_are_tensor_array =
-        std::all_of(inputs.begin(), inputs.end(), is_tensor_array);
-
-    if (any_input_is_tensor_array) {
-      if (!all_inputs_are_tensor_array) {
-        std::ostringstream os;
-        for (auto& each : inputs) {
-          os << "    " << each << " type is " << ctx->GetType(each) << "\n";
+    if (!ctx->IsDygraph()) {
+      auto var_type = framework::proto::VarType::SELECTED_ROWS;
+      if (VLOG_IS_ON(10)) {
+        for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
+          VLOG(10) << ctx->InputVarName("X", ind) << " "
+                   << ctx->GetInputType("X", ind);
         }
-        PADDLE_ENFORCE_EQ(all_inputs_are_tensor_array, true,
-                          "Not all inputs are tensor array:\n%s", os.str());
       }
-      var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
-    } else if (any_input_is_lod_tensor) {
-      var_type = framework::proto::VarType::LOD_TENSOR;
-    }
 
-    auto out_var_name = ctx->Output("Out").front();
-    ctx->SetType(out_var_name, var_type);
-    ctx->SetDataType(out_var_name, ctx->GetDataType(inputs.front()));
+      if (ctx->InputTypeAnyOf("X",
+                              framework::proto::VarType::LOD_TENSOR_ARRAY)) {
+        if (!ctx->InputTypeAllOf("X",
+                                 framework::proto::VarType::LOD_TENSOR_ARRAY)) {
+          std::ostringstream os;
+          for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
+            os << "    " << ctx->InputVarName("X", ind) << " type is "
+               << ctx->GetInputType("X", ind) << "\n";
+          }
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Not all inputs are tensor array:\n%s", os.str()));
+        }
+        var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
+      } else if (ctx->InputTypeAnyOf("X",
+                                     framework::proto::VarType::LOD_TENSOR)) {
+        var_type = framework::proto::VarType::LOD_TENSOR;
+      }
+
+      ctx->SetOutputType("Out", var_type);
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
+    }
   }
 };
 

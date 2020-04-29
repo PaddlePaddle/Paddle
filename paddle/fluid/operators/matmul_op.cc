@@ -318,6 +318,36 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
+framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
+                               std::string input_name) {
+  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
+  auto axis =
+      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
+  auto dim = ctx.GetInputDim(input_name);
+  if (!shape.empty() && !axis.empty()) {
+    PADDLE_ENFORCE_GE(
+        shape.size(), 2,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_LE(
+        shape.size(), 4,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_EQ(
+        shape.size(), axis.size(),
+        platform::errors::InvalidArgument(
+            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
+            "must be equal.",
+            input_name, input_name));
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return dim;
+}
+
 class MatMulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -328,9 +358,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
-
+    auto dim_x = GetDimForInput(*context, "X");
+    auto dim_y = GetDimForInput(*context, "Y");
     auto mat_dim_x =
         math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
                                      context->Attrs().Get<bool>("transpose_X"));
@@ -484,6 +513,18 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    AddAttr<std::vector<int>>("fused_reshape_X",
+                              R"DOC(Shape of fused reshape of `X` input.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("fused_reshape_Y",
+                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("fused_transpose_X",
+                              R"DOC(Axis of fused transpose of `X` input.)DOC")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("fused_transpose_Y",
+                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
+        .SetDefault({});
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
