@@ -24,8 +24,8 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.nn import Conv2D, Linear, Pool2D
 from paddle.fluid.optimizer import AdamOptimizer
-from dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 
 SEED = 2020
 
