@@ -301,7 +301,6 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     }
   }
 
-  // VLOG(3) << "Running Op " << op.Type();
   VLOG(5) << LayerDebugString(op.Type(), ins, outs);
   auto prepared_op = PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs);
 
@@ -351,7 +350,6 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
       PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
                         platform::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));
-      // TODO(zjl): support higher order derivatives
       auto new_var = new VariableWrapper(each_var->Name());
       auto* new_tensor =
           new_var->MutableVar()->GetMutable<framework::LoDTensor>();

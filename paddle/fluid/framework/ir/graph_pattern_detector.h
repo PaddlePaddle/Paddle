@@ -1140,11 +1140,12 @@ struct MKLDNNInPlace : public PatternBase {
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 
-  // MKL-DNN's in-place ops: BatchNorm, Softmax, Layer Norm
+  // MKL-DNN's in-place ops: BatchNorm, Softmax, Elementwise_add
   PATTERN_DECL_NODE(inplace_to_be_op);
   PATTERN_DECL_NODE(inplace_to_be_op_in);
   PATTERN_DECL_NODE(inplace_to_be_op_out);
   PATTERN_DECL_NODE(next_op);
+  PATTERN_DECL_NODE(next_op_out);
 };
 
 struct TransposeFlattenConcat : public PatternBase {
@@ -1207,6 +1208,47 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
   PATTERN_DECL_NODE(any_op2);
+};
+
+// Reshape + Transpose + Matmul
+// named nodes:
+// reshape_op, reshape_out, reshape_xshape,
+// transpose_op, transpose_out, transpose_xshape,
+// matmul_op, matmul_out
+struct ReshapeTransposeMatmulPattern : public PatternBase {
+  ReshapeTransposeMatmulPattern(PDPattern* pattern,
+                                const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
+
+  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(reshape_xshape);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_xshape);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
+// Matmul + Transpose + Reshape
+struct MatmulTransposeReshapePattern : public PatternBase {
+  MatmulTransposeReshapePattern(PDPattern* pattern,
+                                const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_transpose_reshape") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_out_xshape);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(reshape_out_xshape);
 };
 
 }  // namespace patterns

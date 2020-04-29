@@ -389,13 +389,13 @@ static void BicubicInterpolation(const Tensor& input, Tensor* output,
   for (int k = 0; k < out_h; k++) {  // loop for images
     T y_n = align_corners ? static_cast<T>(ratio_h * k)
                           : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
-    int input_y = static_cast<int>(y_n);
+    int input_y = floorf(y_n);
     const T y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
       T x_n = align_corners ? static_cast<T>(ratio_w * l)
                             : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
-      int input_x = static_cast<int>(x_n);
+      int input_x = floorf(x_n);
       const T x_t = x_n - input_x;
 
       for (int i = 0; i < n; i++) {    // loop for batches
@@ -625,13 +625,13 @@ static void BicubicInterpolationGrad(const Tensor& output_grad,
   for (int k = 0; k < out_h; k++) {  // loop for images
     T y_n = align_corners ? static_cast<T>(ratio_h * k)
                           : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
-    int input_y = static_cast<int>(y_n);
+    int input_y = floorf(y_n);
     T y_t = y_n - input_y;
 
     for (int l = 0; l < out_w; l++) {
       T x_n = align_corners ? static_cast<T>(ratio_w * l)
                             : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
-      int input_x = static_cast<int>(x_n);
+      int input_x = floorf(x_n);
       T x_t = x_n - input_x;
 
       T x_coeffs[4];

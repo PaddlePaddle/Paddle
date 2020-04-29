@@ -94,17 +94,24 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "UniformRandom");
-    PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
-                      ctx->Attrs().Get<float>("max"),
-                      platform::errors::InvalidArgument(
-                          "uniform_random's min must less then max"));
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "UniformRandomOp");
+
+    PADDLE_ENFORCE_LT(
+        ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max"),
+        platform::errors::InvalidArgument(
+            "The uniform_random's min must less then max. But received min = "
+            "%f great than or equal max = %f.",
+            ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max")));
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
                       platform::errors::InvalidArgument(
-                          "diag_num must greater than or equal 0"));
+                          "The uniform_random's diag_num must greater than or "
+                          "equal 0. But recevied diag_num (%d) < 0.",
+                          ctx->Attrs().Get<int>("diag_num")));
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
                       platform::errors::InvalidArgument(
-                          "diag_step must greater than or equal 0"));
+                          "The uniform_random's diag_step must greater than or "
+                          "equal 0. But recevied diag_step (%d) < 0.",
+                          ctx->Attrs().Get<int>("diag_step")));
 
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
@@ -225,15 +232,13 @@ uniform distribution. The random result is in set [min, max).
 class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output("Out").front();
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
         boost::get<int>(ctx->GetAttr("dtype")));
 
-    if (ctx->GetType(out_var_name) !=
-        framework::proto::VarType::SELECTED_ROWS) {
-      ctx->SetType(out_var_name, framework::proto::VarType::LOD_TENSOR);
+    if (ctx->GetOutputType("Out") != framework::proto::VarType::SELECTED_ROWS) {
+      ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR);
     }
-    ctx->SetDataType(out_var_name, var_data_type);
+    ctx->SetOutputDataType("Out", var_data_type);
   }
 };
 

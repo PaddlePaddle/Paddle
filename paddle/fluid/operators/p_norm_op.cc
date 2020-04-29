@@ -64,18 +64,19 @@ class PnormOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "p_norm");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "p_norm");
     auto porder = ctx->Attrs().Get<float>("porder");
-    PADDLE_ENFORCE_NE(porder, 0,
-                      platform::errors::InvalidArgument(
-                          "The input porder of p_norm is not support for "
-                          "porder == 0, INFINITY, -INFINITY now."));
     PADDLE_ENFORCE_NE(porder, INFINITY,
-                      platform::errors::InvalidArgument(
+                      platform::errors::Unimplemented(
                           "The input porder of p_norm is not support for "
                           "porder == 0, INFINITY, -INFINITY now."));
     PADDLE_ENFORCE_NE(porder, -INFINITY,
-                      platform::errors::InvalidArgument(
+                      platform::errors::Unimplemented(
                           "The input porder of p_norm is not support for "
                           "porder == 0, INFINITY, -INFINITY now."));
+    PADDLE_ENFORCE_GT(porder, 0.0f,
+                      platform::errors::InvalidArgument(
+                          "The input porder of p_norm is not support for "
+                          "porder <= 0, But received porder=%f.",
+                          porder));
     auto xdim = ctx->GetInputDim("X");
     int axis = ctx->Attrs().Get<int>("axis");
     bool keepdim = ctx->Attrs().Get<bool>("keepdim");

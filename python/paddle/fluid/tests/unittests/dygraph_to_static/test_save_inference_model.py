@@ -21,7 +21,7 @@ import numpy as np
 import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import declarative
 
 np.random.seed(2020)
 
@@ -34,13 +34,13 @@ class SimpleFcLayer(fluid.dygraph.Layer):
         super(SimpleFcLayer, self).__init__()
         self._linear = fluid.dygraph.Linear(fc_size, fc_size)
 
-    @dygraph_to_static_output
+    @declarative
     def forward(self, x):
         x = fluid.dygraph.to_variable(x)
         y = self._linear(x)
         z = self._linear(y)
         out = fluid.layers.mean(z)
-        return out
+        return out, y
 
 
 class TestDyToStaticSaveInferenceModel(unittest.TestCase):
@@ -63,6 +63,15 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
         infer_model_dir = "./test_dy2stat_save_inference_model"
         ProgramTranslator.get_instance().save_inference_model(infer_model_dir)
+        saved_var_names = set([
+            filename for filename in os.listdir(infer_model_dir)
+            if filename != '__model__'
+        ])
+        self.assertEqual(saved_var_names, expected_persistable_vars)
+
+        infer_model_dir = "./test_dy2stat_save_inference_model_with_fetch"
+        ProgramTranslator.get_instance().save_inference_model(
+            infer_model_dir, fetch=[0])
         saved_var_names = set([
             filename for filename in os.listdir(infer_model_dir)
             if filename != '__model__'

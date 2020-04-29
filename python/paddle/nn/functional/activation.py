@@ -13,33 +13,55 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
+from ...fluid.layers import brelu  #DEFINE_ALIAS
+from ...fluid.layers import elu  #DEFINE_ALIAS
+from ...fluid.layers import erf  #DEFINE_ALIAS
+from ...fluid.layers import gelu  #DEFINE_ALIAS
+from ...fluid.layers import hard_shrink  #DEFINE_ALIAS
+from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
+from ...fluid.layers import hard_swish  #DEFINE_ALIAS
+from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
+from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
+from ...fluid.layers import maxout  #DEFINE_ALIAS
+from ...fluid.layers import relu6  #DEFINE_ALIAS
+from ...fluid.layers import selu  #DEFINE_ALIAS
+from ...fluid.layers import soft_relu  #DEFINE_ALIAS
+from ...fluid.layers import softmax  #DEFINE_ALIAS
+from ...fluid.layers import softplus  #DEFINE_ALIAS
+from ...fluid.layers import softshrink  #DEFINE_ALIAS
+from ...fluid.layers import softsign  #DEFINE_ALIAS
+from ...fluid.layers import swish  #DEFINE_ALIAS
+from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
+from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
+
 __all__ = [
-    #             'brelu',
-    #            'elu',
-    #            'erf',
-    #            'gelu',
-    #            'hard_shrink',
-    #            'hard_sigmoid',
-    #            'hard_swish',
+    'brelu',
+    'elu',
+    'erf',
+    'gelu',
+    'hard_shrink',
+    'hard_sigmoid',
+    'hard_swish',
     'hsigmoid',
-    #            'leaky_relu',
-    #            'logsigmoid',
-    #            'maxout',
-    #            'prelu',
+    'leaky_relu',
+    'logsigmoid',
+    'maxout',
+    #       'prelu',
     'relu',
-    #            'relu6',
-    #            'selu',
+    'relu6',
+    'selu',
     'sigmoid',
-    #            'soft_relu',
-    #            'softmax',
-    #            'softplus',
-    #            'softshrink',
-    #            'softsign',
-    #            'swish',
-    #            'tanh_shrink',
-    #            'thresholded_relu',
+    'soft_relu',
+    'softmax',
+    'softplus',
+    'softshrink',
+    'softsign',
+    'swish',
+    'tanh_shrink',
+    'thresholded_relu',
     'log_softmax'
 ]
+
 import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
@@ -206,8 +228,10 @@ def relu(input, inplace=False, name=None):
             )
         return core.ops.relu(input)
 
-    helper = LayerHelper('relu', **locals())
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'relu')
 
+    helper = LayerHelper('relu', **locals())
     outs = input if inplace else helper.create_variable_for_type_inference(
         input.dtype)
     helper.append_op(type='relu', inputs={'X': [input]}, outputs={'Out': outs})
@@ -263,7 +287,7 @@ def sigmoid(input, inplace=False, name=None):
             )
         return core.ops.sigmoid(input)
 
-    check_variable_and_dtype(input, 'X', ['float16', 'float32', 'float64'],
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'sigmoid')
     helper = LayerHelper("sigmoid", **locals())
     outputs = helper.create_variable_for_type_inference(input.dtype)
@@ -329,8 +353,11 @@ def log_softmax(input, axis=None, dtype=None, name=None):
                                         False)
         return core.ops.log(outs_softmax)
 
-    helper = LayerHelper("log_softmax", **locals())
+    if dtype is None:
+        check_variable_and_dtype(
+            input, 'input', ['float16', 'float32', 'float64'], 'log_softmax')
 
+    helper = LayerHelper("log_softmax", **locals())
     outs_cast = input
     if dtype is not None:
         outs_cast = helper.create_variable_for_type_inference(dtype)

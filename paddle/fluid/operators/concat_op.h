@@ -47,13 +47,13 @@ static inline framework::DDim ComputeAndCheckShape(
             is_runtime || (out_dims[j] > 0 && inputs_dims[i][j] > 0);
         if (check_shape) {
           // check all shape in run time
-          PADDLE_ENFORCE_EQ(
-              inputs_dims[0][j], inputs_dims[i][j],
-              platform::errors::InvalidArgument(
-                  "The shape of input[%d] must be equal to input[0]. "
-                  "But received input[0]'s shape = "
-                  "[%s], input[%d]'s shape = [%s].",
-                  i, inputs_dims[0], i, inputs_dims[i]));
+          PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],
+                            platform::errors::InvalidArgument(
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
+                                "But received input[0]'s shape = "
+                                "[%s], input[%d]'s shape = [%s].",
+                                j, i, inputs_dims[0], i, inputs_dims[i]));
         }
       }
     }
@@ -79,9 +79,9 @@ class ConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
-    PADDLE_ENFORCE_NOT_NULL(
-        ins[0], platform::errors::NotFound(
-                    " The first input of concat should not be null."));
+    PADDLE_ENFORCE_NOT_NULL(ins[0],
+                            platform::errors::NotFound(
+                                "The first input tensor is not initalized."));
     auto axis = ctx.Attr<int>("axis");
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
@@ -116,7 +116,9 @@ class ConcatKernel : public framework::OpKernel<T> {
               platform::errors::Unimplemented(
                   "The lod level of all input LoDTensors should be same. "
                   "Maybe different lod level of input LoDTensors can concat,"
-                  " it is not supported currently."));
+                  "it is not supported currently. The lod level of %dth input "
+                  "is %d and first input is %d.",
+                  i, ins[i]->lod().size(), lod_size_0));
         } else {
           lod_size = 0;
           break;
@@ -181,9 +183,9 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        ins[0], platform::errors::NotFound(
-                    "The first input of concat should not be null."));
+    PADDLE_ENFORCE_NOT_NULL(ins[0],
+                            platform::errors::NotFound(
+                                "The first input tensor is not initalized."));
 
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {

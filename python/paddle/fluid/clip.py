@@ -137,9 +137,6 @@ class GradientClipBase(object):
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        assert len(
-            params_grads
-        ) > 0, "The number of trainable parameters should be greater than 0."
         if framework.in_dygraph_mode():
             return self._dygraph_clip(params_grads)
         else:
@@ -147,7 +144,7 @@ class GradientClipBase(object):
                 if getattr(p, 'gradient_clip_attr', None) is not None:
                     warnings.warn(
                         "'set_gradient_clip' will be ineffective, because you have "
-                        "pass 'grad_clip' into 'minimize'. So, 'set_gradient_clip' "
+                        "set 'grad_clip' in 'optimizer'. So, 'set_gradient_clip' "
                         "is redundant and you can remove it.")
                     break
             return self._static_clip(params_grads)
@@ -170,7 +167,7 @@ class GradientClipByValue(GradientClipBase):
     The multi-dimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
     is not None, then only part of gradients can be selected for gradient clipping.
     
-    Gradient clip will takes effect after being set in ``optimizer.minimize(grad_clip)`` , see the document ``optimizer`` 
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
     (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
     
     Args:
@@ -208,8 +205,8 @@ class GradientClipByValue(GradientClipBase):
                 #   return Parameter.name=="fc_0.w_0"
                 # clip = fluid.clip.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
 
-                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1)
-                sgd_optimizer.minimize(loss, grad_clip=clip)
+                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1, grad_clip=clip)
+                sgd_optimizer.minimize(loss)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -242,8 +239,8 @@ class GradientClipByValue(GradientClipBase):
                 # clip = fluid.clip.GradientClipByValue(min=-1, max=1, need_clip=fileter_func)
 
                 sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.1, parameter_list=linear.parameters())
-                sgd_optimizer.minimize(loss, grad_clip=clip)
+                    learning_rate=0.1, parameter_list=linear.parameters(), grad_clip=clip)
+                sgd_optimizer.minimize(loss)
     """
 
     def __init__(self, max, min=None, need_clip=None):
@@ -272,6 +269,7 @@ class GradientClipByValue(GradientClipBase):
 
     def _static_clip(self, params_grads):
         params_and_grads = []
+        param_new_grad_name_dict = dict()
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -284,7 +282,8 @@ class GradientClipByValue(GradientClipBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_grad = layers.clip(x=g, min=self.min, max=self.max)
                 params_and_grads.append((p, new_grad))
-        _correct_clip_op_role_var(params_and_grads)
+                param_new_grad_name_dict[p.name] = new_grad.name
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 
     def _process_context(self, context, param, grad):
@@ -306,7 +305,7 @@ class GradientClipByNorm(GradientClipBase):
     The multidimensional Tensor :math:`X` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
     is not None, then only part of gradients can be selected for gradient clipping.
     
-    Gradient clip will takes effect after being set in ``optimizer.minimize(grad_clip)`` , see the document ``optimizer`` 
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
     (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
     
     The clipping formula is:
@@ -359,8 +358,8 @@ class GradientClipByNorm(GradientClipBase):
                 #   return Parameter.name=="fc_0.w_0"
                 # clip = fluid.clip.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
 
-                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1)
-                sgd_optimizer.minimize(loss, grad_clip=clip)
+                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1, grad_clip=clip)
+                sgd_optimizer.minimize(loss)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -394,8 +393,8 @@ class GradientClipByNorm(GradientClipBase):
                 # clip = fluid.clip.GradientClipByNorm(clip_norm=1.0, need_clip=fileter_func)
 
                 sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.1, parameter_list=linear.parameters())
-                sgd_optimizer.minimize(loss, grad_clip=clip)
+                    learning_rate=0.1, parameter_list=linear.parameters(), grad_clip=clip)
+                sgd_optimizer.minimize(loss)
 
     """
 
@@ -422,6 +421,7 @@ class GradientClipByNorm(GradientClipBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
+            param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -432,8 +432,9 @@ class GradientClipByNorm(GradientClipBase):
 
                 with p.block.program._optimized_guard([p, g]):
                     new_grad = layers.clip_by_norm(x=g, max_norm=self.clip_norm)
+                param_new_grad_name_dict[p.name] = new_grad.name
                 params_and_grads.append((p, new_grad))
-        _correct_clip_op_role_var(params_and_grads)
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 
     def _process_context(self, context, param, grad):
@@ -456,7 +457,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
     The list of Tensor :math:`t\_list` is not passed from this class, but the gradients of all parameters in ``Program`` . If ``need_clip``
     is not None, then only part of gradients can be selected for gradient clipping.
     
-    Gradient clip will takes effect after being set in ``optimizer.minimize(grad_clip)`` , see the document ``optimizer`` 
+    Gradient clip will takes effect after being set in ``optimizer`` , see the document ``optimizer`` 
     (for example: :ref:`api_fluid_optimizer_SGDOptimizer`).
 
     The clipping formula is:
@@ -505,8 +506,8 @@ class GradientClipByGlobalNorm(GradientClipBase):
                 #   return Parameter.name=="fc_0.w_0"
                 # clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
 
-                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1)
-                sgd_optimizer.minimize(loss, grad_clip=clip)
+                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1, grad_clip=clip)
+                sgd_optimizer.minimize(loss)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -539,8 +540,8 @@ class GradientClipByGlobalNorm(GradientClipBase):
                 # clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=1.0, need_clip=fileter_func)
 
                 sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.1, parameter_list=linear.parameters())
-                sgd_optimizer.minimize(loss, grad_clip=clip)
+                    learning_rate=0.1, parameter_list=linear.parameters(), grad_clip=clip)
+                sgd_optimizer.minimize(loss)
 
     """
 
@@ -628,6 +629,7 @@ class GradientClipByGlobalNorm(GradientClipBase):
                     y=layers.elementwise_max(
                         x=max_global_norm, y=global_norm_var))
 
+            param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -638,9 +640,10 @@ class GradientClipByGlobalNorm(GradientClipBase):
 
                 with p.block.program._optimized_guard([p, g]):
                     new_grad = layers.elementwise_mul(x=g, y=scale_var)
+                param_new_grad_name_dict[p.name] = new_grad.name
                 params_and_grads.append((p, new_grad))
 
-        _correct_clip_op_role_var(params_and_grads)
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 
     def _process_context(self, context, param, grad):
@@ -692,9 +695,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
     
         This API must be used after building network, and before ``minimize`` , 
         and it may be removed in future releases, so it is not recommended. 
-        It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
-        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
-        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
+        It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
+        this is a better method to clip gradient. There are three clipping strategies:
+         :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+         :ref:`api_fluid_clip_GradientClipByValue` .
         
     To specify parameters that require gradient clip.
 
@@ -757,7 +761,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
             
-            # network 4: use 'set_gradient_clip' and 'minimize(grad_clip=clip)' together
+            # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 loss = network()
                 clip1 = fluid.clip.GradientClipByValue(min=-1.0, max=1.0)
@@ -765,8 +769,8 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 # Set the gradient clipping strategy: clip1
                 fluid.clip.set_gradient_clip(clip1)
                 # Set the gradient clipping strategy: clip2
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss, grad_clip=clip2)
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
+                sgd.minimize(loss)
                 # 'set_gradient_clip' will not take effect when setting has a conflict, 
                 # and the gradient clipping strategy will be 'clip2'
             
@@ -774,10 +778,10 @@ def set_gradient_clip(clip, param_list=None, program=None):
     """
     warnings.warn("Caution! 'set_gradient_clip' is not recommended "
                   "and may be deprecated in future! "
-                  "We recommend a new strategy: clip gradient by "
-                  "'optimizer.minimize(loss, grad_clip=clip)'. "
+                  "We recommend a new strategy: set 'grad_clip' "
+                  "when initializing the 'optimizer'. "
                   "This method can reduce the mistakes, please "
-                  "see documention of 'optimzier.minimize'.")
+                  "refer to documention of 'optimizer'.")
 
     if not isinstance(clip, GradientClipBase):
         raise TypeError(
@@ -824,33 +828,42 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
+    param_new_grad_name_dict = dict()
     for p, g in param_grads:
         if g is None:
             continue
         with p.block.program._optimized_guard(
             [p, g]), framework.name_scope('graident_clip_@CLIP'):
             param, new_grad = clip_attr._create_operators(param=p, grad=g)
+            param_new_grad_name_dict[param.name] = new_grad.name
             res.append([param, new_grad])
 
-    _correct_clip_op_role_var(res)
+    _correct_clip_op_role_var(res, param_new_grad_name_dict)
     return res
 
 
 # change wrong mapping relation between param & grad in clip op
-def _correct_clip_op_role_var(params_grads):
+# Note: This function is sensitive to the time cost of the network with gradient clipping 
+# and should not be changed easily. If you must change, please test the time cost.
+def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
+    block_id_list = []
+    if len(param_new_grad_name_dict) == 0:
+        return
     for param, grad in params_grads:
         if grad is None:
             continue
+        block_id = param.block.idx
+        if block_id in block_id_list:
+            continue
+        block_id_list.append(block_id)
         for op in param.block.program.global_block().ops:
             if 'op_namescope' in op.all_attrs() and "gradient_clip" in op.attr(
-                    "op_namescope"):
-                if op.attr('op_role_var'):
-                    param_name = op.attr('op_role_var')[0]
-                    index = 0
-                    for i in range(len(params_grads)):
-                        if params_grads[i][0].name == param_name:
-                            index = i
-                    correct_p_g = [param_name, params_grads[index][1].name]
+                    "op_namescope") and op.attr('op_role_var'):
+                param_name = op.attr('op_role_var')[0]
+                if param_name in param_new_grad_name_dict:
+                    correct_p_g = [
+                        param_name, param_new_grad_name_dict[param_name]
+                    ]
                     op._set_attr('op_role_var', correct_p_g)
 
 

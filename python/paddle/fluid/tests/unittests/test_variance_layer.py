@@ -56,7 +56,7 @@ class TestVarianceLayer(unittest.TestCase):
         return np.var(self._input, axis=axis, keepdims=keepdim, ddof=ddof)
 
     def test_equal(self):
-        places = []
+        places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:

@@ -37,12 +37,14 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
-#endif
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
@@ -212,9 +214,18 @@ bool AnalysisPredictor::PrepareProgram(
   return true;
 }
 bool AnalysisPredictor::CreateExecutor() {
-  if (config_.use_gpu_) {
+  if (config_.use_gpu()) {
     status_use_gpu_ = true;
-    place_ = paddle::platform::CUDAPlace(config_.device_id_);
+    place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
+#ifdef PADDLE_WITH_CUDA
+    if (config_.thread_local_stream_enabled()) {
+      auto *ctx = static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
+      VLOG(3) << "The prediction process will be completed using a separate "
+                 "normal-priority stream on each thread.";
+      ctx->ResetThreadContext(platform::stream::Priority::kNormal);
+    }
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -383,8 +394,9 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   for (size_t i = 0; i < fetches_.size(); ++i) {
     int idx = boost::get<int>(fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
-    framework::LoDTensor &fetch =
+    framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+    auto &fetch = boost::get<framework::LoDTensor>(fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -502,30 +514,69 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE(config.is_valid(),
                  "Note: Each config can only be used for one predictor.");
+
   if (config.use_gpu()) {
-    // 1. GPU memory
-    PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
-    PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
-                      config.gpu_device_id());
-    std::vector<std::string> flags;
+    static std::once_flag gflags_initialized;
+    static bool process_level_allocator_enabled;
 
-    float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
-    if (fraction_of_gpu_memory > 0.95f) {
-      LOG(ERROR)
-          << "Allocate too much memory for the GPU memory pool, assigned "
-          << config.memory_pool_init_size_mb() << " MB";
-      LOG(ERROR)
-          << "Try to shink the value by setting AnalysisConfig::EnableGpu(...)";
-    }
+    std::call_once(gflags_initialized, [&]() {
+      std::vector<std::string> gflags;
+      PADDLE_ENFORCE_GE(
+          config.memory_pool_init_size_mb(), 0.f,
+          platform::errors::InvalidArgument(
+              "The size of memory pool should be greater than 0."));
+      PADDLE_ENFORCE_GE(
+          config.gpu_device_id(), 0,
+          platform::errors::InvalidArgument(
+              "Invalid device id (%d). The device id should be greater than 0.",
+              config.gpu_device_id()));
+      gflags.push_back("dummy");
 
-    if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummy");
-      std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                         std::to_string(fraction_of_gpu_memory);
-      flags.push_back(flag);
-      flags.push_back("--cudnn_deterministic=True");
-      VLOG(3) << "set flag: " << flag;
-      framework::InitGflags(flags);
+      float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
+      if (fraction_of_gpu_memory > 0.95f) {
+        LOG(ERROR)
+            << "Allocate too much memory for the GPU memory pool, assigned "
+            << config.memory_pool_init_size_mb() << " MB";
+        LOG(ERROR) << "Try to shink the value by setting "
+                      "AnalysisConfig::EnableGpu(...)";
+      }
+
+      if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
+        std::string flag = "--fraction_of_gpu_memory_to_use=" +
+                           std::to_string(fraction_of_gpu_memory);
+        VLOG(3) << "set flag: " << flag;
+        gflags.push_back(flag);
+        gflags.push_back("--cudnn_deterministic=True");
+      }
+
+      if (config.thread_local_stream_enabled()) {
+        gflags.push_back("--allocator_strategy=thread_local");
+        process_level_allocator_enabled = false;
+      } else {
+        gflags.push_back("--allocator_strategy=naive_best_fit");
+        process_level_allocator_enabled = true;
+      }
+
+      if (framework::InitGflags(gflags)) {
+        VLOG(3) << "The following gpu analysis configurations only take effect "
+                   "for the first predictor: ";
+        for (size_t i = 1; i < gflags.size(); ++i) {
+          VLOG(3) << gflags[i];
+        }
+      } else {
+        LOG(WARNING) << "The one-time configuration of analysis predictor "
+                        "failed, which may be due to native predictor called "
+                        "first and its configurations taken effect.";
+      }
+    });
+
+    if (config.thread_local_stream_enabled() &&
+        process_level_allocator_enabled) {
+      LOG(FATAL) << " When binding threads and streams, the use of "
+                    "process-level allocators will result in undefined result "
+                    "errors due to memory asynchronous operations."
+                    "The thread and stream binding configuration of all "
+                    "predictors should be the same in a single process.";
     }
   }
 
@@ -583,9 +634,9 @@ void AnalysisPredictor::PrepareFeedFetch() {
 void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope);
   auto *var = scope->Var("feed");
-  var->GetMutable<framework::FeedFetchList>();
+  var->GetMutable<framework::FeedList>();
   var = scope->Var("fetch");
-  var->GetMutable<framework::FeedFetchList>();
+  var->GetMutable<framework::FetchList>();
 }
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
@@ -975,5 +1026,6 @@ USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
+USE_TRT_CONVERTER(slice);
 USE_TRT_CONVERTER(scale);
 #endif

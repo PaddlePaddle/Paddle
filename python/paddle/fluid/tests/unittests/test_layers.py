@@ -3033,7 +3033,7 @@ class TestBook(LayerTest):
             z = layers.lod_reset(x=x, y=y)
             self.assertTrue(z.lod_level == 2)
             # case 2
-            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int64')
+            lod_tensor_in = layers.data(name='lod_in', shape=[1], dtype='int32')
             z = layers.lod_reset(x=x, y=lod_tensor_in)
             self.assertTrue(z.lod_level == 1)
             # case 3
@@ -3194,6 +3194,24 @@ class TestBook(LayerTest):
             sum = fluid.contrib.layers.partial_sum(
                 [x, y], start_index=0, length=2)
             return (sum)
+
+    def test_batch_fc(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
+            out = fluid.contrib.layers.batch_fc(
+                input=input,
+                param_size=[16, 3, 10],
+                param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                bias_size=[16, 10],
+                bias_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="b_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                act="relu")
+        return (out)
 
     def test_rank_attention(self):
         with self.static_graph():
