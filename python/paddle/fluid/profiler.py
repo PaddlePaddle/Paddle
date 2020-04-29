@@ -16,9 +16,13 @@ from __future__ import print_function
 
 from . import core
 from .wrapped_decorator import signature_safe_contextmanager
+from .data_feeder import convert_dtype
+import json
 import os
 import six
 import numpy as np
+from sys import version_info
+from paddle.fluid import framework
 
 from .framework import Variable
 
@@ -37,17 +41,18 @@ NVPROF_CONFIG = [
     "conckerneltrace",
 ]
 
-not_record_op = ['data', 'global_var', 'while', 'Optimizer']
+not_record_op = [
+    'data', 'creat_tensor', 'creat_parameter', 'global_var', 'while',
+    'Optimizer'
+]
 not_record_param = [
     'name', 'op_type', 'attrs', 'bias_attr', 'param_attr', 'l_type',
     'channel_last'
 ]
 
 op_alias = dict()
-op_alias['depthwise_conv2d'] = 'conv2d'
 op_alias['max_pool2d_with_index'] = 'adaptive_pool2d'
 op_alias['max_pool3d_with_index'] = 'adaptive_pool3d'
-op_alias['depthwise_conv2d_transpose'] = 'conv2d_transpose'
 op_alias['smooth_l1_loss'] = 'smooth_l1'
 op_alias['reshape2'] = 'reshape'
 op_alias['unsqueeze2'] = 'unsqueeze'
@@ -55,24 +60,18 @@ op_alias['top_k'] = 'topk'
 op_alias['global_step_counter'] = 'autoincreased_step_counter'
 op_alias['cross_entropy2'] = 'cross_entropy'
 
-op_str_list = []
-op_params_str_list = []
-op_json_list = []
 op_params_json_list = []
 
 
 class APIStr(object):
     def __init__(self, layer_type, params):
-        op_str_list.append(layer_type)
-        op_params_str_list.append(params)
-        op_j, param_j = self.op_trans(layer_type, params)
-        if op_j != -1:
-            op_json_list.append(op_j)
-        if op_j != -1:
+        param_j = self.op_trans(layer_type, params)
+        if param_j != None:
             op_params_json_list.append(param_j)
 
     def op_trans(self, op, params):
-        op_json = ""
+        op_json = {}
+        params_json = {}
         if op in op_alias.keys():
             op = op_alias[op]
         valid_op = True
@@ -80,80 +79,76 @@ class APIStr(object):
             if op.find(not_op) != -1:
                 valid_op = False
         if valid_op:
-            op_json = '"op":' + '"' + op + '",'
+            op_json["op"] = op
         else:
             print("API_LOG: return as not valid op:", op)
-            return -1, -1
-        op_json = '{\n' + op_json + '\n'
+            return None
 
-        params_json = '"param_info":{\n'
+        if len(params) == 0:
+            op_json["param_info"] = ''
         for param in params:
             key = param[0]
             values = param[1]
             if key != None and key not in not_record_param and not callable(
                     values):
                 data_type = ""
-                strs = ""
-                if values is None: continue
+                dict_temp = {}
                 if hasattr(values, 'dtype'):
-                    data_type = self.dtype_to_string(values.dtype)
+                    if isinstance(values.dtype, Variable) or str(
+                            values.dtype).find('Variable') != -1:
+                        data_type = "Variable"
+                    elif isinstance(values.dtype, framework.Parameter) or str(
+                            values.dtype).find('Parameter') != -1:
+                        data_type = "Variable"
+                    else:
+                        data_type = convert_dtype(values.dtype)
 
-                vtype = self.type_to_string(values)
-                if vtype == "Variable":
-                    strs = strs + '    "' + key + '": {"type": "' + vtype + '", "dtype": "' + data_type + '", "shape": "' + str(
-                        list(values.shape)) + '"},'
+                vtype = self.type_to_string(values, key, op_json["op"])
+                if values is None:
+                    dict_temp = {'type': 'string', 'value': str(None)}
+                elif vtype == "Variable":
+                    dict_temp = {
+                        'type': vtype,
+                        'dtype': data_type,
+                        'shape': str(list(values.shape))
+                    }
                 elif vtype == "dict":
-                    continue
+                    dict_temp = None
                 elif vtype == "list" and type(values[0]) is Variable:
                     v = values[0]
                     if hasattr(v, 'dtype'):
-                        data_type_l = self.dtype_to_string(v.dtype)
-                    strs = strs + '    "' + key + '": {\n        "type": "list<Variable>",\n'
+                        data_type_l = convert_dtype(v.dtype)
                     for i in range(len(values)):
-                        strs = strs + '        "' + key + str(
-                            i
-                        ) + '": {"type": "Variable", "dtype": "' + data_type_l + '", "shape": "' + str(
-                            list(values[i].shape)) + '"},'
-                        if i != len(values) - 1:
-                            strs = strs + '\n'
-                    strs = strs[:-2] + '}\n},'
+                        dict_temp[key + str(i)] = {
+                            'type': 'Variable',
+                            'dtype': data_type_l,
+                            'shape': str(list(values[i].shape))
+                        }
+                    dict_temp['type'] = 'list<Variable>'
+                elif vtype == "VarType":
+                    dict_temp = {
+                        'type': 'string',
+                        'value': convert_dtype(values)
+                    }
+                elif vtype == "unicode":
+                    dict_temp = {
+                        'type': 'string',
+                        'value': str(values.encode('utf-8'))
+                    }
                 else:
-                    strs = strs + '    "' + key + '": {"type": "' + vtype + '", "value": "' + str(
-                        values) + '"},'
+                    dict_temp = {'type': vtype, 'value': str(values)}
+                if dict_temp != None:
+                    params_json[key] = dict_temp
+            op_json["param_info"] = params_json
+        return op_json
 
-                if strs != '':
-                    strs = strs + '\n'
-                params_json = params_json + strs
-        params_json = params_json[:-2] + '\n}\n},\n'
-        return op_json, params_json
-
-    def dtype_to_string(self, dtype):
-        data_type = ""
-        if dtype == core.VarDesc.VarType.FP16:
-            data_type = "float16"
-        elif dtype == core.VarDesc.VarType.FP32:
-            data_type = "float32"
-        elif dtype == core.VarDesc.VarType.FP64:
-            data_type = "float64"
-        elif dtype == core.VarDesc.VarType.INT8:
-            data_type = "int8"
-        elif dtype == core.VarDesc.VarType.INT16:
-            data_type = "int16"
-        elif dtype == core.VarDesc.VarType.INT32:
-            data_type = "int32"
-        elif dtype == core.VarDesc.VarType.INT64:
-            data_type = "int64"
-        elif dtype == core.VarDesc.VarType.UINT8:
-            data_type = "uint8"
-        elif dtype == core.VarDesc.VarType.BOOL:
-            data_type = "bool"
-        else:
-            print("Unsupported data type %s" % dtype)
-        return data_type
-
-    def type_to_string(self, values):
+    def type_to_string(self, values, key, op):
         vtype = ""
-        if type(values) is Variable:
+        if isinstance(type(values),
+                      Variable) or str(type(values)).find('Variable') != -1:
+            vtype = "Variable"
+        elif isinstance(type(values), framework.Parameter) or str(
+                type(values)).find('Parameter') != -1:
             vtype = "Variable"
         elif type(values) is float:
             vtype = "float"
@@ -163,6 +158,8 @@ class APIStr(object):
             vtype = "string"
         elif type(values) is int:
             vtype = "int"
+        elif version_info.major == 2 and type(values) is long:
+            vtype = "long"
         elif type(values) is list:
             vtype = "list"
         elif type(values) is tuple:
@@ -171,22 +168,26 @@ class APIStr(object):
             vtype = "dict"
         elif type(values) is np.ndarray:
             vtype = "numpy.ndarray"
+        elif str(type(values)).find('NoneType') != -1:
+            return vtype
+        elif str(type(values)).find('VarType') != -1:
+            vtype = 'VarType'
+        elif str(type(values)).find('unicode') != -1:
+            vtype = 'unicode'
         else:
-            print("Unsupported type %s" % type(values))
+            print("Unsupported vtype %s (key: %s, op: %s)" %
+                  (type(values), key, op))
         return vtype
 
 
 def API_info_summary():
     info_json_file = os.environ.get('API_INFO_LOG_PATH')
     if info_json_file is not None:
-        with open(info_json_file, 'a') as f:
-            f.writelines('[\n')
-            for i in range(len(op_json_list)):
-                f.writelines(op_json_list[i])
-                if i == len(op_json_list) - 1:
-                    op_params_json_list[i] = op_params_json_list[i][:-2]
-                f.writelines(op_params_json_list[i])
-            f.writelines('\n]\n')
+        with open(info_json_file, 'w') as f:
+            f.writelines(
+                json.dumps(
+                    op_params_json_list, sort_keys=True, indent=4))
+            f.writelines('\n')
 
 
 @signature_safe_contextmanager
