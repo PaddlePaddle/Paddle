@@ -296,6 +296,7 @@ class GRUCell(RNNCell):
                 corresponding to :math:`h_t` in the formula. The data type of the \
                 tensor is same as that of `states`.        
         """
+
         check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
                                  'GRUCell')
         check_variable_and_dtype(states, 'states', ['float32', 'float64'],
@@ -398,6 +399,7 @@ class LSTMCell(RNNCell):
                 to :math:`h_{t}, c_{t}` in the formula. The data type of these \
                 tensors all is same as that of `states`.
         """
+
         check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
                                  'LSTMCell')
         check_type(states, 'states', list, 'LSTMCell')
