@@ -427,8 +427,10 @@ class TrainingDecoder(object):
         if self._status != TrainingDecoder.BEFORE_DECODER:
             raise ValueError('decoder.block() can only be invoked once')
         self._status = TrainingDecoder.IN_DECODER
+
         with self._dynamic_rnn.block():
             yield
+
         self._status = TrainingDecoder.AFTER_DECODER
         self._state_cell._leave_decoder(self)
 

@@ -487,8 +487,10 @@ def name_scope(prefix=None):
         assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
-        yield
-        _name_scope = _name_scope.parent()
+        try:
+            yield
+        finally:
+            _name_scope = _name_scope.parent()
 
 
 def _full_name_scope():
@@ -3984,14 +3986,16 @@ class Program(object):
         """
         return self.__op_role_var
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def _backward_role_guard(self):
         tmp_role = self._current_role
 
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Backward
-        yield
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
@@ -4020,9 +4024,11 @@ class Program(object):
             var.name if isinstance(var, Variable) else var
             for var in param_and_grads
         ]
-        yield
-        self.__op_role_var = tmp_var
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self.__op_role_var = tmp_var
+            self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
@@ -4055,9 +4061,11 @@ class Program(object):
             self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
         # TODO(typhoonzero): how to set target learning rate var
         self.__op_role_var = []
-        yield
-        self.__op_role_var = tmp_var
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self.__op_role_var = tmp_var
+            self._current_role = tmp_role
 
     def __str__(self):
         """
@@ -5310,10 +5318,12 @@ def program_guard(main_program, startup_program=None):
         check_type(startup_program, 'startup_program', Program,
                    'fluid.program_guard')
         startup_program = switch_startup_program(startup_program)
-    yield
-    switch_main_program(main_program)
-    if startup_program is not None:
-        switch_startup_program(startup_program)
+    try:
+        yield
+    finally:
+        switch_main_program(main_program)
+        if startup_program is not None:
+            switch_startup_program(startup_program)
 
 
 def _get_var(name, program=None):
@@ -5343,10 +5353,11 @@ def _dygraph_guard(tracer):
     _dygraph_tracer_ = tracer
     core._switch_tracer(tracer)
 
-    yield
-
-    core._switch_tracer(tmp_trace)
-    _dygraph_tracer_ = tmp_trace
+    try:
+        yield
+    finally:
+        core._switch_tracer(tmp_trace)
+        _dygraph_tracer_ = tmp_trace
 
 
 @signature_safe_contextmanager
@@ -5355,9 +5366,10 @@ def _dygraph_place_guard(place):
     tmp_place = _dygraph_current_expected_place_
     _dygraph_current_expected_place_ = place
 
-    yield
-
-    _dygraph_current_expected_place_ = tmp_place
+    try:
+        yield
+    finally:
+        _dygraph_current_expected_place_ = tmp_place
 
 
 def load_op_library(lib_filename):
@@ -5437,8 +5449,10 @@ def device_guard(device=None):
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     pre_device = switch_device(device)
-    yield
-    switch_device(pre_device)
+    try:
+        yield
+    finally:
+        switch_device(pre_device)
 
 
 def set_flags(flags):

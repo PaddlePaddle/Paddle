@@ -18,7 +18,6 @@ from . import framework
 from . import core
 from .framework import in_dygraph_mode
 import numpy as np
-from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
 from .data_feeder import check_variable_and_dtype, check_type, check_dtype
