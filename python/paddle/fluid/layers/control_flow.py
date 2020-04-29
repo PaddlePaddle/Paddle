@@ -300,6 +300,50 @@ def Print(input,
     return output
 
 
+def Assert(condition, data, summarize=None, name=None):
+    '''
+    **Assert operator**
+
+    This creates an op that asserts the given condition is true. If condition
+    is false, print the tensors in data. Summarize specifies the number of the
+    entries in the tensors to print.
+
+    Args:
+        condition (Variable): A boolean tensor whose numel should be 1.
+        data (list|tuple): list or tuple of tensors to print when condition is
+            not true.
+        summarize (int, optional): The number of entries to print for each
+            tensor. Set it to None or -1 means printing all entries.
+        name (str, optional): The default value is ``None`` . Normally users
+            don't have to set this parameter. For more information, please
+            refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Operator: the created operation.
+
+    Raises:
+        TypeError: If ``condition`` is not boolean Variable.
+        TypeError: If ``data`` is not a list or tuple.
+        TypeError: If ``summarize`` is not int or ``None`` .
+        TypeError: If ``name`` is not a string or ``None`` .
+    '''
+    check_variable_and_dtype(condition, "condition", ["bool"],
+                             "fluid.layers.Assert")
+    check_type(data, "data", (list, tuple), "fluid.layers.Assert")
+    check_type(summarize, (int, type(None)), "fluid.layers.Assert")
+    check_type(name, (str, type(None)), "fluid.layers.Assert")
+
+    layer_name = name if name else ('assert_' + condition.name)
+    helper = LayerHelper(layer_name, **locals())
+    op = helper.append_op(
+        type="assert",
+        inputs={"Condition": condition,
+                "X": data},
+        attrs={"summarize_num": summarize})
+
+    return op
+
+
 class BlockGuard(object):
     """
     BlockGuard class.

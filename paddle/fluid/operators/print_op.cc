@@ -86,11 +86,11 @@ class PrintOp : public framework::OperatorBase {
     }
 
     TensorFormatter formatter;
-    const string &name =
+    const std::string &name =
         Attr<bool>("print_tensor_name") ? printed_var_name : "";
     formatter.SetPrintTensorType(Attr<bool>("print_tensor_type"));
     formatter.SetPrintTensorShape(Attr<bool>("print_tensor_shape"));
-    formatter.SetPrintTensorLoD(Attr<bool>("print_tensor_lod"));
+    formatter.SetPrintTensorLod(Attr<bool>("print_tensor_lod"));
     formatter.SetPrintTensorLayout(Attr<bool>("print_tensor_layout"));
     formatter.SetSummarize(static_cast<int64_t>(Attr<int>("summarize")));
     formatter.Print(printed_tensor, place, name, Attr<std::string>("message"));
