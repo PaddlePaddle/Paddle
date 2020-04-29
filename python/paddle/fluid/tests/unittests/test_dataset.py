@@ -620,14 +620,14 @@ class TestDataset(unittest.TestCase):
             data += "2 7 2 2 1 9 2 3 7 2 5 3\n"
             f.write(data)
 
-        slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
+        slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
             var = fluid.data(
-                name=slot, shape=[None, 1], dtype="float32", lod_level=1)
+                name=slot, shape=[None, 1], dtype="int64", lod_level=1)
             slots_vars.append(var)
 
-        dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_input_type(1)
         dataset.set_batch_size(1)
         dataset.set_thread(2)
@@ -635,6 +635,7 @@ class TestDataset(unittest.TestCase):
             ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"])
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
+        dataset.load_into_memory()
 
         exe = fluid.Executor(fluid.CPUPlace() if not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0))
