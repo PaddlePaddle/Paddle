@@ -179,13 +179,13 @@ void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
       auto* op = node->Op();
       if (op->Type() == "conv2d") {
         conv2d_nodes_count++;
-        auto op_name = boost::get<std::string>(op->GetAttr("name"));
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_in")), scale)
+        auto op_name = BOOST_GET(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_in")), scale)
             << "Scale_in for node '" + op_name + "'.";
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_out")), scale)
             << "Scale_out for node '" + op_name + "'.";
         EXPECT_EQ(
-            boost::get<std::vector<float>>(op->GetAttr("Scale_weights"))[0],
+            BOOST_GET(std::vector<float>, op->GetAttr("Scale_weights"))[0],
             scale)
             << "Scale_weights for node '" + op_name + "'.";
       } else if (op->Type() == "pool2d") {
@@ -340,13 +340,13 @@ void MainTestTranspose(const ProgramDesc& prog, int conv_count,
         transpose_nodes_count++;
       } else if (op->Type() == "conv2d") {
         conv_nodes_count++;
-        auto op_name = boost::get<std::string>(op->GetAttr("name"));
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_in")), scale)
+        auto op_name = BOOST_GET(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_in")), scale)
             << "Scale_in for node '" + op_name + "'.";
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_out")), scale)
             << "Scale_out for node '" + op_name + "'.";
         EXPECT_EQ(
-            boost::get<std::vector<float>>(op->GetAttr("Scale_weights"))[0],
+            BOOST_GET(std::vector<float>, op->GetAttr("Scale_weights"))[0],
             scale)
             << "Scale_weights for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
@@ -436,14 +436,14 @@ void MainTestReshape(const ProgramDesc& prog, int transpose_count,
         reshape_nodes_count++;
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;
-        quant_scale = boost::get<float>(op->GetAttr("Scale"));
+        quant_scale = BOOST_GET(float, op->GetAttr("Scale"));
         EXPECT_EQ(quant_scale, scale) << "Scale for node '" + op->Type() + "'.";
       } else if (op->Type() == "dequantize") {
         dequantize_nodes_count++;
         auto op_name = op->GetAttrIfExists<std::string>("name");
         VLOG(3) << op_name << "\n";
         if (op_name != "Dequantize1") {
-          dequant_scale = boost::get<float>(op->GetAttr("Scale"));
+          dequant_scale = BOOST_GET(float, op->GetAttr("Scale"));
           EXPECT_EQ(dequant_scale, scale)
               << "Scale for node '" + op->Type() + "'.";
         }
@@ -565,12 +565,12 @@ void MainTestMatmul(const ProgramDesc& prog, int matmul_count, int quant_count,
       auto* op = node->Op();
       if (op->Type() == "matmul") {
         matmul_nodes_count++;
-        auto op_name = boost::get<std::string>(op->GetAttr("name"));
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_x")), scale)
+        auto op_name = BOOST_GET(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_x")), scale)
             << "Scale_x for node '" + op_name + "'.";
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_y")), scale)
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_y")), scale)
             << "Scale_y for node '" + op_name + "'.";
-        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
+        EXPECT_EQ(BOOST_GET(float, op->GetAttr("Scale_out")), scale)
             << "Scale_out for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;

@@ -94,13 +94,13 @@ void TensorFromArray(const T* src, const size_t& array_size,
   auto size = array_size * sizeof(T);
 
   if (platform::is_cpu_place(dst_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
+    memory::Copy(BOOST_GET(platform::CPUPlace, dst_place), dst_ptr, src_place,
                  src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(
-        boost::get<platform::CUDAPlace>(dst_place), dst_ptr, src_place, src_ptr,
+        BOOST_GET(platform::CUDAPlace, dst_place), dst_ptr, src_place, src_ptr,
         size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
@@ -117,13 +117,13 @@ void TensorFromVector(const std::vector<T>& src,
   auto size = src.size() * sizeof(T);
 
   if (platform::is_cpu_place(dst_place)) {
-    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
+    memory::Copy(BOOST_GET(platform::CPUPlace, dst_place), dst_ptr, src_place,
                  src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(
-        boost::get<platform::CUDAPlace>(dst_place), dst_ptr, src_place, src_ptr,
+        BOOST_GET(platform::CUDAPlace, dst_place), dst_ptr, src_place, src_ptr,
         size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
@@ -153,13 +153,13 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
   auto dst_ptr = static_cast<void*>(dst->data());
 
   if (platform::is_cpu_place(src.place())) {
-    memory::Copy(dst_place, dst_ptr,
-                 boost::get<platform::CPUPlace>(src.place()), src_ptr, size);
+    memory::Copy(dst_place, dst_ptr, BOOST_GET(platform::CPUPlace, src.place()),
+                 src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src.place())) {  // NOLINT
     memory::Copy(
-        dst_place, dst_ptr, boost::get<platform::CUDAPlace>(src.place()),
+        dst_place, dst_ptr, BOOST_GET(platform::CUDAPlace, src.place()),
         src_ptr, size,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
   }
@@ -177,7 +177,7 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
 
   PADDLE_ENFORCE_EQ(platform::is_cpu_place(src.place()), true);
 
-  memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
+  memory::Copy(dst_place, dst_ptr, BOOST_GET(platform::CPUPlace, src.place()),
                src_ptr, size);
 }
 

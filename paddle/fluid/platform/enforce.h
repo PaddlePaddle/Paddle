@@ -49,6 +49,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 
@@ -788,6 +789,31 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 
 #undef DEFINE_CUDA_STATUS_TYPE
 #endif  // PADDLE_WITH_CUDA
+
+namespace details {
+
+#define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr) \
+  template <typename OutputType, typename InputType>                      \
+  auto SafeBoostGet(__InputType input, const char* expression,            \
+                    const char* file, int line)                           \
+      ->typename std::conditional<std::is_pointer<InputType>::value,      \
+                                  __OutputTypePtr, __OutputType>::type {  \
+    try {                                                                 \
+      return boost::get<OutputType>(input);                               \
+    } catch (boost::bad_get&) {                                           \
+      PADDLE_THROW("boost::bad_get");                                     \
+    }                                                                     \
+  }
+
+DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*);
+DEFINE_SAFE_BOOST_GET(const InputType&, const OutputType&, const OutputType*);
+DEFINE_SAFE_BOOST_GET(InputType&&, OutputType, OutputType*);
+
+}  // namespace details
+
+#define BOOST_GET(__TYPE, __VALUE)                                     \
+  ::paddle::platform::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, \
+                                                    __FILE__, __LINE__)
 
 }  // namespace platform
 }  // namespace paddle

@@ -250,7 +250,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
     if (cur_node->IsVar()) continue;
     if (cur_node->Name() == "fused_elemwise_activation") {
       bool save_intermediate_out =
-          boost::get<bool>(cur_node->Op()->GetAttr("save_intermediate_out"));
+          BOOST_GET(bool, cur_node->Op()->GetAttr("save_intermediate_out"));
       auto intermediate_out_args = cur_node->Op()->Output("IntermediateOut");
       PADDLE_ENFORCE(
           save_intermediate_out && !intermediate_out_args.empty(),

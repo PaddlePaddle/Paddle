@@ -31,8 +31,8 @@ class HardSigmoidOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    float slope = boost::get<float>(op_desc.GetAttr("slope"));
-    float offset = boost::get<float>(op_desc.GetAttr("offset"));
+    float slope = BOOST_GET(float, op_desc.GetAttr("slope"));
+    float offset = BOOST_GET(float, op_desc.GetAttr("offset"));
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input,
                                        nvinfer1::ActivationType::kHARD_SIGMOID);
     layer->setAlpha(slope);

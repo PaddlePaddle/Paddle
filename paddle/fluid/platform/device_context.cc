@@ -78,7 +78,7 @@ inline void EmplaceDeviceContext(
   map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
                      // lazy evaluation. i.e., only create device context at
                      // first `Get`
-                     return PtrType(new DevCtx(boost::get<PlaceType>(p)));
+                     return PtrType(new DevCtx(BOOST_GET(PlaceType, p)));
                    }));
 }
 

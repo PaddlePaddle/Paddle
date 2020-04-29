@@ -59,7 +59,7 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     // not generalized
     if (activation_type() == "relu6") {
       desc->SetAttr("fuse_alpha",
-                    boost::get<float>(activation->Op()->GetAttr("threshold")));
+                    BOOST_GET(float, activation->Op()->GetAttr("threshold")));
     } else if (activation_type() == "swish") {
       // paddle uses beta but mkldnn uses alpha for swish
       desc->SetAttr("fuse_alpha",

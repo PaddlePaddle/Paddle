@@ -61,7 +61,7 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
     // device id
-    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = BOOST_GET(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     VLOG(3) << "gpu : "
             << " invoke allreduce. send " << x->numel() << " recv "
@@ -101,7 +101,7 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
       PADDLE_THROW("Invalid reduction. default ncclSum.");
     }
     // device id
-    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = BOOST_GET(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     T* recvbuffer = nullptr;
     if (root == gpu_id) {
@@ -129,7 +129,7 @@ class NCCLBcastKernel : public framework::OpKernel<T> {
     int root = ctx.Attr<int>("root");
     auto* comm = ctx.Input<Communicator>("Communicator");
     // device id
-    int gpu_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).GetDeviceId();
+    int gpu_id = BOOST_GET(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
     int idx = comm->GetCommId(gpu_id);
     if (idx == root) {
       auto* x = ctx.Input<LoDTensor>("X");

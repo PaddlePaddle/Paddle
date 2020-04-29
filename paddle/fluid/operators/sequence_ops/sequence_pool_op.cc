@@ -147,7 +147,7 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
-    if (boost::get<std::string>(this->GetAttr("pooltype")) == "MAX") {
+    if (BOOST_GET(std::string, this->GetAttr("pooltype")) == "MAX") {
       op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
     }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),

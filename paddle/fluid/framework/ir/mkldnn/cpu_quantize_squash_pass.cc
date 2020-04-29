@@ -69,8 +69,8 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, squash_pattern);
 
     auto* next_op_desc = next_op->Op();
-    float dequant_scale = boost::get<float>(dequant_op->Op()->GetAttr("Scale"));
-    float quant_scale = boost::get<float>(quant_op->Op()->GetAttr("Scale"));
+    float dequant_scale = BOOST_GET(float, dequant_op->Op()->GetAttr("Scale"));
+    float quant_scale = BOOST_GET(float, quant_op->Op()->GetAttr("Scale"));
     PADDLE_ENFORCE_NE(
         nodes_keep_counter->find(dequant_out), nodes_keep_counter->end(),
         platform::errors::NotFound("The dequant output node is not found"));
@@ -155,7 +155,7 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
                                      "should has requantize input as output"));
 
       float requant_scale_out =
-          boost::get<float>(requant_op->Op()->GetAttr("Scale_out"));
+          BOOST_GET(float, requant_op->Op()->GetAttr("Scale_out"));
       any_op->Op()->SetAttr("Scale_out", requant_scale_out);
       any_op->Op()->SetOutput(any_op_output_name,
                               std::vector<std::string>({requant_out->Name()}));

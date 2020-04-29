@@ -268,13 +268,13 @@ class FusedElemwiseActivationGradMaker
     grad_op->SetAttrMap(this->Attrs());
 
     std::vector<std::string> functor_names =
-        boost::get<std::vector<std::string>>(grad_op->GetAttr("functor_list"));
+        BOOST_GET(std::vector<std::string>, grad_op->GetAttr("functor_list"));
 
     functor_names[0] += "_grad";
     functor_names[1] += "_grad";
     grad_op->SetAttr("functor_list", functor_names);
 
-    if (boost::get<bool>(grad_op->GetAttr("save_intermediate_out"))) {
+    if (BOOST_GET(bool, grad_op->GetAttr("save_intermediate_out"))) {
       // PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
