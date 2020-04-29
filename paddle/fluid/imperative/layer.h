@@ -29,6 +29,7 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
+#include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/saved_variable_wrapper_list.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
@@ -133,6 +134,7 @@ class VarBase {
     if (grad_var_) {
       grad_var_->SetOverridedStopGradient(stop_gradient);
       if (grad_var_->grad_node_) {
+        grad_var_->grad_node_->ClearGradPendingNode();
         grad_var_->grad_node_ = nullptr;
       }
     }

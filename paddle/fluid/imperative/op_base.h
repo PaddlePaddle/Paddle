@@ -219,6 +219,8 @@ class GradOpNode {
 
   ConstIterator end() const { return ops_.end(); }
 
+  void ClearGradPendingNode() { grad_pending_nodes_.clear(); }
+
   void InsertGradPendingNode(const std::shared_ptr<GradOpNode>& node) {
     if (node &&
         std::find(grad_pending_nodes_.begin(), grad_pending_nodes_.end(),
