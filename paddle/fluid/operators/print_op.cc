@@ -13,6 +13,7 @@
    limitations under the License. */
 
 #include <algorithm>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/assign_op.h"
@@ -107,10 +108,17 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("first_n", "Only log `first_n` number of times.");
     AddAttr<std::string>("message", "A string message to print as a prefix.");
     AddAttr<int>("summarize", "Number of elements printed.");
-    AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.");
-    AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
-    AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");
-    AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.");
+    AddAttr<bool>("print_tensor_name", "Whether to print the tensor name.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_layout",
+                  "Whether to print the tensor's layout.")
+        .SetDefault(true);
+    AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.")
+        .SetDefault(true);
     AddAttr<std::string>("print_phase",
                          "(string, default 'FORWARD') Which phase to display "
                          "including 'FORWARD' "
@@ -142,9 +150,7 @@ class PrintOpInferShape : public framework::InferShapeBase {
 class PrintOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto input_type = ctx->GetType(ctx->Input("In")[0]);
-    auto out_name = ctx->Output("Out").front();
-    ctx->SetType(out_name, input_type);
+    ctx->SetOutputType("Out", ctx->GetInputType("In"));
   }
 };
 

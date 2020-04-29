@@ -958,7 +958,7 @@ class Linear(layers.Layer):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
-        if self.bias:
+        if self.bias is not None:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(

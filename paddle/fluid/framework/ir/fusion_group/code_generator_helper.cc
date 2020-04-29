@@ -149,8 +149,6 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
                               "Expected %d-th input id > 0 for operation < %s "
                               ">. Received %d.",
                               index, op_type_, input_ids_[index]));
-        // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we
-        // need to add general fp16 compute later.
         var_name = TmpName(input_ids_[index]);
         rhs.replace(pos, length + 3, var_name);
         used->insert(input_ids_[index]);

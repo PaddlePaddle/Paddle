@@ -13,8 +13,15 @@
 # limitations under the License.
 
 # TODO: define the common classes to build a neural network  
-# __all__ = ['BilinearTensorProduct',
-#            'Pool2D',
-#            'Embedding',
-#            'Linear',
-#            'UpSample']
+from ...fluid.dygraph import BilinearTensorProduct  #DEFINE_ALIAS
+from ...fluid.dygraph import Pool2D  #DEFINE_ALIAS
+from ...fluid.dygraph import Embedding  #DEFINE_ALIAS
+from ...fluid.dygraph import Linear  #DEFINE_ALIAS
+
+__all__ = [
+    'BilinearTensorProduct',
+    'Pool2D',
+    'Embedding',
+    'Linear',
+    #       'UpSample'
+]
