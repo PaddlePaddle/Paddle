@@ -639,7 +639,49 @@ class DynamicGraphAdapter(object):
 
 class Model(fluid.dygraph.Layer):
     """
-    FIXME: add more comments and usage
+    An Model object is network with training and inference features.
+    Dynamic graph and static graph are supported at the same time,
+    switched by `fluid.enable_dygraph()`. The usage is as follows.
+    But note, the switching between dynamic and static should be before
+    instantiating a Model. The input description, i.e, hapi.Input,
+    must be required for static graph.
+
+    Usage:
+        .. code-block:: python
+
+        import numpy as np
+        import paddle
+        import paddle.fluid as fluid
+        #import paddle.incubate.hapi as hapi
+        from hapi import Model, Input, set_device
+        from hapi.loss import CrossEntropy
+        from hapi.dataset import MNIST
+
+        class MyModel(Model):
+            def __init__(self):
+                super(MyModel, self).__init__()
+                self._fc = fluid.dygraph.Linear(784, 10, act='softmax')
+            def forward(self, x):
+                y = self._fc(x)
+                return y
+        device = set_device('gpu')
+        # if use static graph, do not set
+        fluid.enable_dygraph(device)
+        model = MyModel()
+        optim = fluid.optimizer.SGD(learning_rate=1e-3,
+            parameter_list=model.parameters())
+        
+        inputs = [Input([None, 784], 'float32', name='x')]
+        labels = [Input([None, 1], 'int64', name='label')]
+        
+        mnist_data = MNIST(mode='train')
+        model.prepare(optim,
+                      CrossEntropy(average=True),
+                      hapi.metrics.Accuracy(),
+                      inputs,
+                      labels,
+                      device=device)
+        model.fit(mnist_data, epochs=2, batch_size=32, verbose=1)
     """
 
     def __init__(self):
@@ -660,18 +702,195 @@ class Model(fluid.dygraph.Layer):
         else:
             self._adapter = StaticGraphAdapter(self)
 
-    def train_batch(self, *args, **kwargs):
-        return self._adapter.train_batch(*args, **kwargs)
+    def train_batch(self, inputs, labels=None):
+        """
+        Run one training step on a batch of data.
 
-    def eval_batch(self, *args, **kwargs):
-        return self._adapter.eval_batch(*args, **kwargs)
+        Args:
+            inputs (list): A list of numpy.ndarray, each is a batch of
+                input data.
+            labels (list): A list of numpy.ndarray, each is a batch of
+                input label. If has no labels, set None. Default is None.
 
-    def test_batch(self, *args, **kwargs):
-        return self._adapter.test_batch(*args, **kwargs)
+        Returns:
+            A list of scalar training loss if the model has no metrics,
+            or a tuple (list of scalar loss, list of metrics) if the model
+            set metrics.
 
-    def save(self, *args, **kwargs):
+        Examples:
+
+            .. code-block:: python
+            
+              import numpy as np
+              import paddle.fluid as fluid
+              from hapi import Model, Input, set_device
+
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = Linear(784, 1, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+
+              device = hapi.set_device('gpu')
+              fluid.enable_dygraph(device)
+
+              model = MyModel()
+              optim = fluid.optimizer.SGD(learning_rate=1e-3,
+                  parameter_list=model.parameters())
+
+              inputs = [Input([None, 784], 'float32', name='x')]
+              labels = [Input([None, 1], 'int64', name='label')]
+              model.prepare(optim,
+                            CrossEntropy(average=True),
+                            inputs=inputs,
+                            labels=labels,
+                            device=device)
+              data = np.random.random(size=(4,784)).astype(np.float32)
+              label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+              loss = model.train_batch([data], [label])
+              print(loss)
+        """
+        return self._adapter.train_batch(inputs, labels)
+
+    def eval_batch(self, inputs, labels=None):
+        """
+        Run one evaluating step on a batch of data.
+
+        Args:
+            inputs (list): A list of numpy.ndarray, each is a batch of
+                input data.
+            labels (list): A list of numpy.ndarray, each is a batch of
+                input label. If has no labels, set None. Default is None.
+
+        Returns:
+            A list of scalar testing loss if the model has no metrics,
+            or a tuple (list of scalar loss, list of metrics) if the model
+            set metrics.
+
+        Examples:
+
+            .. code-block:: python
+            
+              import numpy as np
+              import paddle.fluid as fluid
+              from hapi import Model, Input, set_device
+
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+
+              device = set_device('gpu')
+              fluid.enable_dygraph(device)
+
+              model = MyModel()
+              optim = fluid.optimizer.SGD(learning_rate=1e-3,
+                  parameter_list=model.parameters())
+
+              inputs = [Input([None, 784], 'float32', name='x')]
+              labels = [Input([None, 1], 'int64', name='label')]
+              model.prepare(optim,
+                            CrossEntropy(average=True),
+                            inputs=inputs,
+                            labels=labels,
+                            device=device)
+              data = np.random.random(size=(4,784)).astype(np.float32)
+              label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+              loss = model.eval_batch([data], [label])
+              print(loss)
+        """
+        return self._adapter.eval_batch(inputs, labels)
+
+    def test_batch(self, inputs):
+        """
+        Run one testing step on a batch of data.
+
+        Args:
+            inputs (list): A list of numpy.ndarray, each is a batch of
+                input data.
+
+        Returns:
+            A list of numpy.ndarray of predictions, that is the outputs
+            of Model forward.
+
+        Examples:
+
+            .. code-block:: python
+            
+              import numpy as np
+              import paddle.fluid as fluid
+              from hapi import Model, Input, set_device
+
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+
+              device = set_device('gpu')
+              fluid.enable_dygraph(device)
+
+              model = MyModel()
+              inputs = [Input([None, 784], 'float32', name='x')]
+              model.prepare(inputs=inputs,
+                            device=device)
+              data = np.random.random(size=(4,784)).astype(np.float32)
+              out = model.eval_batch([data])
+              print(out)
+        """
+        return self._adapter.test_batch(inputs)
+
+    def save(self, path):
+        """
+        This function saves parameters, optimizer infomation to path.
+
+        The parameters contains all the trainable Variable, will save to
+        a file with suffix ".pdparams".
+        The optimizer information contains all the variable used by optimizer.
+        For Adam optimizer, contains beta1, beta2, momentum etc. All the
+        information will save to a file with suffix ".pdopt". (If the optimizer
+        have no variable need to save (like SGD), the fill will not generated).
+
+        This function will silently overwrite existing file
+        at the target location.
+
+        Args:
+            path (str): The file prefix to save model. The format is
+                'dirname/file_prefix' or 'file_prefix'. if empty str. A exception
+                 will be raised.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+            
+              import paddle.fluid as fluid
+              from hapi import Model, set_device
+              
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+              
+              device = set_device('cpu')
+              fluid.enable_dygraph(device)
+              model = MyModel()
+              model.save('checkpoint/test')
+        """
         if ParallelEnv().local_rank == 0:
-            return self._adapter.save(*args, **kwargs)
+            self._adapter.save(path)
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
@@ -698,6 +917,29 @@ class Model(fluid.dygraph.Layer):
                 optimizer states and initialize optimizer states from scratch.
                 Otherwise, restore optimizer states from `path.pdopt` if
                 a optimizer has been set to the model. Default False.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+            
+              import paddle.fluid as fluid
+              from hapi import Model, set_device
+              
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = fluid.dygraph.Linear(784, 1, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+              
+              device = set_device('cpu')
+              fluid.enable_dygraph(device)
+              model = MyModel()
+              model.load('checkpoint/test')
         """
 
         def _load_state_from_path(path):
@@ -747,7 +989,31 @@ class Model(fluid.dygraph.Layer):
         return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
-        return self._adapter.parameters(*args, **kwargs)
+        """
+        Returns a list of parameters of the model.
+
+        Returns:
+            A list of Parameter in static graph.
+            A list of ParamBase in dynamic graph.
+
+        Examples:
+
+            .. code-block:: python
+
+              from hapi.model import Model, Input, set_device
+              class MyModel(Model):
+                  def __init__(self):
+                      super(MyModel, self).__init__()
+                      self._fc = fluid.dygraph.Linear(20, 10, act='softmax')
+                  def forward(self, x):
+                      y = self._fc(x)
+                      return y
+
+              fluid.enable_dygraph()
+              model = MyModel()
+              params = model.parameters()
+        """
+        return self._adapter.parameters()
 
     def prepare(self,
                 optimizer=None,
@@ -757,27 +1023,32 @@ class Model(fluid.dygraph.Layer):
                 labels=None,
                 device=None):
         """
-        FIXME: add comments
+        Configures the model before runing.
+
         Args:
-            optimizer (Optimizer|None): optimizer must be set in training
+            optimizer (Optimizer|None): Optimizer must be set in training
                 and should be a Optimizer instance. It can be None in eval
                 and test mode.
-            loss_function (Loss|None): loss function must be set in training
+            loss_function (Loss|None): Loss function must be set in training
                 and should be a Loss instance. It can be None when there is
                 no loss.
-            metrics (Metric|list of Metric|None): if metrics is set, all
-                metric will be calculate and output in train/eval mode.
-            inputs (Input|list|dict|None): inputs, entry points of network,
+            metrics (Metric|list of Metric|None): If metrics is set, all
+                metrics will be calculated and output in train/eval mode.
+            inputs (Input|list|dict|None): `inputs`, entry points of network,
                 could be a Input layer, or lits of Input layers,
                 or dict (name: Input), or None. For static graph,
                 inputs must be set. For dynamic graph, it could be None.
-            labels (Input|list|None): labels, entry points of network,
+            labels (Input|list|None): `labels`, entry points of network,
                 could be a Input layer or lits of Input layers, or None.
-                For static graph, if set loss_function in Model.prepare(), it
-                must be set. Otherwise, it could be None.
-            device (str|None): specify device type, 'CPU' or 'GPU'.
+                For static graph, if labels is required in loss_function,
+                labels must be set. Otherwise, it could be None.
+            device (str|fluid.CUDAPlace|fluid.CPUPlace|None): Specify device
+                type, 'CPU', 'GPU', fluid.CUDAPlace or fluid.CPUPlace.
                 If None, automatically select device according to
                 installation package version.
+
+        Returns:
+            None
         """
 
         if isinstance(device, fluid.CUDAPlace) or \
@@ -859,7 +1130,9 @@ class Model(fluid.dygraph.Layer):
             num_workers=0,
             callbacks=None, ):
         """
-        FIXME: add more comments and usage
+        Trains the model for a fixed number of epochs. If `eval_data` is set,
+        evaluation will be done at the end of each epoch.
+
         Args:
             train_data (Dataset|DataLoader): An iterable data loader is used for 
                 train. An instance of paddle paddle.io.Dataset or 
@@ -868,30 +1141,117 @@ class Model(fluid.dygraph.Layer):
                 evaluation at the end of epoch. If None, will not do evaluation. 
                 An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended. Default: None.
-            batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When train_data and eval_data are both the instance of Dataloader, this 
-                parameter will be ignored. Default: 1.
-            epochs (int): Integer number. The number of epochs to train the model. Default: 1.
+            batch_size (int): Integer number. The batch size of train_data
+                and eval_data. When train_data and eval_data are both the
+                instance of Dataloader, this parameter will be ignored.
+                Default: 1.
+            epochs (int): Integer number. The number of epochs to train
+                the model. Default: 1.
             eval_freq (int): The frequency, in number of epochs, an evalutation
                 is performed. Default: 1.
             log_freq (int): The frequency, in number of steps, the training logs
                 are printed. Default: 10.
             save_dir(str|None): The directory to save checkpoint during training.
                 If None, will not save checkpoint. Default: None.
-            save_freq (int): The frequency, in number of epochs, to save checkpoint. Default: 1.
-            verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
-            drop_last (bool): whether drop the last incomplete batch of train_data 
-                when dataset size is not divisible by the batch size. When train_data 
-                is an instance of Dataloader, this parameter will be ignored. Default: False.
-            shuffle (bool): whther to shuffle train_data. When train_data is an instance 
-                of Dataloader, this parameter will be ignored. Default: True.
-            num_workers (int): the number of subprocess to load data, 0 for no subprocess 
-                used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored. Default: 0.
+            save_freq (int): The frequency, in number of epochs, to save
+                checkpoint. Default: 1.
+            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+                1 = progress bar, 2 = one line per epoch. Default: 2.
+            drop_last (bool): Whether drop the last incomplete batch of
+                train_data when dataset size is not divisible by the batch size.
+                When train_data is an instance of Dataloader, this parameter
+                will be ignored. Default: False.
+            shuffle (bool): Whther to shuffle train_data. When train_data is
+                an instance of Dataloader, this parameter will be ignored.
+                Default: True.
+            num_workers (int): The number of subprocess to load data, 0 for no
+                subprocess used and loading data in main process.
+                When train_data and eval_data are both the instance of
+                Dataloader, this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
+
+        Returns:
+            None
+
+        Examples:
+            1. An example use Dataset and set btch size, shuffle in fit.
+               How to make a batch is done internally.
+
+            .. code-block:: python
+
+              from hapi.model import Model, Input, set_device
+              from hapi.loss import CrossEntropy
+              from hapi.metrics import Accuracy
+              from hapi.datasets import MNIST
+              from hapi.vision.models import LeNet
+
+              dynamic = True
+              device = set_device(FLAGS.device)
+              fluid.enable_dygraph(device) if dynamic else None
+           
+              train_dataset = MNIST(mode='train')
+              val_dataset = MNIST(mode='test')
+           
+              inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+              labels = [Input([None, 1], 'int64', name='label')]
+           
+              model = LeNet()
+              optim = fluid.optimizer.Adam(
+                  learning_rate=0.001, parameter_list=model.parameters())
+              model.prepare(
+                  optim,
+                  CrossEntropy(),
+                  Accuracy(topk=(1, 2)),
+                  inputs=inputs,
+                  labels=labels,
+                  device=device)
+              model.fit(train_dataset,
+                        val_dataset,
+                        epochs=2,
+                        batch_size=64,
+                        save_dir='mnist_checkpoint')
+
+            2. An example use DataLoader, batch size and shuffle is set in
+               DataLoader.
+
+            .. code-block:: python
+
+              from hapi.model import Model, Input, set_device
+              from hapi.loss import CrossEntropy
+              from hapi.metrics import Accuracy
+              from hapi.datasets import MNIST
+              from hapi.vision.models import LeNet
+
+              dynamic = True
+              device = set_device(FLAGS.device)
+              fluid.enable_dygraph(device) if dynamic else None
+           
+              train_dataset = MNIST(mode='train')
+              train_loader = fluid.io.DataLoader(train_dataset,
+                  places=device, batch_size=64)
+              val_dataset = MNIST(mode='test')
+              val_loader = fluid.io.DataLoader(val_dataset,
+                  places=device, batch_size=64)
+           
+              inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+              labels = [Input([None, 1], 'int64', name='label')]
+           
+              model = LeNet()
+              optim = fluid.optimizer.Adam(
+                  learning_rate=0.001, parameter_list=model.parameters())
+              model.prepare(
+                  optim,
+                  CrossEntropy(),
+                  Accuracy(topk=(1, 2)),
+                  inputs=inputs,
+                  labels=labels,
+                  device=device)
+              model.fit(train_loader,
+                        val_loader,
+                        epochs=2,
+                        save_dir='mnist_checkpoint')
         """
 
         assert train_data is not None, \
@@ -986,26 +1346,29 @@ class Model(fluid.dygraph.Layer):
             num_workers=0,
             callbacks=None, ):
         """
-        FIXME: add more comments and usage
+        Evaluate the loss and metrics of the model on input dataset.
+
         Args:
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation. An instance of paddle.io.Dataset or 
                 paddle.io.Dataloader is recomended.
-            batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When eval_data is the instance of Dataloader, this argument will be ignored.
-                Default: 1.
+            batch_size (int): Integer number. The batch size of train_data
+                and eval_data.  When eval_data is the instance of Dataloader,
+                this argument will be ignored. Default: 1.
             log_freq (int): The frequency, in number of steps, the eval logs
                 are printed. Default: 10.
-            verbose (int): The verbosity mode, should be 0, 1, or 2.
-                0 = silent, 1 = progress bar, 2 = one line per epoch. Default: 2.
-            num_workers (int): The number of subprocess to load data, 0 for no subprocess 
-                used and loading data in main process. When train_data and eval_data are
-                both the instance of Dataloader, this parameter will be ignored. Default: 0.
+            verbose (int): The verbosity mode, should be 0, 1, or 2. 0 = silent,
+                1 = progress bar, 2 = one line per epoch. Default: 2.
+            num_workers (int): The number of subprocess to load data,
+                0 for no subprocess used and loading data in main process. When
+                train_data and eval_data are both the instance of Dataloader,
+                this parameter will be ignored. Default: 0.
             callbacks (Callback|None): A list of `Callback` instances to apply
                 during training. If None, `ProgBarLogger` and `ModelCheckpoint`
                 are automatically inserted. Default: None.
         Returns:
-            dict: Result of metric.
+            dict: Result of metric. The key is the names of Metric,
+                value is a scalar or numpy.array.
         """
 
         if fluid.in_dygraph_mode():
@@ -1063,18 +1426,19 @@ class Model(fluid.dygraph.Layer):
                 num_workers=0,
                 stack_outputs=False):
         """
-        FIXME: add more comments and usage
+        Compute the output predictions on testing data.
+
         Args:
             test_data (Dataset|DataLoader): An iterable data loader is used for
-                predict. An instance of paddle.io.Dataset or paddle.io.Dataloader 
+                predict. An instance of paddle.io.Dataset or paddle.io.Dataloader
                 is recomended.
-            batch_size (int): Integer number. The batch size of train_data and eval_data. 
-                When train_data and eval_data are both the instance of Dataloader, this 
+            batch_size (int): Integer number. The batch size of train_data and eval_data.
+                When train_data and eval_data are both the instance of Dataloader, this
                 argument will be ignored. Default: 1.
-            num_workers (int): the number of subprocess to load data, 0 for no subprocess 
+            num_workers (int): The number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this argument will be ignored. Default: 0.
-            stack_output (bool): whether stack output field like a batch, as for an output
+            stack_output (bool): Whether stack output field like a batch, as for an output
                 filed of a sample is in shape [X, Y], test_data contains N samples, predict
                 output field will be in shape [N, X, Y] if stack_output is True, and will
                 be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
@@ -1138,21 +1502,20 @@ class Model(fluid.dygraph.Layer):
                              save_dir,
                              model_filename=None,
                              params_filename=None,
-                             program_only=False):
+                             model_only=False):
         """
         Save inference model must in static mode.
 
         Args:
             dirname(str): The directory path to save the inference model.
-            model_filename(str|None): The name of file to save the inference program
-                                        itself. If is set None, a default filename
-                                        :code:`__model__` will be used.
-            params_filename(str|None): The name of file to save all related parameters.
-                                            If it is set None, parameters will be saved
-                                            in separate files .
-            program_only(bool): If True, It will save inference program only, and do not 
-                                        save params of Program.
-                                        Default: False.
+            model_filename(str|None): The name of file to save the inference
+                model itself. If is set None, a default filename
+                :code:`__model__` will be used.
+            params_filename(str|None): The name of file to save all related
+                parameters. If it is set None, parameters will be saved
+                in separate files .
+            model_only(bool): If True, It will save inference model only,
+                and do not save parameters. Default: False.
 
         Returns:
             list: The fetch variables' name list
@@ -1177,7 +1540,7 @@ class Model(fluid.dygraph.Layer):
             main_program=infer_prog,
             model_filename=model_filename,
             params_filename=params_filename,
-            program_only=program_only)
+            program_only=model_only)
 
     def _run_one_epoch(self,
                        data_loader,

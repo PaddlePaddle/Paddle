@@ -66,7 +66,7 @@ class CrossEntropy(Loss):
     """
 
     def __init__(self, average=True):
-        super(CrossEntropy, self).__init__()
+        super(CrossEntropy, self).__init__(average)
 
     def forward(self, outputs, labels):
         return [
@@ -88,7 +88,7 @@ class SoftmaxWithCrossEntropy(Loss):
     """
 
     def __init__(self, average=True):
-        super(SoftmaxWithCrossEntropy, self).__init__()
+        super(SoftmaxWithCrossEntropy, self).__init__(average)
 
     def forward(self, outputs, labels):
         return [
