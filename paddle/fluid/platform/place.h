@@ -119,7 +119,8 @@ struct PlaceVisitorWrapper
 #ifdef PADDLE_WITH_CUDA
     return visitor_(cuda);
 #else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda device");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit cuda device"));
     return typename Visitor::result_type();
 #endif
   }
@@ -129,7 +130,8 @@ struct PlaceVisitorWrapper
 #ifdef PADDLE_WITH_CUDA
     return visitor_(cuda_pinned);
 #else
-    PADDLE_THROW("Paddle is not compiled with CUDA. Cannot visit cuda_pinned");
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Paddle is not compiled with CUDA. Cannot visit cuda_pinned"));
     return typename Visitor::result_type();
 #endif
   }

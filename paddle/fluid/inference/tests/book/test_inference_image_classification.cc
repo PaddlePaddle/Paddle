@@ -50,9 +50,9 @@ TEST(inference, image_classification) {
   std::vector<paddle::framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
-  paddle::framework::LoDTensor output1;
+  paddle::framework::FetchType output1;
   if (!FLAGS_skip_cpu) {
-    std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+    std::vector<paddle::framework::FetchType*> cpu_fetchs1;
     cpu_fetchs1.push_back(&output1);
 
     // Run inference on CPU
@@ -60,12 +60,12 @@ TEST(inference, image_classification) {
     LOG(INFO) << "Batch size is " << FLAGS_batch_size;
     TestInference<paddle::platform::CPUPlace, false, true>(
         dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
-    LOG(INFO) << output1.dims();
+    LOG(INFO) << boost::get<paddle::framework::LoDTensor>(output1).dims();
   }
 
 #ifdef PADDLE_WITH_CUDA
-  paddle::framework::LoDTensor output2;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
+  paddle::framework::FetchType output2;
+  std::vector<paddle::framework::FetchType*> cpu_fetchs2;
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
@@ -73,17 +73,18 @@ TEST(inference, image_classification) {
   LOG(INFO) << "Batch size is " << FLAGS_batch_size;
   TestInference<paddle::platform::CUDAPlace, false, true>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat, is_combined);
-  LOG(INFO) << output2.dims();
+  LOG(INFO) << boost::get<paddle::framework::LoDTensor>(output2).dims();
 
   if (!FLAGS_skip_cpu) {
-    CheckError<float>(output1, output2);
+    CheckError<float>(boost::get<paddle::framework::LoDTensor>(output1),
+                      boost::get<paddle::framework::LoDTensor>(output2));
   }
 
   // float16 inference requires cuda GPUs with >= 5.3 compute capability
   if (!FLAGS_fp16_dirname.empty() &&
       paddle::platform::GetCUDAComputeCapability(0) >= 53) {
-    paddle::framework::LoDTensor output3;
-    std::vector<paddle::framework::LoDTensor*> cpu_fetchs3;
+    paddle::framework::FetchType output3;
+    std::vector<paddle::framework::FetchType*> cpu_fetchs3;
     cpu_fetchs3.push_back(&output3);
 
     LOG(INFO) << "--- GPU Runs in float16 mode: ---";
@@ -92,7 +93,8 @@ TEST(inference, image_classification) {
     TestInference<paddle::platform::CUDAPlace, false, true>(
         FLAGS_fp16_dirname, cpu_feeds, cpu_fetchs3, FLAGS_repeat);
 
-    CheckError<float>(output2, output3);
+    CheckError<float>(boost::get<paddle::framework::LoDTensor>(output2),
+                      boost::get<paddle::framework::LoDTensor>(output3));
   }
 #endif
 }

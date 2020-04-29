@@ -597,6 +597,10 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);
+  std::vector<std::vector<float>> batch_float_feasigns_;
+  std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
+  std::vector<std::vector<size_t>> offset_;
+  std::vector<bool> visit_;
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {

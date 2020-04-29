@@ -190,6 +190,16 @@ double CPUQuantizePass::GetScaleValueForNode(const Node* node,
   return scale_data.second.data<double>()[0];
 }
 
+bool CPUQuantizePass::IsOpDequantized(const Node* node) const {
+  return node->Op()->Type() == "dequantize" ||
+         node->Op()->GetAttrIfExists<bool>("use_quantizer");
+}
+
+bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
+  return node->Op()->Type() == "quantize" ||
+         node->Op()->GetAttrIfExists<bool>("use_quantizer");
+}
+
 void CPUQuantizePass::QuantizeConv(Graph* graph,
                                    bool with_residual_data) const {
   GraphPatternDetector gpd;
@@ -449,11 +459,8 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, transpose_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, transpose_pattern);
 
-    // skip if prev op and next op are not quantized
-    if (!(prev_op->Op()->Type() == "dequantize" ||
-          (prev_op->Op()->GetAttrIfExists<bool>("use_quantizer"))) &&
-        !(next_op->Op()->Type() == "quantize" ||
-          (next_op->Op()->GetAttrIfExists<bool>("use_quantizer")))) {
+    // skip if prev op and next op is not quantized
+    if (!(IsOpDequantized(prev_op)) && !(IsOpQuantized(next_op))) {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(transpose_in, transpose_in, transpose_pattern);
@@ -500,11 +507,8 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, reshape_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, reshape_pattern);
 
-    // skip if prev op  and next op is not quantized
-    if (!(prev_op->Op()->Type() == "dequantize" ||
-          (prev_op->Op()->GetAttrIfExists<bool>("use_quantizer"))) &&
-        !(next_op->Op()->Type() == "quantize" ||
-          (next_op->Op()->GetAttrIfExists<bool>("use_quantizer")))) {
+    // skip if prev op and next op is not quantized
+    if (!(IsOpDequantized(prev_op)) && !(IsOpQuantized(next_op))) {
       return;
     }
 
@@ -530,6 +534,59 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
   PrettyLogDetail("---    quantized %d reshape ops", quantize_reshape_count);
 }
 
+void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::Matmul matmul_pattern{pattern, name_scope_};
+  matmul_pattern();
+
+  int quantize_matmul_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize matmul op";
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, matmul_pattern);
+    auto* matmul_op_desc = matmul_op->Op();
+
+    // skip if should not be quantized
+    if (!matmul_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op_x, prev_op_x, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
+
+    // skip if prev ops are not quantized
+    if (!IsOpDequantized(prev_op_x) || !IsOpDequantized(prev_op_y)) {
+      return;
+    }
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
+
+    bool is_x_unsigned{false}, is_y_unsigned{false};
+    auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
+    auto input_y_scale = GetScaleValueForNode(matmul_in_y, &is_y_unsigned);
+    PADDLE_ENFORCE_EQ(
+        is_x_unsigned, is_y_unsigned,
+        platform::errors::InvalidArgument(
+            "Matmul inputs should have the same value of is_unsigned"));
+    QuantizeInput(g, matmul_op, matmul_in_x, "X", input_x_scale, is_x_unsigned,
+                  "Scale_x");
+    QuantizeInput(g, matmul_op, matmul_in_y, "Y", input_y_scale, is_y_unsigned,
+                  "Scale_y");
+
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(matmul_out, &is_output_unsigned);
+    DequantizeOutput(g, matmul_op, matmul_out, "Out", output_scale,
+                     is_output_unsigned, "Scale_out");
+
+    ++quantize_matmul_count;
+  };
+  gpd(graph, handler);
+  AddStatis(quantize_matmul_count);
+
+  PrettyLogDetail("---    quantized %d matmul ops", quantize_matmul_count);
+}
+
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE(graph);
@@ -545,6 +602,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeTranspose(graph);
   QuantizeFc(graph);
   QuantizeReshape(graph);
+  QuantizeMatmul(graph);
 }
 
 }  // namespace ir

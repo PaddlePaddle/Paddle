@@ -76,7 +76,9 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &num, &post,
                  &is_run_common_broadcast);
 
-    if (post == 1) PADDLE_THROW("Not implemented when post is 1");
+    if (post == 1)
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Not implemented when post is 1."));
 
     const int64_t n = x_dims[0];
     const int64_t c = x_dims[1];

@@ -17,7 +17,23 @@ from __future__ import print_function
 import math
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 from op_test import OpTest
+
+
+class TestGRUUnitAPIError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            D = 5
+            layer = fluid.dygraph.nn.GRUUnit(size=D * 3)
+            # the input must be Variable.
+            x0 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, layer, x0)
+            # the input dtype must be float32 or float64
+            x = fluid.data(name='x', shape=[-1, D * 3], dtype='float16')
+            hidden = fluid.data(name='hidden', shape=[-1, D], dtype='float32')
+            self.assertRaises(TypeError, layer, x, hidden)
 
 
 class GRUActivationType(OpTest):
