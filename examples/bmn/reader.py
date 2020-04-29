@@ -48,7 +48,7 @@ class BmnDataset(Dataset):
 
     def __getitem__(self, index):
         video_name = self.video_list[index]
-        video_idx = self.video_list.index(video_name)
+        video_idx = np.array(self.video_list.index(video_name)).astype('int64')
         video_feat = self.load_file(video_name)
         if self.mode == 'infer':
             return video_feat, video_idx
