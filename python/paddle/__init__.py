@@ -38,7 +38,7 @@ import paddle.tensor
 import paddle.nn
 import paddle.framework
 import paddle.imperative
-import paddle.complex
+import paddle.incubate.complex as complex
 
 # TODO: define alias in tensor and framework directory
 from .tensor.random import randperm

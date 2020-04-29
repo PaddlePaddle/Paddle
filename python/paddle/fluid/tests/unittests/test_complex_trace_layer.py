@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 from numpy.random import random as rand
-import paddle.complex as cpx
+import paddle.incubate.complex as cpx
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-import paddle.complex as cpx
+import paddle.incubate.complex as cpx
 import paddle.fluid.dygraph as dg
 import numpy as np
 import unittest
