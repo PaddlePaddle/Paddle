@@ -25,8 +25,12 @@ import collections
 import sys
 import pydoc
 import hashlib
+import six
+import functools
 
 member_dict = collections.OrderedDict()
+
+visited_modules = set()
 
 # APIs that should not be printed into API.spec 
 omitted_list = [
@@ -42,23 +46,55 @@ def md5(doc):
     return hash.hexdigest()
 
 
+def get_functools_partial_spec(func):
+    func_str = func.func.__name__
+    args = func.args
+    keywords = func.keywords
+    return '{}(args={}, keywords={})'.format(func_str, args, keywords)
+
+
+def format_spec(spec):
+    args = spec.args
+    varargs = spec.varargs
+    keywords = spec.keywords
+    defaults = spec.defaults
+    if defaults is not None:
+        defaults = list(defaults)
+        for idx, item in enumerate(defaults):
+            if not isinstance(item, functools.partial):
+                continue
+
+            defaults[idx] = get_functools_partial_spec(item)
+
+        defaults = tuple(defaults)
+
+    return 'ArgSpec(args={}, varargs={}, keywords={}, defaults={})'.format(
+        args, varargs, keywords, defaults)
+
+
 def queue_dict(member, cur_name):
     if cur_name in omitted_list:
         return
 
-    doc = ('document', md5(member.__doc__))
+    doc_md5 = md5(member.__doc__)
 
     if inspect.isclass(member):
         args = member.__module__ + "." + member.__name__
     else:
         try:
             args = inspect.getargspec(member)
+            has_type_error = False
         except TypeError:  # special for PyBind method
             args = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')
                 if "->" in line
             ])
-    member_dict[cur_name] = (args, doc)
+            has_type_error = True
+
+        if not has_type_error:
+            args = format_spec(args)
+
+    member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
 
 
 def visit_member(parent_name, member):
@@ -78,7 +114,34 @@ def visit_member(parent_name, member):
                            format(str(type(member))))
 
 
+def is_primitive(instance):
+    int_types = (int, long) if six.PY2 else (int, )
+    pritimitive_types = int_types + (float, str)
+    if isinstance(instance, pritimitive_types):
+        return True
+    elif isinstance(instance, (list, tuple, set)):
+        for obj in instance:
+            if not is_primitive(obj):
+                return False
+
+        return True
+    else:
+        return False
+
+
 def visit_all_module(mod):
+    mod_name = mod.__name__
+    if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
+        return
+
+    if mod_name.startswith('paddle.fluid.core'):
+        return
+
+    if mod in visited_modules:
+        return
+
+    visited_modules.add(mod)
+
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
@@ -86,6 +149,13 @@ def visit_all_module(mod):
         instance = getattr(mod, member_name, None)
         if instance is None:
             continue
+
+        if is_primitive(instance):
+            continue
+
+        if not hasattr(instance, "__name__"):
+            continue
+
         if inspect.ismodule(instance):
             visit_all_module(instance)
         else:

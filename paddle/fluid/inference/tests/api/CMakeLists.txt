@@ -93,6 +93,13 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --iterations=2)
 endfunction()
 
+function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
+	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
+	        ARGS --data_dir=${data_dir}
+		     --output_file=${output_file}
+		     --local)
+endfunction()
+
 if(NOT APPLE AND WITH_MKLML)
     # RNN1
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
@@ -286,8 +293,6 @@ if(WITH_MKLDNN)
   # download dataset if necessary
   download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
 
-  # download small demo set of pascalvoc for testing local userdata preprocessing
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -320,6 +325,19 @@ if(WITH_MKLDNN)
   set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
   inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
   inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
+
+  # preprocess data2bin imagenet
+    download_int8_data(${INT8_DATA_DIR} "imagenet_small.tar.gz")
+    set(IMAGENET_SMALL_DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
+    set(IMAGENET_SMALL_OUTPUT_FILE "imagenet_small.bin")
+    preprocess_data2bin_test_run(preprocess_local_imagenet "full_ILSVRC2012_val_preprocess.py" ${IMAGENET_SMALL_DATA_DIR} ${IMAGENET_SMALL_OUTPUT_FILE})
+    
+  # preprocess data2bin pascalvoc
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
+  set(PASCALVOC_SMALL_DATA_DIR "${INT8_DATA_DIR}/pascalvoc_small")
+  set(PASCALVOC_SMALL_OUTPUT_FILE "pascalvoc_small.bin")
+  preprocess_data2bin_test_run(preprocess_local_pascalvoc "full_pascalvoc_test_preprocess.py" ${PASCALVOC_SMALL_DATA_DIR} ${PASCALVOC_SMALL_OUTPUT_FILE})
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
@@ -373,13 +391,18 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
+    set(TEST_TRT_DYNAMIC_MODEL2 "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2})
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL2} ${INFERENCE_URL}/tensorrt_test "complex_model_dynamic2.tar.gz")
+    endif()
+
     set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/conv_bn_swish_split_gelu")
     if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
         inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "conv_bn_swish_split_gelu.tar.gz")
     endif()
     inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-            ARGS --infer_model=${TEST_TRT_DYNAMIC_MODEL})
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR})
 
     set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
     if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL})

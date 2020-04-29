@@ -134,6 +134,14 @@ class TestTrilTriuOpAPI(unittest.TestCase):
         self.assertTrue(np.allclose(tril_out, np.tril(data)))
         self.assertTrue(np.allclose(triu_out, np.triu(data)))
 
+    def test_api_with_dygraph(self):
+        with fluid.dygraph.guard():
+            data = np.random.random([1, 9, 9, 4]).astype('float32')
+            x = fluid.dygraph.to_variable(data)
+            tril_out, triu_out = tensor.tril(x).numpy(), tensor.triu(x).numpy()
+            self.assertTrue(np.allclose(tril_out, np.tril(data)))
+            self.assertTrue(np.allclose(triu_out, np.triu(data)))
+
 
 if __name__ == '__main__':
     unittest.main()

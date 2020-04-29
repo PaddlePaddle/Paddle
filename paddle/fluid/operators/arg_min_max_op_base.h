@@ -136,14 +136,21 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "arg_min_max");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "arg_min_max");
     const auto& x_dims = ctx->GetInputDim("X");
     int64_t axis = ctx->Attrs().Get<int64_t>("axis");
     bool keepdims = ctx->Attrs().Get<bool>("keepdims");
 
-    PADDLE_ENFORCE(axis >= -x_dims.size() && axis < x_dims.size(),
-                   "'axis' must be inside [-Rank(X), Rank(X))");
+    PADDLE_ENFORCE_GE(axis, -x_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -Rank(X)(%d).",
+                          axis, -x_dims.size()));
+    PADDLE_ENFORCE_LT(
+        axis, x_dims.size(),
+        platform::errors::InvalidArgument(
+            "'axis'(%d) must be less than Rank(X)(%d).", axis, x_dims.size()));
 
     auto x_rank = x_dims.size();
     if (axis < 0) axis += x_rank;

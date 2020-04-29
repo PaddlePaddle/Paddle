@@ -30,11 +30,13 @@ class Variable {
     static_assert(
         IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
-    PADDLE_ENFORCE(holder_ != nullptr, "Variable is not initialized.");
-    PADDLE_ENFORCE(holder_->Type() == VarTypeTrait<T>::kId,
-                   "The Variable type must be %s, but the type it holds is %s.",
-                   ToTypeName(VarTypeTrait<T>::kId),
-                   ToTypeName(holder_->Type()));
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, platform::errors::NotFound("Variable is not initialized."));
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(), VarTypeTrait<T>::kId,
+        platform::errors::InvalidArgument(
+            "The Variable type must be %s, but the type it holds is %s.",
+            ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
     return *static_cast<const T*>(holder_->Ptr());
   }
 
@@ -45,10 +47,11 @@ class Variable {
     if (!holder_) {
       holder_.reset(new PlaceholderImpl<T>());
     } else {
-      PADDLE_ENFORCE(
-          holder_->Type() == VarTypeTrait<T>::kId,
-          "The Variable type must be %s, but the type it holds is %s.",
-          ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type()));
+      PADDLE_ENFORCE_EQ(
+          holder_->Type(), VarTypeTrait<T>::kId,
+          platform::errors::InvalidArgument(
+              "The Variable type must be %s, but the type it holds is %s.",
+              ToTypeName(VarTypeTrait<T>::kId), ToTypeName(holder_->Type())));
     }
     return static_cast<T*>(holder_->Ptr());
   }
@@ -61,7 +64,8 @@ class Variable {
   void Clear() { holder_.reset(); }
 
   int Type() const {
-    PADDLE_ENFORCE(holder_ != nullptr, "Variable is not initialized.");
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_, platform::errors::NotFound("Variable is not initialized."));
     return holder_->Type();
   }
 

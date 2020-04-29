@@ -47,7 +47,6 @@ class SubNetWithDict(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=init_weight(0.2))
 
-    @dygraph_to_static_func
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
 
@@ -99,14 +98,16 @@ class MainNetWithDict(fluid.dygraph.Layer):
         out = input
         for i in range(max_len):
             out = self.sub_net(out, cache)
-            cache = self.update_cache(cache)
+            cache = update_cache(cache)
         return out
 
-    def update_cache(self, cache):
-        for k, val in six.iteritems(cache):
-            cache[k] = fluid.layers.softmax(val)
 
-        return cache
+# Test to call function defined outside of class.
+def update_cache(cache):
+    for k, val in six.iteritems(cache):
+        cache[k] = fluid.layers.softmax(val)
+
+    return cache
 
 
 class TestNetWithDict(unittest.TestCase):

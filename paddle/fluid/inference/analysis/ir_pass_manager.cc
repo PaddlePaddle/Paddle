@@ -136,10 +136,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
     }
-    if (pass_name == "ngraph_subgraph_pass") {
-      pass->Set("program",
-                new framework::ProgramDesc *(&argument->main_program()));
-    }
     if (pass_name == "lite_subgraph_pass") {
       bool enable_int8 =
           argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;

@@ -46,8 +46,6 @@ template <typename DeviceContext, typename T>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
     auto *input = context.Input<LoDTensor>("Input");
     auto *im_info = context.Input<Tensor>("ImInfo");
     auto *output = context.Output<LoDTensor>("Output");

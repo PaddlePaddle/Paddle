@@ -90,7 +90,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p = handler.AcquireDstMemory(y);
+  auto dst_memory_p =
+      x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
   mkldnn::stream astream(dev_ctx.GetEngine());
@@ -163,6 +164,30 @@ struct MKLDNNActivationGradFunc : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct GeluMKLDNNFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const bool approximate = ctx.Attr<bool>("approximate");
+    if (approximate) {
+      eltwise_forward<T>(ctx, mkldnn::algorithm::eltwise_gelu_tanh);
+    } else {
+      eltwise_forward<T>(ctx, mkldnn::algorithm::eltwise_gelu_erf);
+    }
+  }
+};
+
+template <typename T>
+struct GeluMKLDNNGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const bool approximate = ctx.Attr<bool>("approximate");
+    if (approximate) {
+      eltwise_grad<T>(ctx, mkldnn::algorithm::eltwise_gelu_tanh);
+    } else {
+      eltwise_grad<T>(ctx, mkldnn::algorithm::eltwise_gelu_erf);
+    }
+  }
+};
+
+template <typename T>
 using ReluMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_relu>;
 
@@ -216,6 +241,7 @@ namespace ops = paddle::operators;
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                  \
   __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);       \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor); \
+  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor);       \
   __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);    \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);       \
   __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);       \

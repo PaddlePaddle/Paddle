@@ -32,6 +32,10 @@ static AllocatorStrategy GetStrategyFromFlag() {
     return AllocatorStrategy::kAutoGrowth;
   }
 
+  if (FLAGS_allocator_strategy == "thread_local") {
+    return AllocatorStrategy::kThreadLocal;
+  }
+
   PADDLE_THROW("Unsupported allocator strategy: %s", FLAGS_allocator_strategy);
 }
 
