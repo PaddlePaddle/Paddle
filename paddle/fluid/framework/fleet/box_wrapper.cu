@@ -52,11 +52,11 @@ __global__ void PullCopy(float** dest, const boxps::FeatureValueGpu* src,
       *(dest[x] + y * hidden + 2) = (src + i)->embed_w;
     }
     if ((src + i)->embedding_size == 0 || *(keys[x] + y) == 0) {
-      for (int j = 0; j < 8; j++) {
+      for (int j = 0; j < hidden - 3; j++) {
         *(dest[x] + y * hidden + 3 + j) = 0;
       }
     } else {
-      for (int j = 0; j < 8; j++) {
+      for (int j = 0; j < hidden - 3; j++) {
         *(dest[x] + y * hidden + 3 + j) = (src + i)->embedx[1 + j];
       }
     }
@@ -101,7 +101,7 @@ __global__ void PushCopy(boxps::FeaturePushValueGpu* dest, float** src,
     (dest + i)->show = *(src[x] + y * hidden);
     (dest + i)->clk = *(src[x] + y * hidden + 1);
     (dest + i)->embed_g = *(src[x] + y * hidden + 2) * -1. * bs;
-    for (int j = 0; j < 8; j++) {
+    for (int j = 0; j < hidden - 3; j++) {
       (dest + i)->embedx_g[j] = *(src[x] + y * hidden + 3 + j) * -1. * bs;
     }
   }

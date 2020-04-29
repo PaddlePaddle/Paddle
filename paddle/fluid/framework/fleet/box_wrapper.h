@@ -15,10 +15,11 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_BOX_PS
-#include <afs_filesystem.h>
 #include <boxps_public.h>
 #include <dirent.h>
+#include <gzfilemgr.h>
 #include <signal.h>
+#include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -131,32 +132,32 @@ class BasicAucCalculator {
 
 class AfsStreamFile {
  public:
-  explicit AfsStreamFile(afs::AfsFileSystem* afsfile)
-      : afsfile_(afsfile), reader_(nullptr) {}
+  explicit AfsStreamFile(abacus::GZFileMgr* afsfile) {
+    afsfile_ = afsfile;
+    reader_ = new abacus::GZFileReader(*afsfile_);
+  }
   virtual ~AfsStreamFile() {
-    if (reader_ != NULL) {
-      afsfile_->CloseReader(reader_);
-      reader_ = NULL;
-    }
+    reader_->close();
+    reader_ = NULL;
   }
   virtual int Open(const char* path) {
     if (path == NULL) {
       return -1;
     }
-    reader_ = afsfile_->OpenReader(path);
-    PADDLE_ENFORCE_NE(reader_, nullptr,
-                      platform::errors::PreconditionNotMet(
-                          "OpenReader for file[%s] failed.", path));
-    return 0;
+    int ret = reader_->open(path);
+    return ret;
   }
   virtual int Read(char* buf, int len) {
-    int ret = reader_->Read(buf, len);
+    int ret = reader_->read(buf, len);
     return ret;
+  }
+  virtual uint64_t GetFileSize(char* buf, int len) {
+    return reader_->file_size();
   }
 
  private:
-  afs::AfsFileSystem* afsfile_;
-  afs::Reader* reader_;
+  abacus::GZFileMgr* afsfile_;
+  abacus::GZFileReader* reader_;
 };
 
 class AfsManager {
@@ -166,33 +167,29 @@ class AfsManager {
     auto split = fs_ugi.find(",");
     std::string user = fs_ugi.substr(0, split);
     std::string pwd = fs_ugi.substr(split + 1);
-    _afshandler = new afs::AfsFileSystem(fs_name.c_str(), user.c_str(),
-                                         pwd.c_str(), conf_path.c_str());
+    _afshandler = new abacus::GZFileMgr();
+    bool ret = _afshandler->initialize(fs_name.c_str(), user.c_str(),
+                                       pwd.c_str(), conf_path.c_str());
+    PADDLE_ENFORCE_EQ(ret, true, platform::errors::PreconditionNotMet(
+                                     "Called AFSAPI Init Interface Failed."));
     VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
-    int ret = _afshandler->Init(true, (com_logstatus() == 0));
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called AFSAPI Init Interface Failed."));
     // Too high level will hurt the performance
     comlog_set_log_level(4);
-    ret = _afshandler->Connect();
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called AFSAPI Connect Interface Failed"));
   }
   virtual ~AfsManager() {
     if (_afshandler != NULL) {
-      _afshandler->DisConnect();
-      _afshandler->Destroy();
+      _afshandler->destory();
       delete _afshandler;
       _afshandler = nullptr;
     }
   }
   static void ReadFromAfs(const std::string& path, FILE* wfp,
-                          afs::AfsFileSystem* _afshandler) {
+                          abacus::GZFileMgr* _afshandler) {
     AfsStreamFile* read_stream = new AfsStreamFile(_afshandler);
     int ret = read_stream->Open(path.c_str());
-    PADDLE_ENFORCE_EQ(ret, 0,
-                      platform::errors::PreconditionNotMet(
-                          "Called AFSAPI Open file %s Failed.", path.c_str()));
+    PADDLE_ENFORCE_GE(ret, 0, platform::errors::PreconditionNotMet(
+                                  "Called AFSAPI Open Failed."));
+
     char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
     int size = 0;
     while ((size = read_stream->Read(_buff, BUF_SIZE)) > 0) {
@@ -324,7 +321,7 @@ class AfsManager {
   }
 
  private:
-  afs::AfsFileSystem* _afshandler;
+  abacus::GZFileMgr* _afshandler;
   std::mutex g_flock;
 };
 
