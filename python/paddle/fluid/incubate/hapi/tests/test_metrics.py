@@ -54,8 +54,10 @@ class TestAccuracyDynamic(unittest.TestCase):
         self.name = None
 
     def random_pred_label(self):
-        label = np.random.randint(0, self.class_num, (self.sample_num, 1)).astype('int64')
-        pred = np.random.randint(0, self.class_num, (self.sample_num, 1)).astype('int32')
+        label = np.random.randint(0, self.class_num,
+                                  (self.sample_num, 1)).astype('int64')
+        pred = np.random.randint(0, self.class_num,
+                                 (self.sample_num, 1)).astype('int32')
         pred_one_hot = convert_to_one_hot(pred, self.class_num)
         pred_one_hot = pred_one_hot.astype('float32')
 
@@ -92,7 +94,8 @@ class TestAccuracyStatic(TestAccuracyDynamic):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
-            pred = fluid.data(name='pred', shape=[None, self.class_num], dtype='float32')
+            pred = fluid.data(
+                name='pred', shape=[None, self.class_num], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             acc = Accuracy(topk=self.topk, name=self.name)
             state = acc.add_metric_op(pred, label)
@@ -103,7 +106,8 @@ class TestAccuracyStatic(TestAccuracyDynamic):
         for i in range(10):
             label, pred = self.random_pred_label()
             state_ret = exe.run(compiled_main_prog,
-                                feed={'pred': pred, 'label': label},
+                                feed={'pred': pred,
+                                      'label': label},
                                 fetch_list=[s.name for s in to_list(state)],
                                 return_numpy=True)
             acc.update(*state_ret)
