@@ -55,7 +55,7 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Weight")[0], ctx->GetInputDim("Bias")[0],
           platform::errors::InvalidArgument(
-              "SThe first dimension of Input(Weight) and Input(Bias) "
+              "The first dimension of Input(Weight) and Input(Bias) "
               "should be equal. But received: Input(Weight)'s shape = [%s] "
               "with 1st dim = %d, and Input(Bias)'s shape = [%s] with 1st dim "
               "= %d.",
