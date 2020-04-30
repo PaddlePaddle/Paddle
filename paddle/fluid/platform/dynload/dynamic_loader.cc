@@ -232,7 +232,8 @@ void* GetCusolverDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   // TODO(guosheng): Fix cusolver support on windows.
   // return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
-  PADDLE_THROW("Do not support Windows.");
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Cusolver loader cannot support Windows temporarily."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
