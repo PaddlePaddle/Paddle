@@ -913,6 +913,22 @@ struct OpRequant : public PatternBase {
   PATTERN_DECL_NODE(requant_out);
 };
 
+// Requant + Op
+// named nodes:
+// requant_in, requant_op,
+// requant_out, any_op
+struct RequantOp : public PatternBase {
+  RequantOp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "requant_op") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(requant_in);
+  PATTERN_DECL_NODE(requant_op);
+  PATTERN_DECL_NODE(requant_out);
+};
+
 // Conv + Dequant
 // named nodes:
 // conv_op, conv_out
