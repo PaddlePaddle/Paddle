@@ -119,7 +119,7 @@ def do_predict(args):
         args.eos_idx,
         beam_size=args.beam_size,
         max_out_len=args.max_out_len)
-    transformer.prepare(inputs=inputs)
+    transformer.prepare(inputs=inputs, device=device)
 
     # load the trained model
     assert args.init_from_params, (

@@ -73,7 +73,8 @@ def do_train(args):
         CrossEntropyCriterion(),
         ppl_metric,
         inputs=inputs,
-        labels=labels)
+        labels=labels,
+        device=device)
     model.fit(train_data=train_loader,
               eval_data=eval_loader,
               epochs=args.max_epoch,

@@ -22,9 +22,21 @@ Sequence to Sequence (Seq2Seq)，使用编码器-解码器（Encoder-Decoder）�
 
 本目录包含Seq2Seq的一个经典样例：机器翻译，实现了一个base model（不带attention机制），一个带attention机制的翻译模型。Seq2Seq翻译模型，模拟了人类在进行翻译类任务时的行为：先解析源语言，理解其含义，再根据该含义来写出目标语言的语句。更多关于机器翻译的具体原理和数学表达式，我们推荐参考飞桨官网[机器翻译案例](https://www.paddlepaddle.org.cn/documentation/docs/zh/user_guides/nlp_case/machine_translation/README.cn.html)。
 
+
 ## 模型概览
 
 本模型中，在编码器方面，我们采用了基于LSTM的多层的RNN encoder；在解码器方面，我们使用了带注意力（Attention）机制的RNN decoder，并同时提供了一个不带注意力机制的解码器实现作为对比。在预测时我们使用柱搜索（beam search）算法来生成翻译的目标语句。
+
+## 代码下载
+
+克隆代码库到本地，并设置`PYTHONPATH`环境变量
+
+```shell
+git clone https://github.com/PaddlePaddle/hapi
+cd hapi
+export PYTHONPATH=$PYTHONPATH:`pwd`
+cd examples/seq2seq
+```
 
 ## 数据介绍
 
@@ -96,7 +108,7 @@ python train.py \
 ```sh
 export CUDA_VISIBLE_DEVICES=0
 
-python infer.py \
+python predict.py \
     --attention True \
     --src_lang en --tar_lang vi \
     --num_layers 2 \
