@@ -181,7 +181,8 @@ class ActivationKernel
     }
     // use 32bit index to speed up computation
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-    if (use_32bit_index) {
+    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    if (use_32bit_index && is_gpu_place) {
       functor(*place, To32BitIndex(x), To32BitIndex(out));
     } else {
       functor(*place, x, out);
@@ -218,7 +219,8 @@ class ActivationGradKernel
     }
     // use 32bit index to speed up computation
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
-    if (use_32bit_index) {
+    bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    if (use_32bit_index && is_gpu_place) {
       functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
               To32BitIndex(dx));
     } else {
