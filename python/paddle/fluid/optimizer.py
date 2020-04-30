@@ -4980,16 +4980,16 @@ class ModelParallelOptimizer(object):
         # multiple sections
         self._process_persistable_vars_in_multi_sections(
             main_program, startup_program, program_list)
-        """
+
         device_spec = device_spec_list[-1]
         print("device_spec: ", device_spec)
         block = program_list[-1]['program'].block(0)
-        print_list.append('mean_0.tmp_0')
+        #print_list.append('mean_0.tmp_0')
         #print_list.append('fc_0.tmp_0')
         #print_list.append('data_1')
         #print_list.append('label')
-        print_list.append('accuracy_0.tmp_0')
-        print_list.append('accuracy_1.tmp_0')
+        #print_list.append('accuracy_0.tmp_0')
+        #print_list.append('accuracy_1.tmp_0')
         #print_list.append('fc_0.w_0')
         #print_list.append('fc_0.w_0_0@GRAD')
         #print_list.append('fc_0.w_0_1@GRAD')
@@ -5071,11 +5071,12 @@ class ModelParallelOptimizer(object):
                 persistable=persistable)
             print_var = block.var(print_var_name)
             if name == "learning_rate_0":
-                block._insert_op(0,
-                        type='print',
-                        inputs={'In': var},
-                        outputs={'Out': print_var},
-                        attrs={
+                block._insert_op(
+                    0,
+                    type='print',
+                    inputs={'In': var},
+                    outputs={'Out': print_var},
+                    attrs={
                         'first_n': -1,
                         'summarize': 40,
                         'message': "",
@@ -5086,13 +5087,14 @@ class ModelParallelOptimizer(object):
                         'op_device': 'gpu',
                         'op_device_index': device_spec.split(":")[1],
                         'op_role': int(role),
-                        'print_phase': 'BOTH'})
+                        'print_phase': 'BOTH'
+                    })
             else:
                 block.append_op(
-                        type='print',
-                        inputs={'In': var},
-                        outputs={'Out': print_var},
-                        attrs={
+                    type='print',
+                    inputs={'In': var},
+                    outputs={'Out': print_var},
+                    attrs={
                         'first_n': -1,
                         'summarize': 40,
                         'message': "",
@@ -5103,8 +5105,8 @@ class ModelParallelOptimizer(object):
                         'op_device': 'gpu',
                         'op_device_index': device_spec.split(":")[1],
                         'op_role': int(role),
-                        'print_phase': 'BOTH'})
-        """
+                        'print_phase': 'BOTH'
+                    })
         #place_list = sorted(place_list)
         self._add_sub_blocks(main_block, program_list)
         print(place_list, place_id_list)
