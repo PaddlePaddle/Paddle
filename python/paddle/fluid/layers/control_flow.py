@@ -34,8 +34,8 @@ __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case',
-    'while_loop'
+    'reorder_lod_tensor_by_rank', 'Print', 'Assert', 'is_empty', 'case',
+    'switch_case', 'while_loop'
 ]
 
 
@@ -326,19 +326,42 @@ def Assert(condition, data, summarize=None, name=None):
         TypeError: If ``data`` is not a list or tuple.
         TypeError: If ``summarize`` is not int or ``None`` .
         TypeError: If ``name`` is not a string or ``None`` .
+        fluid.core.EnforceNotMet: If the condition is False in running time.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
+            condition = layers.reduce_max(x) < 1.0 # False
+            layers.Assert(condition, [x], 10, "example_assert_layer")
+
+            exe = fluid.Executor()
+            try:
+                exe.run(fluid.default_main_program())
+                # Print x and throws paddle.fluid.core.EnforceNotMet exception
+            except fluid.core.EnforceNotMet as e:
+                print("Assert Exception Example")
+
     '''
     check_variable_and_dtype(condition, "condition", ["bool"],
                              "fluid.layers.Assert")
     check_type(data, "data", (list, tuple), "fluid.layers.Assert")
-    check_type(summarize, (int, type(None)), "fluid.layers.Assert")
-    check_type(name, (str, type(None)), "fluid.layers.Assert")
+    check_type(summarize, "summarize", (int, type(None)), "fluid.layers.Assert")
+    check_type(name, "name", (str, type(None)), "fluid.layers.Assert")
 
     layer_name = name if name else ('assert_' + condition.name)
     helper = LayerHelper(layer_name, **locals())
+
+    if summarize is None:
+        summarize = -1
+
     op = helper.append_op(
         type="assert",
         inputs={"Condition": condition,
-                "X": data},
+                "X": list(data)},
         attrs={"summarize_num": summarize})
 
     return op

@@ -93,7 +93,7 @@ class PrintOp : public framework::OperatorBase {
     formatter.SetPrintTensorLod(Attr<bool>("print_tensor_lod"));
     formatter.SetPrintTensorLayout(Attr<bool>("print_tensor_layout"));
     formatter.SetSummarize(static_cast<int64_t>(Attr<int>("summarize")));
-    formatter.Print(printed_tensor, place, name, Attr<std::string>("message"));
+    formatter.Print(printed_tensor, name, Attr<std::string>("message"));
   }
 
  private:

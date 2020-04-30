@@ -26,12 +26,11 @@ class TensorFormatter {
   TensorFormatter() {}
 
   std::string Format(const framework::LoDTensor& print_tensor,
-                     const platform::Place& place,
                      const std::string& tensor_name = "",
                      const std::string& message = "");
 
   void Print(const framework::LoDTensor& print_tensor,
-             const platform::Place& place, const std::string& tensor_name = "",
+             const std::string& tensor_name = "",
              const std::string& message = "");
 
   void SetPrintTensorType(bool print_tensor_type);
@@ -42,9 +41,8 @@ class TensorFormatter {
 
  private:
   template <typename T>
-  void FormatData(const framework::LoDTensor& print_tensor);
-
-  std::stringstream log_stream_;
+  void FormatData(const framework::LoDTensor& print_tensor,
+                  std::stringstream& log_stream);
 
   int64_t summarize_ = -1;
   bool print_tensor_type_ = true;

@@ -60,7 +60,7 @@ class AssertOp : public framework::OperatorBase {
     for (const std::string &name : x_names) {
       const framework::Variable *x_var_ptr = scope.FindVar(name);
       const framework::LoDTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
-      formatter.Print(x_tensor, dev_place, name);
+      formatter.Print(x_tensor, name);
     }
 
     // Here is code to throw exception due to cond_data must be false.
@@ -92,8 +92,19 @@ class AssertOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class AssertOpInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    OP_INOUT_CHECK(context->HasInputs(kCondition), "Input", "Condition",
+                   "AssertOp");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(assert, ops::AssertOp, ops::AssertOpProtoMaker);
+REGISTER_OPERATOR(
+    assert, ops::AssertOp, ops::AssertOpProtoMaker, ops::AssertOpInferShape,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
