@@ -412,9 +412,10 @@ def scaled_dot_product_attention(queries,
             Multi-Head Attention.
 
     Raises:
+        TypeError: The dtype of inputs keys, values and queries should be the same.
         ValueError: Inputs queries, keys and values should all be 3-D tensors.
         ValueError: The hidden size of queries and keys should be the same.
-        ValueError: The max sequence length in query batch and in key batch should be the same.
+        ValueError: The max sequence length in value batch and in key batch should be the same.
         ValueError: he hidden size of keys must be divisible by the number of attention heads.
         ValueError: he hidden size of values must be divisible by the number of attention heads.
 
@@ -429,17 +430,38 @@ def scaled_dot_product_attention(queries,
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """
+    check_variable_and_dtype(queries, 'queries', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+    check_variable_and_dtype(keys, 'keys', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+    check_variable_and_dtype(values, 'values', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+
+    if not (queries.dtype == keys.dtype == values.dtype):
+        raise TypeError(
+            "The dtype of keys, values and queries should be the same."
+            "But received queries.dtype = %s, "
+            " keys.dtype = %s, values.dtype) = %s." %
+            (convert_dtype(queries.dtype), convert_dtype(keys.dtype),
+             convert_dtype(values.dtype)))
+
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs queries, keys and values should all be 3-D tensors.")
+            "Inputs queries, keys and values should all be 3-D tensors."
+            "But received len(queries.shape) = %d, "
+            "len(keys.shape) = %d, len(values.shape) = %d." %
+            (len(queries.shape), len(keys.shape), len(values.shape)))
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
-            "The hidden size of queries and keys should be the same.")
+            "The hidden size of queries and keys should be the same."
+            "But received queries' hidden size = %d and keys' hidden size = %d."
+            % (queries.shape[-1], keys.shape[-1]))
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
-            "The max sequence length in query batch and in key batch "
-            "should be the same.")
+            "The max sequence length in value batch and in key batch "
+            "should be the same. But received max sequence length in value batch "
+            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2]))
     if keys.shape[-1] % num_heads != 0:
         raise ValueError("The hidden size of keys (%d) must be divisible "
                          "by the number of attention heads (%d)." %

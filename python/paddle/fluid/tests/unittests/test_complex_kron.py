@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import fluid, tensor
-import paddle.complex as cpx
+import paddle
 import paddle.fluid.dygraph as dg
 import numpy as np
 import unittest
@@ -40,7 +40,7 @@ class ComplexKronTestCase(unittest.TestCase):
         with dg.guard(place):
             x_var = dg.to_variable(self.x)
             y_var = dg.to_variable(self.y)
-            out_var = cpx.kron(x_var, y_var)
+            out_var = paddle.complex.kron(x_var, y_var)
             np.testing.assert_allclose(out_var.numpy(), self.ref_result)
 
 

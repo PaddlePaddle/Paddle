@@ -14,9 +14,9 @@
 
 from paddle.common_ops_import import *
 from ..helper import is_complex, is_real, complex_variable_exists
-from ...fluid.framework import ComplexVariable
-from ...fluid import layers
-from ...tensor import math
+from ....fluid.framework import ComplexVariable
+from ....fluid import layers
+from ....tensor import math
 
 __all__ = [
     'elementwise_add',
@@ -368,6 +368,7 @@ def kron(x, y, name=None):
     
             import numpy as np
             import paddle
+            from paddle import fluid
             import paddle.fluid.dygraph as dg
 
             a = np.array([[1.0+1.0j, 2.0+1.0j], [3.0+1.0j, 4.0+1.0j]])
