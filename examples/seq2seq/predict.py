@@ -78,8 +78,6 @@ def do_predict(args):
         dataset=dataset,
         batch_sampler=batch_sampler,
         places=device,
-        feed_list=None
-        if fluid.in_dygraph_mode() else [x.forward() for x in inputs],
         collate_fn=partial(
             prepare_infer_input, bos_id=bos_id, eos_id=eos_id, pad_id=eos_id),
         num_workers=0,
@@ -98,7 +96,7 @@ def do_predict(args):
         beam_size=args.beam_size,
         max_out_len=256)
 
-    model.prepare(inputs=inputs)
+    model.prepare(inputs=inputs, device=device)
 
     # load the trained model
     assert args.reload_model, (

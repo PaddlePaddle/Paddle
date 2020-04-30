@@ -138,7 +138,8 @@ def do_train(args):
             parameter_list=transformer.parameters()),
         CrossEntropyCriterion(args.label_smooth_eps),
         inputs=inputs,
-        labels=labels)
+        labels=labels,
+        device=device)
 
     ## init from some checkpoint, to resume the previous training
     if args.init_from_checkpoint:
