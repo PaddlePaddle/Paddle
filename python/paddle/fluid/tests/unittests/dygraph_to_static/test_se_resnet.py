@@ -23,8 +23,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
-from jit import declarative
-from dygraph_to_static import ProgramTranslator
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph import ProgramTranslator
 
 SEED = 2020
 np.random.seed(SEED)
