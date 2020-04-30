@@ -137,6 +137,9 @@ def convert_to_static(dyfunc):
     Converts dygraph function into static function.
     """
     # Get AST from dygraph function
+    # Note: In Python2, it will raise OSError when inspect function
+    # with decorator directly and dyfunc.__wrapped__ holds the actual function.
+    dyfunc = getattr(dyfunc, '__wrapped__', dyfunc)
     raw_code = inspect.getsource(dyfunc)
     code = textwrap.dedent(raw_code)
     root = gast.parse(code)
