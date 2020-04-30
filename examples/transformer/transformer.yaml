@@ -1,0 +1,112 @@
+# used for continuous evaluation
+enable_ce: False
+
+eager_run: True
+
+# The frequency to save trained models when training.
+save_step: 10000
+# The frequency to fetch and print output when training.
+print_step: 100
+# path of the checkpoint, to resume the previous training
+init_from_checkpoint: ""
+# path of the pretrain model, to better solve the current task
+init_from_pretrain_model: ""
+# path of trained parameter, to make prediction
+init_from_params: "trained_params/step_100000/"
+# the directory for saving model
+save_model: "trained_models"
+# the directory for saving inference model.
+inference_model_dir: "infer_model"
+# Set seed for CE or debug
+random_seed: None
+# The pattern to match training data files.
+training_file: "wmt16_ende_data_bpe/train.tok.clean.bpe.32000.en-de"
+# The pattern to match validation data files.
+validation_file: "wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de"
+# The pattern to match test data files.
+predict_file: "wmt16_ende_data_bpe/newstest2016.tok.bpe.32000.en-de"
+# The file to output the translation results of predict_file to.
+output_file: "predict.txt"
+# The path of vocabulary file of source language.
+src_vocab_fpath: "wmt16_ende_data_bpe/vocab_all.bpe.32000"
+# The path of vocabulary file of target language.
+trg_vocab_fpath: "wmt16_ende_data_bpe/vocab_all.bpe.32000"
+# The <bos>, <eos> and <unk> tokens in the dictionary.
+special_token: ["<s>", "<e>", "<unk>"]
+
+# whether to use cuda
+use_cuda: True
+
+# args for reader, see reader.py for details
+token_delimiter: " "
+use_token_batch: True
+pool_size: 200000
+sort_type: "pool"
+shuffle: True
+shuffle_batch: True
+batch_size: 4096
+
+# Hyparams for training:
+# the number of epoches for training
+epoch: 30
+# the hyper parameters for Adam optimizer.
+# This static learning_rate will be multiplied to the LearningRateScheduler
+# derived learning rate the to get the final learning rate.
+learning_rate: 2.0
+beta1: 0.9
+beta2: 0.997
+eps: 1e-9
+# the parameters for learning rate scheduling.
+warmup_steps: 8000
+# the weight used to mix up the ground-truth distribution and the fixed
+# uniform distribution in label smoothing when training.
+# Set this as zero if label smoothing is not wanted.
+label_smooth_eps: 0.1
+
+# Hyparams for generation:
+# the parameters for beam search.
+beam_size: 5
+max_out_len: 256
+# the number of decoded sentences to output.
+n_best: 1
+
+# Hyparams for model:
+# These following five vocabularies related configurations will be set
+# automatically according to the passed vocabulary path and special tokens.
+# size of source word dictionary.
+src_vocab_size: 10000
+# size of target word dictionay
+trg_vocab_size: 10000
+# index for <bos> token
+bos_idx: 0
+# index for <eos> token
+eos_idx: 1
+# index for <unk> token
+unk_idx: 2
+# max length of sequences deciding the size of position encoding table.
+max_length: 256
+# the dimension for word embeddings, which is also the last dimension of
+# the input and output of multi-head attention, position-wise feed-forward
+# networks, encoder and decoder.
+d_model: 512
+# size of the hidden layer in position-wise feed-forward networks.
+d_inner_hid: 2048
+# the dimension that keys are projected to for dot-product attention.
+d_key: 64
+# the dimension that values are projected to for dot-product attention.
+d_value: 64
+# number of head used in multi-head attention.
+n_head: 8
+# number of sub-layers to be stacked in the encoder and decoder.
+n_layer: 6
+# dropout rates of different modules.
+prepostprocess_dropout: 0.1
+attention_dropout: 0.1
+relu_dropout: 0.1
+# to process before each sub-layer
+preprocess_cmd: "n"  # layer normalization
+# to process after each sub-layer
+postprocess_cmd: "da"  # dropout + residual connection
+# the flag indicating whether to share embedding and softmax weights.
+# vocabularies in source and target should be same for weight sharing.
+weight_sharing: True

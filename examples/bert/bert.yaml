@@ -1,0 +1,27 @@
+bert_config_path: "./config/bert_config.json"
+init_checkpoint: None
+init_pretraining_params: None
+checkpoints: "./saved_model"
+epoch: 3
+learning_rate: 0.0001
+lr_scheduler: "linear_warmup_decay"
+weight_decay: 0.01
+warmup_proportion: 0.1
+save_steps: 100000
+validation_steps: 100000
+loss_scaling: 1.0
+skip_steps: 100
+data_dir: None
+vocab_path: None
+max_seq_len: 512
+batch_size: 32
+in_tokens: False
+do_lower_case: True
+random_seed: 5512
+use_cuda: True
+shuffle: True
+do_train: True
+do_test: True
+use_data_parallel: False
+verbose: False
+
