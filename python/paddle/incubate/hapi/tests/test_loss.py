@@ -26,7 +26,6 @@ import paddle
 from paddle import fluid
 
 from paddle.incubate.hapi.model import Model, Input
-from paddle.incubate.hapi.vision.models import resnet18
 from paddle.incubate.hapi.loss import CrossEntropy, SoftmaxWithCrossEntropy
 
 

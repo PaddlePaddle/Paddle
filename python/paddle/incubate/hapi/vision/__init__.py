@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import logger
-from . import progressbar
-from . import callbacks
-from . import download
-from . import model
-from . import metrics
-from . import loss
-from . import datasets
-from . import distributed
-from . import vision
-from .configure import Config
+from . import models
 
-logger.setup_logger()
-
-__all__ = [
-    'Config', 'callbacks', 'datasets', 'distributed', 'download', 'metrics',
-    'progressbar', 'loss', 'vision'
-]
-
-__all__ += model.__all__
+__all__ = ["models"]
