@@ -18,9 +18,6 @@ from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
-from paddle.fluid.layers.utils import map_structure
-
-#TODO: support nested input and output
 
 __all__ = ['partial_program_from', 'PartialProgramLayer']
 
@@ -38,7 +35,8 @@ class PartialProgramLayer(layers.Layer):
         self._forward_program = main_program
 
         self._program = self._append_backward_desc()
-        self._params = self._parse_parameter(parameters)
+        self._params = parameters
+        self._set_grad_type(self._params)
         self._is_test = is_test
         self._inner_scope = core.Scope()
 
@@ -54,22 +52,6 @@ class PartialProgramLayer(layers.Layer):
             backward.gradients(targets=targets, inputs=[])
 
         return program
-
-    def _parse_parameter(self, parameters):
-        params = []
-        for param in parameters:
-            if append_grad_suffix(param.name) in self._program.block(0).vars:
-                params.append(param)
-
-        # NOTE: if user set sparse gradient mode, the param's gradient
-        # will be SelectedRows, not LoDTensor. But tracer will just
-        # set param grad VarBase by forward VarBase(LoDTensor)
-        # If we don't change grad_var type here, RunProgramOp need
-        # transform SelectedRows to LoDTensor forcibly, it may not
-        # be user wanted result.
-        self._set_grad_type(params)
-
-        return params
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
@@ -135,6 +117,12 @@ class PartialProgramLayer(layers.Layer):
         return input_vars, out_vars, tmp_scope_vec
 
     def _set_grad_type(self, params):
+        # NOTE: if user set sparse gradient mode, the param's gradient
+        # will be SelectedRows, not LoDTensor. But tracer will just
+        # set param grad VarBase by forward VarBase(LoDTensor)
+        # If we don't change grad_var type here, RunProgramOp need
+        # transform SelectedRows to LoDTensor forcibly, it may not
+        # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
             grad_var = self._program.desc.block(0).find_var(

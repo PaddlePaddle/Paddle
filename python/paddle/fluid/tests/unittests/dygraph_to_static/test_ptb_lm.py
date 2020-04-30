@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding
@@ -283,14 +283,12 @@ def train(place):
 
 
 def train_dygraph(place):
-    program_translator.enable(True)
-
+    program_translator.enable(False)
     return train(place)
 
 
 def train_static(place):
-    program_translator.enable(False)
-
+    program_translator.enable(True)
     return train(place)
 
 
