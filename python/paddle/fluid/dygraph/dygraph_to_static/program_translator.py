@@ -208,11 +208,13 @@ class ProgramCache(object):
 
     def _build_once(self, func_spec):
         concrete_program = ConcreteProgram.from_func_spec(func_spec)
-        return partial_program_from(concrete_program)
+        return concrete_program, partial_program_from(concrete_program)
 
     def __getitem__(self, item):
         if not isinstance(item, FunctionSpec):
-            raise ValueError('Not FunctionSpec.')
+            raise ValueError(
+                'type(item) should be FunctionSpec, but received %s' %
+                type(item))
         if item not in self._caches:
             self._caches[item] = self._build_once(item)
         return self._caches[item]
@@ -365,13 +367,12 @@ class ProgramTranslator(object):
             return dygraph_func(*args, **kwargs)
 
         function_spec = FunctionSpec(dygraph_func, args, kwargs)
-        partial_program_layer = self._program_cache[function_spec]
+        _, partial_program_layer = self._program_cache[function_spec]
 
         if args and isinstance(args[0], layers.Layer):
             args = args[1:]
 
         return partial_program_layer(args)
-
 
     def get_func(self, dygraph_func):
         """
@@ -464,17 +465,18 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
-        if in_dygraph_mode() or not self.enable_declarative:
+        if self.enable_declarative:
             logger.info(
-                "The ProgramTranslator.get_program doesn't work in dygraph "
-                "mode or set ProgramTranslator.enable to False. We will "
-                "just return dygraph output.")
+                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
+                "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
-        program_cache = ProgramCache()
-        outputs = program_cache.build_program_and_return_output(dygraph_func,
-                                                                *args, **kwargs)
-        return program_cache.main_program, program_cache.startup_program, program_cache.inputs, outputs
+        func_spec = FunctionSpec(dygraph_func, args, kwargs)
+        concrete_program, _ = self._program_cache[func_spec]
+        return concrete_program.main_program, \
+               concrete_program.startup_program, \
+               concrete_program.inputs, \
+               concrete_program.outputs
 
     def get_code(self, dygraph_func):
         """
