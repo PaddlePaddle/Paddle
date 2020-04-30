@@ -36,6 +36,13 @@ class AssignOp : public framework::OperatorWithKernel {
         if (type == framework::proto::VarType::LOD_TENSOR) {
           ctx->ShareLoD("X", /*->*/ "Out");
         }
+      } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        if (ctx->IsRuntime()) {
+          // The runtime output shape is determined in kernel.
+          return;
+        } else {
+          ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+        }
       }
     }
   }

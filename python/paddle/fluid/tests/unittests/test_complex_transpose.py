@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,29 +13,29 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import numpy as np
-from numpy.random import random as rand
-from paddle import complex as cpx
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
 
-class TestComplexTraceLayer(unittest.TestCase):
+class TestComplexTransposeLayer(unittest.TestCase):
     def setUp(self):
-        self._dtype = "float64"
         self._places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             self._places.append(fluid.CUDAPlace(0))
 
-    def test_complex_x(self):
-        input = rand([2, 20, 2, 3]).astype(self._dtype) + 1j * rand(
-            [2, 20, 2, 3]).astype(self._dtype)
+    def test_identity(self):
+        data = np.random.random(
+            (2, 3, 4, 5)).astype("float32") + 1J * np.random.random(
+                (2, 3, 4, 5)).astype("float32")
+        perm = [3, 2, 0, 1]
+        np_trans = np.transpose(data, perm)
         for place in self._places:
             with dg.guard(place):
-                var_x = dg.to_variable(input)
-                result = cpx.trace(var_x, offset=1, dim1=0, dim2=2).numpy()
-                target = np.trace(input, offset=1, axis1=0, axis2=2)
-                self.assertTrue(np.allclose(result, target))
+                var = dg.to_variable(data)
+                trans = paddle.complex.transpose(var, perm=perm)
+        self.assertTrue(np.allclose(trans.numpy(), np_trans))
 
 
 if __name__ == '__main__':

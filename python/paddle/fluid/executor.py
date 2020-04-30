@@ -97,8 +97,10 @@ def scope_guard(scope):
     """
 
     ex = _switch_scope(scope)
-    yield
-    _switch_scope(ex)
+    try:
+        yield
+    finally:
+        _switch_scope(ex)
 
 
 def as_numpy(tensor):
