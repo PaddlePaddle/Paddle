@@ -241,12 +241,14 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();
+  InitCuSolverContext();
 }
 
 CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
+  DestoryCuSolverContext();
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
@@ -340,6 +342,10 @@ CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
+cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
+  return context()->CusolverDnHandle();
+}
+
 cudaStream_t CUDADeviceContext::stream() const {
   return context()->RawStream();
 }
@@ -402,7 +408,10 @@ framework::DataLayout get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
+void MKLDNNDeviceContext::ResetBlobMap() const {
+  VLOG(3) << "Clearing DNNL cache.";
+  p_blobmap_->clear();
+}
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
   std::lock_guard<std::mutex> lock(*p_mutex_);

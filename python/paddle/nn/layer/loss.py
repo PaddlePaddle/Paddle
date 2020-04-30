@@ -14,8 +14,9 @@
 
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
+
 __all__ = [
-    #'NCELoss',
+    #       'NCELoss',
     'CrossEntropyLoss',
     'MSELoss',
     'L1Loss',
@@ -26,20 +27,22 @@ __all__ = [
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
-    This operator implements the cross entropy loss function. This OP combines `softmax`,
-    `cross_entropy`, and `reduce_sum`/`reduce_mean` together.
+    This operator implements the cross entropy loss function. This OP combines ``softmax``,
+    ``cross_entropy``, and ``reduce_sum``/``reduce_mean`` together.
 
-    It is useful when training a classification problem with `C` classes.
-    If provided, the optional argument `weight` should be a 1D Variable assigning
+    It is useful when training a classification problem with ``C`` classes.
+    If provided, the optional argument ``weight`` should be a 1D Variable assigning
     weight to each of the classes.
 
     For predictions label, and target label, the loss is calculated as follows.
+
     .. math::
 
         loss_j =  -\\text{input[class]} +
         \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right), j = 1,..., K
 
-    If weight is not `None`:
+    If weight is not ``None``:
+
     .. math::
 
         loss_j =  \\text{weight[class]}(-\\text{input[class]} +
@@ -59,9 +62,12 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+
     Returns:
         The tensor variable storing the cross_entropy_loss of input and label.
+
     Return type: Variable.
+
     Examples:
         .. code-block:: python
 

@@ -280,20 +280,20 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 class NCEOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto weight_grad = ctx->Output(framework::GradVarName("Weight")).front();
+    auto weight_grad = framework::GradVarName("Weight");
 
     auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
     if (is_sparse) {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to SelectedRows";
-      ctx->SetType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(weight_grad, framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to LoDTensor";
-      ctx->SetType(weight_grad, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(weight_grad, framework::proto::VarType::LOD_TENSOR);
     }
-    ctx->SetDataType(weight_grad, ctx->GetDataType(ctx->Input("Input")[0]));
+    ctx->SetOutputDataType(weight_grad, ctx->GetInputDataType("Input"));
   }
 };
 

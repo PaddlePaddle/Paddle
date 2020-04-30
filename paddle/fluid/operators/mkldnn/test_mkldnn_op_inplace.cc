@@ -25,10 +25,12 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-USE_OP(softmax);
-USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 USE_OP(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
+USE_OP(relu);
+USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+USE_OP(softmax);
+USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
 
 namespace paddle {
 namespace operators {
@@ -130,6 +132,12 @@ TEST(test_elementwise_add_inplace, cpu_place) {
   framework::DDim dims({1, 12, 20, 20});
   platform::CPUPlace p;
   ASSERT_TRUE(TestMain<float>(p, "elementwise_add", dims, 2));
+}
+
+TEST(test_relu_inplace, cpu_place) {
+  framework::DDim dims({1, 12, 20, 20});
+  platform::CPUPlace p;
+  ASSERT_TRUE(TestMain<float>(p, "relu", dims, 1));
 }
 
 }  // namespace operators

@@ -779,6 +779,9 @@ template class DatasetImpl<Record>;
 void MultiSlotDataset::PostprocessInstance() {
   // divide pv instance, and merge to input_channel_
   if (enable_pv_merge_) {
+    auto fleet_ptr = FleetWrapper::GetInstance();
+    std::shuffle(input_records_.begin(), input_records_.end(),
+                 fleet_ptr->LocalRandomEngine());
     input_channel_->Open();
     input_channel_->Write(std::move(input_records_));
     for (size_t i = 0; i < multi_pv_consume_.size(); ++i) {
@@ -799,8 +802,8 @@ void MultiSlotDataset::PostprocessInstance() {
       multi_consume_channel_[i]->Clear();
     }
     input_channel_->Close();
+    this->LocalShuffle();
   }
-  this->LocalShuffle();
 }
 
 void MultiSlotDataset::SetCurrentPhase(int current_phase) {
