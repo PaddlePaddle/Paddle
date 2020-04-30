@@ -62,6 +62,9 @@ std::string format_string(const std::string& fmt, ARGS&&... args) {
 // remove leading and tailing spaces
 std::string trim_spaces(const std::string& str);
 
+// erase all spaces in str
+std::string erase_spaces(const std::string& str);
+
 int str_to_float(const char* str, float* v);
 
 // split string by delim
