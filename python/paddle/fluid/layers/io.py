@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six

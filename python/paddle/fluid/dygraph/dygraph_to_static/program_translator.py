@@ -372,6 +372,7 @@ class ProgramTranslator(object):
 
         return partial_program_layer(args)
 
+
     def get_func(self, dygraph_func):
         """
         Returns a callable function which converts imperative dygraph APIs of
