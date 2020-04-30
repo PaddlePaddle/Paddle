@@ -16,6 +16,8 @@ import numpy as np
 import math
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestAddPositionEncodingTensorOp(OpTest):
@@ -128,6 +130,19 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
                     self.out[pos, half_shape + k] = \
                         self.x[pos, half_shape + k] * self.alpha + math.cos(val) * self.beta
             start += max_length
+
+
+class TestAddPositionEncodingOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((4, 16, 8)).astype("float32")
+
+            def test_Variable():
+                # the input type must be Variable
+                fluid.layers.add_position_encoding(
+                    input=input_data, alpha=1.0, beta=1.0)
+
+            self.assertRaises(TypeError, test_Variable)
 
 
 if __name__ == '__main__':
