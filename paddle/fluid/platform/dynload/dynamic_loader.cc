@@ -230,7 +230,9 @@ void* GetCusolverDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
+  // TODO(guosheng): Fix cusolver support on windows.
+  // return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
+  PADDLE_THROW("Do not support Windows.");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
