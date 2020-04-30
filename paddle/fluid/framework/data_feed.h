@@ -655,9 +655,10 @@ class MultiSlotFileInstantDataFeed
 
  protected:
   int fd_{-1};
-  char* buffer_{nullptr};
+  volatile char* buffer_{nullptr};
   size_t end_{0};
   size_t offset_{0};
+  size_t index_{0};
 
   bool Preprocess(const std::string& filename) override;
 

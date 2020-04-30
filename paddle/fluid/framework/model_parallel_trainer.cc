@@ -122,14 +122,19 @@ void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
     // if (isPersistable(var) && macrobatch_id == 0) {
     if ((var->Persistable() || is_feed_var) && macrobatch_id == 0) {
-      auto* ptr = root_scope_->FindVar(var->Name());
-      auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
-      // InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create persistable var or feed var " << var->Name()
-              << " for minibatch " << section_id << ", which pointer is "
-              << new_ptr;
-      InitializeVariable(new_ptr, var->GetType());
-      if (!is_feed_var) {
+      if (is_feed_var) {
+        // auto* ptr = root_scope_->FindVar(var->Name());
+        auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
+        VLOG(3) << "data name: " << var->Name() << ", ptr: " << new_ptr;
+        InitializeVariable(new_ptr, var->GetType());
+      } else {
+        auto* ptr = root_scope_->FindVar(var->Name());
+        auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
+        // InitializeVariable(ptr, var->GetType());
+        VLOG(3) << "Create persistable var or feed var " << var->Name()
+                << " for minibatch " << section_id << ", which pointer is "
+                << new_ptr;
+        InitializeVariable(new_ptr, var->GetType());
         const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
         LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
         TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,

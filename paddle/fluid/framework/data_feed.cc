@@ -1072,6 +1072,8 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
     const auto& type = ins_vec_[i].GetType();
     const auto& offset = ins_vec_[i].GetOffset();
     int total_instance = static_cast<int>(offset.back());
+    VLOG(3) << "field: " << i << " ,type: " << type
+            << " ,total_instance:" << total_instance;
 
     if (type[0] == 'f') {  // float
       const auto& feasign = ins_vec_[i].GetFloatData();
@@ -1092,12 +1094,13 @@ void PrivateInstantDataFeed<T>::PutToFeedVec() {
     if (use_slots_is_dense_[i]) {
       int64_t total_dims = 1;
       for (const auto e : use_slots_shape_[i]) {
+        VLOG(3) << "dim size: " << e;
         total_dims *= e;
       }
-      PADDLE_ENFORCE(
-          total_dims == total_instance,
-          "The actual data size of slot[%s] doesn't match its declaration",
-          use_slots_[i].c_str());
+      PADDLE_ENFORCE(total_dims == total_instance,
+                     "The actual data size[%lld] of slot[%s] doesn't match its "
+                     "declaration[%lld]",
+                     total_dims, use_slots_[i].c_str(), total_instance);
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
     }
   }
@@ -1173,24 +1176,25 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
 template class PrivateInstantDataFeed<std::vector<MultiSlotType>>;
 
 bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
-  fd_ = open(filename.c_str(), O_RDONLY);
+  fd_ = open(filename.c_str(), O_RDWR);
   PADDLE_ENFORCE(fd_ != -1, "Fail to open file: %s", filename.c_str());
 
   struct stat sb;
   fstat(fd_, &sb);
   end_ = static_cast<size_t>(sb.st_size);
 
-  buffer_ =
-      reinterpret_cast<char*>(mmap(NULL, end_, PROT_READ, MAP_PRIVATE, fd_, 0));
+  buffer_ = reinterpret_cast<volatile char*>(
+      mmap(NULL, end_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
   PADDLE_ENFORCE(buffer_ != MAP_FAILED, strerror(errno));
 
   offset_ = 0;
+  index_ = 0;
   return true;
 }
 
 bool MultiSlotFileInstantDataFeed::Postprocess() {
   if (buffer_ != nullptr) {
-    munmap(buffer_, end_);
+    munmap(static_cast<void*>(buffer_), end_);
     buffer_ = nullptr;
   }
   if (fd_ != -1) {
@@ -1208,27 +1212,38 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
   }
 
   batch_size_ = 0;
+
   while (batch_size_ < default_batch_size_ && offset_ < end_) {
+    uint8_t status = *reinterpret_cast<volatile uint8_t*>(buffer_ + offset_);
+    while (status == 0) {
+      status = *reinterpret_cast<volatile uint8_t*>(buffer_ + offset_);
+    }
+    if (status == 2) {
+      return false;
+    }
+    auto old_offset = offset_;
+    offset_ += sizeof(uint8_t);
+
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       char type = all_slots_type_[i][0];
 
-      uint16_t num = *reinterpret_cast<uint16_t*>(buffer_ + offset_);
+      uint32_t num = *reinterpret_cast<volatile uint32_t*>(buffer_ + offset_);
       PADDLE_ENFORCE(
           num,
           "The number of ids can not be zero, you need padding "
           "it in data generator; or if there is something wrong with "
           "the data, please check if the data contains unresolvable "
           "characters.");
-      offset_ += sizeof(uint16_t);
+      offset_ += sizeof(uint32_t);
 
       if (idx != -1) {
         int inductive_size = multi_inductive_shape_index_[i].size();
         if (UNLIKELY(batch_size_ == 0)) {
           ins_vec_[idx].Init(all_slots_type_[i], default_batch_size_ * num);
           ins_vec_[idx].InitOffset(default_batch_size_);
-          uint64_t* inductive_shape =
-              reinterpret_cast<uint64_t*>(buffer_ + offset_);
+          volatile uint64_t* inductive_shape =
+              reinterpret_cast<volatile uint64_t*>(buffer_ + offset_);
           for (int inductive_id = 0; inductive_id < inductive_size;
                ++inductive_id) {
             use_slots_shape_[i][multi_inductive_shape_index_[i][inductive_id]] =
@@ -1240,11 +1255,15 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
 
         if (type == 'f') {
           ins_vec_[idx].AppendValues(
-              reinterpret_cast<float*>(buffer_ + offset_), num);
+              const_cast<float*>(
+                  reinterpret_cast<volatile float*>(buffer_ + offset_)),
+              num);
           offset_ += num * sizeof(float);
         } else if (type == 'u') {
           ins_vec_[idx].AppendValues(
-              reinterpret_cast<uint64_t*>(buffer_ + offset_), num);
+              const_cast<uint64_t*>(
+                  reinterpret_cast<volatile uint64_t*>(buffer_ + offset_)),
+              num);
           offset_ += num * sizeof(uint64_t);
         }
       } else {
@@ -1254,6 +1273,12 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
           offset_ += num * sizeof(uint64_t);
         }
       }
+    }
+    *reinterpret_cast<volatile uint8_t*>(buffer_ + old_offset) = 0;
+    ++index_;
+    if (index_ == 128) {
+      index_ = 0;
+      offset_ = 0;
     }
     ++batch_size_;
     // OPTIMIZE: It is better to insert check codes between instances for format
