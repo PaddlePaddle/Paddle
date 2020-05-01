@@ -21,7 +21,6 @@ import cv2
 
 from paddle.incubate.hapi.datasets import *
 from paddle.incubate.hapi.datasets.utils import _check_exists_and_download
-from paddle.incubate.hapi.vision.transforms import Compose
 
 
 class TestFolderDatasets(unittest.TestCase):
@@ -48,8 +47,7 @@ class TestFolderDatasets(unittest.TestCase):
         assert len(dataset_folder) == 4
         assert len(dataset_folder.classes) == 2
 
-        transform = Compose([])
-        dataset_folder = DatasetFolder(self.data_dir, transform=transform)
+        dataset_folder = DatasetFolder(self.data_dir)
         for _ in dataset_folder:
             pass
 
@@ -59,8 +57,7 @@ class TestFolderDatasets(unittest.TestCase):
         for _ in loader:
             pass
 
-        transform = Compose([])
-        loader = ImageFolder(self.data_dir, transform=transform)
+        loader = ImageFolder(self.data_dir)
         for _ in loader:
             pass
 
@@ -81,14 +78,16 @@ class TestMNISTTest(unittest.TestCase):
 
         for i in range(len(mnist)):
             image, label = mnist[i]
-            self.assertTrue(image.shape[0] == 784)
+            self.assertTrue(image.shape[0] == 1)
+            self.assertTrue(image.shape[1] == 28)
+            self.assertTrue(image.shape[2] == 28)
             self.assertTrue(label.shape[0] == 1)
             self.assertTrue(0 <= int(label) <= 9)
 
 
 class TestMNISTTrain(unittest.TestCase):
     def test_main(self):
-        mnist = MNIST(mode='train')
+        mnist = MNIST(mode='train', chw_format=False)
         self.assertTrue(len(mnist) == 60000)
 
         for i in range(len(mnist)):
