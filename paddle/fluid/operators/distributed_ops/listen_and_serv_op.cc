@@ -477,7 +477,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     rpc_service_->WaitServerReady();
 
     barrier->WaitServerWeakup();
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
     VLOG(3) << "all trainers sync params from server done";
 
     barrier->ServerWeakup();

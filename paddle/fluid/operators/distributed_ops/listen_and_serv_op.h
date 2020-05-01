@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <atomic>
+#include <chrono>  // NOLINT
 #include <memory>
 #include <set>
 #include <string>
