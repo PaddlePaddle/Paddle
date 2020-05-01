@@ -332,30 +332,15 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
-  ~HalfAsyncCommunicator();
-
-  void InitImpl(const RpcCtxMap& send_varname_to_ctx,
-                const RpcCtxMap& recv_varname_to_ctx,
-                Scope* recv_scope) override;
-
-  void InitImpl(const paddle::framework::ProgramDesc& program,
-                Scope* recv_scope) override;
-
-  void Start() override;
-  void Stop() override;
 
   void Clean() override;
-
   void Recv() { RecvByCommunicator(); }
 
   void Barrier() override;
-
   void BarrierTriggerDecrement() override;
   void BarrierTriggerReset(int initial_val) override;
 
   void MetCondition();
-  void BarrierSend();
-  void BarrierRecv();
   void BarrierWeakUp();
 
  protected:
@@ -376,7 +361,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
     VLOG(0) << "SyncCommunicator Initialized";
   }
-  ~SyncCommunicator();
+
   void BarrierSend();
   void BarrierRecv();
 
