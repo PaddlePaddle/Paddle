@@ -27,8 +27,15 @@ from .configure import Config
 logger.setup_logger()
 
 __all__ = [
-    'Config', 'callbacks', 'datasets', 'distributed', 'download', 'metrics',
-    'progressbar', 'loss', 'vision'
+    'Config',
+    'callbacks',
+    'datasets',
+    'distributed',
+    'download',
+    'metrics',
+    'progressbar',
+    'loss',
+    'vision',
 ]
 
 __all__ += model.__all__

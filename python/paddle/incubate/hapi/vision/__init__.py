@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from . import models
+from .models import *
 
-__all__ = ["models"]
+__all__ = models.__all__
