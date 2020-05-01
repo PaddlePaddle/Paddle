@@ -55,6 +55,10 @@ void BarrierMonitor::Monitor() {
   }
 
   while (running_) {
+    VLOG(3) << "running timer: " << timer << " barrier: " << barrier_type
+            << " sendQ:" << send_barrier_queue->Size()
+            << " recvQ: " << recv_barrier_queue->Size();
+
     int timer = 0;
     while (timer < kMaxWaitMS) {
       if (IsReady()) {
@@ -86,42 +90,51 @@ void BarrierMonitor::Invalid() {
   release_ = true;
   send_barrier_queue->Clear();
   recv_barrier_queue->Clear();
-  cv_.notify_all();
+  workder_cv_.notify_all();
 }
 
 void BarrierMonitor::Swap() {
-  if (barrier_type == BarrierType::kSendBarrier) {
-    Swap(BarrierType::kRecvBarrier);
-  } else {
-    Swap(BarrierType::kSendBarrier);
-  }
-}
-
-void BarrierMonitor::Swap(BarrierType barrier) {
   std::unique_lock<std::mutex> lck(mutex_);
+  ServerWeakup(barrier_type);
+  WaitServerWeakup(barrier_type);
 
   valid_ = true;
   release_ = true;
 
-  if (barrier == BarrierType::kSendBarrier) {
+  if (barrier_type == BarrierType::kSendBarrier) {
     barrier_type = BarrierType::kRecvBarrier;
     send_barrier_queue->Clear();
   } else {
     barrier_type = BarrierType::kSendBarrier;
     recv_barrier_queue->Clear();
   }
-  cv_.notify_all();
+
+  workder_cv_.notify_all();
+}
+
+void BarrierMonitor::Release() {
+  std::unique_lock<std::mutex> lck(mutex_);
+
+  valid_ = true;
+  release_ = true;
+  barrier_type = BarrierType::kRecvBarrier;
+  send_barrier_queue->Clear();
+  recv_barrier_queue->Clear();
 }
 
 bool BarrierMonitor::Wait() {
   std::unique_lock<std::mutex> lk(mutex_);
-  cv_.wait(lk, [this] { return (release_); });
+  workder_cv_.wait(lk, [this] { return (release_); });
   return valid_;
 }
 
-void BarrierMonitor::WaitBarrierDone(BarrierType barrier) {
+void BarrierMonitor::WaitServerWeakup() {
   std::unique_lock<std::mutex> lk(mutex_);
-  cv_.wait(lk, [=] { return (barrier_type != barrier); });
+  server_cv_.wait(lk);
+}
+void BarrierMonitor::ServerWeakup() {
+  std::unique_lock<std::mutex> lk(mutex_);
+  server_cv_.notify_all();
 }
 
 std::once_flag BarrierMonitor::init_flag_;

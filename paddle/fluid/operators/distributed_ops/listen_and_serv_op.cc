@@ -43,6 +43,7 @@ void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -141,12 +142,12 @@ void ListenAndServOp::RunSyncLoop(
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     VLOG(3) << "switch to kSendBarrier to receive Grad from trainers";
-    barrier->WaitBarrierDone(distributed::BarrierType::kSendBarrier);
+    barrier->WaitServerWeakup();
     VLOG(3) << "wait kSendBarrier to receive Grad from trainers done";
 
     if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      barrier->Swap(distributed::BarrierType::kRecvBarrier);
+      barrier->Release();
       break;
     }
 
@@ -178,7 +179,7 @@ void ListenAndServOp::RunSyncLoop(
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
     VLOG(3) << "switch to kRecvBarrier to push params to trainers";
-    barrier->WaitBarrierDone(distributed::BarrierType::kRecvBarrier);
+    barrier->ServerWeakup();
     VLOG(3) << "kRecvBarrier to push params to trainers done";
   }  // while(true)
 }
@@ -470,13 +471,16 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     // start the server listening after all member initialized.
 
     auto *barrier = distributed::BarrierMonitor::Init(fan_in);
-    barrier->Swap(distributed::BarrierType::kRecvBarrier);
 
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
     rpc_service_->WaitServerReady();
 
-    barrier->WaitBarrierDone(distributed::BarrierType::kRecvBarrier);
+    barrier->WaitServerWeakup();
+
+    VLOG(3) << "all trainers sync params from server done";
+
+    barrier->ServerWeakup();
 
     CacheVarsType(inputs, recv_scope);
 

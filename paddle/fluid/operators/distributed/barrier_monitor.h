@@ -52,31 +52,31 @@ class BlockingQueueForBarrier {
   bool Push(const T &elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      workder_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
       PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.push_back(elem);
     }
-    cv_.notify_one();
+    workder_cv_.notify_one();
     return true;
   }
 
   bool Push(T &&elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      workder_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
       PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.emplace_back(std::move(elem));
     }
-    cv_.notify_one();
+    workder_cv_.notify_one();
     return true;
   }
 
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [=] { return !queue_.empty(); });
+    workder_cv_.wait(lock, [=] { return !queue_.empty(); });
     T rc(std::move(queue_.front()));
     queue_.pop_front();
-    cv_.notify_one();
+    workder_cv_.notify_one();
     return rc;
   }
 
@@ -100,7 +100,7 @@ class BlockingQueueForBarrier {
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
-  std::condition_variable cv_;
+  std::condition_variable workder_cv_;
 };
 
 class BarrierMonitor {
@@ -136,7 +136,8 @@ class BarrierMonitor {
   void Monitor();
 
   void Swap();
-  void Swap(BarrierType barrier);
+
+  void Release();
 
   bool IsReady();
 
@@ -144,7 +145,8 @@ class BarrierMonitor {
 
   bool Wait();
 
-  void WaitBarrierDone(BarrierType barrier);
+  void WaitServerWeakup();
+  void ServerWeakup();
 
  private:
   // Init is called by GetInstance.
@@ -156,13 +158,17 @@ class BarrierMonitor {
 
   static std::once_flag init_flag_;
   static std::unique_ptr<BarrierMonitor> monitor_;
+
   int workers_;
   bool working_ = false;
   bool running_ = false;
   bool valid_ = false;
   bool release_ = false;
 
-  std::condition_variable cv_;
+  std::condition_variable workder_cv_;
+
+  bool server_done = false;
+  std::condition_variable server_cv_;
   std::mutex mutex_;
   BarrierType barrier_type;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};

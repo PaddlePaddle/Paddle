@@ -91,7 +91,6 @@ bool RequestSendHandler::Handle(const std::string &varname,
 
       return true;
     } else {  // sync
-      rpc_server_->WaitCond(kRequestSend);
       VLOG(3) << "sync: processing received var: " << varname;
 
       if (invar == nullptr) {
@@ -115,7 +114,6 @@ bool RequestGetHandler::Handle(const std::string &varname,
           << " table_name: " << table_name;
 
   if (distributed_mode_ == DistributedMode::kSync) {
-    rpc_server_->WaitCond(kRequestGet);
     *outvar = scope_->FindVar(varname);
 
   } else {
