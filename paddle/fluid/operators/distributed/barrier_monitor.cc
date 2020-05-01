@@ -55,11 +55,11 @@ void BarrierMonitor::Monitor() {
   }
 
   while (running_) {
+    int timer = 0;
     VLOG(3) << "running timer: " << timer << " barrier: " << barrier_type
             << " sendQ:" << send_barrier_queue->Size()
             << " recvQ: " << recv_barrier_queue->Size();
 
-    int timer = 0;
     while (timer < kMaxWaitMS) {
       if (IsReady()) {
         Swap();
@@ -95,8 +95,8 @@ void BarrierMonitor::Invalid() {
 
 void BarrierMonitor::Swap() {
   std::unique_lock<std::mutex> lck(mutex_);
-  ServerWeakup(barrier_type);
-  WaitServerWeakup(barrier_type);
+  ServerWeakup();
+  WaitServerWeakup();
 
   valid_ = true;
   release_ = true;
@@ -129,11 +129,11 @@ bool BarrierMonitor::Wait() {
 }
 
 void BarrierMonitor::WaitServerWeakup() {
-  std::unique_lock<std::mutex> lk(mutex_);
+  std::unique_lock<std::mutex> lk(server_mutex_);
   server_cv_.wait(lk);
 }
 void BarrierMonitor::ServerWeakup() {
-  std::unique_lock<std::mutex> lk(mutex_);
+  std::unique_lock<std::mutex> lk(server_mutex_);
   server_cv_.notify_all();
 }
 

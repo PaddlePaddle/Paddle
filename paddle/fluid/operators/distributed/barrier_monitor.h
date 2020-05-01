@@ -169,6 +169,7 @@ class BarrierMonitor {
 
   bool server_done = false;
   std::condition_variable server_cv_;
+  std::mutex server_mutex_;
   std::mutex mutex_;
   BarrierType barrier_type;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
