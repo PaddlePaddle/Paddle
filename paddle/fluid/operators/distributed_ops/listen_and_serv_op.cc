@@ -141,9 +141,8 @@ void ListenAndServOp::RunSyncLoop(
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    VLOG(3) << "switch to kSendBarrier to receive Grad from trainers";
+    VLOG(3) << "wait kSendBarrier to receive Grad from trainers";
     barrier->WaitServerWeakup();
-    VLOG(3) << "wait kSendBarrier to receive Grad from trainers done";
 
     if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
@@ -178,9 +177,8 @@ void ListenAndServOp::RunSyncLoop(
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
-    VLOG(3) << "switch to kRecvBarrier to push params to trainers";
     barrier->ServerWeakup();
-    VLOG(3) << "kRecvBarrier to push params to trainers done";
+    VLOG(3) << "kRecvBarrier to push params to trainers";
   }  // while(true)
 }
 
