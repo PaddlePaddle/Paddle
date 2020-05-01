@@ -189,7 +189,7 @@ void AsyncCommunicator::SendByCommunicator() {
                 << after_send - after_merge;
       };
       task_futures.emplace_back(
-          consume_threadpool_->enqueue(std::move(send_task)));
+          send_threadpool_->enqueue(std::move(send_task)));
     } else {
       VLOG(4) << var_name << " queue empty";
     }
@@ -235,7 +235,7 @@ void AsyncCommunicator::Recv() {
     return;
   }
 
-  auto grad_num = grad_num_.load();
+  int grad_num = grad_num_.load();
   if (grad_num > min_send_grad_num_before_recv_) {
     RecvByCommunicator();
     grad_num_.store(0);
@@ -975,75 +975,6 @@ void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
 }
 
 void GeoSgdCommunicator::Recv() {}
-
-void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                                     const RpcCtxMap &recv_varname_to_ctx,
-                                     Scope *recv_scope) {
-  send_varname_to_ctx_ = std::move(send_varname_to_ctx);
-  recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
-  recv_scope_ = std::move(recv_scope);
-
-  if (send_varname_to_ctx.size() == 0) {
-    VLOG(0) << "nothing need to be send, will not start main_thread";
-  } else {
-    send_scope_.reset(new Scope());
-    for (auto &iter : send_varname_to_ctx_) {
-      send_varname_to_queue_[iter.first] =
-          std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-              send_queue_size_);
-    }
-
-    consume_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
-  }
-
-  if (recv_varname_to_ctx.size() == 0) {
-    VLOG(0) << "nothing need to be received, will not start recv_thread";
-  } else {
-    recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
-  }
-}
-
-void HalfAsyncCommunicator::InitImpl(
-    const paddle::framework::ProgramDesc &program, Scope *param_scope) {
-  RpcCtxMap send_varname_to_ctx;
-  RpcCtxMap recv_varname_to_ctx;
-  for (auto *op : program.Block(0).AllOps()) {
-    VLOG(3) << "node name " << op->Type();
-    if (op->Type() == "send") {
-      auto send_var_name = op->Input("X")[0];
-      auto send_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("send_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto height_section =
-          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      send_varname_to_ctx[send_var_name] = operators::distributed::CommContext(
-          send_var_name, send_varnames, epmap, height_section, {}, trainer_id);
-    } else if (op->Type() == "recv") {
-      auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
-      PADDLE_ENFORCE_GT(do_not_run, 0,
-                        platform::errors::InvalidArgument(
-                            "recv op's attr `do_not_run` must be True!"));
-      auto recv_var_name = op->Output("Out")[0];
-      auto recv_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("recv_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      recv_varname_to_ctx[recv_var_name] = operators::distributed::CommContext(
-          recv_var_name, recv_varnames, epmap, {}, {}, trainer_id);
-    }
-  }
-
-  // init communicator here
-  if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
-    LOG(WARNING) << "no var need to send and recv!!";
-  }
-
-  operators::distributed::HalfAsyncCommunicator::InitImpl(
-      send_varname_to_ctx, recv_varname_to_ctx, param_scope);
-}
 
 void HalfAsyncCommunicator::Clean() {
   for (auto &iter : send_varname_to_queue_) {

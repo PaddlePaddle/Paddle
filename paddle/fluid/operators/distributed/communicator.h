@@ -325,7 +325,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
  public:
   HalfAsyncCommunicator() {}
   explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
-      : Communicator(envs) {
+      : AsyncCommunicator(envs) {
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -356,6 +356,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
   void MetCondition();
   void BarrierSend();
   void BarrierRecv();
+  void BarrierWeakUp();
 
  protected:
   // mutex for Wait for barrier
