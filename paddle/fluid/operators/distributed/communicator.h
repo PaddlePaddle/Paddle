@@ -275,9 +275,6 @@ class AsyncCommunicator : public Communicator {
   void Start() override;
   void Stop() override;
 
-  void Recv() override;
-  void RecvAll();
-
   void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                 const RpcCtxMap& recv_varname_to_ctx,
                 Scope* recv_scope) override;
@@ -285,14 +282,22 @@ class AsyncCommunicator : public Communicator {
   void InitImpl(const paddle::framework::ProgramDesc& program,
                 Scope* recv_scope) override;
 
-  void SendThread();
-  void RecvThread();
+  void MainThread();
+  void IndependentRecvThread();
 
   void Send(const std::vector<std::string>& var_names,
             const std::vector<std::string>& var_tables,
             const framework::Scope& scope) override;
 
- private:
+  void Recv() override;
+  void SendByCommunicator();
+  void RecvByCommunicator();
+  virtual void MetCondition() {}
+  virtual void BarrierSend() {}
+  virtual void BarrierRecv() {}
+  virtual void BarrierWeakUp() {}
+
+ protected:
   int min_send_grad_num_before_recv_;
   int thread_pool_size_;
   int max_merge_var_num_;
@@ -300,14 +305,14 @@ class AsyncCommunicator : public Communicator {
   int send_queue_size_;
   bool independent_recv_thread_;
   bool is_sgd_optimizer_;
+  int trainer_id_ = 0;
 
- private:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
-  std::unique_ptr<std::thread> send_thread_{nullptr};
+  std::unique_ptr<std::thread> main_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
   Scope* recv_scope_;                  // should be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
@@ -316,7 +321,7 @@ class AsyncCommunicator : public Communicator {
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
 };
 
-class HalfAsyncCommunicator : public Communicator {
+class HalfAsyncCommunicator : public AsyncCommunicator {
  public:
   HalfAsyncCommunicator() {}
   explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
@@ -328,22 +333,6 @@ class HalfAsyncCommunicator : public Communicator {
     VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
   ~HalfAsyncCommunicator();
-  void Start() override;
-  void Stop() override;
-
-  void Clean() override;
-
-  void Send(const std::vector<std::string>& var_names,
-            const std::vector<std::string>& var_tables,
-            const framework::Scope& scope) override;
-
-  void Recv() override;
-
-  void Barrier() override;
-  void BarrierWeakUp();
-
-  void BarrierTriggerDecrement() override;
-  void BarrierTriggerReset(int initial_val) override;
 
   void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                 const RpcCtxMap& recv_varname_to_ctx,
@@ -352,29 +341,23 @@ class HalfAsyncCommunicator : public Communicator {
   void InitImpl(const paddle::framework::ProgramDesc& program,
                 Scope* recv_scope) override;
 
-  void ConsumeThread();
-  virtual void BarrierSend() {}
-  virtual void BarrierRecv() {}
+  void Start() override;
+  void Stop() override;
+
+  void Clean() override;
+
+  void Recv() { RecvByCommunicator(); }
+
+  void Barrier() override;
+
+  void BarrierTriggerDecrement() override;
+  void BarrierTriggerReset(int initial_val) override;
+
+  void MetCondition();
+  void BarrierSend();
+  void BarrierRecv();
 
  protected:
-  int max_merge_var_num_;
-  int send_wait_times_;
-  int thread_pool_size_;
-  int send_queue_size_;
-  int trainer_id_ = 0;
-
- protected:
-  std::unordered_map<std::string,
-                     std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
-      send_varname_to_queue_;
-  RpcCtxMap send_varname_to_ctx_;
-  RpcCtxMap recv_varname_to_ctx_;
-  std::unique_ptr<std::thread> consume_thread_{nullptr};
-  Scope* recv_scope_;                  // should be global scope
-  std::unique_ptr<Scope> send_scope_;  // an independent scope
-  std::unique_ptr<::ThreadPool> consume_threadpool_{nullptr};
-  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
-
   // mutex for Wait for barrier
   std::mutex barrier_mutex_;
   std::condition_variable barrier_cond_;

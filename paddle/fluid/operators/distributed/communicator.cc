@@ -139,87 +139,89 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
 
 AsyncCommunicator::~AsyncCommunicator() {
   running_ = false;
-  if (send_thread_) send_thread_->join();
+  if (main_thread_) main_thread_->join();
   if (recv_thread_) recv_thread_->join();
 }
 
-void AsyncCommunicator::SendThread() {
+void AsyncCommunicator::SendByCommunicator() {
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(send_varname_to_ctx_.size());
+  VLOG(3) << "run send graph";
+  auto before_run_send_graph = GetCurrentUS();
+  for (auto &iter : send_varname_to_queue_) {
+    auto &var_name = iter.first;
+    auto &var_queue = iter.second;
+    if (var_queue->Size() > 0) {
+      auto send_task = [this, &var_name, &var_queue] {
+        VLOG(3) << var_name << " merge and send";
+        std::vector<std::shared_ptr<Variable>> vars;
+        size_t merged_var_num = 0;
+        size_t wait_times = 0;
+        while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
+          if (var_queue->Size() == 0) {
+            VLOG(3) << "wait_times -> " << wait_times;
+            if (wait_times >= static_cast<size_t>(send_wait_times_)) {
+              break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            wait_times++;
+            continue;
+          } else {
+            wait_times = 0;
+            vars.push_back(var_queue->Pop());
+            merged_var_num++;
+          }
+        }
+        auto before_merge = GetCurrentUS();
+
+        MergeVars<float>(var_name, vars, send_scope_.get(), false);
+
+        auto after_merge = GetCurrentUS();
+        VLOG(3) << "merge " << merged_var_num << " " << var_name << " use time "
+                << after_merge - before_merge;
+
+        auto send_functor = distributed::ParameterSend<float>();
+        auto &ctx = send_varname_to_ctx_.at(var_name);
+        send_functor(ctx, *send_scope_, true, 1);
+
+        auto after_send = GetCurrentUS();
+        VLOG(3) << "send " << var_name << " use time "
+                << after_send - after_merge;
+      };
+      task_futures.emplace_back(
+          consume_threadpool_->enqueue(std::move(send_task)));
+    } else {
+      VLOG(4) << var_name << " queue empty";
+    }
+  }
+  for (auto &task_f : task_futures) {
+    task_f.wait();
+  }
+  auto after_run_send_graph = GetCurrentUS();
+
+  VLOG(3) << "run send graph use time "
+          << after_run_send_graph - before_run_send_graph;
+}
+
+void AsyncCommunicator::MainThread() {
   VLOG(3) << "SendThread start!";
   while (running_) {
-    std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(4) << "run send graph";
-    auto before_run_send_graph = GetCurrentUS();
-    for (auto &iter : send_varname_to_queue_) {
-      auto &var_name = iter.first;
-      auto &var_queue = iter.second;
-      if (var_queue->Size() > 0) {
-        auto send_task = [this, &var_name, &var_queue] {
-          VLOG(4) << var_name << " merge and send";
-          std::vector<std::shared_ptr<Variable>> vars;
-          int merged_var_num = 0;
-          int wait_times = 0;
-          while (merged_var_num < max_merge_var_num_) {
-            if (var_queue->Size() == 0) {
-              VLOG(4) << "wait_times -> " << wait_times;
-              if (wait_times >= send_wait_times_) {
-                break;
-              }
-              std::this_thread::sleep_for(std::chrono::milliseconds(10));
-              wait_times++;
-              continue;
-            } else {
-              wait_times = 0;
-
-              vars.push_back(var_queue->Pop());
-              // only count the send number of the first var
-              if (var_name == send_varname_to_queue_.begin()->first) {
-                grad_num_.fetch_add(1, std::memory_order_relaxed);
-              }
-              merged_var_num++;
-            }
-          }
-          auto before_merge = GetCurrentUS();
-          auto &ctx = send_varname_to_ctx_.at(var_name);
-          if (ctx.use_send_handler) {
-            MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
-          } else {
-            MergeVars<int64_t>(var_name, vars, send_scope_.get(),
-                               ctx.merge_add);
-          }
-          auto after_merge = GetCurrentUS();
-          VLOG(4) << "merge " << merged_var_num << " " << var_name
-                  << " use time " << after_merge - before_merge;
-          auto send_functor = distributed::ParameterSend<float>();
-          send_functor(ctx, *send_scope_, true, 1);
-          auto after_send = GetCurrentUS();
-          VLOG(4) << "send " << var_name << " use time "
-                  << after_send - after_merge;
-        };
-        task_futures.emplace_back(
-            send_threadpool_->enqueue(std::move(send_task)));
-      } else {
-        VLOG(4) << var_name << " queue empty";
-      }
-    }
-    for (auto &task_f : task_futures) {
-      task_f.wait();
-    }
-    auto after_run_send_graph = GetCurrentUS();
-
-    VLOG(4) << "run send graph use time "
-            << after_run_send_graph - before_run_send_graph;
+    MetCondition();
+    SendByCommunicator();
+    BarrierSend();
     Recv();
+    BarrierRecv();
+    BarrierWeakUp();
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
 
-void AsyncCommunicator::RecvThread() {
-  VLOG(3) << "RecvThread start!";
+void AsyncCommunicator::IndependentRecvThread() {
+  VLOG(3) << "IndependentRecvThread start!";
   while (running_) {
     int grad_num = grad_num_.load();
     if (grad_num > min_send_grad_num_before_recv_) {
-      RecvAll();
+      RecvByCommunicator();
       grad_num_.store(0);
     } else {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -234,15 +236,15 @@ void AsyncCommunicator::Recv() {
   }
 
   auto grad_num = grad_num_.load();
-  if (grad_num > 0) {
-    RecvAll();
+  if (grad_num > min_send_grad_num_before_recv_) {
+    RecvByCommunicator();
     grad_num_.store(0);
   } else {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
-void AsyncCommunicator::RecvAll() {
+void AsyncCommunicator::RecvByCommunicator() {
   VLOG(3) << "parallel run recv graph";
   if (!running_) return;
   auto before_send = GetCurrentUS();
@@ -274,12 +276,13 @@ void AsyncCommunicator::Start() {
   } else {
     VLOG(1) << "start send thread and recv thread";
     running_ = true;
+    BarrierTriggerReset(max_merge_var_num_);
     // start send and recv thread
-    send_thread_.reset(
-        new std::thread(std::bind(&AsyncCommunicator::SendThread, this)));
+    main_thread_.reset(
+        new std::thread(std::bind(&AsyncCommunicator::MainThread, this)));
     if (independent_recv_thread_) {
-      recv_thread_.reset(
-          new std::thread(std::bind(&AsyncCommunicator::RecvThread, this)));
+      recv_thread_.reset(new std::thread(
+          std::bind(&AsyncCommunicator::IndependentRecvThread, this)));
     }
   }
 }
@@ -290,14 +293,14 @@ void AsyncCommunicator::Stop() {
   if (!communicator_) {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
-    if (send_thread_) {
+    if (main_thread_) {
       VLOG(1) << "stop send thread";
-      send_thread_->join();
-      send_thread_.reset(nullptr);
+      main_thread_->join();
+      main_thread_.reset(nullptr);
     }
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
-      recv_thread_->join();
+      main_thread_->join();
       recv_thread_.reset(nullptr);
     }
   }
@@ -981,7 +984,7 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_scope_ = std::move(recv_scope);
 
   if (send_varname_to_ctx.size() == 0) {
-    VLOG(0) << "nothing need to be send, will not start send_thread";
+    VLOG(0) << "nothing need to be send, will not start main_thread";
   } else {
     send_scope_.reset(new Scope());
     for (auto &iter : send_varname_to_ctx_) {
@@ -1042,11 +1045,6 @@ void HalfAsyncCommunicator::InitImpl(
       send_varname_to_ctx, recv_varname_to_ctx, param_scope);
 }
 
-HalfAsyncCommunicator::~HalfAsyncCommunicator() {
-  running_ = false;
-  if (consume_thread_) consume_thread_->join();
-}
-
 void HalfAsyncCommunicator::Clean() {
   for (auto &iter : send_varname_to_queue_) {
     auto &var_name = iter.first;
@@ -1060,127 +1058,15 @@ void HalfAsyncCommunicator::Clean() {
   }
 }
 
-void HalfAsyncCommunicator::ConsumeThread() {
-  VLOG(3) << "ConsumeThread start!";
+void HalfAsyncCommunicator::MetCondition() {
   while (running_) {
-    while (running_) {
-      if (barrier_counter_.load() >= barrier_trigger_.load() &&
-          barrier_trigger_.load() != 0) {
-        break;
-      } else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
+    if (barrier_counter_.load() >= barrier_trigger_.load() &&
+        barrier_trigger_.load() != 0) {
+      break;
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-
-    std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(3) << "run send graph";
-    auto before_run_send_graph = GetCurrentUS();
-    for (auto &iter : send_varname_to_queue_) {
-      auto &var_name = iter.first;
-      auto &var_queue = iter.second;
-      if (var_queue->Size() > 0) {
-        auto send_task = [this, &var_name, &var_queue] {
-          VLOG(3) << var_name << " merge and send";
-          std::vector<std::shared_ptr<Variable>> vars;
-          size_t merged_var_num = 0;
-          size_t wait_times = 0;
-          while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
-            if (var_queue->Size() == 0) {
-              VLOG(3) << "wait_times -> " << wait_times;
-              if (wait_times >= static_cast<size_t>(send_wait_times_)) {
-                break;
-              }
-              std::this_thread::sleep_for(std::chrono::milliseconds(10));
-              wait_times++;
-              continue;
-            } else {
-              wait_times = 0;
-              vars.push_back(var_queue->Pop());
-              merged_var_num++;
-            }
-          }
-          auto before_merge = GetCurrentUS();
-
-          MergeVars<float>(var_name, vars, send_scope_.get(), false);
-
-          auto after_merge = GetCurrentUS();
-          VLOG(3) << "merge " << merged_var_num << " " << var_name
-                  << " use time " << after_merge - before_merge;
-
-          auto send_functor = distributed::ParameterSend<float>();
-          auto &ctx = send_varname_to_ctx_.at(var_name);
-          send_functor(ctx, *send_scope_, true, 1);
-
-          auto after_send = GetCurrentUS();
-          VLOG(3) << "send " << var_name << " use time "
-                  << after_send - after_merge;
-        };
-        task_futures.emplace_back(
-            consume_threadpool_->enqueue(std::move(send_task)));
-      } else {
-        VLOG(4) << var_name << " queue empty";
-      }
-    }
-    for (auto &task_f : task_futures) {
-      task_f.wait();
-    }
-    auto after_run_send_graph = GetCurrentUS();
-
-    VLOG(3) << "run send graph use time "
-            << after_run_send_graph - before_run_send_graph;
-
-    BarrierSend();
-    Recv();
-    BarrierRecv();
-    BarrierWeakUp();
   }
-
-  Clean();
-
-  VLOG(1) << "communicator stopped, send thread exit";
-}
-
-void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_names,
-                                 const std::vector<std::string> &var_tables,
-                                 const framework::Scope &scope) {
-  PADDLE_ENFORCE_EQ(
-      var_names.size(), 1,
-      platform::errors::InvalidArgument("var_names.size() == 1 is permitted"));
-  auto var_name = var_names[0];
-  VLOG(3) << "communicator send " << var_name;
-  // push var into send queue by var_name
-  auto *grad_var = scope.FindVar(var_name);
-  PADDLE_ENFORCE_EQ(
-      grad_var->IsInitialized(), true,
-      platform::errors::InvalidArgument("grad var should is not initialized."));
-  auto tmp_grad_var = std::make_shared<Variable>();
-  framework::CopyVariable(*grad_var, tmp_grad_var.get());
-  auto &queue = send_varname_to_queue_.at(var_name);
-  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-  queue->Push(tmp_grad_var);
-}
-
-void HalfAsyncCommunicator::Recv() {
-  VLOG(3) << "parallel run recv graph";
-  if (!running_) return;
-  auto before_send = GetCurrentUS();
-  std::vector<std::future<void>> task_futures;
-  task_futures.reserve(recv_varname_to_ctx_.size());
-  for (auto &iter : recv_varname_to_ctx_) {
-    auto recv_task = [this, &iter] {
-      auto &var_name = iter.first;
-      VLOG(4) << "recv var " << var_name;
-      auto recv_functor = distributed::ParameterRecv<float>();
-      recv_functor(iter.second, *recv_scope_);
-    };
-    task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
-  }
-  for (auto &task : task_futures) {
-    task.wait();
-  }
-  auto after_recv = GetCurrentUS();
-  VLOG(3) << "run recv graph use time " << after_recv - before_send;
 }
 
 void HalfAsyncCommunicator::Barrier() {
@@ -1213,35 +1099,6 @@ void HalfAsyncCommunicator::BarrierTriggerReset(int initial_val) {
 void HalfAsyncCommunicator::BarrierWeakUp() {
   barrier_counter_.store(0);
   barrier_cond_.notify_all();
-}
-
-void HalfAsyncCommunicator::Start() {
-  VLOG(1) << "Communicator start";
-  if (!communicator_) {
-    VLOG(0) << "Communicator is not inited, do nothing";
-  } else {
-    VLOG(1) << "start send thread and recv thread";
-
-    BarrierTriggerReset(max_merge_var_num_);
-    running_ = true;
-    consume_thread_.reset(new std::thread(
-        std::bind(&HalfAsyncCommunicator::ConsumeThread, this)));
-  }
-}
-
-void HalfAsyncCommunicator::Stop() {
-  VLOG(1) << "Communicator stop";
-  running_ = false;
-  if (!communicator_) {
-    VLOG(0) << "Communicator is not inited, do nothing";
-  } else {
-    if (consume_thread_) {
-      VLOG(4) << "stop send thread";
-      consume_thread_->join();
-      consume_thread_.reset(nullptr);
-    }
-  }
-  VLOG(1) << "Communicator stop done";
 }
 
 void SyncCommunicator::BarrierSend() {
@@ -1283,10 +1140,6 @@ void SyncCommunicator::BarrierRecv() {
   VLOG(4) << "BarrierRecv with SyncCommunicator";
 }
 
-SyncCommunicator::~SyncCommunicator() {
-  running_ = false;
-  if (consume_thread_) consume_thread_->join();
-}
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

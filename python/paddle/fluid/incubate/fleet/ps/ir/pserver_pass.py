@@ -49,31 +49,6 @@ def _same_or_split_var(p_name, var_name):
     return p_name == var_name or p_name.startswith(var_name + ".block")
 
 
-def _get_pserver_grad_param_var(var, var_dict, grad_param_name_map,
-                                param_grad_name_map):
-    """
-    Return pserver side grad/param variable, return None
-    if the variable is not grad/param, e.g.
-
-        a@GRAD -> a@GRAD.block0
-        a@GRAD -> a@GRAD (a is not split)
-        fc_0.w_0 -> fc_0.w_0.block_0
-        fc_0.w_0 -> fc_0.w_0 (weight is not split)
-        _generated_var_123 -> None
-    """
-    grad_block = None
-    for _, g in six.iteritems(var_dict):
-        if _orig_varname(g.name) == _orig_varname(var.name):
-            # skip per trainer vars
-            if g.name.find(".trainer_") == -1:
-                # only param or grads have split blocks
-                if _orig_varname(g.name) in grad_param_name_map or \
-                                _orig_varname(g.name) in param_grad_name_map:
-                    grad_block = g
-                    break
-    return grad_block
-
-
 def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
     """
     Returns the shape for optimizer inputs that need to be reshaped when
@@ -111,6 +86,30 @@ def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
 
 
 def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program):
+    def _get_pserver_grad_param_var(var, var_dict, grad_param_name_map,
+                                    param_grad_name_map):
+        """
+        Return pserver side grad/param variable, return None
+        if the variable is not grad/param, e.g.
+
+            a@GRAD -> a@GRAD.block0
+            a@GRAD -> a@GRAD (a is not split)
+            fc_0.w_0 -> fc_0.w_0.block_0
+            fc_0.w_0 -> fc_0.w_0 (weight is not split)
+            _generated_var_123 -> None
+        """
+        grad_block = None
+        for _, g in six.iteritems(var_dict):
+            if _orig_varname(g.name) == _orig_varname(var.name):
+                # skip per trainer vars
+                if g.name.find(".trainer_") == -1:
+                    # only param or grads have split blocks
+                    if _orig_varname(g.name) in grad_param_name_map or \
+                                    _orig_varname(g.name) in param_grad_name_map:
+                        grad_block = g
+                        break
+        return grad_block
+
     program = optimize_block.program
     # Append the ops for parameters that do not need to be optimized/updated
     inputs = _get_input_map_from_op(origin_program.global_block().vars, opt_op)
@@ -591,7 +590,8 @@ def add_optimizer_pass(program, config):
         lr_decay_block = program._create_block(program.num_blocks - 1)
         optimize_blocks.append(lr_decay_block)
         for _, op in enumerate(lr_ops):
-            cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op)
+            cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op,
+                                                    origin_program)
             # append sub blocks to pserver_program in lr_decay_op
             __clone_lr_op_sub_block__(cloned_op, program, lr_decay_block)
         lr_decay_block_id = lr_decay_block.idx
