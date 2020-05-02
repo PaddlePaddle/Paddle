@@ -171,4 +171,4 @@ REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
                        ops::DistributedLookupTableKernel<float>);
 
 REGISTER_OP_CUDA_KERNEL(distributed_lookup_table,
-                        ops::DistributedLookupTableKernel<float>)
+                        ops::DistributedLookupTableKernel<float>);
