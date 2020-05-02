@@ -79,6 +79,10 @@ class Input(fluid.dygraph.Layer):
 
 
 class StaticGraphAdapter(object):
+    """
+    Model traning/inference with a static graph.
+    """
+
     def __init__(self, model):
         super(StaticGraphAdapter, self).__init__()
         self.model = model

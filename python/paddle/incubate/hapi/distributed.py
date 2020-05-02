@@ -98,8 +98,7 @@ class DistributedBatchSampler(BatchSampler):
         self.nranks = ParallelEnv().nranks
         self.local_rank = ParallelEnv().local_rank
         self.epoch = 0
-        self.num_samples = int(
-            math.ceil(len(self.dataset) * 1.0 / self.nranks))
+        self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
 
     def __iter__(self):
@@ -229,8 +228,7 @@ def prepare_distributed_context(place=None):
 
     global _parallel_context_initialized
 
-    if not _parallel_context_initialized and isinstance(place,
-                                                        fluid.CUDAPlace):
+    if not _parallel_context_initialized and isinstance(place, fluid.CUDAPlace):
 
         def _init_context():
             communicator_prog = fluid.Program()

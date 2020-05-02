@@ -124,8 +124,8 @@ class ProgressBar(object):
             if self._num is not None and current_num < self._num:
                 eta = time_per_unit * (self._num - current_num)
                 if eta > 3600:
-                    eta_format = '%d:%02d:%02d' % (eta // 3600, (eta % 3600) //
-                                                   60, eta % 60)
+                    eta_format = '%d:%02d:%02d' % (eta // 3600,
+                                                   (eta % 3600) // 60, eta % 60)
                 elif eta > 60:
                     eta_format = '%d:%02d' % (eta // 60, eta % 60)
                 else:
