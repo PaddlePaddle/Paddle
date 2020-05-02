@@ -53,7 +53,16 @@ class ProgressBar(object):
         if sys.version_info > (3, 3):
             from shutil import get_terminal_size
         else:
-            from shutil_backports import get_terminal_size
+            try:
+                from backports.shutil_get_terminal_size import get_terminal_size
+            except:
+
+                def get_terminal_size():
+                    from collections import namedtuple
+                    terminal_size = namedtuple("terminal_size", "columns lines")
+                    columns, lines = (80, 24)
+                    return terminal_size(columns, lines)
+
         terminal_width, _ = get_terminal_size()
         max_width = min(int(terminal_width * 0.6), terminal_width - 50)
         return max_width
