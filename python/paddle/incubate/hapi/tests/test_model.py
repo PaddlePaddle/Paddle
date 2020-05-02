@@ -116,9 +116,13 @@ def dynamic_evaluate(model, dataloader):
     return cnt / len(dataloader.dataset)
 
 
+@unittest.skipIf(not fluid.is_compiled_with_cuda(),
+                 'CPU testing is not supported')
 class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if not fluid.is_compiled_with_cuda():
+            self.skipTest('module not tested when ONLY_CPU compling')
         cls.device = set_device('gpu')
         fluid.enable_dygraph(cls.device)
 

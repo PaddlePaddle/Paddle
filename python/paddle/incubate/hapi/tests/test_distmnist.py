@@ -56,7 +56,9 @@ def compute_accuracy(pred, gt):
     return np.sum(correct) / correct.shape[0]
 
 
-class TestModel(unittest.TestCase):
+@unittest.skipIf(not fluid.is_compiled_with_cuda(),
+                 'CPU testing is not supported')
+class TestDistTraning(unittest.TestCase):
     def run(self, dynamic):
         device = set_device('gpu')
         fluid.enable_dygraph(device) if dynamic else None
