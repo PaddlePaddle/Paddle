@@ -21,7 +21,7 @@ function(py_dist_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_dist_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(WITH_COVERAGE)
+    if(WITH_COVERAGE AND WITH_GPU AND NOT WIN32)
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
                FLAGS_cpu_deterministic=true
@@ -29,12 +29,19 @@ function(py_dist_test TARGET_NAME)
                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
                ${PYTHON_EXECUTABLE} -m coverage run --branch -p paddle.distributed.launch ${py_dist_test_SRCS} ${py_dist_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    else()
+    else(WITH_GPU AND NOT WIN32)
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
                FLAGS_cpu_deterministic=true
                PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_dist_test_ENVS}
                ${PYTHON_EXECUTABLE} -m paddle.distributed.launch ${py_dist_test_SRCS} ${py_dist_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_dist_test_ENVS}
+               ${PYTHON_EXECUTABLE} -u ${py_dist_test_SRCS} ${py_dist_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
 
