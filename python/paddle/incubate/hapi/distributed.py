@@ -42,7 +42,7 @@ class DistributedBatchSampler(BatchSampler):
         Dataset is assumed to be of constant size.
         
     Args:
-        data_source: this could be a `paddle.io.Dataset` implement
+        dataset(paddle.io.Dataset): this could be a `paddle.io.Dataset` implement
                      or other python object which implemented
                      `__len__` for BatchSampler to get sample
                      number of data source.
