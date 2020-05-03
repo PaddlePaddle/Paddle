@@ -41,7 +41,8 @@ using DDim = framework::DDim;
 
 template <typename T>
 void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
-                                  const framework::Scope &scope) {
+                                  const framework::Scope &scope,
+                                  bool barrier = true) {
   VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
 
   PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
@@ -64,14 +65,27 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   std::vector<distributed::VarHandlePtr> rets;
-  for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-    auto &recv_var_name = rpc_ctx.splited_varnames[i];
-    local_scope->Var(recv_var_name);
-    VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
-    // sparse param in recv_scope is LoDTensor
-    rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
-                                           *local_scope.get(), recv_var_name,
-                                           recv_var_name));
+
+  if (barrier) {
+    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_varnames[i];
+      local_scope->Var(recv_var_name);
+      VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+      // sparse param in recv_scope is LoDTensor
+      rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+                                             *local_scope.get(), recv_var_name,
+                                             recv_var_name));
+    }
+  } else {
+    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_varnames[i];
+      local_scope->Var(recv_var_name);
+      VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+      // sparse param in recv_scope is LoDTensor
+      rets.push_back(rpc_client->AsyncGetVarNoBarrier(
+          rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
+          recv_var_name));
+    }
   }
 
   for (size_t i = 0; i < rets.size(); i++) {

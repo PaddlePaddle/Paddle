@@ -238,7 +238,7 @@ void AsyncCommunicator::Recv() {
   }
 }
 
-void AsyncCommunicator::RecvByCommunicator() {
+void AsyncCommunicator::RecvByCommunicator(barrier = true) {
   VLOG(3) << "parallel run recv graph";
   if (!running_) return;
   auto before_send = GetCurrentUS();
@@ -250,7 +250,7 @@ void AsyncCommunicator::RecvByCommunicator() {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      recv_functor(iter.second, *recv_scope_);
+      recv_functor(iter.second, *recv_scope_, barrier);
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -262,6 +262,8 @@ void AsyncCommunicator::RecvByCommunicator() {
   auto after_recv = GetCurrentUS();
   VLOG(3) << "run recv graph use time " << after_recv - before_send;
 }
+
+void AsyncCommunicator::RecvNoBarrier() { RecvByCommunicator(false); }
 
 void AsyncCommunicator::Start() {
   VLOG(1) << "Communicator start";

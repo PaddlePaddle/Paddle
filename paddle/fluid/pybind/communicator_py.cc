@@ -103,7 +103,7 @@ void BindCommunicator(py::module* m) {
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning)
-      .def("recv", &Communicator::RecvByCommunicator);
+      .def("recv", &Communicator::RecvNoBarrier);
 }
 }  // namespace pybind
 }  // namespace paddle

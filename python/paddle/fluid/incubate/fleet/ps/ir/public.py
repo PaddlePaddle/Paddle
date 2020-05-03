@@ -235,7 +235,8 @@ class CompileTimeStrategy(object):
         if recv_type == 2:
             return sparse_recv_ctx
         if recv_type == 3:
-            return dense_recv_ctx.update(sparse_recv_ctx)
+            dense_recv_ctx.update(sparse_recv_ctx)
+            return dense_recv_ctx
         assert ValueError("recv_type can only be 1/2/3")
 
     def get_server_runtime_config(self):

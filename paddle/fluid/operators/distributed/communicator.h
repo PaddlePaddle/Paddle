@@ -194,7 +194,7 @@ class Communicator {
                     const framework::Scope& scope) = 0;
 
   virtual void Recv() = 0;
-
+  virtual void RecvNoBarrier() {}
   virtual void Barrier() {}
   virtual void BarrierTriggerDecrement() {}
   virtual void BarrierTriggerReset(int init_counter) {}
