@@ -119,10 +119,10 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
                 if g.name.find(".trainer_") == -1:
                     #only param or grads have split blocks
                     ovar_name = _orig_varname(g.name)
-                    if ovar_name in grad_param_name_map:
+                    if ovar_name in config.param_grad_ep_mapping:
                         grad_block = g
                         break
-                    elif ovar_name in param_grad_name_map:
+                    elif ovar_name in config.grad_param_mapping:
                         grad_block = g
                         break
 
@@ -257,8 +257,6 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                 new_inputs[key] = merged_var
         elif key == "Param":
             param_block = _get_param_block(opt_op)
-
-            print("param block: \n{}".format(param_block))
 
             if not param_block:
                 return
@@ -475,7 +473,6 @@ def add_optimizer_pass(program, config):
     ps_endpoint = config.get_ps_endpoint()
 
     opt_op_on_pserver = []
-    merged_param_pairs = []
     #Iterate through the ops, and if an op and the optimize ops
     #which located on current pserver are in one set, then
     #append it into the sub program.
@@ -663,8 +660,6 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 
             for idx, ordered in enumerate(merged_ordervars):
                 if _same_or_split_var(varname, ordered.name):
-                    print("pname: {}, ordered: {}, varname: {}".format(
-                        pname, ordered.name, varname))
                     return pname, splited_param.shape
 
         return "", []
@@ -687,7 +682,6 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
         if op.type not in ["recv", "fetch_barrier", "concat"]:
             for key in op.output_names:
                 newname, _ = _get_splited_name_and_shape(op.output(key)[0])
-                print("new name: {}".format(newname))
                 if newname:
                     op_on_pserver = True
                     new_outputs[key] = created_var_map[newname]

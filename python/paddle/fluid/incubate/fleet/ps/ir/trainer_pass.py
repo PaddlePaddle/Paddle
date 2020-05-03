@@ -25,10 +25,22 @@ CLIP_OP_NAME_SCOPE = "@CLIP"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
+LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
+OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 
 def delete_optimizer_pass(program, config):
+    def _get_lr_ops(_program):
+        lr_ops = []
+        for index, op in enumerate(_program.global_block().ops):
+            role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
+            if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
+                            role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                            int(OPT_OP_ROLE_ATTR_VALUE):
+                lr_ops.append(op)
+        return lr_ops
+
     def _delete_optimizer_op_and_vars(_program, optimize_ops):
         optimize_vars = []
         optimize_op_role_vars = []
@@ -52,6 +64,8 @@ def delete_optimizer_pass(program, config):
                 _program.global_block()._remove_var(var)
 
     optimizer_ops = _get_optimize_ops(program)
+    lr_ops = _get_lr_ops(program)
+    optimizer_ops.extend(lr_ops)
     _delete_optimizer_op_and_vars(program, optimizer_ops)
 
     return program
