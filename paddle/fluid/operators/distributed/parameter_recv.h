@@ -27,7 +27,7 @@ namespace distributed {
 template <typename T>
 struct ParameterRecv {
   void operator()(const CommContext &rpc_ctx, const framework::Scope &scope,
-                  bool barrier = true);
+                  bool barrier);
 };
 
 };  // namespace distributed

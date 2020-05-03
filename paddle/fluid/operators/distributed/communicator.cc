@@ -238,7 +238,7 @@ void AsyncCommunicator::Recv() {
   }
 }
 
-void AsyncCommunicator::RecvByCommunicator(barrier = true) {
+void AsyncCommunicator::RecvByCommunicator(bool barrier = true) {
   VLOG(3) << "parallel run recv graph";
   if (!running_) return;
   auto before_send = GetCurrentUS();
