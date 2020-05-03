@@ -68,8 +68,8 @@ def _get_optimizer_input_shape(op_type, varkey, orig_shape, param_shape):
     Returns the shape for optimizer inputs that need to be reshaped when
     Param and Grad is split to multiple servers.
     """
-    #HACK(typhoonzero) : Should use functions of corresponding optimizer in
-    #optimizer.py to get the shape, do not bind this in the transpiler.
+    # HACK(typhoonzero) : Should use functions of corresponding optimizer in
+    # optimizer.py to get the shape, do not bind this in the transpiler.
     if op_type == "adam":
         if varkey in ["Moment1", "Moment2"]:
             return param_shape
@@ -115,9 +115,9 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
         grad_block = None
         for _, g in six.iteritems(var_dict):
             if _orig_varname(g.name) == _orig_varname(var.name):
-                #skip per trainer vars
+                # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
-                    #only param or grads have split blocks
+                    # only param or grads have split blocks
                     ovar_name = _orig_varname(g.name)
                     if ovar_name in config.param_grad_ep_mapping:
                         grad_block = g
@@ -129,15 +129,15 @@ def _append_pserver_non_opt_ops(optimize_block, opt_op, origin_program, config):
         return grad_block
 
     program = optimize_block.program
-    #Append the ops for parameters that do not need to be optimized / updated
+    # Append the ops for parameters that do not need to be optimized / updated
     inputs = _get_input_map_from_op(origin_program.global_block().vars, opt_op)
     for key, varlist in six.iteritems(inputs):
         if not isinstance(varlist, list):
             varlist = [varlist]
         for i in range(len(varlist)):
             var = varlist[i]
-            #for ops like clipping and weight decay, get the split var(xxx.block0)
-            #for inputs / outputs
+            # for ops like clipping and weight decay, get the split var(xxx.block0)
+            # for inputs / outputs
             grad_block = _get_pserver_grad_param_var(
                 var, program.global_block().vars)
             if grad_block:
@@ -204,7 +204,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
     new_inputs = collections.OrderedDict()
 
     def _get_param_block(opt_op):
-        #param is already created on global program
+        # param is already created on global program
         unmerged_vars = []
         merged_vars = []
         merged_ordervars = []
@@ -245,9 +245,9 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
 
     for key in opt_op.input_names:
         if key == "Grad":
-            #Note !!This is for l2decay on sparse gradient, \
-            #because it will create a new tensor for
-            #decayed gradient but not inplace modify the origin one
+            # Note !!This is for l2decay on sparse gradient, \
+            # because it will create a new tensor for
+            # decayed gradient but not inplace modify the origin one
             origin_grad_name = opt_op.input(key)[0]
             if core.kNewGradSuffix(
             ) in origin_grad_name and pserver_block.has_var(origin_grad_name):
@@ -268,8 +268,8 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
             new_inputs[key] = tmpvar
 
         elif key == "LearningRate":
-            #learning rate variable has already be created by non - optimize op,
-            #don't create it once again.
+            # learning rate variable has already be created by non - optimize op,
+            # don't create it once again.
             lr_varname = opt_op.input(key)[0]
             if lr_varname in pserver_block.vars:
                 new_inputs[key] = pserver_block.vars[opt_op.input(key)[0]]
@@ -290,7 +290,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
             continue
         var = origin_program.global_block().vars[opt_op.input(key)[0]]
         param_var = new_inputs["Param"]
-        #update accumulator variable shape
+        # update accumulator variable shape
         new_shape = _get_optimizer_input_shape(opt_op.type, key, var.shape,
                                                param_var.shape)
         tmpvar = pserver_block.create_var(
@@ -300,7 +300,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
             shape=new_shape)
         new_inputs[key] = tmpvar
 
-#change output's ParamOut variable
+    # change output's ParamOut variable
     outputs = _get_output_map_from_op(origin_program.global_block().vars,
                                       opt_op)
     outputs["ParamOut"] = new_inputs["Param"]
@@ -310,7 +310,7 @@ def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
         outputs=outputs,
         attrs=opt_op.all_attrs())
 
-    #record sparse grad to param name
+    # record sparse grad to param name
     if new_inputs["Grad"].type == core.VarDesc.VarType.SELECTED_ROWS:
         sparse_grad_to_param.append(
             str(new_inputs["Grad"].name) + ":" + str(new_inputs["Param"].name))
@@ -359,7 +359,7 @@ def add_listen_and_serv_pass(program, config):
         "dense_optimize_blocks": None,
         "sparse_optimize_blocks": None,
 
-        #runtime attribute
+        # runtime attribute
         "endpoint": config.get_ps_endpoint(),
         "pserver_id": config.get_role_id(),
         "Fanin": config.get_trainers(),
@@ -369,7 +369,7 @@ def add_listen_and_serv_pass(program, config):
         "rpc_prefetch_thread_num": -1
     }
 
-    #step5 append the listen_and_serv op
+    # step5 append the listen_and_serv op
     program.global_block().append_op(
         type="listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
 
@@ -423,8 +423,8 @@ def add_optimizer_pass(program, config):
                 break
 
         if not grad_block:
-            #do not append this op if current endpoint
-            #is not dealing with this grad block
+            # do not append this op if current endpoint
+            # is not dealing with this grad block
             return None
 
         orig_varname, block_name, trainer_name = _get_varname_parts(
@@ -473,11 +473,11 @@ def add_optimizer_pass(program, config):
     ps_endpoint = config.get_ps_endpoint()
 
     opt_op_on_pserver = []
-    #Iterate through the ops, and if an op and the optimize ops
-    #which located on current pserver are in one set, then
-    #append it into the sub program.
+    # Iterate through the ops, and if an op and the optimize ops
+    # which located on current pserver are in one set, then
+    # append it into the sub program.
     global_ops = []
-    #sparse grad name to param name
+    # sparse grad name to param name
     sparse_grad_to_param = []
 
     def _is_opt_op_on_pserver(endpoint, op):
@@ -531,21 +531,21 @@ def add_optimizer_pass(program, config):
         origin_block_desc = op.attr('sub_block')
         origin_block = origin_program.block(origin_block_desc.id)
         assert isinstance(origin_block, Block)
-        #we put the new sub block to new block to follow the block
-        #hierarchy of the original blocks
+        # we put the new sub block to new block to follow the block
+        # hierarchy of the original blocks
         new_sub_block = program._create_block(lr_block.idx)
 
-        #clone vars
+        # clone vars
         for var in origin_block.vars:
             new_sub_block._clone_variable(var)
 
-#clone ops
+        # clone ops
         for origin_op in origin_block.ops:
             cloned_op = _clone_lr_op(program, new_sub_block, origin_op)
             #clone sub_block of op
             __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
-#reset the block of op
+        # reset the block of op
         op._set_attr('sub_block', new_sub_block)
 
     def _get_lr_ops():
@@ -564,7 +564,7 @@ def add_optimizer_pass(program, config):
         if _is_optimizer_op(op) and _is_opt_op_on_pserver(ps_endpoint, op):
             opt_op_on_pserver.append(op)
 
-#append lr decay ops to the child block if exists
+    # append lr decay ops to the child block if exists
     lr_ops = _get_lr_ops()
     lr_decay_block_id = -1
     optimize_blocks = []
@@ -575,11 +575,11 @@ def add_optimizer_pass(program, config):
         for _, op in enumerate(lr_ops):
             cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op,
                                                     origin_program, config)
-            #append sub blocks to pserver_program in lr_decay_op
+            # append sub blocks to pserver_program in lr_decay_op
             __clone_lr_op_sub_block__(cloned_op, program, lr_decay_block)
         lr_decay_block_id = lr_decay_block.idx
 
-#append op to the current block
+    # append op to the current block
     grad_to_block_id = []
     pre_block_idx = program.num_blocks - 1
 
@@ -587,12 +587,12 @@ def add_optimizer_pass(program, config):
         per_opt_block = program._create_block(pre_block_idx)
         optimize_blocks.append(per_opt_block)
         optimize_target_param_name = opt_op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
-        #append grad merging ops before clip and weight decay
-        #e.g.merge grad->L2Decay op->clip op->optimize
+        # append grad merging ops before clip and weight decay
+        # e.g.merge grad->L2Decay op->clip op->optimize
         merged_var = None
         for _, op in enumerate(optimize_ops):
-            #find the origin grad var before clipping / L2Decay,
-            #merged_var should be the input var name of L2Decay
+            # find the origin grad var before clipping / L2Decay,
+            # merged_var should be the input var name of L2Decay
             grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
             if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name:
                 merged_var = _append_pserver_grad_merge_ops(
@@ -603,15 +603,15 @@ def add_optimizer_pass(program, config):
 
         if merged_var:
             for _, op in enumerate(optimize_ops):
-                #optimizer is connected to itself
+                # optimizer is connected to itself
                 if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
                                 op not in global_ops:
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
-#dedup grad to ids list
+    # dedup grad to ids list
     grad_to_block_id = list(set(grad_to_block_id))
-    #append global ops
+    # append global ops
     if global_ops:
         opt_state_block = program._create_block(program.num_blocks - 1)
         optimize_blocks.append(opt_state_block)
@@ -664,8 +664,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 
         return "", []
 
-# 1. create vars in pserver program to startup program
-
+    # 1. create vars in pserver program to startup program
     pserver_vars = p_main_program.global_block().vars
 
     created_var_map = collections.OrderedDict()
@@ -673,12 +672,12 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
         tmpvar = program.global_block()._clone_variable(var)
         created_var_map[var.name] = tmpvar
 
-# 2. rename op outputs
+    # 2. rename op outputs
     for op in o_startup_program.global_block().ops:
         new_outputs = collections.OrderedDict()
-        #do not append startup op if var is not on this pserver
+        # do not append startup op if var is not on this pserver
         op_on_pserver = False
-        #TODO(gongwb) : remove this line.
+        # TODO(gongwb) : remove this line.
         if op.type not in ["recv", "fetch_barrier", "concat"]:
             for key in op.output_names:
                 newname, _ = _get_splited_name_and_shape(op.output(key)[0])
@@ -690,7 +689,7 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
                     new_outputs[key] = pserver_vars[op.output(key)[0]]
 
         if op_on_pserver:
-            #most startup program ops have no inputs
+            # most startup program ops have no inputs
             new_inputs = _get_input_map_from_op(pserver_vars, op)
 
             if op.type in [
