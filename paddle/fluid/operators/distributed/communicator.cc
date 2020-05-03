@@ -53,12 +53,6 @@ inline void VSUB(int n, const T *x, const T *y, T *z) {
 
 Communicator::Communicator() {}
 
-Communicator::Communicator(const std::map<std::string, std::string> &envs_) {
-  for (auto &iter : envs_) {
-    envs[iter.first] = iter.second;
-  }
-}
-
 std::once_flag Communicator::init_flag_;
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
@@ -300,7 +294,7 @@ void AsyncCommunicator::Stop() {
     }
     if (recv_thread_) {
       VLOG(1) << "stop recv thread";
-      main_thread_->join();
+      recv_thread_->join();
       recv_thread_.reset(nullptr);
     }
   }
@@ -344,10 +338,9 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
       variables.push_back(var);
 
       framework::FlattenVariable(variables, tmp_var.get());
-      VLOG(3) << "send to " << table_name << " with queue size "
-              << queue->Size();
-      queue->Push(tmp_var);
     }
+    VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
+    queue->Push(tmp_var);
   } else {
     PADDLE_THROW("unknown var type to copy");
   }

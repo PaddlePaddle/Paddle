@@ -176,7 +176,11 @@ using RpcCtxMap = std::unordered_map<std::string, CommContext>;
 class Communicator {
  public:
   Communicator();
-  explicit Communicator(const std::map<std::string, std::string>& envs);
+  explicit Communicator(const std::map<std::string, std::string>& envs_) {
+    for (auto& iter : envs_) {
+      envs[iter.first] = iter.second;
+    }
+  }
   virtual ~Communicator() {}
 
   virtual void Start() = 0;
@@ -195,6 +199,7 @@ class Communicator {
   virtual void BarrierTriggerDecrement() {}
   virtual void BarrierTriggerReset(int init_counter) {}
 
+  virtual void InitEnvs() = 0;
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
                         Scope* recv_scope) {}
@@ -220,6 +225,7 @@ class Communicator {
                               const std::map<std::string, std::string>& envs) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(envs)));
+      communicator_->InitEnvs();
       communicator_->InitImpl(program, recv_scope);
     }
   }
@@ -240,6 +246,7 @@ class Communicator {
                              const std::map<std::string, std::string>& envs) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(envs)));
+      communicator_->InitEnvs();
       communicator_->InitImpl(send_ctx, recv_ctx, recv_scope);
     }
   }
@@ -258,7 +265,10 @@ class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
   explicit AsyncCommunicator(const std::map<std::string, std::string>& envs)
-      : Communicator(envs) {
+      : Communicator(envs) {}
+  ~AsyncCommunicator();
+
+  void InitEnvs() {
     independent_recv_thread_ = static_cast<bool>(
         std::stoi(envs.at("communicator_independent_recv_thread")));
     min_send_grad_num_before_recv_ =
@@ -271,7 +281,7 @@ class AsyncCommunicator : public Communicator {
         static_cast<bool>(std::stoi(envs.at("communicator_is_sgd_optimizer")));
     VLOG(0) << "AsyncCommunicator Initialized";
   }
-  ~AsyncCommunicator();
+
   void Start() override;
   void Stop() override;
 
@@ -325,7 +335,9 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
  public:
   HalfAsyncCommunicator() {}
   explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
-      : AsyncCommunicator(envs) {
+      : AsyncCommunicator(envs) {}
+
+  void InitEnvs() {
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -335,11 +347,9 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
 
   void Clean() override;
   void Recv() { RecvByCommunicator(); }
-
   void Barrier() override;
   void BarrierTriggerDecrement() override;
   void BarrierTriggerReset(int initial_val) override;
-
   void MetCondition();
   void BarrierWeakUp();
 
@@ -355,7 +365,13 @@ class SyncCommunicator : public HalfAsyncCommunicator {
  public:
   SyncCommunicator() : HalfAsyncCommunicator() {}
   explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
-      : HalfAsyncCommunicator(envs) {
+      : HalfAsyncCommunicator(envs) {}
+
+  void InitEnvs() {
+    max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     trainer_id_ = std::stoi(envs.at("trainer_id"));
     auto pserver_strings = envs.at("pserver_endpoints");
     pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
@@ -373,16 +389,17 @@ class GeoSgdCommunicator : public Communicator {
  public:
   GeoSgdCommunicator() : Communicator() {}
   explicit GeoSgdCommunicator(const std::map<std::string, std::string>& envs)
-      : Communicator(envs) {
+      : Communicator(envs) {}
+
+  ~GeoSgdCommunicator();
+
+  void InitEnvs() {
     geo_need_push_nums_ = std::stoi(envs.at("geo_need_push_nums"));
     trainer_nums_ = std::stoi(envs.at("geo_trainer_nums"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     VLOG(0) << "GeoSgdCommunicator Initialized";
   }
-
-  ~GeoSgdCommunicator();
-
   void Start() override;
   void Stop() override;
 

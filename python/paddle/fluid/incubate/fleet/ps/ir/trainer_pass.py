@@ -138,7 +138,7 @@ def distributed_ops_pass(program, config):
 
 
 def append_send_ops_pass(program, config):
-    mode = config.get_distributed_mode
+    mode = config.get_distributed_mode()
     trainer_id = config.get_role_id()
     pserver_endpoints = config.get_ps_endpoints()
 
