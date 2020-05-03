@@ -41,8 +41,7 @@ using DDim = framework::DDim;
 
 template <typename T>
 void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
-                                  const framework::Scope &scope,
-                                  bool barrier = true) {
+                                  const framework::Scope &scope, bool barrier) {
   VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
 
   PADDLE_ENFORCE_GE(rpc_ctx.origin_varnames.size(), 1,
@@ -119,6 +118,12 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
     src_ptr = reinterpret_cast<char *>(const_cast<void *>(src_ptr)) + size;
   }
   VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
+}
+
+template <typename T>
+void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
+                                  const framework::Scope &scope) {
+  this->operator()(rpc_ctx, scope, true);
 }
 
 template struct ParameterRecv<float>;

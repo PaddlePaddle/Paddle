@@ -238,10 +238,11 @@ void AsyncCommunicator::Recv() {
   }
 }
 
-void AsyncCommunicator::RecvByCommunicator(bool barrier = true) {
+void AsyncCommunicator::RecvByCommunicator() {
   VLOG(3) << "parallel run recv graph";
   if (!running_) return;
   auto before_send = GetCurrentUS();
+
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(recv_varname_to_ctx_.size());
 
@@ -250,7 +251,7 @@ void AsyncCommunicator::RecvByCommunicator(bool barrier = true) {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      recv_functor(iter.second, *recv_scope_, barrier);
+      recv_functor(iter.second, *recv_scope_);
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -263,7 +264,24 @@ void AsyncCommunicator::RecvByCommunicator(bool barrier = true) {
   VLOG(3) << "run recv graph use time " << after_recv - before_send;
 }
 
-void AsyncCommunicator::RecvNoBarrier() { RecvByCommunicator(false); }
+void AsyncCommunicator::RecvNoBarrier() {
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(recv_varname_to_ctx_.size());
+
+  for (auto &iter : recv_varname_to_ctx_) {
+    auto recv_task = [this, &iter, &barrier] {
+      auto &var_name = iter.first;
+      VLOG(4) << "recv var " << var_name;
+      auto recv_functor = distributed::ParameterRecv<float>();
+      recv_functor(iter.second, *recv_scope_, false);
+    };
+    task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
+  }
+
+  for (auto &task : task_futures) {
+    task.wait();
+  }
+}
 
 void AsyncCommunicator::Start() {
   VLOG(1) << "Communicator start";
