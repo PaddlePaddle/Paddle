@@ -143,7 +143,8 @@ class FleetTranspiler(Fleet):
         ]:
             send_ctx = fleet.compiled_config.get_communicator_send_context()
 
-            recv_ctx = fleet.compiled_config.get_communicator_recv_context()
+            recv_ctx = fleet.compiled_config.get_communicator_recv_context(
+                recv_type=1)
 
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,
@@ -506,10 +507,6 @@ class FleetTranspiler(Fleet):
             raise TypeError(
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
-
-        if not main_program._is_distributed:
-            raise ValueError(
-                "main_program is for local, may not use fleet.save_persistables")
 
         fluid.io.save_persistables(executor, dirname, main_program, None)
 
