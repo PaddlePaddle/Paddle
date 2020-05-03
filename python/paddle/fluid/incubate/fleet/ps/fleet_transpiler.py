@@ -134,7 +134,7 @@ class FleetTranspiler(Fleet):
 
         if isinstance(self._strategy, GeoStrategy):
             kwargs = geo_strategy_envs()
-        if isinstance(self._strategy, GeoStrategy):
+        if isinstance(self._strategy, SyncStrategy):
             kwargs = sync_strategy_envs()
 
         if trainer_config.mode in [
@@ -836,16 +836,9 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = server.add_listen_and_serv_pass(_main, compiled_config)
         _main = server.add_rpc_global_flags_pass(_main, compiled_config)
         _main = server.add_optimizer_pass(_main, compiled_config)
-        _main = server.add_recv_inputs_pass(_main, compiled_config)
 
         _startup = server.build_pserver_startup_program_pass(_startup, _main,
                                                              compiled_config)
-
-        with open("_main.po", "w") as wb:
-            wb.write(str(_main))
-
-        with open("_startup.po", "w") as wb:
-            wb.write(str(_startup))
 
         return _main, _startup
 

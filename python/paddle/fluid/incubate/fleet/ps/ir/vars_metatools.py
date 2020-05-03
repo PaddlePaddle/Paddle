@@ -27,18 +27,6 @@ class VarBlock:
         return "%s:%d:%d" % (self.varname, self.offset, self.size)
 
 
-class CommContext(object):
-    def __init__(self, trainer_id, varname, slice_varnames, endpoints, sections,
-                 aggregate_type, rpc_handler):
-        self.trainer_id = trainer_id
-        self.varname = varname
-        self.slice_varnames = slice_varnames
-        self.endpoints = endpoints
-        self.sections = sections
-        self.aggregate = aggregate_type
-        self.rpc_handler = rpc_handler
-
-
 def create_var_struct(var):
     if var.type == core.VarDesc.VarType.SELECTED_ROWS:
         lod_level = None

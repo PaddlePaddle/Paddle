@@ -198,8 +198,20 @@ def lr_decay_pass(program, config):
 
 
 def init_from_server_pass(program, config):
+
+    fetch_barrier_out = program.global_block().create_var(
+        name=framework.generate_control_dev_var_name())
+    program.global_block().append_op(
+        type="fetch_barrier",
+        inputs={},
+        outputs={"Out": fetch_barrier_out},
+        attrs={
+            "endpoints": config.get_ps_endpoints(),
+            "trainer_id": config.get_role_id(),
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        })
+
     # excludes = config.get_exclueds_vars()
-    #
     # program.global_block().append_op(
     #     type="recv",
     #     inputs={"X": []},
@@ -209,6 +221,7 @@ def init_from_server_pass(program, config):
     #         "exclude_vars": excludes,
     #         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
     #     })
+
     import warnings
     warnings.warn("init_from_server_pass need implement later")
     return program

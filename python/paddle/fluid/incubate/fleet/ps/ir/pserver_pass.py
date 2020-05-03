@@ -388,47 +388,11 @@ def _clone_var(block, var, persistable=True):
         persistable=persistable)
 
 
-def add_recv_inputs_pass(program, config):
-    mode = config.get_distributed_mode
-    trainers = config.get_trainers()
-
-    for v in config.param_grad_ep_mapping[config.get_ps_endpoint()]["params"]:
-        _clone_var(program.global_block(), v)
-    for v in config.param_grad_ep_mapping[config.get_ps_endpoint()]["grads"]:
-        # create vars for each trainer in global scope, so
-        # we don't need to create them when grad arrives.
-        # change client side var name to origin name by
-        # removing ".trainer_%d" suffix
-        suff_idx = v.name.find(".trainer_")
-        if suff_idx >= 0:
-            orig_var_name = v.name[:suff_idx]
-        else:
-            orig_var_name = v.name
-        # NOTE: single_trainer_var must be created for multi-trainer
-        # case to merge grads from multiple trainers
-        input_var = \
-            program.global_block().create_var(
-                name=orig_var_name,
-                persistable=True,
-                type=v.type,
-                dtype=v.dtype,
-                shape=v.shape)
-        if mode == DistributedMode.SYNC and trainers > 1:
-            for trainer_id in range(trainers):
-                input_var = program.global_block().create_var(
-                    name="%s.trainer_%d" % (orig_var_name, trainer_id),
-                    persistable=False,
-                    type=v.type,
-                    dtype=v.dtype,
-                    shape=v.shape)
-    return program
-
-
 def add_optimizer_pass(program, config):
     def _append_pserver_grad_merge_ops(optimize_block, grad_varname_for_block,
                                        endpoint, grad_to_block_id):
 
-        is_sync = config.get_distributed_mode == DistributedMode.SYNC
+        is_sync = config.get_distributed_mode() == DistributedMode.SYNC
         trainers = config.get_trainers()
 
         program = optimize_block.program
@@ -449,8 +413,6 @@ def add_optimizer_pass(program, config):
         orig_varname, block_name, trainer_name = _get_varname_parts(
             grad_block.name)
 
-        print("grad_block: \n{}".format(str(grad_block)))
-
         if block_name:
             merged_var_name = '.'.join([orig_varname, block_name])
         else:
@@ -463,15 +425,20 @@ def add_optimizer_pass(program, config):
             dtype=grad_block.dtype,
             shape=grad_block.shape)
 
-        #merged_var = pserver_block.vars[merged_var_name]
-
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if is_sync and trainers > 1:
             vars2merge = []
             for i in range(trainers):
                 per_trainer_name = "%s.trainer_%d" % \
                                    (merged_var_name, i)
-                vars2merge.append(pserver_block.vars[per_trainer_name])
+                per_trainer_var = pserver_block.create_var(
+                    name=per_trainer_name,
+                    persistable=False,
+                    type=grad_block.type,
+                    dtype=grad_block.dtype,
+                    shape=grad_block.shape)
+                vars2merge.append(per_trainer_var)
+
             optimize_block.append_op(
                 type="sum",
                 inputs={"X": vars2merge},

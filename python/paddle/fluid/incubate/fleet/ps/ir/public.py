@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#Copyright(c) 2018 PaddlePaddle Authors.All Rights Reserved.
+#
+#Licensed under the Apache License, Version 2.0(the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#http:  // www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 from __future__ import print_function
 
 import collections
@@ -21,6 +35,7 @@ import os
 import six
 from paddle.fluid import core
 from paddle.fluid.core import CommContext
+from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
 from paddle.fluid.incubate.fleet.ps.ir import vars_metatools
 from paddle.fluid.incubate.fleet.ps.ir.ps_dispatcher import RoundRobin, PSDispatcher
 
@@ -146,7 +161,13 @@ class CompileTimeStrategy(object):
             sections = []
 
             for slice in slices:
-                names.append(slice.name)
+                if self.get_distributed_mode(
+                ) == DistributedMode.SYNC and self.get_trainers() >= 1:
+                    names.append("{}.trainer_{}".format(slice.name,
+                                                        self.get_role_id()))
+                else:
+                    names.append(slice.name)
+
                 sections.append(slice.shape[0])
 
                 for ep, pairs in self.param_grad_ep_mapping.items():
@@ -165,8 +186,8 @@ class CompileTimeStrategy(object):
         trainer_id = self.get_role_id()
         aggregate = True
         send_hander = True
-        ctx = core.CommContext(name, names, eps, sections, origin_varnames,
-                               trainer_id, aggregate, send_hander)
+        ctx = CommContext(name, names, eps, sections, origin_varnames,
+                          trainer_id, aggregate, send_hander)
         return ctx
 
     def get_communicator_send_context(self):
@@ -252,7 +273,7 @@ class CompileTimeStrategy(object):
                 from original var name to each var split.
         """
 
-        # varname->[(block_id, current_block_size)]
+        #varname->[(block_id, current_block_size)]
         block_map = collections.OrderedDict()
         var_mapping = collections.OrderedDict()
 
@@ -363,12 +384,12 @@ class CompileTimeStrategy(object):
             block_size = int(math.ceil(var_numel / float(split_count)))
 
             if len(var.shape) >= 2:
-                # align by dim1(width)
+                #align by dim1(width)
                 dim1 = reduce(lambda x, y: x * y, var.shape[1:])
                 remains = block_size % dim1
                 if remains != 0:
                     block_size += dim1 - remains
-            # update split_count after aligning
+#update split_count after aligning
             split_count = int(math.ceil(var_numel / float(block_size)))
             for block_id in range(split_count):
                 curr_block_size = min(block_size, var_numel - (
@@ -379,19 +400,19 @@ class CompileTimeStrategy(object):
         return blocks
 
     def _var_slice_and_distribute(self):
-        # update these mappings for further transpile:
-        # 1. param_var_mapping: param var name -> [split params vars]
-        # 2. grad_var_mapping: grad var name -> [split grads vars]
-        # 3. grad_param_mapping: grad.blockx -> param.blockx
-        # 4. param_grad_ep_mapping: ep -> {"params": [], "grads": []}
+        #update these mappings for further transpile:
+        # 1. param_var_mapping : param var name->[split params vars]
+        # 2. grad_var_mapping : grad var name->[split grads vars]
+        # 3. grad_param_mapping : grad.blockx->param.blockx
+        # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
 
         param_list = []
         grad_list = []
         param_grad_set = set()
         for p, g in self.merged_variables_pairs:
-            # todo(tangwei12) skip parameter marked not trainable
-            # if type(p) == Parameter and p.trainable == False:
-            #     continue
+            #todo(tangwei12) skip parameter marked not trainable
+            #if type(p) == Parameter and p.trainable == False:
+            #continue
             p = p.merged_var
             g = g.merged_var
 
@@ -402,8 +423,8 @@ class CompileTimeStrategy(object):
                 grad_list.append(g)
                 param_grad_set.add(g.name)
 
-        # when we slice var up into blocks, we will slice the var according to
-        # pserver services' count. A pserver may have two or more listening ports.
+#when we slice var up into blocks, we will slice the var according to
+#pserver services' count. A pserver may have two or more listening ports.
         grad_blocks = self._slice_variable(grad_list,
                                            len(self.get_ps_endpoints()),
                                            self.min_block_size)
@@ -413,11 +434,11 @@ class CompileTimeStrategy(object):
 
         assert (len(grad_blocks) == len(param_blocks))
 
-        # origin_param_name -> [splited_param_vars]
+        #origin_param_name->[splited_param_vars]
         self.param_var_mapping = self._create_vars_from_blocklist(param_blocks)
         self.grad_var_mapping = self._create_vars_from_blocklist(grad_blocks)
 
-        # dict(grad_splited_var -> param_splited_var)
+        #dict(grad_splited_var->param_splited_var)
         self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
@@ -429,7 +450,7 @@ class CompileTimeStrategy(object):
         for k, v in self.grad_param_mapping.items():
             print_maps[str(k)] = str(v)
 
-        # create mapping of endpoint -> split var to create pserver side program
+#create mapping of endpoint->split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
             self.param_grad_ep_mapping.update({
@@ -554,7 +575,7 @@ class CompileTimeStrategy(object):
             role_id = int(core.op_proto_and_checker_maker.OpRole.Backward)
             for op in block.ops:
                 if _is_opt_role_op(op):
-                    # delete clip op from opt_ops when run in Parameter Server mode
+                    #delete clip op from opt_ops when run in Parameter Server mode
                     if OP_NAME_SCOPE in op.all_attrs() \
                             and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
                         op._set_attr("op_role", role_id)
@@ -592,8 +613,8 @@ class CompileTimeStrategy(object):
 
 
 def _is_opt_role_op(op):
-    # NOTE: depend on oprole to find out whether this op is for
-    # optimize
+    #NOTE : depend on oprole to find out whether this op is for
+    #optimize
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
@@ -607,7 +628,7 @@ def _get_optimize_ops(_program):
     opt_ops = []
     for op in block.ops:
         if _is_opt_role_op(op):
-            # delete clip op from opt_ops when run in Parameter Server mode
+            #delete clip op from opt_ops when run in Parameter Server mode
             if OP_NAME_SCOPE in op.all_attrs() \
                     and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
                 op._set_attr(
@@ -619,7 +640,7 @@ def _get_optimize_ops(_program):
 
 
 def _get_varname_parts(varname):
-    # returns origin, blockid, trainerid
+    #returns origin, blockid, trainerid
     orig_var_name = ""
     trainer_part = ""
     block_part = ""
