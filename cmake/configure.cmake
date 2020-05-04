@@ -94,6 +94,9 @@ if(WITH_GPU)
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
     include_directories(${CUDA_TOOLKIT_INCLUDE})
+    if(WITH_NCCL)
+	include_directories(${NCCL_INCLUDE_DIR})
+    endif()
 
     if(TENSORRT_FOUND)
         if(WIN32)
