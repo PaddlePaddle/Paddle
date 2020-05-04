@@ -58,14 +58,15 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
 
     auto src_x_tz = framework::vectorize<int64_t>(x->dims());
     auto src_y_tz = framework::vectorize<int64_t>(y->dims());
+    auto x_format = x->format();
+    auto y_format = y->format();
+    auto unique_name = ctx.OutputName("Out");
+
     auto dst_tz = framework::vectorize<int64_t>(z->dims());
 
-    // Currently MKL-DNN kernel supports only Z <- X + Y, shape(X) == shape(Y)
-    // TODO(jczaja): Binary primitive support broadcasting, so we can support
-    // this in kernel
     platform::BinaryMKLDNNHandler<T> handler(
-        dnnl::algorithm::binary_add, src_x_tz, x->format(), y->format(),
-        dev_ctx, ctx.GetPlace(), ctx.OutputName("Out"));
+        dnnl::algorithm::binary_add, src_x_tz, src_y_tz, x_format, y_format,
+        dev_ctx, ctx.GetPlace(), unique_name);
 
     auto src_x_memory = handler.AcquireSrcMemory(x);
     auto src_y_memory = handler.AcquireSecondSrcMemory(y);

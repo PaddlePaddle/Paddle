@@ -356,28 +356,40 @@ template <typename T>
 class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
   BinaryMKLDNNHandler(const dnnl::algorithm algo,
-                      const std::vector<int64_t>& dims,
+                      const std::vector<int64_t>& dims0,
+                      const std::vector<int64_t>& dims1,
                       const MKLDNNMemoryFormat src0_fmt,
                       const MKLDNNMemoryFormat src1_fmt,
                       const platform::MKLDNNDeviceContext& dev_ctx,
                       platform::Place cpu_place, const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
+            platform::CreateKey(dims0, uniq_name)) {
     // TODO(jczaja): Add function checking if data already exists
-    auto src0_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src0_fmt);
-    auto src1_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src1_fmt);
+    auto src0_md = dnnl::memory::desc(dims0, MKLDNNGetDataType<T>(), src0_fmt);
+    auto src1_md = dnnl::memory::desc(dims1, MKLDNNGetDataType<T>(), src1_fmt);
+    auto rankdiff = dims0.size() - dims1.size();
+    if (rankdiff > 0) {
+      std::vector<int64_t> ones(rankdiff, 1);
+      std::vector<int64_t> dims1_ex(dims1); 
+      dims1_ex.insert(dims1_ex.begin(), ones.begin(), ones.end());
+      src1_md = src1_md.reshape(dims1_ex);
+      this->key_ += std::to_string(rankdiff);  // TODO(jczaja): think about it
+      this->key_common_ += std::to_string(rankdiff);
+    } 
+
     auto dst_md =
-        memory::desc(dims, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+        memory::desc(dims0, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(algo, src0_md, src1_md, dst_md);
+
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+        this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
   }
 };
 
