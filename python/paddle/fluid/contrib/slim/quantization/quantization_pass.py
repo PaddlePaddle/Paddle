@@ -421,8 +421,8 @@ class QuantizationTransformPass(object):
                 if op_grad_out is not None:
                     graph.update_output_link(op_grad_out, target_out_grad_node,
                                              op_grad)
-                else:
-                    graph.link_to(op_grad, target_out_grad_node)
+                #else:
+                #    graph.link_to(op_grad, target_out_grad_node)
 
                 for node in in_node_grad_op:
                     graph.update_input_link(target_in_node, var_node, node)
@@ -614,7 +614,7 @@ class QuantizationTransformPass(object):
         graph.link_to(quant_op_node, scale_var_node)
         return quant_var_node, scale_var_node
 
-    def _insert_quant_range_abs_max_op(self, graph, var_node, quant_bits):
+    def _insert_quant_range_abs_max_op(self, graph, var_node, name, quant_bits):
         """
         Insert fake_quantize_range_abs_max on the graph.
         """
