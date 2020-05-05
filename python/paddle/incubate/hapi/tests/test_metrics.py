@@ -66,7 +66,7 @@ class TestAccuracyDynamic(unittest.TestCase):
     def test_main(self):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             acc = Accuracy(topk=self.topk, name=self.name)
-            for i in range(10):
+            for _ in range(10):
                 label, pred = self.random_pred_label()
                 label_var = to_variable(label)
                 pred_var = to_variable(pred)

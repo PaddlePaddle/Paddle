@@ -1534,7 +1534,7 @@ class Model(fluid.dygraph.Layer):
         outputs = list(zip(*outputs))
 
         # NOTE: for lod tensor output, we should not stack outputs
-        # for stacking may loss its detail info
+        # for stacking may lose its detail info
         if stack_outputs:
             outputs = [np.vstack(outs) for outs in outputs]
 
