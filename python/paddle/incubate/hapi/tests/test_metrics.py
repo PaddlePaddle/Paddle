@@ -103,7 +103,7 @@ class TestAccuracyStatic(TestAccuracyDynamic):
         exe = fluid.Executor(fluid.CPUPlace())
         compiled_main_prog = fluid.CompiledProgram(main_prog)
 
-        for i in range(10):
+        for _ in range(10):
             label, pred = self.random_pred_label()
             state_ret = exe.run(compiled_main_prog,
                                 feed={'pred': pred,
