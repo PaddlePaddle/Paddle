@@ -44,7 +44,7 @@ class AssertOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(
         cond.dims(), paddle::framework::make_ddim({1}),
         platform::errors::InvalidArgument(
-            "The shape of Input(Condition) of AssertOp must be 1. But now "
+            "The numel of Input(Condition) of AssertOp must be 1. But now "
             "the Condition's shape is ",
             cond.dims().to_str(), ".\n"));
 
