@@ -36,7 +36,8 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-using SparseMeta = std::tuple<std::string, std::string, int>;
+using SparseMeta =
+    std::tuple<std::string, std::vector<std::string>, std::vector<int>>;
 
 struct value {
   std::vector<std::string> names;
@@ -53,7 +54,7 @@ class SparseVariable {
     auto value_names = std::get<1>(meta);
     auto dims = std::get<2>(meta);
 
-    for (int i = 0; i < value_names.size(); i++) {
+    for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
       value_mata[value_names[i]] = dims[i];
     }
   }
@@ -78,8 +79,9 @@ class LargeScaleKV {
 
   static LargeScaleKV* GetInstance() { return scale_kv_.get(); }
 
-  static LargeScaleKV* InitInstance() {
-    std::call_once(init_flag_, &LargeScaleKV::Init);
+  static LargeScaleKV* InitInstance(
+      const std::vector<SparseMeta>& table_metas) {
+    std::call_once(init_flag_, &LargeScaleKV::Init, std::ref(table_metas));
     return scale_kv_.get();
   }
 
@@ -97,6 +99,8 @@ class LargeScaleKV {
  private:
   std::unordered_map<std::string, std::shared_ptr<SparseVariable>>
       sparse_variables;
+  static std::shared_ptr<LargeScaleKV> scale_kv_;
+  static std::once_flag init_flag_;
 };
 
 }  // namespace distributed
