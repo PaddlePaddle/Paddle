@@ -59,7 +59,7 @@ class Flowers(Dataset):
         
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.datasets import Flowers
+            from paddle.incubate.hapi.datasets import Flowers
 
             flowers = Flowers(mode='test')
 

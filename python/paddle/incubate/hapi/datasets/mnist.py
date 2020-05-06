@@ -59,7 +59,7 @@ class MNIST(Dataset):
         
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.datasets import MNIST
+            from paddle.incubate.hapi.datasets import MNIST
 
             mnist = MNIST(mode='test')
 

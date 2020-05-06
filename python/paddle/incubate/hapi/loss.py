@@ -34,6 +34,23 @@ class Loss(object):
     Usage:
         custom_loss = CustomLoss()
         loss = custom_loss(inputs, labels)
+    
+    Examples:
+        .. code-block:: python
+
+            from paddle.incubate.hapi.loss import Loss
+            from paddle import fluid
+
+            class SoftmaxWithCrossEntropy(Loss):
+                def __init__(self, average=True):
+                    super(SoftmaxWithCrossEntropy, self).__init__(average)
+
+                def forward(self, outputs, labels):
+                    return [
+                        fluid.layers.softmax_with_cross_entropy(
+                            o, l, return_softmax=False) for o, l in zip(outputs, labels)
+                    ]
+            
     """
 
     def __init__(self, average=True):

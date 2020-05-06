@@ -33,7 +33,7 @@ class LeNet(Model):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import LeNet
+            from from paddle.incubate.hapi.vision.models import LeNet
 
             model = LeNet()
     """

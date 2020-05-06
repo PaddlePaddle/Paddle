@@ -102,7 +102,12 @@
         "load_persistables_for_inference",
         "cache",
         "buffered",
-        "xmap_readers"
+        "xmap_readers",
+        "Metric.reset",
+        "Metric.update",
+        "Metric.accumulate",
+        "Metric.name",
+        "Metric.add_metric_op"
     ],
     "wlist_no_op_pass":[
         "gelu",
