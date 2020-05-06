@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/communicator_common.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
@@ -59,10 +60,13 @@ class RecvOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("recv_varnames");
 
     if (recv_varnames.size() > 0) {
-      auto recv_functor = distributed::ParameterRecv<float>();
-      auto rpc_ctx = distributed::CommContext(outs[0], recv_varnames, epmap, {},
-                                              {}, trainer_id);
-      recv_functor(rpc_ctx, scope);
+      auto *communicator = distributed::Communicator::GetInstance();
+
+      if (communicator == nullptr) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "need run fleet.init_worker first"));
+      }
+      communicator->RecvNoBarrier();
     } else {
       std::vector<distributed::VarHandlePtr> rets;
       if (with_barrier) {

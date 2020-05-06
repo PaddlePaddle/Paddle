@@ -301,7 +301,8 @@ class AsyncCommunicator : public Communicator {
 
   void Recv() override;
   void SendByCommunicator();
-  void RecvByCommunicator(bool barrier = true);
+  void RecvByCommunicator();
+  virtual void RecvNoBarrier();
   virtual void MetCondition() {}
   virtual void BarrierSend() {}
   virtual void BarrierRecv() {}
@@ -346,7 +347,7 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
   }
 
   void Clean() override;
-  void Recv() { RecvByCommunicator(true); }
+  void Recv() { RecvByCommunicator(); }
   void Barrier() override;
   void BarrierTriggerDecrement() override;
   void BarrierTriggerReset(int initial_val) override;

@@ -269,7 +269,7 @@ void AsyncCommunicator::RecvNoBarrier() {
   task_futures.reserve(recv_varname_to_ctx_.size());
 
   for (auto &iter : recv_varname_to_ctx_) {
-    auto recv_task = [this, &iter, &barrier] {
+    auto recv_task = [this, &iter] {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
