@@ -48,7 +48,7 @@ class TestAssertOp(unittest.TestCase):
     def test_assert_cond_numel_error(self):
         def net_func():
             condition = layers.fill_constant(
-                shape=[1, 2], dtype='bool', value=False)
+                shape=[1, 2], dtype='bool', value=True)
             layers.Assert(condition, [])
 
         with self.assertRaises(fluid.core.EnforceNotMet):
