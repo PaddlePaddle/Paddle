@@ -4337,6 +4337,33 @@ class ModelParallelOptimizer(object):
 
         return programs
 
+    def _find_post_op(self, ops, cur_op, var_name):
+        """
+        Find the real post op that has variable named var_name as input.
+
+        Args:
+            ops (list): A list of ops.
+            cur_op (Operator): Current operator which has variable named
+                               var_name as input.
+            var_name (string): Variable name.
+        """
+        post_op = []
+        before = True
+        for op in ops:
+            if op == cur_op:
+                before = False
+                continue
+            if before:
+                continue
+            for in_var_name in op.input_arg_names:
+                if in_var_name == var_name:
+                    post_op.append(op)
+        if post_op:
+            if not len(post_op) == 1:
+                raise ValueError("Can only have one post op.")
+            return post_op[0]
+        return None
+
     def _find_real_prev_op(self, ops, cur_op, var_name):
         """
         Find the real previous op that outputs variable named var_name.
@@ -4560,11 +4587,15 @@ class ModelParallelOptimizer(object):
     def _add_default_opdevice_attr(self, block):
         """
         1. Add default op_device and op_device index attribute for
-           optimizer related ops. The default values are the ones that
+           optimizer (lr) related ops. The default values are the ones that
            of the first place (CPUPlace or CUDAPlace).
         2. Add default op_device attribute for ops that have no kernel.
            For these ops, the op_device_index attribute is set. So, we
            can determine the op_device attribute based on it.
+        3. Add default op_device_index attribute for sum ops added during
+           optimization. For these ops, we set the op_device_index attribute
+           as the one of its post op, i.e, which op has the output of the sum op
+           as input.
         """
         devcie = ""
         device_index = ""
@@ -4591,6 +4622,18 @@ class ModelParallelOptimizer(object):
                     assert op.attr(self._op_role_key) == lrsched_role, (
                         "Ops whose op_device attr have not been set for model"
                         " parallel must be of the role LRSched.")
+                else:
+                    # For sum ops that compute the sum of @RENAMED@ vars
+                    for name in op.desc.input_arg_names():
+                        assert '@RENAME@' in name
+                    assert len(op.desc.output_arg_names()) == 1
+                    out_name = op.desc.output_arg_names()[0]
+                    post_op = self._find_post_op(block.ops, op, out_name)
+                    device = post_op.attr(self._op_device_key)
+                    device_index = post_op.attr(self._op_device_index_key)
+                    op._set_attr(self._op_device_key, device)
+                    op._set_attr(self._op_device_index_key, device_index)
+
                 op._set_attr(self._op_device_key, device)
                 op._set_attr(self._op_device_index_key, device_index)
 

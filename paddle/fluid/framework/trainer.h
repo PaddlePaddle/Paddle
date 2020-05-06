@@ -184,6 +184,7 @@ class ModelParallelTrainer : public TrainerBase {
   void InitOtherEnv(const ProgramDesc& main_program) override {}
   void Run() override;
   void Finalize() override;
+  void GetSkipVars(int section_id, const ProgramDesc& main_program);
   virtual Scope* GetWorkerScope(int thread_id);
 
  protected:
@@ -192,6 +193,7 @@ class ModelParallelTrainer : public TrainerBase {
   int start_cpu_core_id_;
   std::vector<std::string> feed_var_names_;
   std::vector<platform::Place> places_;
+  std::vector<std::vector<std::string>> skip_vars_;
   TrainerDesc trainer_desc_;
 
   // worker: [section_id]

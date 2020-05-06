@@ -151,6 +151,26 @@ void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
   }
 }
 
+void ModelParallelTrainer::GetSkipVars(int section_id,
+                                       const ProgramDesc& program) {
+  auto& global_block = program.Block(0);
+  for (auto& op : global_block.AllOps()) {
+    if (op->Type() != "enqueue") {
+      continue;
+    }
+    auto input_arg_names = op->InputArgumentNames();
+    PADDLE_ENFORCE_EQ(input_arg_names.size(), 1,
+                      "Number of input arguments for enqueue op must be 1, "
+                      "but the value is %d.",
+                      input_arg_names.size());
+    std::string input_arg_name = input_arg_names[0];
+    if (input_arg_name.rfind("@GRAD") != input_arg_name.size() - 5) {
+      skip_vars_[section_id].emplace_back(input_arg_name);
+      VLOG(3) << "add skip var name: " << input_arg_name;
+    }
+  }
+}
+
 void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                           const platform::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(root_scope_,
@@ -160,6 +180,7 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   ModelParallelWorker::cpu_id_.store(start_cpu_core_id_);
   minibatch_scopes_.resize(section_num_);
   macrobatch_scopes_.resize(section_num_);
+  skip_vars_.resize(section_num_);
 
   for (int i = 0; i < section_num_; ++i) {
     minibatch_scopes_[i] = &root_scope_->NewScope();
@@ -171,6 +192,7 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       macrobatch_scopes_[i][j] = &minibatch_scopes_[i]->NewScope();
       CopyParameters(i, j, *program, places_[i]);
     }
+    GetSkipVars(i, *program);
   }
 
   for (int i = 0; i < section_num_; ++i) {
@@ -180,6 +202,7 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     this_worker->SetRootScope(root_scope_);
     this_worker->SetMinibatchScope(minibatch_scopes_[i]);
     this_worker->SetMacrobatchScopes(macrobatch_scopes_[i]);
+    this_worker->SetSkipVars(skip_vars_[i]);
   }
 }
 

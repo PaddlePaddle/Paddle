@@ -412,6 +412,9 @@ class ModelParallelWorker : public DeviceWorker {
   void TrainFilesWithProfiler() override;
 
   void PrintFetchVars() override {}
+  void SetSkipVars(const std::vector<std::string>& skip_vars) {
+    skip_vars_ = skip_vars;
+  }
 
   const platform::Place& place() const { return place_; }
 
@@ -422,6 +425,7 @@ class ModelParallelWorker : public DeviceWorker {
   int section_id_;
   int num_macrobatches_;
   std::vector<Scope*> macrobatch_scopes_;
+  std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
