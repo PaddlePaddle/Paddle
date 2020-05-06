@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import numpy as np
+from collections import namedtuple
 
 
 class ProgressBar(object):
@@ -59,10 +60,8 @@ class ProgressBar(object):
             except:
 
                 def get_terminal_size():
-                    from collections import namedtuple
                     terminal_size = namedtuple("terminal_size", "columns lines")
-                    columns, lines = (80, 24)
-                    return terminal_size(columns, lines)
+                    return terminal_size(80, 24)
 
         terminal_width, _ = get_terminal_size()
         max_width = min(int(terminal_width * 0.6), terminal_width - 50)
@@ -177,7 +176,7 @@ class ProgressBar(object):
                             info += ' %.4e' % v
                     elif isinstance(v, np.ndarray) and \
                         v.size == 1 and \
-                        isinstance(v.dtype, (np.float32, np.float64)):
+                        v.dtype in [np.float32, np.float64]:
                         if abs(v[0]) > 1e-3:
                             info += ' %.4f' % v[0]
                         else:

@@ -61,6 +61,22 @@ class TestFolderDatasets(unittest.TestCase):
         for _ in loader:
             pass
 
+        assert len(loader) == 4
+
+    def test_transform(self):
+        def fake_transform(img):
+            return img
+
+        transfrom = fake_transform
+        dataset_folder = DatasetFolder(self.data_dir, transform=transfrom)
+
+        for _ in dataset_folder:
+            pass
+
+        loader = ImageFolder(self.data_dir, transform=transfrom)
+        for _ in loader:
+            pass
+
     def test_errors(self):
         with self.assertRaises(RuntimeError):
             ImageFolder(self.empty_dir)

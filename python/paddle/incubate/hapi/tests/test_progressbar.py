@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# when test, you should add hapi root path to the PYTHONPATH,
-# export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
+import numpy as np
 import unittest
 import random
 import time
@@ -37,6 +36,22 @@ class TestProgressBar(unittest.TestCase):
                 time.sleep(0.002)
             progbar.update(step, values)
 
+        progbar.update(1, [['loss', int(1)]])
+        progbar.update(1, [['loss', 'INF']])
+        progbar.update(1, [['loss', 1e-4]])
+        progbar.update(1, [['loss', np.array([1.])]])
+        progbar.update(1, [['loss', np.array([1e-4])]])
+        progbar.start()
+
+        progbar.update(0, values)
+        progbar._dynamic_display = False
+        progbar.update(1e4, values)
+
+        progbar._num = None
+        progbar.update(0, values)
+        progbar._num = 1
+        progbar.update(1 + 1e-4, values)
+
     def test1(self):
         self.prog_bar(50, 1, 30)
 
@@ -45,6 +60,10 @@ class TestProgressBar(unittest.TestCase):
 
     def test4(self):
         self.prog_bar(50, 2, 30, verbose=2)
+
+    def test_errors(self):
+        with self.assertRaises(TypeError):
+            ProgressBar(-1)
 
 
 if __name__ == '__main__':
