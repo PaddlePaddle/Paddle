@@ -980,17 +980,8 @@ def assign_skip_lod_tensor_array(inputs, outputs):
     """
     Skip the process of copying LoDTensorArray.
     """
-    if isinstance(inputs, (list, tuple)):
-        for i in range(len(inputs)):
-            assign_skip_lod_tensor_array(inputs[i], outputs[i])
-    elif isinstance(inputs, dict):
-        for key in _sorted(inputs):
-            assign(inputs[key], outputs[key])
-    else:
-        if inputs.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            pass
-        else:
-            assign(inputs, outputs)
+    if inputs.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assign(inputs, outputs)
 
 
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
@@ -1080,7 +1071,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            assign_skip_lod_tensor_array(output_vars, loop_vars)
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1104,7 +1095,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                              "(length and structure) as loop_vars: {0}".format(
                                  e))
         now_cond = cond(*output_vars)
-        assign_skip_lod_tensor_array(output_vars, loop_vars)
+        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 
