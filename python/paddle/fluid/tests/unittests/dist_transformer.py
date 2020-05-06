@@ -41,8 +41,6 @@ from paddle.compat import long_type
 
 import hashlib
 
-from paddle.fluid.transpiler.details import program_to_code
-
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
 

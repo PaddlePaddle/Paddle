@@ -32,6 +32,15 @@ class CallTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
 
+    def _is_builtin_call(self, node):
+        assert isinstance(node, gast.Call)
+        func_str = ast_to_source_code(node.func).strip()
+        try:
+            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin
+            return eval("is_builtin({})".format(func_str))
+        except Exception:
+            return False
+
     def transform(self):
         self.visit(self.root)
 
@@ -39,6 +48,10 @@ class CallTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if is_paddle_api(node):
             return node
+
+        if self._is_builtin_call(node):
+            return node
+
         func_str = ast_to_source_code(node.func).strip()
         new_func_str = "fluid.dygraph.dygraph_to_static.convert_call({})".format(
             func_str)
