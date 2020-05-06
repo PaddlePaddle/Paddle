@@ -32,8 +32,9 @@ inline std::vector<int> get_new_shape(
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
+    PADDLE_ENFORCE_EQ(
+        tensor->dims(), framework::make_ddim({1}),
+        platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -804,9 +805,9 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
       out_w = out_size_data[0];
     }
   }
-  PADDLE_ENFORCE_GT(
-      out_w, 0,
-      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
+                                  "out_w in Attr(out_shape) of Op(interpolate) "
+                                  "should be greater than 0."));
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_w};
@@ -872,12 +873,12 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
       out_w = out_size_data[1];
     }
   }
-  PADDLE_ENFORCE_GT(
-      out_h, 0,
-      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
-  PADDLE_ENFORCE_GT(
-      out_w, 0,
-      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
+                                  "out_h in Attr(out_shape) of Op(interpolate) "
+                                  "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
+                                  "out_w in Attr(out_shape) of Op(interpolate) "
+                                  "should be greater than 0."));
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
     dim_out = {n, c, out_h, out_w};
@@ -960,15 +961,15 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
       out_w = out_size_data[2];
     }
   }
-  PADDLE_ENFORCE_GT(
-      out_d, 0,
-      "out_d in Attr(out_shape) of Op(interpolate) should be greater than 0.");
-  PADDLE_ENFORCE_GT(
-      out_h, 0,
-      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
-  PADDLE_ENFORCE_GT(
-      out_w, 0,
-      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+  PADDLE_ENFORCE_GT(out_d, 0, platform::errors::InvalidArgument(
+                                  "out_d in Attr(out_shape) of Op(interpolate) "
+                                  "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_h, 0, platform::errors::InvalidArgument(
+                                  "out_h in Attr(out_shape) of Op(interpolate) "
+                                  "should be greater than 0."));
+  PADDLE_ENFORCE_GT(out_w, 0, platform::errors::InvalidArgument(
+                                  "out_w in Attr(out_shape) of Op(interpolate) "
+                                  "should be greater than 0."));
 
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {

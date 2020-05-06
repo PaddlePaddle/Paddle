@@ -17,10 +17,12 @@
 
 from .layer import norm
 from .functional import extension
+from .layer import common
 
 __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
+__all__ += common.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue        #DEFINE_ALIAS

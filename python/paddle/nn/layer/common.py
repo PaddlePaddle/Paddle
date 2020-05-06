@@ -159,7 +159,8 @@ class UpSample(layers.Layer):
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
+             layer, the shape is (out_w, ) when input is 3-D Tensor ,
+             the shape is (out_h, out_w) when input is a 4-D Tensor and is
              (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If
              a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
@@ -169,7 +170,7 @@ class UpSample(layers.Layer):
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR' ,
+        resample(str): The resample method. It supports 'LINEAR',  'BILINEAR', 'TRILINEAR' ,
                        'BICUBIC' and 'NEAREST' currently. Default: 'BILINEAR'
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -192,13 +193,13 @@ class UpSample(layers.Layer):
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            will be consistent with that of the input. An optional string from:'NCW', `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
     
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_w, channels),
+        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels). 
 
@@ -215,7 +216,7 @@ class UpSample(layers.Layer):
         ValueError: scale should be greater than zero.
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'. 
+        ValueError: data_format can only be 'NCW', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'. 
 
     Examples:
         .. code-block:: python
