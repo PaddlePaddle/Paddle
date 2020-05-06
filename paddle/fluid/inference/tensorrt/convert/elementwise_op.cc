@@ -82,7 +82,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
       if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
         CHECK(op_desc.HasAttr("X_scale"));
-        float x_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
+        float x_scale = BOOST_GET(float, op_desc.GetAttr("X_scale"));
         engine_->SetTensorDynamicRange(X, x_scale);
 #endif
       }
@@ -197,8 +197,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(5000)
         CHECK(op_desc.HasAttr("X_scale"));
         CHECK(op_desc.HasAttr("Y_scale"));
-        float x_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
-        float y_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Y_scale"));
+        float x_scale = BOOST_GET(float, op_desc.GetAttr("X_scale"));
+        float y_scale = BOOST_GET(float, op_desc.GetAttr("Y_scale"));
         engine_->SetTensorDynamicRange(X, x_scale);
         engine_->SetTensorDynamicRange(Y, y_scale);
 #endif

@@ -99,8 +99,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
       optimize_ops.push_back(node);
       auto op_role_var = node->Op()->GetNullableAttr(
           OpProtoAndCheckerMaker::OpRoleVarAttrName());
-      auto op_role_vars =
-          BOOST_GET_CONST(std::vector<std::string>, op_role_var);
+      auto op_role_vars = BOOST_GET(std::vector<std::string>, op_role_var);
       for (size_t i = 0; i < op_role_vars.size(); i += 2) {
         grad_names.insert(op_role_vars[i + 1]);
         gradname2paramname[op_role_vars[i + 1]] = op_role_vars[i];

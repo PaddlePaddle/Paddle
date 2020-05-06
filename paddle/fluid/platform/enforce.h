@@ -49,6 +49,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 
@@ -455,27 +456,30 @@ struct EnforceNotMet : public std::exception {
  *    - safe writing: int x = BOOST_GET(int, y);
 */
 
-#define __BOOST_GET_SAFELY(__TYPE, __VALUE)                            \
-  do {                                                                 \
-    try {                                                              \
-      return boost::get<__TYPE>(__VALUE);                              \
-    } catch (boost::bad_get & bad_get) {                               \
-      PADDLE_THROW(paddle::platform::errors::InvalidArgument(          \
-          "boost::get failed, cannot get value "                       \
-          "(%s) by type %s, its type is %s.",                          \
-          #__VALUE, paddle::platform::demangle(typeid(__TYPE).name()), \
-          paddle::platform::demangle((__VALUE).type().name())));       \
-    }                                                                  \
-  } while (0)
+namespace details {
 
-#define BOOST_GET(__TYPE, __VALUE) \
-  (([&]() -> __TYPE { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
-#define BOOST_GET_CONST(__TYPE, __VALUE) \
-  (([&]() -> const __TYPE { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
-#define BOOST_GET_REF(__TYPE, __VALUE) \
-  (([&]() -> __TYPE& { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
-#define BOOST_GET_CONST_REF(__TYPE, __VALUE) \
-  (([&]() -> const __TYPE& { __BOOST_GET_SAFELY(__TYPE, __VALUE); })())
+#define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr) \
+  template <typename OutputType, typename InputType>                      \
+  auto SafeBoostGet(__InputType input, const char* expression,            \
+                    const char* file, int line)                           \
+      ->typename std::conditional<std::is_pointer<InputType>::value,      \
+                                  __OutputTypePtr, __OutputType>::type {  \
+    try {                                                                 \
+      return boost::get<OutputType>(input);                               \
+    } catch (boost::bad_get&) {                                           \
+      PADDLE_THROW("boost::bad_get");                                     \
+    }                                                                     \
+  }
+
+DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*);
+DEFINE_SAFE_BOOST_GET(const InputType&, const OutputType&, const OutputType*);
+DEFINE_SAFE_BOOST_GET(InputType&&, OutputType, OutputType*);
+
+}  // namespace details
+
+#define BOOST_GET(__TYPE, __VALUE)                                     \
+  ::paddle::platform::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, \
+                                                    __FILE__, __LINE__)
 
 /** OTHER EXCEPTION AND ENFORCE **/
 

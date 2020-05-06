@@ -260,7 +260,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     auto cplace = platform::CPUPlace();
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto& dev_ctx = ctx.cuda_device_context();
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto gplace = BOOST_GET(platform::CUDAPlace, ctx.GetPlace());
     if (ctx.HasInput("RoisLod")) {
       auto* rois_lod = ctx.Input<Tensor>("RoisLod");
       int rois_batch_size = rois_lod->numel();
@@ -344,7 +344,7 @@ class GPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+    auto gplace = BOOST_GET(platform::CUDAPlace, ctx.GetPlace());
     if (ctx.HasInput("RoisLod")) {
       auto* rois_lod = ctx.Input<Tensor>("RoisLod");
       int rois_batch_size = rois_lod->numel();

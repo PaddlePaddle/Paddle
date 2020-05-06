@@ -31,7 +31,7 @@ std::string FormatName(const Node* node) {
       !node->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
     return node->Name();
   }
-  const std::string full_scope = BOOST_GET_CONST(
+  const std::string full_scope = BOOST_GET(
       std::string,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
   return string::Sprintf("%s%s", full_scope.c_str(), node->Name().c_str());

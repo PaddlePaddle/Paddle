@@ -45,7 +45,7 @@ OpHandleBase::~OpHandleBase() PADDLE_MAY_THROW {
 void OpHandleBase::InitCUDA() {
 #ifdef PADDLE_WITH_CUDA
   for (auto &p : dev_ctxes_) {
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
+    int dev_id = BOOST_GET(platform::CUDAPlace, p.first).device;
     PADDLE_ENFORCE(cudaSetDevice(dev_id));
     PADDLE_ENFORCE(
         cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
@@ -55,8 +55,7 @@ void OpHandleBase::InitCUDA() {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
         int dev_id =
-            BOOST_GET_CONST(platform::CUDAPlace, out_var_handle->place())
-                .device;
+            BOOST_GET(platform::CUDAPlace, out_var_handle->place()).device;
         out_var_handle->SetGenerateEvent(events_.at(dev_id));
       }
     }
@@ -64,7 +63,7 @@ void OpHandleBase::InitCUDA() {
     PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
                       "%s should have only one dev_ctx.", Name());
     auto &place = dev_ctxes_.begin()->first;
-    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
+    int dev_id = BOOST_GET(platform::CUDAPlace, place).device;
     for (auto &out_var : outputs_) {
       auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
       if (out_var_handle) {
@@ -193,7 +192,7 @@ void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
     for (auto &p : dev_ctxes_) {
-      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, p.first).device;
+      auto dev_id = BOOST_GET(platform::CUDAPlace, p.first).device;
       auto *cuda_dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
       VLOG(10) << "cudadevicecontext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -211,8 +210,8 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
   } else {
     auto *ctx = dev_ctxes_.at(p);
     auto *cuda_ctx = static_cast<platform::CUDADeviceContext *>(ctx);
-    cuda_ctx->RecordEvent(
-        events_.at(BOOST_GET_CONST(platform::CUDAPlace, p).device), callback);
+    cuda_ctx->RecordEvent(events_.at(BOOST_GET(platform::CUDAPlace, p).device),
+                          callback);
   }
 #else
   callback();

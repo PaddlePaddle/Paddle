@@ -434,18 +434,19 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class WhileGradOpVarTypeInference : public framework::VarTypeInference {
+class WhileGradOpVarTypeInference
+    : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto p_names = ctx->Input(kX);
-    auto pg_ig_names = ctx->Output(framework::GradVarName(kX));
+    auto p_names = Input(ctx, kX);
+    auto pg_ig_names = Output(ctx, framework::GradVarName(kX));
 
     for (size_t i = 0; i < p_names.size(); ++i) {
-      if (ctx->HasVar(pg_ig_names[i])) {
+      if (HasVar(ctx, pg_ig_names[i])) {
         VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
-                << " type: " << ctx->GetType(p_names[i]);
-        ctx->SetType(pg_ig_names[i], ctx->GetType(p_names[i]));
-        ctx->SetDataType(pg_ig_names[i], ctx->GetDataType(p_names[i]));
+                << " type: " << GetType(ctx, p_names[i]);
+        SetType(ctx, pg_ig_names[i], GetType(ctx, p_names[i]));
+        SetDataType(ctx, pg_ig_names[i], GetDataType(ctx, p_names[i]));
       }
     }
   }
@@ -473,8 +474,8 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
         continue;
       }
       framework::VarDesc *in_var =
-          BOOST_GET_CONST(framework::VarDesc *, in_var_ptrs[i]);
-      BOOST_GET_CONST(framework::VarDesc *, out_var_ptrs[i])
+          BOOST_GET(framework::VarDesc *, in_var_ptrs[i]);
+      BOOST_GET(framework::VarDesc *, out_var_ptrs[i])
           ->SetShape(in_var->GetShape());
     }
   }

@@ -43,16 +43,15 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     // NOTE: If new attribution is added, the following code maybe need change.
     int op_role = BOOST_GET(int, momentum_ops[0]->Op()->GetAttr(
                                      OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float mu = BOOST_GET_CONST(float, momentum_ops[0]->Op()->GetAttr("mu"));
+    float mu = BOOST_GET(float, momentum_ops[0]->Op()->GetAttr("mu"));
     bool use_nesterov =
-        BOOST_GET_CONST(bool, momentum_ops[0]->Op()->GetAttr("use_nesterov"));
+        BOOST_GET(bool, momentum_ops[0]->Op()->GetAttr("use_nesterov"));
 
     for (auto &momentum_op : momentum_ops) {
-      PADDLE_ENFORCE_EQ(
-          mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")));
+      PADDLE_ENFORCE_EQ(mu, BOOST_GET(float, momentum_op->Op()->GetAttr("mu")));
       PADDLE_ENFORCE_EQ(
           use_nesterov,
-          BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")));
+          BOOST_GET(bool, momentum_op->Op()->GetAttr("use_nesterov")));
       PADDLE_ENFORCE_EQ(
           op_role,
           BOOST_GET(int, momentum_op->Op()->GetAttr(

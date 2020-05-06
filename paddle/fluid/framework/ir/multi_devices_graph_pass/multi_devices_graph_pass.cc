@@ -635,7 +635,7 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
   if (!OpHaveRole(*node, framework::OpRole::kOptimize)) {
     return -1;
   }
-  auto param_grad = BOOST_GET_CONST(
+  auto param_grad = BOOST_GET(
       std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
@@ -730,7 +730,7 @@ int ReduceSSAGraphBuilder::GetOpDeviceID(
     return -1;
   }
 
-  auto param_grad = BOOST_GET_CONST(
+  auto param_grad = BOOST_GET(
       std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
@@ -822,9 +822,9 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
                    "Can not schedule the RPC operator to the right place.");
     if (node->Op()->Type() == "recv") {
       auto recv_vars_attr =
-          BOOST_GET_CONST(std::vector<std::string>,
-                          node->Op()->GetNullableAttr(
-                              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          BOOST_GET(std::vector<std::string>,
+                    node->Op()->GetNullableAttr(
+                        OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE(recv_vars_attr.size() == 2UL);  // [parameter, gradient]
       if (recv_vars_attr[0].find(".block") == std::string::npos) {
         bcast_var_name_set_[op_dev_id].emplace(recv_vars_attr[0]);
@@ -888,7 +888,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
-      auto send_param_grad = BOOST_GET_CONST(
+      auto send_param_grad = BOOST_GET(
           std::vector<std::string>,
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(send_param_grad.size(), 2U);
@@ -905,7 +905,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
-    auto recv_param_grad = BOOST_GET_CONST(
+    auto recv_param_grad = BOOST_GET(
         std::vector<std::string>,
         node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
     if (recv_param_grad.size() == 2U) {

@@ -424,7 +424,7 @@ std::string OpTester::DebugString() {
     switch (attr_type) {
       case framework::proto::AttrType::BOOLEAN: {
         ss << GenSpaces(count) << "type: BOOLEAN\n";
-        ss << GenSpaces(count) << "b: " << BOOST_GET_CONST(bool, attr) << "\n";
+        ss << GenSpaces(count) << "b: " << BOOST_GET(bool, attr) << "\n";
       } break;
       case framework::proto::AttrType::INT: {
         ss << GenSpaces(count) << "type: INT\n";
@@ -432,11 +432,11 @@ std::string OpTester::DebugString() {
       } break;
       case framework::proto::AttrType::FLOAT: {
         ss << GenSpaces(count) << "type: FLOAT\n";
-        ss << GenSpaces(count) << "f: " << BOOST_GET_CONST(float, attr) << "\n";
+        ss << GenSpaces(count) << "f: " << BOOST_GET(float, attr) << "\n";
       } break;
       case framework::proto::AttrType::STRING: {
         ss << GenSpaces(count) << "type: STRING\n";
-        ss << GenSpaces(count) << "s: \"" << BOOST_GET_CONST(std::string, attr)
+        ss << GenSpaces(count) << "s: \"" << BOOST_GET(std::string, attr)
            << "\"\n";
       } break;
       case framework::proto::AttrType::BOOLEANS: {

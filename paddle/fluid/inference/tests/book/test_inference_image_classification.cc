@@ -60,7 +60,7 @@ TEST(inference, image_classification) {
     LOG(INFO) << "Batch size is " << FLAGS_batch_size;
     TestInference<paddle::platform::CPUPlace, false, true>(
         dirname, cpu_feeds, cpu_fetchs1, FLAGS_repeat, is_combined);
-    LOG(INFO) << BOOST_GET_CONST(paddle::framework::LoDTensor, output1).dims();
+    LOG(INFO) << BOOST_GET(paddle::framework::LoDTensor, output1).dims();
   }
 
 #ifdef PADDLE_WITH_CUDA
@@ -73,11 +73,11 @@ TEST(inference, image_classification) {
   LOG(INFO) << "Batch size is " << FLAGS_batch_size;
   TestInference<paddle::platform::CUDAPlace, false, true>(
       dirname, cpu_feeds, cpu_fetchs2, FLAGS_repeat, is_combined);
-  LOG(INFO) << BOOST_GET_CONST(paddle::framework::LoDTensor, output2).dims();
+  LOG(INFO) << BOOST_GET(paddle::framework::LoDTensor, output2).dims();
 
   if (!FLAGS_skip_cpu) {
-    CheckError<float>(BOOST_GET_CONST(paddle::framework::LoDTensor, output1),
-                      BOOST_GET_CONST(paddle::framework::LoDTensor, output2));
+    CheckError<float>(BOOST_GET(paddle::framework::LoDTensor, output1),
+                      BOOST_GET(paddle::framework::LoDTensor, output2));
   }
 
   // float16 inference requires cuda GPUs with >= 5.3 compute capability
@@ -93,8 +93,8 @@ TEST(inference, image_classification) {
     TestInference<paddle::platform::CUDAPlace, false, true>(
         FLAGS_fp16_dirname, cpu_feeds, cpu_fetchs3, FLAGS_repeat);
 
-    CheckError<float>(BOOST_GET_CONST(paddle::framework::LoDTensor, output2),
-                      BOOST_GET_CONST(paddle::framework::LoDTensor, output3));
+    CheckError<float>(BOOST_GET(paddle::framework::LoDTensor, output2),
+                      BOOST_GET(paddle::framework::LoDTensor, output3));
   }
 #endif
 }

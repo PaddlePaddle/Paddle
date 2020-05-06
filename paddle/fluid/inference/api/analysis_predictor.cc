@@ -107,7 +107,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
+    auto dst_gpu_place = BOOST_GET(platform::CUDAPlace, place);
     memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
@@ -385,7 +385,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     PADDLE_ENFORCE((size_t)idx == i);
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto &fetch = BOOST_GET_CONST(framework::LoDTensor, fetch_var);
+    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -627,7 +627,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = BOOST_GET(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
 
@@ -644,7 +644,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
-    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+    auto gpu_place = BOOST_GET(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -780,7 +780,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
       std::string engine_name =
-          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+          BOOST_GET(std::string, op_desc->GetAttr("engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";

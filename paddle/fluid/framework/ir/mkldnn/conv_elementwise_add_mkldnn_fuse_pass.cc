@@ -72,17 +72,10 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
 
 template <typename T>
 boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
-  if (op.Op()->HasAttr(attr)) {
-    try {
-      return boost::get<T>(op.Op()->GetAttr(attr));
-    } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "boost::get failed when get attribute %s of operator %s.", attr,
-          op.Op()->Type()));
-    }
-  } else {
+  if (op.Op()->HasAttr(attr))
+    return boost::get<T>(op.Op()->GetAttr(attr));
+  else
     return boost::none;
-  }
 }
 
 ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::IdentityFuseHandle(

@@ -234,7 +234,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
           platform::DeviceContextPool::Instance();
       auto *dev_ctx =
           static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
-      auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
+      auto dst_gpu_place = BOOST_GET(platform::CUDAPlace, place_);
       memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
@@ -288,7 +288,7 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
     PADDLE_ENFORCE((size_t)idx == i);
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    auto fetch = BOOST_GET_CONST(framework::LoDTensor, fetch_var);
+    auto fetch = BOOST_GET(framework::LoDTensor, fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];

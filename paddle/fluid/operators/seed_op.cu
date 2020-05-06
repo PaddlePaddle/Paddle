@@ -32,8 +32,7 @@ class GPUSeedKernel : public framework::OpKernel<T> {
     } else {
       seed = rnd();
     }
-    auto target_gpu_place =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace());
+    auto target_gpu_place = BOOST_GET(platform::CUDAPlace, context.GetPlace());
     auto stream = context.cuda_device_context().stream();
     memory::Copy(target_gpu_place, out_data, platform::CPUPlace(), &seed,
                  sizeof(int), stream);

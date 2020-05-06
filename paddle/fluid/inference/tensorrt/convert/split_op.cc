@@ -46,7 +46,7 @@ class SplitOpConverter : public OpConverter {
             "Invalid split axis. Split on batch is not supported in TensorRT"));
 
     std::vector<int> output_lengths =
-        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
+        BOOST_GET(std::vector<int>, op_desc.GetAttr("sections"));
     int num = 0;
     if (op_desc.HasAttr("num")) {
       num = BOOST_GET(int, op_desc.GetAttr("num"));

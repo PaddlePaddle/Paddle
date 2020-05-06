@@ -24,7 +24,7 @@ ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
     buddy_allocator_.reset(new memory::detail::BuddyAllocator(
         std::unique_ptr<memory::detail::SystemAllocator>(
             new memory::detail::GPUAllocator(
-                BOOST_GET_CONST(platform::CUDAPlace, place_).device)),
+                BOOST_GET(platform::CUDAPlace, place_).device)),
         platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
   } else {
     LOG(FATAL) << "Thread local allocator only supports CUDAPlace now.";

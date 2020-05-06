@@ -114,9 +114,10 @@ class FlipOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class FlipOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 

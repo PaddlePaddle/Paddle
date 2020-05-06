@@ -83,7 +83,7 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     proto::AttrType attr_type =
         static_cast<proto::AttrType>(it->second.which() - 1);
     if (attr_type == proto::AttrType::BOOLEAN) {
-      bool result = BOOST_GET_CONST(bool, attr);
+      bool result = BOOST_GET(bool, attr);
       if (result) {
         ret = "true";
       } else {
@@ -98,11 +98,11 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::FLOAT) {
-      float result = BOOST_GET_CONST(float, attr);
+      float result = BOOST_GET(float, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::STRING) {
-      std::string result = BOOST_GET_CONST(std::string, attr);
+      std::string result = BOOST_GET(std::string, attr);
       ret = result;
     }
   } else {

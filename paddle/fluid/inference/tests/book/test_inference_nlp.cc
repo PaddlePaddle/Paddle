@@ -149,9 +149,9 @@ void ThreadRunInfer(
     if (op->Type() == "fetch") {
       std::string fetch_target_name = op->Input("X")[0];
       int idx = BOOST_GET(int, op->GetAttr("col"));
-      *fetch_targets[fetch_target_name] = BOOST_GET_CONST(
-          paddle::framework::LoDTensor,
-          paddle::framework::GetFetchVariable(*scope, "fetch", idx));
+      *fetch_targets[fetch_target_name] =
+          BOOST_GET(paddle::framework::LoDTensor,
+                    paddle::framework::GetFetchVariable(*scope, "fetch", idx));
     }
   }
 

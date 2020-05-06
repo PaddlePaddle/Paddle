@@ -123,13 +123,7 @@ class GradOpBaseMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    try {
-      return boost::get<T>(GetAttr(name));
-    } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "boost::get failed when get attribute %s of operator %s.", name,
-          type_));
-    }
+    return boost::get<T>(GetAttr(name));
   }
 
   const std::string& ForwardOpType() const { return type_; }

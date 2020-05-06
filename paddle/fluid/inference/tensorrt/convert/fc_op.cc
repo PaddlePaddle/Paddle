@@ -52,19 +52,18 @@ class FcOpConverter : public OpConverter {
                    : 1);
     const std::string activation_type =
         op_desc.HasAttr("activation_type")
-            ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
+            ? BOOST_GET(std::string, op_desc.GetAttr("activation_type"))
             : "";
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
-    bool enable_int8 = BOOST_GET_CONST(bool, op_desc.HasAttr("enable_int8"));
+    bool enable_int8 = BOOST_GET(bool, op_desc.HasAttr("enable_int8"));
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr(i_name + "_scale"));
-      float in_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale"));
+      float in_scale = BOOST_GET(float, op_desc.GetAttr(i_name + "_scale"));
       auto weight_scale =
-          BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
+          BOOST_GET(std::vector<float>, op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
                                               Y_t, true, weight_scale);
       engine_->SetTensorDynamicRange(X, in_scale);

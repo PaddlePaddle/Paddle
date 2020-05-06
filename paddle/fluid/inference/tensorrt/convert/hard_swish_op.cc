@@ -43,15 +43,14 @@ class HardSwishOpConverter : public OpConverter {
         platform::errors::InvalidArgument(
             "HardSwish op has only 1 output, but got %d", output_num));
 
-    const float threshold =
-        op_desc.HasAttr("threshold")
-            ? BOOST_GET_CONST(float, op_desc.GetAttr("threshold"))
-            : 6.0f;
+    const float threshold = op_desc.HasAttr("threshold")
+                                ? BOOST_GET(float, op_desc.GetAttr("threshold"))
+                                : 6.0f;
     const float scale = op_desc.HasAttr("scale")
-                            ? BOOST_GET_CONST(float, op_desc.GetAttr("scale"))
+                            ? BOOST_GET(float, op_desc.GetAttr("scale"))
                             : 6.0f;
     const float offset = op_desc.HasAttr("offset")
-                             ? BOOST_GET_CONST(float, op_desc.GetAttr("offset"))
+                             ? BOOST_GET(float, op_desc.GetAttr("offset"))
                              : 3.0f;
 
     nvinfer1::ILayer* layer = nullptr;

@@ -85,13 +85,7 @@ class OpDesc {
   T GetAttrIfExists(const std::string &name) const {
     T result{};
     if (HasAttr(name)) {
-      try {
-        result = boost::get<T>(GetAttr(name));
-      } catch (boost::bad_get &bad_get) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "boost::get failed when get attribute %s of operator %s.", name,
-            Type()));
-      }
+      result = boost::get<T>(GetAttr(name));
     }
     return result;
   }

@@ -72,14 +72,12 @@ The output will have the same shape and dtype as the input.
 class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output("Out").front();
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
         BOOST_GET(int, ctx->GetAttr("dtype")));
     if (var_data_type < 0) {
-      const auto &input_var_name = ctx->Input("X").front();
-      ctx->SetDataType(out_var_name, ctx->GetDataType(input_var_name));
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
     } else {
-      ctx->SetDataType(out_var_name, var_data_type);
+      ctx->SetOutputDataType("Out", var_data_type);
     }
   }
 };

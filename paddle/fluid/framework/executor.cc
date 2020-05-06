@@ -452,15 +452,15 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+            BOOST_GET(platform::CUDAPlace, place_), max_memory_size));
       } else {
         gc.reset(new DefaultStreamGarbageCollector(
-            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
+            BOOST_GET(platform::CUDAPlace, place_), max_memory_size));
       }
     } else if (platform::is_cpu_place(place_)) {
 #endif
-      gc.reset(new CPUGarbageCollector(
-          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
+      gc.reset(new CPUGarbageCollector(BOOST_GET(platform::CPUPlace, place_),
+                                       max_memory_size));
 #ifdef PADDLE_WITH_CUDA
     }
 #endif

@@ -53,7 +53,7 @@ class LayerNormOpConverter : public OpConverter {
             ? BOOST_GET(int, op_desc.GetAttr("begin_norm_axis"))
             : 1;
     const float eps = op_desc.HasAttr("epsilon")
-                          ? BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"))
+                          ? BOOST_GET(float, op_desc.GetAttr("epsilon"))
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v, platform::errors::InvalidArgument(

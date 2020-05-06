@@ -42,9 +42,9 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          BOOST_GET_CONST(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          BOOST_GET_CONST(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
       auto& x_lod = x_var->Get<LoDTensor>().lod();
       auto& y_lod = y_var->Get<LoDTensor>().lod();

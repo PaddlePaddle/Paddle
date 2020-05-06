@@ -71,9 +71,8 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     if ((static_cast<int>(kDepValue) &
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
-        FLAGS_use_mkldnn ||
-        (op->HasAttr("use_mkldnn") &&
-         BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
+        FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
+                             BOOST_GET(bool, op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", this->Input("X"));
     }
 
@@ -130,9 +129,10 @@ class ActivationOp : public framework::OperatorWithKernel {
 class ActivationOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 

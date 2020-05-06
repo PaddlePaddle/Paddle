@@ -58,8 +58,7 @@ class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
     auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
         BOOST_GET(int, ctx->GetAttr("out_dtype")));
     if (data_type >= 0) {
-      auto& out_var_name = ctx->Output("Out").front();
-      ctx->SetDataType(out_var_name, data_type);
+      ctx->SetOutputDataType("Out", data_type);
     }
   }
 };

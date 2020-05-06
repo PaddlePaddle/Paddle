@@ -91,24 +91,21 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: If new attribution is added, the following code maybe need change.
     int op_role = BOOST_GET(int, adam_ops[0]->Op()->GetAttr(
                                      OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float beta1 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta1"));
-    float beta2 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta2"));
-    float epsilon =
-        BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("epsilon"));
-    bool lazy_mode =
-        BOOST_GET_CONST(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
+    float beta1 = BOOST_GET(float, adam_ops[0]->Op()->GetAttr("beta1"));
+    float beta2 = BOOST_GET(float, adam_ops[0]->Op()->GetAttr("beta2"));
+    float epsilon = BOOST_GET(float, adam_ops[0]->Op()->GetAttr("epsilon"));
+    bool lazy_mode = BOOST_GET(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
     int64_t min_row_size_to_use_multithread = BOOST_GET(
         int64_t, adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
     for (auto &adam_op : adam_ops) {
-      PADDLE_ENFORCE_EQ(
-          beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")));
-      PADDLE_ENFORCE_EQ(
-          beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")));
-      PADDLE_ENFORCE_EQ(
-          epsilon, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")));
-      PADDLE_ENFORCE_EQ(
-          lazy_mode,
-          BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")));
+      PADDLE_ENFORCE_EQ(beta1,
+                        BOOST_GET(float, adam_op->Op()->GetAttr("beta1")));
+      PADDLE_ENFORCE_EQ(beta2,
+                        BOOST_GET(float, adam_op->Op()->GetAttr("beta2")));
+      PADDLE_ENFORCE_EQ(epsilon,
+                        BOOST_GET(float, adam_op->Op()->GetAttr("epsilon")));
+      PADDLE_ENFORCE_EQ(lazy_mode,
+                        BOOST_GET(bool, adam_op->Op()->GetAttr("lazy_mode")));
       PADDLE_ENFORCE_EQ(
           min_row_size_to_use_multithread,
           BOOST_GET(int64_t,
@@ -185,18 +182,18 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: If new attribution is added, the following code maybe need change.
     int op_role = BOOST_GET(int, scale_ops[0]->Op()->GetAttr(
                                      OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float scale = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("scale"));
-    float bias = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("bias"));
+    float scale = BOOST_GET(float, scale_ops[0]->Op()->GetAttr("scale"));
+    float bias = BOOST_GET(float, scale_ops[0]->Op()->GetAttr("bias"));
     bool bias_after_scale =
-        BOOST_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
+        BOOST_GET(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
     for (auto &scale_op : scale_ops) {
-      PADDLE_ENFORCE_EQ(
-          scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")));
-      PADDLE_ENFORCE_EQ(
-          bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")));
+      PADDLE_ENFORCE_EQ(scale,
+                        BOOST_GET(float, scale_op->Op()->GetAttr("scale")));
+      PADDLE_ENFORCE_EQ(bias,
+                        BOOST_GET(float, scale_op->Op()->GetAttr("bias")));
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
-          BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")));
+          BOOST_GET(bool, scale_op->Op()->GetAttr("bias_after_scale")));
       PADDLE_ENFORCE_EQ(
           op_role,
           BOOST_GET(int, scale_op->Op()->GetAttr(

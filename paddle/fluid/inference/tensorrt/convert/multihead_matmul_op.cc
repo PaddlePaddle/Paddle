@@ -83,7 +83,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
     // add qkv to context
     int head_number = BOOST_GET(int, op_desc.GetAttr("head_number"));
     int head_size = all_head_size / head_number;
-    float scale = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
+    float scale = BOOST_GET(float, op_desc.GetAttr("alpha"));
 
     std::vector<nvinfer1::ITensor*> plugin_inputs;
     plugin_inputs.push_back(fc_out);

@@ -125,7 +125,7 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
         delete_nodes.insert(
             nodes[i * kNumFields + kDequantOpWeightScaleOffset]);
       } else {
-        float max_range = BOOST_GET_CONST(
+        float max_range = BOOST_GET(
             float, nodes[i * kNumFields + kDequantOpOffset]->Op()->GetAttr(
                        "max_range"));
         weight_scale.push_back((range * range) / max_range);

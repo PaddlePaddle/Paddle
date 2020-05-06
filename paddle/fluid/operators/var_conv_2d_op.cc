@@ -96,7 +96,7 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
 
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        BOOST_GET_CONST(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(
         !x_lod.empty(), true,
@@ -109,15 +109,15 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
         "The Input(X)'s lod info mismatches the actual tensor shape.");
 
     framework::Variable* row_var =
-        BOOST_GET_CONST(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
     const auto& row_lod = row_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(!row_lod.empty(), true,
                       platform::errors::InvalidArgument(
                           "The Input(ROW) Tensor of VarConv2dOP does not "
                           "contain LoD information."));
 
-    framework::Variable* col_var = BOOST_GET_CONST(
-        framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
+    framework::Variable* col_var =
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
     const auto& col_lod = col_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(!col_lod.empty(), true,
                       platform::errors::InvalidArgument(
