@@ -58,6 +58,17 @@ class AssignOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    const framework::Variable *var = ctx.InputVar("X");
+    if (var->IsType<framework::LoDTensorArray>()) {
+      auto t_arr = var->Get<framework::LoDTensorArray>();
+      // NOTE(liym27): Support an empty tensor array as Input.
+      // And set the kernel type is float.
+      if (t_arr.size() == 0) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       ctx.device_context());
+      }
+    }
+
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());

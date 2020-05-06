@@ -12463,6 +12463,8 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     helper = LayerHelper('add_position_encoding', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "add_position_encoding")
     dtype = helper.input_dtype()
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -14221,6 +14223,9 @@ def gather_tree(ids, parents):
             final_sequences = fluid.layers.gather_tree(ids, parents)
     """
     helper = LayerHelper('gather_tree', **locals())
+    check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+    check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
+                             'gather_tree')
     out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
     helper.append_op(
