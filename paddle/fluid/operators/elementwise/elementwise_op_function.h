@@ -1036,22 +1036,6 @@ void CommonGradBroadcastCUDA(
             << " post:" << post;
   };
 
-  /*
-  std::string x_broadcast_message = "X broadcast message:";
-  for(int i = 0; i < x_broadcast_pos.size(); i++) {
-    x_broadcast_message += "i: " + std::to_string(i) +  ", pos:" +
-  std::to_string(x_broadcast_pos[i]);
-  }
-
-  std::string y_broadcast_message = "Y broadcast message:";
-  for(int i = 0; i < y_broadcast_pos.size(); i++) {
-    y_broadcast_message += "i: " + std::to_string(i) +  ", pos:" +
-  std::to_string(y_broadcast_pos[i]);
-  }
-
-  VLOG(0) << "x broadcast message is " << x_broadcast_message;
-  VLOG(0) << "y broadcast message is " << y_broadcast_message;
-  */
   // do fast elementwise if: 1. only one input need to do broadcast, we can
   // fallback
   // to old fast path.
