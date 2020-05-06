@@ -355,6 +355,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
     source = ast_to_source_code(ast_root)
+    print("result code:")
+    print(source)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -507,12 +509,22 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         # self.is_control_flow_num += 1
         if not isinstance(node.iter, gast.Call):
             return
-        if not isinstance(node.iter.func, gast.Name):
+
+        # for in range(v.numpy())
+        if isinstance(node.iter.func, gast.Name):
+            if node.iter.func.id == "range":
+                for arg in node.iter.args:
+                    self.visit(arg)
+            else:
+                return
+        # for in v.numpy()
+        elif isinstance(node.iter.func, gast.Attribute):
+            if node.iter.func.attr == 'numpy':
+                self._visit_Call(node.iter)
+            else:
+                return
+        else:
             return
-        if node.iter.func.id != "range":
-            return
-        for arg in node.iter.args:
-            self.visit(arg)
 
         for child_node in gast.walk(node):
             if isinstance(child_node, (gast.Continue, gast.Break)):

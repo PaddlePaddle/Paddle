@@ -84,6 +84,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
         BreakContinueTransformer(node_wrapper).transform()
 
         # Transform for loop and while loop
+        print("before loop tree:")
+        print(astor.dump_tree(self.root))
         LoopTransformer(node_wrapper).transform()
 
         # Transform all if/else statement of Dygraph into Static Graph.
@@ -149,10 +151,14 @@ def convert_to_static(dyfunc):
     raw_code = inspect.getsource(dyfunc)
     code = textwrap.dedent(raw_code)
     root = gast.parse(code)
+    print("source tree:")
+    print(astor.dump_tree(root))
 
     # Transform AST
     dygraph_to_static = DygraphToStaticAst()
     root_wrapper = dygraph_to_static.get_static_ast(root)
+    print("result tree:")
+    print(astor.dump_tree(root_wrapper.node))
 
     # Get static_func from AST
     static_func, file_name = ast_to_func(root_wrapper.node, dyfunc)

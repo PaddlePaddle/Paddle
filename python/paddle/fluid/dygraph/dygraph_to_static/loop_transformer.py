@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import gast
+import astor
 
 from collections import defaultdict
 from paddle.fluid import unique_name
@@ -321,7 +322,7 @@ class LoopTransformer(gast.NodeTransformer):
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of WhileTransformer."
+        ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.name_visitor = NameVisitor(self.root)
@@ -355,16 +356,29 @@ class LoopTransformer(gast.NodeTransformer):
             else:
                 i += 1
 
-    def get_for_range_node(self, node):
+    def get_for_iter_node(self, node):
         if not isinstance(node.iter, gast.Call):
             return None
-        if not isinstance(node.iter.func, gast.Name):
-            return None
-        if node.iter.func.id != "range":
-            return None
-        return node.iter
+        # for in range(var.numpy())
+        if isinstance(node.iter.func,
+                      gast.Name) and node.iter.func.id == "range":
+            return node.iter
+        # for in var.numpy()
+        # TODO: cond polish
+        if isinstance(node.iter.func,
+                      gast.Attribute) and node.iter.func.attr == 'numpy':
+            return node.iter
+        return None
 
-    def get_for_args_stmts(self, iter_name, args_list):
+    def _is_for_range_iter_node(self, node):
+        return isinstance(node.iter.func,
+                          gast.Name) and node.iter.func.id == "range"
+
+    def _is_for_iter_node(self, node):
+        return isinstance(node.iter.func,
+                          gast.Attribute) and node.iter.func.attr == 'numpy'
+
+    def get_for_range_args_stmts(self, iter_name, args_list):
         '''
         Returns 3 gast stmt nodes for argument.
         1. Initailize of iterate variable
@@ -393,6 +407,9 @@ class LoopTransformer(gast.NodeTransformer):
         step_node = args_list[2] if len_range_args == 3 else gast.Constant(
             value=1, kind=None)
 
+        print(astor.dump_tree(range_max_node))
+        print(astor.dump_tree(step_node))
+
         cond_stmt = gast.Compare(
             left=gast.BinOp(
                 left=gast.Name(
@@ -416,25 +433,67 @@ class LoopTransformer(gast.NodeTransformer):
 
         return init_stmt, cond_stmt, change_stmt
 
+    def get_for_iter_stmts(self, iter_name, iter_node):
+        assert isinstance(iter_node, gast.Call), "iter node mast be gast.Call"
+
+        init_stmt = get_constant_variable_node(iter_name, 0)
+        step_node = gast.Constant(value=1, kind=None)
+
+        cond_stmt = gast.Compare(
+            left=gast.BinOp(
+                left=gast.Name(
+                    id=iter_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                op=gast.Add(),
+                right=step_node),
+            ops=[gast.LtE()],
+            comparators=[iter_node])
+
+        change_stmt = gast.AugAssign(
+            target=gast.Name(
+                id=iter_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None),
+            op=gast.Add(),
+            value=step_node)
+
+        return init_stmt, cond_stmt, change_stmt
+
     def get_for_stmt_nodes(self, node):
         # TODO: consider for - else in python
+        # NOTE: Here check whether need to transform
         if not self.name_visitor.is_control_flow_loop(node):
-            return [node]
-
-        # TODO: support non-range case
-        range_call_node = self.get_for_range_node(node)
-        if range_call_node is None:
             return [node]
 
         if not isinstance(node.target, gast.Name):
             return [node]
         iter_var_name = node.target.id
 
-        init_stmt, cond_stmt, change_stmt = self.get_for_args_stmts(
-            iter_var_name, range_call_node.args)
+        # NOTE: Current support cases:
+        #   1. for x in range(VarBase.numpy()[0])
+        #   2. for x in VarBase.numpy()
+        if self._is_for_range_iter_node(node.iter):
+            init_stmt, cond_stmt, change_stmt = self.get_for_range_args_stmts(
+                iter_var_name, node.iter.args)
+        elif self._is_for_iter_node(node.iter):
+            init_stmt, cond_stmt, change_stmt = self.get_for_iter_stmts(
+                iter_var_name, node.iter)
+        else:
+            return [node]
+
+        print(astor.dump_tree(init_stmt))
+        print(astor.dump_tree(cond_stmt))
+        print(astor.dump_tree(change_stmt))
 
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
+
+        print(loop_var_names)
+        print(create_var_names)
+
         new_stmts = []
         # Python can create variable in loop and use it out of loop, E.g.
         #
