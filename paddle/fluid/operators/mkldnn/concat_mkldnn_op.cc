@@ -48,8 +48,9 @@ static memory::desc CreateMemDesc(const Tensor& input,
 static platform::CPUPlace GetCpuPlace(
     const paddle::framework::ExecutionContext& ctx) {
   auto place = ctx.GetPlace();
-  PADDLE_ENFORCE(paddle::platform::is_cpu_place(place),
-                 "It must use CPUPlace.");
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                    platform::errors::PreconditionNotMet(
+                        "The DNNL kernel must use CPUPlace."));
   return boost::get<platform::CPUPlace>(place);
 }
 

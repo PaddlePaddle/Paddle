@@ -33,8 +33,9 @@ template <typename T>
 class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "The DNNL kernel must use CPUPlace."));
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
@@ -117,8 +118,9 @@ template <typename T>
 class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "The DNNL kernel must use CPUPlace."));
 
     const Tensor* in_x = ctx.Input<Tensor>("X");
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));

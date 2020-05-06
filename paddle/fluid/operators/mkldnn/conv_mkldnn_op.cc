@@ -94,8 +94,9 @@ template <typename T, typename K>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "The DNNL kernel must use CPUPlace."));
     bool is_INT8 =
         std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
     if (!is_INT8) {
@@ -728,8 +729,9 @@ template <typename T>
 class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "The DNNL kernel must use CPUPlace"));
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();

@@ -144,7 +144,9 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto src_tz = paddle::framework::vectorize<int64_t>(x->dims());
     auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
-    PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(), 1,
+        platform::errors::InvalidArgument("Dims of scale tensor must be 1"));
     const unsigned int C = scale_tz[0];
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
@@ -248,7 +250,9 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto src_tz = paddle::framework::vectorize<int64_t>(x->dims());
     auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
-    PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(), 1UL,
+        platform::errors::InvalidArgument("Dims of scale tensor must be 1"));
 
     const unsigned int C = scale_tz[0];
 

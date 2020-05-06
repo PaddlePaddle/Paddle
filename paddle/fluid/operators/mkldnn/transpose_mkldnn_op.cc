@@ -28,8 +28,9 @@ template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "The DNNL kernel must use CPUPlace."));
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -73,8 +74,9 @@ template <typename T>
 class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      platform::errors::PreconditionNotMet(
+                          "The mkldnn kernel must run on CPU device."));
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
