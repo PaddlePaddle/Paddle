@@ -127,7 +127,7 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
     return false;
   }
 
-  bool `(ir::Graph *result, ir::Node *node) const override {
+  bool DealWithSpecialOp(ir::Graph *result, ir::Node *node) const override {
     if (node->Op()->Type() == "recv") {
       VLOG(1) << "set recv op do_not_run to true";
       node->Op()->SetAttr("do_not_run", 1);
