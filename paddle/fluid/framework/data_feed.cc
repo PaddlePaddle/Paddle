@@ -1194,7 +1194,7 @@ bool MultiSlotFileInstantDataFeed::Preprocess(const std::string& filename) {
 
 bool MultiSlotFileInstantDataFeed::Postprocess() {
   if (buffer_ != nullptr) {
-    munmap(static_cast<void*>(buffer_), end_);
+    munmap(reinterpret_cast<void*>(const_cast<char*>(buffer_)), end_);
     buffer_ = nullptr;
   }
   if (fd_ != -1) {

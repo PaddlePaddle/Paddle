@@ -86,15 +86,104 @@ class Collective(object):
         self.main_program._origin_program = self.main_program.clone()
         self._transpile_main_program()
 
+    def pipeline_transpile(self, startup_program, main_program, rank,
+                           endpoints_list, current_endpoint, wait_port):
+        # in case of ['127.0.0.1:6700,127.0.0.1:6701,...', ...]
+        if isinstance(endpoints, str):
+            endpoints = endpoints.split(',')
+
+        # A map from ip to all ports of its devices used.
+        ip2ports = dict()
+        ip2portnum = dict()
+        for ep in endpoints:
+            ip, port = ep.split(":")
+            if ip not in ip2ports:
+                ip2ports[ip] = []
+                ip2portnum[ip] = 0
+            ip2ports[ip].append(int(port))
+            ip2portnum[ip] += 1
+
+        port_num = None
+        for ip in ip2portnum.keys():
+            if port_mum is None:
+                port_num = ip2portnum[ip]
+            if port_num != ip2portnum[ip]:
+                raise ValueError("Every node should use the same number "
+                                 "of devices in pipeline mode.")
+            ip2ports[ip] = sorted(ip2ports[ip])
+
+        self.startup_program = startup_program
+        if startup_program is None:
+            self.startup_program = default_startup_program()
+
+        self.main_program = main_program
+        if main_program is None:
+            raise ValueError("You should set the main_program parameter "
+                             "which is the section program in pipeline mode.")
+
+        endpoints_list = []
+        for i in range(port_num):
+            endpoints = []
+            for ip in ip2ports.keys():
+                ep = ip + ":" + str(ip2ports[ip][i])
+                endpoints.append(ep)
+            endpoints_list.append(endpoints)
+
+        nranks = len(ip2ports.keys())
+        ring_id = None
+        rank = None
+        for idx, endpoints in enumerate(endpoints_list):
+            if len(endpoints) != nranks:
+                raise ValueError("all sections for pipeline should have the "
+                                 "same number of ranks")
+            if current_endpoint in endpoints:
+                assert ring_id is None
+                ring_id = idx
+                rank = endpoints.index(current_endpoint)
+        if rank is None:
+            raise ValueError('current endpoint %s is not in %s',
+                             current_endpoint, str(endpoints_list))
+
+        self.nranks = nranks
+        self.nrings = port_num
+        if self.nranks == 1:
+            raise ValueError('the number of ranks must > 1')
+
+        if rank < 0:
+            raise ValueError('rank must >= 0')
+        self.rank = rank
+        self.ring_id = ring_id
+
+        self.endpoints_list = endpoints_list
+        self.endpoints = endpoints_list[ring_id]
+        self.current_endpoint = current_endpoint
+
+        self.wait_port = wait_port
+
+        self.startup_program._origin_program = self.startup_program.clone()
+        self._pipeline_transpile_startup_program()
+
+        self.main_program._origin_program = self.main_program.clone()
+        self._pipeline_transpile_main_program()
+
     def _transpile_main_program(self):
+        raise NotImplementedError('call the inherited method of subclasses')
+
+    def _pipeline_transpile_main_program(self):
         raise NotImplementedError('call the inherited method of subclasses')
 
     def _transpile_startup_program(self):
         for ring_id in range(self.nrings):
             self._init_communicator(self.startup_program, self.current_endpoint,
-                                    self.endpoints, self.rank, ring_id,
+                                    self.endpoints, self.rank, self.ring_id,
                                     self.wait_port)
         self._broadcast_params()
+
+    def _pipeline_transpile_startup_program(self):
+        self._init_communicator(self.startup_program, self.current_endpoint,
+                                self.endpoints, self.rank, ring_id,
+                                self.wait_port)
+        self._pipeline_broadcast_params()
 
     def _init_communicator(self, program, current_endpoint, endpoints, rank,
                            ring_id, wait_port):
@@ -156,6 +245,30 @@ class Collective(object):
                 attrs={'ring_id': ring_id,
                        self.op_role_key: OpRole.Forward})
 
+    def _pipeline_broadcast_params(self):
+        block = self.startup_program.global_block()
+        for param in block.iter_parameters():
+            if param.is_distributed:
+                continue
+
+            ring_id = self.ring_id
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': 0,
+                    self.op_role_key: OpRole.Forward
+                })
+
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': param},
+            outputs={'Out': param},
+            attrs={'ring_id': ring_id,
+                   self.op_role_key: OpRole.Forward})
+
     def _is_loss_grad_op(self, op):
         if self.op_role_key not in op.attr_names:
             return False
@@ -192,7 +305,7 @@ class GradAllReduce(Collective):
         In order to keep the learning rate consistent in different numbers of
         training workers, we scale the loss grad by the number of workers
         '''
-        block = self.main_program.global_block()
+        block = sepipeline_lf.main_program.global_block()
         for idx, op in reversed(list(enumerate(block.ops))):
             if self._is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
@@ -385,3 +498,92 @@ class SingleProcessMultiThread(GradAllReduce):
     def _transpile_startup_program(self):
         block = self.startup_program.global_block()
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+
+
+class PipelineGradAllReduce(Collective):
+    '''
+    '''
+
+    def __init__(self, nrings=2):
+        Collective.__init__(self, nrings)
+        self.mode = "pipeline_grad_allreduce"
+
+    def _pipeline_transpile_main_program(self):
+        self._insert_scale_loss_grad_ops()
+        self._insert_allreduce_ops()
+
+    def _insert_scale_loss_grad_ops(self):
+        '''
+        In order to keep the learning rate consistent in different numbers of
+        training workers, we scale the loss grad by the number of workers
+        '''
+        block = self.main_program.global_block()
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                block._insert_op(
+                    idx + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / self.nranks,
+                        self.op_role_key: OpRole.Backward
+                    })
+
+    def _insert_allreduce_ops(self):
+        block = self.main_program.global_block()
+        ring_id = self.ring_id
+        grad = None
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_backward_op(op) and \
+                    self.op_role_var_key in op.attr_names:
+                op_role_var = op.all_attrs()[self.op_role_var_key]
+
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+
+                offset = idx
+                for i in range(0, len(op_role_var), 2):
+                    param = block.vars[op_role_var[i]]
+                    grad = block.vars[op_role_var[i + 1]]
+                    if param.is_distributed:
+                        continue
+
+                    if offset == idx:
+                        offset += 1
+                        block._insert_op(
+                            offset,
+                            type='c_sync_calc_stream',
+                            inputs={'X': grad},
+                            outputs={'Out': grad},
+                            attrs={self.op_role_key: OpRole.Backward})
+                        offset += 1
+
+                    block._insert_op(
+                        offset,
+                        type='c_allreduce_sum',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
+                        })
+
+        if grad is None:
+            return
+
+        for idx, op in enumerate(block.ops):
+            if self._is_optimizer_op(op):
+                for ring_id in range(self.nrings):
+                    block._insert_op(
+                        idx + ring_id,
+                        type='c_sync_comm_stream',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
+                        })
+                break
