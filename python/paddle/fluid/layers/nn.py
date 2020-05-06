@@ -186,6 +186,7 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
+    'unbind',
 ]
 
 
@@ -983,12 +984,11 @@ def dropout(x,
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        seed = seed if seed is not None else 0
         _is_test = not _dygraph_tracer()._train_mode
-        out, mask = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
-                                     _is_test, 'fix_seed', seed is not None,
-                                     'seed', seed, 'dropout_implementation',
-                                     dropout_implementation)
+        out, mask = core.ops.dropout(
+            x, 'dropout_prob', dropout_prob, 'is_test', _is_test, 'fix_seed',
+            seed is not None, 'seed', seed if seed is not None else 0,
+            'dropout_implementation', dropout_implementation)
         return out
 
     helper = LayerHelper('dropout', **locals())
@@ -1138,7 +1138,7 @@ def chunk_eval(input,
 
     this_input = {"Inference": [input], "Label": [label]}
 
-    if seq_length:
+    if seq_length is not None:
         this_input["SeqLength"] = [seq_length]
 
     helper.append_op(
@@ -6264,8 +6264,7 @@ def lod_reset(x, y=None, target_lod=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
         check_type(y, 'y', (Variable), 'lod_reset')
-        if y.lod_level == 0:
-            check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
+        #TODO: check y.lod_level = 0 dtype
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6336,8 +6335,7 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
-        if level.lod_level == 0:
-            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
+        #TODO: check y.lod_level = 0 dtype
     else:
         attrs['target_lod'] = level
     helper.append_op(
@@ -12465,6 +12463,8 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     helper = LayerHelper('add_position_encoding', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "add_position_encoding")
     dtype = helper.input_dtype()
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -14223,6 +14223,9 @@ def gather_tree(ids, parents):
             final_sequences = fluid.layers.gather_tree(ids, parents)
     """
     helper = LayerHelper('gather_tree', **locals())
+    check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+    check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
+                             'gather_tree')
     out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
     helper.append_op(
@@ -14347,3 +14350,57 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def unbind(input, axis=0):
+    """
+    Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
+    Args:
+        input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
+       
+        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
+            dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+    Returns:
+        list(Variable): The list of segmented Tensor variables.
+
+    Example:
+        .. code-block:: python
+            import paddle
+            # input is a variable which shape is [3, 4, 5]
+            input = paddle.fluid.data(
+                 name="input", shape=[3, 4, 5], dtype="float32")
+            [x0, x1, x2] = paddle.tensor.unbind(input, axis=0)
+            # x0.shape [4, 5]
+            # x1.shape [4, 5]
+            # x2.shape [4, 5]
+            [x0, x1, x2, x3] = paddle.tensor.unbind(input, axis=1)
+            # x0.shape [3, 5]
+            # x1.shape [3, 5]
+            # x2.shape [3, 5]
+            # x3.shape [3, 5]
+
+    """
+    helper = LayerHelper("unbind", **locals())
+    check_type(input, 'input', (Variable), 'unbind')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
+                'unbind')
+    if not isinstance(axis, (int)):
+        raise TypeError("The type of 'axis'  must be int, but received %s." %
+                        (type(axis)))
+    if isinstance(axis, np.generic):
+        axis = np.asscalar(axis)
+    input_shape = input.shape
+    axis_ = axis if axis >= 0 else len(input_shape) + axis
+    num = input_shape[axis_]
+    outs = [
+        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
+
+    helper.append_op(
+        type="unbind",
+        inputs={"X": input},
+        outputs={"Out": outs},
+        attrs={"axis": axis})
+    return outs

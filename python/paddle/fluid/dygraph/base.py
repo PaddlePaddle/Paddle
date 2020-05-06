@@ -51,9 +51,11 @@ def program_desc_tracing_guard(enable):
     if tracer:
         original_val = tracer._enable_program_desc_tracing
         tracer._enable_program_desc_tracing = enable
-    yield
-    if tracer:
-        tracer._enable_program_desc_tracing = original_val
+    try:
+        yield
+    finally:
+        if tracer:
+            tracer._enable_program_desc_tracing = original_val
 
 
 _functional_dygraph_context_manager = None
@@ -136,14 +138,16 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
         mode = tracer._train_mode
         tracer._train_mode = is_train
-        yield
-        tracer._train_mode = mode
+        try:
+            yield
+        finally:
+            tracer._train_mode = mode
     else:
         yield
 
