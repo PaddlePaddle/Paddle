@@ -411,10 +411,9 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
-        if in_dygraph_mode() or not self.enable_declarative:
+        if not self.enable_declarative:
             logger.info(
-                "The ProgramTranslator.get_func doesn't work in dygraph "
-                "mode or set ProgramTranslator.enable to False. We will "
+                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
                 "just return dygraph output.")
             return dygraph_func
 
@@ -465,7 +464,7 @@ class ProgramTranslator(object):
         assert callable(
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
-        if self.enable_declarative:
+        if not self.enable_declarative:
             logger.info(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
                 "We will just return dygraph output.")
