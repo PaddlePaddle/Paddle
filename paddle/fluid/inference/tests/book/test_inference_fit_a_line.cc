@@ -77,8 +77,8 @@ TEST(inference, fit_a_line) {
 
     for (int i = 0; i < num_threads; ++i) {
       CheckError<float>(
-          boost::get<paddle::framework::LoDTensor>(*cpu_fetchs1[i][0]),
-          boost::get<paddle::framework::LoDTensor>(*cpu_fetchs2[i][0]));
+          BOOST_GET_CONST(paddle::framework::LoDTensor, *cpu_fetchs1[i][0]),
+          BOOST_GET_CONST(paddle::framework::LoDTensor, *cpu_fetchs2[i][0]));
       delete cpu_fetchs2[i][0];
     }
 #endif

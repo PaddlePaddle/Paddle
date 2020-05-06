@@ -141,7 +141,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 #ifdef PADDLE_WITH_CUDA
   } else {
     const T *a = self.data<T>();
-    auto p = boost::get<platform::CUDAPlace>(self.place());
+    auto p = BOOST_GET_CONST(platform::CUDAPlace, self.place());
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
@@ -156,7 +156,7 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
     self->mutable_data<T>(self->place())[offset] = elem;
 #ifdef PADDLE_WITH_CUDA
   } else {
-    auto p = boost::get<platform::CUDAPlace>(self->place());
+    auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -339,14 +339,16 @@ inline framework::Tensor *_getTensor(const framework::Tensor &self,
   output->Resize(ddim);
   auto place = self.place();
   if (platform::is_cpu_place(place)) {
-    output->mutable_data(boost::get<platform::CPUPlace>(place), self.type());
+    output->mutable_data(BOOST_GET_CONST(platform::CPUPlace, place),
+                         self.type());
 #ifdef PADDLE_WITH_CUDA
   } else {
     if (platform::is_cuda_pinned_place(place)) {
-      output->mutable_data(boost::get<platform::CUDAPinnedPlace>(place),
+      output->mutable_data(BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
                            self.type());
     } else if ((platform::is_gpu_place(place))) {
-      output->mutable_data(boost::get<platform::CUDAPlace>(place), self.type());
+      output->mutable_data(BOOST_GET_CONST(platform::CUDAPlace, place),
+                           self.type());
     }
 #endif
   }

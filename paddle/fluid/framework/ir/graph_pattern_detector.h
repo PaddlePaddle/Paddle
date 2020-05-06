@@ -142,8 +142,14 @@ struct PDNode {
   template <typename T>
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {
-      return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
-             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+      try {
+        return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
+               boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+      } catch (boost::bad_get& bad_get) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "boost::get failed when get attribute %s of operator %s.",
+            attr_name, x->Op()->Type()));
+      }
     });
     return this;
   }

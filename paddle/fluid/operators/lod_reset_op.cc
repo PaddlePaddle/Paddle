@@ -81,7 +81,7 @@ class LoDResetOpVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_var_name = ctx->Input("X").front();
     auto out_var_name = ctx->Output("Out").front();
-    bool append = boost::get<bool>(ctx->GetAttr("append"));
+    bool append = BOOST_GET_CONST(bool, ctx->GetAttr("append"));
     if (ctx->HasInput("Y")) {
       auto y_var_name = ctx->Input("Y").front();
       auto y_lod_level = std::max(ctx->GetLoDLevel(y_var_name), 1);

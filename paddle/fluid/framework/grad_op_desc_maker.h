@@ -161,7 +161,13 @@ class GradOpDescMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    try {
+      return boost::get<T>(GetAttr(name));
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "boost::get failed when get attribute %s of operator %s.", name,
+          fwd_op_.Type()));
+    }
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }

@@ -120,7 +120,13 @@ class OpBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    try {
+      return boost::get<T>(GetAttr(name));
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "boost::get failed when get attribute %s of operator %s.", name,
+          op_->Type()));
+    }
   }
 
   size_t id() const { return id_; }

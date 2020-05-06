@@ -74,7 +74,7 @@ class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto out_var_name = ctx->Output("Out").front();
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
+        BOOST_GET(int, ctx->GetAttr("dtype")));
     if (var_data_type < 0) {
       const auto &input_var_name = ctx->Input("X").front();
       ctx->SetDataType(out_var_name, ctx->GetDataType(input_var_name));

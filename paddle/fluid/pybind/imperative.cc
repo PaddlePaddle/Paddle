@@ -82,13 +82,14 @@ static void InitTensorForVarBase(imperative::VarBase *self,
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   if (platform::is_cpu_place(place)) {
     SetTensorFromPyArray<platform::CPUPlace>(
-        tensor, array, boost::get<platform::CPUPlace>(place), zero_copy);
+        tensor, array, BOOST_GET_CONST(platform::CPUPlace, place), zero_copy);
   } else if (platform::is_gpu_place(place)) {
     SetTensorFromPyArray<platform::CUDAPlace>(
-        tensor, array, boost::get<platform::CUDAPlace>(place), zero_copy);
+        tensor, array, BOOST_GET_CONST(platform::CUDAPlace, place), zero_copy);
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
-        tensor, array, boost::get<platform::CUDAPinnedPlace>(place), zero_copy);
+        tensor, array, BOOST_GET_CONST(platform::CUDAPinnedPlace, place),
+        zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));

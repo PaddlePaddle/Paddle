@@ -157,7 +157,13 @@ class OperatorBase {
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
                    "%s should be in AttributeMap", name);
-    return boost::get<T>(attrs_.at(name));
+    try {
+      return boost::get<T>(attrs_.at(name));
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "boost::get failed when get attribute %s of operator %s.", name,
+          type_));
+    }
   }
   const AttributeMap& Attrs() const { return attrs_; }
 
@@ -256,7 +262,13 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    try {
+      return boost::get<T>(GetAttr(name));
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "boost::get failed when get attribute %s of operator %s.", name,
+          op_.Type()));
+    }
   }
 
   virtual const Attribute& GetAttr(const std::string& name) const {

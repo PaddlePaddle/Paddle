@@ -283,7 +283,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
     auto weight_grad = ctx->Output(framework::GradVarName("Weight")).front();
 
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET_CONST(bool, attr);
     if (is_sparse) {
       VLOG(3) << "nce_op_grad op " << weight_grad << " and "
               << " is set to SelectedRows";

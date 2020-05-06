@@ -32,11 +32,11 @@ class SliceOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("Input")[0]);
 
     std::vector<int> axes =
-        boost::get<std::vector<int>>(op_desc.GetAttr("axes"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("axes"));
     std::vector<int> starts =
-        boost::get<std::vector<int>>(op_desc.GetAttr("starts"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("starts"));
     std::vector<int> ends =
-        boost::get<std::vector<int>>(op_desc.GetAttr("ends"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ends"));
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {

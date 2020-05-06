@@ -464,7 +464,7 @@ struct EnforceNotMet : public std::exception {
           "boost::get failed, cannot get value "                       \
           "(%s) by type %s, its type is %s.",                          \
           #__VALUE, paddle::platform::demangle(typeid(__TYPE).name()), \
-          paddle::platform::demangle(__VALUE.type().name())));         \
+          paddle::platform::demangle((__VALUE).type().name())));       \
     }                                                                  \
   } while (0)
 

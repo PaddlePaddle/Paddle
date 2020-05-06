@@ -238,7 +238,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
       bias_grad_var_name = ctx->Output(framework::GradVarName("Bias")).front();
     }
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET_CONST(bool, attr);
     if (is_sparse) {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
