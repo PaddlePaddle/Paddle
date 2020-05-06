@@ -35,11 +35,12 @@ class Metric(object):
     """
     Base class for metric, encapsulates metric logic and APIs
     Usage:
-        .. code-block:: python
-            m = SomeMetric()
-            for prediction, label in ...:
-                m.update(prediction, label)
-            m.accumulate()
+        
+        m = SomeMetric()
+        for prediction, label in ...:
+            m.update(prediction, label)
+        m.accumulate()
+        
     Advanced usage for :code:`add_metric_op`
     Metric calculating con be accelerate by calucateing metric states
     from model outputs and labels by Paddle OPs in :code:`add_metric_op`,
@@ -192,7 +193,7 @@ class Accuracy(Metric):
             labels=labels)
 
         model.fit(train_dataset, batch_size=64)
-        
+
     """
 
     def __init__(self, topk=(1, ), name=None, *args, **kwargs):
