@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-import copy
-
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from .progressbar import ProgressBar
+
+__all__ = ['ProgBarLogger', 'ModelCheckpoint']
 
 
 def config_callbacks(callbacks=None,

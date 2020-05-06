@@ -30,6 +30,8 @@ from paddle.io import BatchSampler
 
 _parallel_context_initialized = False
 
+__all__ = ['DistributedBatchSampler']
+
 
 class DistributedBatchSampler(BatchSampler):
     """Sampler that restricts data loading to a subset of the dataset.
