@@ -156,7 +156,7 @@ def convert_call(func):
                 else:
                     forward_func = to_static_func(func.forward)
                     setattr(func, 'forward', forward_func)
-                func_self = func
+                    func_self = func
 
             except Exception:
                 # NOTE: func.forward may have been decorated.
