@@ -49,8 +49,7 @@ class EyeOpVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
         boost::get<int>(ctx->GetAttr("dtype")));
-    auto& out_var_name = ctx->Output("Out").front();
-    ctx->SetDataType(out_var_name, data_type);
+    ctx->SetOutputDataType("Out", data_type);
   }
 };
 

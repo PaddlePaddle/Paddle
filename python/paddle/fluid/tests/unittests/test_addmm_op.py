@@ -133,5 +133,19 @@ class TestAddMMOp3(OpTest):
         self.check_grad(['Input'], 'Out', no_grad_set=None)
 
 
+class TestAddMMOp4(unittest.TestCase):
+    def test_api_with_dygraph(self):
+        np_input = np.random.random((20, 30)).astype(np.float32)
+        np_x = np.random.random((20, 6)).astype(np.float32)
+        np_y = np.random.random((6, 30)).astype(np.float32)
+
+        with fluid.dygraph.guard():
+            input = fluid.dygraph.to_variable(np_input)
+            x = fluid.dygraph.to_variable(np_x)
+            y = fluid.dygraph.to_variable(np_y)
+            out = paddle.tensor.addmm(input, x, y)
+            assert np.allclose(np_input + np.dot(np_x, np_y), out.numpy())
+
+
 if __name__ == "__main__":
     unittest.main()

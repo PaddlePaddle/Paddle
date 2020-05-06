@@ -18,10 +18,9 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, Layer, to_variable
+from paddle.fluid.dygraph import Embedding, Layer, LayerNorm, Linear, to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
-from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -67,7 +66,6 @@ class PrePostProcessLayer(Layer):
                     self.functors.append(lambda x: layers.dropout(
                         x, dropout_prob=dropout_rate, is_test=False))
 
-    @dygraph_to_static_func
     def forward(self, x, residual=None):
         for i, cmd in enumerate(self.process_cmd):
             if cmd == "a":
@@ -94,7 +92,6 @@ class MultiHeadAttention(Layer):
         self.proj_fc = Linear(
             input_dim=d_value * n_head, output_dim=d_model, bias_attr=False)
 
-    @dygraph_to_static_func
     def forward(self, queries, keys, values, attn_bias, cache=None):
         # compute q ,k ,v
         keys = queries if keys is None else keys
@@ -138,7 +135,6 @@ class FFN(Layer):
         self.fc1 = Linear(input_dim=d_model, output_dim=d_inner_hid, act="relu")
         self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
 
-    @dygraph_to_static_func
     def forward(self, x):
         hidden = self.fc1(x)
         if self.dropout_rate:
@@ -176,7 +172,6 @@ class EncoderLayer(Layer):
         self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
                                                   prepostprocess_dropout)
 
-    @dygraph_to_static_func
     def forward(self, enc_input, attn_bias):
         attn_output = self.self_attn(
             self.preprocesser1(enc_input), None, None, attn_bias)
@@ -214,7 +209,6 @@ class Encoder(Layer):
         self.processer = PrePostProcessLayer(preprocess_cmd, d_model,
                                              prepostprocess_dropout)
 
-    @dygraph_to_static_func
     def forward(self, enc_input, attn_bias):
         for encoder_layer in self.encoder_layers:
             enc_output = encoder_layer(enc_input, attn_bias)
@@ -232,7 +226,6 @@ class Embedder(Layer):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Normal(0., emb_dim**-0.5)))
 
-    @dygraph_to_static_func
     def forward(self, word):
         word_emb = self.word_embedder(word)
         return word_emb
@@ -258,7 +251,6 @@ class WrapEncoder(Layer):
                                attention_dropout, relu_dropout, preprocess_cmd,
                                postprocess_cmd)
 
-    @dygraph_to_static_func
     def forward(self, src_word, src_pos, src_slf_attn_bias):
         word_emb = self.word_embedder(src_word)
         word_emb = layers.scale(x=word_emb, scale=self.emb_dim**0.5)
@@ -304,7 +296,6 @@ class DecoderLayer(Layer):
         self.postprocesser3 = PrePostProcessLayer(postprocess_cmd, d_model,
                                                   prepostprocess_dropout)
 
-    @dygraph_to_static_func
     def forward(self,
                 dec_input,
                 enc_output,
@@ -342,7 +333,6 @@ class Decoder(Layer):
         self.processer = PrePostProcessLayer(preprocess_cmd, d_model,
                                              prepostprocess_dropout)
 
-    @dygraph_to_static_func
     def forward(self,
                 dec_input,
                 enc_output,
@@ -386,7 +376,6 @@ class WrapDecoder(Layer):
             self.linear = Linear(
                 input_dim=d_model, output_dim=trg_vocab_size, bias_attr=False)
 
-    @dygraph_to_static_func
     def forward(self,
                 trg_word,
                 trg_pos,
@@ -415,7 +404,6 @@ class CrossEntropyCriterion(object):
     def __init__(self, label_smooth_eps):
         self.label_smooth_eps = label_smooth_eps
 
-    @dygraph_to_static_func
     def __call__(self, predict, label, weights):
         if self.label_smooth_eps:
             label_out = layers.label_smooth(

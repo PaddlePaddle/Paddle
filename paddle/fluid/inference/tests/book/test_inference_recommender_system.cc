@@ -65,23 +65,25 @@ TEST(inference, recommender_system) {
   cpu_feeds.push_back(&category_id);
   cpu_feeds.push_back(&movie_title);
 
-  paddle::framework::LoDTensor output1;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+  paddle::framework::FetchType output1;
+  std::vector<paddle::framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
-  LOG(INFO) << output1.dims();
+  auto output1_tensor = boost::get<paddle::framework::LoDTensor>(output1);
+  LOG(INFO) << output1_tensor.dims();
 
 #ifdef PADDLE_WITH_CUDA
-  paddle::framework::LoDTensor output2;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs2;
+  paddle::framework::FetchType output2;
+  std::vector<paddle::framework::FetchType*> cpu_fetchs2;
   cpu_fetchs2.push_back(&output2);
 
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
-  LOG(INFO) << output2.dims();
+  auto output2_tensor = boost::get<paddle::framework::LoDTensor>(output2);
+  LOG(INFO) << output2_tensor.dims();
 
-  CheckError<float>(output1, output2);
+  CheckError<float>(output1_tensor, output2_tensor);
 #endif
 }
