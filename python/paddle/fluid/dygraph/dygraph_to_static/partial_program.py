@@ -100,7 +100,8 @@ class PartialProgramLayer(layers.Layer):
         # Create VarBase to receive output data.
         out_vars = []
         for var in self.outputs:
-            if not isinstance(var, framework.Variable): continue
+            if not isinstance(var, framework.Variable):
+                continue
             var_desc = var.desc
             var_base = core.VarBase(var_desc.dtype(),
                                     var_desc.shape(),
