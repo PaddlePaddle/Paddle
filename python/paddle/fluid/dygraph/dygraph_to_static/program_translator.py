@@ -28,7 +28,6 @@ from paddle.fluid.dygraph.base import check_param_type_guard
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
@@ -246,7 +245,7 @@ class ProgramTranslator(object):
 
         import paddle.fluid as fluid
 
-        # Two motheds get same object because ProgramTranslator is a singleton
+        # Two methods get same object because ProgramTranslator is a singleton
         fluid.dygraph.ProgramTranslator()
         fluid.dygraph.ProgramTranslator.get_instance()
 
@@ -362,7 +361,7 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
             logger.info(
-                "The ProgramTranslator.get_output doesn't work when ProgramTranslator.enable = False. "
+                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
 
@@ -413,7 +412,7 @@ class ProgramTranslator(object):
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
         if not self.enable_declarative:
             logger.info(
-                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
+                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
                 "just return dygraph output.")
             return dygraph_func
 
@@ -522,79 +521,6 @@ class ProgramTranslator(object):
         # Get source_code
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
-
-    def save_inference_model(self, dirname, feed=None, fetch=None):
-        """
-        Saves current model as the inference model. The saved
-        inference model can be loaded by C++ inference APIs.
-
-        Args:
-            dirname (str): the directory to save the inference model.
-            feed (list[int], optional): the input variable indices of the saved
-                inference model. If None, all input variables of the
-                ProgramTranslator would be the inputs of the saved inference
-                model. Default None.
-            fetch (list[int], optional): the output variable indices of the
-                saved inference model. If None, all output variables of the
-                TracedLayer object would be the outputs of the saved inference
-                model. Default None.
-
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-                import numpy as np
-
-                from paddle.fluid.dygraph.nn import Linear
-
-                @fluid.dygraph.declarative
-                def linear_func(x):
-                    x = fluid.dygraph.to_variable(x)
-                    linear = Linear(32, 1)
-                    y = linear(x)
-                    z = linear(x)
-                    return y, z
-
-
-                prog_trans = fluid.dygraph.ProgramTranslator()
-
-                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-                prog_trans.set_optimizer(adam,index_of_loss=1) # minimize on 'z'
-
-                for i in range(10):
-                    y, z_loss = linear_func(np.ones(32).astype('float32'))
-                    print(z_loss.numpy())
-
-                # Save inference model.
-                # Note that fetch=[0] means we set 'y' as the inference output.
-                prog_trans.save_inference_model("./dy2stat_infer_model", fetch=[0])
-
-                # In this example, the inference model will be pruned based on input (x) and
-                # output (y). The pruned inference program is going to be saved in the folder
-                # "./dy2stat_infer_model" and parameters are going to be saved in separate
-                # files in the folder.
-
-        """
-        program_cache = self.get_program_cache()
-        if feed is None:
-            feeded_var_names = [i.name for i in program_cache.inputs]
-        else:
-            feeded_var_names = [program_cache.inputs[i].name for i in feed]
-
-        if fetch is None:
-            fetch_vars = program_cache.outputs
-        else:
-            fetch_vars = [program_cache.outputs[i] for i in fetch]
-        from paddle.fluid.io import save_inference_model
-        save_inference_model(
-            dirname=dirname,
-            feeded_var_names=feeded_var_names,
-            target_vars=fetch_vars,
-            executor=self._exe,
-            main_program=self.main_program.clone())
 
     def get_program_cache(self):
         """
