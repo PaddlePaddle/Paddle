@@ -1274,11 +1274,6 @@ void OperatorWithKernel::ParseInputDataType(
         t = &(var->Get<SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = var->Get<LoDTensorArray>();
-        // NOTE(liym27): Support an empty tensor array as Input.
-        // And set the kernel type is float.
-        if (t_arr.size() == 0) {
-          *data_type = proto::VarType::FP32;
-        }
         for (size_t j = 0; j < t_arr.size(); j++) {
           if (t_arr[j].IsInitialized()) {
             t = &(t_arr[j]);
@@ -1301,7 +1296,6 @@ void OperatorWithKernel::ParseInputDataType(
                 "previous variable type is (%s).",
                 Type(), name, DataTypeToString(tmp),
                 DataTypeToString(*data_type)));
-
         *data_type = tmp;
       }
     }
