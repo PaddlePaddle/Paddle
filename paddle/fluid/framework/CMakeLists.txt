@@ -157,7 +157,7 @@ if(WITH_PYTHON)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto

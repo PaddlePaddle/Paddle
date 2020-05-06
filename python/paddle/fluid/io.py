@@ -34,6 +34,7 @@ from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
     program_guard
+from .wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
@@ -185,7 +186,7 @@ def _clone_var_in_block_(block, var):
             persistable=True)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _load_program_scope(main=None, startup=None, scope=None):
     prog = main if main else paddle.fluid.Program()
     startup_prog = startup if startup else paddle.fluid.Program()
