@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ..helper import is_complex, is_real, complex_variable_exists
-from ...fluid.framework import ComplexVariable
-from ...fluid import layers
+from ....fluid.framework import ComplexVariable
+from ....fluid import layers
 
 __all__ = ['matmul', ]
 
@@ -26,10 +26,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
     Args:
         x (ComplexVariable|Variable): The first input, can be a ComplexVariable 
-            with data type complex32 or complex64, or a Variable with data type 
+            with data type complex64 or complex128, or a Variable with data type 
             float32 or float64.
         y (ComplexVariable|Variable): The second input, can be a ComplexVariable 
-            with data type complex32 or complex64, or a Variable with data type 
+            with data type complex64 or complex128, or a Variable with data type 
             float32 or float64.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.

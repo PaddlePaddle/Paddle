@@ -223,5 +223,7 @@ def guard(new_generator=None):
         new_generator = UniqueNameGenerator(new_generator.decode())
 
     old_generator, old_para_name_checker = switch(new_generator)
-    yield
-    switch(old_generator, old_para_name_checker)
+    try:
+        yield
+    finally:
+        switch(old_generator, old_para_name_checker)
