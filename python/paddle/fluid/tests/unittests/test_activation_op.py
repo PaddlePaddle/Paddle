@@ -21,8 +21,6 @@ from op_test import OpTest
 from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
-import paddle.nn as nn
-import paddle.nn.functional as functional
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -73,7 +71,7 @@ class TestParameter(object):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.layers.data(name="X", shape=[1])
-            out = eval("paddle.%s(data, out=data)" % self.op_type)
+            out = eval("fluid.layers.%s(data, out=data)" % self.op_type)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array([0.1])},
@@ -83,7 +81,8 @@ class TestParameter(object):
     def test_out_name(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.layers.data(name="X", shape=[1])
-            out = eval("paddle.%s(data, name='Y', out=data)" % self.op_type)
+            out = eval("fluid.layers.%s(data, name='Y', out=data)" %
+                       self.op_type)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array([0.1])},
@@ -94,7 +93,7 @@ class TestParameter(object):
         with fluid.dygraph.guard():
             np_x = np.array([0.1])
             x = fluid.dygraph.to_variable(np_x)
-            z = eval("paddle.%s(x).numpy()" % self.op_type)
+            z = eval("fluid.layers.%s(x).numpy()" % self.op_type)
             z_expected = eval("np.%s(np_x)" % self.op_type)
             self.assertEqual(z, z_expected)
 
@@ -136,7 +135,7 @@ class TestLogSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-class TestTanh(TestActivation, TestParameter):
+class TestTanh(TestActivation):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
@@ -152,35 +151,10 @@ class TestTanh(TestActivation, TestParameter):
         self.check_grad(['X'], 'Out')
 
     def init_dtype(self):
-        #TODO If dtype is float64, the output (Out) has diff at CPUPlace
-        # when using and not using inplace. Therefore, set dtype as float32
-        # for now.
+        #TODO If dtype is float64, the output (Out) has diff at CPUPlace	
+        # when using and not using inplace. Therefore, set dtype as float32	
+        # for now.	
         self.dtype = np.float32
-
-
-class TestAtan(TestActivation, TestParameter):
-    def setUp(self):
-        self.op_type = "atan"
-        self.init_dtype()
-
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        out = np.arctan(x)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.outputs = {'Out': out}
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out')
-
-    def test_dygraph(self):
-        with fluid.dygraph.guard():
-            np_x = np.array([0.1])
-            x = fluid.dygraph.to_variable(np_x)
-            z = paddle.atan(x).numpy()
-            z_expected = np.arctan(np_x)
-            self.assertEqual(z, z_expected)
 
 
 class TestTanhShrink(TestActivation):
@@ -267,7 +241,7 @@ class TestSoftShrinkOpError(unittest.TestCase):
             fluid.layers.softshrink(x_fp16)
 
 
-class TestSqrt(TestActivation, TestParameter):
+class TestSqrt(TestActivation):
     def setUp(self):
         self.op_type = "sqrt"
         self.init_dtype()
@@ -391,7 +365,7 @@ class TestAcos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSin(TestActivation, TestParameter):
+class TestSin(TestActivation):
     def setUp(self):
         self.op_type = "sin"
         self.init_dtype()
@@ -805,8 +779,8 @@ class TestLog1p(TestActivation):
                 append_batch_size=False,
                 dtype="float64")
 
-            out1 = paddle.log1p(data_x)
-            out2 = paddle.log1p(data_x, out=res_log1p)
+            out1 = fluid.layers.log1p(data_x)
+            out2 = fluid.layers.log1p(data_x, out=res_log1p)
             exe = fluid.Executor(place=fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
             res1, res_in = exe.run(fluid.default_main_program(),
@@ -820,7 +794,7 @@ class TestLog1p(TestActivation):
         with fluid.dygraph.guard():
             np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
             data_x = fluid.dygraph.to_variable(np_x)
-            z = paddle.log1p(data_x)
+            z = fluid.layers.log1p(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log1p(np_x))
         np.testing.assert_allclose(np_z, z_expected)
@@ -899,22 +873,14 @@ class TestPow_factor_tensor(TestActivation):
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
         out_1 = fluid.layers.pow(x, factor=factor_1)
         out_2 = fluid.layers.pow(x, factor=factor_2)
-        out_3 = paddle.pow(x, factor_1, out=res)
-        out_4 = paddle.pow(x, factor_1, name='pow_res')
-        out_5 = paddle.pow(x, factor_1, out=res, name='pow_res')
-        out_6 = paddle.pow(x, factor_2)
-        self.assertEqual(('pow_res' in out_4.name), True)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res, res_6 = exe.run(
-            fluid.default_main_program(),
-            feed={"x": input},
-            fetch_list=[out_1, out_2, out_3, res, out_6])
+        res_1, res_2 = exe.run(fluid.default_main_program(),
+                               feed={"x": input},
+                               fetch_list=[out_1, out_2])
 
         assert np.array_equal(res_1, np.power(input, 2))
         assert np.array_equal(res_2, np.power(input, 3))
-        assert np.array_equal(res_3, res)
-        assert np.array_equal(res_6, np.power(input, 3))
 
     def test_error(self):
         in1 = fluid.layers.data(
@@ -1214,7 +1180,6 @@ create_test_act_fp16_class(TestCos, grad_atol=0.85)
 create_test_act_fp16_class(TestAcos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)
 create_test_act_fp16_class(TestAsin)
-create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
@@ -1235,141 +1200,6 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish)
-
-
-class TestNNReluAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 12]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return np.maximum(x, 0)
-
-    def ref_backward(self, y, dy):
-        y_t = y.copy()
-        y_t[y_t > 0] = 1
-        return y_t * dy
-
-    def check_api(self, place=fluid.CPUPlace(), inplace=False):
-        main_program = Program()
-        myrelu = nn.ReLU(inplace)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            x.stop_gradient = False
-            y = myrelu(x)
-            fluid.backward.append_backward(fluid.layers.mean(y))
-        exe = fluid.Executor(place)
-        out = exe.run(main_program,
-                      feed={'x': self.x},
-                      fetch_list=[y, y.grad_name, x.grad_name])
-        self.assertTrue(np.allclose(out[0], self.y))
-        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
-
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = myrelu(x)
-        self.assertTrue(np.allclose(y.numpy(), self.y))
-
-    def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            for inplace in [True, False]:
-                self.check_api(place, inplace)
-
-
-class TestNNFunctionalReluAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 12]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return np.maximum(x, 0)
-
-    def test_check_api(self):
-        main_program = Program()
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = functional.relu(x)
-        exe = fluid.Executor(fluid.CPUPlace())
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], self.y))
-
-
-class TestNNSigmoidAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 15]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def ref_backward(self, y, dy):
-        return dy * y * (1 - y)
-
-    def check_api(self, place=fluid.CPUPlace(), inplace=False):
-        main_program = Program()
-        mysigmoid = nn.Sigmoid(inplace)
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            x.stop_gradient = False
-            y = mysigmoid(x)
-            fluid.backward.append_backward(fluid.layers.mean(y))
-        exe = fluid.Executor(place)
-        out = exe.run(main_program,
-                      feed={'x': self.x},
-                      fetch_list=[y, y.grad_name, x.grad_name])
-        self.assertTrue(np.allclose(out[0], self.y))
-        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
-
-        with fluid.dygraph.guard(place):
-            x = fluid.dygraph.to_variable(self.x)
-            y = mysigmoid(x)
-        self.assertTrue(np.allclose(y.numpy(), self.y))
-
-    def test_check_api(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for place in places:
-            for inplace in [True, False]:
-                self.check_api(place, inplace)
-
-
-class TestNNFunctionalSigmoidAPI(unittest.TestCase):
-    def setUp(self):
-        self.init_data()
-
-    def init_data(self):
-        self.x_shape = [10, 15]
-        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.y = self.ref_forward(self.x)
-
-    def ref_forward(self, x):
-        return 1 / (1 + np.exp(-x))
-
-    def test_check_api(self):
-        main_program = Program()
-        with fluid.program_guard(main_program):
-            x = fluid.data(name='x', shape=self.x_shape)
-            y = functional.sigmoid(x)
-        exe = fluid.Executor(fluid.CPUPlace())
-        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
-        self.assertTrue(np.allclose(out[0], self.y))
-
 
 if __name__ == "__main__":
     unittest.main()

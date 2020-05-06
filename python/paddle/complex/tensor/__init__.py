@@ -14,8 +14,11 @@
 
 from . import math
 from . import manipulation
+from . import linalg
 from .math import *
 from .manipulation import *
+from .linalg import *
 
-__all__ = math.__all__ + []
+__all__ = math.__all__
 __all__ += manipulation.__all__
+__all__ += linalg.__all__

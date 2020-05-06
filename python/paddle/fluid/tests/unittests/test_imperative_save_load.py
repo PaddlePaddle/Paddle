@@ -26,7 +26,6 @@ from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-import paddle
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -881,18 +880,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            paddle.imperative.save_dygraph(state_dict,
-                                           os.path.join('saved_dy', 'emb_dy'))
+            fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
 
-            para_state_dict, opti_state_dict = paddle.imperative.load_dygraph(
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy'))
 
             self.assertTrue(opti_state_dict == None)
 
-            para_state_dict, opti_state_dict = paddle.imperative.load_dygraph(
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdparams'))
 
-            para_state_dict, opti_state_dict = paddle.imperative.load_dygraph(
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdopt'))
 
 

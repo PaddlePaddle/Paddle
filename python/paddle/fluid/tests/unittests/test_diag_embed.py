@@ -17,7 +17,6 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.core as core
@@ -52,8 +51,8 @@ class TestDiagEmbedAPICase(unittest.TestCase):
     def test_case1(self):
         diag_embed = np.random.randn(2, 3, 4).astype('float32')
         data1 = fluid.data(name='data1', shape=[2, 3, 4], dtype='float32')
-        out1 = F.diag_embed(data1)
-        out2 = F.diag_embed(data1, offset=1, dim1=-2, dim2=3)
+        out1 = fluid.layers.diag_embed(data1)
+        out2 = fluid.layers.diag_embed(data1, offset=1, dim1=-2, dim2=3)
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)

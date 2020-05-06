@@ -42,6 +42,12 @@ class TestKronOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
 
+    def test_check_grad_ignore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
 
 class TestKronOp2(TestKronOp):
     def setUp(self):

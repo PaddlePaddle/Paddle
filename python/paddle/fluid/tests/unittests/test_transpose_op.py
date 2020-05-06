@@ -142,7 +142,7 @@ class TestTAPI(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
-            data_t = paddle.t(data)
+            data_t = fluid.layers.t(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             data_np = np.random.random([10]).astype("float64")
@@ -152,7 +152,7 @@ class TestTAPI(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10, 5], dtype="float64", name="data")
-            data_t = paddle.t(data)
+            data_t = fluid.layers.t(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             data_np = np.random.random([10, 5]).astype("float64")
@@ -162,7 +162,7 @@ class TestTAPI(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[1, 5], dtype="float64", name="data")
-            data_t = paddle.t(data)
+            data_t = fluid.layers.t(data)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             data_np = np.random.random([1, 5]).astype("float64")
@@ -173,7 +173,7 @@ class TestTAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.random.random([10]).astype("float64")
             data = fluid.dygraph.to_variable(np_x)
-            z = paddle.t(data)
+            z = fluid.layers.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
         self.assertEqual((np_z == z_expected).all(), True)
@@ -181,7 +181,7 @@ class TestTAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.random.random([10, 5]).astype("float64")
             data = fluid.dygraph.to_variable(np_x)
-            z = paddle.t(data)
+            z = fluid.layers.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
         self.assertEqual((np_z == z_expected).all(), True)
@@ -189,7 +189,7 @@ class TestTAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             np_x = np.random.random([1, 5]).astype("float64")
             data = fluid.dygraph.to_variable(np_x)
-            z = paddle.t(data)
+            z = fluid.layers.t(data)
             np_z = z.numpy()
             z_expected = np.array(np.transpose(np_x))
         self.assertEqual((np_z == z_expected).all(), True)
@@ -199,7 +199,7 @@ class TestTAPI(unittest.TestCase):
             x = fluid.data(name='x', shape=[10, 5, 3], dtype='float64')
 
             def test_x_dimension_check():
-                paddle.t(x)
+                fluid.layers.t(x)
 
             self.assertRaises(ValueError, test_x_dimension_check)
 
