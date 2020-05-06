@@ -34,7 +34,8 @@ INCLUDE_DIRECTORIES(${CRYPTOPP_INCLUDE_DIR})
 
 cache_third_party(extern_cryptopp
     REPOSITORY   ${CRYPTOPP_REPOSITORY}
-    TAG          ${CRYPTOPP_TAG})
+    TAG          ${CRYPTOPP_TAG}
+    DIR          CRYPTOPP_SOURCE_DIR)
 
 ExternalProject_Add(
     extern_cryptopp

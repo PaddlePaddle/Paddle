@@ -24,7 +24,8 @@ namespace paddle {
 namespace inference {
 
 // Read ProgramDesc from a __model__ file, defined in io.cc
-extern void ReadBinaryFile(const std::string& filename, std::string* contents);
+extern void ReadBinaryFile(const std::string& filename, std::string* contents,
+                           bool decrypt = false, std::string key = "");
 
 namespace analysis {
 

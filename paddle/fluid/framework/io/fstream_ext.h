@@ -30,23 +30,23 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-class FilebufExt : public std::filebuf {
+class CryptFilebuf : public std::filebuf {
  public:
   // normal ctr filebuf, same with std::filebuf
-  FilebufExt()
+  CryptFilebuf()
       : std::filebuf(),
         _is_end(false),
         _fs(nullptr),
         _ef(nullptr),
         _df{nullptr} {}
   // encryption filebuf ctr
-  explicit FilebufExt(CryptoPP::AuthenticatedEncryptionFilter* ef)
+  explicit CryptFilebuf(CryptoPP::AuthenticatedEncryptionFilter* ef)
       : std::filebuf(), _is_end(false), _fs(nullptr), _ef(ef), _df{nullptr} {}
   // decryption filebuf ctr
-  explicit FilebufExt(CryptoPP::AuthenticatedDecryptionFilter* df)
+  explicit CryptFilebuf(CryptoPP::AuthenticatedDecryptionFilter* df)
       : std::filebuf(), _is_end(false), _ef(nullptr), _df(df) {}
 
-  ~FilebufExt() { this->close(); }
+  ~CryptFilebuf() { this->close(); }
 
  protected:
   std::streamsize xsgetn(char_type* s, std::streamsize n) override {
@@ -166,7 +166,7 @@ class OfstreamExt : public std::ostream {
         _e(nullptr),
         _ef(nullptr),
         _fout(nullptr) {
-    _fbuf = new FilebufExt();
+    _fbuf = new CryptFilebuf();
     this->init(_fbuf);
   }
 
@@ -177,7 +177,7 @@ class OfstreamExt : public std::ostream {
         _e(nullptr),
         _ef(nullptr),
         _fout(nullptr) {
-    _fbuf = new FilebufExt();
+    _fbuf = new CryptFilebuf();
     this->init(_fbuf);
     this->open(s, mode);
   }
@@ -199,12 +199,12 @@ class OfstreamExt : public std::ostream {
       _fs = new CryptoPP::FileSink(*_fout);
       _ef = new CryptoPP::AuthenticatedEncryptionFilter(*_e, _fs, false,
                                                         TAG_SIZE);
-      _fbuf = new FilebufExt(_ef);
+      _fbuf = new CryptFilebuf(_ef);
     } else {
       _e = nullptr;
       _fs = nullptr;
       _ef = nullptr;
-      _fbuf = new FilebufExt();
+      _fbuf = new CryptFilebuf();
       _fout = nullptr;
     }
     this->init(_fbuf);
@@ -223,7 +223,7 @@ class OfstreamExt : public std::ostream {
     delete _fbuf;
   }
 
-  std::filebuf* rdbuf() const { return const_cast<FilebufExt*>(_fbuf); }
+  std::filebuf* rdbuf() const { return const_cast<CryptFilebuf*>(_fbuf); }
 
   bool is_open() { return _fbuf->is_open(); }
 
@@ -255,7 +255,7 @@ class OfstreamExt : public std::ostream {
   }
 
  private:
-  FilebufExt* _fbuf;
+  CryptFilebuf* _fbuf;
   CryptoPP::FileSink* _fs;
   CryptoPP::GCM<CryptoPP::AES>::Encryption* _e;
   CryptoPP::AuthenticatedEncryptionFilter* _ef;
@@ -268,14 +268,14 @@ class OfstreamExt : public std::ostream {
 class IfstreamExt : public std::istream {
  public:
   IfstreamExt() : std::istream(), _d(nullptr), _df(nullptr) {
-    _fbuf = new FilebufExt();
+    _fbuf = new CryptFilebuf();
     this->init(_fbuf);
   }
 
   explicit IfstreamExt(const char* s,
                        std::ios_base::openmode mode = std::ios_base::in)
       : std::istream(), _d(nullptr), _df(nullptr) {
-    _fbuf = new FilebufExt();
+    _fbuf = new CryptFilebuf();
     this->init(_fbuf);
     this->open(s, mode);
   }
@@ -301,7 +301,7 @@ class IfstreamExt : public std::istream {
               CryptoPP::AuthenticatedDecryptionFilter::THROW_EXCEPTION,
           TAG_SIZE);
 
-      _fbuf = new FilebufExt(_df);
+      _fbuf = new CryptFilebuf(_df);
       this->init(_fbuf);
       this->open(s, mode);
 
@@ -317,7 +317,7 @@ class IfstreamExt : public std::istream {
 
     } else {
       _d = nullptr;
-      _fbuf = new FilebufExt();
+      _fbuf = new CryptFilebuf();
       this->init(_fbuf);
       this->open(s, mode);
     }
@@ -331,7 +331,7 @@ class IfstreamExt : public std::istream {
     delete _fbuf;
   }
 
-  std::filebuf* rdbuf() const { return const_cast<FilebufExt*>(_fbuf); }
+  std::filebuf* rdbuf() const { return const_cast<CryptFilebuf*>(_fbuf); }
 
   bool is_open() { return _fbuf->is_open(); }
 
@@ -361,7 +361,7 @@ class IfstreamExt : public std::istream {
   }
 
  private:
-  FilebufExt* _fbuf;
+  CryptFilebuf* _fbuf;
   CryptoPP::GCM<CryptoPP::AES>::Decryption* _d;
   CryptoPP::AuthenticatedDecryptionFilter* _df;
 };
