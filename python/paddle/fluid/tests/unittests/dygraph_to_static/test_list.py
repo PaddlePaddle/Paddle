@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-from functools import partial
 
 import numpy as np
 import paddle.fluid as fluid
@@ -27,7 +26,6 @@ np.random.seed(SEED)
 
 
 # Situation 1: Test list append
-@declarative
 def test_list_append_without_control_flow(x):
     # Python list will not be transformed.
     x = fluid.dygraph.to_variable(x)
@@ -38,7 +36,6 @@ def test_list_append_without_control_flow(x):
     return a
 
 
-@declarative
 def test_list_append_in_if(x):
     x = fluid.dygraph.to_variable(x)
     a = []
@@ -48,10 +45,10 @@ def test_list_append_in_if(x):
         a.append(
             fluid.layers.fill_constant(
                 shape=[1, 2], value=9, dtype="int64"))
-    return a
+    # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
+    return a[0]
 
 
-@declarative
 def test_list_append_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
@@ -61,10 +58,9 @@ def test_list_append_in_for_loop(x, iter_num):
     a = []
     for i in range(iter_num):
         a.append(x)
-    return a
+    return a[0]
 
 
-@declarative
 def test_list_append_in_for_loop_with_concat(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     a = []
@@ -78,7 +74,6 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
     return a
 
 
-@declarative
 def test_list_append_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     iter_num = fluid.layers.fill_constant(
@@ -88,10 +83,9 @@ def test_list_append_in_while_loop(x, iter_num):
     while i < iter_num:
         a.append(x)
         i += 1
-    return a
+    return a[0]
 
 
-@declarative
 def test_list_append_in_while_loop_with_stack(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     iter_num = fluid.layers.fill_constant(
@@ -106,7 +100,6 @@ def test_list_append_in_while_loop_with_stack(x, iter_num):
 
 
 # Situation 2: Test list pop
-@declarative
 def test_list_pop_without_control_flow_1(x):
     x = fluid.dygraph.to_variable(x)
     a = []
@@ -116,18 +109,16 @@ def test_list_pop_without_control_flow_1(x):
     return a
 
 
-@declarative
 def test_list_pop_without_control_flow_2(x):
     x = fluid.dygraph.to_variable(x)
     a = []
     if 2 > 1:
         a.append(x)
         a.append(x + 1)
-    last_tiem = a.pop(1)
-    return last_tiem
+    last_item = a.pop(1)
+    return last_item
 
 
-@declarative
 def test_list_pop_in_if(x):
     x = fluid.dygraph.to_variable(x)
     a = []
@@ -138,11 +129,9 @@ def test_list_pop_in_if(x):
         a.append(x + 1)
         a.append(fluid.layers.fill_constant(shape=[2], value=2, dtype="int64"))
     item1 = a.pop(1)
-    a.pop()
-    return a, item1
+    return item1
 
 
-@declarative
 def test_list_pop_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     # Use `fill_constant` so that static analysis can analyze the type of iter_num is Tensor
@@ -158,10 +147,9 @@ def test_list_pop_in_for_loop(x, iter_num):
     for i in range(one.numpy()[0]):
         item = a.pop()
 
-    return a, item
+    return a[0], item
 
 
-@declarative
 def test_list_pop_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     iter_num = fluid.layers.fill_constant(
@@ -173,7 +161,7 @@ def test_list_pop_in_while_loop(x, iter_num):
         i += 1
         if i % 2 == 1:
             a.pop()
-    return a
+    return a[0]
 
 
 class TestListWithoutControlFlow(unittest.TestCase):
@@ -202,12 +190,12 @@ class TestListWithoutControlFlow(unittest.TestCase):
         return res
 
     def run_static_mode(self):
-        return self._run(to_static=True)
+        return self.train(to_static=True)
 
     def run_dygraph_mode(self):
-        return self._run(to_static=False)
+        return self.train(to_static=False)
 
-    def _run(self, to_static=False):
+    def train(self, to_static=False):
 
         with fluid.dygraph.guard():
             if to_static:
@@ -242,39 +230,34 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
-            partial(
-                test_list_append_in_while_loop, iter_num=self.iter_num),
-            partial(
-                test_list_pop_in_while_loop, iter_num=self.iter_num),
+            test_list_append_in_while_loop, test_list_pop_in_while_loop
         ]
+
+    def train(self, to_static=False):
+
+        with fluid.dygraph.guard():
+            if to_static:
+                res = declarative(self.dygraph_func)(self.input, self.iter_num)
+            else:
+                res = self.dygraph_func(self.input, self.iter_num)
+            return self.varbase_to_numpy(res)
 
 
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
     def init_dygraph_func(self):
-        self.all_dygraph_funcs = [
-            partial(
-                test_list_append_in_while_loop_with_stack,
-                iter_num=self.iter_num)
-        ]
+        self.all_dygraph_funcs = [test_list_append_in_while_loop_with_stack]
 
 
 class TestListInForLoop(TestListInWhileLoop):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
-            partial(
-                test_list_append_in_for_loop, iter_num=self.iter_num),
-            partial(
-                test_list_pop_in_for_loop, iter_num=self.iter_num),
+            test_list_append_in_for_loop, test_list_pop_in_for_loop
         ]
 
 
 class TestListInForLoopWithConcat(TestListInWhileLoopWithStack):
     def init_dygraph_func(self):
-        self.all_dygraph_funcs = [
-            partial(
-                test_list_append_in_for_loop_with_concat,
-                iter_num=self.iter_num)
-        ]
+        self.all_dygraph_funcs = [test_list_append_in_for_loop_with_concat, ]
 
 
 if __name__ == '__main__':

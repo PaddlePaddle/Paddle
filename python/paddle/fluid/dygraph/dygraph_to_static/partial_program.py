@@ -23,22 +23,16 @@ __all__ = ['partial_program_from', 'PartialProgramLayer']
 
 
 class PartialProgramLayer(layers.Layer):
-    def __init__(self,
-                 main_program,
-                 inputs,
-                 outputs,
-                 parameters=None,
-                 is_test=False):
+    def __init__(self, main_program, inputs, outputs, parameters=None):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
+        self._params = parameters
         self._infer_program = main_program
         self._train_program = self._append_backward_desc()
         # switch infer or train by train() and eval()
         self._trace_program = None
-        self._params = parameters
         self._set_grad_type(self._params)
-        self._is_test = is_test
         self._inner_scope = core.Scope()
         # set default mode to train
         self.train()
@@ -51,17 +45,18 @@ class PartialProgramLayer(layers.Layer):
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
-        if targets:
+        if targets and self._params:
             backward.gradients(targets=targets, inputs=[])
 
         return program
 
     def train(self):
-        self._is_test = False
+        # self.training is inherited from layers.Layer
+        self.training = True
         self._trace_program = self._train_program
 
     def eval(self):
-        self._is_test = True
+        self.training = False
         self._trace_program = self._infer_program
 
     def forward(self, inputs):
@@ -79,7 +74,7 @@ class PartialProgramLayer(layers.Layer):
                 'global_block': self._trace_program.desc.block(0),
                 'start_op_index': 0,
                 'end_op_index': self._infer_program.desc.block(0).op_size(),
-                'is_test': self._is_test
+                'is_test': not self.training
             })
 
         outs = out_vars

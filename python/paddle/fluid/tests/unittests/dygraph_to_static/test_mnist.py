@@ -190,6 +190,9 @@ class TestMNISTWithDeclarative(TestMNIST):
                                     acc.numpy(), time() - start))
                         start = time()
                         if batch_id == 100:
+                            mnist.eval()
+                            prediction, acc, avg_loss = mnist(img, label)
+                            loss_data.append(avg_loss.numpy()[0])
                             break
         return loss_data
 

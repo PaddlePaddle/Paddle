@@ -52,6 +52,8 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             # Save parameters
             fluid.save_dygraph(net.state_dict(), "./test_dy2stat_save_load")
             # minimize() will update parameter, call net() to get output and avg_loss.
+            # Switch into eval mode.
+            net.eval()
             static_out, static_loss = net(x)
 
         # load parameters into dygraph
@@ -61,6 +63,8 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             # Load parameters
             model_dict, _ = fluid.load_dygraph("./test_dy2stat_save_load")
             dygraph_net.set_dict(model_dict)
+            # Switch into eval mode.
+            dygraph_net.eval()
 
             x = fluid.dygraph.to_variable(x_data)
             # predict output
