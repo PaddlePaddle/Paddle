@@ -467,6 +467,76 @@ class FleetTranspiler(Fleet):
             program._copy_dist_param_info_from(self.main_program)
             self.save_persistables(executor, dirname, program)
 
+    def _save_dense_params(self, executor, dirname, context, main_program):
+        local_vars = []
+        for name, var_ctx in context.items():
+            for varname in var_ctx.origin_varnames():
+                local_vars.append(main_program.global_block().vars[varname])
+
+        self._communicator.recv()
+
+        fluid.io.save_vars(
+            executor,
+            main_program=main_program,
+            dirname=dirname,
+            vars=local_vars)
+
+    def _save_sparse_params(self, executor, dirname, context, main_program):
+        prog = Program()
+        block = prog.global_block()
+        #
+        # # recv optimize vars from pserver
+        # for name, remote_ctx in context.items():
+        #
+        #     if not main_program.global_block().has_var(name):
+        #         continue
+        #
+        #     origin = main_program.global_block().var(name)
+        #     pieces = len(remote_ctx.splited_varnames())
+        #     slices = [None] * pieces
+        #     slice_varnames = [None] * pieces
+        #     remote_varnames = [None] * pieces
+        #     endpoints = [None] * pieces
+        #
+        #     for idx in range(pieces):
+        #         block_id = optimizer.block_id
+        #         slice = optimizer.slice
+        #         endpoint = optimizer.endpoint
+        #
+        #         index = block_id if is_slice else idx
+        #         slices[index] = slice
+        #         slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
+        #         remote_varnames[index] = slice.name
+        #         endpoints[index] = endpoint
+        #
+        #     slice_shapes = []
+        #     for slice in slices:
+        #         tmp = [str(dim) for dim in slice.shape]
+        #         slice_shapes.append(",".join(tmp))
+        #
+        #     block.append_op(
+        #         type='recv_save',
+        #         attrs={
+        #             "trainer_id": 0,
+        #             "shape": origin.shape,
+        #             "slice_shapes": slice_shapes,
+        #             "slice_varnames": slice_varnames,
+        #             "remote_varnames": remote_varnames,
+        #             "endpoints": endpoints,
+        #             "file_path": os.path.join(dirname, origin.name)
+        #         })
+
+        executor.run(prog)
+
+    def _save_distributed_persistables(self, executor, dirname, main_program):
+        sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
+            recv_type=2)
+        dense_ctx = fleet.compiled_config.get_communicator_recv_context(
+            recv_type=1)
+
+        self._save_dense_params(executor, dirname, dense_ctx, main_program)
+        self._save_sparse_params(executor, dirname, sparse_ctx, main_program)
+
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         This function filters out all variables with `persistable==True` from the

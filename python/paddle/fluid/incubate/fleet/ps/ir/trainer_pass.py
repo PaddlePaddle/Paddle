@@ -214,6 +214,20 @@ def lr_decay_pass(program, config):
 def init_from_server_pass(program, config):
     fetch_barrier_out = program.global_block().create_var(
         name=framework.generate_control_dev_var_name())
+
+    recv_ctx = config.get_communicator_recv_context(recv_type=1)
+
+    for name, ctxs in recv_ctx.items():
+        program.global_block().append_op(
+            type="recv",
+            inputs={"X": []},
+            outputs={"Out": []},
+            attrs={
+                "recv_varnames": ctxs.origin_varnames(),
+                "trainer_id": config.get_role_id(),
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
     program.global_block().append_op(
         type="fetch_barrier",
         inputs={},
