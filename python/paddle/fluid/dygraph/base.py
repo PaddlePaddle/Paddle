@@ -62,7 +62,8 @@ _functional_dygraph_context_manager = None
 
 
 @signature_safe_contextmanager
-def check_param_type_guard(parameters):
+def param_guard(parameters):
+    # Note: parameters is a reference of self._parameters
     if not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():

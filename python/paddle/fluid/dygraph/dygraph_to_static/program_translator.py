@@ -24,10 +24,10 @@ from paddle.fluid import framework
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.base import check_param_type_guard
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
@@ -183,7 +183,7 @@ class ConcreteProgram(object):
             all_parameters = func_spec.parameters()
 
             # 3. Builds program only once and returns the output Variables.
-            with check_param_type_guard(func_spec.parameters(False)):
+            with param_guard(func_spec.parameters(False)):
                 outputs = static_func(*inputs)
             if not isinstance(outputs, (tuple, list)):
                 outputs = [outputs] if outputs else []

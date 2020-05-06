@@ -32,17 +32,20 @@ class PartialProgramLayer(layers.Layer):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
-        self._forward_program = main_program
-
-        self._program = self._append_backward_desc()
+        self._infer_program = main_program
+        self._train_program = self._append_backward_desc()
+        # switch infer or train by train() and eval()
+        self._trace_program = None
         self._params = parameters
         self._set_grad_type(self._params)
         self._is_test = is_test
         self._inner_scope = core.Scope()
+        # set default mode to train
+        self.train()
 
     @switch_to_static_graph
     def _append_backward_desc(self):
-        program = self._forward_program.clone()
+        program = self._infer_program.clone()
         targets = []
         for out in self.outputs:
             if isinstance(out, framework.Variable):
@@ -52,6 +55,14 @@ class PartialProgramLayer(layers.Layer):
             backward.gradients(targets=targets, inputs=[])
 
         return program
+
+    def train(self):
+        self._is_test = False
+        self._trace_program = self._train_program
+
+    def eval(self):
+        self._is_test = True
+        self._trace_program = self._infer_program
 
     def forward(self, inputs):
         in_vars, out_vars, tmp_scope_vec = self._prepare(inputs)
@@ -65,9 +76,9 @@ class PartialProgramLayer(layers.Layer):
             outputs={'Out': valid_vars(out_vars),
                      'OutScope': tmp_scope_vec},
             attrs={
-                'global_block': self._program.desc.block(0),
+                'global_block': self._trace_program.desc.block(0),
                 'start_op_index': 0,
-                'end_op_index': self._forward_program.desc.block(0).op_size(),
+                'end_op_index': self._infer_program.desc.block(0).op_size(),
                 'is_test': self._is_test
             })
 
@@ -126,7 +137,7 @@ class PartialProgramLayer(layers.Layer):
         # be user wanted result.
         for param in params:
             grad_name = param.name + core.grad_var_suffix()
-            grad_var = self._program.desc.block(0).find_var(
+            grad_var = self._train_program.desc.block(0).find_var(
                 cpt.to_bytes(grad_name))
             # NOTE: cannot find var desc maybe no problem, such as in batch_norm
             if grad_var is None:

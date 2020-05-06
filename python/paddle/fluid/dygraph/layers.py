@@ -23,7 +23,7 @@ from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
-from .base import program_desc_tracing_guard, parameter_guard
+from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 import copy
@@ -457,7 +457,7 @@ class Layer(core.Layer):
                         self._parameters.values())
             self._built = True
 
-        with parameter_guard(self._parameters):
+        with param_guard(self._parameters):
             outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
