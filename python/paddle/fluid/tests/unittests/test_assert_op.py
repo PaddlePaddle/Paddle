@@ -45,6 +45,15 @@ class TestAssertOp(unittest.TestCase):
         with self.assertRaises(fluid.core.EnforceNotMet):
             self.run_network(net_func)
 
+    def test_assert_cond_numel_error(self):
+        def net_func():
+            condition = layers.fill_constant(
+                shape=[1, 2], dtype='bool', value=False)
+            layers.Assert(condition, [])
+
+        with self.assertRaises(fluid.core.EnforceNotMet):
+            self.run_network(net_func)
+
     def test_assert_print_data(self):
         def net_func():
             zero = layers.fill_constant(shape=[1], dtype='int64', value=0)

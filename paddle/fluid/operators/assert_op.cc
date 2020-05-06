@@ -45,8 +45,8 @@ class AssertOp : public framework::OperatorBase {
         cond.dims(), paddle::framework::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The numel of Input(Condition) of AssertOp must be 1. But now "
-            "the Condition's shape is ",
-            cond.dims().to_str(), ".\n"));
+            "the Condition's shape is %s.",
+            cond.dims().to_str()));
 
     bool cond_data = GetCondData(cond);
     if (cond_data) {
@@ -63,12 +63,10 @@ class AssertOp : public framework::OperatorBase {
       formatter.Print(x_tensor, name);
     }
 
-    // Here is code to throw exception due to cond_data must be false.
-    PADDLE_ENFORCE_EQ(cond_data, true,
-                      platform::errors::InvalidArgument(
-                          "The condition variable '%s' of AssertOp must be "
-                          "true, but received false",
-                          Input(kCondition)));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The condition variable '%s' of AssertOp must be "
+        "true, but received false",
+        Input(kCondition)));
   }
 };
 
