@@ -16,7 +16,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from .progressbar import ProgressBar
 
-__all__ = ['ProgBarLogger', 'ModelCheckpoint']
+__all__ = ['Callback', 'ProgBarLogger', 'ModelCheckpoint']
 
 
 def config_callbacks(callbacks=None,
@@ -110,7 +110,25 @@ class CallbackList(object):
 
 
 class Callback(object):
-    """Base class used to build new callbacks.
+    """
+    Base class used to build new callbacks.
+
+    Examples:
+
+        .. code-block:: python
+            
+            # build a simple model checkpoint callback
+            class ModelCheckpoint(Callback):
+                def __init__(self, save_freq=1, save_dir=None):
+                    self.save_freq = save_freq
+                    self.save_dir = save_dir
+
+                def on_epoch_end(self, epoch, logs=None):
+                    if self.model is not None and epoch % self.save_freq == 0:
+                        path = '{}/{}'.format(self.save_dir, epoch)
+                        print('save checkpoint at {}'.format(path))
+                        self.model.save(path)
+
     """
 
     def __init__(self):
