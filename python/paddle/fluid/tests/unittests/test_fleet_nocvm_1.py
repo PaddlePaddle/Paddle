@@ -96,6 +96,8 @@ class TestFleet1(unittest.TestCase):
             fleet.save_one_table(0, "./model_002", prefix="hahaha")
             fleet.load_model("./model_0003")
             fleet.load_one_table(0, "./model_004")
+            fleet.confirm()
+            fleet.revert()
         except:
             print("do not support pslib test, skip")
             return

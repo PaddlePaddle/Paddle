@@ -232,6 +232,9 @@ class DataFeed {
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
   platform::Place place_;
+
+  // The input type of pipe reader, 0 for one sample, 1 for one batch
+  int input_type_;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.

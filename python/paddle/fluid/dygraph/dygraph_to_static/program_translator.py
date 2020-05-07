@@ -27,8 +27,9 @@ from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_st
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.layers.utils import map_structure
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -343,10 +344,10 @@ class ProgramTranslator(object):
             prog_trans.enable(False)
 
             x = np.ones([1, 2])
-            # The declarative is disabled so the func is run in dygraph 
+            # The declarative is disabled so the func is run in dygraph
             with fluid.dygraph.guard():
                 print(func(x).numpy()) # [[2. 2.]]
-        
+
         """
         check_type(enable_declarative, "enable_declarative", bool,
                    "ProgramTranslator.enable")
@@ -360,7 +361,7 @@ class ProgramTranslator(object):
 
         Args:
             dygraph_func (callable): the dygraph function.
-            *args, **kwargs : the input argument of dygraph_func. 
+            *args, **kwargs : the input argument of dygraph_func.
 
         Returns:
             VarBase or tuple of VarBase: the dygraph VarBase containing digital
@@ -403,10 +404,11 @@ class ProgramTranslator(object):
         if not program_cache.in_build_process:
             outputs = self._run(*args, **kwargs)
             with guard():
+                outputs = map_structure(to_variable, outputs)
                 if len(outputs) == 1:
-                    outputs = to_variable(outputs[0])
+                    outputs = outputs[0]
                 else:
-                    outputs = tuple(to_variable(x) for x in outputs)
+                    outputs = tuple(outputs)
         return outputs
 
     def get_func(self, dygraph_func):
@@ -761,7 +763,7 @@ class ProgramTranslator(object):
 
         assert abs(index_of_loss) < len(outputs), \
             "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
-            index_of_loss, len(outputs))
+                index_of_loss, len(outputs))
 
         loss_var = outputs[index_of_loss]
         check_type(loss_var, "loss_var", framework.Variable,

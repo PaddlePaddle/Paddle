@@ -913,33 +913,34 @@ struct OpRequant : public PatternBase {
   PATTERN_DECL_NODE(requant_out);
 };
 
-// Conv + Dequant
+// Requant + Op
 // named nodes:
-// conv_op, conv_out
-// dequant_op, dequant_out
-struct ConvDequant : public PatternBase {
-  ConvDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_dequant") {}
+// requant_in, requant_op,
+// requant_out, any_op
+struct RequantOp : public PatternBase {
+  RequantOp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "requant_op") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-
-  PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(requant_in);
+  PATTERN_DECL_NODE(requant_op);
+  PATTERN_DECL_NODE(requant_out);
 };
 
-// Fc + Dequant
-struct FcDequant : public PatternBase {
-  FcDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fc_dequant") {}
+// Op + Dequant
+// named nodes:
+// any_op, dequant_in
+// dequant_op, dequant_out
+struct OpDequant : public PatternBase {
+  OpDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "op_dequant") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(fc_op);
-  PATTERN_DECL_NODE(fc_out);
-
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(dequant_in);
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
 };
@@ -956,20 +957,6 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
-};
-
-// Matmul + Dequantize
-struct MatmulDequant : public PatternBase {
-  MatmulDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "matmul_dequant") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(matmul_op);
-  PATTERN_DECL_NODE(matmul_out);
-
-  PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(dequant_out);
 };
 
 // Scale + Matmul
@@ -1208,6 +1195,29 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
   PATTERN_DECL_NODE(any_op2);
+};
+
+// Reshape + Transpose + Matmul
+// named nodes:
+// reshape_op, reshape_out, reshape_xshape,
+// transpose_op, transpose_out, transpose_xshape,
+// matmul_op, matmul_out
+struct ReshapeTransposeMatmulPattern : public PatternBase {
+  ReshapeTransposeMatmulPattern(PDPattern* pattern,
+                                const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
+
+  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(reshape_xshape);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_xshape);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
 };
 
 // Matmul + Transpose + Reshape
