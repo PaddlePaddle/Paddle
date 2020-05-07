@@ -4116,6 +4116,7 @@ class Program(object):
         program_str = ""
         for block in self.blocks:
             program_str += block._to_readable_code(skip_op_callstack)
+            program_str += '\n'
         return program_str
 
     def to_string(self, throw_on_error, with_details=False):

@@ -47,7 +47,8 @@ class SliceOp : public framework::OperatorWithKernel {
         // the output shape is determined by SliceKernel:Compute in runtime.
         return;
       } else {
-        // NOTE: A better way is needed to get accurate dims of tensor array.
+        // NOTE(liym27): A better way is needed to get accurate dims of tensor
+        // array.
         // The resulted dim of GetInputDim("Input") is the dim of the
         // last item written into TensorArray "Input". Maybe it's a bug to fix.
         ctx->SetOutputDim("Out", ctx->GetInputDim("Input"));
