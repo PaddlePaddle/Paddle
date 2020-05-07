@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -25,14 +26,7 @@ constexpr int64_t kNoPadding = -1;
 
 class LookupSparseTableInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LookupSparseTableOp should not be null.");
-    auto shape_w = ctx->GetInputDim("W");
-    auto shape_ids = ctx->GetInputDim("Ids");
-    shape_w[0] = shape_ids.size();
-    ctx->SetOutputDim("Out", shape_w);
-  }
+  void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
 class LookupSparseTableOp : public framework::OperatorBase {
@@ -42,60 +36,60 @@ class LookupSparseTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto out_var = scope.FindVar(Output("Out"));
-    auto w_var = scope.FindVar(Input("W"));
-    auto ids_var = scope.FindVar(Input("Ids"));
-    auto is_test = Attr<bool>("is_test");
+    auto &id_tensor = scope.FindVar(Input("Ids"))->Get<framework::LoDTensor>();
+    auto *id_data = id_tensor.data<int64_t>();
+    auto tablename = Attr<std::string>("tablename");
 
-    PADDLE_ENFORCE(out_var->IsType<framework::LoDTensor>(),
-                   "The type of Out var should be LodTensor.");
-    PADDLE_ENFORCE(w_var->IsType<framework::SelectedRows>(),
-                   "The type of W var should be SelectedRows.");
-    PADDLE_ENFORCE(ids_var->IsType<framework::LoDTensor>(),
-                   "The type of Ids var should be LoDTensor.");
-    auto &ids_t = ids_var->Get<framework::LoDTensor>();
-    auto out_t = out_var->GetMutable<framework::LoDTensor>();
-    auto w_t = w_var->GetMutable<framework::SelectedRows>();
+    std::vector<int64_t> ids;
+    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
+      ids.push_back(id_data[i]);
+    }
 
-    // TODO(Yancey1989): support CUDA Place for the sparse table
-    platform::CPUPlace cpu;
-    auto out_shape = w_t->value().dims();
-    out_shape[0] = ids_t.numel();
-    out_t->Resize(out_shape);
-    out_t->mutable_data(cpu, w_t->value().type());
-    PADDLE_ENFORCE_EQ(w_t->value().type(), framework::proto::VarType::FP32,
-                      "The sparse table only support FP32");
-    w_t->Get(ids_t, out_t, true, is_test);
-    out_t->set_lod(ids_t.lod());
+    std::vector<std::string> value_names;
+    std::vector<std::vector<std::vector<float>>> values;
+
+    for (int i = 0; i < 5; i++) {
+      auto out_name = string::Sprintf("%s%d", "Out", i);
+      auto *out = scope.FindLocalVar(out_name);
+
+      if (out == nullptr) {
+        break;
+      } else {
+        value_names.push_back(out_name);
+      }
+    }
+
+    auto *ins = distributed::LargeScaleKV::GetInstance();
+    auto *sparse_v = ins->Get(tablename)->Get(ids, value_names, &values);
   }
 };
 
 class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("W",
-             "(SelectedRows) The input represents embedding table, "
-             "which is a learnable parameter.");
     AddInput("Ids",
              "(LoDTensor) Ids's type should be LoDTensor"
              "THe ids to be looked up in W.");
-    AddOutput("Out",
+
+    AddOutput("Out0",
               "(LoDTensor) The lookup results, which have the "
               "same type as W.");
-    AddAttr<int64_t>("padding_idx",
-                     "(int64, default -1) "
-                     "If the value is -1, it makes no effect to lookup. "
-                     "Otherwise the given value indicates padding the output "
-                     "with zeros whenever lookup encounters it in Ids.")
-        .SetDefault(kNoPadding);
-    AddAttr<bool>("auto_grown_table",
-                  "(bool default false)"
-                  "Whether create new value if for nonexistent key.")
-        .SetDefault(true);
-    AddAttr<bool>("is_test",
-                  "In test mode, lookup_sparse_table will "
-                  "return a 0 for unknown id")
-        .SetDefault(false);
+    AddOutput("Out1",
+              "(LoDTensor) The lookup results, which have the "
+              "same type as W.");
+    AddOutput("Out2",
+              "(LoDTensor) The lookup results, which have the "
+              "same type as W.");
+    AddOutput("Out3",
+              "(LoDTensor) The lookup results, which have the "
+              "same type as W.");
+    AddOutput("Out4",
+              "(LoDTensor) The lookup results, which have the "
+              "same type as W.");
+
+    AddAttr<std::string>("tablename",
+                         "(string)"
+                         "sparse table name");
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.
 
