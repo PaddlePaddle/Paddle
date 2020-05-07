@@ -63,96 +63,37 @@ __global__ void OuterScan(const T* in, T* out, int inner_dim_size,
 // exclusive scan
 template <typename T, int num_threads_x, int num_threads_y>
 __global__ void InnerMostDimScan(const T* in, T* out, int inner_dim_size,
-                                 int outer_dim_size, int scan_dim_size) {
+                                 int outer_dim_size, int scan_dim_size,
+                                 bool reverse) {
   __shared__ T share_data[num_threads_y][num_threads_x * 2];
   T* share_row = share_data[threadIdx.y];
+  int forward_direction = 1;
+  if (reverse) forward_direction = -1;
 
-  for (unsigned block_row = blockIdx.x * blockDim.y; block_row < outer_dim_size;
+  for (int block_row = blockIdx.x * blockDim.y; block_row < outer_dim_size;
        block_row += blockDim.y * gridDim.x) {
-    unsigned row = block_row + threadIdx.y;
+    int row = block_row + threadIdx.y;
     T acc = 0;
     const T* row_src = in + row * scan_dim_size;
     T* row_dst = out + row * scan_dim_size;
-    for (unsigned block_col = 0; block_col < scan_dim_size;
-         block_col += 2 * num_threads_x) {
-      // Load data into share memory(two value per thread)
-      unsigned col1 = block_col + threadIdx.x;
-      unsigned col2 = block_col + num_threads_x + threadIdx.x;
-      if (row < outer_dim_size) {
-        if (col1 < scan_dim_size) {
-          share_row[threadIdx.x] = row_src[col1];
-        } else {
-          share_row[threadIdx.x] = 0;
-        }
-
-        if (col2 < scan_dim_size) {
-          share_row[num_threads_x + threadIdx.x] = row_src[col2];
-        } else {
-          share_row[num_threads_x + threadIdx.x] = 0;
-        }
-
-        // Add the previous block acc to the result
-        if (threadIdx.x == 0) {
-          share_row[0] = share_row[0] + acc;
-        }
-      }
-      __syncthreads();
-
-      // Up-Sweep
-      for (unsigned s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
-        if (row < outer_dim_size && threadIdx.x < s) {
-          unsigned offset = (2 * threadIdx.x + 1) * d - 1;
-          share_row[offset + d] = share_row[offset] + share_row[offset + d];
-        }
-        __syncthreads();
-      }
-      // Down-Sweep
-      for (unsigned s = 2, d = blockDim.x / 2; d >= 1; s <<= 1, d >>= 1) {
-        if (row < outer_dim_size && threadIdx.x < s - 1) {
-          unsigned offset = 2 * (threadIdx.x + 1) * d - 1;
-          share_row[offset + d] = share_row[offset] + share_row[offset + d];
-        }
-        __syncthreads();
-      }
-
-      // Write to the output
-      if (row < outer_dim_size) {
-        if (col1 < scan_dim_size) row_dst[col1] = share_row[threadIdx.x];
-        if (col2 < scan_dim_size)
-          row_dst[col2] = share_row[num_threads_x + threadIdx.x];
-      }
-      acc = share_row[2 * num_threads_x - 1];
-      __syncthreads();
+    int block_col = 0;
+    bool loop_condition = (block_col < scan_dim_size);
+    if (reverse) {
+      loop_condition = (block_col >= 0);
+      block_col = scan_dim_size - 1;
     }
-  }
-}
-
-// exclusive scan with reverse
-template <typename T, int num_threads_x, int num_threads_y>
-__global__ void InnerMostDimReverseScan(const T* in, T* out, int inner_dim_size,
-                                        int outer_dim_size, int scan_dim_size) {
-  __shared__ T share_data[num_threads_y][num_threads_x * 2];
-  T* share_row = share_data[threadIdx.y];
-
-  for (unsigned block_row = blockIdx.x * blockDim.y; block_row < outer_dim_size;
-       block_row += blockDim.y * gridDim.x) {
-    unsigned row = block_row + threadIdx.y;
-    T acc = 0;
-    const T* row_src = in + row * scan_dim_size;
-    T* row_dst = out + row * scan_dim_size;
-    for (int block_col = scan_dim_size - 1; block_col >= 0;
-         block_col -= 2 * num_threads_x) {
+    while (loop_condition) {
       // Load data into share memory(two value per thread)
-      unsigned col1 = block_col - threadIdx.x;
-      unsigned col2 = block_col - num_threads_x - threadIdx.x;
+      int col1 = block_col + threadIdx.x * forward_direction;
+      int col2 = block_col + (num_threads_x + threadIdx.x) * forward_direction;
       if (row < outer_dim_size) {
-        if (col1 >= 0 && col1 < scan_dim_size) {
+        if (col1 < scan_dim_size && col1 >= 0) {
           share_row[threadIdx.x] = row_src[col1];
         } else {
           share_row[threadIdx.x] = 0;
         }
 
-        if (col2 >= 0 && scan_dim_size > col2) {
+        if (col2 < scan_dim_size && col2 >= 0) {
           share_row[num_threads_x + threadIdx.x] = row_src[col2];
         } else {
           share_row[num_threads_x + threadIdx.x] = 0;
@@ -164,6 +105,7 @@ __global__ void InnerMostDimReverseScan(const T* in, T* out, int inner_dim_size,
         }
       }
       __syncthreads();
+
       // Up-Sweep
       for (unsigned s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
         if (row < outer_dim_size && threadIdx.x < s) {
@@ -180,15 +122,21 @@ __global__ void InnerMostDimReverseScan(const T* in, T* out, int inner_dim_size,
         }
         __syncthreads();
       }
+
       // Write to the output
       if (row < outer_dim_size) {
-        if (col1 >= 0 && col1 < scan_dim_size)
+        if (col1 < scan_dim_size && col1 >= 0)
           row_dst[col1] = share_row[threadIdx.x];
-        if (col2 >= 0 && col2 < scan_dim_size)
+        if (col2 < scan_dim_size && col2 >= 0)
           row_dst[col2] = share_row[num_threads_x + threadIdx.x];
       }
       acc = share_row[2 * num_threads_x - 1];
       __syncthreads();
+      block_col += 2 * num_threads_x * forward_direction;
+      if (reverse)
+        loop_condition = (block_col >= 0);
+      else
+        loop_condition = (block_col < scan_dim_size);
     }
   }
 }
@@ -236,14 +184,9 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     if (optimize_condition) {
       dim3 block(32, 16);
       dim3 grid((outer_dim_size + block.y - 1) / block.y);
-      if (reverse) {
-        InnerMostDimReverseScan<T, 32,
-                                16><<<grid, block, 0, dev_ctx.stream()>>>(
-            in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size);
-      } else {
-        InnerMostDimScan<T, 32, 16><<<grid, block, 0, dev_ctx.stream()>>>(
-            in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size);
-      }
+      InnerMostDimScan<T, 32, 16><<<grid, block, 0, dev_ctx.stream()>>>(
+          in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size,
+          reverse);
     } else {
       dim3 block(std::min(512, inner_dim_size));
       dim3 grid(outer_dim_size, (inner_dim_size + block.x - 1) / block.x);
