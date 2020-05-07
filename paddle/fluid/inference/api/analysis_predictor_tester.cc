@@ -28,9 +28,6 @@
 #endif
 
 DEFINE_string(dirname, "", "dirname to tests.");
-DEFINE_string(dirname_enc, "",
-              "dirname to test for encrypted model, "
-              "decryption key stored as dirname_enc/key");
 
 namespace paddle {
 
@@ -199,10 +196,6 @@ TEST(AnalysisPredictor, Clone) {
 }
 
 TEST(SecModelTest, secure_model_test) {
-  // To run this test, you specify plaintext model dir `--dirname`
-  // and corresponding encrypted model dir `--dirname_enc`
-  // with key file as dirname_enc/key
-
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(false);
@@ -219,21 +212,24 @@ TEST(SecModelTest, secure_model_test) {
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 
+  // save encrypted model
+  AnalysisConfig config_save_enc;
+  config_save_enc.SetModel(FLAGS_dirname);
+  config_save_enc.SwitchIrOptim(false);
+  config_save_enc.enable_encrypt();
+  const std::string key("0", 32);
+  config_save_enc.set_key(key);
+
+  auto save_predictor = CreatePaddlePredictor<AnalysisConfig>(config_save_enc);
+  std::string enc_dir = FLAGS_dirname + "_encrypted";
+  dynamic_cast<AnalysisPredictor*>(save_predictor.get())
+      ->SaveOptimModel(enc_dir);
+
   // compare with secure model
   AnalysisConfig config_sec;
   config_sec.enable_decrypt();
 
-  // keyfile have stored in dirname_enc/key
-  std::string key;
-  std::string keyfile = std::string(FLAGS_dirname_enc) + std::string("/key");
-  std::ifstream fin(keyfile, std::ios::binary);
-  fin.seekg(0, std::ios::end);
-  auto key_len = fin.tellg();
-  key.resize(key_len);
-  fin.seekg(0);
-  fin.read(&(key.at(0)), key_len);
-
-  config_sec.SetModel(FLAGS_dirname_enc);
+  config_sec.SetModel(enc_dir + "/model", enc_dir + "/params");
   config_sec.SwitchIrOptim(false);
   config_sec.set_key(key);
 
@@ -245,6 +241,7 @@ TEST(SecModelTest, secure_model_test) {
   inference::CompareTensor(outputs.front(), sec_outputs.front());
 
   // NativePredictor
+  config_sec.SetModel(enc_dir + "/model", enc_dir + "/params");
   auto sec_native_predictor =
       CreatePaddlePredictor<NativeConfig>(config_sec.ToNativeConfig());
   std::vector<PaddleTensor> sec_native_outputs;

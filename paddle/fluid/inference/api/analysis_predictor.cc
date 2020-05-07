@@ -23,7 +23,7 @@
 #include <vector>
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
-#include "paddle/fluid/framework/io/fstream_ext.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -747,14 +747,17 @@ bool AnalysisPredictor::LoadProgramDesc() {
   if (!config_.model_from_memory()) {
     std::string pb_content;
     // Read binary
-    std::shared_ptr<paddle::framework::IfstreamExt> fin;
+    std::shared_ptr<paddle::framework::CryptIfstream> fin;
     if (config_.need_decrypt()) {
       std::string key = config_.get_key();
-      size_t TAG_SIZE = 16;
-      size_t IV_SIZE = 12;
-      fin = std::make_shared<paddle::framework::IfstreamExt>(
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        "must specify valid 'key' for decryption.");
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+      const size_t IV_SIZE = paddle::framework::DEFAULT_AES_IV_SIZE;
+      fin = std::make_shared<paddle::framework::CryptIfstream>(
           filename.data(), std::ios::in | std::ios::binary, true,
-          (unsigned char *)key.data(), key.size(), TAG_SIZE);
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
       PADDLE_ENFORCE(static_cast<bool>(fin->is_open()), "Cannot open file %s",
                      filename);
       fin->seekg(0, std::ios::end);
@@ -763,7 +766,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
       fin->read(&(pb_content.at(0)), pb_content.size());
       fin->close();
     } else {
-      fin = std::make_shared<paddle::framework::IfstreamExt>(
+      fin = std::make_shared<paddle::framework::CryptIfstream>(
           filename.data(), std::ios::in | std::ios::binary);
       PADDLE_ENFORCE(static_cast<bool>(fin->is_open()), "Cannot open file %s",
                      filename);
@@ -968,10 +971,22 @@ bool AnalysisPredictor::CheckOperatorCompatible() {
 void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   // save model
   std::string model_name = dir + "/model";
-  std::ofstream outfile;
-  outfile.open(model_name, std::ios::out | std::ios::binary);
+  std::shared_ptr<paddle::framework::CryptOfstream> outfile;
+  if (config_.need_encrypt()) {
+    const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+    std::string key = config_.get_key();
+    PADDLE_ENFORCE_EQ(key.empty(), false,
+                      "must specify valid 'key' for encryption.");
+    outfile = std::make_shared<paddle::framework::CryptOfstream>(
+        model_name.data(), std::ios::binary, true,
+        reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+        TAG_SIZE);
+  } else {
+    outfile = std::make_shared<paddle::framework::CryptOfstream>(
+        model_name.data(), std::ios::out | std::ios::binary);
+  }
   std::string inference_prog_desc = GetSerializedProgram();
-  outfile << inference_prog_desc;
+  outfile->write(inference_prog_desc.data(), inference_prog_desc.size());
   // save params
   framework::ProgramDesc save_program;
   auto *save_block = save_program.MutableBlock(0);
@@ -996,6 +1011,8 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   op->SetType("save_combine");
   op->SetInput("X", save_var_list);
   op->SetAttr("file_path", dir + "/params");
+  op->SetAttr("encrypt", config_.need_encrypt());
+  op->SetAttr("key", config_.get_key());
   op->CheckAttrs();
 
   platform::CPUPlace place;

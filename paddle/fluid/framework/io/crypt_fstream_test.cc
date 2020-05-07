@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/io/fstream_ext.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 
 #include <cryptopp/aes.h>
 #include <cryptopp/osrng.h>
@@ -34,7 +34,7 @@ TEST(test_fstream_ext, normal_function) {
   std::ofstream fout_normal(filename1, std::ios_base::binary);
   fout_normal.write(input, size);
 
-  OfstreamExt fout(filename, std::ios_base::binary);
+  CryptOfstream fout(filename, std::ios_base::binary);
   fout.write(input, size);
   fout_normal.close();
   fout.close();
@@ -44,7 +44,7 @@ TEST(test_fstream_ext, normal_function) {
   fin_normal.read(output, size);
   fin_normal.close();
 
-  IfstreamExt fin(filename, std::ios_base::binary);
+  CryptIfstream fin(filename, std::ios_base::binary);
   char* output1 = new char[size];
   fin.read(output1, size);
   fin.close();
@@ -69,8 +69,8 @@ TEST(test_fstream_ext, security_string) {
   fout_normal.write(input.c_str(), size);
   fout_normal.close();
 
-  OfstreamExt fout(filename, std::ios_base::binary, true, key, sizeof(key),
-                   TAG_SIZE);
+  CryptOfstream fout(filename, std::ios::out | std::ios_base::binary, true, key,
+                     sizeof(key), TAG_SIZE);
   fout.write(input.c_str(), size);
   fout.close();
 
@@ -78,8 +78,8 @@ TEST(test_fstream_ext, security_string) {
   char* output = new char[size];
   fin_normal.read(output, size);
   fin_normal.close();
-  IfstreamExt fin(filename, std::ios_base::binary, true, key, sizeof(key),
-                  TAG_SIZE);
+  CryptIfstream fin(filename, std::ios_base::binary, true, key, sizeof(key),
+                    TAG_SIZE);
   char* output1 = new char[size];
   fin.read(output1, size);
   fin.close();
@@ -100,8 +100,8 @@ TEST(test_fstream_ext, security_vector) {
   prng.GenerateBlock(key, sizeof(key));
 
   std::ofstream fout_normal(filename1, std::ios_base::binary);
-  OfstreamExt fout(filename, std::ios_base::binary, true, key, sizeof(key),
-                   TAG_SIZE);
+  CryptOfstream fout(filename, std::ios_base::binary, true, key, sizeof(key),
+                     TAG_SIZE);
   for (auto& i : input) {
     fout_normal.write(reinterpret_cast<char*>(&i), sizeof(i));
     fout.write(reinterpret_cast<char*>(&i), sizeof(i));
@@ -110,8 +110,8 @@ TEST(test_fstream_ext, security_vector) {
   fout.close();
 
   std::ifstream fin_normal(filename1, std::ios_base::binary);
-  IfstreamExt fin(filename, std::ios_base::binary, true, key, sizeof(key),
-                  TAG_SIZE);
+  CryptIfstream fin(filename, std::ios_base::binary, true, key, sizeof(key),
+                    TAG_SIZE);
 
   std::vector<double> output;
   std::vector<double> output1;
@@ -142,15 +142,15 @@ TEST(test_fstream_ext, mac_failed) {
   CryptoPP::byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
   prng.GenerateBlock(key, sizeof(key));
 
-  OfstreamExt fout(filename, std::ios_base::binary, true, key, sizeof(key),
-                   TAG_SIZE);
+  CryptOfstream fout(filename, std::ios_base::binary, true, key, sizeof(key),
+                     TAG_SIZE);
   auto size = strlen(input) + 1;
   fout.write(input, size);
   fout.close();
 
   // no alter mac value
-  IfstreamExt fin(filename, std::ios_base::binary, true, key, sizeof(key),
-                  TAG_SIZE);
+  CryptIfstream fin(filename, std::ios_base::binary, true, key, sizeof(key),
+                    TAG_SIZE);
   char* output = new char[size];
   fin.read(output, size);
   fin.peek();
@@ -162,8 +162,8 @@ TEST(test_fstream_ext, mac_failed) {
   fout_a.write("1", 1);
   fout_a.close();
 
-  IfstreamExt fin_a(filename, std::ios_base::binary, true, key, sizeof(key),
-                    TAG_SIZE);
+  CryptIfstream fin_a(filename, std::ios_base::binary, true, key, sizeof(key),
+                      TAG_SIZE);
   char* output_a = new char[size + 1];
   fin_a.read(output_a, size + 1);
   fin_a.peek();

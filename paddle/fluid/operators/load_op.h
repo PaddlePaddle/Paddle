@@ -20,7 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/fluid/framework/io/fstream_ext.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -35,16 +35,19 @@ class LoadOpKernel : public framework::OpKernel<T> {
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
     auto filename = ctx.Attr<std::string>("file_path");
-    std::shared_ptr<paddle::framework::IfstreamExt> fin;
-    const size_t TAG_SIZE = 16;
+    std::shared_ptr<paddle::framework::CryptIfstream> fin;
+    const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
     if (ctx.Attr<bool>("decrypt")) {
       std::string key = ctx.Attr<std::string>("key");
-      fin = std::make_shared<paddle::framework::IfstreamExt>(
-          filename.data(), std::ios::binary, true, (unsigned char *)key.data(),
-          key.size(), TAG_SIZE);
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        "must specify valid 'key' for decryption.");
+      fin = std::make_shared<paddle::framework::CryptIfstream>(
+          filename.data(), std::ios::binary, true,
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
     } else {
-      fin = std::make_shared<paddle::framework::IfstreamExt>(filename.data(),
-                                                             std::ios::binary);
+      fin = std::make_shared<paddle::framework::CryptIfstream>(
+          filename.data(), std::ios::binary);
     }
     PADDLE_ENFORCE_EQ(static_cast<bool>(*fin), true,
                       platform::errors::Unavailable(

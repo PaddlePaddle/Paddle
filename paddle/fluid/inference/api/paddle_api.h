@@ -367,7 +367,7 @@ struct NativeConfig : public PaddlePredictor::Config {
   void enable_decrypt() { decrypt_ = true; }
 
   //// Set key used for decrypting/encrypting model
-  void set_key(std::string key) { key_ = key; }
+  void set_key(const std::string& key) { key_ = key; }
 
   bool need_decrypt() { return decrypt_; }
 

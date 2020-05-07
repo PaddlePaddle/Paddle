@@ -21,6 +21,7 @@ limitations under the License. */
 #include <cryptopp/gcm.h>
 #include <cryptopp/osrng.h>
 #include <cryptopp/secblock.h>
+#include <glog/logging.h>
 
 #include <algorithm>
 #include <fstream>
@@ -29,6 +30,9 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+const int DEFAULT_AES_TAG_SIZE = 16;
+const int DEFAULT_AES_IV_SIZE = 12;
 
 class CryptFilebuf : public std::filebuf {
  public:
@@ -61,10 +65,11 @@ class CryptFilebuf : public std::filebuf {
         cipher.resize(n);
         std::filebuf::xsgetn(&(cipher.at(0)), n);
         _df->ChannelPut(CryptoPP::DEFAULT_CHANNEL,
-                        (const CryptoPP::byte*)cipher.data(), n);
+                        reinterpret_cast<const CryptoPP::byte*>(cipher.data()),
+                        n);
         _df->SetRetrievalChannel(CryptoPP::DEFAULT_CHANNEL);
         plain.resize(n);
-        _df->Get((CryptoPP::byte*)plain.data(), n);
+        _df->Get(reinterpret_cast<CryptoPP::byte*>(&plain.at(0)), n);
         traits_type::copy(s, plain.c_str(), n);
         // whether is last read
         const size_t TAG_SIZE = 16;
@@ -85,17 +90,17 @@ class CryptFilebuf : public std::filebuf {
           }
         }
       } catch (CryptoPP::InvalidArgument& e) {
-        std::cerr << "decryption error: CryptoPP-InvalidArgument." << std::endl;
-        std::cerr << e.what() << std::endl;
+        VLOG(0) << "decryption error: CryptoPP-InvalidArgument.";
+        VLOG(0) << e.what();
         throw;
       } catch (CryptoPP::AuthenticatedSymmetricCipher::BadState& e) {
-        std::cerr << "decryption error: CryptoPP-BadState." << std::endl;
-        std::cerr << e.what() << std::endl;
+        VLOG(0) << "decryption error: CryptoPP-BadState.";
+        VLOG(0) << e.what();
         throw;
       } catch (CryptoPP::HashVerificationFilter::HashVerificationFailed& e) {
-        std::cerr << "decryption error: "
-                  << "CryptoPP-HashVerificationFailed." << std::endl;
-        std::cerr << e.what() << std::endl;
+        VLOG(0) << "decryption error: "
+                << "CryptoPP-HashVerificationFailed.";
+        VLOG(0) << e.what();
         throw;
       }
       return n;
@@ -113,31 +118,26 @@ class CryptFilebuf : public std::filebuf {
         } else {
           std::string plain(s, s + n);
           _ef->ChannelPut(CryptoPP::DEFAULT_CHANNEL,
-                          (const CryptoPP::byte*)plain.data(), n);
+                          reinterpret_cast<const CryptoPP::byte*>(plain.data()),
+                          n);
         }
       } catch (CryptoPP::BufferedTransformation::NoChannelSupport& e) {
-        std::cerr << "encryption error: "
-                  << "CryptoPP-NoChannelSupport." << std::endl;
-        std::cerr << e.what() << std::endl;
+        VLOG(0) << "encryption error: "
+                << "CryptoPP-NoChannelSupport.";
+        VLOG(0) << e.what();
         throw;
       } catch (CryptoPP::AuthenticatedSymmetricCipher::BadState& e) {
-        std::cerr << "encryption error: CryptoPP-BadState." << std::endl;
-        std::cerr << e.what() << std::endl;
+        VLOG(0) << "encryption error: CryptoPP-BadState.";
+        VLOG(0) << e.what();
         throw;
       } catch (CryptoPP::InvalidArgument& e) {
-        std::cerr << "encryption error: "
-                  << "CryptoPP-InvalidArgument." << std::endl;
-        std::cerr << e.what() << std::endl;
+        VLOG(0) << "encryption error: "
+                << "CryptoPP-InvalidArgument.";
+        VLOG(0) << e.what();
         throw;
       }
       return n;
     }
-  }
-
-  int_type sync() override { return std::filebuf::sync(); }
-
-  int_type overflow(int_type c = traits_type::eof()) {
-    return std::filebuf::overflow(c);
   }
 
  public:
@@ -158,42 +158,33 @@ class CryptFilebuf : public std::filebuf {
   CryptoPP::AuthenticatedDecryptionFilter* _df;
 };
 
-class OfstreamExt : public std::ostream {
+class CryptOfstream : public std::ostream {
  public:
-  OfstreamExt()
-      : std::ostream(),
-        _fs(nullptr),
-        _e(nullptr),
-        _ef(nullptr),
-        _fout(nullptr) {
+  CryptOfstream() : _fs(nullptr), _e(nullptr), _ef(nullptr), _fout(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
   }
 
-  explicit OfstreamExt(const char* s,
-                       std::ios_base::openmode mode = std::ios_base::out)
-      : std::ostream(),
-        _fs(nullptr),
-        _e(nullptr),
-        _ef(nullptr),
-        _fout(nullptr) {
+  explicit CryptOfstream(const char* s,
+                         std::ios_base::openmode mode = std::ios_base::out)
+      : _fs(nullptr), _e(nullptr), _ef(nullptr), _fout(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
     this->open(s, mode);
   }
 
-  explicit OfstreamExt(const char* s, std::ios_base::openmode mode,
-                       bool sec_enhanced, unsigned char* key_str,
-                       size_t key_len, const int TAG_SIZE)
-      : std::ostream() {
+  explicit CryptOfstream(const char* s, std::ios_base::openmode mode,
+                         bool sec_enhanced, const unsigned char* key_str,
+                         const size_t key_len, const int TAG_SIZE = 16,
+                         const int IV_SIZE = 12) {
     if (sec_enhanced) {
       CryptoPP::AutoSeededRandomPool prng;
       CryptoPP::SecByteBlock key(key_str, key_len);
-      CryptoPP::byte iv[12];
+      CryptoPP::byte iv[IV_SIZE];
       prng.GenerateBlock(iv, sizeof(iv));
       _fout = new std::ofstream(s, mode);
       // write iv first
-      _fout->write((const char*)iv, sizeof(iv));
+      _fout->write(reinterpret_cast<const char*>(iv), sizeof(iv));
       _e = new CryptoPP::GCM<CryptoPP::AES>::Encryption();
       _e->SetKeyWithIV(key, key_len, iv, sizeof(iv));
       _fs = new CryptoPP::FileSink(*_fout);
@@ -211,13 +202,17 @@ class OfstreamExt : public std::ostream {
     this->open(s, mode);
   }
 
-  ~OfstreamExt() {
+  ~CryptOfstream() {
     if (!_is_close) {
       this->close();
     }
-    if (_e != nullptr) {
-      delete _fout;
+    if (_e) {
       delete _e;
+    }
+    if (_fout) {
+      delete _fout;
+    }
+    if (_ef) {
       delete _ef;
     }
     delete _fbuf;
@@ -265,30 +260,30 @@ class OfstreamExt : public std::ostream {
 
 // notice: integrity checking work only when
 // all ciphertexts in file had been read comppletely
-class IfstreamExt : public std::istream {
+class CryptIfstream : public std::istream {
  public:
-  IfstreamExt() : std::istream(), _d(nullptr), _df(nullptr) {
+  CryptIfstream() : _d(nullptr), _df(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
   }
 
-  explicit IfstreamExt(const char* s,
-                       std::ios_base::openmode mode = std::ios_base::in)
-      : std::istream(), _d(nullptr), _df(nullptr) {
+  explicit CryptIfstream(const char* s,
+                         std::ios_base::openmode mode = std::ios_base::in)
+      : _d(nullptr), _df(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
     this->open(s, mode);
   }
 
-  explicit IfstreamExt(const char* s, std::ios_base::openmode mode,
-                       bool sec_enhanced, unsigned char* key_str,
-                       size_t key_len, const int TAG_SIZE)
-      : std::istream() {
+  explicit CryptIfstream(const char* s, std::ios_base::openmode mode,
+                         bool sec_enhanced, const unsigned char* key_str,
+                         const size_t key_len, const int TAG_SIZE = 16,
+                         const int IV_SIZE = 12) {
     if (sec_enhanced) {
       // data structure in s: IV || ciphertexts || MAC
       std::ifstream fin(s, mode);
       CryptoPP::SecByteBlock key(key_str, key_len);
-      CryptoPP::byte iv[12];
+      CryptoPP::byte iv[IV_SIZE];
       // read iv
       fin.read(reinterpret_cast<char*>(iv), sizeof(iv));
       auto cipher_pos = fin.tellg();
@@ -306,13 +301,13 @@ class IfstreamExt : public std::istream {
       this->open(s, mode);
 
       this->seekg(0, std::ios::end);
-      auto mac_pos = tellg() - (int64_t)TAG_SIZE;
+      auto mac_pos = tellg() - static_cast<int64_t>(TAG_SIZE);
       char mac[TAG_SIZE];
 
       fin.seekg(mac_pos, std::ios::beg);
       fin.read(mac, TAG_SIZE);
-      _df->ChannelPut(CryptoPP::DEFAULT_CHANNEL, (const CryptoPP::byte*)mac,
-                      TAG_SIZE);
+      _df->ChannelPut(CryptoPP::DEFAULT_CHANNEL,
+                      reinterpret_cast<const CryptoPP::byte*>(mac), TAG_SIZE);
       seekg(cipher_pos, std::ios::beg);
 
     } else {
@@ -323,9 +318,11 @@ class IfstreamExt : public std::istream {
     }
   }
 
-  ~IfstreamExt() {
-    if (_d != nullptr) {
+  ~CryptIfstream() {
+    if (_d) {
       delete _d;
+    }
+    if (_df) {
       delete _df;
     }
     delete _fbuf;

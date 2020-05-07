@@ -21,7 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
-#include "paddle/fluid/framework/io/fstream_ext.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -43,15 +43,18 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
                           "it to be greater than 0.",
                           out_var_names.size()));
     if (!model_from_memory) {
-      const size_t TAG_SIZE = 16;
-      std::shared_ptr<paddle::framework::IfstreamExt> fin;
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+      std::shared_ptr<paddle::framework::CryptIfstream> fin;
       if (ctx.Attr<bool>("decrypt")) {
         std::string key = ctx.Attr<std::string>("key");
-        fin = std::make_shared<paddle::framework::IfstreamExt>(
+        PADDLE_ENFORCE_EQ(key.empty(), false,
+                          "must specify valid 'key' for decryption.");
+        fin = std::make_shared<paddle::framework::CryptIfstream>(
             filename.data(), std::ios::binary, true,
-            (unsigned char *)key.data(), key.size(), TAG_SIZE);
+            reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+            TAG_SIZE);
       } else {
-        fin = std::make_shared<paddle::framework::IfstreamExt>(
+        fin = std::make_shared<paddle::framework::CryptIfstream>(
             filename.data(), std::ios::binary);
       }
       PADDLE_ENFORCE_EQ(

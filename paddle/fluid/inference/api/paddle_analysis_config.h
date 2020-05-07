@@ -506,10 +506,15 @@ struct AnalysisConfig {
   /// \brief Enable decryption option to load a encryted model
   void enable_decrypt() { decrypt_ = true; }
 
+  /// \brief Enable encryption option to save a encryted model
+  void enable_encrypt() { encrypt_ = true; }
+
   /// Set key used for decrypting model
   void set_key(std::string key) { key_ = key; }
 
   bool need_decrypt() { return decrypt_; }
+
+  bool need_encrypt() { return encrypt_; }
 
   std::string get_key() { return key_; }
 
@@ -604,6 +609,9 @@ struct AnalysisConfig {
 
   // enable decrypt model
   bool decrypt_{false};
+
+  // enable encrypt model
+  bool encrypt_{false};
 
   // enc/dec key
   std::string key_;

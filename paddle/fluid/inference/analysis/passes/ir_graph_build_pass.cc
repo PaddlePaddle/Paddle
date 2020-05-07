@@ -23,7 +23,8 @@
 namespace paddle {
 namespace inference {
 
-extern void ReadBinaryFile(const std::string &filename, std::string *contents);
+extern void ReadBinaryFile(const std::string &filename, std::string *contents,
+                           bool decrypt = false, const std::string &key = "");
 
 namespace analysis {
 
@@ -66,7 +67,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &path, framework::Scope *scope,
-    const platform::Place &place, bool decrypt, std::string key) {
+    const platform::Place &place, bool decrypt, const std::string &key) {
   framework::Executor exe(place);
   return Load(&exe, scope, path, decrypt, key);
 }
@@ -74,7 +75,7 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path, const std::string &params_path,
     framework::Scope *scope, const platform::Place &place,
-    bool model_from_memory, bool decrypt, std::string key) {
+    bool model_from_memory, bool decrypt, const std::string &key) {
   framework::Executor exe(place);
   if (!model_from_memory) {
     return Load(&exe, scope, program_path, params_path, decrypt, key);

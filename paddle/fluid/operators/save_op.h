@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/io/fstream_ext.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -81,16 +81,19 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::shared_ptr<paddle::framework::OfstreamExt> fout;
+    std::shared_ptr<paddle::framework::CryptOfstream> fout;
     if (ctx.Attr<bool>("encrypt")) {
-      const size_t TAG_SIZE = 16;
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
       std::string key = ctx.Attr<std::string>("key");
-      fout = std::make_shared<paddle::framework::OfstreamExt>(
-          filename.data(), std::ios::binary, true, (unsigned char *)key.data(),
-          key.size(), TAG_SIZE);
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        "must specify valid 'key' for encryption.");
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary, true,
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
     } else {
-      fout = std::make_shared<paddle::framework::OfstreamExt>(filename.data(),
-                                                              std::ios::binary);
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary);
     }
     PADDLE_ENFORCE_EQ(static_cast<bool>(*fout), true,
                       platform::errors::Unavailable(
@@ -150,16 +153,19 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::shared_ptr<paddle::framework::OfstreamExt> fout;
+    std::shared_ptr<paddle::framework::CryptOfstream> fout;
     if (ctx.Attr<bool>("encrypt")) {
-      const size_t TAG_SIZE = 16;
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
       std::string key = ctx.Attr<std::string>("key");
-      fout = std::make_shared<paddle::framework::OfstreamExt>(
-          filename.data(), std::ios::binary, true, (unsigned char *)key.data(),
-          key.size(), TAG_SIZE);
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        "must specify valid 'key' for encryption.");
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary, true,
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
     } else {
-      fout = std::make_shared<paddle::framework::OfstreamExt>(filename.data(),
-                                                              std::ios::binary);
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary);
     }
     PADDLE_ENFORCE_EQ(static_cast<bool>(*fout), true,
                       platform::errors::Unavailable(

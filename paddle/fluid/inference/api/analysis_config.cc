@@ -151,6 +151,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // encrypted model related
   CP_MEMBER(decrypt_);
+  CP_MEMBER(encrypt_);
   CP_MEMBER(key_);
 
   CP_MEMBER(thread_local_stream_);
