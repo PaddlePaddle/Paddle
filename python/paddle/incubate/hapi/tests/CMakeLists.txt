@@ -46,9 +46,11 @@ function(py_dist_test TARGET_NAME)
     endif()
 
     # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=DIST")
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=DIST" RUN_SERIAL TRUE)
+    
   endif()
 endfunction()
+
 
 
 foreach(src ${DIST_TEST_OPS})
