@@ -182,18 +182,18 @@ class TestMNISTWithDeclarative(TestMNIST):
                     loss_data.append(avg_loss.numpy()[0])
                     # save checkpoint
                     mnist.clear_gradients()
-                    if batch_id % 100 == 0:
+                    if batch_id % 10 == 0:
                         print(
                             "Loss at epoch {} step {}: loss: {:}, acc: {}, cost: {}"
                             .format(epoch, batch_id,
                                     avg_loss.numpy(),
                                     acc.numpy(), time() - start))
                         start = time()
-                        if batch_id == 100:
-                            mnist.eval()
-                            prediction, acc, avg_loss = mnist(img, label)
-                            loss_data.append(avg_loss.numpy()[0])
-                            break
+                    if batch_id == 50:
+                        mnist.eval()
+                        prediction, acc, avg_loss = mnist(img, label)
+                        loss_data.append(avg_loss.numpy()[0])
+                        break
         return loss_data
 
 

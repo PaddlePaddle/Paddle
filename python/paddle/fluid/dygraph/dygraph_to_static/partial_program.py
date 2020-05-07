@@ -23,6 +23,24 @@ __all__ = ['partial_program_from', 'PartialProgramLayer']
 
 
 class PartialProgramLayer(layers.Layer):
+    """
+    PartialProgramLayer wraps all the ops from layers decorated by `@declarative`
+    and execute them as a static subgraph.
+
+    .. note::
+        **1. It should not be called directly and is used to train dygraph by static mode.
+        **2. LoDTensorArray is not currently supported in the output.
+
+    Args:
+        main_program(Program): The main program that contains ops need to be executed.
+        inputs(list[Variable]): The input list of the decorated function by `@declarative`.
+        outputs(list[Variable]): The output list of the decorated function by `@declarative`.
+        parameters(list[VarBase]|None): All trainable parameters included in the program. Default None.
+
+    Returns:
+        Layer: A Layer object that run all ops internally in static mode.
+    """
+
     def __init__(self, main_program, inputs, outputs, parameters=None):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
@@ -30,11 +48,11 @@ class PartialProgramLayer(layers.Layer):
         self._params = parameters
         self._infer_program = main_program
         self._train_program = self._append_backward_desc()
-        # switch infer or train by train() and eval()
+        # Switch infer or train by train() and eval()
         self._trace_program = None
         self._set_grad_type(self._params)
         self._inner_scope = core.Scope()
-        # set default mode to train
+        # Set default mode to train
         self.train()
 
     @switch_to_static_graph
@@ -84,7 +102,7 @@ class PartialProgramLayer(layers.Layer):
 
     def _prepare(self, inputs):
         """
-        prepare inputs, outputs, attrs
+        Prepare inputs, outputs, attrs.
         """
         assert isinstance(inputs, (tuple, list))
         # Convert variable into VarBase and feed in training data.
@@ -114,7 +132,7 @@ class PartialProgramLayer(layers.Layer):
                                     var_desc.name(), var_desc.type(), False)
             out_vars.append(var_base)
 
-        # hold forward variables
+        # Hold forward variables
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
@@ -158,7 +176,7 @@ def valid_vars(vars):
 
 def append_grad_suffix(name):
     """
-    Append grad suffix to the given variable name
+    Append grad suffix to the given variable name.
     e.g. x ==> x@GRAD
     """
     suffix = core.kGradVarSuffix()
@@ -168,10 +186,11 @@ def append_grad_suffix(name):
     return name
 
 
-def partial_program_from(program_cache):
-    inputs = program_cache.inputs
+def partial_program_from(concrete_program):
+    inputs = concrete_program.inputs
     if inputs and isinstance(inputs[0], layers.Layer):
         inputs = inputs[1:]
 
-    return PartialProgramLayer(program_cache.main_program, inputs,
-                               program_cache.outputs, program_cache.parameters)
+    return PartialProgramLayer(concrete_program.main_program, inputs,
+                               concrete_program.outputs,
+                               concrete_program.parameters)
