@@ -269,6 +269,13 @@ void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
+    if (VLOG_IS_ON(2)) {
+      auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
+                                 (&platform::DeviceContextPool::Instance())
+                                     ->Get(platform::CPUPlace()))
+                                 ->GetShapeBlobSize();
+      CHECK_LE(shape_blob_size, config_.mkldnn_cache_capacity_);
+    }
     paddle::platform::set_cur_mkldnn_session_id(
         platform::kMKLDNNSessionID_Default);
     platform::set_cur_input_shape_cache_capacity(0);
