@@ -117,6 +117,8 @@ class Callback(object):
 
         .. code-block:: python
             
+            from paddle.incubate.hapi.callbacks import Callback
+
             # build a simple model checkpoint callback
             class ModelCheckpoint(Callback):
                 def __init__(self, save_freq=1, save_dir=None):
@@ -294,7 +296,6 @@ class ProgBarLogger(Callback):
             from paddle.incubate.hapi.metrics import Accuracy
             from paddle.incubate.hapi.loss import CrossEntropy
             from paddle.incubate.hapi.datasets import MNIST
-            from paddle.incubate.hapi.vision.transforms import Compose, Resize
             from paddle.incubate.hapi.vision.models import LeNet
             from paddle.incubate.hapi.callbacks import ProgBarLogger
             from paddle.incubate.hapi.model import Input, set_device
@@ -409,7 +410,7 @@ class ProgBarLogger(Callback):
 
     def on_eval_end(self, logs=None):
         logs = logs or {}
-        if self._is_print() and (self.steps is not None):
+        if self._is_print() and (self.eval_steps is not None):
             self._updates(logs, 'eval')
             print('Eval samples: %d' % (self.evaled_samples))
 
@@ -437,7 +438,7 @@ class ModelCheckpoint(Callback):
             from paddle.incubate.hapi.metrics import Accuracy
             from paddle.incubate.hapi.loss import CrossEntropy
             from paddle.incubate.hapi.datasets import MNIST
-            from paddle.incubate.hapi.vision.transforms import Compose, Resize
+            
             from paddle.incubate.hapi.vision.models import LeNet
             from paddle.incubate.hapi.callbacks import ModelCheckpoint
             from paddle.incubate.hapi.model import Input, set_device

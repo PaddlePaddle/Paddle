@@ -107,7 +107,22 @@
         "Metric.update",
         "Metric.accumulate",
         "Metric.name",
-        "Metric.add_metric_op"
+        "Metric.add_metric_op",
+        "Callback.set_params",
+        "Callback.on_train_begin",
+        "Callback.on_train_end",
+        "Callback.on_eval_begin",
+        "Callback.on_eval_end",
+        "Callback.on_test_begin",
+        "Callback.on_test_end",
+        "Callback.on_epoch_begin",
+        "Callback.on_epoch_end",
+        "Callback.on_train_batch_begin",
+        "Callback.on_train_batch_end",
+        "Callback.on_eval_batch_begin",
+        "Callback.on_eval_batch_end",
+        "Callback.on_test_batch_begin",
+        "Callback.on_test_batch_end"
     ],
     "wlist_no_op_pass":[
         "gelu",
