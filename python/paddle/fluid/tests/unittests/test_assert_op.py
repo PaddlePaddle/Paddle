@@ -40,7 +40,7 @@ class TestAssertOp(unittest.TestCase):
         def net_func():
             condition = layers.fill_constant(
                 shape=[1], dtype='bool', value=False)
-            layers.Assert(condition, [])
+            layers.Assert(condition)
 
         with self.assertRaises(fluid.core.EnforceNotMet):
             self.run_network(net_func)

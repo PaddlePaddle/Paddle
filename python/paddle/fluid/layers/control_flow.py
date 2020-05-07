@@ -310,8 +310,10 @@ def Assert(cond, data=None, summarize=20, name=None):
         cond (Variable): The boolean condition tensor whose numel should be 1.
         data (list|tuple, optional): list or tuple of tensors to print when
             condition is not true. If it's ``None``, no tensor will be printed.
-        summarize (int): Number of elements in the tensor to be printed. If its 
-            value is -1, then all elements in the tensor will be printed.
+            The default value is ``None``.
+        summarize (int, optional): Number of elements in the tensor to be
+            printed. If its value is -1, then all elements in the tensor will
+            be printed. The default value is 20.
         name (str, optional): The default value is ``None`` . Normally users
             don't have to set this parameter. For more information, please
             refer to :ref:`api_guide_Name` .
@@ -364,7 +366,7 @@ def Assert(cond, data=None, summarize=20, name=None):
     op = helper.append_op(
         type="assert",
         inputs={"Cond": cond,
-                "Data": list(data)},
+                "Data": [] if data is None else list(data)},
         attrs={"summarize": summarize})
 
     return op
