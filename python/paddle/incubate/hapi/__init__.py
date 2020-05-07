@@ -33,7 +33,6 @@ __all__ = [
     'distributed',
     'download',
     'metrics',
-    'progressbar',
     'loss',
     'vision',
 ]

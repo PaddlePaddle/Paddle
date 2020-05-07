@@ -17,7 +17,6 @@ from __future__ import print_function
 
 import unittest
 
-import os
 import numpy as np
 import contextlib
 
@@ -58,11 +57,10 @@ def compute_accuracy(pred, gt):
 @unittest.skipIf(not fluid.is_compiled_with_cuda(),
                  'CPU testing is not supported')
 class TestDistTraning(unittest.TestCase):
-    def run(self, dynamic):
+    def test_static_multiple_gpus(self):
         device = set_device('gpu')
-        fluid.enable_dygraph(device) if dynamic else None
 
-        im_shape = (-1, 784)
+        im_shape = (-1, 1, 28, 28)
         batch_size = 128
 
         inputs = [Input(im_shape, 'float32', name='image')]
@@ -95,12 +93,6 @@ class TestDistTraning(unittest.TestCase):
         acc = compute_accuracy(output[0], val_dataset.labels)
 
         np.testing.assert_allclose(acc, eval_result['acc'])
-
-    def test_multiple_gpus_static(self):
-        self.run(False)
-
-    def test_multiple_gpus_dygraph(self):
-        self.run(True)
 
 
 if __name__ == '__main__':
