@@ -350,7 +350,8 @@ def glu(input, dim=-1):
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
     """
-
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             "glu")
     a, b = layers.split(input, num_or_sections=2, dim=dim)
     act_b = layers.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
