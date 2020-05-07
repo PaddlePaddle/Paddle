@@ -63,6 +63,7 @@ message HeterRequest {
 
 message HeterResponse {
   optional VariableMessage vars = 1;
+  //repeated VariableMessage vars = 1;
 };
 
 service HeterService {

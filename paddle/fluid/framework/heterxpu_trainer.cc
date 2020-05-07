@@ -77,11 +77,11 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   //const std::vector<paddle::framework::DataFeed *> readers =
   //    dataset->GetReaders();
   //thread_num_ = readers.size();
-  //for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
-  //     i++) {
-  //  need_merge_var_names_.push_back(
-  //      trainer_desc.downpour_param().stat_var_names(i));
-  //}
+  for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
+       i++) {
+    need_merge_var_names_.push_back(
+        trainer_desc.downpour_param().stat_var_names(i));
+  }
   running_ = true;
   VLOG(3) << "going to initialize pull dense worker";
   pull_dense_worker_ = PullDenseWorker::GetInstance();
@@ -180,6 +180,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   
   for (size_t i = 0; i < places_.size(); ++i) {
     Scope* scope = &(root_scope_->NewScope());
+   // VLOG(3) << "wxx place: " << i << " scope: " << scope;
     //for (auto &var : block.AllVars()) {
     //  if (var->Persistable()) {
     //    auto *ptr = scope->Var(var->Name());
@@ -259,6 +260,83 @@ void HeterXpuTrainer::Run() {
   //}
 }
 
+int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* response) {
+//  int scope_num = object_pool_.Size();
+//  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
+//    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+//    if (root_var == nullptr) {
+//      continue;
+//    }
+//    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
+//
+//    for (int j = 0; j < scope_num; j++) {
+//      Scope *cur_thread_scope = (object_pool_.GetElement(i))->scope_;
+//      Variable *thread_var =
+//          cur_thread_scope->FindVar(need_merge_var_names_[i]);
+//      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+//      if (root_tensor->numel() != thread_tensor->numel()) {
+//        continue;
+//      }
+#define MergeCallback(cpp_type, proto_type)                                    \
+  do {                                                                         \
+    if (root_tensor->type() == proto_type) {                                   \
+      if (thread_tensor->type() != proto_type) {                               \
+        VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
+                << "] " << need_merge_var_names_[i]                            \
+                << ", root tensor type=" << root_tensor->type()                \
+                << ", thread tensor type=" << thread_tensor->type();           \
+        exit(-1);                                                              \
+      }                                                                        \
+      MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
+    }                                                                          \
+  } while (0)
+//      _ForEachDataType_(MergeCallback);
+//
+//      if (platform::is_gpu_place(thread_tensor->place())) {
+//        cudaMemset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+//      }
+//      else {
+//        memset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+//      }
+//    }
+//    
+//    auto* merge_var = response->add_vars();
+//    heter_ptr_->SerializeToReq(need_merge_var_names_[i], root_scope_, merge_var);
+//    if (platform::is_gpu_place(root_tensor->place())) {
+//      cudaMemset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
+//    }
+//    else {
+//      memset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
+//    }
+//  }
+  return 0;
+}
+
+
+
+template <typename T>
+void HeterXpuTrainer::MergeToRootScope(LoDTensor *root_tensor,
+                                       LoDTensor *tensor) {
+//  LoDTensor tmp_root;
+//  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+//  T *tmp_root_data = tmp_root.data<T>();
+//  
+//  LoDTensor tmp_tensor;
+//  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+//  T *data = tmp_tensor.data<T>();
+//  for (int i = 0; i < tmp_tensor.numel(); i++) {
+//    tmp_root_data[i] += data[i];
+//  }
+//  TensorCopy(tmp_root, root_tensor->place(), root_tensor);
+}
+
+int HeterXpuTrainer::StopService(const HeterRequest* request, HeterResponse* response) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  running_ = false;
+  cond_.notify_one();
+  return 0;
+}
+
 int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* response) {
   auto timer = std::make_shared<paddle::ps::CostTimer>("xpu_service_run_task");
   std::shared_ptr<HeterServiceContext> context = object_pool_.Get();
@@ -281,6 +359,11 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       }
     }
+    for (auto &op_desc : block.AllOps()) {
+      std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
+      OperatorBase *local_op_ptr = local_op.release();
+      (context->ops_).push_back(local_op_ptr);
+    }
   
     auto dev_id = boost::get<platform::CUDAPlace>(place).device;
     platform::CUDADeviceGuard guard(dev_id);
@@ -288,12 +371,22 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
   }
 
   auto place = places_[context->place_num_];
+ // {
+ //   auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+ //   VLOG(3) << "wxx dev id: " << dev_id;
+ // }
   for (int i = 0; i < request->vars_size(); ++i) {
-    heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i));
+    heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place);
   }
   
+ // {
+ //   auto* var = context->scope_->FindVar("fc_0.tmp_0");
+ //   LoDTensor* tensor = var->GetMutable<LoDTensor>();
+ //   VLOG(3) << "wxx place num: " << context->place_num_ << " scope: " << context->scope_ << " parent scope:" << context->scope_->parent() << " tensor place: " << tensor->memory_size();
+ // }
+  
   for (int i = xpu_begin_op_index_; i <= xpu_end_op_index_; ++i) {
-    auto& op = ops_[i];
+    auto& op = (context->ops_)[i];
     op->Run(*(context->scope_), place);
   }
   auto* dev_ctx = static_cast<platform::CUDADeviceContext *>(
@@ -326,8 +419,9 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
     pull_dense_worker_->IncreaseThreadVersion(0, tid);
   }
   VLOG(3) << "push dense gradient done.";
-
+  context->scope_->DropKids();
   object_pool_.Push(context);
+  std::cout << "pool size " << object_pool_.Size() << std::endl;
   return 0;
 }
 

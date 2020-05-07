@@ -123,10 +123,16 @@ class DistMultiTrainer : public MultiTrainer {
 class HeterServiceContext {
 public:
   HeterServiceContext() {}
-  virtual ~HeterServiceContext() {}
+  virtual ~HeterServiceContext() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
   int place_num_;
   Scope* scope_{nullptr};
   cudaEvent_t event_;
+  std::vector<OperatorBase*> ops_;
 };
 
 class HeterXpuTrainer : public TrainerBase {
@@ -156,10 +162,15 @@ class HeterXpuTrainer : public TrainerBase {
               const paddle::platform::Place& thread_place,
               cudaStream_t stream);
   void CreateThreadParam(const ProgramDesc& program, int num);
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  int EndPass(const HeterRequest* request, HeterResponse* response);
+  int StopService(const HeterRequest* request, HeterResponse* response);
  protected:
   DownpourWorkerParameter param_;
   std::vector<::std::future<int32_t>> push_dense_status_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  std::vector<std::string> need_merge_var_names_;
   float scale_datanorm_;
   int xpu_begin_op_index_;
   int xpu_end_op_index_;

@@ -127,7 +127,7 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope, Vari
 }
 
 //void HeterWrapper::DeSerializeToTensor(Scope* scope, const HeterRequest* request) {
-void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_var) {
+void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place) {
   //const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
   auto* tensor = var->GetMutable<LoDTensor>();
@@ -149,8 +149,19 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_
   tensor->set_lod(lod);
 
   void* tensor_data =
-      tensor->mutable_data(platform::CPUPlace(), ToVarType(req_var.data_type()));
-  memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
+      tensor->mutable_data(place, ToVarType(req_var.data_type()));
+ 
+  if (platform::is_cpu_place(place)) {
+    memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
+  }
+  else {
+    memory::Copy(
+        boost::get<platform::CUDAPlace>(place),
+        tensor_data,
+        platform::CPUPlace(),
+        req_var.data().data(), 
+        tensor->numel() * SizeOfType(tensor->type()), nullptr);
+  }
 }
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(
@@ -211,7 +222,10 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker
     else {
       VLOG(3) << "call xpu success";
     }
-    DeSerializeToTensor(task->scope_, closure->response.vars());
+    DeSerializeToTensor(task->scope_, closure->response.vars(), platform::CPUPlace());
+    //for (int i = 0; i < closure->response.vars_size(); ++i) {
+    //  DeSerializeToTensor(task->scope_, closure->response.vars(i));
+    //}
 
     worker->Schedule(task->taskid_); 
   }); 

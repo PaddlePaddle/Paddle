@@ -73,7 +73,7 @@ class HeterWrapper {
 
   framework::proto::VarType::Type ToVarType(VariableMessage::Type type);
   
-  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var);
+  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place);
   
   // HeterWrapper singleton
   static std::shared_ptr<HeterWrapper> GetInstance() {

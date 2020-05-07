@@ -383,6 +383,8 @@ public:
   std::shared_ptr<T> Get() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
+      num_ += 1;
+      std::cout << "pool construct size: " << num_ << std::endl;
       return std::make_shared<T>();
     }
     else {
@@ -399,9 +401,13 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
     return pool_.size();
   }
+  std::shared_ptr<T>& GetElement(int i) {
+    return pool_[i];
+  }
 private:
   std::vector<std::shared_ptr<T>> pool_;
   std::mutex mutex_;
+  int num_{0};
 };
 
 
