@@ -1313,9 +1313,10 @@ class Model(fluid.dygraph.Layer):
             if do_eval and epoch % eval_freq == 0:
 
                 eval_steps = self._len_data_loader(eval_loader)
-                cbks.on_begin('eval',
-                              {'steps': eval_steps,
-                               'metrics': self._metrics_name()})
+                cbks.on_begin('eval', {
+                    'steps': eval_steps,
+                    'metrics': self._metrics_name()
+                    })
 
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
