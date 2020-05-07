@@ -224,14 +224,12 @@ class UpSample(layers.Layer):
 	    import paddle
 	    import numpy as np
 	    import paddle.fluid.dygraph as dg
-	    
             upsample_op = paddle.nn.UpSample(out_shape=[12,12])
 	    input_data = np.random.rand(2,3,6,10).astype("float32")
 	    place = paddle.fluid.CPUPlace()
             with dg.guard(place) as g:
     		input = dg.to_variable(input_data)
     		output = upsample_op(input=input)
-
     		print(output.shape)
 		# [2L, 3L, 12L, 12L]
         """
