@@ -102,10 +102,19 @@ static void CheckOutputVarStatus(const Variable &src_var,
 }
 
 static void VariableShare(const Variable &src_var, Variable *dst_var) {
-  // The previous check ensures that the variable type can only be LoDTensor
-  auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
-  lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
-  lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
+  // The previous check ensures that the variable type can only be LoDTensor or
+  // SelectedRows.
+  if (src_var.IsType<LoDTensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
+    lod_tensor->ShareDataWith(src_var.Get<LoDTensor>());
+    lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
+  } else if (src_var.IsType<SelectedRows>()) {
+    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
+    selected_rows->mutable_value()->ShareDataWith(
+        src_var.Get<SelectedRows>().value());
+    selected_rows->set_rows(src_var.Get<SelectedRows>().rows());
+    selected_rows->set_height(src_var.Get<SelectedRows>().height());
+  }
 }
 
 static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
