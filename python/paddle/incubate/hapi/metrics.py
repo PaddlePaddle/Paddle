@@ -97,6 +97,9 @@ class Metric(object):
                 return accs
     """
 
+    def __init__(self):
+        pass
+
     @abc.abstractmethod
     def reset(self):
         """
