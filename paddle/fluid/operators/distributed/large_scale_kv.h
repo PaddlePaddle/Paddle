@@ -40,46 +40,46 @@ namespace distributed {
 
 enum Mode { training, infer };
 
-using SparseMeta =
-    std::tuple<std::string, std::vector<std::string>, std::vector<int>, int>;
+struct SparseMeta {
+  std::string name;
+  std::vector<std::string> value_names;
+  std::vector<int> value_dims;
+  Mode mode;
+};
 
 struct VALUE {
+  VALUE(std::vector<std::string> names, std::vector<int> dims) {
+    names_ = names;
+    dims_ = dims;
+  }
+
   void init() {
-    for (int i = 0; i <= static_cast<int>(names.size()); i++) {
-      values.reserve(dims[i]);
-      std::fill(values_[i].data(), values_[i].size(), 0.0);
+    for (int i = 0; i <= static_cast<int>(names_.size()); i++) {
+      values_.reserve(dims_[i]);
+      std::fill(values_[i].data(), values_[i].data() + values_[i].size(),
+                static_cast<float>(0.0));
     }
   }
 
   void set() {}
 
-  std::vector<std::vector<float>> get() {}
+  std::vector<std::vector<float>> get() { return values_; }
 
-  std::vector<std::vector<float>> get(const std::vector<std::string> names) {}
-
-  std::vector<std::vector<float>> Get() { return values; }
+  std::vector<std::vector<float>> get(const std::vector<std::string> names) {
+    return values_;
+  }
 
   std::vector<std::string> names_;
   std::vector<std::vector<float>> values_;
   std::vector<int> dims_;
-  std::vector<int> initializer_;
+  std::vector<int> initializers_;
 };
 
 class SparseVariable {
  public:
   SparseVariable();
 
-  explicit SparseVariable(const SparseMeta& meta) {
-    name_ = std::get<0>(meta);
-    auto value_names = std::get<1>(meta);
-    auto dims = std::get<2>(meta);
-    auto mode = std::get<3>(meta);
-
-    for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      value_mata_[value_names[i]] = dims[i];
-    }
-    mode_ == mode == 0 ? Mode::training : Mode::infer;
-  }
+  explicit SparseVariable(const SparseMeta& meta) : meta_(meta) {}
 
   void Get(const std::vector<int64_t>& ids,
            const std::vector<std::string>& value_names,
@@ -87,12 +87,12 @@ class SparseVariable {
     for (auto id : ids) {
       auto got = values_.find(id);
       if (got == values_.end()) {
-        auto value = VALUE();
+        auto value = VALUE(meta_.value_names, meta_.value_dims);
         value.init();
         values_[id] = value;
       }
       auto value = values_.at(id);
-      values.push_back(value.get(value_names));
+      values->push_back(value.get(value_names));
     }
   }
 
@@ -103,9 +103,7 @@ class SparseVariable {
   int Size();
 
  private:
-  std::string name_;
-  Mode mode_;
-  std::unordered_map<std::string, int> value_mata_;
+  const SparseMeta& meta_;
   std::unordered_map<int64_t, VALUE> values_;
 };
 

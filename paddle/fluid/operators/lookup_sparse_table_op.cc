@@ -36,6 +36,15 @@ class LookupSparseTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    //** For Test
+    auto meta = distributed::SparseMeta();
+    meta.name = "embedding";
+    meta.value_names = {"Param", "Moment1"};
+    meta.value_dims = {64, 64};
+    meta.mode = distributed::Mode::training;
+
+    distributed::LargeScaleKV::Init({meta});
+
     auto &id_tensor = scope.FindVar(Input("Ids"))->Get<framework::LoDTensor>();
     auto *id_data = id_tensor.data<int64_t>();
     auto tablename = Attr<std::string>("tablename");
@@ -60,7 +69,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     }
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
-    auto *sparse_v = ins->Get(tablename)->Get(ids, value_names, &values);
+    ins->Get(tablename)->Get(ids, value_names, &values);
   }
 };
 
