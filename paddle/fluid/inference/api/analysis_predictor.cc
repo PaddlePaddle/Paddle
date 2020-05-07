@@ -274,7 +274,8 @@ void AnalysisPredictor::MkldnnPostReset() {
                                  (&platform::DeviceContextPool::Instance())
                                      ->Get(platform::CPUPlace()))
                                  ->GetShapeBlobSize();
-      CHECK_LE(shape_blob_size, config_.mkldnn_cache_capacity_);
+      CHECK_LE(shape_blob_size,
+               static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
     paddle::platform::set_cur_mkldnn_session_id(
         platform::kMKLDNNSessionID_Default);
