@@ -192,5 +192,13 @@ class TestInstance(unittest.TestCase):
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
 
 
+class TestLoadInferenceModelError(unittest.TestCase):
+    def test_load_model_not_exist(self):
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        self.assertRaises(ValueError, load_inference_model,
+                          './test_not_exist_dir', exe)
+
+
 if __name__ == '__main__':
     unittest.main()
