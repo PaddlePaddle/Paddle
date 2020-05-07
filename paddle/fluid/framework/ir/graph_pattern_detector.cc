@@ -1529,39 +1529,24 @@ PDNode *patterns::RequantOp::operator()() {
   return any_op;
 }
 
-PDNode *patterns::ConvDequant::operator()() {
-  // Create Operators
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+PDNode *patterns::OpDequant::operator()() {
+  auto any_op = pattern->NewNode(any_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      return (node->Op()->Type() == "matmul" ||
+                              node->Op()->Type() == "conv2d" ||
+                              node->Op()->Type() == "fc");
+                    });
+  auto dequant_in = pattern->NewNode(dequant_in_repr())
+                        ->assert_is_op_input("dequantize", "Input");
   auto dequant_op =
       pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
-
-  auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output("conv2d", "Output");
   auto dequant_out = pattern->NewNode(dequant_out_repr())
                          ->AsOutput()
                          ->assert_is_op_output("dequantize", "Output");
 
-  conv_op->LinksTo({conv_out});
-  dequant_op->LinksFrom({conv_out}).LinksTo({dequant_out});
-
-  return dequant_out;
-}
-
-PDNode *patterns::FcDequant::operator()() {
-  // Create Operators
-  auto fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
-  auto dequant_op =
-      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
-
-  auto fc_out =
-      pattern->NewNode(fc_out_repr())->assert_is_op_output("fc", "Out");
-  auto dequant_out = pattern->NewNode(dequant_out_repr())
-                         ->AsOutput()
-                         ->assert_is_op_output("dequantize", "Output");
-
-  fc_op->LinksTo({fc_out});
-  dequant_op->LinksFrom({fc_out}).LinksTo({dequant_out});
-
+  any_op->LinksTo({dequant_in});
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
   return dequant_out;
 }
 
@@ -1582,23 +1567,6 @@ PDNode *patterns::DequantScale::operator()() {
   scale_op->LinksFrom({dequant_out}).LinksTo({scale_out});
 
   return scale_out;
-}
-
-PDNode *patterns::MatmulDequant::operator()() {
-  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
-  auto dequant_op =
-      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
-
-  auto matmul_out = pattern->NewNode(matmul_out_repr())
-                        ->AsOutput()
-                        ->assert_is_op_output("matmul", "Out");
-  auto dequant_out = pattern->NewNode(dequant_out_repr())
-                         ->AsOutput()
-                         ->assert_is_op_output("dequantize", "Output");
-
-  matmul_op->LinksTo({matmul_out});
-  dequant_op->LinksFrom({matmul_out}).LinksTo({dequant_out});
-  return dequant_out;
 }
 
 PDNode *patterns::ScaleMatmul::operator()() {
