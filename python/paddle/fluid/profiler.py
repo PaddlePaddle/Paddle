@@ -47,15 +47,28 @@ not_record_op = [
 ]
 not_record_param = ['name', 'op_type', 'attrs', 'bias_attr', 'param_attr']
 
-op_alias = dict()
-op_alias['max_pool2d_with_index'] = 'adaptive_pool2d'
-op_alias['max_pool3d_with_index'] = 'adaptive_pool3d'
-op_alias['smooth_l1_loss'] = 'smooth_l1'
-op_alias['reshape2'] = 'reshape'
-op_alias['unsqueeze2'] = 'unsqueeze'
-op_alias['top_k'] = 'topk'
-op_alias['global_step_counter'] = 'autoincreased_step_counter'
-op_alias['cross_entropy2'] = 'cross_entropy'
+CONTROL_FLOW_OPS = [
+    "conditional_block", "switch", "static_rnn", "while", "while_loop", "cond",
+    "case", "ifelse", "dynamic_rnn", "switch_case"
+]
+
+op_alias = {
+    "argmax": "arg_max",
+    "argmin": "arg_min",
+    "resize_nearest": "nearest_interp",
+    "resize_bilinear": "bilinear_interp",
+    "sums": "sum",
+    "hsigmoid": "hierarchical_sigmoid",
+    "sampled_softmax_with_cross_entropy": "sample_logits",
+    "max_pool2d_with_index": "adaptive_pool2d",
+    "max_pool3d_with_index": "adaptive_pool3d",
+    "smooth_l1_loss": "smooth_l1",
+    "reshape2": "reshape",
+    "unsqueeze2": "unsqueeze",
+    "top_k": "topk",
+    "global_step_counter": "autoincreased_step_counter",
+    "cross_entropy2": "cross_entropy"
+}
 
 op_params_json_list = []
 
@@ -68,7 +81,6 @@ class APIStr(object):
 
     def import_fluid_module(self, api_name):
         act_api_name = api_name
-
         try:
             if act_api_name in ["embedding", "ont_hot"]:
                 module_name = "paddle.fluid"
@@ -82,12 +94,11 @@ class APIStr(object):
 
     def import_paddle_module(self, api_name):
         act_api_name = api_name
-
         try:
             module = importlib.import_module("paddle")
             return getattr(module, act_api_name)
         except Exception:
-            print("Cannot immport %s.%s." % (module_name, act_api_name))
+            print("Cannot immport paddle.%s." % (act_api_name))
             module = None
 
     def is_variable(self, type):
@@ -113,15 +124,16 @@ class APIStr(object):
             print("API_LOG: return as not valid op:", op)
             return None
 
-        func = self.import_fluid_module(op)
-        if func is None:
-            func = self.import_paddle_module(op)
+        if len(params) == 0 or op in CONTROL_FLOW_OPS:
+            op_json["param_info"] = ''
+        else:
+            func = self.import_fluid_module(op)
+            if func is None:
+                func = self.import_paddle_module(op)
 
-        if func is not None:
-            argspec = inspect.getargspec(func)
+            if func is not None:
+                argspec = inspect.getargspec(func)
 
-            if len(params) == 0:
-                op_json["param_info"] = ''
             for param in params:
                 key = param[0]
                 values = param[1]
