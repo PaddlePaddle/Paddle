@@ -115,7 +115,7 @@ std::string get_version() {
   std::stringstream ss;
   ss << "version: " << framework::paddle_version() << "\n";
   ss << "commit: " << framework::paddle_commit() << "\n";
-  ss << "branch: " << framework::paddle_compile_branch() << "\n";
+  ss << "branch: " << framework::paddle_compile_branch() << std::endl;
   return ss.str();
 }
 
