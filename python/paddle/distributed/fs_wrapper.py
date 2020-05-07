@@ -19,8 +19,12 @@ import os
 from pathlib import PurePosixPath
 import shutil
 
+__all__ = ['FS', 'LocalFS', 'BDFS']
+
 
 class FS(object):
+    """FS"""
+
     @abc.abstractmethod
     def list_dirs(self, fs_path):
         pass
@@ -67,6 +71,8 @@ class FS(object):
 
 
 class LocalFS(FS):
+    """LocalFS"""
+
     def list_dirs(self, fs_path):
         if not self.stat(fs_path):
             return []
@@ -109,6 +115,8 @@ class LocalFS(FS):
 
 
 class BDFS(FS):
+    """BDFS"""
+
     def __init__(self,
                  hdfs_name,
                  hdfs_ugi,
