@@ -243,9 +243,6 @@ class TestFakeQuantDequantMovingOp(TestMovingOpBase):
         return np.round(self.inputs['X'] / out_scale *
                         range_v) * out_scale / range_v
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
-
 
 if __name__ == "__main__":
     unittest.main()
