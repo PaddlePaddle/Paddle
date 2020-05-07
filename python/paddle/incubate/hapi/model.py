@@ -1552,14 +1552,14 @@ class Model(fluid.dygraph.Layer):
         Save inference model must in static mode.
 
         Args:
-            dirname(str): The directory path to save the inference model.
-            model_filename(str|None): The name of file to save the inference
+            save_dir (str): The directory path to save the inference model.
+            model_filename (str|None): The name of file to save the inference
                 model itself. If is set None, a default filename
                 :code:`__model__` will be used.
-            params_filename(str|None): The name of file to save all related
+            params_filename (str|None): The name of file to save all related
                 parameters. If it is set None, parameters will be saved
                 in separate files .
-            model_only(bool): If True, It will save inference model only,
+            model_only (bool): If True, It will save inference model only,
                 and do not save parameters. Default: False.
 
         Returns:
