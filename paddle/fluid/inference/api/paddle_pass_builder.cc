@@ -165,6 +165,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
                   "is_test_pass",                            //
+                  "fc_parallel_fuse_pass",                   //
                   // following pass should be located in the last, since
                   // it will work on all fused ops.
                   "runtime_context_cache_pass"});

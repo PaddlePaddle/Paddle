@@ -347,6 +347,7 @@ class Qat2Int8MkldnnPass(object):
         if self._is_fc_quantized(graph):
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
+        graph = self._apply_pass(graph, 'fc_parallel_fuse_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):

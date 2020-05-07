@@ -106,7 +106,8 @@ struct Layers {
   }
 
   VarDesc* fc(VarDesc* input, VarDesc* w, VarDesc* bias,
-              int in_num_col_dims = 1, std::string activation_type = "") {
+              int in_num_col_dims = 1, std::string activation_type = "",
+              bool padding_weights = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("fc");
@@ -116,6 +117,7 @@ struct Layers {
     op->SetOutput("Out", {out->Name()});
     op->SetAttr("in_num_col_dims", in_num_col_dims);
     op->SetAttr("activation_type", activation_type);
+    op->SetAttr("padding_weights", padding_weights);
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;

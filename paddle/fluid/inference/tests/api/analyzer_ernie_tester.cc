@@ -176,14 +176,17 @@ TEST(Analyzer_Ernie, fuse_statis) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_parallel_fuse"));
   ASSERT_TRUE(fuse_statis.count("fc_fuse"));
   LOG(INFO) << "num_ops: " << num_ops;
   if (FLAGS_ernie_large) {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 146);
-    EXPECT_EQ(num_ops, 859);
+    ASSERT_EQ(fuse_statis.at("fc_parallel_fuse"), 24);
+    EXPECT_EQ(num_ops, 835);
   } else {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
-    EXPECT_EQ(num_ops, 295);
+    ASSERT_EQ(fuse_statis.at("fc_parallel_fuse"), 12);
+    EXPECT_EQ(num_ops, 283);
   }
 }
 

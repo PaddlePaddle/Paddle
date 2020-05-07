@@ -976,6 +976,54 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
   return fc_out_var;
 }
 
+void patterns::FcParallel::operator()() {
+  auto *fc1 =
+      pattern->NewNode(fc1_repr())->AsIntermediate()->assert_is_op("fc");
+  auto *fc2 =
+      pattern->NewNode(fc2_repr())->AsIntermediate()->assert_is_op("fc");
+  auto *fc3 =
+      pattern->NewNode(fc3_repr())->AsIntermediate()->assert_is_op("fc");
+
+  // Input
+  auto *fc_in = pattern->NewNode(fc_in_repr())
+                    ->AsInput()
+                    ->assert_is_op_input("fc", "Input");
+  // Weights
+  auto *fc1_w =
+      pattern->NewNode(fc1_w_repr())->AsInput()->assert_is_op_input("fc", "W");
+  auto *fc2_w =
+      pattern->NewNode(fc2_w_repr())->AsInput()->assert_is_op_input("fc", "W");
+  auto *fc3_w =
+      pattern->NewNode(fc3_w_repr())->AsInput()->assert_is_op_input("fc", "W");
+  // Bias
+  auto *fc1_b = pattern->NewNode(fc1_b_repr())
+                    ->AsInput()
+                    ->assert_is_op_input("fc", "Bias");
+  auto *fc2_b = pattern->NewNode(fc2_b_repr())
+                    ->AsInput()
+                    ->assert_is_op_input("fc", "Bias");
+  auto *fc3_b = pattern->NewNode(fc3_b_repr())
+                    ->AsInput()
+                    ->assert_is_op_input("fc", "Bias");
+  // Output
+  auto *fc1_out = pattern->NewNode(fc1_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("fc", "Out")
+                      ->assert_is_only_output_of_op("fc");
+  auto *fc2_out = pattern->NewNode(fc2_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("fc", "Out")
+                      ->assert_is_only_output_of_op("fc");
+  auto *fc3_out = pattern->NewNode(fc3_out_repr())
+                      ->AsOutput()
+                      ->assert_is_op_output("fc", "Out")
+                      ->assert_is_only_output_of_op("fc");
+
+  fc1->LinksFrom({fc_in, fc1_w, fc1_b}).LinksTo({fc1_out});
+  fc2->LinksFrom({fc_in, fc2_w, fc2_b}).LinksTo({fc2_out});
+  fc3->LinksFrom({fc_in, fc3_w, fc3_b}).LinksTo({fc3_out});
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =

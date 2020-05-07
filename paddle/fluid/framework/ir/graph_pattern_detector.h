@@ -536,6 +536,35 @@ struct FCMKLDNN : public PatternBase {
   PATTERN_DECL_NODE(output);
 };
 
+// Parallel FCs with bias
+// named nodes:
+// fc_in
+// fc1, fc2, fc3
+// fc1_w, fc2_w, fc3_w,
+// fc1_b, fc2_b, fc3_b,
+// fc1_out, fc2_out, fc3_out
+struct FcParallel : public PatternBase {
+  FcParallel(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_parallel_mkldnn") {}
+
+  void operator()();
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc_in);
+  PATTERN_DECL_NODE(fc1);
+  PATTERN_DECL_NODE(fc2);
+  PATTERN_DECL_NODE(fc3);
+  PATTERN_DECL_NODE(fc1_w);
+  PATTERN_DECL_NODE(fc2_w);
+  PATTERN_DECL_NODE(fc3_w);
+  PATTERN_DECL_NODE(fc1_b);
+  PATTERN_DECL_NODE(fc2_b);
+  PATTERN_DECL_NODE(fc3_b);
+  PATTERN_DECL_NODE(fc1_out);
+  PATTERN_DECL_NODE(fc2_out);
+  PATTERN_DECL_NODE(fc3_out);
+};
+
 // Embedding
 struct Embedding : public PatternBase {
   Embedding(PDPattern* pattern, const std::string& name_scope)
