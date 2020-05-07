@@ -195,7 +195,7 @@ def monkey_patch_math_varbase():
 
             axis = -1
             math_op = getattr(core.ops, op_type)
-            return math_op(self, other_var, 'aixs', axis)
+            return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 

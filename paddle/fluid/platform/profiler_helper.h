@@ -117,10 +117,7 @@ void SynchronizeAllDevice() {
   int count = GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaDeviceSynchronize(),
-        platform::errors::External(
-            "Device synchronize failed in cudaDeviceSynchronize()"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
   }
 #endif
 }
@@ -634,7 +631,7 @@ void AnalyzeEvent(
         std::string cname = event_items[k].name;
         bool condition = cname.length() > fname.length() &&
                          cname.rfind(fname, 0) == 0 &&
-                         !cname.rfind(grad_name, 0) == 0 &&
+                         cname.rfind(grad_name, 0) != 0 &&
                          (cname[fname.length()] == '/' &&
                           cname.rfind('/') == fname.length());
         if (condition) {

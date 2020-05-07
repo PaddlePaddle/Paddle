@@ -100,7 +100,7 @@ def dyfunc_ifExp_with_while(x):
     def body(i, ten, y):
         # It will be converted into `layers.cond` as followed.
         # map_func(lambda x: fluid.layers.cond(i==0, lambda: x, lambda: add_fn(x), y)
-        y = map_func(lambda x: x if i == 0 else add_fn(x), y)
+        y = map_func(lambda x: x if (i == 0) is not None else add_fn(x), y)
         i += 1
         return [i, ten, y]
 
@@ -114,6 +114,30 @@ class TestDygraphIfElse6(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_ifExp_with_while
+
+
+def dyfunc_ifExp(x):
+    y = [x]
+
+    def add_fn(x):
+        x = x + 1
+        return x
+
+    def map_func(func, tensor_list):
+        return [func(x) for x in tensor_list]
+
+    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    # It will be converted into `layers.cond` as followed.
+    # map_func(lambda x: fluid.layers.cond(i==1, lambda: x, lambda: add_fn(x), y)
+    # `if (Tensor) == 1` is supported in dygraph.
+    y = map_func(lambda x: x if i == 1 else add_fn(x), y)
+    return y[0]
+
+
+class TestDygraphIfElse7(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_ifExp
 
 
 class TestDygraphIfElseWithAndOr(TestDygraphIfElse):
@@ -144,6 +168,12 @@ class TestDygraphIfElseWithAndOr4(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_and_or_4
+
+
+class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = if_with_class_var
 
 
 class TestDygraphIfElseNet(unittest.TestCase):
@@ -179,12 +209,18 @@ class TestDygraphIfElseNet(unittest.TestCase):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
+# Test to call function ahead caller.
+def relu(x):
+    return fluid.layers.relu(x)
+
+
 def call_external_func(x, label=None):
-    if fluid.layers.mean(x).numpy()[0] > 5:
+    if fluid.layers.mean(x) < 0:
         x_v = x - 1
     else:
         x_v = add_fn(x)
 
+    x_v = relu(x_v)
     if label is not None:
         loss = loss_fn(x_v, label)
         return loss
@@ -200,15 +236,21 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 class NetWithExternalFunc(fluid.dygraph.Layer):
     @dygraph_to_static_func
     def forward(self, x, label=None):
-        if fluid.layers.mean(x).numpy()[0] > 5:
+        if fluid.layers.mean(x) < 0:
             x_v = x - 1
         else:
             x_v = add_fn(x)
 
+        x_v = softmax(x_v)
         if label is not None:
             loss = loss_fn(x_v, label)
             return loss
         return x_v
+
+
+# Test to call function behind caller.
+def softmax(x):
+    return fluid.layers.softmax(x)
 
 
 class TestNetWithExternalFunc(TestDygraphIfElseNet):

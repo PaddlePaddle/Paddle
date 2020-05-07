@@ -43,7 +43,11 @@ struct Array {
 
   template <typename VectorLikeType>
   static inline Array<T, ElementCount> From(const VectorLikeType& vec) {
-    PADDLE_ENFORCE_EQ(vec.size(), ElementCount, "size not match");
+    PADDLE_ENFORCE_EQ(vec.size(), ElementCount,
+                      platform::errors::InvalidArgument(
+                          "Cub reduce Array: size not match. Received "
+                          "vec.size() %d !=  ElementCount %d.",
+                          vec.size(), ElementCount));
     size_t n = static_cast<size_t>(vec.size());
     Array<T, ElementCount> ret;
     for (size_t i = 0; i < n; ++i) ret[i] = vec[i];
@@ -65,7 +69,8 @@ __global__ void ReduceKernel2D(const Tx* x, Ty* y, ReduceOp reducer,
   int idx_y = threadIdx.x;
   Ty reduce_var = init;
   for (int idx_y = threadIdx.x; idx_y < reduce_num; idx_y += BlockDim)
-    reduce_var = reducer(reduce_var, transformer(x[idx_x + idx_y]));
+    reduce_var =
+        reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x + idx_y])));
   __syncthreads();
 
   reduce_var =
@@ -112,7 +117,8 @@ __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
 
     int idx_x = 0;
     for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
-    reduce_var = static_cast<Ty>(reducer(reduce_var, transformer(x[idx_x])));
+    reduce_var = static_cast<Ty>(
+        reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x]))));
   }
   __syncthreads();
 
@@ -157,13 +163,20 @@ static inline int GetDesiredBlockDim(int block_dim) {
 
 static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
   if (rank % 2 == 0) {
-    PADDLE_ENFORCE_EQ(reduce_rank, rank / 2);
+    PADDLE_ENFORCE_EQ(reduce_rank, rank / 2,
+                      platform::errors::InvalidArgument(
+                          "ReduceOp: invalid reduce rank. When rank = %d, "
+                          "reduce_rank must be %d, but got %d.",
+                          rank, rank / 2, reduce_rank));
   } else {
     auto lower_rank = (rank - 1) / 2;
     auto upper_rank = (rank + 1) / 2;
-    PADDLE_ENFORCE(reduce_rank == lower_rank || reduce_rank == upper_rank,
-                   "When rank = %d, reduce_rank must be %d or %d, but got %d",
-                   rank, lower_rank, upper_rank, reduce_rank);
+    PADDLE_ENFORCE_EQ(
+        reduce_rank == lower_rank || reduce_rank == upper_rank, true,
+        platform::errors::InvalidArgument(
+            "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
+            "must be %d or %d, but got %d.",
+            rank, lower_rank, upper_rank, reduce_rank));
   }
 }
 
@@ -340,6 +353,36 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   }
 #undef CUB_BLOCK_DIM_CASE
 }
+
+template <typename Tx, typename ReduceOp, typename TransformOp>
+struct TensorReduceFunctor {
+  const framework::Tensor& x;
+  framework::Tensor* y;
+  std::vector<int> origin_reduce_dims;
+  const double& init;
+  const ReduceOp& reducer;
+  const TransformOp& transformer;
+  cudaStream_t stream;
+  TensorReduceFunctor(const framework::Tensor& x, framework::Tensor* y,
+                      std::vector<int> origin_reduce_dims, const double& init,
+                      const ReduceOp& reducer, const TransformOp& transformer,
+                      cudaStream_t stream)
+      : x(x),
+        y(y),
+        origin_reduce_dims(origin_reduce_dims),
+        init(init),
+        reducer(reducer),
+        transformer(transformer),
+        stream(stream) {}
+
+  template <typename Ty>
+
+  void apply() const {
+    const Ty& init_cast = static_cast<Ty>(init);
+    TensorReduce<Tx, Ty, ReduceOp, TransformOp>(
+        x, y, origin_reduce_dims, init_cast, reducer, transformer, stream);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

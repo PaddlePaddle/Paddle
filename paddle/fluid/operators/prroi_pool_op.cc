@@ -79,15 +79,10 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of op(PRROIPool) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
-                      platform::errors::NotFound(
-                          "Input(ROIs) of op(PRROIPool) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of op(PRROIPool) should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs", "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "prroi_pool");
+
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
@@ -148,10 +143,10 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "The gradient of Out should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "The gradient of X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "prroi_pool");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "prroi_pool");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("ROIs"), ctx->GetInputDim("ROIs"));
   }

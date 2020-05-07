@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
@@ -378,6 +379,105 @@ class TestElementwiseAddOpError(unittest.TestCase):
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
             y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
+
+
+class TestAddOp(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float32")
+            y = fluid.data(name='y', shape=[3], dtype='float32')
+
+            res = fluid.data(name="output", shape=[3], dtype="float32")
+            y_1 = paddle.add(x, y, out=res)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data1 = np.array([2, 3, 4], dtype='float32')
+            data2 = np.array([1, 5, 2], dtype='float32')
+            np_res, np_y_1 = exe.run(feed={'x': data1,
+                                           'y': data2},
+                                     fetch_list=[res, y_1])
+
+            self.assertEqual((np_res == np_y_1).all(), True)
+
+    def test_out_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float32")
+            y = fluid.data(name='y', shape=[3], dtype='float32')
+
+            res = fluid.data(name="output", shape=[3], dtype="float32")
+            y_1 = paddle.add(x, y, out=res)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            data1 = np.array([2, 3, 4], dtype='float32')
+            data2 = np.array([1, 5, 2], dtype='float32')
+            np_res, np_y_1 = exe.run(feed={'x': data1,
+                                           'y': data2},
+                                     fetch_list=[res, y_1])
+
+            self.assertEqual((np_res == np_y_1).all(), True)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = paddle.add(x, y, name='add_res')
+            self.assertEqual(('add_res' in y_1.name), True)
+
+    def test_alpha(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = paddle.add(x, y, alpha=10)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            z_expected = np.array([12., 53., 24.])
+            self.assertEqual((z_value == z_expected).all(), True)
+
+    def test_alpha_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
+        with fluid.program_guard(fluid.Program()):
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = paddle.add(x, y, alpha=-0.5)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            z_expected = np.array([1.5, 0.5, 3.])
+            self.assertEqual((z_value == z_expected).all(), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([2, 3, 4]).astype('float64')
+            np_y = np.array([1, 5, 2]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            y = fluid.dygraph.to_variable(np_y)
+            z = paddle.add(x, y, alpha=-0.5)
+            np_z = z.numpy()
+            z_expected = np.array([1.5, 0.5, 3.])
+            self.assertEqual((np_z == z_expected).all(), True)
 
 
 if __name__ == '__main__':

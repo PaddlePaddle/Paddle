@@ -23,13 +23,13 @@ import paddle.fluid as fluid
 import paddle.dataset.wmt16 as wmt16
 
 
-def get_input_descs(args):
+def get_input_descs(args, mode="train"):
 
     batch_size = args.batch_size  # TODO None(before)
     seq_len = None
     n_head = getattr(args, "n_head", 8)
     d_model = getattr(args, "d_model", 512)
-    input_descs = {
+    input_descs_train = {
         "src_word": [(batch_size, seq_len), "int64", 2],
         "src_pos": [(batch_size, seq_len), "int64"],
         "src_slf_attn_bias":
@@ -46,7 +46,24 @@ def get_input_descs(args):
         "init_score": [(batch_size, 1), "float32", 2],
         "init_idx": [(batch_size, ), "int32"],
     }
-    return input_descs
+    input_descs_predict = {
+        "src_word": [(batch_size, seq_len), "int64", 2],
+        "src_pos": [(batch_size, seq_len), "int64"],
+        "src_slf_attn_bias":
+        [(batch_size, n_head, seq_len, seq_len), "float32"],
+        "trg_word": [(batch_size, seq_len), "int64", 2],
+        "trg_pos": [(batch_size, seq_len), "int64"],
+        "trg_slf_attn_bias":
+        [(batch_size, n_head, seq_len, seq_len), "float32"],
+        "trg_src_attn_bias": [(batch_size, n_head, 1, seq_len), "float32"],
+        "enc_output": [(batch_size, seq_len, d_model), "float32"],
+        "lbl_word": [(None, 1), "int64"],
+        "lbl_weight": [(None, 1), "float32"],
+        "init_score": [(batch_size, 1), "float32", 2],
+        "init_idx": [(batch_size, ), "int32"],
+    }
+
+    return input_descs_train if mode == "train" else input_descs_predict
 
 
 encoder_data_input_fields = (
@@ -69,8 +86,8 @@ fast_decoder_data_input_fields = (
 
 class ModelHyperParams(object):
     print_step = 2
-    init_from_params = "trained_models/step_10/"
-    save_model = "trained_models"
+    save_dygraph_model_path = "dygraph_trained_models"
+    save_static_model_path = "static_trained_models"
     inference_model_dir = "infer_model"
     output_file = "predict.txt"
     batch_size = 5
@@ -82,10 +99,10 @@ class ModelHyperParams(object):
     warmup_steps = 8000
     label_smooth_eps = 0.1
     beam_size = 5
-    max_out_len = 256
+    max_out_len = 5  # small number to avoid the unittest timeout
     n_best = 1
-    src_vocab_size = 10000
-    trg_vocab_size = 10000
+    src_vocab_size = 36556
+    trg_vocab_size = 36556
     bos_idx = 0  # index for <bos> token
     eos_idx = 1  # index for <eos> token
     unk_idx = 2  # index for <unk> token
@@ -214,7 +231,7 @@ def get_feed_data_reader(args, mode='train'):
 
     def __for_test__():
         test_reader = paddle.batch(
-            wmt16.train(args.src_vocab_size, args.trg_vocab_size),
+            wmt16.test(args.src_vocab_size, args.trg_vocab_size),
             batch_size=args.batch_size)
         for batch in test_reader():
             tensors = prepare_infer_input(batch, args.eos_idx, args.eos_idx,
