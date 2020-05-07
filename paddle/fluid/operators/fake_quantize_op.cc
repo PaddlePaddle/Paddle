@@ -409,15 +409,17 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradOp
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("OutScale"),
-                   "Input(OutScale) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("OutScale"), "Input", "OutScale",
+                   "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"),
+                   "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"););
+      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     }
   }
   framework::OpKernelType GetExpectedKernelType(
@@ -564,14 +566,13 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(
-    fake_quantize_dequantize_moving_average_abs_max,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-    paddle::framework::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
-        paddle::framework::OpDesc>,
-    paddle::framework::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
-        paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
+                      paddle::framework::OpDesc>,
+                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker<
+                      paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max_grad,
                   ops::FakeQuantOrWithDequantMovingAverageAbsMaxGradOp);
 

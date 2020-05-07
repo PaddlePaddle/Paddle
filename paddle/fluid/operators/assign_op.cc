@@ -36,6 +36,13 @@ class AssignOp : public framework::OperatorWithKernel {
         if (type == framework::proto::VarType::LOD_TENSOR) {
           ctx->ShareLoD("X", /*->*/ "Out");
         }
+      } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        if (ctx->IsRuntime()) {
+          // The runtime output shape is determined in kernel.
+          return;
+        } else {
+          ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+        }
       }
     }
   }
@@ -60,11 +67,7 @@ class AssignOp : public framework::OperatorWithKernel {
 class AssignInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output("Out")[0];
-    auto input_type = ctx->GetType(ctx->Input("X")[0]);
-    auto input_data_type = ctx->GetDataType(ctx->Input("X")[0]);
-    ctx->SetType(out_var_name, input_type);
-    ctx->SetDataType(out_var_name, input_data_type);
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 

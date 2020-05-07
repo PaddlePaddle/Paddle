@@ -118,6 +118,10 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
+void BoxWrapper::SetTestMode(bool is_test) const {
+  boxps_ptr_->SetTestMode(is_test);
+}
+
 void BoxWrapper::EndPass(bool need_save_delta) const {
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(

@@ -303,7 +303,8 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Allocator related FLAG
  * Name: FLAGS_allocator_strategy
  * Since Version: 1.2
- * Value Range: string, {naive_best_fit, auto_growth}, default=auto_growth
+ * Value Range: string, {naive_best_fit, auto_growth, thread_local},
+ * default=auto_growth
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */

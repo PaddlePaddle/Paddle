@@ -54,6 +54,7 @@ endif()
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
+    LIST(REMOVE_ITEM TEST_OPS test_batch_fc_op) # TODO(shenliang03): batch_fc_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -90,7 +91,7 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
-if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
+if(WITH_COVERAGE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
   list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
@@ -211,6 +212,9 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dynamic)
+  list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_exception)
 endif()
 
 if(NOT WITH_GPU OR WIN32 OR APPLE)
@@ -366,6 +370,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
         test_optimizer_in_control_flow test_dataloader_keep_order
         test_dataloader_unkeep_order
+        test_parallel_executor_fetch_isolated_var
         test_parallel_executor_inference_feed_partial_data
         test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
@@ -381,4 +386,7 @@ if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
     set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
     # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_static PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_dynamic PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_multiprocess_dataloader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
 endif()
