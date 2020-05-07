@@ -32,9 +32,6 @@ from .program_translator import *
 from . import convert_call_func
 from .convert_call_func import *
 
-from . import partial_program
-from .partial_program import *
-
 from . import list_transformer
 from .list_transformer import *
 
@@ -45,5 +42,4 @@ __all__ += static_analysis.__all__
 __all__ += variable_trans_func.__all__
 __all__ += program_translator.__all__
 __all__ += convert_call_func.__all__
-__all__ += partial_program.__all__
 __all__ += list_transformer.__all__

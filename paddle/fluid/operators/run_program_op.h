@@ -118,27 +118,17 @@ static void ShareVarsIntoScope(const std::vector<Variable *> &vars,
   }
 }
 
-static void VariableCopy(const Variable &src_var,
-                         const platform::Place &dst_place, Variable *dst_var) {
-  // The previous check ensures that the variable type can only be LoDTensor or
-  // SelectedRows
-  if (src_var.IsType<LoDTensor>()) {
-    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
-    TensorCopySync(src_var.Get<LoDTensor>(), dst_place, lod_tensor);
-    lod_tensor->set_lod(src_var.Get<LoDTensor>().lod());
-  } else if (src_var.IsType<SelectedRows>()) {
-    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
-    TensorCopySync(src_var.Get<SelectedRows>().value(), dst_place,
-                   selected_rows->mutable_value());
-    selected_rows->set_rows(src_var.Get<SelectedRows>().rows());
-    selected_rows->set_height(src_var.Get<SelectedRows>().height());
-  }
-}
-
 static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
+    if (var_names[i] == framework::kEmptyVarName) {
+      VLOG(2) << "find variable name is " << framework::kEmptyVarName
+              << ", skip it!";
+      continue;
+    }
+    // NOTE: Here skip not found var is dangerous, if a bug is caused here,
+    // the result is grad calculation error, which will be very hidden!
     auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("The output variable %s is not in "
@@ -147,29 +137,6 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
                                         var_names[i]));
     CheckOutputVarStatus(*var, *vars[i], var_names[i]);
     VariableShare(*var, vars[i]);
-  }
-}
-
-static void CopyVarsFromScope(const std::vector<Variable *> &vars,
-                              const std::vector<std::string> &var_names,
-                              const platform::Place &dst_place,
-                              framework::Scope *scope) {
-  for (size_t i = 0; i < vars.size(); ++i) {
-    if (var_names[i] == framework::kEmptyVarName) {
-      VLOG(2) << "find variable name is " << framework::kEmptyVarName
-              << ", skip it!";
-      continue;
-    }
-    auto *var = scope->FindVar(var_names[i]);
-    // NOTE: Here skip not found var is dangerous, if a bug is caused here,
-    // the result is grad calculation error, which will be very hidden!
-    PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("The output variable %s is not in "
-                                        "RunProgram(Grad)Op(StaticModelRunner)'"
-                                        "s internal scope.",
-                                        var_names[i]));
-    CheckOutputVarStatus(*var, *vars[i], var_names[i]);
-    VariableCopy(*var, dst_place, vars[i]);
   }
 }
 
@@ -306,11 +273,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                   end_op_index, /*create_local_scope=*/false,
                                   /*create_vars=*/true, /*keep_kids=*/false);
 
-    // Step 4. copy outputs
-    details::CopyVarsFromScope(input_grad_vars, input_grad_var_names,
-                               ctx.GetPlace(), &scope);
-    details::CopyVarsFromScope(param_grad_vars, param_grad_names,
-                               ctx.GetPlace(), &scope);
+    // Step 4. get outputs
+    details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
+    details::ShareVarsFromScope(param_grad_vars, param_grad_names, &scope);
   }
 };
 

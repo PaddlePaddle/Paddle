@@ -19,8 +19,6 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
 
-__all__ = ['partial_program_from', 'PartialProgramLayer']
-
 
 class PartialProgramLayer(layers.Layer):
     """
