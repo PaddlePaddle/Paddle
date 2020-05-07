@@ -1315,12 +1315,12 @@ class Model(fluid.dygraph.Layer):
                 eval_steps = self._len_data_loader(eval_loader)
                 cbks.on_begin('eval', {
                     'steps': eval_steps,
-                    'metrics_name': self._metrics_name()
+                    'metrics': self._metrics_name()
                 })
 
-                logs = self._run_one_epoch(eval_loader, cbks, 'eval')
+                eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
-                cbks.on_end('eval', logs)
+                cbks.on_end('eval', eval_logs)
 
         cbks.on_end('train', logs)
         self._test_dataloader = None
@@ -1417,7 +1417,7 @@ class Model(fluid.dygraph.Layer):
         eval_steps = self._len_data_loader(eval_loader)
         cbks.on_begin('eval', {
             'steps': eval_steps,
-            'metrics_name': self._metrics_name()
+            'metrics': self._metrics_name()
         })
 
         logs = self._run_one_epoch(eval_loader, cbks, 'eval')

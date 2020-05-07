@@ -118,65 +118,145 @@ class Callback(object):
         self.params = {}
 
     def set_params(self, params):
+        """
+        Set parameters, which is dict. The keys contain:
+
+          - 'batch_size': an integer. Number of samples per batch.
+          - 'epochs': an integer. Number of epochs.
+          - 'steps': an integer. Number of steps of one epoch.
+          - 'verbose': an integer. Verbose mode is 0, 1 or 2.
+             0 = silent, 1 = progress bar, 2 = one line per epoch.
+          - 'metrics': a list of str. Names of metrics, including 'loss'
+              and the names of hapi.Metric.
+        """
         self.params = params
 
     def set_model(self, model):
+        """model is instance of hapi.Model.
+        """
         self.model = model
 
     def on_train_begin(self, logs=None):
         """Called at the start of training.
+
+        Args:
+            logs (dict): The logs is a dict or None.
         """
 
     def on_train_end(self, logs=None):
         """Called at the end of training.
+
+        Args:
+            logs (dict): The logs is a dict or None. The keys of logs
+                passed by hapi.Model contains 'loss', metric names and
+                `batch_size`.
         """
 
     def on_eval_begin(self, logs=None):
         """Called at the start of evaluation.
+
+        Args:
+            logs (dict): The logs is a dict or None. The keys of logs
+                passed by hapi.Model contains 'steps' and 'metrics',
+                The `steps` is number of total steps of validation dataset.
+                The `metrics` is a list of str including 'loss' and the names
+                of hapi.Metric.
         """
 
     def on_eval_end(self, logs=None):
         """Called at the end of evaluation.
+
+        Args:
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is a dict contains 'loss', metrics and 'batch_size'
+                of last batch of validation dataset.
         """
 
     def on_test_begin(self, logs=None):
         """Called at the beginning of predict.
+
+        Args:
+            logs (dict): The logs is a dict or None.
         """
 
     def on_test_end(self, logs=None):
         """Called at the end of predict.
+
+        Args:
+            logs (dict): The logs is a dict or None.
         """
 
     def on_epoch_begin(self, epoch, logs=None):
         """Called at the beginning of each epoch.
+
+        Args:
+            epoch (int): The index of epoch.
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is None.
         """
 
     def on_epoch_end(self, epoch, logs=None):
         """Called at the end of each epoch.
+
+        Args:
+            epoch (int): The index of epoch.
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is a dict, contains 'loss', metrics and 'batch_size'
+                of last batch.
         """
 
     def on_train_batch_begin(self, step, logs=None):
         """Called at the beginning of each batch in training.
+
+        Args:
+            step (int): The index of step (or iteration).
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is empty.
         """
 
     def on_train_batch_end(self, step, logs=None):
         """Called at the end of each batch in training.
+
+        Args:
+            step (int): The index of step (or iteration).
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is a dict, contains 'loss', metrics and 'batch_size'
+                of current batch.
         """
 
     def on_eval_batch_begin(self, step, logs=None):
         """Called at the beginning of each batch in evaluation.
+
+        Args:
+            step (int): The index of step (or iteration).
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is empty.
         """
 
     def on_eval_batch_end(self, step, logs=None):
         """Called at the end of each batch in evaluation.
+
+        Args:
+            step (int): The index of step (or iteration).
+            logs (dict): The logs is a dict or None. The `logs` passed by
+                hapi.Model is a dict, contains 'loss', metrics and 'batch_size'
+                of current batch.
         """
 
     def on_test_batch_begin(self, step, logs=None):
         """Called at the beginning of each batch in predict.
+
+        Args:
+            step (int): The index of step (or iteration).
+            logs (dict): The logs is a dict or None.
         """
 
     def on_test_batch_end(self, step, logs=None):
         """Called at the end of each batch in predict.
+
+        Args:
+            step (int): The index of step (or iteration).
+            logs (dict): The logs is a dict or None.
         """
 
 
@@ -270,7 +350,7 @@ class ProgBarLogger(Callback):
 
     def on_eval_begin(self, logs=None):
         self.eval_steps = logs.get('steps', None)
-        self.eval_metrics = logs.get('metrics_name', [])
+        self.eval_metrics = logs.get('metrics', [])
         self.eval_step = 0
         self.evaled_samples = 0
 
@@ -291,7 +371,7 @@ class ProgBarLogger(Callback):
 
     def on_test_begin(self, logs=None):
         self.test_steps = logs.get('steps', None)
-        self.test_metrics = logs.get('metrics_name', [])
+        self.test_metrics = logs.get('metrics', [])
         self.test_step = 0
         self.tested_samples = 0
         self.test_progbar = ProgressBar(

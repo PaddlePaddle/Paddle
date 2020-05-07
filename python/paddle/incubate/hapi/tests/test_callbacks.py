@@ -65,7 +65,7 @@ class TestCallbacks(unittest.TestCase):
             eval_logs = {'eval_loss': 20.341673, 'eval_acc': 0.256}
             params = {
                 'steps': eval_steps,
-                'metrics_name': ['eval_loss', 'eval_acc'],
+                'metrics': ['eval_loss', 'eval_acc'],
             }
             cbks.on_begin('eval', params)
             for step in range(eval_steps):
