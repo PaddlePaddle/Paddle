@@ -249,3 +249,4 @@ def monkey_patch_math_varbase():
     core.VarBase.__len__ = _len_
     core.VarBase.__index__ = _index_
     core.VarBase.astype = astype
+    core.VarBase.__array_ufunc__ = None
