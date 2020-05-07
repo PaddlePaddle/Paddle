@@ -19,6 +19,7 @@ import os
 from pathlib import PurePosixPath
 import shutil
 
+__all__ = ['FS', 'LocalFS', 'BDFS']
 
 class FS(object):
     @abc.abstractmethod
