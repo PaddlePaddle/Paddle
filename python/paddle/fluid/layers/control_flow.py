@@ -300,20 +300,18 @@ def Print(input,
     return output
 
 
-def Assert(condition, data, summarize=None, name=None):
+def Assert(cond, data=None, summarize=20, name=None):
     '''
-    **Assert operator**
-
-    This creates an op that asserts the given condition is true. If condition
-    is false, print the tensors in data. Summarize specifies the number of the
-    entries in the tensors to print.
+    This API creates an op that asserts the given condition is true. If the
+    condition is false, prints the tensors in data. ``summarize`` specifies the
+    number of the elements in the tensors to print.
 
     Args:
-        condition (Variable): A boolean tensor whose numel should be 1.
-        data (list|tuple): list or tuple of tensors to print when condition is
-            not true.
-        summarize (int, optional): The number of entries to print for each
-            tensor. Set it to None or -1 means printing all entries.
+        cond (Variable): The boolean condition tensor whose numel should be 1.
+        data (list|tuple, optional): list or tuple of tensors to print when
+            condition is not true. If it's ``None``, no tensor will be printed.
+        summarize (int): Number of elements in the tensor to be printed. If its 
+            value is -1, then all elements in the tensor will be printed.
         name (str, optional): The default value is ``None`` . Normally users
             don't have to set this parameter. For more information, please
             refer to :ref:`api_guide_Name` .
@@ -322,9 +320,9 @@ def Assert(condition, data, summarize=None, name=None):
         Operator: the created operation.
 
     Raises:
-        TypeError: If ``condition`` is not boolean Variable.
+        TypeError: If ``cond`` is not boolean Variable.
         TypeError: If ``data`` is not a list or tuple.
-        TypeError: If ``summarize`` is not int or ``None`` .
+        TypeError: If ``summarize`` is not int.
         TypeError: If ``name`` is not a string or ``None`` .
         fluid.core.EnforceNotMet: If the condition is False in running time.
 
@@ -342,27 +340,32 @@ def Assert(condition, data, summarize=None, name=None):
             try:
                 exe.run(fluid.default_main_program())
                 # Print x and throws paddle.fluid.core.EnforceNotMet exception
+                # Example printed message for x:
+                #
+                # Variable: fill_constant_0.tmp_0
+                #   - lod: {}
+                #   - place: CPUPlace()
+                #   - shape: [2, 3]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [2 2 2 2 2 2]
             except fluid.core.EnforceNotMet as e:
                 print("Assert Exception Example")
 
     '''
-    check_variable_and_dtype(condition, "condition", ["bool"],
-                             "fluid.layers.Assert")
-    check_type(data, "data", (list, tuple), "fluid.layers.Assert")
-    check_type(summarize, "summarize", (int, type(None)), "fluid.layers.Assert")
+    check_variable_and_dtype(cond, "cond", ["bool"], "fluid.layers.Assert")
+    check_type(data, "data", (list, tuple, type(None)), "fluid.layers.Assert")
+    check_type(summarize, "summarize", int, "fluid.layers.Assert")
     check_type(name, "name", (str, type(None)), "fluid.layers.Assert")
 
-    layer_name = name if name else ('assert_' + condition.name)
+    layer_name = name if name else ('assert_' + cond.name)
     helper = LayerHelper(layer_name, **locals())
-
-    if summarize is None:
-        summarize = -1
 
     op = helper.append_op(
         type="assert",
-        inputs={"Condition": condition,
-                "X": list(data)},
-        attrs={"summarize_num": summarize})
+        inputs={"Cond": cond,
+                "Data": list(data)},
+        attrs={"summarize": summarize})
 
     return op
 

@@ -17,9 +17,9 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/tensor_formatter.h"
 
-const char kCondition[] = "CONDITION";
-const char kX[] = "X";
-const char kSummarizeNum[] = "summarize_num";
+const char kCond[] = "Cond";
+const char kData[] = "Data";
+const char kSummarize[] = "summarize";
 
 namespace paddle {
 namespace operators {
@@ -36,7 +36,7 @@ class AssertOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    const framework::Variable *cond_var_ptr = scope.FindVar(Input(kCondition));
+    const framework::Variable *cond_var_ptr = scope.FindVar(Input(kCond));
     PADDLE_ENFORCE_NOT_NULL(cond_var_ptr,
                             platform::errors::NotFound(
                                 "Input(Condition) of AssertOp is not found."));
@@ -54,9 +54,9 @@ class AssertOp : public framework::OperatorBase {
     }
 
     TensorFormatter formatter;
-    formatter.SetSummarize(Attr<int64_t>(kSummarizeNum));
+    formatter.SetSummarize(Attr<int64_t>(kSummarize));
 
-    const std::vector<std::string> &x_names = Inputs(kX);
+    const std::vector<std::string> &x_names = Inputs(kData);
     for (const std::string &name : x_names) {
       const framework::Variable *x_var_ptr = scope.FindVar(name);
       const framework::LoDTensor &x_tensor = x_var_ptr->Get<LoDTensor>();
@@ -66,7 +66,7 @@ class AssertOp : public framework::OperatorBase {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "The condition variable '%s' of AssertOp must be "
         "true, but received false",
-        Input(kCondition)));
+        Input(kCond)));
   }
 };
 
@@ -74,12 +74,13 @@ class AssertOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput(
-        kCondition,
+        kCond,
         "The boolean scalar condition tensor which is asserted to be true.");
-    AddInput(kX, "The tensors to print when the assert condition is not true.")
+    AddInput(kData,
+             "The tensors to print when the assert condition is not true.")
         .AsDuplicable();
     AddAttr<int64_t>(
-        kSummarizeNum,
+        kSummarize,
         "The number of entries of each tensor to print when the "
         "assert condition is not true. -1 means print all entries. If "
         "the number of entries of a tensor is less then "
@@ -93,8 +94,7 @@ class AssertOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class AssertOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInputs(kCondition), "Input", "Condition",
-                   "AssertOp");
+    OP_INOUT_CHECK(context->HasInputs(kCond), "Input", "Condition", "AssertOp");
   }
 };
 
