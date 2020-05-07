@@ -1316,7 +1316,7 @@ class Model(fluid.dygraph.Layer):
                 cbks.on_begin('eval', {
                     'steps': eval_steps,
                     'metrics': self._metrics_name()
-                    })
+                })
 
                 eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
 
