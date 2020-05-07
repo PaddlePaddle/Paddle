@@ -18,8 +18,6 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-LargeScaleKV::LargeScaleKV() {}
-
 std::once_flag LargeScaleKV::init_flag_;
 std::shared_ptr<LargeScaleKV> LargeScaleKV::scale_kv_(nullptr);
 

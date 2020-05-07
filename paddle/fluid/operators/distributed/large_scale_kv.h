@@ -20,7 +20,6 @@
 #include <future>  // NOLINT
 #include <memory>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -48,15 +47,15 @@ struct SparseMeta {
 };
 
 struct VALUE {
-  VALUE(std::vector<std::string> names, std::vector<int> dims) {
-    names_ = names;
-    dims_ = dims;
+  VALUE(const std::vector<std::string>& names, const std::vector<int>& dims)
+      : names_(names), dims_(dims) {
+    values_.resize(names.size());
   }
 
   void init() {
-    for (int i = 0; i <= static_cast<int>(names_.size()); i++) {
-      values_.reserve(dims_[i]);
-      std::fill(values_[i].data(), values_[i].data() + values_[i].size(),
+    for (int i = 0; i < static_cast<int>(names_.size()); i++) {
+      values_[i].resize(dims_[i]);
+      std::fill(values_[i].data(), values_[i].data() + dims_[i],
                 static_cast<float>(0.0));
     }
   }
@@ -77,9 +76,28 @@ struct VALUE {
 
 class SparseVariable {
  public:
-  SparseVariable();
+  explicit SparseVariable(const SparseMeta& meta) {
+    meta_.name = meta.name;
+    meta_.mode = meta.mode;
+    meta_.value_names = meta.value_names;
+    meta_.value_dims = meta.value_dims;
 
-  explicit SparseVariable(const SparseMeta& meta) : meta_(meta) {}
+    for (int i = 0; i < meta_.value_names.size(); i++) {
+      values_dims[meta_.value_names[i]] = meta_.value_dims[i];
+    }
+  }
+
+  void Print() {
+    std::stringstream ss;
+    ss << "name: " << meta_.name << " ";
+    ss << "mode: " << meta_.mode << " ";
+
+    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
+      ss << "value_name: " << meta_.value_names[i]
+         << " dim: " << meta_.value_dims[i] << " ";
+    }
+    VLOG(1) << ss.str();
+  }
 
   void Get(const std::vector<int64_t>& ids,
            const std::vector<std::string>& value_names,
@@ -87,12 +105,12 @@ class SparseVariable {
     for (auto id : ids) {
       auto got = values_.find(id);
       if (got == values_.end()) {
-        auto value = VALUE(meta_.value_names, meta_.value_dims);
-        value.init();
+        auto value = new VALUE(meta_.value_names, meta_.value_dims);
+        value->init();
         values_[id] = value;
       }
       auto value = values_.at(id);
-      values->push_back(value.get(value_names));
+      values->push_back(value->get(value_names));
     }
   }
 
@@ -100,31 +118,40 @@ class SparseVariable {
            const std::vector<std::string> value_names,
            std::vector<framework::Tensor>* values) {}
 
-  int Size();
+  void Dims(std::vector<std::string> value_names, std::vector<int64_t>* dims) {
+    for (auto& name : value_names) {
+      dims->push_back(values_dims.at(name));
+    }
+  }
 
- private:
-  const SparseMeta& meta_;
-  std::unordered_map<int64_t, VALUE> values_;
+  int64_t Size() { return static_cast<int64_t>(values_.size()); }
+
+ public:
+  SparseMeta meta_;
+  std::unordered_map<std::string, int64_t> values_dims;
+  std::unordered_map<int64_t, VALUE*> values_;
 };
 
 class LargeScaleKV {
  public:
-  LargeScaleKV();
-  ~LargeScaleKV();
+  LargeScaleKV() {}
 
   explicit LargeScaleKV(const std::vector<SparseMeta>& table_metas) {
     for (auto& sparse_meta : table_metas) {
-      auto table_name = std::get<0>(sparse_meta);
-      auto meta = std::make_shared<SparseVariable>(sparse_meta);
+      auto table_name = sparse_meta.name;
+      auto meta = std::shared_ptr<SparseVariable>(
+          new SparseVariable(std::move(sparse_meta)));
       sparse_variables[table_name] = meta;
     }
   }
+
+  ~LargeScaleKV() {}
 
   static LargeScaleKV* GetInstance() { return scale_kv_.get(); }
 
   static LargeScaleKV* InitInstance(
       const std::vector<SparseMeta>& table_metas) {
-    std::call_once(init_flag_, &LargeScaleKV::Init, std::ref(table_metas));
+    std::call_once(init_flag_, &LargeScaleKV::Init, table_metas);
     return scale_kv_.get();
   }
 

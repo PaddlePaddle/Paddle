@@ -56,6 +56,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
 
     std::vector<std::string> value_names;
     std::vector<std::vector<std::vector<float>>> values;
+    std::vector<int64_t> dims;
 
     for (int i = 0; i < 5; i++) {
       auto out_name = string::Sprintf("%s%d", "Out", i);
@@ -70,6 +71,29 @@ class LookupSparseTableOp : public framework::OperatorBase {
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
     ins->Get(tablename)->Get(ids, value_names, &values);
+    ins->Get(tablename)->Dims(value_names, &dims);
+
+    platform::CPUPlace cpu;
+    std::vector<float *> tensors;
+    for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
+      auto out_name = string::Sprintf("%s%d", "Out", i);
+      auto out_var = scope.FindVar(Output(out_name));
+      auto out_t = out_var->GetMutable<framework::LoDTensor>();
+
+      std::vector<int64_t> o_dims;
+      o_dims.push_back(static_cast<int64_t>(ids.size()));
+      o_dims.push_back(dims[i]);
+      out_t->Resize(framework::make_ddim(o_dims));
+      auto *out_d = out_t->mutable_data<float>(cpu);
+      tensors.push_back(out_d);
+    }
+
+    for (auto &vals_for_id : values) {
+      for (int i = 0; i < vals_for_id.size(); i++) {
+        std::memcpy(tensors[i] + i * dims[i], vals_for_id[i].data(),
+                    sizeof(float) * dims[i]);
+      }
+    }
   }
 };
 
@@ -79,7 +103,6 @@ class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ids",
              "(LoDTensor) Ids's type should be LoDTensor"
              "THe ids to be looked up in W.");
-
     AddOutput("Out0",
               "(LoDTensor) The lookup results, which have the "
               "same type as W.");
