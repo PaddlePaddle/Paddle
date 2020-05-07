@@ -4,6 +4,7 @@ endif()
 
 
 if (WITH_NV_JETSON)
+  add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
   set(paddle_known_gpu_archs7 "53")
   set(paddle_known_gpu_archs8 "53 62")
