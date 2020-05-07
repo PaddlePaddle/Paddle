@@ -90,7 +90,9 @@ class Qat2Int8MkldnnPass(object):
     def apply_fp32(self, graph):
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
-
+        graph = self._gather_weight_scales_from_fake(graph)
+        graph = self._remove_fake_ops(graph)
+        graph = self._dequantize_weights(graph)
         graph = self._optimize_fp32_graph(graph)
         graph = self._cleanup(graph)
         return graph

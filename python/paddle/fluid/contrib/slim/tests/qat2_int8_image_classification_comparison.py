@@ -177,16 +177,16 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
                 graph.draw('.', 'qat_orig', graph.all_op_nodes())
+            transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
+                self._quantized_ops,
+                _scope=inference_scope,
+                _place=place,
+                _core=core,
+                _debug=self._debug)
             if (transform_to_int8):
-                transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
-                    self._quantized_ops,
-                    _scope=inference_scope,
-                    _place=place,
-                    _core=core,
-                    _debug=self._debug)
                 graph = transform_to_mkldnn_int8_pass.apply(graph)
             else:
-                graph = self._prepare_for_fp32_mkldnn(graph)
+                graph = transform_to_mkldnn_int8_pass.apply_fp32(graph)
 
             inference_program = graph.to_program()
 
@@ -296,8 +296,7 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
         qat_model_path = test_case_args.qat_model
         assert qat_model_path, 'The QAT model path cannot be empty. Please, use the --qat_model option.'
-        fp32_model_path = test_case_args.fp32_model
-        assert fp32_model_path, 'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
+        fp32_model_path = test_case_args.fp32_model if test_case_args.fp32_model else qat_model_path
         data_path = test_case_args.infer_data
         assert data_path, 'The dataset path cannot be empty. Please, use the --infer_data option.'
         batch_size = test_case_args.batch_size

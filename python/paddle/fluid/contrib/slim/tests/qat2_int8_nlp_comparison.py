@@ -153,14 +153,16 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
                 graph.draw('.', 'qat_orig', graph.all_op_nodes())
+            transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
+                self._quantized_ops,
+                _scope=inference_scope,
+                _place=place,
+                _core=core,
+                _debug=self._debug)
             if (transform_to_int8):
-                transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
-                    self._quantized_ops,
-                    _scope=inference_scope,
-                    _place=place,
-                    _core=core,
-                    _debug=self._debug)
                 graph = transform_to_mkldnn_int8_pass.apply(graph)
+            else:
+                graph = transform_to_mkldnn_int8_pass.apply_fp32(graph)
 
             inference_program = graph.to_program()
 
