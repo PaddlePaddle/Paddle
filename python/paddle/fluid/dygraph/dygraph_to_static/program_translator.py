@@ -344,10 +344,10 @@ class ProgramTranslator(object):
             prog_trans.enable(False)
 
             x = np.ones([1, 2])
-            # The declarative is disabled so the func is run in dygraph 
+            # The declarative is disabled so the func is run in dygraph
             with fluid.dygraph.guard():
                 print(func(x).numpy()) # [[2. 2.]]
-        
+
         """
         check_type(enable_declarative, "enable_declarative", bool,
                    "ProgramTranslator.enable")
@@ -361,7 +361,7 @@ class ProgramTranslator(object):
 
         Args:
             dygraph_func (callable): the dygraph function.
-            *args, **kwargs : the input argument of dygraph_func. 
+            *args, **kwargs : the input argument of dygraph_func.
 
         Returns:
             VarBase or tuple of VarBase: the dygraph VarBase containing digital
@@ -763,7 +763,7 @@ class ProgramTranslator(object):
 
         assert abs(index_of_loss) < len(outputs), \
             "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
-            index_of_loss, len(outputs))
+                index_of_loss, len(outputs))
 
         loss_var = outputs[index_of_loss]
         check_type(loss_var, "loss_var", framework.Variable,
