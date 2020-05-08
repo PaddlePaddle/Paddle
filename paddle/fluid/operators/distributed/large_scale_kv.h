@@ -58,6 +58,15 @@ struct VALUE {
     values_ = std::move(values);
   }
 
+  void set(const std::vector<std::string>& names,
+           const std::vector<std::vector<float>>& values) {
+    for (int i = 0; i < static_cast<int>(names.size()); i++) {
+      auto idx = places[names[i]];
+      auto value = values[i];
+      values[idx].assign(value.begin(), value.end());
+    }
+  }
+
   std::vector<std::vector<float>> get() { return values_; }
 
   std::vector<std::vector<float>> get(const std::vector<std::string> names) {
@@ -111,6 +120,15 @@ class SparseVariable {
       }
       auto value = values_.at(id);
       values->push_back(value->get(value_names));
+    }
+  }
+  void Set(const std::vector<int64_t>& ids,
+           const std::vector<std::string>& value_names,
+           const std::vector<std::vector<std::vector<float>>>& values) {
+    for (int i = 0; i < static_cast<int>(ids.size()); i++) {
+      auto value = values_.at(ids[i]);
+      values_for_id = values[i];
+      value->set(value_names, values_for_id);
     }
   }
 
