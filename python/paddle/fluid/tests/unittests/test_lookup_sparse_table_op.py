@@ -46,8 +46,36 @@ class TestLookupSpraseTable(unittest.TestCase):
         result_array1 = np.array(out_tensor)
         print(result_array1)
         print("== = = == == = == ==== ==== === ")
-        result_array1 = np.array(m1)
+
+        result_array1 = result_array1 + 3
+        out_tensor.set(result_array1, place)
+
+        # create and run lookup_table operator
+        lookup_table = Operator(
+            "lookup_sparse_table_write",
+            Ids='Ids',
+            In0='Param',
+            In1='Moment1',
+            tablename="embedding")
+        lookup_table.run(scope, place)
+
+        # get result from Out
+        result_array1 = np.array(out_tensor)
         print(result_array1)
+        print("== = = == == = == ==== ==== === ")
+
+        lookup_table = Operator(
+            "lookup_sparse_table_read",
+            Ids='Ids',
+            Out0='Param',
+            Out1='Moment1',
+            tablename="embedding")
+        lookup_table.run(scope, place)
+
+        # get result from Out
+        result_array1 = np.array(out_tensor)
+        print(result_array1)
+        print("== = = == == = == ==== ==== === ")
 
     def test_w_is_selected_rows(self):
         places = [core.CPUPlace()]

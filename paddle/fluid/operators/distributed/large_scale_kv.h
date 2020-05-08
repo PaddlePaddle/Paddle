@@ -63,7 +63,7 @@ struct VALUE {
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
       auto idx = places[names[i]];
       auto value = values[i];
-      values[idx].assign(value.begin(), value.end());
+      values_[idx].assign(value.begin(), value.end());
     }
   }
 
@@ -91,7 +91,7 @@ class SparseVariable {
     meta_.value_names = meta.value_names;
     meta_.value_dims = meta.value_dims;
 
-    for (int i = 0; i < meta_.value_names.size(); i++) {
+    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       values_dims[meta_.value_names[i]] = meta_.value_dims[i];
     }
   }
@@ -114,7 +114,7 @@ class SparseVariable {
     for (auto id : ids) {
       auto got = values_.find(id);
       if (got == values_.end()) {
-        auto value = new VALUE(meta_.value_names, meta_.value_dims);
+        auto value = new VALUE(meta_.value_names);
         value->set(Init());
         values_[id] = value;
       }
@@ -127,7 +127,7 @@ class SparseVariable {
            const std::vector<std::vector<std::vector<float>>>& values) {
     for (int i = 0; i < static_cast<int>(ids.size()); i++) {
       auto value = values_.at(ids[i]);
-      values_for_id = values[i];
+      auto values_for_id = values[i];
       value->set(value_names, values_for_id);
     }
   }
@@ -147,7 +147,7 @@ class SparseVariable {
  private:
   std::vector<std::vector<float>> Init() {
     auto rets = std::vector<std::vector<float>>();
-    rets.resize(names_.size());
+    rets.resize(meta_.value_names.size());
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       auto name = meta_.value_names[i];

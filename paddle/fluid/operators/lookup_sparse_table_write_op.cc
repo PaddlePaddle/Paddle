@@ -49,6 +49,8 @@ class LookupSparseTableWriteOp : public framework::OperatorBase {
     std::vector<std::string> value_names;
     std::vector<const float *> tensors;
     std::vector<int64_t> dims;
+    std::vector<std::vector<std::vector<float>>> values;
+    values.resize(ids.size());
 
     for (int i = 0; i < 5; i++) {
       auto in_name = Input(string::Sprintf("%s%d", "In", i));
@@ -60,12 +62,21 @@ class LookupSparseTableWriteOp : public framework::OperatorBase {
         value_names.push_back(in_name);
         auto in_t = in->Get<framework::LoDTensor>();
         dims.push_back(in_t.dims()[1]);
-        tensors.push_back(in_t.data());
+        tensors.push_back(in_t.data<float>());
+      }
+    }
+
+    for (int i = 0; i < static_cast<int>(ids.size()); i++) {
+      values[i].resize(tensors.size());
+      for (int j = 0; j < static_cast<int>(tensors.size()); j++) {
+        values[i][j].resize(dims[j]);
+        std::memcpy(values[i][j].data(), tensors[j] + i * dims[j],
+                    sizeof(float) * dims[j]);
       }
     }
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
-    ins->Get(tablename)->Set(ids, value_names, &values);
+    ins->Get(tablename)->Set(ids, value_names, values);
   }
 };
 
