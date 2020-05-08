@@ -13,4 +13,9 @@
 # limitations under the License.
 
 # TODO: define the basic tensor classes 
-# __all__ = ['Tensor', 'LoDTensor', 'LoDTensorArray']
+
+__all__ = [
+    #       'Tensor',
+    #       'LoDTensor',
+    #       'LoDTensorArray'
+]

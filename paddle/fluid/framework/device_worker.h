@@ -66,6 +66,8 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  int GetThreadIdByScope(const Scope* scope);
+  void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -73,13 +75,14 @@ class PullDenseWorker {
     return s_instance_;
   }
 
+  static std::shared_ptr<PullDenseWorker> s_instance_;
+
  private:
   PullDenseWorker() : root_scope_(NULL) {}
   void Run();
   bool CheckUpdateParam(uint64_t table_id);
 
  private:
-  static std::shared_ptr<PullDenseWorker> s_instance_;
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
@@ -105,6 +108,7 @@ class PullDenseWorker {
   float squared_sum_epsilon_ = 1e-4;
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
+  std::unordered_map<const Scope*, int> scope_to_thread_id_;
 };
 
 // should incorporate different type of device

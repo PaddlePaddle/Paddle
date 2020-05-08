@@ -30,8 +30,9 @@ template <typename T>
 class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
@@ -70,8 +71,9 @@ template <typename T>
 class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");

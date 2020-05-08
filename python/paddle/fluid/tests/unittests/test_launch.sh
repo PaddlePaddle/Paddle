@@ -6,6 +6,7 @@ launch_py=${PADDLE_BINARY_DIR}/python/paddle/distributed/launch.py
 python ${launch_py} multi_process.py
 
 # use paddlecloud
+echo "begin test use paddlecloud"
 cluster_node_ips="10.0.0.1"
 node_ip="10.0.0.1"
 export PADDLE_TRAINERS_NUM=2
@@ -14,7 +15,7 @@ export PADDLE_TRAINERS=127.0.0.1,127.0.0.2
 export PADDLE_TRAINER_ID=0
 
 export PADDLE_PORT=35019
-export PADDLE_PORTS_NUM=2
+export TRAINER_PORTS_NUM=2
 
 distributed_args="--use_paddlecloud --cluster_node_ips=${cluster_node_ips} --node_ip=${node_ip} --selected_gpus=0,1 --log_dir=testlog"
 CUDA_VISIBLE_DEVICES=0,1 python ${launch_py} ${distributed_args} multi_process.py
@@ -47,8 +48,9 @@ if [ -f $file_1 ]; then
     rm $file_1
 fi
 
+
 unset PADDLE_PORT
-unset PADDLE_PORTS_NUM
+unset TRAINER_PORTS_NUM
 
 echo ""
 echo "paddle.distributed.launch async poll process test"

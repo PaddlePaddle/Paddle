@@ -22,6 +22,8 @@ import math
 import numpy as np
 import warnings
 
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
 
@@ -175,6 +177,11 @@ class Uniform(Distribution):
     """
 
     def __init__(self, low, high):
+        check_type(low, 'low', (float, np.ndarray, tensor.Variable, list),
+                   'Uniform')
+        check_type(high, 'high', (float, np.ndarray, tensor.Variable, list),
+                   'Uniform')
+
         self.all_arg_is_float = False
         self.batch_size_unknown = False
         if self._validate_args(low, high):
@@ -197,6 +204,9 @@ class Uniform(Distribution):
           Variable: A tensor with prepended dimensions shape.The data type is float32.
 
         """
+        check_type(shape, 'shape', (list), 'sample')
+        check_type(seed, 'seed', (int), 'sample')
+
         batch_shape = list((self.low + self.high).shape)
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
@@ -228,6 +238,9 @@ class Uniform(Distribution):
           Variable: log probability.The data type is same with value.
 
         """
+        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
+                                 'log_prob')
+
         lb_bool = control_flow.less_than(self.low, value)
         ub_bool = control_flow.less_than(value, self.high)
         lb = tensor.cast(lb_bool, dtype=value.dtype)
@@ -271,7 +284,8 @@ class Normal(Distribution):
 
     Examples:
         .. code-block:: python
-
+          
+          import numpy as np
           from paddle.fluid import layers
           from paddle.fluid.layers import Normal
 
@@ -282,10 +296,6 @@ class Normal(Distribution):
           dist = Normal(loc=[1., 2.], scale=[11., 22.])
           # Get 3 samples, returning a 3 x 2 tensor.
           dist.sample([3])
-
-          # Define a batch of two scalar valued Normals.
-          # Both have mean 1, but different standard deviations.
-          dist = Normal(loc=1., scale=[11., 22.])
 
           # Define a batch of two scalar valued Normals.
           # Both have mean 1, but different standard deviations.
@@ -310,6 +320,11 @@ class Normal(Distribution):
     """
 
     def __init__(self, loc, scale):
+        check_type(loc, 'loc', (float, np.ndarray, tensor.Variable, list),
+                   'Normal')
+        check_type(scale, 'scale', (float, np.ndarray, tensor.Variable, list),
+                   'Normal')
+
         self.batch_size_unknown = False
         self.all_arg_is_float = False
         if self._validate_args(loc, scale):
@@ -332,6 +347,10 @@ class Normal(Distribution):
           Variable: A tensor with prepended dimensions shape.The data type is float32.
 
         """
+
+        check_type(shape, 'shape', (list), 'sample')
+        check_type(seed, 'seed', (int), 'sample')
+
         batch_shape = list((self.loc + self.scale).shape)
 
         if self.batch_size_unknown:
@@ -374,6 +393,9 @@ class Normal(Distribution):
           Variable: log probability.The data type is same with value.
 
         """
+        check_variable_and_dtype(value, 'value', ['float32', 'float64'],
+                                 'log_prob')
+
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
         return -1. * ((value - self.loc) * (value - self.loc)) / (
@@ -389,7 +411,9 @@ class Normal(Distribution):
             Variable: kl-divergence between two normal distributions.The data type is float32.
 
         """
-        assert isinstance(other, Normal), "another distribution must be Normal"
+
+        check_type(other, 'other', Normal, 'kl_divergence')
+
         var_ratio = self.scale / other.scale
         var_ratio = (var_ratio * var_ratio)
         t1 = (self.loc - other.loc) / other.scale
@@ -451,6 +475,9 @@ class Categorical(Distribution):
         Args:
             logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32.
         """
+        check_type(logits, 'logits', (np.ndarray, tensor.Variable, list),
+                   'Categorical')
+
         if self._validate_args(logits):
             self.logits = logits
         else:
@@ -466,7 +493,7 @@ class Categorical(Distribution):
             Variable: kl-divergence between two Categorical distributions.
 
         """
-        assert isinstance(other, Categorical)
+        check_type(other, 'other', Categorical, 'kl_divergence')
 
         logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
         other_logits = other.logits - nn.reduce_max(
@@ -569,6 +596,11 @@ class MultivariateNormalDiag(Distribution):
     """
 
     def __init__(self, loc, scale):
+        check_type(loc, 'loc', (np.ndarray, tensor.Variable, list),
+                   'MultivariateNormalDiag')
+        check_type(scale, 'scale', (np.ndarray, tensor.Variable, list),
+                   'MultivariateNormalDiag')
+
         if self._validate_args(loc, scale):
             self.loc = loc
             self.scale = scale
@@ -620,7 +652,7 @@ class MultivariateNormalDiag(Distribution):
             Variable: kl-divergence between two Multivariate Normal distributions. The data type is float32.
 
         """
-        assert isinstance(other, MultivariateNormalDiag)
+        check_type(other, 'other', MultivariateNormalDiag, 'kl_divergence')
 
         tr_cov_matmul = nn.reduce_sum(self._inv(other.scale) * self.scale)
         loc_matmul_cov = nn.matmul((other.loc - self.loc),

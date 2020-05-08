@@ -40,6 +40,16 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSscal(args...));
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasScopy(args...));
+  }
+
+  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemv(args...));
   }
@@ -78,6 +88,29 @@ struct CUBlas<float> {
     PADDLE_THROW("cublasSgemmEx is supported on cuda >= 8.0");
 #endif
   }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasStrsm(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRF_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgetrfBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRI_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgetriBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void MATINV_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSmatinvBatched(args...));
+  }
 };
 
 template <>
@@ -90,6 +123,16 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDaxpy(args...));
+  }
+
+  template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDscal(args...));
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDcopy(args...));
   }
 
   template <typename... ARGS>
@@ -110,6 +153,29 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
     PADDLE_THROW("Currently there are not cublasDgemmEx.");
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDtrsm(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRF_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgetrfBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRI_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgetriBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void MATINV_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDmatinvBatched(args...));
   }
 };
 
@@ -320,6 +386,20 @@ void Blas<platform::CUDADeviceContext>::AXPY(int n, T alpha, const T *x,
 
 template <>
 template <typename T>
+void Blas<platform::CUDADeviceContext>::SCAL(int n, const T alpha, T *x) const {
+  context_.CublasCall(
+      [&](cublasHandle_t handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  context_.CublasCall(
+      [&](cublasHandle_t handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
+}
+
+template <>
+template <typename T>
 void Blas<platform::CUDADeviceContext>::GEMV(bool trans_a, int M, int N,
                                              T alpha, const T *A, const T *B,
                                              T beta, T *C) const {
@@ -375,6 +455,69 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                             CBLAS_TRANSPOSE transA,
+                                             CBLAS_DIAG diag, int M, int N,
+                                             T alpha, const T *A, int lda, T *B,
+                                             int ldb) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  cublasSideMode_t cuSide =
+      (side == CblasLeft) ? CUBLAS_SIDE_RIGHT : CUBLAS_SIDE_LEFT;
+  cublasFillMode_t cuUplo =
+      (uplo == CblasLower) ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasDiagType_t cuDiag =
+      (diag == CblasUnit) ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::TRSM(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, &alpha, A,
+                    lda, B, ldb);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRF(int n, T **a, int *ipiv,
+                                                     int *info,
+                                                     int batch_size) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRI(int n, const T **a,
+                                                     const int *ipiv, T **a_inv,
+                                                     int *info,
+                                                     int batch_size) const {
+  PADDLE_ENFORCE_NE(
+      a_inv, a,
+      platform::errors::InvalidArgument(
+          "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
+          "in-place. The memory space of output matrix (address: %p) cannot "
+          "overlap memory space of input matrix (address: %p).",
+          a_inv, a));
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRI_BATCH(handle, n, a, n, ipiv, a_inv, n, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedMatInv(int n, const T **a,
+                                                      T **a_inv, int *info,
+                                                      int batch_size) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
+  });
 }
 
 }  // namespace math

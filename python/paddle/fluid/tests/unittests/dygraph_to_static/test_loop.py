@@ -29,6 +29,9 @@ np.random.seed(SEED)
 
 def while_loop_dyfunc(x):
     i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while x < 10:
         i = i + x
         x = x + 1
@@ -37,6 +40,9 @@ def while_loop_dyfunc(x):
 
 def while_loop_dyfun_with_conflict_var(x):
     i = fluid.dygraph.to_variable(x)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
 
     def relu(y):
         # 'y' is not visible outside the scope.
@@ -56,6 +62,9 @@ def while_loop_dyfunc_with_none(x):
     i = fluid.dygraph.to_variable(x)\
         if x is not None \
         else fluid.dygraph.to_variable(x+1)
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     flag = 1
     while x < 10:
         i = i + x if flag is not None else x + i
@@ -72,10 +81,49 @@ def for_loop_dyfunc(max_len):
 
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
+
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    x = fluid.dygraph.to_variable(
+        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
     while (x >= 0 and x < 10) or x <= -1 or x < -3 or (x < -7 or x < -5):
         i = i + x
         x = x + 1
     return i
+
+
+def while_loop_class_var(x):
+    class Foo(object):
+        def __init__(self):
+            self.a = 3
+            self.b = 4
+            self.c = 5
+
+    foo = Foo()
+    i = fluid.dygraph.to_variable(x)
+    while i < 10:
+        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.c = foo.b + foo.a
+        i += 1
+    return foo.c
+
+
+def for_loop_class_var(max_len):
+    class Foo(object):
+        def __init__(self):
+            self.a = 3
+            self.b = 4
+            self.c = 5
+
+    foo = Foo()
+
+    # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+    # TODO(liym27): Delete it if the type of parameter x can be resolved
+    max_len = fluid.layers.fill_constant(
+        shape=[1], value=max_len, dtype="int32")
+    for i in range(max_len):
+        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.c = foo.b + foo.a
+    return foo.c
 
 
 def var_create_in_for_loop(max_len):
@@ -136,15 +184,8 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def test_ast_to_func(self):
         static_numpy = self._run_static()
-        self.assertTrue(
-            np.allclose(
-                np.full(
-                    shape=(1), fill_value=45, dtype=np.int32), static_numpy))
-
-        # Enable next lines after Paddle dygraph supports while x < 10 
-        #
-        # self._run_dygraph()
-        # self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+        dygraph_numpy = self._run_dygraph()
+        self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
 
 
 class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
@@ -160,6 +201,11 @@ class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
 class TestWhileLoopBoolOp(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_bool_op
+
+
+class TestWhileLoopClassVar(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_class_var
 
 
 class TestTransformForLoop(unittest.TestCase):
@@ -190,6 +236,11 @@ class TestTransformForLoop(unittest.TestCase):
         static_numpy = self._run_static()
         self._run_dygraph()
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestClassVarInForLoop(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_class_var
 
 
 class TestVarCreateInForLoop(TestTransformForLoop):
