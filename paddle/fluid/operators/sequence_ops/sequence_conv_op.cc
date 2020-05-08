@@ -185,7 +185,7 @@ class SequenceConvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     if (op->HasAttr("paddingTrainable") &&
-        BOOST_GET(bool, op->GetAttr("paddingTrainable")) &&
+        BOOST_GET_CONST(bool, op->GetAttr("paddingTrainable")) &&
         this->HasInput("PaddingData")) {
       op->SetInput("PaddingData", this->Input("PaddingData"));
       op->SetOutput(framework::GradVarName("PaddingData"),
@@ -209,7 +209,7 @@ class SequenceConvGradNoNeedBufferVarsInference
   const std::unordered_set<std::string> &operator()(
       const framework::InferNoNeedBufferVarsContext &ctx) const final {
     static const std::unordered_set<std::string> kPaddingData({"PaddingData"});
-    if (!BOOST_GET(bool, ctx.GetAttr("paddingTrainable"))) {
+    if (!BOOST_GET_CONST(bool, ctx.GetAttr("paddingTrainable"))) {
       return kPaddingData;
     } else {
       return Empty();

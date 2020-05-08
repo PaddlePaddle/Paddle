@@ -55,21 +55,21 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
       if (node->Name() == "send") {
         auto send_var_name = node->Op()->Input("X")[0];
         auto send_varnames =
-            BOOST_GET(std::vector<std::string>,
-                      node->Op()->GetNullableAttr("send_varnames"));
-        auto epmap = BOOST_GET(std::vector<std::string>,
-                               node->Op()->GetNullableAttr("epmap"));
-        auto height_section = BOOST_GET(
+            BOOST_GET_CONST(std::vector<std::string>,
+                            node->Op()->GetNullableAttr("send_varnames"));
+        auto epmap = BOOST_GET_CONST(std::vector<std::string>,
+                                     node->Op()->GetNullableAttr("epmap"));
+        auto height_section = BOOST_GET_CONST(
             std::vector<int64_t>, node->Op()->GetNullableAttr("sections"));
         auto trainer_id =
-            BOOST_GET(int, node->Op()->GetNullableAttr("trainer_id"));
+            BOOST_GET_CONST(int, node->Op()->GetNullableAttr("trainer_id"));
         auto merge_add =
-            BOOST_GET(bool, node->Op()->GetNullableAttr("merge_add"));
+            BOOST_GET_CONST(bool, node->Op()->GetNullableAttr("merge_add"));
         if (!merge_add) {
           merge_add = FLAGS_communicator_is_sgd_optimizer;
         }
-        auto use_send_handler =
-            BOOST_GET(bool, node->Op()->GetNullableAttr("use_send_handler"));
+        auto use_send_handler = BOOST_GET_CONST(
+            bool, node->Op()->GetNullableAttr("use_send_handler"));
         send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
             send_var_name, send_varnames, epmap, height_section, trainer_id,
             merge_add, use_send_handler);

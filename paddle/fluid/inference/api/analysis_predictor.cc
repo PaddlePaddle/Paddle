@@ -109,7 +109,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-    auto dst_gpu_place = BOOST_GET(platform::CUDAPlace, place);
+    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
     memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
@@ -358,7 +358,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       }
       idx = feed_names_[name];
     } else {
-      idx = BOOST_GET(int, feeds_[i]->GetAttr("col"));
+      idx = BOOST_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
     framework::SetFeedVariable(scope, *input, "feed", idx);
   }
@@ -390,7 +390,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = BOOST_GET(int, fetches_[i]->GetAttr("col"));
+    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
@@ -611,7 +611,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
-      int idx = BOOST_GET(int, op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -619,7 +619,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
     } else if (op->Type() == "fetch") {
-      int idx = BOOST_GET(int, op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -675,7 +675,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
-    auto gpu_place = BOOST_GET(platform::CUDAPlace, place_);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
 
@@ -692,7 +692,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
-    auto gpu_place = BOOST_GET(platform::CUDAPlace, place_);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -826,7 +826,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
       std::string engine_name =
-          BOOST_GET(std::string, op_desc->GetAttr("engine_key"));
+          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";

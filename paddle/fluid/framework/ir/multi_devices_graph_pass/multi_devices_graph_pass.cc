@@ -50,8 +50,8 @@ typedef std::vector<details::OpHandleBase *> GraphOps;
 const char kGraphOps[] = "ops";
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
-  return BOOST_GET(int, node.Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+  return BOOST_GET_CONST(int, node.Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) ==
          static_cast<int>(role);
 }
 
@@ -580,8 +580,8 @@ details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
   return !loss_var_name_.empty() && node->Op() &&
-         BOOST_GET(int, node->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+         BOOST_GET_CONST(int, node->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) ==
              (static_cast<int>(OpRole::kBackward) |
               static_cast<int>(OpRole::kLoss));
 }
@@ -635,7 +635,7 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
   if (!OpHaveRole(*node, framework::OpRole::kOptimize)) {
     return -1;
   }
-  auto param_grad = BOOST_GET(
+  auto param_grad = BOOST_GET_CONST(
       std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
@@ -730,7 +730,7 @@ int ReduceSSAGraphBuilder::GetOpDeviceID(
     return -1;
   }
 
-  auto param_grad = BOOST_GET(
+  auto param_grad = BOOST_GET_CONST(
       std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
@@ -779,8 +779,8 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
       // gradients.
       sorted_ops.emplace_back(node);
       bool is_bk_op = static_cast<bool>(
-          BOOST_GET(int, node->Op()->GetAttr(
-                             OpProtoAndCheckerMaker::OpRoleAttrName())) &
+          BOOST_GET_CONST(int, node->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())) &
           static_cast<int>(OpRole::kBackward));
       if (!is_bk_op) continue;
       // Currently, we assume that once gradient is generated, it can be
@@ -822,9 +822,9 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
                    "Can not schedule the RPC operator to the right place.");
     if (node->Op()->Type() == "recv") {
       auto recv_vars_attr =
-          BOOST_GET(std::vector<std::string>,
-                    node->Op()->GetNullableAttr(
-                        OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          BOOST_GET_CONST(std::vector<std::string>,
+                          node->Op()->GetNullableAttr(
+                              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE(recv_vars_attr.size() == 2UL);  // [parameter, gradient]
       if (recv_vars_attr[0].find(".block") == std::string::npos) {
         bcast_var_name_set_[op_dev_id].emplace(recv_vars_attr[0]);
@@ -888,7 +888,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
-      auto send_param_grad = BOOST_GET(
+      auto send_param_grad = BOOST_GET_CONST(
           std::vector<std::string>,
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(send_param_grad.size(), 2U);
@@ -905,7 +905,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
-    auto recv_param_grad = BOOST_GET(
+    auto recv_param_grad = BOOST_GET_CONST(
         std::vector<std::string>,
         node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
     if (recv_param_grad.size() == 2U) {

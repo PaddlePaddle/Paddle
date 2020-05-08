@@ -422,7 +422,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // here if we meet this issue
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
   if (attr_type == proto::AttrType::INTS &&
-      BOOST_GET(std::vector<int>, v).size() == 0u) {
+      BOOST_GET_CONST(std::vector<int>, v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
     const proto::OpProto::Attr &attr = GetProtoAttr(name);
     switch (attr.type()) {
@@ -472,7 +472,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   // In order to set bool attr properly
   if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
       GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
-    this->attrs_[name] = static_cast<bool>(BOOST_GET(int, v));
+    this->attrs_[name] = static_cast<bool>(BOOST_GET_CONST(int, v));
     need_update_ = true;
     return;
   }
@@ -529,7 +529,7 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
 std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  auto blocks = BOOST_GET(std::vector<BlockDesc *>, it->second);
+  auto blocks = BOOST_GET_CONST(std::vector<BlockDesc *>, it->second);
 
   std::vector<int> ids;
   for (auto n : blocks) {
@@ -542,7 +542,7 @@ std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
 int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
-  return BOOST_GET(BlockDesc *, it->second)->ID();
+  return BOOST_GET_CONST(BlockDesc *, it->second)->ID();
 }
 
 const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {

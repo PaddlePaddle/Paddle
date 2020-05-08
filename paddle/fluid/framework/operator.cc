@@ -161,7 +161,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-      auto dev_id = BOOST_GET(platform::CUDAPlace, place).device;
+      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::SetDeviceId(dev_id);
 #endif
     }

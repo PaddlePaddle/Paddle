@@ -32,7 +32,7 @@ class RefByTrainerIdKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CUDA
       auto stream = context.cuda_device_context().stream();
       memory::Copy<>(platform::CPUPlace(), &trainer_id,
-                     BOOST_GET(platform::CUDAPlace, context.GetPlace()),
+                     BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                      trainer_id_data, sizeof(int64_t), stream);
 #endif
     } else {

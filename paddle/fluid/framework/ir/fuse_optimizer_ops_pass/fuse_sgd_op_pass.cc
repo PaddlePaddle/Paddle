@@ -40,8 +40,9 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    int op_role = BOOST_GET(int, sgd_ops[0]->Op()->GetAttr(
-                                     OpProtoAndCheckerMaker::OpRoleAttrName()));
+    int op_role = BOOST_GET_CONST(
+        int,
+        sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
     VLOG(6) << "Insert sgd to graph.";
     // Add fused scale
     OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());

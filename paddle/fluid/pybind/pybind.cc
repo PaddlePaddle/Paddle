@@ -1362,7 +1362,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("gpu_device_id",
            [](platform::Place &self) {
-             return BOOST_GET(platform::CUDAPlace, self).device;
+             return BOOST_GET_CONST(platform::CUDAPlace, self).device;
            })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })

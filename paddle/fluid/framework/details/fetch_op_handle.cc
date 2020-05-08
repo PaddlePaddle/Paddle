@@ -68,22 +68,22 @@ static void CheckDims(const framework::DDim &tensor_dims,
 void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   if (return_merged_) {
     if (data_is_lod_tensor(tensors_[0])) {
-      const auto &tensor_dims = BOOST_GET(LoDTensor, tensors_[0]).dims();
+      const auto &tensor_dims = BOOST_GET_CONST(LoDTensor, tensors_[0]).dims();
       for (size_t i = 1; i < tensors_.size(); i++) {
-        const auto &ele_dims = BOOST_GET(LoDTensor, tensors_[i]).dims();
+        const auto &ele_dims = BOOST_GET_CONST(LoDTensor, tensors_[i]).dims();
         CheckDims(tensor_dims, ele_dims, offset_);
       }
       std::vector<const LoDTensor *> tensors_ptr;
       tensors_ptr.reserve(tensors_.size());
       for (auto &t : tensors_) {
-        tensors_ptr.emplace_back(&BOOST_GET(LoDTensor, t));
+        tensors_ptr.emplace_back(&BOOST_GET_CONST(LoDTensor, t));
       }
       auto &val = BOOST_GET(FetchList, *data_);
       LoDTensor var;
       var.MergeLoDTensor(tensors_ptr, platform::CPUPlace());
       val.at(offset_) = std::move(var);
     } else {
-      auto &array = BOOST_GET(LoDTensorArray, tensors_[0]);
+      auto &array = BOOST_GET_CONST(LoDTensorArray, tensors_[0]);
       LoDTensorArray tmp_array;
       tmp_array.reserve(array.size());
       for (size_t i = 0; i < array.size(); ++i) {
@@ -92,7 +92,7 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
         tensors_ptr.reserve(tensors_.size());
         tensors_ptr.push_back(&array[i]);
         for (size_t j = 1; j < tensors_.size(); ++j) {
-          auto &element = BOOST_GET(LoDTensorArray, tensors_[j]);
+          auto &element = BOOST_GET_CONST(LoDTensorArray, tensors_[j]);
           const auto &ele_dims = element[i].dims();
           CheckDims(tensor_dims, ele_dims, offset_);
           tensors_ptr.push_back(&element[i]);

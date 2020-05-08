@@ -194,9 +194,10 @@ class Vector {
     std::mutex &Mutex() const { return mtx_; }
 
     boost::optional<platform::CUDAPlace> CUDAPlace() const {
-      return gpu_ == nullptr ? boost::none
-                             : boost::optional<platform::CUDAPlace>(BOOST_GET(
-                                   platform::CUDAPlace, gpu_->place()));
+      return gpu_ == nullptr
+                 ? boost::none
+                 : boost::optional<platform::CUDAPlace>(
+                       BOOST_GET_CONST(platform::CUDAPlace, gpu_->place()));
     }
 
    private:

@@ -73,7 +73,7 @@ class ReadInferShape : public framework::InferShapeBase {
 class ReadInferVarType : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    bool infer_out = BOOST_GET(bool, ctx->GetAttr("infer_out"));
+    bool infer_out = BOOST_GET_CONST(bool, ctx->GetAttr("infer_out"));
     if (infer_out) {
       std::string reader_name = Input(ctx, "Reader")[0];
       auto& out_names = Output(ctx, "Out");

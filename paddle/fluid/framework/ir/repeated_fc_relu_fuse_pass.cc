@@ -42,7 +42,7 @@ static bool IsOutputOfFC(Node* n) {
 static bool IsFCWithAct(Node* n, const std::string& act_type = "relu") {
   if (n && n->IsOp() && n->Op() && n->Op()->Type() == "fc" &&
       n->inputs.size() == 3U && n->outputs.size() == 1U) {
-    return BOOST_GET(std::string, n->Op()->GetAttr("activation_type")) ==
+    return BOOST_GET_CONST(std::string, n->Op()->GetAttr("activation_type")) ==
            act_type;
   }
   return false;
