@@ -45,6 +45,7 @@ class PartialProgramLayer(layers.Layer):
         self.outputs = outputs
         self._params = parameters
         self._infer_program = main_program
+        check_params_init_outside(main_program, parameters)
         self._train_program = self._append_backward_desc()
         # Switch infer or train by train() and eval()
         self._trace_program = None
@@ -156,6 +157,23 @@ class PartialProgramLayer(layers.Layer):
             param._set_grad_type(grad_var.type())
 
 
+def check_params_init_outside(program, params_from_init):
+    """
+    Check all params from the functions decorated by @declarative are defined outside,
+    such as `__init__` function.
+    """
+    params_name_set = set(p.name for p in params_from_init)
+    for block in program.blocks:
+        for name, var in block.vars.items():
+            if isinstance(var,
+                          framework.Parameter) and name not in params_name_set:
+                raise ValueError(
+                    "We don't support to define layer with parameters in the function "
+                    "decorated by `@declarative`. But found parameter(%s) created in "
+                    "the decorated function. Please define the layer "
+                    "in `__init__` function." % name)
+
+
 def valid_vars(vars):
     """
     Note: run_program_op.InferShape requires `X`/'Out' not be null.
@@ -170,18 +188,6 @@ def valid_vars(vars):
             name='Fake_var',
             place=framework._current_expected_place())
     ]
-
-
-def append_grad_suffix(name):
-    """
-    Append grad suffix to the given variable name.
-    e.g. x ==> x@GRAD
-    """
-    suffix = core.kGradVarSuffix()
-    name = cpt.to_text(name)
-    if suffix not in name:
-        name = name + suffix
-    return name
 
 
 def partial_program_from(concrete_program):
