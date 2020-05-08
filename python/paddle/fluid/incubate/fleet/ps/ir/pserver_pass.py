@@ -680,7 +680,7 @@ def large_scale_sparse_pass(program, config):
         param_blockid_map[param] = grad_blockid_map[grad]
 
     for param, blockid in param_blockid_map.items():
-        p = _orig_varname(param)
+        p = param
         opt_block = program.block(blockid)
         value_names, value_dims = get_optimizer_values(opt_block)
         # training/infer

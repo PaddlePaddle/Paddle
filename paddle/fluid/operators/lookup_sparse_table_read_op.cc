@@ -47,18 +47,21 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     }
 
     std::vector<std::string> value_names;
-    std::vector<std::vector<std::vector<float>>> values;
-    std::vector<int64_t> dims;
+    std::vector<std::string> out_names;
 
     for (int i = 0; i < 5; i++) {
       auto out_name = Output(string::Sprintf("%s%d", "Out", i));
 
       if (HasOutputs(out_name)) {
         value_names.push_back(read_names[i]);
+        out_names.push_back(out_name);
       } else {
         break;
       }
     }
+
+    std::vector<std::vector<std::vector<float>>> values;
+    std::vector<int64_t> dims;
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
     ins->Get(tablename)->Get(ids, value_names, &values);
@@ -67,8 +70,7 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     platform::CPUPlace cpu;
     std::vector<float *> tensors;
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      auto out_name = string::Sprintf("%s%d", "Out", i);
-      auto out_var = scope.Var(Output(out_name));
+      auto out_var = scope.FindLocalVar(Output(out_names[i]));
       auto out_t = out_var->GetMutable<framework::LoDTensor>();
 
       std::vector<int64_t> o_dims;
@@ -114,9 +116,9 @@ class LookupSparseTableReadOpMaker : public framework::OpProtoAndCheckerMaker {
                          "(string)"
                          "sparse table name");
 
-    AddAttr<std::string>("read_names",
-                         "(string)"
-                         "sparse table name");
+    AddAttr<std::vector<std::string>>("read_names",
+                                      "(strings)"
+                                      "sparse table name");
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.
 
