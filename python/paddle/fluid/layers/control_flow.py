@@ -979,6 +979,14 @@ class While(object):
                    "is_test": self.is_test})
 
 
+def assign_skip_lod_tensor_array(inputs, outputs):
+    """
+    Skip the process of copying LoDTensorArray.
+    """
+    if inputs.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assign(inputs, outputs)
+
+
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
@@ -1066,7 +1074,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            loop_vars = output_vars
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1090,7 +1098,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                              "(length and structure) as loop_vars: {0}".format(
                                  e))
         now_cond = cond(*output_vars)
-        map_structure(assign, output_vars, loop_vars)
+        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 
