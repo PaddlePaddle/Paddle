@@ -262,8 +262,8 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
         std::string str_error_message =
             "slice start " + std::to_string(s_t) +
             " is out of bounds for axis " + std::to_string(dim) +
-            ", shound be in \\[" + std::to_string(dim_len) + ", " +
-            std::to_string(-dim_len) + "\\)";
+            ", shound be in [" + std::to_string(dim_len) + ", " +
+            std::to_string(-dim_len) + ")";
         throw py::index_error(str_error_message);
       }
       slice_axes->push_back(dim);
