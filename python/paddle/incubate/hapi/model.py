@@ -340,7 +340,7 @@ class StaticGraphAdapter(object):
                         s[:int(total_size - current_count), ...] for s in state
                     ]
                     self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode + '_batch'] = int(total_size - 
+                    self._merge_count[self.mode + '_batch'] = int(total_size -
                                                                   current_count)
                 else:
                     self._merge_count[self.mode + '_total'] += samples
@@ -554,7 +554,7 @@ class DynamicGraphAdapter(object):
                         l[:int(total_size - current_count)] for l in labels
                     ]
                     self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode + '_batch'] = int(total_size - 
+                    self._merge_count[self.mode + '_batch'] = int(total_size -
                                                                   current_count)
                 else:
                     self._merge_count[self.mode + '_total'] += samples
