@@ -323,7 +323,7 @@ def Assert(cond, data=None, summarize=20, name=None):
 
     Raises:
         TypeError: If ``cond`` is not boolean Variable.
-        TypeError: If ``data`` is not a list or tuple.
+        TypeError: If ``data`` is not a list or tuple or ``None``.
         TypeError: If ``summarize`` is not int.
         TypeError: If ``name`` is not a string or ``None`` .
         fluid.core.EnforceNotMet: If the condition is False in running time.
