@@ -22,7 +22,6 @@ import gzip
 import six
 import collections
 SEED = 2020
-np.random.seed(SEED)
 
 
 def get_bert_config():
@@ -76,9 +75,8 @@ def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
     max_len = max([len(sent) for sent in batch_tokens])
     mask_label = []
     mask_pos = []
-    np.random.seed(2020)
+    np.random.seed(SEED)
     prob_mask = np.random.rand(total_token_num)
-    # print("prob_mask : ", prob_mask)
     # Note: the first token is [CLS], so [low=1]
     replace_ids = np.random.randint(1, high=vocab_size, size=total_token_num)
     pre_sent_len = 0
@@ -334,92 +332,6 @@ class DataReader(object):
             token = token.strip()
             vocab[token] = int(index)
         return vocab
-
-    def random_pair_neg_samples(self, pos_samples):
-        """ randomly generate negtive samples using pos_samples
-
-            Args:
-                pos_samples: list of positive samples
-
-            Returns:
-                neg_samples: list of negtive samples
-        """
-        np.random.shuffle(pos_samples)
-        num_sample = len(pos_samples)
-        neg_samples = []
-        miss_num = 0
-
-        for i in range(num_sample):
-            pair_index = (i + 1) % num_sample
-            origin_src_ids = pos_samples[i][0]
-            origin_sep_index = origin_src_ids.index(2)
-            pair_src_ids = pos_samples[pair_index][0]
-            pair_sep_index = pair_src_ids.index(2)
-
-            src_ids = origin_src_ids[:origin_sep_index + 1] + pair_src_ids[
-                pair_sep_index + 1:]
-            if len(src_ids) > self.max_seq_len:
-                miss_num += 1
-                continue
-            sent_ids = [0] * len(origin_src_ids[:origin_sep_index + 1]) + [
-                1
-            ] * len(pair_src_ids[pair_sep_index + 1:])
-            pos_ids = list(range(len(src_ids)))
-            neg_sample = [src_ids, sent_ids, pos_ids, 0]
-            assert len(src_ids) == len(sent_ids) == len(
-                pos_ids
-            ), "[ERROR]len(src_id) == lne(sent_id) == len(pos_id) must be True"
-            neg_samples.append(neg_sample)
-        return neg_samples, miss_num
-
-    def mixin_negtive_samples(self, pos_sample_generator, buffer=1000):
-        """ 1. generate negtive samples by randomly group sentence_1 and sentence_2 of positive samples
-            2. combine negtive samples and positive samples
-
-            Args:
-                pos_sample_generator: a generator producing a parsed positive sample, which is a list: [token_ids, sent_ids, pos_ids, 1]
-
-            Returns:
-                sample: one sample from shuffled positive samples and negtive samples
-        """
-        pos_samples = []
-        num_total_miss = 0
-        pos_sample_num = 0
-        try:
-            while True:
-                while len(pos_samples) < buffer:
-                    pos_sample = next(pos_sample_generator)
-                    label = pos_sample[3]
-                    assert label == 1, "positive sample's label must be 1"
-                    pos_samples.append(pos_sample)
-                    pos_sample_num += 1
-
-                neg_samples, miss_num = self.random_pair_neg_samples(
-                    pos_samples)
-                num_total_miss += miss_num
-                samples = pos_samples + neg_samples
-                pos_samples = []
-                np.random.shuffle(samples)
-                for sample in samples:
-                    yield sample
-        except StopIteration:
-            print("stopiteration: reach end of file")
-            if len(pos_samples) == 1:
-                yield pos_samples[0]
-            elif len(pos_samples) == 0:
-                yield None
-            else:
-                neg_samples, miss_num = self.random_pair_neg_samples(
-                    pos_samples)
-                num_total_miss += miss_num
-                samples = pos_samples + neg_samples
-                pos_samples = []
-                np.random.shuffle(samples)
-                for sample in samples:
-                    yield sample
-            print("miss_num:%d\tideal_total_sample_num:%d\tmiss_rate:%f" %
-                  (num_total_miss, pos_sample_num * 2,
-                   num_total_miss / (pos_sample_num * 2)))
 
     def data_generator(self):
         files = os.listdir(self.data_dir)
