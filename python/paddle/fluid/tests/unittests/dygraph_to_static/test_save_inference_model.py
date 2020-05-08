@@ -59,7 +59,6 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
 
             for i in range(5):
                 loss, _ = layer(x)
-                print(loss.numpy())
                 loss.backward()
                 adam.minimize(loss)
                 layer.clear_gradients()
