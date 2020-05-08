@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding
@@ -29,6 +29,8 @@ from paddle.fluid.optimizer import SGDOptimizer
 
 PRINT_STEP = 20
 SEED = 2020
+
+program_translator = ProgramTranslator()
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -169,13 +171,6 @@ class PtbModel(fluid.Layer):
     @declarative
     def forward(self, input, label, init_hidden, init_cell):
 
-        # TODO(liym27): Call `to_variable` to feed data successfully.
-        #  Remove to_variable statements later
-        input = to_variable(input)
-        label = to_variable(label)
-        init_hidden = to_variable(init_hidden)
-        init_cell = to_variable(init_cell)
-
         init_h = fluid.layers.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size])
 
@@ -210,7 +205,8 @@ class PtbModel(fluid.Layer):
         np.save("emb_grad", self.x_emb.gradient())
 
 
-def train_dygraph(place):
+def train(place):
+
     num_layers = 1
     batch_size = 4
     hidden_size = 10
@@ -286,78 +282,14 @@ def train_dygraph(place):
             return out_loss, last_hidden.numpy(), last_cell.numpy()
 
 
+def train_dygraph(place):
+    program_translator.enable(False)
+    return train(place)
+
+
 def train_static(place):
-    num_layers = 1
-    batch_size = 4
-    hidden_size = 10
-    num_steps = 3
-    init_scale = 0.1
-    max_epoch = 1
-    dropout = 0.0
-    vocab_size = 1000
-    batch_num = 200
-
-    main_prog = fluid.Program()
-    startup_prog = fluid.Program()
-    main_prog.random_seed = SEED
-    startup_prog.random_seed = SEED
-    with fluid.program_guard(main_prog, startup_prog):
-
-        ptb_model = PtbModel(
-            hidden_size=hidden_size,
-            vocab_size=vocab_size,
-            num_layers=num_layers,
-            num_steps=num_steps,
-            init_scale=init_scale,
-            dropout=dropout)
-
-        sgd = SGDOptimizer(
-            learning_rate=1e-3, parameter_list=ptb_model.parameters())
-        program_translator = ProgramTranslator()
-        program_translator.set_optimizer(sgd, index_of_loss=0)
-
-        for epoch_id in range(max_epoch):
-
-            total_loss = 0.0
-            iters = 0.0
-            total_sample = 0
-
-            init_hidden_data = np.zeros(
-                (num_layers, batch_size, hidden_size), dtype='float32')
-            init_cell_data = np.zeros(
-                (num_layers, batch_size, hidden_size), dtype='float32')
-
-            for step_id in range(batch_num):
-                x_data = np.arange(12).reshape(4, 3).astype('int64')
-                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                y_data = y_data.reshape((-1, 1))
-
-                x_data = x_data.reshape((-1, num_steps, 1))
-                y_data = y_data.reshape((-1, num_steps, 1))
-
-                dy_loss, last_hidden, last_cell = ptb_model(
-                    x_data, y_data, init_hidden_data, init_cell_data)
-
-                out_loss = dy_loss.numpy()
-                total_loss += out_loss
-                iters += num_steps
-                total_sample += 1
-
-                if step_id % PRINT_STEP == 0:
-                    if step_id == 0:
-                        logging.info(
-                            "epoch %d | step %d, loss %0.3f" %
-                            (epoch_id, step_id, total_loss / total_sample))
-                        avg_batch_time = time.time()
-                    else:
-                        speed = PRINT_STEP / (time.time() - avg_batch_time)
-                        logging.info(
-                            "epoch %d | step %d, loss %0.3f, speed %.3f steps/s"
-                            % (epoch_id, step_id, total_loss / total_sample,
-                               speed))
-                        avg_batch_time = time.time()
-
-            return out_loss, last_hidden.numpy(), last_cell.numpy()
+    program_translator.enable(True)
+    return train(place)
 
 
 class TestPtb(unittest.TestCase):
