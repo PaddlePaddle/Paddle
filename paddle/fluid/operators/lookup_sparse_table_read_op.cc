@@ -52,12 +52,11 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     for (int i = 0; i < 5; i++) {
       auto out_name = Output(string::Sprintf("%s%d", "Out", i));
 
-      if (HasOutputs(out_name)) {
-        value_names.push_back(read_names[i]);
-        out_names.push_back(out_name);
-      } else {
+      if (scope.FindVar(out_name) == nullptr) {
         break;
       }
+      value_names.push_back(read_names[i]);
+      out_names.push_back(out_name);
     }
 
     std::vector<std::vector<std::vector<float>>> values;
@@ -70,7 +69,7 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     platform::CPUPlace cpu;
     std::vector<float *> tensors;
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
-      auto out_var = scope.FindLocalVar(Output(out_names[i]));
+      auto out_var = scope.FindVar(out_names[i]);
       auto out_t = out_var->GetMutable<framework::LoDTensor>();
 
       std::vector<int64_t> o_dims;
