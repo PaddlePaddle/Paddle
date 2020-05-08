@@ -35,29 +35,50 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   }
   int err_no = 0;
   for (int i = 1; i <= retry_times_; ++i) {
+    err_no = 0;
     std::shared_ptr<FILE> fp =
         paddle::framework::fs_open_write(tmp, &err_no, "");
-    if (err_no != 0) {
-      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
-              << err_no;
-      fp.reset();
-      sleep(wait_sleep_ms_ / 1000);
-      continue;
-    }
     size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
     if (write_count != data.size()) {
       VLOG(0) << "fwrite_unlocked failed, retry times " << i << " write_count "
               << write_count << " data.size() " << data.size();
-      fp.reset();
-      sleep(2);
-      continue;
+      err_no = -1;
     }
     fp.reset();
-    break;
+    if (err_no != 0) {
+        VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
+            << err_no;
+        sleep(wait_sleep_ms_ / 1000);
+        paddle::framework::fs_remove(tmp);
+        if (i == retry_times_) {
+            VLOG(0) << "fs_open_write failed, retry times reaches limit";
+            //PADDLE_THROW(platform::errors::PreconditionNotMet(
+            //            "fs_open_write failed, retry times reaches"
+            //            " limit ",
+            //            retry_times_));
+        }
+    } else {
+        break;
+    }
   }
   paddle::framework::fs_mv(tmp, path);
 #endif
 }
+
+#ifdef PADDLE_WITH_GLOO
+int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
+                  uint32_t retry_interval_ms) {
+  for (uint32_t i = 0; i < max_try_time; ++i) {
+    if (func() == 0) {
+      return 0;
+    }
+#ifdef _LINUX
+    usleep(retry_interval_ms * 1000);
+#endif
+  }
+  return -1;
+}
+#endif
 
 std::vector<char> HdfsStore::get(const std::string& key) {
   auto path = ObjectPath(key);
@@ -65,19 +86,35 @@ std::vector<char> HdfsStore::get(const std::string& key) {
 #ifdef PADDLE_WITH_GLOO
   // block until key is set
   wait({key});
-  bool is_exists = paddle::framework::fs_exists(path);
+  int ret = retry_do_func(
+      [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; }, 5,
+      wait_sleep_ms_);
+  bool is_exists = (ret == 0);
   PADDLE_ENFORCE_EQ(is_exists, true,
                     paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
-  int err_no = 0;
-  std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
-  char buffer = '\0';
-  size_t read_count = 0;
-  while (fread(&buffer, 1, 1, fp.get()) == 1) {
-    ++read_count;
-    result.push_back(buffer);
-  }
-  VLOG(3) << "HdfsStore::get read_count " << read_count;
+
+  int read_status = retry_do_func(
+      [&path, &result]() {
+        result.clear();
+        int err_no = 0;
+        {
+          std::shared_ptr<FILE> fp =
+              paddle::framework::fs_open_read(path, &err_no, "");
+          char buffer = '\0';
+          size_t read_count = 0;
+          while (fread(&buffer, 1, 1, fp.get()) == 1) {
+            ++read_count;
+            result.push_back(buffer);
+          }
+          VLOG(3) << "HdfsStore::get read_count " << read_count;
+        }
+        return err_no;
+      },
+      5, wait_sleep_ms_);
+  PADDLE_ENFORCE_EQ(read_status, 0,
+                    paddle::platform::errors::Fatal(
+                        "HdfsStore::get, path read faied: " + path));
 #endif
   return result;
 }

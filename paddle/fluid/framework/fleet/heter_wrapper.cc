@@ -46,8 +46,8 @@ void HeterWrapper::CreateClient2XpuConnection() {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
   options.connection_type = "single";
-  options.timeout_ms = 2000;
-  
+  options.timeout_ms = 200000;
+
   xpu_channels_.resize(xpu_list_.size());
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
     VLOG(3) << "channel init: " << xpu_list_[i];
@@ -113,21 +113,11 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope, Vari
   req_data->resize(tensor->numel() * SizeOfType(tensor->type()));
   char* data_ptr = const_cast<char*>(req_data->data());
 
-  #ifdef PADDLE_WITH_CUDA
-  memory::Copy(
-      platform::CPUPlace(),
-      data_ptr,
-      boost::get<platform::CUDAPlace>(tensor->place()),
-      tensor->data<void>(),
-      tensor->numel() * SizeOfType(tensor->type()), nullptr);
-
-  #else
   memcpy(data_ptr, tensor->data<void>(), tensor->numel() * SizeOfType(tensor->type()));
-  #endif
 }
 
 //void HeterWrapper::DeSerializeToTensor(Scope* scope, const HeterRequest* request) {
-void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place) {
+void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_var) {
   //const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
   auto* tensor = var->GetMutable<LoDTensor>();
@@ -149,19 +139,8 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_
   tensor->set_lod(lod);
 
   void* tensor_data =
-      tensor->mutable_data(place, ToVarType(req_var.data_type()));
- 
-  if (platform::is_cpu_place(place)) {
-    memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
-  }
-  else {
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(place),
-        tensor_data,
-        platform::CPUPlace(),
-        req_var.data().data(), 
-        tensor->numel() * SizeOfType(tensor->type()), nullptr);
-  }
+      tensor->mutable_data(platform::CPUPlace(), ToVarType(req_var.data_type()));
+  memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
 }
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(
@@ -222,10 +201,7 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker
     else {
       VLOG(3) << "call xpu success";
     }
-    DeSerializeToTensor(task->scope_, closure->response.vars(), platform::CPUPlace());
-    //for (int i = 0; i < closure->response.vars_size(); ++i) {
-    //  DeSerializeToTensor(task->scope_, closure->response.vars(i));
-    //}
+    DeSerializeToTensor(task->scope_, closure->response.vars());
 
     worker->Schedule(task->taskid_); 
   }); 
