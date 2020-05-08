@@ -14,6 +14,7 @@
 
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
+import paddle
 
 __all__ = [
     #       'NCELoss',
@@ -28,7 +29,7 @@ __all__ = [
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
     This operator implements the cross entropy loss function. This OP combines ``softmax``,
-    ``cross_entropy``, and ``reduce_sum``/``reduce_mean`` together.
+    ``log``, and ``NLLLoss`` together.
 
     It is useful when training a classification problem with ``C`` classes.
     If provided, the optional argument ``weight`` should be a 1D Variable assigning
@@ -62,6 +63,8 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+        ignore_index (int64, optional): Specifies a target value that is ignored
+            and does not contribute to the input gradient. Default is ``-100``.
 
     Returns:
         The tensor variable storing the cross_entropy_loss of input and label.
@@ -76,17 +79,17 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             import paddle.fluid as fluid
             import numpy as np
 
-            input = fluid.layers.data(name='input', shape=[5, 100], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[5, 1], dtype='int64')
-            weight = fluid.layers.data(name='weight', shape=[100], dtype='float32')
+            input = fluid.data(name='input', shape=[5, 100], dtype='float64')
+            label = fluid.data(name='label', shape=[5], dtype='int64')
+            weight = fluid.data(name='weight', shape=[100], dtype='float64')
             ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
-            output = ce_loss(input,label)
+            output = ce_loss(input, label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            input_data = np.random.random([5, 100]).astype("float32")
-            label_data = np.array([[1], [9], [40], [50], [90]]).astype("int64")
-            weight_data = np.random.random([100]).astype("float32")
+            input_data = np.random.random([5, 100]).astype("float64")
+            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
+            weight_data = np.random.random([100]).astype("float64")
             output = exe.run(fluid.default_main_program(),
                         feed={"input": input_data, "label": label_data,"weight": weight_data},
                         fetch_list=[output],
@@ -104,10 +107,11 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                 print(output.numpy())
     """
 
-    def __init__(self, weight=None, reduction='mean'):
+    def __init__(self, weight=None, reduction='mean', ignore_index=-100):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
+        self.ignore_index = ignore_index
 
     def forward(self, input, label):
         fluid.data_feeder.check_variable_and_dtype(
@@ -119,26 +123,22 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
         if self.reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "The value of 'reduction' in cross_entropy_loss should be 'sum', 'mean' or 'none',"
-                " but received %s, which is not allowed." % self.reduction)
+                "The value of 'reduction' in cross_entropy_loss should be 'sum', 'mean' or"
+                " 'none', but received %s, which is not allowed." %
+                self.reduction)
 
         softmax_out = fluid.layers.softmax(input)
-        if self.weight is not None:
-            if isinstance(self.weight, fluid.framework.Variable):
-                softmax_out = fluid.layers.elementwise_pow(
-                    softmax_out, self.weight, axis=-1)
-            else:
-                raise ValueError(
-                    "The weight' is not a Variable, please convert to Variable.")
+        log_softmax_out = fluid.layers.log(softmax_out)
+        if self.weight is not None and not isinstance(self.weight,
+                                                      fluid.framework.Variable):
+            raise ValueError(
+                "The weight' is not a Variable, please convert to Variable.")
+        nll_loss = paddle.nn.loss.NLLLoss(
+            weight=self.weight,
+            reduction=self.reduction,
+            ignore_index=self.ignore_index)
 
-        out = fluid.layers.cross_entropy(softmax_out, label)
-
-        if self.reduction == 'sum':
-            return fluid.layers.reduce_sum(out)
-        elif self.reduction == 'mean':
-            return fluid.layers.reduce_mean(out)
-        else:
-            return out
+        return nll_loss(log_softmax_out, label)
 
 
 class MSELoss(fluid.dygraph.layers.Layer):
@@ -578,7 +578,6 @@ class NLLLoss(fluid.dygraph.Layer):
 
         inputs = {'X': input, 'Label': label}
         attrs = {'reduction': self.reduction, 'ignore_index': self.ignore_index}
-
         if self.weight is not None:
             if isinstance(self.weight, fluid.framework.Variable):
                 inputs['Weight'] = self.weight
