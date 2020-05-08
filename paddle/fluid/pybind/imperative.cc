@@ -257,6 +257,9 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
       // integer
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       start = start < 0 ? start + dim_len : start;
+      if (start >= dim_len) {
+        throw py::index_error("out of range");
+      }
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(start + 1);
