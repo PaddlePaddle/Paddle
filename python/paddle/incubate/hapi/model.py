@@ -336,10 +336,12 @@ class StaticGraphAdapter(object):
                 samples = state[0].shape[0]
                 current_count = self._merge_count.get(self.mode + '_total', 0)
                 if current_count + samples >= total_size:
-                    state = [s[:int(total_size - current_count), ...] for s in state]
+                    state = [
+                        s[:int(total_size - current_count), ...] for s in state
+                    ]
                     self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode +
-                                      '_batch'] = int(total_size - current_count)
+                    self._merge_count[self.mode + '_batch'] = int(total_size - 
+                                                                  current_count)
                 else:
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
@@ -545,11 +547,15 @@ class DynamicGraphAdapter(object):
                 samples = outputs[0].shape[0]
                 current_count = self._merge_count.get(self.mode + '_total', 0)
                 if current_count + samples >= total_size:
-                    outputs = [o[:int(total_size - current_count)] for o in outputs]
-                    labels = [l[:int(total_size - current_count)] for l in labels]
+                    outputs = [
+                        o[:int(total_size - current_count)] for o in outputs
+                    ]
+                    labels = [
+                        l[:int(total_size - current_count)] for l in labels
+                    ]
                     self._merge_count[self.mode + '_total'] = 0
-                    self._merge_count[self.mode +
-                                      '_batch'] = int(total_size - current_count)
+                    self._merge_count[self.mode + '_batch'] = int(total_size - 
+                                                                  current_count)
                 else:
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
