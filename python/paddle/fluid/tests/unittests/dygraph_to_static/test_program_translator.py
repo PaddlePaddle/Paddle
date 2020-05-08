@@ -31,22 +31,24 @@ from ifelse_simple_func import dyfunc_with_if_else
 np.random.seed(0)
 
 
+# TODO(Aurelius): Currently, `declarative` don't support decorate the function
+# that contains layers with initialized operation, like `fc = linear(10, 3)`.
+# Because initialized ops will be added into program and be executed many times.
+# The parameters are assumed to initialized outside of the function.
 def simple_func(x, weight_numpy):
-    weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
-    linear = Linear(32, 64, param_attr=weight_initalizer, bias_attr=False)
     x = fluid.dygraph.to_variable(x)
-    y = linear(x)
-    z = linear(x)
+    w = fluid.dygraph.to_variable(weight_numpy)
+    y = fluid.layers.matmul(x, w)
+    z = fluid.layers.mean(y)
     return z
 
 
 @declarative
 def decorated_simple_func(x, weight_numpy):
-    weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
-    linear = Linear(32, 64, param_attr=weight_initalizer, bias_attr=False)
     x = fluid.dygraph.to_variable(x)
-    y = linear(x)
-    z = linear(x)
+    w = fluid.dygraph.to_variable(weight_numpy)
+    y = fluid.layers.matmul(x, w)
+    z = fluid.layers.mean(y)
     return z
 
 
@@ -125,7 +127,7 @@ class TestEnableDeclarative(unittest.TestCase):
         weight = np.random.randn(32, 64).astype('float32')
         program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with fluid.dygraph.guard():
             program_translator.enable(True)
             static_output = program_translator.get_output(simple_func, x,
                                                           weight)
@@ -143,7 +145,7 @@ class TestEnableDeclarative(unittest.TestCase):
         weight = np.random.randn(32, 64).astype('float32')
         program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with fluid.dygraph.guard():
             program_translator.enable(True)
             static_func = program_translator.get_func(simple_func)
             self.assertTrue(callable(static_func))
@@ -162,14 +164,12 @@ class TestEnableDeclarative(unittest.TestCase):
         weight = np.random.randn(32, 64).astype('float32')
         program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable(True)
-            static_output = program_translator.get_program(simple_func, x,
-                                                           weight)
-            self.assertTrue(isinstance(static_output, tuple))
-            self.assertEqual(len(static_output), 4)
-            self.assertTrue(isinstance(static_output[0], fluid.Program))
-            self.assertTrue(isinstance(static_output[1], fluid.Program))
+        program_translator.enable(True)
+        static_output = program_translator.get_program(simple_func, x, weight)
+        self.assertTrue(isinstance(static_output, tuple))
+        self.assertEqual(len(static_output), 4)
+        self.assertTrue(isinstance(static_output[0], fluid.Program))
+        self.assertTrue(isinstance(static_output[1], fluid.Program))
 
         program_translator.enable(False)
         with fluid.dygraph.guard():
@@ -182,7 +182,7 @@ class TestEnableDeclarative(unittest.TestCase):
         weight = np.random.randn(32, 64).astype('float32')
         program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with fluid.dygraph.guard():
             program_translator.enable(True)
             static_output = decorated_simple_func(x, weight)
 

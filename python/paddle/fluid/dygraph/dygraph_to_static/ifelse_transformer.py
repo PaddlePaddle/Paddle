@@ -22,7 +22,6 @@ from collections import defaultdict
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 import gast
-import six
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api

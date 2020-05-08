@@ -20,8 +20,8 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
+from paddle.fluid.dygraph.jit import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -149,19 +149,17 @@ class TestTransformWhileLoop(unittest.TestCase):
         self.dyfunc = while_loop_dyfunc
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x_var = fluid.layers.assign(self.x)
-            static_func = dygraph_to_static_func(self.dyfunc)
-
-            out = static_func(x_var)
-            exe = fluid.Executor(self.place)
-            ret = exe.run(main_program, fetch_list=out)
-        return ret
+        return self._run(to_static=True)
 
     def _run_dygraph(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            ret = self.dyfunc(fluid.dygraph.to_variable(self.x))
+            if to_static:
+                ret = declarative(self.dyfunc)(self.x)
+            else:
+                ret = self.dyfunc(self.x)
             return ret.numpy()
 
     def test_ast_to_func(self):
@@ -201,22 +199,20 @@ class TestTransformForLoop(unittest.TestCase):
         self.dyfunc = for_loop_dyfunc
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            static_func = dygraph_to_static_func(self.dyfunc)
-            out = static_func(self.len)
-            exe = fluid.Executor(self.place)
-            ret = exe.run(main_program, fetch_list=out)
-        return ret
+        return self._run(to_static=True)
 
     def _run_dygraph(self):
+        return self._run(to_static=False)
+
+    def _run(self, to_static):
         with fluid.dygraph.guard(self.place):
-            ret = self.dyfunc(self.len)
+            if to_static:
+                ret = declarative(self.dyfunc)(self.len)
+            else:
+                ret = self.dyfunc(self.len)
             return ret.numpy()
 
     def test_ast_to_func(self):
-        static_numpy = self._run_static()
-        self._run_dygraph()
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
 
 
