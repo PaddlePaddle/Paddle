@@ -1371,7 +1371,7 @@ def load_inference_model(dirname,
     if dirname is not None:
         load_dirname = os.path.normpath(dirname)
         if not os.path.isdir(load_dirname):
-            raise ValueError("There is no directory named '%s'", dirname)
+            raise ValueError("There is no directory named '%s'" % dirname)
 
         if model_filename is None:
             model_filename = '__model__'
