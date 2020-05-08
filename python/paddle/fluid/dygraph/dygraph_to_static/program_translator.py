@@ -184,7 +184,7 @@ class ConcreteProgram(object):
             inputs = func_spec.to_static_inputs(main_program)
 
             # 2. Gets all ParamBases in the function
-            all_parameters = func_spec.parameters().values()
+            all_parameters = list(func_spec.parameters().values())
 
             # 3. Builds program only once and returns the output Variables.
             with param_guard(func_spec.parameters(False)):
