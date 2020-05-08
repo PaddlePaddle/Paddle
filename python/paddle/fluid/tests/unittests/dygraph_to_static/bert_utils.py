@@ -13,14 +13,8 @@
 # limitations under the License.
 from __future__ import absolute_import, division, print_function
 
-import collections
-import gzip
-import io
-import os
-
 import numpy as np
-import six
-
+import random
 SEED = 2020
 
 
@@ -45,26 +39,6 @@ def get_bert_config():
         "vocab_size": 21128
     }
     return bert_config
-
-
-def str2bool(v):
-    # because argparse does not support to parse "true, False" as python
-    # boolean directly
-    return v.lower() in ("true", "t", "1")
-
-
-class ArgumentGroup(object):
-    def __init__(self, parser, title, des):
-        self._group = parser.add_argument_group(title=title, description=des)
-
-    def add_arg(self, name, type, default, help, **kwargs):
-        type = str2bool if type == bool else type
-        self._group.add_argument(
-            "--" + name,
-            default=default,
-            type=type,
-            help=help + ' Default: %(default)s.',
-            **kwargs)
 
 
 def mask(batch_tokens, total_token_num, vocab_size, CLS=1, SEP=2, MASK=3):
@@ -190,8 +164,6 @@ def prepare_batch_data(insts,
     batch_sent_ids = [inst[1] for inst in insts]
     batch_pos_ids = [inst[2] for inst in insts]
     labels_list = []
-    # compatible with squad, whose example includes start/end positions,
-    # or unique id
 
     for i in range(3, len(insts[0]), 1):
         labels = [inst[i] for inst in insts]
@@ -230,13 +202,12 @@ def prepare_batch_data(insts,
     else:
         return_list = [src_id, pos_id, sent_id, self_input_mask] + labels_list
 
-    return return_list if len(return_list) > 1 else return_list[0]
+    res = return_list if len(return_list) > 1 else return_list[0]
+    return res
 
 
 class DataReader(object):
     def __init__(self,
-                 data_dir,
-                 vocab_path,
                  batch_size=4096,
                  in_tokens=True,
                  max_seq_len=512,
@@ -246,8 +217,6 @@ class DataReader(object):
                  is_test=False,
                  generate_neg_sample=False):
 
-        self.vocab = self.load_vocab(vocab_path)
-        self.data_dir = data_dir
         self.batch_size = batch_size
         self.in_tokens = in_tokens
         self.shuffle_files = shuffle_files
@@ -258,10 +227,11 @@ class DataReader(object):
         self.current_file = None
         self.voc_size = voc_size
         self.max_seq_len = max_seq_len
-        self.pad_id = self.vocab["[PAD]"]
-        self.cls_id = self.vocab["[CLS]"]
-        self.sep_id = self.vocab["[SEP]"]
-        self.mask_id = self.vocab["[MASK]"]
+
+        self.pad_id = 0
+        self.cls_id = 101
+        self.sep_id = 102
+        self.mask_id = 103
         self.is_test = is_test
         self.generate_neg_sample = generate_neg_sample
         if self.in_tokens:
@@ -272,84 +242,33 @@ class DataReader(object):
             self.epoch = 1
             self.shuffle_files = False
 
-    def parse_line(self, line, max_seq_len=512):
-        """ parse one line to token_ids, sentence_ids, pos_ids, label
-        """
-        line = line.strip().decode().split(";")
-        assert len(line) == 4, "One sample must have 4 fields!"
-        (token_ids, sent_ids, pos_ids, label) = line
-        token_ids = [int(token) for token in token_ids.split(" ")]
-        sent_ids = [int(token) for token in sent_ids.split(" ")]
-        pos_ids = [int(token) for token in pos_ids.split(" ")]
-        assert len(token_ids) == len(sent_ids) == len(
-            pos_ids
-        ), "[Must be true]len(token_ids) == len(sent_ids) == len(pos_ids)"
-        label = int(label)
-        if len(token_ids) > max_seq_len:
-            return None
-        return [token_ids, sent_ids, pos_ids, label]
+    def build_fake_data(self):
+        for _ in range(1000000):
+            random.seed(SEED)
+            sent0_len = random.randint(50, 100)
+            sent1_len = random.randint(50, 100)
 
-    def read_file(self, file):
-        assert file.endswith('.gz'), "[ERROR] %s is not a gzip file" % file
-        file_path = self.data_dir + "/" + file
-        with gzip.open(file_path, "rb") as f:
-            for line in f:
-                parsed_line = self.parse_line(
-                    line, max_seq_len=self.max_seq_len)
-                if parsed_line is None:
-                    continue
-                yield parsed_line
+            token_ids = [1] \
+                        + [random.randint(0, 10000) for i in range(sent0_len-1)] \
+                        + [random.randint(0, 10000) for i in range(sent1_len-1)] \
+                        + [2]
 
-    def convert_to_unicode(self, text):
-        """Converts `text` to Unicode (if it's not already), assuming utf-8 input."""
-        if six.PY3:
-            if isinstance(text, str):
-                return text
-            elif isinstance(text, bytes):
-                return text.decode("utf-8", "ignore")
-            else:
-                raise ValueError("Unsupported string type: %s" % (type(text)))
-        elif six.PY2:
-            if isinstance(text, str):
-                return text.decode("utf-8", "ignore")
-            elif isinstance(text, unicode):
-                return text
-            else:
-                raise ValueError("Unsupported string type: %s" % (type(text)))
-        else:
-            raise ValueError("Not running on Python2 or Python 3?")
-
-    def load_vocab(self, vocab_file):
-        """Loads a vocabulary file into a dictionary."""
-        vocab = collections.OrderedDict()
-        fin = io.open(vocab_file, encoding="utf8")
-        for num, line in enumerate(fin):
-            items = self.convert_to_unicode(line.strip()).split("\t")
-            if len(items) > 2:
-                break
-            token = items[0]
-            index = items[1] if len(items) == 2 else num
-            token = token.strip()
-            vocab[token] = int(index)
-        return vocab
+            sent_ids = [0 for i in range(sent0_len)
+                        ] + [1 for i in range(sent1_len)]
+            pos_ids = [i for i in range(sent0_len + sent1_len)]
+            label = 1
+            yield token_ids, sent_ids, pos_ids, label
 
     def data_generator(self):
-        files = os.listdir(self.data_dir)
-        self.total_file = len(files)
-        assert self.total_file > 0, "[Error] data_dir is empty"
-
         def wrapper():
             def reader():
                 for epoch in range(self.epoch):
                     self.current_epoch = epoch + 1
-                    for index, file in enumerate(files):
-                        self.current_file_index = index + 1
-                        self.current_file = file
-                        sample_generator = self.read_file(file)
-                        for sample in sample_generator:
-                            if sample is None:
-                                continue
-                            yield sample
+                    sample_generator = self.build_fake_data()
+                    for sample in sample_generator:
+                        if sample is None:
+                            continue
+                        yield sample
 
             def batch_reader(reader, batch_size, in_tokens):
                 batch, total_token_num, max_len = [], 0, 0
@@ -391,8 +310,6 @@ class DataReader(object):
 class ModelHyperParams(object):
     generate_neg_sample = False
     epoch = 100
-    data_dir = "./data/train/"
-    vocab_path = "./vocab.txt"
     max_seq_len = 512
     batch_size = 8192
     in_tokens = True
@@ -401,10 +318,8 @@ class ModelHyperParams(object):
 def get_feed_data_reader(bert_config):
     args = ModelHyperParams()
     data_reader = DataReader(
-        data_dir=args.data_dir,
         batch_size=args.batch_size,
         in_tokens=args.in_tokens,
-        vocab_path=args.vocab_path,
         voc_size=bert_config['vocab_size'],
         epoch=args.epoch,
         max_seq_len=args.max_seq_len,

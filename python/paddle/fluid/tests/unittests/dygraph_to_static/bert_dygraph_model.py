@@ -330,11 +330,7 @@ class PretrainModelLayer(Layer):
             x=enc_output, shape=[-1, self._emb_size])
 
         mask_feat = fluid.layers.gather(input=reshaped_emb_out, index=mask_pos)
-
         mask_trans_feat = self.pooled_fc(mask_feat)
-        # mask_trans_feat = self.pre_process_layer(None, mask_trans_feat, "n",
-        #                                          self._prepostprocess_dropout)
-        # todo: changed
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 
         if self._weight_sharing:
