@@ -987,6 +987,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   }
   std::string inference_prog_desc = GetSerializedProgram();
   outfile->write(inference_prog_desc.data(), inference_prog_desc.size());
+  outfile->close();
   // save params
   framework::ProgramDesc save_program;
   auto *save_block = save_program.MutableBlock(0);

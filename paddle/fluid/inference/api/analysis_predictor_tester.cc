@@ -17,7 +17,6 @@
 #include <gtest/gtest.h>
 #include <fstream>
 #include <thread>  // NOLINT
-#include "cryptopp/osrng.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -221,7 +220,7 @@ TEST(SecModelTest, secure_model_test) {
   config_save_enc.set_key(key);
 
   auto save_predictor = CreatePaddlePredictor<AnalysisConfig>(config_save_enc);
-  std::string enc_dir = FLAGS_dirname + "_encrypted";
+  std::string enc_dir = FLAGS_dirname;
   dynamic_cast<AnalysisPredictor*>(save_predictor.get())
       ->SaveOptimModel(enc_dir);
 

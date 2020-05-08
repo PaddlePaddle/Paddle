@@ -2137,7 +2137,7 @@ def gen_key(length=256, filename=None):
 
             import paddle.fluid as fluid
 
-            key = fluid.framework.io.gen_key(256, "keyfile")
+            key = fluid.io.gen_key(256, "keyfile")
 
     """
 

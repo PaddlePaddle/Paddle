@@ -160,14 +160,23 @@ class CryptFilebuf : public std::filebuf {
 
 class CryptOfstream : public std::ostream {
  public:
-  CryptOfstream() : _fs(nullptr), _e(nullptr), _ef(nullptr), _fout(nullptr) {
+  CryptOfstream()
+      : std::ostream(nullptr),
+        _fs(nullptr),
+        _e(nullptr),
+        _ef(nullptr),
+        _fout(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
   }
 
   explicit CryptOfstream(const char* s,
                          std::ios_base::openmode mode = std::ios_base::out)
-      : _fs(nullptr), _e(nullptr), _ef(nullptr), _fout(nullptr) {
+      : std::ostream(nullptr),
+        _fs(nullptr),
+        _e(nullptr),
+        _ef(nullptr),
+        _fout(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
     this->open(s, mode);
@@ -176,7 +185,8 @@ class CryptOfstream : public std::ostream {
   explicit CryptOfstream(const char* s, std::ios_base::openmode mode,
                          bool sec_enhanced, const unsigned char* key_str,
                          const size_t key_len, const int TAG_SIZE = 16,
-                         const int IV_SIZE = 12) {
+                         const int IV_SIZE = 12)
+      : std::ostream(nullptr) {
     if (sec_enhanced) {
       CryptoPP::AutoSeededRandomPool prng;
       CryptoPP::SecByteBlock key(key_str, key_len);
@@ -262,14 +272,14 @@ class CryptOfstream : public std::ostream {
 // all ciphertexts in file had been read comppletely
 class CryptIfstream : public std::istream {
  public:
-  CryptIfstream() : _d(nullptr), _df(nullptr) {
+  CryptIfstream() : std::istream(nullptr), _d(nullptr), _df(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
   }
 
   explicit CryptIfstream(const char* s,
                          std::ios_base::openmode mode = std::ios_base::in)
-      : _d(nullptr), _df(nullptr) {
+      : std::istream(nullptr), _d(nullptr), _df(nullptr) {
     _fbuf = new CryptFilebuf();
     this->init(_fbuf);
     this->open(s, mode);
@@ -278,7 +288,8 @@ class CryptIfstream : public std::istream {
   explicit CryptIfstream(const char* s, std::ios_base::openmode mode,
                          bool sec_enhanced, const unsigned char* key_str,
                          const size_t key_len, const int TAG_SIZE = 16,
-                         const int IV_SIZE = 12) {
+                         const int IV_SIZE = 12)
+      : std::istream(nullptr) {
     if (sec_enhanced) {
       // data structure in s: IV || ciphertexts || MAC
       std::ifstream fin(s, mode);
