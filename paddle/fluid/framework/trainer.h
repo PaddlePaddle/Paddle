@@ -120,6 +120,7 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
 };
 
+#ifdef PADDLE_WITH_CUDA
 class HeterServiceContext {
 public:
   HeterServiceContext() {}
@@ -193,6 +194,7 @@ class HeterXpuTrainer : public TrainerBase {
   std::vector<platform::Place> places_;
   std::vector<cudaEvent_t> events_;
 };
+#endif
 
 #if defined(PADDLE_WITH_NCCL)
 class PipelineTrainer : public TrainerBase {

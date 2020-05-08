@@ -152,17 +152,16 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_
   void* tensor_data =
       tensor->mutable_data(place, ToVarType(req_var.data_type()));
  
-  if (platform::is_cpu_place(place)) {
-    memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
-  }
-  else {
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(place),
-        tensor_data,
-        platform::CPUPlace(),
-        req_var.data().data(), 
-        tensor->numel() * SizeOfType(tensor->type()), nullptr);
-  }
+  #ifdef PADDLE_WITH_CUDA
+  memory::Copy(
+      boost::get<platform::CUDAPlace>(place),
+      tensor_data,
+      platform::CPUPlace(),
+      req_var.data().data(), 
+      tensor->numel() * SizeOfType(tensor->type()), nullptr);
+  #else
+  memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
+  #endif
 }
 
 framework::proto::VarType::Type HeterWrapper::ToVarType(

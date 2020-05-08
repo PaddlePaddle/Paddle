@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#endif
 
 namespace paddle {
 namespace framework {
@@ -105,7 +104,6 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
 }
 
 void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
-  #ifdef PADDLE_WITH_CUDA
   auto place = places_[num];
   Scope* scope = place_scopes_[num];
   auto stream = copy_streams_[num];
@@ -135,10 +133,8 @@ void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
   }
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
   cudaEventSynchronize(event);
-  #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
 template <typename T>
 void HeterXpuTrainer::HeterMemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
                             const paddle::platform::Place& thread_place, 
@@ -160,7 +156,7 @@ void HeterXpuTrainer::HeterMemCpy(LoDTensor *thread_tensor, LoDTensor *root_tens
         root_ptr, sizeof(T) * root_tensor->numel(), stream);
   }
 }
-#endif
+
 void HeterXpuTrainer::DumpWork(int tid) {
 }
 
@@ -451,3 +447,4 @@ void HeterXpuTrainer::Finalize() {
 
 }  // namespace framework
 }  // namespace paddle
+#endif
