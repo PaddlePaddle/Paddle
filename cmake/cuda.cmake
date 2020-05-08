@@ -65,7 +65,6 @@ function(detect_installed_gpus out_variable)
   endif()
 endfunction()
 
-
 ########################################################################
 # Function for selecting GPU arch flags for nvcc based on CUDA_ARCH_NAME
 # Usage:

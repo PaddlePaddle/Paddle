@@ -17,6 +17,7 @@ limitations under the License. */
 #include <cstdlib>
 #include <memory>
 
+
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
