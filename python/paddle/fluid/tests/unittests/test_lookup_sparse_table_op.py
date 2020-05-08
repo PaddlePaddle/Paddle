@@ -35,7 +35,7 @@ class TestLookupSpraseTable(unittest.TestCase):
 
         # create and run lookup_table operator
         lookup_table = Operator(
-            "lookup_sparse_table",
+            "lookup_sparse_table_read",
             Ids='Ids',
             Out0='Param',
             Out1='Moment1',

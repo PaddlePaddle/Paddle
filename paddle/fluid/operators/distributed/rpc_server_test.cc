@@ -34,7 +34,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::operators::distributed;
 
-USE_NO_KERNEL_OP(lookup_sparse_table);
+USE_NO_KERNEL_OP(lookup_sparse_table_read);
 
 std::unique_ptr<distributed::RPCServer> g_rpc_service;
 std::unique_ptr<distributed::RequestHandler> g_req_handler;
@@ -46,7 +46,7 @@ framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   framework::VariableNameMap input({{"W", {"w"}}, {"Ids", {"ids"}}});
   framework::VariableNameMap output({{"Output", {"out"}}});
   auto op = block->AppendOp();
-  op->SetType("lookup_sparse_table");
+  op->SetType("lookup_sparse_table_read");
   op->SetInput("W", {"w"});
   op->SetInput("Ids", {"ids"});
   op->SetOutput("Out", {"out"});

@@ -39,10 +39,10 @@ model_filename = "__model__"
 lookup_table_dir = "__lookup_table__"
 
 
-def __insert_lookup_sparse_table_op(main_program, idx, ids, w, out):
+def __insert_lookup_sparse_table_read_op(main_program, idx, ids, w, out):
     main_program.global_block()._insert_op(
         index=idx,
-        type="lookup_sparse_table",
+        type="lookup_sparse_table_read",
         inputs={"Ids": [ids],
                 "W": [w]},
         outputs={"Out": [out]},
@@ -128,7 +128,7 @@ def convert_dist_to_sparse_program(program):
         idx = split_ids_id
         ids = program.global_block().vars[in_out_pair[0]]
         out = program.global_block().vars[in_out_pair[1]]
-        __insert_lookup_sparse_table_op(program, idx, ids, param_var, out)
+        __insert_lookup_sparse_table_read_op(program, idx, ids, param_var, out)
         program.desc.flush()
     return program
 

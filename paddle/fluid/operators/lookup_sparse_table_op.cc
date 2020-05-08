@@ -24,12 +24,12 @@ namespace operators {
 
 constexpr int64_t kNoPadding = -1;
 
-class LookupSparseTableInferShape : public framework::InferShapeBase {
+class LookupSparseTableReadInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {}
 };
 
-class LookupSparseTableOp : public framework::OperatorBase {
+class LookupSparseTableReadOp : public framework::OperatorBase {
  public:
   using framework::OperatorBase::OperatorBase;
 
@@ -97,7 +97,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
   }
 };
 
-class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
+class LookupSparseTableReadOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
@@ -141,7 +141,7 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    lookup_sparse_table, ops::LookupSparseTableOp,
-    ops::LookupSparseTableInferShape, ops::LookupSparseTableOpMaker,
+    lookup_sparse_table_read, ops::LookupSparseTableReadOp,
+    ops::LookupSparseTableReadInferShape, ops::LookupSparseTableReadOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

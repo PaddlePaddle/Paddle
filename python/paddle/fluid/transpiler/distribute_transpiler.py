@@ -1896,7 +1896,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             shape=trainer_out.shape,
             dtype=trainer_out.dtype)
         prefetch_block.append_op(
-            type="lookup_sparse_table",
+            type="lookup_sparse_table_read",
             inputs={'Ids': pserver_ids,
                     "W": table_var},
             outputs={"Out": pserver_out},
