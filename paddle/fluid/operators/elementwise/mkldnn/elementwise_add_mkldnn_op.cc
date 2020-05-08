@@ -30,7 +30,7 @@ using mkldnn::reorder;
 using mkldnn::stream;
 using mkldnn::sum;
 
-template <typename T>
+template <typename T, dnnl::algorithm BINARY_OP>
 class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -42,8 +42,13 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     const auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
+    float scale_x = ctx.Attr<float>("Scale_x");
+    float scale_y = ctx.Attr<float>("Scale_y");
+    float scale_o = ctx.Attr<float>("Scale_out");
+
     platform::BinaryMKLDNNHandler<T> handler(
-        dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z, ctx.OutputName("Out"));
+        BINARY_OP, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z, 
+        scale_x, scale_y, scale_o, ctx.OutputName("Out"));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
@@ -106,8 +111,11 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(elementwise_add, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::EltwiseAddMKLDNNKernel<float>)
+REGISTER_OP_KERNEL(
+    elementwise_add, MKLDNN, ::paddle::platform::CPUPlace,
+    ops::EltwiseAddMKLDNNKernel<float, dnnl::algorithm::binary_add>,
+    ops::EltwiseAddMKLDNNKernel<int8_t, dnnl::algorithm::binary_add>,
+    ops::EltwiseAddMKLDNNKernel<uint8_t, dnnl::algorithm::binary_add>)
 
 REGISTER_OP_KERNEL(elementwise_add_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::EltwiseAddMKLDNNGradKernel<float>)

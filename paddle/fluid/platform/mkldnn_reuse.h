@@ -120,8 +120,8 @@ class MKLDNNHandlerT {
     return (dev_ctx_.GetBlob(key_p) != nullptr);
   }
 
-  template <typename... Args>
-  void AcquireForwardPrimitiveDescriptor(Args&&... args) {
+  template <typename Arg, typename... Args>
+  void AcquireForwardPrimitiveDescriptor(Arg&& first_arg, Args&&... args) {
     // Forward PD has to be passed to Grad op that
     // may be executed by diffrent thread, hence
     // for that one we use key that does not contain TID
@@ -135,12 +135,26 @@ class MKLDNNHandlerT {
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
           dev_ctx_.GetBlob(key_pd));
       if (fwd_pd_ == nullptr) {
-        auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
-        fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(fwd_desc,
-                                                                      engine_);
+        CreateForwardPrimitiveDescriptor(first_arg,
+                                         std::forward<Args>(args)...);
         dev_ctx_.SetBlob(key_pd, fwd_pd_);
       }
     }
+  }
+
+  template <typename... Args>
+  void CreateForwardPrimitiveDescriptor(const dnnl::primitive_attr& attrs,
+                                        Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
+    fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
+        fwd_desc, attrs, engine_);
+  }
+
+  template <typename... Args>
+  void CreateForwardPrimitiveDescriptor(Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
+    fwd_pd_ =
+        std::make_shared<typename TForward::primitive_desc>(fwd_desc, engine_);
   }
 
   template <typename... Args>
@@ -367,9 +381,11 @@ class MKLDNNHandler {
 template <typename T>
 class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
-  BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+  BinaryMKLDNNHandler(const dnnl::algorithm algo,
+                      const MKLDNNDeviceContext& dev_ctx,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
+                      float scale_x, float scale_y, float scale_z,
                       const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
@@ -413,8 +429,14 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
 
-      this->AcquireForwardPrimitiveDescriptor(dnnl::algorithm::binary_add,
-                                              src0_md, src1_md, dst_md);
+      float scale_0 = scale_x / scale_z;
+      float scale_1 = scale_y / scale_z;
+      dnnl::primitive_attr attributes;
+      attributes.set_scales(/* input_x_id = */ 0, /* mask = */ 0, {scale_0});
+      attributes.set_scales(/* input_y_id = */ 1, /* mask = */ 0, {scale_1});
+
+      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
+                                              dst_md);
     }
   }
 
