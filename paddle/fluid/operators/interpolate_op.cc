@@ -262,9 +262,11 @@ class InterpolateOp : public framework::OperatorWithKernel {
                    "Output(Out) of InterpolationOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    PADDLE_ENFORCE(dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
-                   platform::errors::Unimplemented(
-                       "Input(X) dimension must be 3, 4 or 5"));
+    PADDLE_ENFORCE(
+        dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
+        platform::errors::Unimplemented(
+            "Input(X) dimension must be 3, 4 or 5, but got dimension = %d",
+            dim_x.size()));
 
     if (dim_x.size() == 3) {
       // shape check for 1D interpolate for input tensor shape NCHW
