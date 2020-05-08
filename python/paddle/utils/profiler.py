@@ -13,8 +13,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-import sys
 
+import sys
+import warnings
+
+from ..fluid import core
 from ..fluid.profiler import *
 
 #__all__ = ['ProfilerOptions', 'Profiler']
@@ -58,31 +61,51 @@ class Profiler(object):
         else:
             self.profiler_options = ProfilerOptions()
         self.batch_id = 0
+        self.enabled = False
 
     def __enter__(self):
-        self.start()
+        if self.profiler_options['batch_range'][0] == 0:
+            self.start()
 
     def __exit__(self, exception_type, exception_value, traceback):
         self.stop()
 
-    def start(self, batch_id=0):
-        if batch_id == self.profiler_options['batch_range'][0]:
-            start_profiler(
-                state=self.profiler_options['state'],
-                tracer_option=self.profiler_options['tracer_level'])
+    def start(self):
+        if not self.enabled:
+            try:
+                start_profiler(
+                    state=self.profiler_options['state'],
+                    tracer_option=self.profiler_options['tracer_level'])
+                self.enabled = True
+            except Exception as e:
+                warnings.warn(
+                    "Profiler is not enabled becuase following exception:\n{}".
+                    format(e))
 
-    def stop(self, batch_id=None):
-        if batch_id is None or batch_id == self.profiler_options['batch_range'][
-                1]:
-            stop_profiler(
-                sorted_key=self.profiler_options['sorted_key'],
-                profile_path=self.profiler_options['profile_path'])
+    def stop(self):
+        if self.enabled:
+            try:
+                stop_profiler(
+                    sorted_key=self.profiler_options['sorted_key'],
+                    profile_path=self.profiler_options['profile_path'])
+                self.enabled = False
+            except Exception as e:
+                warnings.warn(
+                    "Profiler is not disabled becuase following exception:\n{}".
+                    format(e))
 
     def reset(self):
-        reset_profiler()
+        if self.enabled:
+            reset_profiler()
 
-    def add_batch(self, change_profiler_status=True):
+    def add_step(self, change_profiler_status=True):
         self.batch_id = self.batch_id + 1
         if change_profiler_status:
-            self.start(batch_id=self.batch_id)
-            self.stop(batch_id=self.batch_id)
+            if self.batch_id == self.profiler_options['batch_range'][0]:
+                if self.enabled:
+                    self.reset()
+                else:
+                    self.start()
+
+            if self.batch_id == self.profiler_options['batch_range'][1]:
+                self.stop()
