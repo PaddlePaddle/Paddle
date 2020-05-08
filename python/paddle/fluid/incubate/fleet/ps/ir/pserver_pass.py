@@ -656,7 +656,7 @@ def large_scale_sparse_pass(program, config):
                 if len(var.shape) != 2:
                     raise ValueError("sparse param's dimension must be 2")
 
-                value_names.append(var.name)
+                value_names.append(value)
                 value_dims.append(var.shape[1])
 
             if value_names:

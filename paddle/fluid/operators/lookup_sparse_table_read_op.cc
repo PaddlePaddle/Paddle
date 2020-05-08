@@ -39,6 +39,7 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     auto &id_tensor = scope.FindVar(Input("Ids"))->Get<framework::LoDTensor>();
     auto *id_data = id_tensor.data<int64_t>();
     auto tablename = Attr<std::string>("tablename");
+    auto read_names = Attr<std::vector<std::string>>("read_names");
 
     std::vector<int64_t> ids;
     for (int64_t i = 0; i < id_tensor.numel(); ++i) {
@@ -51,12 +52,11 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
 
     for (int i = 0; i < 5; i++) {
       auto out_name = Output(string::Sprintf("%s%d", "Out", i));
-      auto *out = scope.FindLocalVar(out_name);
 
-      if (out == nullptr) {
-        break;
+      if (HasOutputs(out_name)) {
+        value_names.push_back(read_names[i]);
       } else {
-        value_names.push_back(out_name);
+        break;
       }
     }
 
@@ -68,7 +68,7 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     std::vector<float *> tensors;
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
       auto out_name = string::Sprintf("%s%d", "Out", i);
-      auto out_var = scope.FindVar(Output(out_name));
+      auto out_var = scope.Var(Output(out_name));
       auto out_t = out_var->GetMutable<framework::LoDTensor>();
 
       std::vector<int64_t> o_dims;
@@ -111,6 +111,10 @@ class LookupSparseTableReadOpMaker : public framework::OpProtoAndCheckerMaker {
               "same type as W.");
 
     AddAttr<std::string>("tablename",
+                         "(string)"
+                         "sparse table name");
+
+    AddAttr<std::string>("read_names",
                          "(string)"
                          "sparse table name");
     AddComment(R"DOC(
