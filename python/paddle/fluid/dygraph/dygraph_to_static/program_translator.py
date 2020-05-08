@@ -159,11 +159,11 @@ class ConcreteProgram(object):
                  parameters,
                  func,
                  main_program,
-                 start_up=None):
+                 startup_program=None):
         self.inputs = inputs
         self.outputs = outputs
         self.main_program = main_program
-        self.startup_program = start_up
+        self.startup_program = startup_program
         self.parameters = parameters
         self.func_spec = func
 
@@ -178,8 +178,15 @@ class ConcreteProgram(object):
         dygaph_function = func_spec.dyfunc
         static_func = convert_function_with_cache(dygaph_function)
 
-        main_program, start_up = framework.Program(), framework.Program()
-        with framework.program_guard(main_program, start_up):
+        main_program, startup_program = framework.Program(), framework.Program()
+        # Note: The random seed should be synchronized into cached program
+        # if set in `fluid.dygrap_guard` because some ops rely on it, such as
+        # `fluid.layers.dropout`.
+        main_program.random_seed = framework.default_main_program().random_seed
+        startup_program.random_seed = framework.default_startup_program(
+        ).random_seed
+
+        with framework.program_guard(main_program, startup_program):
             # 1. Adds `fluid.data` layers for input if needed
             inputs = func_spec.to_static_inputs(main_program)
 
@@ -198,7 +205,7 @@ class ConcreteProgram(object):
             parameters=all_parameters,
             func=dygaph_function,
             main_program=main_program,
-            start_up=start_up)
+            startup_program=startup_program)
 
 
 class ProgramCache(object):
