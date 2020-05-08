@@ -131,8 +131,8 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
       value_dims.push_back(std::stoi(str));
     }
 
-    mode == pieces[3] == "0" ? distributed::Mode::training
-                             : distributed::Mode::infer;
+    mode = pieces[3] == "0" ? distributed::Mode::training
+                            : distributed::Mode::infer;
 
     auto meta = distributed::SparseMeta();
     meta.name = name;
