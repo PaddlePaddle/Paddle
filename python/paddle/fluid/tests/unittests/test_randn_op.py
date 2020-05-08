@@ -36,13 +36,14 @@ class TestRandnOp(unittest.TestCase):
             dtype='float32',
             device='gpu',
             stop_gradient=False)
+        x7 = paddle.randn(shape=[1000, 784], dtype='float32', seed=10)
 
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
         res = exe.run(fluid.default_main_program(),
                       feed={},
-                      fetch_list=[x1, x2, x3, x4, x5, x6])
+                      fetch_list=[x1, x2, x3, x4, x5, x6, x7])
 
         self.assertAlmostEqual(np.mean(res[0]), .0, delta=0.1)
         self.assertAlmostEqual(np.std(res[0]), 1., delta=0.1)
@@ -56,6 +57,8 @@ class TestRandnOp(unittest.TestCase):
         self.assertAlmostEqual(np.std(res[4]), 1., delta=0.1)
         self.assertAlmostEqual(np.mean(res[5]), .0, delta=0.1)
         self.assertAlmostEqual(np.std(res[5]), 1., delta=0.1)
+        self.assertAlmostEqual(np.mean(res[6]), .0, delta=0.1)
+        self.assertAlmostEqual(np.std(res[6]), 1., delta=0.1)
 
 
 class TestRandnOpError(unittest.TestCase):
