@@ -1386,12 +1386,9 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
     helper = LayerHelper('margin_rank_loss', **locals())
-    if not isinstance(label, Variable):
-        raise ValueError("The label should be a Variable.")
-    if not isinstance(left, Variable):
-        raise ValueError("The left should be a Variable.")
-    if not isinstance(right, Variable):
-        raise ValueError("The right should be a Variable.")
+    check_variable_and_dtype(label, 'label', ['float32'], 'margin_rank_loss')
+    check_variable_and_dtype(label, 'left', ['float32'], 'margin_rank_loss')
+    check_variable_and_dtype(label, 'right', ['float32'], 'margin_rank_loss')
     out = helper.create_variable_for_type_inference(left.dtype)
     act = helper.create_variable_for_type_inference(left.dtype)
     helper.append_op(
