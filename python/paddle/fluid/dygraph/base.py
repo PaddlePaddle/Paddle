@@ -19,6 +19,7 @@ import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 import objgraph
@@ -114,6 +115,7 @@ def enable_dygraph(place=None):
         _functional_dygraph_context_manager = guard(place=place)
         _functional_dygraph_context_manager.__enter__()
 
+        # call disable_dygraph when Python exit
         CleanupFuncRegistrar.register(disable_dygraph)
 
 
