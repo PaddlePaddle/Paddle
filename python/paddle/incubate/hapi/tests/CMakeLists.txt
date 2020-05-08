@@ -24,7 +24,7 @@ function(py_dist_test TARGET_NAME)
     if(WITH_COVERAGE AND WITH_GPU AND WITH_NCCL AND NOT WIN32)
       add_test(NAME ${TARGET_NAME}
                COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-               FLAGS_cpu_deterministic=true http_proxy="" https_proxy="" FLAGS_rpc_disable_reuse_port=1
+               FLAGS_cpu_deterministic=true http_proxy="" https_proxy="" FLAGS_rpc_disable_reuse_port=1 NCCL_DEBUG=INFO
                PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_dist_test_ENVS}
                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
                ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/python/paddle/distributed/launch.py  ${py_dist_test_SRCS} ${py_dist_test_ARGS}
