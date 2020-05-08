@@ -22,11 +22,9 @@ import numpy as np
 import shutil
 import tempfile
 
-import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.container import Sequential
-from paddle.io import DataLoader
 from paddle.fluid.dygraph.base import to_variable
 
 from paddle.incubate.hapi.model import Model, Input, set_device
@@ -34,6 +32,7 @@ from paddle.incubate.hapi.loss import CrossEntropy
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
 from paddle.incubate.hapi.vision.models import LeNet
+from paddle.incubate.hapi.distributed import DistributedBatchSampler
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
@@ -180,26 +179,6 @@ class TestModel(unittest.TestCase):
     def test_predict_static(self):
         self.predict(False)
 
-    def predict(self, dynamic):
-        fluid.enable_dygraph(self.device) if dynamic else None
-
-        inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
-
-        test_dataloader = fluid.io.DataLoader(
-            self.test_dataset,
-            places=self.device,
-            batch_size=64,
-            return_list=True)
-
-        model = LeNet()
-
-        model.load(self.weight_path)
-
-        model.prepare(metrics=Accuracy(), inputs=inputs, labels=labels)
-
-        output = model.predict(test_dataloader, stack_outputs=True)
-
     def fit(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
@@ -219,6 +198,25 @@ class TestModel(unittest.TestCase):
 
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
+
+        train_sampler = DistributedBatchSampler(
+            self.train_dataset, batch_size=64, shuffle=False)
+        val_sampler = DistributedBatchSampler(
+            self.val_dataset, batch_size=64, shuffle=False)
+
+        train_loader = fluid.io.DataLoader(
+            self.train_dataset,
+            batch_sampler=train_sampler,
+            places=self.device,
+            return_list=True)
+
+        val_loader = fluid.io.DataLoader(
+            self.val_dataset,
+            batch_sampler=val_sampler,
+            places=self.device,
+            return_list=True)
+
+        model.fit(train_loader, val_loader)
         fluid.disable_dygraph() if dynamic else None
 
     def evaluate(self, dynamic):
@@ -229,6 +227,18 @@ class TestModel(unittest.TestCase):
         model.load(self.weight_path)
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
+
+        sampler = DistributedBatchSampler(
+            self.val_dataset, batch_size=64, shuffle=False)
+
+        val_loader = fluid.io.DataLoader(
+            self.val_dataset,
+            batch_sampler=sampler,
+            places=self.device,
+            return_list=True)
+
+        model.evaluate(val_loader)
+
         fluid.disable_dygraph() if dynamic else None
 
     def predict(self, dynamic):
@@ -242,6 +252,18 @@ class TestModel(unittest.TestCase):
 
         acc = compute_acc(output[0], self.val_dataset.labels)
         np.testing.assert_allclose(acc, self.acc1)
+
+        sampler = DistributedBatchSampler(
+            self.test_dataset, batch_size=64, shuffle=False)
+
+        test_loader = fluid.io.DataLoader(
+            self.test_dataset,
+            batch_sampler=sampler,
+            places=self.device,
+            return_list=True)
+
+        model.evaluate(test_loader)
+
         fluid.disable_dygraph() if dynamic else None
 
 
@@ -338,22 +360,17 @@ class TestModelFunction(unittest.TestCase):
             fluid.enable_dygraph(device) if dynamic else None
             model = MyModel()
             inputs = [Input([None, 20], 'float32', name='x')]
-            model.prepare(inputs=inputs)
+            labels = [Input([None, 1], 'int64', name='label')]
+            optim = fluid.optimizer.SGD(learning_rate=0.001,
+                                        parameter_list=model.parameters())
+            model.prepare(
+                inputs=inputs,
+                optimizer=optim,
+                loss_function=CrossEntropy(average=False),
+                labels=labels)
             model.save(path + '/test')
             model.load(path + '/test')
             shutil.rmtree(path)
-            fluid.disable_dygraph() if dynamic else None
-
-    def test_parameters(self):
-        for dynamic in [True, False]:
-            device = set_device('cpu')
-            fluid.enable_dygraph(device) if dynamic else None
-            model = MyModel()
-            inputs = [Input([None, 20], 'float32', name='x')]
-            model.prepare(inputs=inputs)
-            params = model.parameters()
-            self.assertTrue(params[0].shape[0] == 20)
-            self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
     def test_parameters(self):

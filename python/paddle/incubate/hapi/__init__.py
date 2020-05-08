@@ -22,12 +22,10 @@ from . import loss
 from . import datasets
 from . import distributed
 from . import vision
-from .configure import Config
 
 logger.setup_logger()
 
 __all__ = [
-    'Config',
     'callbacks',
     'datasets',
     'distributed',
