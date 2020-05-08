@@ -155,7 +155,7 @@ class SubGraph {
           if (node->IsOp()) {
             auto inputs = node->inputs;
             for (auto* in : inputs) {
-              if (in == n) {
+              if (in && in->Name() == n->Name()) {
                 if (!Has(node)) enable_remove = false;
                 leaf_graph = false;
               }

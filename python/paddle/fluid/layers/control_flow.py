@@ -218,6 +218,7 @@ def Print(input,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
+          print_tensor_layout=True,
           print_tensor_lod=True,
           print_phase='both'):
     '''
@@ -238,6 +239,7 @@ def Print(input,
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will 
@@ -291,6 +293,7 @@ def Print(input,
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
+            'print_tensor_layout': print_tensor_layout,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
@@ -976,6 +979,14 @@ class While(object):
                    "is_test": self.is_test})
 
 
+def assign_skip_lod_tensor_array(inputs, outputs):
+    """
+    Skip the process of copying LoDTensorArray.
+    """
+    if inputs.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assign(inputs, outputs)
+
+
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
@@ -1063,7 +1074,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            loop_vars = output_vars
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1087,7 +1098,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                              "(length and structure) as loop_vars: {0}".format(
                                  e))
         now_cond = cond(*output_vars)
-        map_structure(assign, output_vars, loop_vars)
+        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 
@@ -1998,6 +2009,9 @@ class ConditionalBlock(object):
         intermediate = set()
         params = set()
 
+        # NOTE: Here assumes that all variables are input or output of Ops,
+        # but some variables are created without appendding a real op.
+        # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
         for each_op in inside_block.ops:
             assert isinstance(each_op, Operator)
             for iname in each_op.input_names:

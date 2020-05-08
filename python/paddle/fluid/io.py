@@ -33,6 +33,7 @@ from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
     program_guard
+from .wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
@@ -183,7 +184,7 @@ def _clone_var_in_block_(block, var):
             persistable=True)
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _load_program_scope(main=None, startup=None, scope=None):
     prog = main if main else paddle.fluid.Program()
     startup_prog = startup if startup else paddle.fluid.Program()
@@ -1370,7 +1371,7 @@ def load_inference_model(dirname,
     if dirname is not None:
         load_dirname = os.path.normpath(dirname)
         if not os.path.isdir(load_dirname):
-            raise ValueError("There is no directory named '%s'", dirname)
+            raise ValueError("There is no directory named '%s'" % dirname)
 
         if model_filename is None:
             model_filename = '__model__'

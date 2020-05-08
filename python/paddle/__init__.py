@@ -30,15 +30,15 @@ except ImportError:
 import paddle.reader
 import paddle.dataset
 import paddle.batch
+batch = batch.batch
 import paddle.compat
 import paddle.distributed
-batch = batch.batch
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
 import paddle.framework
 import paddle.imperative
-import paddle.complex
+import paddle.incubate.complex as complex
 
 # TODO: define alias in tensor and framework directory
 from .tensor.random import randperm
@@ -167,12 +167,13 @@ from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 from .tensor.math import atan  #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
-# from .tensor.math import inverse        #DEFINE_ALIAS
+from .tensor.math import inverse  #DEFINE_ALIAS
 from .tensor.math import log1p  #DEFINE_ALIAS
 from .tensor.math import erf  #DEFINE_ALIAS
 from .tensor.math import addcmul  #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.math import clamp  #DEFINE_ALIAS
+from .tensor.math import trace  #DEFINE_ALIAS
 from .tensor.math import kron  #DEFINE_ALIAS
 # from .tensor.random import gaussin        #DEFINE_ALIAS
 # from .tensor.random import uniform        #DEFINE_ALIAS
@@ -192,6 +193,7 @@ from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
+from .framework.random import manual_seed  #DEFINE_ALIAS
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
