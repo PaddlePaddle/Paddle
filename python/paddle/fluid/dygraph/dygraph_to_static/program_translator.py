@@ -175,6 +175,11 @@ class ConcreteProgram(object):
         static_func = convert_function_with_cache(dygaph_function)
 
         main_program, start_up = framework.Program(), framework.Program()
+
+        # Synchronous random seed of program
+        main_program.random_seed = framework.default_main_program().random_seed
+        start_up.random_seed = framework.default_startup_program().random_seed
+
         with framework.program_guard(main_program, start_up):
             # 1. Adds `fluid.data` layers for input if needed
             inputs = func_spec.to_static_inputs(main_program)
