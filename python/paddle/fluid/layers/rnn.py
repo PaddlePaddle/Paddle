@@ -501,6 +501,7 @@ def rnn(cell,
             else:
                 check_variable_and_dtype(state, 'states[' + str(i) + ']',
                                          ['float32', 'float64'], 'rnn')
+
     check_type(sequence_length, 'sequence_length', (Variable, type(None)),
                'rnn')
 
