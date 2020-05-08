@@ -106,8 +106,11 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
       if (ctx.Attr<bool>("encrypt")) {
         std::string key = ctx.Attr<std::string>("key");
-        PADDLE_ENFORCE_EQ(key.empty(), false,
-                          "must specify valid 'key' for encryption.");
+        PADDLE_ENFORCE_EQ(
+            key.empty(), false,
+            platform::errors::InvalidArgument(
+                "The input parameter 'key' is empty, "
+                "Please input valid key for enabling encryption."));
         fout = std::make_shared<paddle::framework::CryptOfstream>(
             filename.data(), std::ios::binary, true,
             reinterpret_cast<const unsigned char *>(key.data()), key.size(),

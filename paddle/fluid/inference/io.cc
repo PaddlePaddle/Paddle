@@ -51,15 +51,18 @@ void ReadBinaryFile(const std::string& filename, std::string* contents,
   std::shared_ptr<paddle::framework::CryptIfstream> fin;
   if (decrypt) {
     PADDLE_ENFORCE_EQ(key.empty(), false,
-                      "must specify valid 'key' for decryption.");
+                      platform::errors::InvalidArgument(
+                          "The input parameter 'key' is empty, "
+                          "Please input valid key for enabling decryption."));
     const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
     const size_t IV_SIZE = paddle::framework::DEFAULT_AES_IV_SIZE;
     fin = std::make_shared<paddle::framework::CryptIfstream>(
         filename.data(), std::ios::in | std::ios::binary, true,
         reinterpret_cast<const unsigned char*>(key.data()), key.size(),
         TAG_SIZE);
-    PADDLE_ENFORCE(static_cast<bool>(fin->is_open()), "Cannot open file %s",
-                   filename);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fin->is_open()), true,
+        platform::errors::Unavailable("Cannot open file %s", filename));
     fin->seekg(0, std::ios::end);
     contents->resize((size_t)fin->tellg() - TAG_SIZE - IV_SIZE);
     fin->seekg(IV_SIZE, std::ios::beg);
@@ -68,8 +71,9 @@ void ReadBinaryFile(const std::string& filename, std::string* contents,
   } else {
     fin = std::make_shared<paddle::framework::CryptIfstream>(
         filename.data(), std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fin->is_open()), "Cannot open file %s",
-                   filename);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fin->is_open()), true,
+        platform::errors::Unavailable("Cannot open file %s", filename));
     fin->seekg(0, std::ios::end);
     contents->resize(fin->tellg());
     fin->seekg(0, std::ios::beg);

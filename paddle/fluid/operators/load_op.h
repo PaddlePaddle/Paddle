@@ -40,7 +40,9 @@ class LoadOpKernel : public framework::OpKernel<T> {
     if (ctx.Attr<bool>("decrypt")) {
       std::string key = ctx.Attr<std::string>("key");
       PADDLE_ENFORCE_EQ(key.empty(), false,
-                        "must specify valid 'key' for decryption.");
+                        platform::errors::InvalidArgument(
+                            "The input parameter 'key' is empty, "
+                            "Please input valid key for enabling decryption."));
       fin = std::make_shared<paddle::framework::CryptIfstream>(
           filename.data(), std::ios::binary, true,
           reinterpret_cast<const unsigned char *>(key.data()), key.size(),
