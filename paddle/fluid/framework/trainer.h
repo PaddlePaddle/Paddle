@@ -129,10 +129,14 @@ public:
     }
     std::vector<OperatorBase*>().swap(ops_);
   }
+  void Reset() {
+    push_dense_status_.clear();
+  }
   int place_num_;
   Scope* scope_{nullptr};
   cudaEvent_t event_;
   std::vector<OperatorBase*> ops_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
 };
 
 class HeterXpuTrainer : public TrainerBase {
@@ -168,7 +172,6 @@ class HeterXpuTrainer : public TrainerBase {
   int StopService(const HeterRequest* request, HeterResponse* response);
  protected:
   DownpourWorkerParameter param_;
-  std::vector<::std::future<int32_t>> push_dense_status_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::string> need_merge_var_names_;
   float scale_datanorm_;

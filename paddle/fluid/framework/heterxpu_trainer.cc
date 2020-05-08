@@ -369,7 +369,8 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
     platform::CUDADeviceGuard guard(dev_id);
     PADDLE_ENFORCE(cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
   }
-
+  
+  context->Reset();
   auto place = places_[context->place_num_];
  // {
  //   auto dev_id = boost::get<platform::CUDAPlace>(place).device;
@@ -407,7 +408,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
     uint64_t tid = static_cast<uint64_t>(
         param_.program_config(0).push_dense_table_id(i));
     fleet_ptr_->PushDenseVarsAsync(
-        *(context->scope_), tid, dense_grad_names_[tid], &push_dense_status_,
+        *(context->scope_), tid, dense_grad_names_[tid], &(context->push_dense_status_),
         scale_datanorm_, request->cur_batch(), places_[context->place_num_],
         copy_streams_[context->place_num_], context->event_);
   }
