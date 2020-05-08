@@ -62,10 +62,11 @@ def parse_args():
         default=0.01,
         help='Accepted accuracy difference threshold.')
     parser.add_argument(
-        '--quantized_ops',
+        '--ops_to_quantize',
         type=str,
         default='',
-        help='A comma separated list of quantized operators.')
+        help='A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
+    )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -305,7 +306,9 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
         skip_batch_num = test_case_args.skip_batch_num
         acc_diff_threshold = test_case_args.acc_diff_threshold
         self._debug = test_case_args.debug
-        self._quantized_ops = set(test_case_args.quantized_ops.split(','))
+        self._quantized_ops = set()
+        if len(test_case_args.ops_to_quantize) > 0:
+            self._quantized_ops = set(test_case_args.ops_to_quantize.split(','))
 
         _logger.info('FP32 & QAT INT8 prediction run.')
         _logger.info('QAT model: {0}'.format(qat_model_path))
