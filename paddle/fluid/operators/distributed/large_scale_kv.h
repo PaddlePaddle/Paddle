@@ -47,31 +47,31 @@ struct SparseMeta {
 };
 
 struct VALUE {
-  VALUE(const std::vector<std::string>& names, const std::vector<int>& dims)
-      : names_(names), dims_(dims) {
+  explicit VALUE(const std::vector<std::string>& names) : names_(names) {
     values_.resize(names.size());
-  }
-
-  void init() {
-    for (int i = 0; i < static_cast<int>(names_.size()); i++) {
-      values_[i].resize(dims_[i]);
-      std::fill(values_[i].data(), values_[i].data() + dims_[i],
-                static_cast<float>(0.0));
+    for (int i = 0; i < static_cast<int>(names.size()); i++) {
+      places[names[i]] = i;
     }
   }
 
-  void set() {}
+  void set(std::vector<std::vector<float>>&& values) {
+    values_ = std::move(values);
+  }
 
   std::vector<std::vector<float>> get() { return values_; }
 
   std::vector<std::vector<float>> get(const std::vector<std::string> names) {
-    return values_;
+    auto rets = std::vector<std::vector<float>>();
+
+    for (int i = 0; i < static_cast<int>(names.size()); i++) {
+      rets.push_back(values_[places[names[i]]]);
+    }
+    return rets;
   }
 
   std::vector<std::string> names_;
   std::vector<std::vector<float>> values_;
-  std::vector<int> dims_;
-  std::vector<int> initializers_;
+  std::unordered_map<std::string, int> places;
 };
 
 class SparseVariable {
@@ -87,7 +87,7 @@ class SparseVariable {
     }
   }
 
-  void Print() {
+  std::string ToString() {
     std::stringstream ss;
     ss << "name: " << meta_.name << " ";
     ss << "mode: " << meta_.mode << " ";
@@ -96,7 +96,7 @@ class SparseVariable {
       ss << "value_name: " << meta_.value_names[i]
          << " dim: " << meta_.value_dims[i] << " ";
     }
-    VLOG(1) << ss.str();
+    return ss.str();
   }
 
   void Get(const std::vector<int64_t>& ids,
@@ -106,7 +106,7 @@ class SparseVariable {
       auto got = values_.find(id);
       if (got == values_.end()) {
         auto value = new VALUE(meta_.value_names, meta_.value_dims);
-        value->init();
+        value->set(Init());
         values_[id] = value;
       }
       auto value = values_.at(id);
@@ -126,9 +126,23 @@ class SparseVariable {
 
   int64_t Size() { return static_cast<int64_t>(values_.size()); }
 
- public:
+ private:
+  std::vector<std::vector<float>> Init() {
+    auto rets = std::vector<std::vector<float>>();
+    rets.resize(names_.size());
+
+    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
+      auto name = meta_.value_names[i];
+      auto dim = meta_.value_dims[i];
+      rets[i].resize(dim);
+      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.0));
+    }
+    return rets;
+  }
+
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims;
+  std::vector<int> initializers_;
   std::unordered_map<int64_t, VALUE*> values_;
 };
 

@@ -59,7 +59,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     std::vector<int64_t> dims;
 
     for (int i = 0; i < 5; i++) {
-      auto out_name = string::Sprintf("%s%d", "Out", i);
+      auto out_name = Output(string::Sprintf("%s%d", "Out", i));
       auto *out = scope.FindLocalVar(out_name);
 
       if (out == nullptr) {
@@ -88,10 +88,10 @@ class LookupSparseTableOp : public framework::OperatorBase {
       tensors.push_back(out_d);
     }
 
-    for (auto &vals_for_id : values) {
-      for (int i = 0; i < vals_for_id.size(); i++) {
-        std::memcpy(tensors[i] + i * dims[i], vals_for_id[i].data(),
-                    sizeof(float) * dims[i]);
+    for (int i = 0; i < static_cast<int>(values.size()); i++) {
+      for (int j = 0; j < static_cast<int>(tensors.size()); j++) {
+        std::memcpy(tensors[j] + i * dims[j], values[i][j].data(),
+                    sizeof(float) * dims[j]);
       }
     }
   }
