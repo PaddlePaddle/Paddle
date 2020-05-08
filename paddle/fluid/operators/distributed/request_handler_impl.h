@@ -98,16 +98,15 @@ class RequestPrefetchHandler final : public RequestHandler {
               const std::string& table_name = "") override;
 
  private:
-  std::unique_ptr<paddle::framework::OperatorBase> BuildLookupTableOp(
+  std::unique_ptr<paddle::framework::OperatorBase> PullLargeScaleOp(
       const std::string& table_name, const std::string& id_name,
       const std::string& out_name) {
-    paddle::framework::proto::OpDesc op_desc;
-    op_desc.set_type("lookup_table");
-    BuildVar("W", {table_name.data()}, op_desc.add_inputs());
-    BuildVar("Ids", {id_name.data()}, op_desc.add_inputs());
-    BuildVar("Out", {out_name.data()}, op_desc.add_outputs());
-
-    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    framework::OpDesc desc;
+    desc.SetType("lookup_sparse_table_read");
+    desc.SetInput("Ids", id_name);
+    desc.SetOutput("Out0", out_name);
+    desc.SetAttr("tablename", table_name);
+    auto op = paddle::framework::OpRegistry::CreateOp(desc);
     return op;
   }
 };

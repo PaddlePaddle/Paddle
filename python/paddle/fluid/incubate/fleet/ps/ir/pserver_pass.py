@@ -658,7 +658,7 @@ def large_scale_sparse_pass(program, config):
 
                 value_names.append(var.name)
                 value_dims.append(var.shape[1])
-                break
+
             if value_names:
                 break
         return value_names, value_dims
@@ -687,7 +687,7 @@ def large_scale_sparse_pass(program, config):
         mode = "0"
         names_str = ",".join(value_names)
         dims_str = ",".join([str(dim) for dim in value_dims])
-        meta_str = ".".join([p, names_str, dims_str, mode])
+        meta_str = ":".join([p, names_str, dims_str, mode])
         large_scale_kv_metas.append(meta_str)
     op._set_attr("large_scale_kv_meta", large_scale_kv_metas)
 
