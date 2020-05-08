@@ -30,9 +30,9 @@ except ImportError:
 import paddle.reader
 import paddle.dataset
 import paddle.batch
+batch = batch.batch
 import paddle.compat
 import paddle.distributed
-batch = batch.batch
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
