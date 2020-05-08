@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
 
@@ -42,6 +43,7 @@ void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -105,6 +107,43 @@ static int64_t GetTimestamp() {
   struct timeval tp;
   gettimeofday(&tp, NULL);
   return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
+void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
+  std::vector<distributed::SparseMeta> metas;
+
+  for (auto attrs : kv_attrs) {
+    std::vector<std::string> pieces;
+    split(attrs, ':', &pieces);
+    PADDLE_ENFORCE_EQ(pieces.size(), 4, "must 4");
+
+    std::string name;
+    std::vector<std::string> value_names;
+    std::vector<int> value_dims;
+    distributed::Mode mode;
+
+    name = pieces[0];
+    split(pieces[1], ',', &value_names);
+
+    std::vector<std::string> value_dims_str;
+    split(pieces[2], ',', &value_dims_str);
+    for (auto &str : value_dims_str) {
+      value_dims.push_back(std::stoi(str));
+    }
+
+    mode == pieces[3] == "0" ? distributed::Mode::training
+                             : distributed::Mode::infer;
+
+    auto meta = distributed::SparseMeta();
+    meta.name = name;
+    meta.value_names = value_names;
+    meta.value_dims = value_dims;
+    meta.mode = mode;
+    metas.push_back(meta);
+  }
+
+  distributed::LargeScaleKV::Init(metas);
+  VLOG(3) << "init large scale kv with " << metas.size() << " params";
 }
 
 void ListenAndServOp::RunSyncLoop(
@@ -452,6 +491,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
             << ", param_name = " << pieces[1];
     sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
   }
+
+  auto kv_attrs = Attr<std::vector<std::string>>(kLargeScaleKV);
+  InitLargeScaleKV(kv_attrs);
 
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,

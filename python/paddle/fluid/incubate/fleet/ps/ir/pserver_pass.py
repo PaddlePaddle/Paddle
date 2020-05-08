@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#Copyright(c) 2018 PaddlePaddle Authors.All Rights Reserved.
+# Copyright(c) 2018 PaddlePaddle Authors.All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#http:  // www.apache.org/licenses/LICENSE-2.0
+# http:  // www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from __future__ import print_function
 
@@ -198,7 +198,6 @@ def _clone_lr_op(program, origin_program, block, op):
 def _append_pserver_ops(optimize_block, opt_op, endpoint, grad_to_block_id,
                         origin_program, merged_var, sparse_grad_to_param,
                         config):
-
     program = optimize_block.program
     pserver_block = program.global_block()
     new_inputs = collections.OrderedDict()
@@ -542,7 +541,7 @@ def add_optimizer_pass(program, config):
         # clone ops
         for origin_op in origin_block.ops:
             cloned_op = _clone_lr_op(program, new_sub_block, origin_op)
-            #clone sub_block of op
+            # clone sub_block of op
             __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
         # reset the block of op
@@ -632,13 +631,75 @@ def add_optimizer_pass(program, config):
     return program
 
 
+def large_scale_sparse_pass(program, config):
+    opt_value_map = {}
+    opt_value_map["sgd"] = ["Param"]
+    opt_value_map["adam"] = ["Param", "Moment1", "Moment2"]
+    opt_value_map["adagrad"] = ["Param", "Moment"]
+    opt_value_map["adamax"] = ["Param", "Moment", "InfNorm"]
+    opt_value_map["momentum"] = ["Param", "Velocity"]
+    opt_value_map["lars_momentum"] = ["Param", "Velocity"]
+    opt_value_map["rmsprop"] = ["Param", "Moment", "MeanSquare"]
+    opt_value_map["decayed_adagrad"] = ["Param", "Moment"]
+    opt_value_map["ftrl"] = ["Param", "SquaredAccumulator", "LinearAccumulator"]
+
+    def get_optimizer_values(block):
+        value_names = []
+        value_dims = []
+
+        for op in block.ops:
+            if op.type not in opt_value_map.keys():
+                continue
+
+            for value in opt_value_map[op.type]:
+                var = program.global_block().vars[op.input(value)[0]]
+                if len(var.shape) != 2:
+                    raise ValueError("sparse param's dimension must be 2")
+
+                value_names.append(var.name)
+                value_dims.append(var.shape[1])
+                break
+            if value_names:
+                break
+        return value_names, value_dims
+
+    op = get_op_by_type(program.global_block(), "listen_and_serv")
+
+    param_blockid_map = {}
+    grad_blockid_map = {}
+    grad_to_params = op.attr('sparse_grad_to_param')
+    grad_to_block_ids = op.attr('grad_to_block_id')
+    large_scale_kv_metas = []
+
+    for grad_to_block_id in grad_to_block_ids:
+        grad, blockid = grad_to_block_id.split(":")
+        grad_blockid_map[grad] = int(blockid)
+
+    for grad_to_param in grad_to_params:
+        grad, param = grad_to_param.split(":")
+        param_blockid_map[param] = grad_blockid_map[grad]
+
+    for param, blockid in param_blockid_map.items():
+        p = _orig_varname(param)
+        opt_block = program.block(blockid)
+        value_names, value_dims = get_optimizer_values(opt_block)
+        # training/infer
+        mode = "0"
+        names_str = ",".join(value_names)
+        dims_str = ",".join([str(dim) for dim in value_dims])
+        meta_str = ".".join([p, names_str, dims_str, mode])
+        large_scale_kv_metas.append(meta_str)
+    op._set_attr("large_scale_kv_meta", large_scale_kv_metas)
+
+    # todo: need delete unused var.
+    return program
+
+
 def build_pserver_startup_program_pass(program, p_main_program, config):
     ps_endpoint = config.get_ps_endpoint()
     o_startup_program = config.get_origin_startup_program()
     program.random_seed = o_startup_program.random_seed
-
     params = config.param_grad_ep_mapping[ps_endpoint]["params"]
-
     merged_ordervars = []
 
     for var in params:
