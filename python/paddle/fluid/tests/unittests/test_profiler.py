@@ -18,6 +18,7 @@ import unittest
 import os
 import tempfile
 import numpy as np
+import paddle.utils as utils
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
@@ -105,42 +106,82 @@ class TestProfiler(unittest.TestCase):
         pass_acc_calculator.add(value=acc, weight=b_size)
         pass_acc = pass_acc_calculator.eval()
 
-    def net_profiler(self, state, tracer_option, use_parallel_executor=False):
+    def net_profiler(self,
+                     exe,
+                     state,
+                     tracer_option,
+                     batch_range=None,
+                     use_parallel_executor=False,
+                     use_new_api=False):
         main_program, startup_program, avg_cost, batch_size, batch_acc = self.build_program(
             compile_program=use_parallel_executor)
-
-        place = fluid.CPUPlace() if state == 'CPU' else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
         exe.run(startup_program)
 
         profile_path = self.get_profile_path()
-        with profiler.profiler(state, 'total', profile_path, tracer_option):
-            pass_acc_calculator = fluid.average.WeightedAverage()
-
-            for iter in range(10):
-                if iter == 2:
-                    profiler.reset_profiler()
-                self.run_iter(exe, main_program,
-                              [avg_cost, batch_acc, batch_size],
-                              pass_acc_calculator)
+        if not use_new_api:
+            with profiler.profiler(state, 'total', profile_path, tracer_option):
+                pass_acc_calculator = fluid.average.WeightedAverage()
+                for iter in range(10):
+                    if iter == 2:
+                        profiler.reset_profiler()
+                    self.run_iter(exe, main_program,
+                                  [avg_cost, batch_acc, batch_size],
+                                  pass_acc_calculator)
+        else:
+            options = utils.ProfilerOptions(options={
+                'state': state,
+                'sorted_key': 'total',
+                'tracer_level': tracer_option,
+                'batch_range': [0, 10] if batch_range is None else batch_range,
+                'profile_path': profile_path
+            })
+            with utils.Profiler(enabled=True, options=options) as prof:
+                self.assertTrue(utils.profiler.global_profiler() == prof)
+                pass_acc_calculator = fluid.average.WeightedAverage()
+                for iter in range(10):
+                    self.run_iter(exe, main_program,
+                                  [avg_cost, batch_acc, batch_size],
+                                  pass_acc_calculator)
+                    utils.global_profiler().add_step()
 
         self.check_profile_result(profile_path)
 
     def test_cpu_profiler(self):
-        self.net_profiler('CPU', "Default")
-        #self.net_profiler('CPU', "Default", use_parallel_executor=True)
+        exe = fluid.Executor(fluid.CPUPlace())
+        for use_new_api in [False, True]:
+            self.net_profiler(
+                exe,
+                'CPU',
+                "Default",
+                batch_range=[5, 10],
+                use_new_api=use_new_api)
+            #self.net_profiler('CPU', "Default", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
-        self.net_profiler('GPU', "OpDetail")
-        #self.net_profiler('GPU', "OpDetail", use_parallel_executor=True)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        for use_new_api in [False, True]:
+            self.net_profiler(
+                exe,
+                'GPU',
+                "OpDetail",
+                batch_range=[5, 10],
+                use_new_api=use_new_api)
+            #self.net_profiler('GPU', "OpDetail", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
-        self.net_profiler('All', "AllOpDetail")
-        #self.net_profiler('All', "AllOpDetail", use_parallel_executor=True)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        for use_new_api in [False, True]:
+            self.net_profiler(
+                exe,
+                'All',
+                "AllOpDetail",
+                batch_range=[5, 10],
+                use_new_api=use_new_api)
+            #self.net_profiler('All', "AllOpDetail", use_parallel_executor=True)
 
 
 if __name__ == '__main__':

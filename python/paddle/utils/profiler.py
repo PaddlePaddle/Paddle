@@ -20,23 +20,25 @@ import warnings
 from ..fluid import core
 from ..fluid.profiler import *
 
-#__all__ = ['ProfilerOptions', 'Profiler']
+__all__ = ['ProfilerOptions', 'Profiler', 'global_profiler']
 
 
 class ProfilerOptions(object):
     def __init__(self, options=None):
+        self.options = {
+            'state': 'All',
+            'sorted_key': 'default',
+            'tracer_level': 'Default',
+            'batch_range': [0, sys.maxsize],
+            'output_thread_detail': False,
+            'profile_path': 'none',
+            'timeline_path': 'none',
+            'op_summary_path': 'none'
+        }
         if options is not None:
-            self.options = options  # use deep copy
-        else:
-            self.options = {
-                'state': 'All',
-                'sorted_key': 'default',
-                'tracer_level': 'Default',
-                'batch_range': [0, sys.maxsize],
-                'profile_path': 'none',
-                'timeline_path': 'none',
-                'op_summary_path': 'none'
-            }
+            for key in self.options.keys():
+                if options.get(key, None) is not None:
+                    self.options[key] = options[key]
 
     def with_state(self, state):
         self.options['state'] = state
@@ -54,29 +56,43 @@ class ProfilerOptions(object):
                 return self.options[name]
 
 
+_global_profiler = None
+
+
 class Profiler(object):
-    def __init__(self, options=None):
+    def __init__(self, enabled=True, options=None):
         if options is not None:
             self.profiler_options = options
         else:
             self.profiler_options = ProfilerOptions()
         self.batch_id = 0
-        self.enabled = False
+        self.enabled = enabled
 
     def __enter__(self):
-        if self.profiler_options['batch_range'][0] == 0:
-            self.start()
+        # switch global profiler
+        global _global_profiler
+        self.prev_global_profiler = _global_profiler
+        _global_profiler = self
+
+        if self.enabled:
+            if self.profiler_options['batch_range'][0] == 0:
+                self.start()
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
+        # switch global profiler
+        global _global_profiler
+        _global_profiler = self.prev_global_profiler
+
+        if self.enabled:
+            self.stop()
 
     def start(self):
-        if not self.enabled:
+        if self.enabled:
             try:
                 start_profiler(
                     state=self.profiler_options['state'],
                     tracer_option=self.profiler_options['tracer_level'])
-                self.enabled = True
             except Exception as e:
                 warnings.warn(
                     "Profiler is not enabled becuase following exception:\n{}".
@@ -88,24 +104,32 @@ class Profiler(object):
                 stop_profiler(
                     sorted_key=self.profiler_options['sorted_key'],
                     profile_path=self.profiler_options['profile_path'])
-                self.enabled = False
             except Exception as e:
                 warnings.warn(
                     "Profiler is not disabled becuase following exception:\n{}".
                     format(e))
 
     def reset(self):
-        if self.enabled:
+        if self.enabled and core.is_profiler_enabled():
             reset_profiler()
 
     def add_step(self, change_profiler_status=True):
+        if not self.enabled:
+            return
         self.batch_id = self.batch_id + 1
         if change_profiler_status:
             if self.batch_id == self.profiler_options['batch_range'][0]:
-                if self.enabled:
+                if core.is_profiler_enabled():
                     self.reset()
                 else:
                     self.start()
 
             if self.batch_id == self.profiler_options['batch_range'][1]:
                 self.stop()
+
+
+def global_profiler():
+    global _global_profiler
+    if _global_profiler is None:
+        _global_profiler = Profiler()
+    return _global_profiler
