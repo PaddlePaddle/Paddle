@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import Embedding, Linear, Layer
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
-from transformer_dygraph_model import PrePostProcessLayer
-from transformer_dygraph_model import MultiHeadAttention
+from paddle.fluid.dygraph import Embedding, Layer, Linear
+from paddle.fluid.dygraph.jit import declarative
+
+from transformer_dygraph_model import MultiHeadAttention, PrePostProcessLayer
 
 
 class PositionwiseFeedForwardLayer(Layer):
@@ -321,7 +319,7 @@ class PretrainModelLayer(Layer):
                 name="next_sent_fc.w_0", initializer=self._param_initializer),
             bias_attr="next_sent_fc.b_0")
 
-    @dygraph_to_static_func
+    @declarative
     def forward(self, src_ids, position_ids, sentence_ids, input_mask,
                 mask_label, mask_pos, labels):
         mask_pos = fluid.layers.cast(x=mask_pos, dtype='int32')
