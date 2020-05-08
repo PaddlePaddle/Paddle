@@ -110,6 +110,8 @@ def enable_dygraph(place=None):
         _functional_dygraph_context_manager = guard(place=place)
         _functional_dygraph_context_manager.__enter__()
 
+        CleanupFuncRegistrar.register(disable_dygraph)
+
 
 def disable_dygraph():
     """
