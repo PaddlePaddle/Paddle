@@ -257,19 +257,19 @@ void HeterXpuTrainer::Run() {
 }
 
 int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* response) {
-//  int scope_num = object_pool_.Size();
-//  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
-//    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
-//    if (root_var == nullptr) {
-//      continue;
-//    }
-//    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
-//
-//    for (int j = 0; j < scope_num; j++) {
-//      Scope *cur_thread_scope = (object_pool_.GetElement(i))->scope_;
-//      Variable *thread_var =
-//          cur_thread_scope->FindVar(need_merge_var_names_[i]);
-//      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+  int scope_num = object_pool_.Size();
+  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
+    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+    if (root_var == nullptr) {
+      continue;
+    }
+    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
+
+    for (int j = 0; j < scope_num; j++) {
+      Scope *cur_thread_scope = (object_pool_.GetElement(i))->scope_;
+      Variable *thread_var =
+          cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
 //      if (root_tensor->numel() != thread_tensor->numel()) {
 //        continue;
 //      }
@@ -286,25 +286,25 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* respons
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
     }                                                                          \
   } while (0)
-//      _ForEachDataType_(MergeCallback);
-//
-//      if (platform::is_gpu_place(thread_tensor->place())) {
-//        cudaMemset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
-//      }
-//      else {
-//        memset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
-//      }
-//    }
-//    
-//    auto* merge_var = response->add_vars();
-//    heter_ptr_->SerializeToReq(need_merge_var_names_[i], root_scope_, merge_var);
-//    if (platform::is_gpu_place(root_tensor->place())) {
-//      cudaMemset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
-//    }
-//    else {
-//      memset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
-//    }
-//  }
+      _ForEachDataType_(MergeCallback);
+
+      if (platform::is_gpu_place(thread_tensor->place())) {
+        cudaMemset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+      }
+      else {
+        memset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
+      }
+    }
+    
+    auto* merge_var = response->add_vars();
+    heter_ptr_->SerializeToReq(need_merge_var_names_[i], root_scope_, merge_var);
+    if (platform::is_gpu_place(root_tensor->place())) {
+      cudaMemset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
+    }
+    else {
+      memset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
+    }
+  }
   return 0;
 }
 
@@ -313,17 +313,17 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* respons
 template <typename T>
 void HeterXpuTrainer::MergeToRootScope(LoDTensor *root_tensor,
                                        LoDTensor *tensor) {
-//  LoDTensor tmp_root;
-//  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
-//  T *tmp_root_data = tmp_root.data<T>();
-//  
-//  LoDTensor tmp_tensor;
-//  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
-//  T *data = tmp_tensor.data<T>();
-//  for (int i = 0; i < tmp_tensor.numel(); i++) {
-//    tmp_root_data[i] += data[i];
-//  }
-//  TensorCopy(tmp_root, root_tensor->place(), root_tensor);
+  LoDTensor tmp_root;
+  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  T *tmp_root_data = tmp_root.data<T>();
+  
+  LoDTensor tmp_tensor;
+  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  T *data = tmp_tensor.data<T>();
+  for (int i = 0; i < tmp_tensor.numel(); i++) {
+    tmp_root_data[i] += data[i];
+  }
+  TensorCopy(tmp_root, root_tensor->place(), root_tensor);
 }
 
 int HeterXpuTrainer::StopService(const HeterRequest* request, HeterResponse* response) {
@@ -396,7 +396,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
 
   std::string varname = "concat_1.tmp_0@GRAD";
 
-  auto* res_var = response->mutable_vars();
+  auto* res_var = response->add_vars();
   heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
   
   for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
@@ -423,10 +423,17 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
 }
 
 void HeterXpuTrainer::RegisterServiceHandler() {
-  heter_ptr_->RegisterServiceHandler(
+  heter_ptr_->RegisterServiceHandler(0,
     [this](const HeterRequest* request, HeterResponse* response) -> int {
       return this->RunTask(request, response);
-      //return 0;
+    });
+  heter_ptr_->RegisterServiceHandler(1,
+    [this](const HeterRequest* request, HeterResponse* response) -> int {
+      return this->EndPass(request, response);
+    });
+  heter_ptr_->RegisterServiceHandler(2,
+    [this](const HeterRequest* request, HeterResponse* response) -> int {
+      return this->StopService(request, response);
     });
 }
 
@@ -440,7 +447,7 @@ void HeterXpuTrainer::Finalize() {
   //}
   std::unique_lock<std::mutex> lock(mutex_);
   cond_.wait(lock, [this] { return !running_; });
-
+  sleep(3);
   pull_dense_worker_->Stop();
   root_scope_->DropKids();
 }

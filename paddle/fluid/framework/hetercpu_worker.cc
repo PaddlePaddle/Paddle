@@ -941,7 +941,6 @@ void HeterCpuWorker::TrainFiles() {
   int cur_batch;
   wait_queue_.SetCap(3);
   need_to_push_dense_ = false;
-  //while ((cur_batch = device_reader_->Next()) > 0) {
   while (1) {
     //if (copy_table_config_.need_copy()) {
     //  if (copy_table_config_.sparse_copy_by_feasign()) {
@@ -1225,6 +1224,7 @@ void HeterCpuWorker::TrainFiles() {
     CopyDenseTable();
     CopyDenseVars();
   }
+  heter_ptr_->EndPass(thread_scope_);
 }
 
 }  // end namespace framework

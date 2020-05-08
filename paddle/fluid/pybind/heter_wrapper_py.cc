@@ -40,7 +40,8 @@ void BindHeterWrapper(py::module* m) {
       }))
       .def("create_client2xpu_connection", &framework::HeterWrapper::CreateClient2XpuConnection)
       .def("set_xpu_list", &framework::HeterWrapper::SetXpuList)
-      .def("start_xpu_service", &framework::HeterWrapper::StartXpuService);
+      .def("start_xpu_service", &framework::HeterWrapper::StartXpuService)
+      .def("stop_xpu_service", &framework::HeterWrapper::StopXpuService);
 }  // end HeterWrapper
 }  // end namespace pybind
 }  // end namespace paddle

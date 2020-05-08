@@ -63,11 +63,15 @@ class HeterWrapper {
 
   void CreateClient2XpuConnection();
   
-  void RegisterServiceHandler(HeterServiceHandler func);
+  void RegisterServiceHandler(int cmd, HeterServiceHandler func);
 
   void StartXpuService(const std::string& ip, uint32_t port);
   
   void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker);
+  
+  void StopXpuService();
+  
+  void EndPass(Scope* scope);
   
   void SerializeToReq(const std::string& varname, Scope* scope, VariableMessage* req_var);
 

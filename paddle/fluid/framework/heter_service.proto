@@ -57,13 +57,13 @@ message VariableMessage {
 }
 message HeterRequest {
   required int32 cmd = 1;
-  required int32 cur_batch = 2;
+  optional int32 cur_batch = 2;
   repeated VariableMessage vars = 3;
 };
 
 message HeterResponse {
-  optional VariableMessage vars = 1;
-  //repeated VariableMessage vars = 1;
+  //optional VariableMessage vars = 1;
+  repeated VariableMessage vars = 1;
 };
 
 service HeterService {

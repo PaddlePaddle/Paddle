@@ -59,8 +59,8 @@ void HeterWrapper::CreateClient2XpuConnection() {
   }
 }
 
-void HeterWrapper::RegisterServiceHandler(HeterServiceHandler func) {
-  service_.RegisterServiceHandler(func);
+void HeterWrapper::RegisterServiceHandler(int cmd, HeterServiceHandler func) {
+  service_.RegisterServiceHandler(cmd, func);
 }
 
 void HeterWrapper::SetXpuList(const std::vector<std::string>& xpu_list) {
@@ -182,32 +182,44 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
   }
 }
 
+void HeterWrapper::StopXpuService() {
+  HeterRequest request;
+  HeterResponse response;
+  brpc::Controller cntl;
+  request.set_cmd(2);
+  
+  for (size_t i = 0; i < xpu_channels_.size(); ++i) {
+    HeterService_Stub stub(xpu_channels_[i].get());
+    stub.service(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+      VLOG(0) << "call stop xpu service fail: " << cntl.ErrorText();
+    }
+    else {
+      VLOG(3) << "call stop xpu service success";
+    }
+  }
+}
 
-//void HeterWrapper::CallRemoteXpu(Scope* scope, int cur_batch) {
-//  HeterRequest request;
-//  HeterResponse response;
-//  brpc::Controller cntl;
-//  request.set_cmd(0);
-//  request.set_cur_batch(cur_batch);
-//  
-//  std::vector<std::string> varnames = {"concat_1.tmp_0", "click", "12345"};
-//  for (auto& varname : varnames) {
-//    auto* req_var = request.add_vars();
-//    SerializeToReq(varname, scope, req_var);
-//  }
-//  
-//  HeterService_Stub stub(xpu_channels_[0].get());
-//  stub.service(&cntl, &request, &response, NULL);
-//  if (cntl.Failed()) {
-//    VLOG(0) << "call xpu fail: " << cntl.ErrorText();
-//  }
-//  else {
-//    VLOG(3) << "call xpu success";
-//  }
-//  
-//  DeSerializeToTensor(scope, response.vars());
-//}
-
+void HeterWrapper::EndPass(Scope* scope) {
+  HeterRequest request;
+  HeterResponse response;
+  brpc::Controller cntl;
+  request.set_cmd(1);
+  
+  for (size_t i = 0; i < xpu_channels_.size(); ++i) {
+    HeterService_Stub stub(xpu_channels_[i].get());
+    stub.service(&cntl, &request, &response, NULL);
+    if (cntl.Failed()) {
+      VLOG(0) << "call end pass fail: " << cntl.ErrorText();
+    }
+    else {
+      VLOG(3) << "call end pass success";
+      for (int j = 0; j < response.vars_size(); ++j) {
+        DeSerializeToTensor(scope, response.vars(j), platform::CPUPlace());
+      }
+    }
+  }
+}
 
 void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker) {
   HeterRequest request;
@@ -222,10 +234,10 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker
     else {
       VLOG(3) << "call xpu success";
     }
-    DeSerializeToTensor(task->scope_, closure->response.vars(), platform::CPUPlace());
-    //for (int i = 0; i < closure->response.vars_size(); ++i) {
-    //  DeSerializeToTensor(task->scope_, closure->response.vars(i));
-    //}
+    //DeSerializeToTensor(task->scope_, closure->response.vars(), platform::CPUPlace());
+    for (int i = 0; i < closure->response.vars_size(); ++i) {
+      DeSerializeToTensor(task->scope_, closure->response.vars(i), platform::CPUPlace());
+    }
 
     worker->Schedule(task->taskid_); 
   }); 

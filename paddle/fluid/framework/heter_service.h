@@ -39,7 +39,15 @@ public:
                const HeterRequest* request, HeterResponse* response,
                ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    int ret = handler_(request, response);
+    int ret = 0;
+    int cmd = request->cmd();
+    auto itr = handler_map_.find(cmd);
+    if (itr == handler_map_.end()) {
+    
+    }
+    else {
+      ret = itr->second(request, response);
+    }
     //response->set_err_code(0);
     //response->set_err_msg("");
     if (ret != 0) {
@@ -48,12 +56,12 @@ public:
     }
   }
 
-  void RegisterServiceHandler(HeterServiceHandler func) {
+  void RegisterServiceHandler(int cmd, HeterServiceHandler func) {
     VLOG(0) << "register heter service";
-    handler_ = func;
+    handler_map_[cmd] = func;
   }
 private:
-  HeterServiceHandler handler_{nullptr};
+  std::unordered_map<int, HeterServiceHandler> handler_map_;
 };
 
 }  // namespace framework
