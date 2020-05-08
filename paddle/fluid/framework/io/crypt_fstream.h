@@ -190,17 +190,18 @@ class CryptOfstream : public std::ostream {
     if (sec_enhanced) {
       CryptoPP::AutoSeededRandomPool prng;
       CryptoPP::SecByteBlock key(key_str, key_len);
-      CryptoPP::byte iv[IV_SIZE];
-      prng.GenerateBlock(iv, sizeof(iv));
+      CryptoPP::byte* iv = new CryptoPP::byte[IV_SIZE];
+      prng.GenerateBlock(iv, IV_SIZE);
       _fout = new std::ofstream(s, mode);
       // write iv first
-      _fout->write(reinterpret_cast<const char*>(iv), sizeof(iv));
+      _fout->write(reinterpret_cast<const char*>(iv), IV_SIZE);
       _e = new CryptoPP::GCM<CryptoPP::AES>::Encryption();
-      _e->SetKeyWithIV(key, key_len, iv, sizeof(iv));
+      _e->SetKeyWithIV(key, key_len, iv, IV_SIZE);
       _fs = new CryptoPP::FileSink(*_fout);
       _ef = new CryptoPP::AuthenticatedEncryptionFilter(*_e, _fs, false,
                                                         TAG_SIZE);
       _fbuf = new CryptFilebuf(_ef);
+      delete[] iv;
     } else {
       _e = nullptr;
       _fs = nullptr;
@@ -294,13 +295,13 @@ class CryptIfstream : public std::istream {
       // data structure in s: IV || ciphertexts || MAC
       std::ifstream fin(s, mode);
       CryptoPP::SecByteBlock key(key_str, key_len);
-      CryptoPP::byte iv[IV_SIZE];
+      CryptoPP::byte* iv = new CryptoPP::byte[IV_SIZE];
       // read iv
-      fin.read(reinterpret_cast<char*>(iv), sizeof(iv));
+      fin.read(reinterpret_cast<char*>(iv), IV_SIZE);
       auto cipher_pos = fin.tellg();
 
       _d = new CryptoPP::GCM<CryptoPP::AES>::Decryption();
-      _d->SetKeyWithIV(key, key_len, iv, sizeof(iv));
+      _d->SetKeyWithIV(key, key_len, iv, IV_SIZE);
       _df = new CryptoPP::AuthenticatedDecryptionFilter(
           *_d, NULL,
           CryptoPP::AuthenticatedDecryptionFilter::MAC_AT_BEGIN |
@@ -313,14 +314,15 @@ class CryptIfstream : public std::istream {
 
       this->seekg(0, std::ios::end);
       auto mac_pos = tellg() - static_cast<int64_t>(TAG_SIZE);
-      char mac[TAG_SIZE];
+      char* mac = new char[TAG_SIZE];
 
       fin.seekg(mac_pos, std::ios::beg);
       fin.read(mac, TAG_SIZE);
       _df->ChannelPut(CryptoPP::DEFAULT_CHANNEL,
                       reinterpret_cast<const CryptoPP::byte*>(mac), TAG_SIZE);
       seekg(cipher_pos, std::ios::beg);
-
+      delete[] iv;
+      delete[] mac;
     } else {
       _d = nullptr;
       _fbuf = new CryptFilebuf();

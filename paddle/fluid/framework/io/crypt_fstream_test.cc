@@ -82,6 +82,8 @@ TEST(test_fstream_ext, security_string) {
                     TAG_SIZE);
   char* output1 = new char[size];
   fin.read(output1, size);
+  fin.peek();
+  EXPECT_TRUE(fin.eof());
   fin.close();
 
   remove(filename);
@@ -122,7 +124,8 @@ TEST(test_fstream_ext, security_vector) {
     fin.read(reinterpret_cast<char*>(&r1), sizeof(r1));
     output1.emplace_back(r1);
   }
-
+  fin.peek();
+  EXPECT_TRUE(fin.eof());
   fin_normal.close();
   fin.close();
   remove(filename);

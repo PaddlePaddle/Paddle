@@ -97,9 +97,11 @@ class SaveOpKernel : public framework::OpKernel<T> {
       fout = std::make_shared<paddle::framework::CryptOfstream>(
           filename.data(), std::ios::binary);
     }
-    PADDLE_ENFORCE_EQ(static_cast<bool>(*fout), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
+    PADDLE_ENFORCE_EQ(
+        fout->is_open(), true,
+        platform::errors::Unavailable("Cannot open %s to save variables, "
+                                      "Check the correctness of file path.",
+                                      filename));
 
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
     auto in_dtype = tensor.type();
@@ -171,9 +173,11 @@ class SaveOpKernel : public framework::OpKernel<T> {
       fout = std::make_shared<paddle::framework::CryptOfstream>(
           filename.data(), std::ios::binary);
     }
-    PADDLE_ENFORCE_EQ(static_cast<bool>(*fout), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
+    PADDLE_ENFORCE_EQ(
+        fout->is_open(), true,
+        platform::errors::Unavailable("Cannot open %s to save variables, "
+                                      "Check the correctness of file path.",
+                                      filename));
     framework::SerializeToStream(*fout, selectedRows, dev_ctx);
     fout->close();
   }

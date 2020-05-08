@@ -20,9 +20,8 @@ SET(CRYPTOPP_INCLUDE_DIR "${CRYPTOPP_INSTALL_DIR}/include" CACHE PATH "cryptopp 
 SET(CRYPTOPP_REPOSITORY https://github.com/weidai11/cryptopp.git)
 SET(CRYPTOPP_TAG        CRYPTOPP_8_2_0)
 
-
 IF(WIN32)
-  SET(CRYPTOPP_LIBRARIES "${CRYPTOPP_INSTALL_DIR}/lib/cryptopp.lib" CACHE FILEPATH "cryptopp library." FORCE)
+  SET(CRYPTOPP_LIBRARIES "${CRYPTOPP_INSTALL_DIR}/lib/cryptopp-static.lib" CACHE FILEPATH "cryptopp library." FORCE)
   SET(CRYPTOPP_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
 ELSE(WIN32)
   SET(CRYPTOPP_LIBRARIES "${CRYPTOPP_INSTALL_DIR}/lib/libcryptopp.a" CACHE FILEPATH "cryptopp library." FORCE)
@@ -30,6 +29,16 @@ ELSE(WIN32)
   # SET(BUILD_COMMAND make)
   # SET(INSTALL_COMMAND make PREFIX=${CRYPTOPP_INSTALL_DIR} install)
 ENDIF(WIN32)
+
+set(CRYPTOPP_CMAKE_ARGS ${COMMON_CMAKE_ARGS}
+                        -DBUILD_SHARED=ON
+                        -DBUILD_STATIC=ON
+                        -DBUILD_TESTING=OFF
+                        -DCMAKE_INSTALL_LIBDIR=${CRYPTOPP_INSTALL_DIR}/lib
+                        -DCMAKE_INSTALL_PREFIX=${CRYPTOPP_INSTALL_DIR}
+                        -DCMAKE_BUILD_TYPE=Release
+                        -DCMAKE_CXX_FLAGS=${CRYPTOPP_CMAKE_CXX_FLAGS}
+)
 
 INCLUDE_DIRECTORIES(${CRYPTOPP_INCLUDE_DIR})
 
@@ -45,12 +54,18 @@ ExternalProject_Add(
     "${CRYPTOPP_DOWNLOAD_CMD}"
     PREFIX          ${CRYPTOPP_PREFIX_DIR}
     SOURCE_DIR      ${CRYPTOPP_SOURCE_DIR}
-    BUILD_COMMAND   ${MAKE}
-    UPDATE_COMMAND    ""
-    CONFIGURE_COMMAND ""
-    BUILD_IN_SOURCE   1
-    INSTALL_COMMAND   ${MAKE} PREFIX=${CRYPTOPP_INSTALL_DIR} install
-    TEST_COMMAND      ""
+    PATCH_COMMAND
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"
+    COMMAND git clone -b ${CRYPTOPP_TAG} https://github.com/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "<SOURCE_DIR>/cmake/" "<SOURCE_DIR>/"
+    INSTALL_DIR     ${CRYPTOPP_INSTALL_DIR}
+    # BUILD_COMMAND   make
+    # UPDATE_COMMAND    ""
+    # CONFIGURE_COMMAND ""
+    # BUILD_IN_SOURCE   1
+    # INSTALL_COMMAND   make install PREFIX=${CRYPTOPP_INSTALL_DIR}
+    # TEST_COMMAND      ""
+    CMAKE_ARGS ${CRYPTOPP_CMAKE_ARGS}
 )
 
 ADD_LIBRARY(cryptopp STATIC IMPORTED GLOBAL)

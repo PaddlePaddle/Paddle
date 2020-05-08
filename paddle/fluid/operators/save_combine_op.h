@@ -119,9 +119,11 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         fout = std::make_shared<paddle::framework::CryptOfstream>(
             filename.data(), std::ios::binary);
       }
-      PADDLE_ENFORCE_EQ(static_cast<bool>(*fout), true,
+      PADDLE_ENFORCE_EQ(fout->is_open(), true,
                         platform::errors::Unavailable(
-                            "Cannot open %s to save variables.", filename));
+                            "Cannot open %s to save variables, "
+                            "Check the correctness of the file path.",
+                            filename));
       fout->write(ss.str().data(), ss.str().size());
       fout->close();
     }

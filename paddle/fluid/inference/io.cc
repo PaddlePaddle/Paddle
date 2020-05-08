@@ -60,9 +60,11 @@ void ReadBinaryFile(const std::string& filename, std::string* contents,
         filename.data(), std::ios::in | std::ios::binary, true,
         reinterpret_cast<const unsigned char*>(key.data()), key.size(),
         TAG_SIZE);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin->is_open()), true,
-        platform::errors::Unavailable("Cannot open file %s", filename));
+    PADDLE_ENFORCE_EQ(fin->is_open(), true,
+                      platform::errors::Unavailable(
+                          "Cannot open file %s, "
+                          "Please check the correctness of file path",
+                          filename));
     fin->seekg(0, std::ios::end);
     contents->resize((size_t)fin->tellg() - TAG_SIZE - IV_SIZE);
     fin->seekg(IV_SIZE, std::ios::beg);
@@ -71,9 +73,11 @@ void ReadBinaryFile(const std::string& filename, std::string* contents,
   } else {
     fin = std::make_shared<paddle::framework::CryptIfstream>(
         filename.data(), std::ios::in | std::ios::binary);
-    PADDLE_ENFORCE_EQ(
-        static_cast<bool>(fin->is_open()), true,
-        platform::errors::Unavailable("Cannot open file %s", filename));
+    PADDLE_ENFORCE_EQ(fin->is_open(), true,
+                      platform::errors::Unavailable(
+                          "Cannot open file %s, "
+                          "Please check the correctness of file path",
+                          filename));
     fin->seekg(0, std::ios::end);
     contents->resize(fin->tellg());
     fin->seekg(0, std::ios::beg);

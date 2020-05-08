@@ -51,7 +51,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
       fin = std::make_shared<paddle::framework::CryptIfstream>(
           filename.data(), std::ios::binary);
     }
-    PADDLE_ENFORCE_EQ(static_cast<bool>(*fin), true,
+    PADDLE_ENFORCE_EQ(fin->is_open(), true,
                       platform::errors::Unavailable(
                           "Load operator fail to open file %s, please check "
                           "whether the model file is complete or damaged.",
