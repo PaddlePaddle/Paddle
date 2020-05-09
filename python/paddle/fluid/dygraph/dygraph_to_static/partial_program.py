@@ -172,14 +172,14 @@ class PartialProgramLayer(layers.Layer):
         """
         if not isinstance(self._params, (list, tuple)):
             raise TypeError(
-                "Type of self._params should be list or tuple, but received %s."
+                "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
                 % type(self._params))
 
         params_name_set = set()
         for i, param in enumerate(self._params):
             if not isinstance(param, framework.ParamBase):
                 raise TypeError(
-                    'Type of self._params[{}] should be framework.ParamBase, but received {}.'.
+                    'Type of self._params[{}] in PartialProgramLayer should be framework.ParamBase, but received {}.'.
                     format(i, type(param)))
             params_name_set.add(param.name)
 
@@ -188,10 +188,12 @@ class PartialProgramLayer(layers.Layer):
                 if isinstance(var, framework.Parameter):
                     if name not in params_name_set:
                         raise ValueError(
-                            "We don't support to define layer with parameters in the function "
-                            "decorated by `@declarative`. But found parameter(%s) created in "
-                            "the decorated function. Please define the layer "
-                            "in `__init__` function." % name)
+                            "\n\tWe don't support to define layer with parameters in the function "
+                            "decorated by `@declarative`.\n\tBecause that will re-defined parameters "
+                            "every time when you run the function.\n\t"
+                            "But we found parameter(%s) was created in the decorated function.\n\t"
+                            "Please define the layer with parameters in `__init__` function."
+                            % name)
 
 
 def valid_vars(vars):
