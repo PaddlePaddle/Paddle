@@ -147,23 +147,24 @@ template <typename T>
 __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
                                           int inner_dim_size,
                                           int outer_dim_size, int scan_dim_size,
-                                          bool reverse) {
+                                          int two_power, bool reverse) {
   // https://stackoverflow.com/questions/27570552/templated-cuda-kernel-with-dynamic-shared-memory
   extern __shared__ __align__(sizeof(T)) unsigned char raw_tmp[];
   T* share_tmp = reinterpret_cast<T*>(raw_tmp);
   int threadId = threadIdx.x;
   int blockId = blockIdx.x;
   int block_scan_size = blockDim.x;
-  if (blockId == gridDim.x - 1) block_scan_size = scan_dim_size % blockDim.x;
+  if (blockId == gridDim.x - 1)
+    block_scan_size = scan_dim_size % (2 * blockDim.x);
   int col1 = threadId;
   int col2 = threadId + (block_scan_size) / 2;
   int index1 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col1;
   int index2 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col2;
 
   // to avoid bank confilict in share memory
-  int bank_offset1 = col1 >> 5;
-  int bank_offset2 = col2 >> 5;
-  if (col1 < block_scan_size / 2) {
+  // int bank_offset1 = col1 >> 5;
+  // int bank_offset2 = col2 >> 5;
+  if (col1 < block_scan_size) {
     share_tmp[col1] = in[index1];
   } else {
     share_tmp[col1] = 0;
@@ -176,13 +177,13 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
 
   // Up-Sweep
   int offset = 1;
-  for (int d = (block_scan_size / 2); d > 0; d >>= 1) {
+  for (int d = (two_power / 2); d > 0; d >>= 1) {
     __syncthreads();
     if (threadId < d) {
       int tmp_index1 = offset * (2 * threadId + 1) - 1;
       int tmp_index2 = offset * (2 * threadId + 2) - 1;
-      tmp_index1 += (tmp_index1 >> 5);
-      tmp_index2 += (tmp_index2 >> 5);
+      // tmp_index1 += (tmp_index1 >> 5);
+      // tmp_index2 += (tmp_index2 >> 5);
       share_tmp[tmp_index2] += share_tmp[tmp_index1];
     }
     offset *= 2;
@@ -190,29 +191,31 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   __syncthreads();
 
   if (threadId == 0) {
-    sum_data[blockId] = share_tmp[block_scan_size - 1];
-    share_tmp[block_scan_size - 1] = 0;
+    sum_data[blockId] = share_tmp[two_power - 1];
+    share_tmp[two_power - 1] = 0;
+    // for(int i =0; i < 8; i++) printf("index = %d: value=%lf\n", i,
+    // share_tmp[i]);
   }
 
   // Down Sweep
-  for (int d = 1; d < block_scan_size; d *= 2) {
+  for (int d = 1; d < two_power; d *= 2) {
+    offset >>= 1;
     __syncthreads();
     if (threadId < d) {
       int tmp_index1 = offset * (2 * threadId + 1) - 1;
       int tmp_index2 = offset * (2 * threadId + 2) - 1;
-      tmp_index1 += (tmp_index1 >> 5);
-      tmp_index2 += (tmp_index2 >> 5);
+      // tmp_index1 += (tmp_index1 >> 5);
+      // tmp_index2 += (tmp_index2 >> 5);
 
       T tmp = share_tmp[tmp_index1];
       share_tmp[tmp_index1] = share_tmp[tmp_index2];
       share_tmp[tmp_index2] += tmp;
     }
-    offset >>= 1;
   }
 
   __syncthreads();
 
-  if (col1 < block_scan_size / 2) out[index1] = share_tmp[col1];
+  if (col1 < block_scan_size) out[index1] = share_tmp[col1];
   if (col2 < block_scan_size) out[index2] = share_tmp[col2];
 }
 
@@ -274,16 +277,17 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     if (optimize_condition) {
       auto nextPowerOfTwo = [](int x) -> int {
         int ret = 1;
-        while (ret < x) ret <<= 1;
+        while (ret < x) ret = ret * 2;
         return ret;
       };
       if (exclusive) {
         int element_per_block = nextPowerOfTwo(scan_dim_size) / 2;
+        int two_power = element_per_block * 2;
         if (element_per_block > 1024 || element_per_block < 32) {
           element_per_block = 32;
         }
         dim3 block(element_per_block);
-        dim3 grid((scan_dim_size + block.x - 1) / block.x, outer_dim_size);
+        dim3 grid((scan_dim_size / 2 + block.x - 1) / block.x, outer_dim_size);
         int share_mem_size = element_per_block * 2 * sizeof(T);
         Tensor scan_sum;
         paddle::framework::DDim dims{(scan_dim_size + block.x - 1) / block.x,
@@ -293,7 +297,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         InnerMostDimExclusiveScan<
             T><<<grid, block, share_mem_size, dev_ctx.stream()>>>(
             in_data, out_data, sum_data, inner_dim_size, outer_dim_size,
-            scan_dim_size, reverse);
+            scan_dim_size, two_power, reverse);
         // for large scan array we need to do add for correct result
         int element_size = element_per_block * 2;
         if (scan_dim_size > element_size) {
