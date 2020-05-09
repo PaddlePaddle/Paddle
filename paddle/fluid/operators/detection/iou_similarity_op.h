@@ -43,7 +43,7 @@ inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
   inter_height = inter_height > zero ? inter_height : zero;
   inter_width = inter_width > zero ? inter_width : zero;
   T inter_area = inter_width * inter_height;
-  T union_area = area1 + area2 - inter_area;
+  T union_area = area1 + area2 - inter_area + static_cast<T>(1e-10);
   T sim_score = inter_area / union_area;
   return sim_score;
 }
