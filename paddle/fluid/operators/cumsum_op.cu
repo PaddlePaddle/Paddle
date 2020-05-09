@@ -147,12 +147,14 @@ template <typename T>
 __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
                                           int inner_dim_size,
                                           int outer_dim_size, int scan_dim_size,
-                                          int block_scan_size, bool reverse) {
+                                          bool reverse) {
   // https://stackoverflow.com/questions/27570552/templated-cuda-kernel-with-dynamic-shared-memory
   extern __shared__ __align__(sizeof(T)) unsigned char raw_tmp[];
   T* share_tmp = reinterpret_cast<T*>(raw_tmp);
   int threadId = threadIdx.x;
   int blockId = blockIdx.x;
+  int block_scan_size = blockDim.x;
+  if (blockId == gridDim.x - 1) block_scan_size = scan_dim_size % blockDim.x;
   int col1 = threadId;
   int col2 = threadId + (block_scan_size) / 2;
   int index1 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col1;
@@ -271,7 +273,6 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         dim3 block(element_per_block);
         dim3 grid((scan_dim_size + block.x - 1) / block.x, outer_dim_size);
         int share_mem_size = element_per_block * 2 * sizeof(T);
-        int block_scan_size = (scan_dim_size % (element_per_block * 2));
         Tensor scan_sum;
         paddle::framework::DDim dims{(scan_dim_size + block.x - 1) / block.x,
                                      outer_dim_size};
@@ -280,7 +281,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         InnerMostDimExclusiveScan<
             T><<<grid, block, share_mem_size, dev_ctx.stream()>>>(
             in_data, out_data, sum_data, inner_dim_size, outer_dim_size,
-            scan_dim_size, block_scan_size, reverse);
+            scan_dim_size, reverse);
 
       } else {
         dim3 block(32, 16);
