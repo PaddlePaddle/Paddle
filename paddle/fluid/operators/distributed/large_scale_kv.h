@@ -41,10 +41,29 @@ enum Mode { training, infer };
 
 struct SparseMeta {
   std::string name;
+  std::string grad_name;
   std::vector<std::string> value_names;
   std::vector<int> value_dims;
-  std::vector<std::string> grad_names;
+  std::vector<std::string> cached_varnames;
   Mode mode;
+
+  std::string ToString() {
+    std::stringstream ss;
+    ss << "name: " << name << " ";
+    ss << "mode: " << mode << " ";
+
+    for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
+      ss << "value_name: " << value_names[i] << " dim: " << value_dims[i]
+         << " ";
+    }
+
+    ss << " grad var: " << grad_name;
+    ss << " cached varnames: ";
+    for (int i = 0; i < static_cast<int>(cached_varnames.size()); i++) {
+      ss << cached_varnames[i] << " ";
+    }
+    return ss.str();
+  }
 };
 
 struct VALUE {
@@ -91,28 +110,12 @@ class SparseVariable {
     meta_.mode = meta.mode;
     meta_.value_names = meta.value_names;
     meta_.value_dims = meta.value_dims;
-    meta_.grad_names = meta.grad_names;
+    meta_.grad_name = meta.grad_name;
+    meta_.cached_varnames = meta.cached_varnames;
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       values_dims[meta_.value_names[i]] = meta_.value_dims[i];
     }
-  }
-
-  std::string ToString() {
-    std::stringstream ss;
-    ss << "name: " << meta_.name << " ";
-    ss << "mode: " << meta_.mode << " ";
-
-    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
-      ss << "value_name: " << meta_.value_names[i]
-         << " dim: " << meta_.value_dims[i] << " ";
-    }
-
-    ss << " grads: ";
-    for (int i = 0; i < static_cast<int>(meta_.grad_names.size()); i++) {
-      ss << meta_.grad_names[i] << " ";
-    }
-    return ss.str();
   }
 
   void Get(const std::vector<int64_t>& ids,
@@ -151,7 +154,9 @@ class SparseVariable {
     }
   }
 
-  std::vector<std::string> ValueNames() const { return meta_.value_names; }
+  std::vector<std::string> CachedVarnames() const {
+    return meta_.cached_varnames;
+  }
 
   int64_t Size() { return static_cast<int64_t>(values_.size()); }
 
@@ -189,8 +194,8 @@ class LargeScaleKV {
 
       VLOG(3) << "Init LargeScaleKV with: " << meta->ToString();
 
-      for (auto& grad : sparse_meta.grad_names) {
-        grad_to_param[grad] = table_name;
+      for (auto& grad : sparse_meta.cached_varnames) {
+        grad_to_variables[grad] = table_name;
       }
     }
   }
@@ -217,13 +222,13 @@ class LargeScaleKV {
   }
 
   SparseVariable* GetByGrad(std::string name) {
-    return Get(grad_to_param[name]);
+    return Get(grad_to_variables[name]);
   }
 
  private:
   std::unordered_map<std::string, std::shared_ptr<SparseVariable>>
       sparse_variables;
-  std::unordered_map<std::string, std::string> grad_to_param;
+  std::unordered_map<std::string, std::string> grad_to_variables;
   static std::shared_ptr<LargeScaleKV> scale_kv_;
   static std::once_flag init_flag_;
 };

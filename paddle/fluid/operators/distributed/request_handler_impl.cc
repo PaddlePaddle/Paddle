@@ -97,7 +97,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
       // for sparse ids
       if (var->IsType<framework::SelectedRows>()) {
         auto* ins = distributed::LargeScaleKV::GetInstance();
-        auto varnames = ins->GetByGrad(run_varname)->ValueNames();
+        auto varnames = ins->GetByGrad(run_varname)->CachedVarnames();
 
         for (auto name : varnames) {
           scope->Var(name);
