@@ -15,7 +15,7 @@
 from .plot import Ploter
 from .profiler import ProfilerOptions
 from .profiler import Profiler
-from .profiler import global_profiler
+from .profiler import get_profiler
 
 __all__ = ['dump_config', 'Ploter']
 

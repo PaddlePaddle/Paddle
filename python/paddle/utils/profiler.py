@@ -20,7 +20,7 @@ import warnings
 from ..fluid import core
 from ..fluid.profiler import *
 
-__all__ = ['ProfilerOptions', 'Profiler', 'global_profiler']
+__all__ = ['ProfilerOptions', 'Profiler', 'get_profiler']
 
 
 class ProfilerOptions(object):
@@ -57,7 +57,7 @@ class ProfilerOptions(object):
                 return self.options[name]
 
 
-_global_profiler = None
+_current_profiler = None
 
 
 class Profiler(object):
@@ -70,10 +70,10 @@ class Profiler(object):
         self.enabled = enabled
 
     def __enter__(self):
-        # switch global profiler
-        global _global_profiler
-        self.prev_global_profiler = _global_profiler
-        _global_profiler = self
+        # record current profiler
+        global _current_profiler
+        self.previous_profiler = _current_profiler
+        _current_profiler = self
 
         if self.enabled:
             if self.profiler_options['batch_range'][0] == 0:
@@ -81,9 +81,8 @@ class Profiler(object):
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        # switch global profiler
-        global _global_profiler
-        _global_profiler = self.prev_global_profiler
+        global _current_profiler
+        _current_profiler = self.previous_profiler
 
         if self.enabled:
             self.stop()
@@ -114,7 +113,7 @@ class Profiler(object):
         if self.enabled and core.is_profiler_enabled():
             reset_profiler()
 
-    def add_step(self, change_profiler_status=True):
+    def record_step(self, change_profiler_status=True):
         if not self.enabled:
             return
         self.batch_id = self.batch_id + 1
@@ -129,8 +128,8 @@ class Profiler(object):
                 self.stop()
 
 
-def global_profiler():
-    global _global_profiler
-    if _global_profiler is None:
-        _global_profiler = Profiler()
-    return _global_profiler
+def get_profiler():
+    global _current_profiler
+    if _current_profiler is None:
+        _current_profiler = Profiler()
+    return _current_profiler

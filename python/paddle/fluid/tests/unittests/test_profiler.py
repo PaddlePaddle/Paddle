@@ -141,9 +141,9 @@ class TestProfiler(unittest.TestCase):
                     self.run_iter(exe, main_program,
                                   [avg_cost, batch_acc, batch_size],
                                   pass_acc_calculator)
-                    utils.global_profiler().add_step()
+                    utils.get_profiler().record_step()
                     if batch_range is None and iter == 2:
-                        utils.global_profiler().reset()
+                        utils.get_profiler().reset()
 
         self.check_profile_result(profile_path)
 
@@ -198,10 +198,10 @@ class TestProfilerAPIError(unittest.TestCase):
         except ValueError:
             pass
 
-        global_profiler_outer = utils.global_profiler()
+        global_profiler = utils.get_profiler()
         with utils.Profiler(enabled=True) as prof:
-            self.assertTrue(utils.global_profiler() == prof)
-            self.assertTrue(global_profiler_outer != prof)
+            self.assertTrue(utils.get_profiler() == prof)
+            self.assertTrue(global_profiler != prof)
 
 
 if __name__ == '__main__':
