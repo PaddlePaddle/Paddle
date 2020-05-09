@@ -111,6 +111,7 @@ class SparseVariable {
   void Get(const std::vector<int64_t>& ids,
            const std::vector<std::string>& value_names,
            std::vector<std::vector<std::vector<float>>>* values) {
+    std::lock_guard<std::mutex> lock(mutex_);
     for (auto id : ids) {
       auto got = values_.find(id);
       if (got == values_.end()) {
@@ -125,6 +126,7 @@ class SparseVariable {
   void Set(const std::vector<int64_t>& ids,
            const std::vector<std::string>& value_names,
            const std::vector<std::vector<std::vector<float>>>& values) {
+    std::lock_guard<std::mutex> lock(mutex_);
     for (int i = 0; i < static_cast<int>(ids.size()); i++) {
       auto value = values_.at(ids[i]);
       auto values_for_id = values[i];
@@ -158,6 +160,7 @@ class SparseVariable {
     return rets;
   }
 
+  mutable std::mutex mutex_;
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims;
   std::vector<int> initializers_;
