@@ -36,7 +36,9 @@ class ActivationOpConverter : public OpConverter {
 
     auto op_pair = ops.find(op_type_);
     if (op_pair == ops.end()) {
-      PADDLE_THROW("Wrong activation op type!");
+      PADDLE_THROW(platform::errors::Fatal(
+          "Wrong activation op type, the trt do not support the %s act type.",
+          op_type_));
     }
 
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
@@ -49,10 +51,9 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(0.);
       layer->setBeta(6.);
     }
-    g
 #endif
 
-        auto output_name = op_desc.Output("Out")[0];
+    auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
     if (op_desc.HasAttr("out_scale")) {

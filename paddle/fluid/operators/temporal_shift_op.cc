@@ -26,27 +26,41 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of TemporalShiftOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of TemporalShiftOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SpectralNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SpectralNorm");
 
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4,
-                      "Input(X) rank should be 4 in shape of [N*T, C, H, W].");
+                      platform::errors::InvalidArgument(
+                          "Input(X) rank should be 4 in shape of [N*T, C, H, "
+                          "W], but received X rank(%d)",
+                          dim_x.size()));
 
     int seg_num = ctx->Attrs().Get<int>("seg_num");
     float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
-    PADDLE_ENFORCE_GT(seg_num, 0, "Attr(seg_num) should be greater than 0.");
-    PADDLE_ENFORCE_GT(shift_ratio, 0.,
-                      "Attr(shift_ratio) should be greater than 0");
-    PADDLE_ENFORCE_LT(shift_ratio, 0.5,
-                      "Attr(shift_ratio) should be less than 0.5");
+    PADDLE_ENFORCE_GT(
+        seg_num, 0,
+        platform::errors::InvalidArgument(
+            "Attr(seg_num) should be greater than 0, but received %d",
+            seg_num));
+    PADDLE_ENFORCE_GT(
+        shift_ratio, 0.,
+        platform::errors::InvalidArgument(
+            "Attr(shift_ratio) should be greater than 0, but received %d",
+            shift_ratio));
+    PADDLE_ENFORCE_LT(
+        shift_ratio, 0.5,
+        platform::errors::InvalidArgument(
+            "Attr(shift_ratio) should be less than 0.5, but received %d",
+            shift_ratio));
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(
-          dim_x[0] % seg_num, 0,
-          "Input(X) dims[0] should be divided exactly by Attr(seg_num).");
+      PADDLE_ENFORCE_EQ(dim_x[0] % seg_num, 0,
+                        platform::errors::InvalidArgument(
+                            "Input(X) dimension[0] should be divided exactly "
+                            "by Attr(seg_num), but received X dimension[0](%d) "
+                            "mod seg_num(%d) != 0",
+                            dim_x[0], seg_num));
     }
 
     ctx->SetOutputDim("Out", dim_x);

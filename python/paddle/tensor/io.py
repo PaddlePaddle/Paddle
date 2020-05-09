@@ -13,4 +13,7 @@
 # limitations under the License.
 
 # TODO: define functions to save & load a tensor  
-# __all__ = ['save', 'load']
+from ..fluid import save  #DEFINE_ALIAS
+from ..fluid.io import load  #DEFINE_ALIAS
+
+__all__ = ['save', 'load']

@@ -340,18 +340,6 @@ struct AnalysisConfig {
   void SwitchIrDebug(int x = true);
 
   ///
-  /// \brief Turn on NGRAPH.
-  ///
-  ///
-  void EnableNgraph();
-  ///
-  /// \brief A boolean state telling whether to use the NGRAPH.
-  ///
-  /// \return bool Whether to use the NGRAPH.
-  ///
-  bool ngraph_enabled() const { return use_ngraph_; }
-
-  ///
   /// \brief Turn on MKLDNN.
   ///
   ///
@@ -407,6 +395,14 @@ struct AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
+
+  ///
+  /// \brief A boolean state telling whether the thread local CUDA stream is
+  /// enabled.
+  ///
+  /// \return bool Whether the thread local CUDA stream is enabled.
+  ///
+  bool thread_local_stream_enabled() const { return thread_local_stream_; }
 
   ///
   /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
@@ -498,6 +494,13 @@ struct AnalysisConfig {
   ///
   ///
   PassStrategy* pass_builder() const;
+
+  ///
+  /// \brief Enable the GPU multi-computing stream feature.
+  /// NOTE: The current behavior of this interface is to bind the computation
+  /// stream to the thread, and this behavior may be changed in the future.
+  ///
+  void EnableGpuMultiStream();
   void PartiallyRelease();
 
  protected:
@@ -548,7 +551,6 @@ struct AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
 
-  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
@@ -575,6 +577,8 @@ struct AnalysisConfig {
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
+
+  bool thread_local_stream_{false};
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

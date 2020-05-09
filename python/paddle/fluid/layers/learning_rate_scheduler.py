@@ -33,6 +33,7 @@ from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
 from ..framework import in_dygraph_mode
 from ..dygraph import learning_rate_scheduler as imperate_lr
+from ..data_feeder import check_variable_and_dtype, check_type
 
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
@@ -449,6 +450,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
             lr = fluid.layers.cosine_decay(
             learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
+    check_type(learning_rate, 'learning_rate', (float, tensor.Variable),
+               'cosine_decay')
 
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():

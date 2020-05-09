@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import decorator
 import contextlib
+import functools
 import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 import objgraph
@@ -49,12 +52,34 @@ def program_desc_tracing_guard(enable):
     if tracer:
         original_val = tracer._enable_program_desc_tracing
         tracer._enable_program_desc_tracing = enable
-    yield
-    if tracer:
-        tracer._enable_program_desc_tracing = original_val
+    try:
+        yield
+    finally:
+        if tracer:
+            tracer._enable_program_desc_tracing = original_val
 
 
 _functional_dygraph_context_manager = None
+
+
+@signature_safe_contextmanager
+def param_guard(parameters):
+    # Note: parameters is a reference of self._parameters
+    if not framework.in_dygraph_mode() and parameters:
+        origin_parameters = parameters.copy()
+        for name, var_base in parameters.items():
+            if isinstance(var_base, core.VarBase):
+                new_var = framework.Parameter(
+                    var_base.block,
+                    var_base.shape,
+                    var_base.dtype,
+                    var_base.type,
+                    name=var_base.name)
+                parameters[name] = new_var
+        yield
+        parameters.update(origin_parameters)
+    else:
+        yield
 
 
 def enabled():
@@ -110,6 +135,9 @@ def enable_dygraph(place=None):
         _functional_dygraph_context_manager = guard(place=place)
         _functional_dygraph_context_manager.__enter__()
 
+        # call disable_dygraph when Python exit
+        CleanupFuncRegistrar.register(disable_dygraph)
+
 
 def disable_dygraph():
     """
@@ -134,14 +162,16 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
         mode = tracer._train_mode
         tracer._train_mode = is_train
-        yield
-        tracer._train_mode = mode
+        try:
+            yield
+        finally:
+            tracer._train_mode = mode
     else:
         yield
 
@@ -195,11 +225,12 @@ def no_grad(func=None):
         return _switch_tracer_mode_guard_(is_train=False)
     else:
 
-        def __impl__(*args, **kwargs):
+        @decorator.decorator
+        def __impl__(func, *args, **kwargs):
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 
-        return __impl__
+        return __impl__(func)
 
 
 @signature_safe_contextmanager
@@ -489,15 +520,24 @@ def grad(outputs,
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None):
     """
-    The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
+    The API will create a ``Variable`` or ``ComplexVariable`` object from 
+    numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable): The numpy\.ndarray or Variable object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
+        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
+            or ComplexVariable object that needs to be converted, it can be 
+            multi-dimension, and the data type is one of numpy\.{float16, 
+            float32, float64, int16, int32, int64, uint8, uint16, complex64, 
+            complex128}.
+        name(str, optional): The default value is None. Normally there is no 
+            need for user to set this property. For more information, please 
+            refer to :ref:`api_guide_Name` .
+        zero_copy(bool, optional): Whether to share memory with the input numpy 
+            array. This parameter only works with CPUPlace and will be set to 
+            True when it is None. Default: None.
 
     Returns:
-        Variable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable object, just return ``value``.
+        Variable or ComplexVariable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable object, just return ``value``.
 
 
     Examples:
@@ -515,7 +555,10 @@ def to_variable(value, name=None, zero_copy=None):
             y = fluid.dygraph.to_variable(x)
             x[0][0] = 0
             y[0][0].numpy()  # array([0.], dtype=float32)
-
+            c = np.array([2+1j, 2])
+            z = fluid.dygraph.to_variable(c)
+            z.numpy() # array([2.+1.j, 2.+0.j])
+            z.dtype # 'complex128'
     """
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
@@ -527,15 +570,34 @@ def to_variable(value, name=None, zero_copy=None):
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
             zero_copy = False
-        py_var = core.VarBase(
-            value=value,
-            place=framework._current_expected_place(),
-            persistable=False,
-            zero_copy=zero_copy,
-            name=name if name else '')
-        return py_var
-    elif isinstance(value, (core.VarBase, framework.Variable)):
+        if np.iscomplexobj(value):
+            if not name:
+                name = framework.unique_name.generate('_generated_var')
+            real_var = core.VarBase(
+                value=value.real,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name + ".real")
+            imag_var = core.VarBase(
+                value=value.imag,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name + ".imag")
+            return framework.ComplexVariable(real_var, imag_var)
+        else:
+            py_var = core.VarBase(
+                value=value,
+                place=framework._current_expected_place(),
+                persistable=False,
+                zero_copy=zero_copy,
+                name=name if name else '')
+            return py_var
+    elif isinstance(value, (core.VarBase, framework.Variable,
+                            framework.ComplexVariable)):
         return value
     else:
         raise TypeError(
-            "to_variable only accepts 'ndarray' and 'Variable' as value's input")
+            "The type of input value is invalid, expected type is 'ndarray', "
+            "'Variable' or 'ComplexVariable', but received %s." % type(value))

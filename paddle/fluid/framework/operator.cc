@@ -177,7 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
 
-    VLOG(3) << place << " " << DebugStringEx(&scope);
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
@@ -1326,7 +1326,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "is empty or not LoDTensor or SelectedRows.",
+      "is empty or not LoDTensor or SelectedRows or LoDTensorArray.",
       name, Type());
   return data_type;
 }

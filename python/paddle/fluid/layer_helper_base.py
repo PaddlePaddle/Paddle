@@ -81,8 +81,8 @@ class LayerHelperBase(object):
             return value
         else:
             raise TypeError(
-                "to_variable only accepts 'ndarray' or 'Variable' or 'VarBase' as value's input"
-            )
+                "The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received %s"
+                % type(value))
 
     def _create_weight_normalize(self, attr, shape, dtype):
         from .layers import elementwise_mul, elementwise_div, reshape

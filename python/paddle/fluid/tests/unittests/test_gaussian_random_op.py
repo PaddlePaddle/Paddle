@@ -72,5 +72,42 @@ class TestGaussianRandomOp(unittest.TestCase):
         pass
 
 
+class TestGaussianRandomOpError(unittest.TestCase):
+    def setUp(self):
+        self.op_type = "gaussian_random"
+        self.inputs = {}
+        self.use_mkldnn = False
+        self.attrs = {
+            "shape": [1000, 784],
+            "mean": .0,
+            "std": 1.,
+            "seed": 10,
+            "use_mkldnn": self.use_mkldnn
+        }
+
+        self.outputs = ["Out"]
+
+    def test_errors(self):
+        program = fluid.Program()
+        with fluid.program_guard(fluid.Program(), program):
+            input_data = numpy.random.random((2, 4)).astype("float32")
+            block = program.global_block()
+            vout = block.create_var(name="Out", dtype='int32')
+            normal_initializer = fluid.initializer.NormalInitializer(
+                loc=0.0, scale=1.0, seed=0)
+
+            def test_Variable():
+                # the input type must be Variable
+                normal_initializer(input_data)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_type():
+                # dtype must be float32 or float64
+                normal_initializer(vout)
+
+            self.assertRaises(TypeError, test_type)
+
+
 if __name__ == "__main__":
     unittest.main()

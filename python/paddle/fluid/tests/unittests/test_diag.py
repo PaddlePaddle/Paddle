@@ -17,6 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import core
+from paddle.fluid import Program, program_guard
 
 
 class TestDiagOp(OpTest):
@@ -37,6 +40,17 @@ class TestDiagOp(OpTest):
 class TestDiagOpCase1(TestDiagOp):
     def init_config(self):
         self.case = np.array([3], dtype='int32')
+
+
+class TestDiagError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_diag_type():
+                x = [1, 2, 3]
+                output = fluid.layers.diag(diag=x)
+
+            self.assertRaises(TypeError, test_diag_type)
 
 
 if __name__ == "__main__":

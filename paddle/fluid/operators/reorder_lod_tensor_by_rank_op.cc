@@ -188,7 +188,9 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
     size_t out_offset = 0;
     out->mutable_lod()->clear();
     for (auto &item : rank_table.items()) {
-      PADDLE_ENFORCE_LT(item.index, absolute_table.size());
+      PADDLE_ENFORCE_LT(item.index, absolute_table.size(),
+                        platform::errors::OutOfRange(
+                            "The value of rank_table is out of range."));
       out_offset = CopyTensorAndLod(place, absolute_table[item.index], x, out,
                                     out_offset);
     }
