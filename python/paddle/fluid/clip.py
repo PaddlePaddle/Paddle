@@ -843,8 +843,6 @@ def append_gradient_clip_ops(param_grads):
 
 
 # change wrong mapping relation between param & grad in clip op
-# Note: This function is sensitive to the time cost of the network with gradient clipping 
-# and should not be changed easily. If you must change, please test the time cost.
 def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
     block_id_list = []
     if len(param_new_grad_name_dict) == 0:
