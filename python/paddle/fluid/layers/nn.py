@@ -1870,7 +1870,7 @@ def pool2d(input,
                              None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                 The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                 `[batch_size, input_channels, input_height, input_width]`.
 
