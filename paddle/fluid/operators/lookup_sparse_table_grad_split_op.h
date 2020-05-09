@@ -43,17 +43,16 @@ class LookupSparseTableGradSplitKernel : public framework::OpKernel<T> {
     framework::TensorFromVector(in_rows, context.device_context(), out_row);
 
     auto in_value = in_grad->value();
-
     std::vector<T> ins_vector;
-    framework::TensorToVector(*in_value, context.device_context(), &ins_vector);
+    framework::TensorToVector(in_value, context.device_context(), &ins_vector);
     auto dims = in_value.dims();
 
     auto* out_v = context.OutputVar("Value");
     out_v->Clear();
-    auto* out_t = out_value->GetMutable<framework::Tensor>();
-    out_t->Resize(dims);
+    auto* out_t = out_v->GetMutable<framework::LoDTensor>();
     out_t->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(ins_vector, context.device_context(), out_t);
+    out_t->Resize(dims);
   }
 };
 }  // namespace operators
