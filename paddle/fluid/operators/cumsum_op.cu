@@ -161,12 +161,15 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   // to avoid bank confilict in share memory
   int bank_offset1 = col1 >> 5;
   int bank_offset2 = col2 >> 5;
-  if (threadId < block_scan_size / 2) {
+  if (col1 < block_scan_size / 2) {
     share_tmp[col1] = in[index1];
+  } else {
+    share_tmp[col1] = 0;
+  }
+  if (col2 < block_scan_size) {
     share_tmp[col2] = in[index2];
   } else {
     share_tmp[col1] = 0;
-    share_tmp[col2] = 0;
   }
 
   // Up-Sweep
