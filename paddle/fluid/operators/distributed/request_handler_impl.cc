@@ -29,6 +29,7 @@
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 
 namespace paddle {
 namespace operators {
@@ -90,6 +91,19 @@ bool RequestSendHandler::Handle(const std::string& varname,
         AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
                                                               grad_slr.rows());
       }
+
+      auto* var = scope->FindVar(run_varname);
+
+      // for sparse ids
+      if (var->IsType<framework::SelectedRows>()) {
+        auto* ins = distributed::LargeScaleKV::GetInstance();
+        auto varnames = ins->GetByGrad(run_varname)->ValueNames();
+
+        for (auto name : varnames) {
+          scope->Var(name);
+        }
+      }
+
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                     scope);
 

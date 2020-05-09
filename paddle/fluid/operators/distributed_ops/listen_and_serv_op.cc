@@ -115,12 +115,13 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
   for (auto attrs : kv_attrs) {
     std::vector<std::string> pieces;
     split(attrs, ':', &pieces);
-    PADDLE_ENFORCE_EQ(pieces.size(), 4, "must 4");
+    PADDLE_ENFORCE_EQ(pieces.size(), 5, "must 5");
 
     std::string name;
     std::vector<std::string> value_names;
     std::vector<int> value_dims;
     distributed::Mode mode;
+    std::vector<std::string> grad_names;
 
     name = pieces[0];
     split(pieces[1], ',', &value_names);
@@ -134,11 +135,15 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
     mode = pieces[3] == "0" ? distributed::Mode::training
                             : distributed::Mode::infer;
 
+    split(pieces[4], ',', &grad_names);
+
     auto meta = distributed::SparseMeta();
     meta.name = name;
     meta.value_names = value_names;
     meta.value_dims = value_dims;
     meta.mode = mode;
+    meta.grad_names = grad_names;
+
     metas.push_back(meta);
   }
 

@@ -43,6 +43,7 @@ struct SparseMeta {
   std::string name;
   std::vector<std::string> value_names;
   std::vector<int> value_dims;
+  std::vector<std::string> grad_names;
   Mode mode;
 };
 
@@ -90,6 +91,7 @@ class SparseVariable {
     meta_.mode = meta.mode;
     meta_.value_names = meta.value_names;
     meta_.value_dims = meta.value_dims;
+    meta_.grad_names = meta.grad_names;
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       values_dims[meta_.value_names[i]] = meta_.value_dims[i];
@@ -104,6 +106,11 @@ class SparseVariable {
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       ss << "value_name: " << meta_.value_names[i]
          << " dim: " << meta_.value_dims[i] << " ";
+    }
+
+    ss << " grads: ";
+    for (int i = 0; i < static_cast<int>(meta_.grad_names.size()); i++) {
+      ss << meta_.grad_names[i] << " ";
     }
     return ss.str();
   }
@@ -144,6 +151,8 @@ class SparseVariable {
     }
   }
 
+  std::vector<std::string>& ValueNames() const { return meta_.value_names; }
+
   int64_t Size() { return static_cast<int64_t>(values_.size()); }
 
  private:
@@ -177,6 +186,12 @@ class LargeScaleKV {
       auto meta = std::shared_ptr<SparseVariable>(
           new SparseVariable(std::move(sparse_meta)));
       sparse_variables[table_name] = meta;
+
+      VLOG(3) << "Init LargeScaleKV with: " << meta->ToString();
+
+      for (auto& grad : sparse_meta.grad_names) {
+        grad_to_param[grad] = table_name;
+      }
     }
   }
 
@@ -201,9 +216,14 @@ class LargeScaleKV {
     return variable.get();
   }
 
+  SparseVariable* GetByGrad(std::string name) {
+    return sparse_variables[grad_to_param[name]];
+  }
+
  private:
   std::unordered_map<std::string, std::shared_ptr<SparseVariable>>
       sparse_variables;
+  std::unordered_map<std::string, std::string> grad_to_param;
   static std::shared_ptr<LargeScaleKV> scale_kv_;
   static std::once_flag init_flag_;
 };
