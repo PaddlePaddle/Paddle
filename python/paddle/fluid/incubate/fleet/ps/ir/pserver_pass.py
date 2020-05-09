@@ -674,18 +674,19 @@ def large_scale_sparse_pass(program, config):
             dtype="int64",
             shape=[1, 1],
             lod_level=0)
-        inputs["Ids"] = var
 
-        for i in range(len(value_names)):
-            in_name = "In{}".format(i)
-            in_var = global_block.vars[acture_names[i]]
-            inputs[in_name] = in_var
+        inputs["Ids"] = var
+        in_vars = [
+            global_block.vars[acture_name] for acture_name in acture_names
+        ]
+        inputs["In"] = in_vars
 
         block.append_op(
             type="lookup_sparse_table_write",
             inputs=inputs,
             outputs={},
-            attrs={"tablename": table_name})
+            attrs={"tablename": table_name,
+                   "value_names": value_names})
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
 

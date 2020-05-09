@@ -103,15 +103,10 @@ class RequestPrefetchHandler final : public RequestHandler {
       const std::string& out_name) {
     framework::OpDesc desc;
     desc.SetType("lookup_sparse_table_read");
-    desc.SetAttr("tablename", {table_name});
-    desc.SetAttr("read_names", std::vector<std::string>({"Param"}));
     desc.SetInput("Ids", {id_name});
-
-    desc.SetOutput("Out0", {out_name});
-    desc.SetOutput("Out1", {});
-    desc.SetOutput("Out2", {});
-    desc.SetOutput("Out3", {});
-    desc.SetOutput("Out4", {});
+    desc.SetOutput("Out", std::vector<std::string>({out_name}));
+    desc.SetAttr("tablename", {table_name});
+    desc.SetAttr("value_names", std::vector<std::string>({"Param"}));
 
     auto op = paddle::framework::OpRegistry::CreateOp(desc);
     return op;

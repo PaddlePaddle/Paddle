@@ -42,13 +42,6 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     auto value_names = Attr<std::vector<std::string>>("value_names");
     auto out_names = Outputs("Out");
 
-    //** For Test
-    auto meta = distributed::SparseMeta();
-    meta.name = "embedding";
-    meta.value_names = {"Param", "Moment1"};
-    meta.value_dims = {64, 64};
-    meta.mode = distributed::Mode::training;
-
     std::vector<int64_t> ids;
     for (int64_t i = 0; i < id_tensor.numel(); ++i) {
       ids.push_back(id_data[i]);
