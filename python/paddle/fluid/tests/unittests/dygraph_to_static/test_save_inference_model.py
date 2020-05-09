@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
 SEED = 2020
 
@@ -101,6 +102,36 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
                           fetch_list=fetch_targets)
 
         return np.array(results[0])
+
+
+class TestPartialProgramRaiseError(unittest.TestCase):
+    def test_param_type(self):
+        program_translator = ProgramTranslator()
+        program_translator.enable(True)
+        x_data = np.random.random((20, 20)).astype('float32')
+
+        with fluid.dygraph.guard(fluid.CPUPlace()):
+            net = SimpleFcLayer(20)
+            x = fluid.dygraph.to_variable(x_data)
+            out = net(x)
+
+            program_cache = program_translator.get_program_cache()
+            _, (concrete_program, _) = program_cache.last()
+
+            params = concrete_program.parameters
+
+            concrete_program.parameters = params[0]
+            # TypeError: Type of self._params should be list or tuple,
+            # but received <class 'paddle.fluid.framework.ParamBase'>.
+            with self.assertRaises(TypeError):
+                partial_program_from(concrete_program)
+
+            params[0] = "linear.w.0"
+            concrete_program.parameters = params
+            # TypeError: Type of self._params[0] shoule be framework.ParamBase,
+            # but received <type 'str'>.
+            with self.assertRaises(TypeError):
+                partial_program_from(concrete_program)
 
 
 if __name__ == '__main__':
