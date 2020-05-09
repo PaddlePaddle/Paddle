@@ -26,7 +26,6 @@ class PartialProgramLayer(layers.Layer):
     and execute them as a static subgraph.
 
     .. note::
-        **1. It should not be called directly and is used to train dygraph by static mode.
         **1. This is a very low level API. Users should not use this API
              directly. Please use `partial_program_from(concrete_program)`
              to create it.
@@ -46,7 +45,7 @@ class PartialProgramLayer(layers.Layer):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
-        self._params = parameters or []
+        self._params = parameters if parameters is not None else []
         # Check all params from main program can be found in self._params:
         # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
         # 2. parameter from transformed program shall be found in self._params.
@@ -180,7 +179,7 @@ class PartialProgramLayer(layers.Layer):
         for i, param in enumerate(self._params):
             if not isinstance(param, framework.ParamBase):
                 raise TypeError(
-                    'Type of self._params[{}] shoule be framework.ParamBase, but received {}.'.
+                    'Type of self._params[{}] should be framework.ParamBase, but received {}.'.
                     format(i, type(param)))
             params_name_set.add(param.name)
 
