@@ -256,7 +256,18 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
     if (PyNumber_Check(slice_item)) {
       // integer
       int start = static_cast<int>(PyLong_AsLong(slice_item));
+      auto s_t = start;
       start = start < 0 ? start + dim_len : start;
+      if (start >= dim_len) {
+        std::string str_error_message =
+            "The starting index " + std::to_string(s_t) +
+            " of slice is out of bounds in tensor " + std::to_string(dim) +
+            "-th axis, it shound be in the range of [" +
+            std::to_string(-dim_len) + ", " + std::to_string(dim_len) + ")";
+        // py::index_error is corresponding to IndexError in Python
+        // Used to indicate out of bounds access in __getitem__, __setitem__
+        throw py::index_error(str_error_message);
+      }
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(start + 1);
