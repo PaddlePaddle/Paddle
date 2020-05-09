@@ -645,6 +645,7 @@ def large_scale_sparse_pass(program, config):
 
     def get_optimizer_values(block):
         value_names = []
+        acture_names = []
         value_dims = []
 
         for op in block.ops:
@@ -658,10 +659,33 @@ def large_scale_sparse_pass(program, config):
 
                 value_names.append(value)
                 value_dims.append(var.shape[1])
+                acture_names.append(var.name)
 
             if value_names:
                 break
-        return value_names, value_dims
+        return value_names, value_dims, acture_names
+
+    def add_large_scale_op(block, global_block, table_name, value_names,
+                           acture_names):
+        inputs = {}
+        var = global_block.create_var(
+            name="sparse_ids",
+            persistable=False,
+            dtype="int64",
+            shape=[1, 1],
+            lod_level=0)
+        inputs["Ids"] = var
+
+        for i in range(len(value_names)):
+            in_name = "In{}".format(i)
+            in_var = global_block.vars[acture_names[i]]
+            inputs[in_name] = in_var
+
+        block.append_op(
+            type="lookup_sparse_table_write",
+            inputs=inputs,
+            outputs={},
+            attrs={"tablename": table_name})
 
     op = get_op_by_type(program.global_block(), "listen_and_serv")
 
@@ -680,14 +704,18 @@ def large_scale_sparse_pass(program, config):
         param_blockid_map[param] = grad_blockid_map[grad]
 
     for param, blockid in param_blockid_map.items():
-        p = param
+
         opt_block = program.block(blockid)
-        value_names, value_dims = get_optimizer_values(opt_block)
+        value_names, value_dims, acture_names = get_optimizer_values(opt_block)
+        add_large_scale_op(opt_block,
+                           program.global_block(), param, value_names,
+                           acture_names)
+
         # training/infer
         mode = "0"
         names_str = ",".join(value_names)
         dims_str = ",".join([str(dim) for dim in value_dims])
-        meta_str = ":".join([p, names_str, dims_str, mode])
+        meta_str = ":".join([param, names_str, dims_str, mode])
         large_scale_kv_metas.append(meta_str)
     op._set_attr("large_scale_kv_meta", large_scale_kv_metas)
 

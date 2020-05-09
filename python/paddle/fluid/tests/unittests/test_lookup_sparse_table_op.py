@@ -37,8 +37,7 @@ class TestLookupSpraseTable(unittest.TestCase):
         lookup_table = Operator(
             "lookup_sparse_table_read",
             Ids='Ids',
-            Out0='Param',
-            Out1='Moment1',
+            Out={'Param', 'Moment1'},
             tablename="embedding")
         lookup_table.run(scope, place)
 
@@ -54,8 +53,7 @@ class TestLookupSpraseTable(unittest.TestCase):
         lookup_table = Operator(
             "lookup_sparse_table_write",
             Ids='Ids',
-            In0='Param',
-            In1='Moment1',
+            In={'Param', 'Moment1'},
             tablename="embedding")
         lookup_table.run(scope, place)
 
@@ -67,8 +65,7 @@ class TestLookupSpraseTable(unittest.TestCase):
         lookup_table = Operator(
             "lookup_sparse_table_read",
             Ids='Ids',
-            Out0='Param',
-            Out1='Moment1',
+            Out={'Param', 'Moment1'},
             tablename="embedding")
         lookup_table.run(scope, place)
 

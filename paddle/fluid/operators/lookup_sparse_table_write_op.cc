@@ -45,25 +45,19 @@ class LookupSparseTableWriteOp : public framework::OperatorBase {
     }
 
     auto tablename = Attr<std::string>("tablename");
+    auto value_names = Attr<std::vector<std::string>>("value_names");
 
-    std::vector<std::string> value_names;
     std::vector<const float *> tensors;
     std::vector<int64_t> dims;
     std::vector<std::vector<std::vector<float>>> values;
     values.resize(ids.size());
 
-    for (int i = 0; i < 5; i++) {
-      auto in_name = Input(string::Sprintf("%s%d", "In", i));
-      auto *in = scope.FindLocalVar(in_name);
-
-      if (in == nullptr) {
-        break;
-      } else {
-        value_names.push_back(in_name);
-        auto in_t = in->Get<framework::LoDTensor>();
-        dims.push_back(in_t.dims()[1]);
-        tensors.push_back(in_t.data<float>());
-      }
+    auto in_names = Inputs("In");
+    for (int i = 0; i < static_cast<int>(in_names); i++) {
+      auto *in = scope.FindLocalVar(in_names[i]);
+      auto in_t = in->Get<framework::LoDTensor>();
+      dims.push_back(in_t.dims()[1]);
+      tensors.push_back(in_t.data<float>());
     }
 
     for (int i = 0; i < static_cast<int>(ids.size()); i++) {
@@ -86,25 +80,17 @@ class LookupSparseTableWriteOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ids",
              "(LoDTensor) Ids's type should be LoDTensor"
              "THe ids to be looked up in W.");
-    AddInput("In0",
+    AddInput("In",
              "(LoDTensor) The lookup results, which have the "
-             "same type as W.");
-    AddInput("In1",
-             "(LoDTensor) The lookup results, which have the "
-             "same type as W.");
-    AddInput("In2",
-             "(LoDTensor) The lookup results, which have the "
-             "same type as W.");
-    AddInput("In3",
-             "(LoDTensor) The lookup results, which have the "
-             "same type as W.");
-    AddInput("In4",
-             "(LoDTensor) The lookup results, which have the "
-             "same type as W.");
+             "same type as W.")
+        .AsDuplicable();
 
     AddAttr<std::string>("tablename",
                          "(string)"
                          "sparse table name");
+    AddAttr<std::vector<std::string>>("value_names",
+                                      "(strings)"
+                                      "sparse table name");
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.
 

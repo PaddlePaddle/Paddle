@@ -39,24 +39,19 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     auto &id_tensor = scope.FindVar(Input("Ids"))->Get<framework::LoDTensor>();
     auto *id_data = id_tensor.data<int64_t>();
     auto tablename = Attr<std::string>("tablename");
-    auto read_names = Attr<std::vector<std::string>>("read_names");
+    auto value_names = Attr<std::vector<std::string>>("value_names");
+    auto out_names = Outputs("Out");
+
+    //** For Test
+    auto meta = distributed::SparseMeta();
+    meta.name = "embedding";
+    meta.value_names = {"Param", "Moment1"};
+    meta.value_dims = {64, 64};
+    meta.mode = distributed::Mode::training;
 
     std::vector<int64_t> ids;
     for (int64_t i = 0; i < id_tensor.numel(); ++i) {
       ids.push_back(id_data[i]);
-    }
-
-    std::vector<std::string> value_names;
-    std::vector<std::string> out_names;
-
-    for (int i = 0; i < 5; i++) {
-      auto out_name = Output(string::Sprintf("%s%d", "Out", i));
-
-      if (scope.FindVar(out_name) == nullptr) {
-        break;
-      }
-      value_names.push_back(read_names[i]);
-      out_names.push_back(out_name);
     }
 
     std::vector<std::vector<std::vector<float>>> values;
@@ -95,27 +90,16 @@ class LookupSparseTableReadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ids",
              "(LoDTensor) Ids's type should be LoDTensor"
              "THe ids to be looked up in W.");
-    AddOutput("Out0",
+    AddOutput("Out",
               "(LoDTensor) The lookup results, which have the "
-              "same type as W.");
-    AddOutput("Out1",
-              "(LoDTensor) The lookup results, which have the "
-              "same type as W.");
-    AddOutput("Out2",
-              "(LoDTensor) The lookup results, which have the "
-              "same type as W.");
-    AddOutput("Out3",
-              "(LoDTensor) The lookup results, which have the "
-              "same type as W.");
-    AddOutput("Out4",
-              "(LoDTensor) The lookup results, which have the "
-              "same type as W.");
+              "same type as W.")
+        .AsDuplicable();
 
     AddAttr<std::string>("tablename",
                          "(string)"
                          "sparse table name");
 
-    AddAttr<std::vector<std::string>>("read_names",
+    AddAttr<std::vector<std::string>>("value_names",
                                       "(strings)"
                                       "sparse table name");
     AddComment(R"DOC(
