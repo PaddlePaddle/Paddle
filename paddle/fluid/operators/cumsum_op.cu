@@ -212,12 +212,24 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
 
   __syncthreads();
 
-  out[index1] = share_tmp[col1];
-  out[index2] = share_tmp[col2];
+  if (col1 < block_scan_size / 2) out[index1] = share_tmp[col1];
+  if (col2 < block_scan_size) out[index2] = share_tmp[col2];
 }
 
+// for large scan_dim_size array we need to add for correct result
 template <typename T>
-__global__ void AddBlokScan(T* in, T* sum, int size) {}
+__global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size) {
+  int idx = threadIdx.x + blockDim.x * (blockIdx.x + blockIdx.y * gridDim.x);
+  int index = threadIdx.x + blockIdx.x * blockDim.x;
+  int block_id_start = blockIdx.y * gridDim.x;
+  int block_id_end = blockIdx.x + blockIdx.y * gridDim.x;
+  int thread_id = threadIdx.x;
+  index = idx + size;
+  if (index >= scan_dim_size) return;
+  for (int i = block_id_start; i < block_id_end; i++) {
+    result[idx + size] += sum[i];
+  }
+}
 
 template <typename DeviceContext, typename T>
 class CumCUDAKernel : public framework::OpKernel<T> {
@@ -282,6 +294,15 @@ class CumCUDAKernel : public framework::OpKernel<T> {
             T><<<grid, block, share_mem_size, dev_ctx.stream()>>>(
             in_data, out_data, sum_data, inner_dim_size, outer_dim_size,
             scan_dim_size, reverse);
+        // for large scan array we need to do add for correct result
+        int element_size = element_per_block * 2;
+        if (scan_dim_size > element_size) {
+          dim3 sum_block(element_per_block);
+          dim3 sum_grid((scan_dim_size - element_size + block.x - 1) / block.x,
+                        outer_dim_size);
+          AddBlockScan<T><<<grid, block, 0, dev_ctx.stream()>>>(
+              out_data, sum_data, element_size, scan_dim_size);
+        }
 
       } else {
         dim3 block(32, 16);
