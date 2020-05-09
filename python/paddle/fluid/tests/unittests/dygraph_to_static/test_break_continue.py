@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.jit import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -160,13 +160,9 @@ class TestContinueInFor(unittest.TestCase):
             return res.numpy()
 
     def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            res = dygraph_to_static_func(self.dygraph_func)(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=[res])
-
-        return static_res[0]
+        with fluid.dygraph.guard():
+            res = declarative(self.dygraph_func)(self.input)
+            return res.numpy()
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
