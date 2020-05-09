@@ -151,7 +151,7 @@ class SparseVariable {
     }
   }
 
-  std::vector<std::string>& ValueNames() const { return meta_.value_names; }
+  std::vector<std::string> ValueNames() const { return meta_.value_names; }
 
   int64_t Size() { return static_cast<int64_t>(values_.size()); }
 
@@ -217,7 +217,7 @@ class LargeScaleKV {
   }
 
   SparseVariable* GetByGrad(std::string name) {
-    return sparse_variables[grad_to_param[name]];
+    return Get(grad_to_param[name]);
   }
 
  private:

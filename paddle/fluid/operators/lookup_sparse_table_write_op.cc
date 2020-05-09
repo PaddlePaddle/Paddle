@@ -54,7 +54,7 @@ class LookupSparseTableWriteOp : public framework::OperatorBase {
 
     auto in_names = Inputs("In");
     for (int i = 0; i < static_cast<int>(in_names.size()); i++) {
-      auto *in = scope.FindLocalVar(in_names[i]);
+      auto *in = scope.FindVar(in_names[i]);
       auto in_t = in->Get<framework::LoDTensor>();
       dims.push_back(in_t.dims()[1]);
       tensors.push_back(in_t.data<float>());
