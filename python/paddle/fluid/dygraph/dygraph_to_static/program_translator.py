@@ -229,9 +229,6 @@ class ProgramCache(object):
             self._caches[item] = self._build_once(item)
         return self._caches[item]
 
-    def __len__(self):
-        return len(self._caches)
-
     def last(self):
         assert len(
             self._caches) >= 1, "No valid cached program in ProgramCache."
@@ -554,8 +551,11 @@ class ProgramTranslator(object):
 
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
-        Saves current model as the inference model. The saved
-        inference model can be loaded by C++ inference APIs.
+        Saves current model as the inference model. It will prune the main_program
+        to build a new program especially for inference, and then save it and all
+        related parameters to given `dirname` . The saved inference model can be
+        loaded by `:ref:`api_fluid_io_load_inference_model` or `C++ inference APIs.
+
         Args:
             dirname (str): the directory to save the inference model.
             feed (list[int], optional): the input variable indices of the saved
@@ -636,7 +636,7 @@ class ProgramTranslator(object):
                 dirname=dirname,
                 feeded_var_names=feed_var_names,
                 target_vars=fetch_vars,
-                executor=executor.Executor(core.CPUPlace()),
+                executor=executor.Executor(framework._current_expected_place()),
                 main_program=concrete_program.main_program.clone())
 
     def get_program_cache(self):

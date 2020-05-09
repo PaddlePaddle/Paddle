@@ -27,6 +27,9 @@ class PartialProgramLayer(layers.Layer):
 
     .. note::
         **1. It should not be called directly and is used to train dygraph by static mode.
+        **1. This is a very low level API. Users should not use this API
+             directly. Please use `partial_program_from(concrete_program)`
+             to create it.
         **2. LoDTensorArray is not currently supported in the output.
 
     Args:
@@ -43,9 +46,14 @@ class PartialProgramLayer(layers.Layer):
         super(PartialProgramLayer, self).__init__()
         self.inputs = inputs
         self.outputs = outputs
-        self._params = parameters
+        self._params = parameters or []
+        # Check all params from main program can be found in self._params:
+        # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
+        # 2. parameter from transformed program shall be found in self._params.
+        #    Because they share same data with ParamBase of original dygraph.
+        self._check_params_all_inited(main_program)
+
         self._infer_program = main_program
-        check_params_init_outside(main_program, parameters)
         self._train_program = self._append_backward_desc()
         # Switch infer or train by train() and eval()
         self._trace_program = None
@@ -156,22 +164,35 @@ class PartialProgramLayer(layers.Layer):
                 continue
             param._set_grad_type(grad_var.type())
 
+    def _check_params_all_inited(self, main_program):
+        """
+        Check all params from main program are already initialized, see details as follows:
+            1. all parameters in self._params should be type `framework.ParamBase` which are created in dygraph.
+            2. all parameters from transformed program can be found in self._params.
+               Because they share same data with ParamBase of original dygraph.
+        """
+        if not isinstance(self._params, (list, tuple)):
+            raise TypeError(
+                "Type of self._params should be list or tuple, but received %s."
+                % type(self._params))
 
-def check_params_init_outside(program, params_from_init):
-    """
-    Check all params from the functions decorated by @declarative are defined outside,
-    such as `__init__` function.
-    """
-    params_name_set = set(p.name for p in params_from_init)
-    for block in program.blocks:
-        for name, var in block.vars.items():
-            if isinstance(var,
-                          framework.Parameter) and name not in params_name_set:
-                raise ValueError(
-                    "We don't support to define layer with parameters in the function "
-                    "decorated by `@declarative`. But found parameter(%s) created in "
-                    "the decorated function. Please define the layer "
-                    "in `__init__` function." % name)
+        params_name_set = set()
+        for i, param in enumerate(self._params):
+            if not isinstance(param, framework.ParamBase):
+                raise TypeError(
+                    'Type of self._params[{}] shoule be framework.ParamBase, but received {}.'.
+                    format(i, type(param)))
+            params_name_set.add(param.name)
+
+        for block in main_program.blocks:
+            for name, var in block.vars.items():
+                if isinstance(var, framework.Parameter):
+                    if name not in params_name_set:
+                        raise ValueError(
+                            "We don't support to define layer with parameters in the function "
+                            "decorated by `@declarative`. But found parameter(%s) created in "
+                            "the decorated function. Please define the layer "
+                            "in `__init__` function." % name)
 
 
 def valid_vars(vars):
