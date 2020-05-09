@@ -28,7 +28,8 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
   PADDLE_ENFORCE_EQ("linear", interp_method,
                     platform::errors::InvalidArgument(
                         "Interpolation method can only be \"linear\" when"
-                        "Input(X) dimension is 3"));
+                        "Input(X) dimension is 3, but got method = %s .",
+                        interp_method));
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -39,7 +40,9 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
         inputs_name.size(), 1,
         platform::errors::InvalidArgument(
             "Input(SizeTensor)'size of Op(interpolate) must be 1. "
-            "Attr(out_shape)'s length must be 1 for 3-D input tensor."));
+            "Attr(out_shape)'s length must be 1 for 3-D input tensor, but got "
+            "size = %d .",
+            inputs_name.size()));
     int out_w = ctx->Attrs().Get<int>("out_w");
     framework::DDim dim_out;
     if (data_layout == DataLayout::kNCHW) {
@@ -57,7 +60,9 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(
         scale_tensor.size(), 1,
-        platform::errors::InvalidArgument("Scale's dimension size must be 1."));
+        platform::errors::InvalidArgument(
+            "Scale's dimension size must be 1, but got dimension = %d .",
+            scale_tensor.size()));
     out_w = -1;
   } else {
     float scale = ctx->Attrs().Get<float>("scale");
@@ -75,9 +80,11 @@ static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
 
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
-    PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "OutSize's dimension size must be 1"));
+    PADDLE_ENFORCE_EQ(
+        out_size_dim.size(), 1,
+        platform::errors::InvalidArgument(
+            "OutSize's dimension size must be 1, but got dimention = %d .",
+            out_size_dim.size()));
     PADDLE_ENFORCE_EQ(out_size_dim[0], 1, platform::errors::InvalidArgument(
                                               "OutSize's dim[0] must be 1"));
     ctx->ShareLoD("X", "Out");
@@ -101,17 +108,19 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       "bilinear" == interp_method || "nearest" == interp_method ||
           "bicubic" == interp_method,
       "Interpolation method can only be \"bilinear\" or \"nearest\" when "
-      "Input(X) dimension is 4");
+      "Input(X) dimension is 4, but got method = %s .",
+      interp_method);
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
-    PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 2,
-        "Input(SizeTensor)'size of Op(interpolate) must be 2. "
-        "Attr(out_shape)'s length must be 2 for 4-D input tensor.");
+    PADDLE_ENFORCE_EQ(inputs_name.size(), 2,
+                      "Input(SizeTensor)'size of Op(interpolate) must be 2. "
+                      "Attr(out_shape)'s length must be 2 for 4-D input "
+                      "tensor, but got size = %d .",
+                      inputs_name.size());
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
     framework::DDim dim_out;
@@ -128,8 +137,10 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   int out_h, out_w;
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
-    PADDLE_ENFORCE_EQ(scale_tensor.size(), 1,
-                      "Scale's dimension size must be 1.");
+    PADDLE_ENFORCE_EQ(
+        scale_tensor.size(), 1,
+        "Scale's dimension size must be 1, but got dimension = %d .",
+        scale_tensor.size());
     out_h = -1;
     out_w = -1;
   } else {
@@ -153,9 +164,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
 
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
-    PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                      "OutSize's dimension size must be 1");
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 2, "OutSize's dim[0] must be 2");
+    PADDLE_ENFORCE_EQ(
+        out_size_dim.size(), 1,
+        "OutSize's dimension size must be 1, but got dimension = %d .",
+        out_size_dim.size());
+    PADDLE_ENFORCE_EQ(out_size_dim[0], 2,
+                      "OutSize's dim[0] must be 2, but got dimention = %d .",
+                      out_size_dim[0]);
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -175,17 +190,19 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
 
   PADDLE_ENFORCE("trilinear" == interp_method,
                  "Interpolation method can only be \"trilinear\" when Input(X) "
-                 "dimension is 5");
+                 "dimension is 5, but got method = %s .",
+                 interp_method);
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
     auto inputs_name = ctx->Inputs("SizeTensor");
-    PADDLE_ENFORCE_EQ(
-        inputs_name.size(), 3,
-        "Input(SizeTensor)'s size of Op(interpolate) must be 3. "
-        "Attr(out_shape)'s length must be 3 for 5-D input tensor.");
+    PADDLE_ENFORCE_EQ(inputs_name.size(), 3,
+                      "Input(SizeTensor)'s size of Op(interpolate) must be 3. "
+                      "Attr(out_shape)'s length must be 3 for 5-D input "
+                      "tensor, but got size = %d .",
+                      inputs_name.size());
     int out_d = ctx->Attrs().Get<int>("out_d");
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
@@ -204,7 +221,8 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("Scale")) {
     auto scale_tensor = ctx->GetInputDim("Scale");
     PADDLE_ENFORCE_EQ(scale_tensor.size(), 1,
-                      "Scale's dimension size must be 1");
+                      "Scale's dimension size must be 1, but got size = %d .",
+                      scale_tensor.size());
     out_d = -1;
     out_h = -1;
     out_w = -1;
@@ -235,8 +253,11 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
     auto out_size_dim = ctx->GetInputDim("OutSize");
     PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
-                      "OutSize's dimension size must be 1");
-    PADDLE_ENFORCE_EQ(out_size_dim[0], 3, "OutSize's dim[0] must be 3");
+                      "OutSize's dimension size must be 1, but got size =%d .",
+                      out_size_dim.size());
+    PADDLE_ENFORCE_EQ(out_size_dim[0], 3,
+                      "OutSize's dim[0] must be 3, but got size = %d .",
+                      out_size_dim[0]);
     ctx->ShareLoD("X", "Out");
     return;
   }
@@ -265,7 +286,7 @@ class InterpolateOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
         platform::errors::Unimplemented(
-            "Input(X) dimension must be 3, 4 or 5, but got dimension = %d",
+            "Input(X) dimension must be 3, 4 or 5, but got dimension = %d .",
             dim_x.size()));
 
     if (dim_x.size() == 3) {
