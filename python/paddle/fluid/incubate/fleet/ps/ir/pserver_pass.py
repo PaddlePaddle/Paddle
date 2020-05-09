@@ -647,10 +647,13 @@ def large_scale_sparse_pass(program, config):
         value_names = []
         acture_names = []
         value_dims = []
+        grad = None
 
         for op in block.ops:
             if op.type not in opt_value_map.keys():
                 continue
+
+            grad = program.global_block().vars[op.input("Grad")[0]]
 
             for value in opt_value_map[op.type]:
                 var = program.global_block().vars[op.input(value)[0]]
@@ -663,7 +666,7 @@ def large_scale_sparse_pass(program, config):
 
             if value_names:
                 break
-        return value_names, value_dims, acture_names
+        return grad, value_names, value_dims, acture_names
 
     def add_large_scale_op(block, global_block, table_name, value_names,
                            acture_names):
@@ -712,10 +715,12 @@ def large_scale_sparse_pass(program, config):
 
     for param, blockid in param_blockid_map.items():
         opt_block = program.block(blockid)
-        value_names, value_dims, acture_names = get_optimizer_values(opt_block)
+        grad, value_names, value_dims, acture_names = get_optimizer_values(
+            opt_block)
+
         add_large_scale_op(opt_block,
                            program.global_block(), param, value_names,
-                           acture_names)
+                           acture_names, grad)
 
         # training/infer
         mode = "0"

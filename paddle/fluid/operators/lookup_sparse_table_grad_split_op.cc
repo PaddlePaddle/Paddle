@@ -22,39 +22,40 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-constexpr int64_t kNoPadding = -1;
-
-class LookupSparseTableGradSplitInferShape : public framework::InferShapeBase {
+class LookupSparseTableGradSplitOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {}
 };
 
-class LookupSparseTableGradSplitOp : public framework::OperatorBase {
- public:
-  using framework::OperatorBase::OperatorBase;
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    auto &in_grad =
-        scope.FindVar(Input("Grad"))->Get<framework::SelectedRows>();
-
-    auto in_rows = in_grad.rows();
-    auto in_value = in_grad.value();
-
-    auto *out_row =
-        scope.FindVar(Output("Row"))->GetMutable<framework::LoDTensor>();
-    out_row->Resize(
-        framework::make_ddim({static_cast<int64_t>(in_rows.size()), 1}));
-
-    auto *t = out_row->mutable_data<int64_t>(dev_place);
-    std::memcpy(t, rows.data(), rows.size() * sizeof(int64_t));
-
-    auto *out_value = scope.FindVar(Output("Value"));
-    auto *out_t = out_value->GetMutable<framework::LoDTensor>();
-    framework::TensorCopy(in_value, dev_place, out_t);
-  }
-};
+// class LookupSparseTableGradSplitOp : public framework::OperatorBase {
+// public:
+//  using framework::OperatorBase::OperatorBase;
+//
+// private:
+//  void RunImpl(const framework::Scope &scope,
+//               const platform::Place &dev_place) const override {
+//    auto &in_grad =
+//        scope.FindVar(Input("Grad"))->Get<framework::SelectedRows>();
+//
+//    auto in_rows = in_grad.rows();
+//    auto in_value = in_grad.value();
+//
+//    auto *out_row =
+//        scope.FindVar(Output("Row"))->GetMutable<framework::LoDTensor>();
+//    out_row->Resize(
+//        framework::make_ddim({static_cast<int64_t>(in_rows.size()), 1}));
+//
+//    auto *t = out_row->mutable_data<int64_t>(dev_place);
+//    std::memcpy(t, rows.data(), rows.size() * sizeof(int64_t));
+//
+//    auto *out_value = scope.FindVar(Output("Value"));
+//    out_value->Clear();
+//    auto *out_t = out_value->GetMutable<framework::LoDTensor>();
+//    framework::TensorCopy(in_value, dev_place, out_t);
+//  }
+//};
 
 class LookupSparseTableGradSplitOpMaker
     : public framework::OpProtoAndCheckerMaker {
@@ -90,6 +91,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     lookup_sparse_table_grad_split, ops::LookupSparseTableGradSplitOp,
     ops::LookupSparseTableGradSplitInferShape,
-    ops::LookupSparseTableGradSplitOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OP_CPU_KERNEL(
+    lookup_sparse_table_grad_split,
+    paddle::operators::LookupSparseTableGradSplitKernel<float>,
+    paddle::operators::LookupSparseTableGradSplitKernel<double>);
