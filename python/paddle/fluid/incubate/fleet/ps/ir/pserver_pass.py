@@ -739,7 +739,7 @@ def large_scale_sparse_pass(program, config):
         mode = "0"
         names_str = ",".join(value_names)
         dims_str = ",".join([str(dim) for dim in value_dims])
-        cached_str = ",".join(acture_names)
+        cached_str = ",".join(acture_names + ["kSparseIDs"])
         meta_str = ":".join(
             [param, names_str, dims_str, mode, grad.name, cached_str])
         large_scale_kv_metas.append(meta_str)

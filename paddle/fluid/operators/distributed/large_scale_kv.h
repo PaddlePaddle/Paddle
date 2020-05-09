@@ -191,12 +191,7 @@ class LargeScaleKV {
       auto meta = std::shared_ptr<SparseVariable>(
           new SparseVariable(std::move(sparse_meta)));
       sparse_variables[table_name] = meta;
-
-      VLOG(3) << "Init LargeScaleKV with: " << meta->ToString();
-
-      for (auto& grad : sparse_meta.cached_varnames) {
-        grad_to_variables[grad] = table_name;
-      }
+      grad_to_variables[sparse_meta.grad_name] = table_name;
     }
   }
 
