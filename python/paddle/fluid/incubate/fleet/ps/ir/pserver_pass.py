@@ -648,8 +648,11 @@ def large_scale_sparse_pass(program, config):
         acture_names = []
         value_dims = []
         grad = None
+        opt_idx = -1
 
         for op in block.ops:
+            opt_idx += 1
+
             if op.type not in opt_value_map.keys():
                 continue
 
@@ -666,10 +669,10 @@ def large_scale_sparse_pass(program, config):
 
             if value_names:
                 break
-        return grad, value_names, value_dims, acture_names
+        return grad, opt_idx, value_names, value_dims, acture_names
 
     def add_large_scale_op(block, global_block, table_name, value_names,
-                           acture_names):
+                           acture_names, grad, opt_idx):
         ids = global_block.create_var(
             name="kSparseIDs",
             persistable=False,
@@ -677,10 +680,20 @@ def large_scale_sparse_pass(program, config):
             shape=[1, 1],
             lod_level=0)
 
+        # insert grad split to ids and tensor op
+        block._insert_op(
+            opt_idx,
+            type="lookup_sparse_table_grad_split",
+            inputs={"Grad": grad},
+            outputs={"Row": ids,
+                     "Value": grad},
+            attrs={"tablename": table_name,
+                   "value_names": value_names})
+
         # insert read at first
         vars = [global_block.vars[acture_name] for acture_name in acture_names]
         block._insert_op(
-            0,
+            opt_idx + 1,
             type="lookup_sparse_table_read",
             inputs={"Ids": ids},
             outputs={"Out": vars},
@@ -715,12 +728,12 @@ def large_scale_sparse_pass(program, config):
 
     for param, blockid in param_blockid_map.items():
         opt_block = program.block(blockid)
-        grad, value_names, value_dims, acture_names = get_optimizer_values(
+        grad, opt_idx, value_names, value_dims, acture_names = get_optimizer_values(
             opt_block)
 
         add_large_scale_op(opt_block,
                            program.global_block(), param, value_names,
-                           acture_names, grad)
+                           acture_names, grad, opt_idx)
 
         # training/infer
         mode = "0"

@@ -133,6 +133,10 @@ class CompileTimeStrategy(object):
         trainer = self.strategy.get_trainer_runtime_config()
         return trainer.mode
 
+    def is_sync_mode(self):
+        trainer = self.strategy.get_trainer_runtime_config()
+        return trainer.mode == DistributedMode.SYNC
+
     def get_role_id(self):
         return self.role_maker.role_id()
 

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/lookup_sparse_table_grad_split_op.h"
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_type.h"
@@ -28,34 +29,6 @@ class LookupSparseTableGradSplitOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {}
 };
-
-// class LookupSparseTableGradSplitOp : public framework::OperatorBase {
-// public:
-//  using framework::OperatorBase::OperatorBase;
-//
-// private:
-//  void RunImpl(const framework::Scope &scope,
-//               const platform::Place &dev_place) const override {
-//    auto &in_grad =
-//        scope.FindVar(Input("Grad"))->Get<framework::SelectedRows>();
-//
-//    auto in_rows = in_grad.rows();
-//    auto in_value = in_grad.value();
-//
-//    auto *out_row =
-//        scope.FindVar(Output("Row"))->GetMutable<framework::LoDTensor>();
-//    out_row->Resize(
-//        framework::make_ddim({static_cast<int64_t>(in_rows.size()), 1}));
-//
-//    auto *t = out_row->mutable_data<int64_t>(dev_place);
-//    std::memcpy(t, rows.data(), rows.size() * sizeof(int64_t));
-//
-//    auto *out_value = scope.FindVar(Output("Value"));
-//    out_value->Clear();
-//    auto *out_t = out_value->GetMutable<framework::LoDTensor>();
-//    framework::TensorCopy(in_value, dev_place, out_t);
-//  }
-//};
 
 class LookupSparseTableGradSplitOpMaker
     : public framework::OpProtoAndCheckerMaker {
