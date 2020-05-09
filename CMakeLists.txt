@@ -24,9 +24,10 @@ project(paddle CXX C)
 include(init)
 
 # enable language CUDA
+find_package(CUDA QUIET)
+option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 if(WITH_GPU AND NOT APPLE)
     enable_language(CUDA)
-    find_package(CUDA REQUIRED)
     set(CUDA_VERSION ${CMAKE_CUDA_COMPILER_VERSION})
     message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
         "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
@@ -70,7 +71,6 @@ find_package(Threads REQUIRED)
 include(simd)
 
 ################################ Exposed Configurations #######################################
-option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
