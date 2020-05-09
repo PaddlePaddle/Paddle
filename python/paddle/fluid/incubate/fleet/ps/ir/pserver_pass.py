@@ -667,19 +667,25 @@ def large_scale_sparse_pass(program, config):
 
     def add_large_scale_op(block, global_block, table_name, value_names,
                            acture_names):
-        inputs = {}
-        var = global_block.create_var(
-            name="sparse_ids",
+        ids = global_block.create_var(
+            name="kSparseIDs",
             persistable=False,
             dtype="int64",
             shape=[1, 1],
             lod_level=0)
 
-        inputs["Ids"] = var
-        in_vars = [
-            global_block.vars[acture_name] for acture_name in acture_names
-        ]
-        inputs["In"] = in_vars
+        # insert read at first
+        vars = [global_block.vars[acture_name] for acture_name in acture_names]
+        block._insert_op(
+            0,
+            type="lookup_sparse_table_read",
+            inputs={"Ids": ids},
+            outputs={"Out": vars},
+            attrs={"tablename": table_name,
+                   "value_names": value_names})
+
+        # append write at last
+        inputs = {"Ids": ids, "In": vars}
 
         block.append_op(
             type="lookup_sparse_table_write",
@@ -705,7 +711,6 @@ def large_scale_sparse_pass(program, config):
         param_blockid_map[param] = grad_blockid_map[grad]
 
     for param, blockid in param_blockid_map.items():
-
         opt_block = program.block(blockid)
         value_names, value_dims, acture_names = get_optimizer_values(opt_block)
         add_large_scale_op(opt_block,

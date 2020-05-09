@@ -103,11 +103,13 @@ class RequestSend final : public RequestBase {
 
   void Process() override {
     std::string varname = GetReqName();
-    VLOG(4) << "RequestSend var_name:" << varname;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
+
+    VLOG(4) << "RequestSend var_name:" << varname << " trainer: " << trainer_id;
+
     framework::Variable* outvar = nullptr;
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
@@ -332,8 +334,9 @@ class RequestPrefetch final : public RequestBase {
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
+
     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name;
+            << " out_var_name: " << out_var_name << " trainer: " << trainer_id;
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
