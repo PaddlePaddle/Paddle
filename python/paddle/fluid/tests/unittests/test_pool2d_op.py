@@ -1299,13 +1299,14 @@ class TestDygraphPool2DAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the data_format must be 'NCHW' or 'NHWC'
             data1 = np.random.random((3, 32, 32, 5)).astype('float32')
-            pool2d = fluid.dygraph.Pool2D(
+            self.assertRaises(
+                ValueError,
+                fluid.dygraph.Pool2D,
                 pool_size=2,
                 pool_type='max',
                 pool_stride=1,
                 global_pooling=False,
                 data_format='NWHC')
-            self.assertRaises(TypeError, pool2d, data1)
 
 
 class TestDygraphPool2DAPI(unittest.TestCase):
