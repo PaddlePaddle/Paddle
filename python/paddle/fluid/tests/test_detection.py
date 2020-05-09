@@ -72,6 +72,31 @@ class TestDetection(unittest.TestCase):
             self.assertIsNotNone(bcoder)
         print(str(program))
 
+    def test_box_coder_error(self):
+        program = Program()
+        with program_guard(program):
+            x1 = fluid.data(name='x1', shape=[10, 4], dtype='int32')
+            y1 = fluid.data(
+                name='y1', shape=[10, 4], dtype='float32', lod_level=1)
+            x2 = fluid.data(name='x2', shape=[10, 4], dtype='float32')
+            y2 = fluid.data(
+                name='y2', shape=[10, 4], dtype='int32', lod_level=1)
+
+            self.assertRaises(
+                TypeError,
+                layers.box_coder,
+                prior_box=x1,
+                prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                target_box=y1,
+                code_type='encode_center_size')
+            self.assertRaises(
+                TypeError,
+                layers.box_coder,
+                prior_box=x2,
+                prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                target_box=y2,
+                code_type='encode_center_size')
+
     def test_detection_api(self):
         program = Program()
         with program_guard(program):
@@ -549,6 +574,33 @@ class TestMulticlassNMS(unittest.TestCase):
             output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
             self.assertIsNotNone(output)
 
+    def test_multiclass_nms_error(self):
+        program = Program()
+        with program_guard(program):
+            bboxes1 = fluid.data(
+                name='bboxes1', shape=[10, 10, 4], dtype='int32')
+            scores1 = fluid.data(
+                name='scores1', shape=[10, 10], dtype='float32')
+            bboxes2 = fluid.data(
+                name='bboxes2', shape=[10, 10, 4], dtype='float32')
+            scores2 = fluid.data(name='scores2', shape=[10, 10], dtype='int32')
+            self.assertRaises(
+                TypeError,
+                layers.multiclass_nms,
+                bboxes=bboxes1,
+                scores=scores1,
+                score_threshold=0.5,
+                nms_top_k=400,
+                keep_top_k=200)
+            self.assertRaises(
+                TypeError,
+                layers.multiclass_nms,
+                bboxes=bboxes2,
+                scores=scores2,
+                score_threshold=0.5,
+                nms_top_k=400,
+                keep_top_k=200)
+
 
 class TestMulticlassNMS2(unittest.TestCase):
     def test_multiclass_nms2(self):
@@ -591,6 +643,49 @@ class TestCollectFpnPropsals(unittest.TestCase):
                                                     2, 5, 10)
             self.assertIsNotNone(fpn_rois)
 
+    def test_collect_fpn_proposals_error(self):
+        def generate_input(bbox_type, score_type, name):
+            multi_bboxes = []
+            multi_scores = []
+            for i in range(4):
+                bboxes = fluid.data(
+                    name='rois' + name + str(i),
+                    shape=[10, 4],
+                    dtype=bbox_type,
+                    lod_level=1)
+                scores = fluid.data(
+                    name='scores' + name + str(i),
+                    shape=[10, 1],
+                    dtype=score_type,
+                    lod_level=1)
+                multi_bboxes.append(bboxes)
+                multi_scores.append(scores)
+            return multi_bboxes, multi_scores
+
+        program = Program()
+        with program_guard(program):
+            bbox1 = fluid.data(
+                name='rois', shape=[5, 10, 4], dtype='float32', lod_level=1)
+            score1 = fluid.data(
+                name='scores', shape=[5, 10, 1], dtype='float32', lod_level=1)
+            bbox2, score2 = generate_input('int32', 'float32', '2')
+            self.assertRaises(
+                TypeError,
+                layers.collect_fpn_proposals,
+                multi_rois=bbox1,
+                multi_scores=score1,
+                min_level=2,
+                max_level=5,
+                post_nms_top_n=2000)
+            self.assertRaises(
+                TypeError,
+                layers.collect_fpn_proposals,
+                multi_rois=bbox2,
+                multi_scores=score2,
+                min_level=2,
+                max_level=5,
+                post_nms_top_n=2000)
+
 
 class TestDistributeFpnProposals(unittest.TestCase):
     def test_distribute_fpn_proposals(self):
@@ -606,6 +701,81 @@ class TestDistributeFpnProposals(unittest.TestCase):
                 refer_scale=224)
             self.assertIsNotNone(multi_rois)
             self.assertIsNotNone(restore_ind)
+
+    def test_distribute_fpn_proposals_error(self):
+        program = Program()
+        with program_guard(program):
+            fpn_rois = fluid.data(
+                name='data_error', shape=[10, 4], dtype='int32', lod_level=1)
+            self.assertRaises(
+                TypeError,
+                layers.distribute_fpn_proposals,
+                fpn_rois=fpn_rois,
+                min_level=2,
+                max_level=5,
+                refer_level=4,
+                refer_scale=224)
+
+
+class TestBoxDecoderAndAssign(unittest.TestCase):
+    def test_box_decoder_and_assign(self):
+        program = Program()
+        with program_guard(program):
+            pb = fluid.data(name='prior_box', shape=[None, 4], dtype='float32')
+            pbv = fluid.data(name='prior_box_var', shape=[4], dtype='float32')
+            loc = fluid.data(
+                name='target_box', shape=[None, 4 * 81], dtype='float32')
+            scores = fluid.data(
+                name='scores', shape=[None, 81], dtype='float32')
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
+                pb, pbv, loc, scores, 4.135)
+            self.assertIsNotNone(decoded_box)
+            self.assertIsNotNone(output_assign_box)
+
+    def test_box_decoder_and_assign_error(self):
+        def generate_input(pb_type, pbv_type, loc_type, score_type, name):
+            pb = fluid.data(
+                name='prior_box' + name, shape=[None, 4], dtype=pb_type)
+            pbv = fluid.data(
+                name='prior_box_var' + name, shape=[4], dtype=pbv_type)
+            loc = fluid.data(
+                name='target_box' + name, shape=[None, 4 * 81], dtype=loc_type)
+            scores = fluid.data(
+                name='scores' + name, shape=[None, 81], dtype=score_type)
+            return pb, pbv, loc, scores
+
+        program = Program()
+        with program_guard(program):
+            pb1, pbv1, loc1, scores1 = generate_input('int32', 'float32',
+                                                      'float32', 'float32', '1')
+            pb2, pbv2, loc2, scores2 = generate_input('float32', 'float32',
+                                                      'int32', 'float32', '2')
+            pb3, pbv3, loc3, scores3 = generate_input('float32', 'float32',
+                                                      'float32', 'int32', '3')
+            self.assertRaises(
+                TypeError,
+                layers.box_decoder_and_assign,
+                prior_box=pb1,
+                prior_box_var=pbv1,
+                target_box=loc1,
+                box_score=scores1,
+                box_clip=4.0)
+            self.assertRaises(
+                TypeError,
+                layers.box_decoder_and_assign,
+                prior_box=pb2,
+                prior_box_var=pbv2,
+                target_box=loc2,
+                box_score=scores2,
+                box_clip=4.0)
+            self.assertRaises(
+                TypeError,
+                layers.box_decoder_and_assign,
+                prior_box=pb3,
+                prior_box_var=pbv3,
+                target_box=loc3,
+                box_score=scores3,
+                box_clip=4.0)
 
 
 if __name__ == '__main__':

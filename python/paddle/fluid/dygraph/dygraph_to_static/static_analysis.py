@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import gast
-import warnings
 from .utils import is_paddle_api, is_dygraph_api, is_numpy_api, index_in_list
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
@@ -67,23 +66,17 @@ class NodeVarType(object):
 
         supported_types = [
             NodeVarType.BOOLEAN, NodeVarType.INT, NodeVarType.FLOAT,
-            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR
+            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR,
+            NodeVarType.PADDLE_RETURN_TYPES
         ]
 
         if in_type1 not in supported_types:
-            warnings.warn("Binary Op on un supported in_type1 = %d " %
-                          (in_type1))
             return NodeVarType.UNKNOWN
         if in_type2 not in supported_types:
-            warnings.warn("Binary Op on un supported in_type2 = %d " %
-                          (in_type2))
             return NodeVarType.UNKNOWN
 
         forbidden_types = [NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR]
         if in_type1 in forbidden_types and in_type2 in forbidden_types:
-            warnings.warn(
-                "Binary Op on un supported types: in_type1 = %d, in_type2 = %d"
-                % (in_type1, in_type2))
             return NodeVarType.UNKNOWN
         return max(in_type1, in_type2)
 

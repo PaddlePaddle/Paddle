@@ -50,9 +50,15 @@ std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
 std::once_flag glog_warning_once_flag;
 
-void InitGflags(std::vector<std::string> argv) {
+bool InitGflags(std::vector<std::string> argv) {
+  bool successed = false;
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
+    // NOTE(zhiqiu): dummy is needed, since the function
+    // ParseNewCommandLineFlags in gflags.cc starts processing
+    // commandline strings from idx 1.
+    // The reason is, it assumes that the first one (idx 0) is
+    // the filename of executable file.
     argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
@@ -62,9 +68,13 @@ void InitGflags(std::vector<std::string> argv) {
       line += argv[i];
       line += ' ';
     }
+    VLOG(1) << "Before Parse: argc is " << argc
+            << ", Init commandline: " << line;
     google::ParseCommandLineFlags(&argc, &arr, true);
-    VLOG(1) << "Init commandline: " << line;
+    VLOG(1) << "After Parse: argc is " << argc;
+    successed = true;
   });
+  return successed;
 }
 
 void InitP2P(std::vector<int> devices) {

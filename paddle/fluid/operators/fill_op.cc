@@ -44,8 +44,7 @@ class FillOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
-                      "Output(Out) of FillOp should not be null.");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "Fill");
     auto& shape = context->Attrs().Get<std::vector<int>>("shape");
     context->SetOutputDim("Out", framework::make_ddim(shape));
   }
@@ -64,8 +63,7 @@ class FillOpVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
         boost::get<int>(ctx->GetAttr("dtype")));
-    auto& out_var_name = ctx->Output("Out").front();
-    ctx->SetDataType(out_var_name, data_type);
+    ctx->SetOutputDataType("Out", data_type);
   }
 };
 

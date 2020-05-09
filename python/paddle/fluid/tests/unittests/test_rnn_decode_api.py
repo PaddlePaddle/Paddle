@@ -369,11 +369,11 @@ class SeqPGAgent(object):
             self.probs, self.samples, self.sample_length = self.model(
                 source, source_length, target, target_length)
             self.samples.stop_gradient = True
-            self.reward = fluid.layers.create_global_var(
+            self.reward = fluid.data(
                 name="reward",
-                shape=[-1, -1],  # batch_size, seq_len
-                value="1",
+                shape=[None, None],  # batch_size, seq_len
                 dtype=self.probs.dtype)
+            self.samples.stop_gradient = False
             self.cost = self.alg.learn(self.probs, self.samples, self.reward,
                                        self.sample_length)
 

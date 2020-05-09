@@ -17,8 +17,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/detail/safe_ref.h"
-
 namespace paddle {
 namespace operators {
 
@@ -30,16 +28,16 @@ class ScaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ScaleOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ScaleOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "scale");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "scale");
 
     if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
       auto scale = ctx->Inputs("ScaleTensor");
       PADDLE_ENFORCE_EQ(scale.size(), 1,
                         platform::errors::InvalidArgument(
-                            "Input(ScaleTensor) size must be 1"));
+                            "Input(ScaleTensor) size must be 1, "
+                            "but received size is %d.",
+                            scale.size()));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -84,13 +82,7 @@ $$Out = scale*(X + bias)$$
 class ScaleOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto &in_var_name = ctx->Input("X").front();
-    auto out_var_name = ctx->Output("Out").front();
-
-    if (in_var_name != out_var_name) {
-      ctx->SetType(out_var_name, ctx->GetType(in_var_name));
-      ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
-    }
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 

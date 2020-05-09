@@ -441,7 +441,7 @@ def get_discriminator_loss(image_real, label_org, label_trg, generator,
     d_loss = d_loss_real + d_loss_fake + d_loss_cls
 
     d_loss_gp = gradient_penalty(discriminator, image_real, fake_img,
-                                 discriminator.parameters(), cfg)
+                                 set(discriminator.parameters()), cfg)
     if d_loss_gp is not None:
         d_loss += cfg.lambda_gp * d_loss_gp
 

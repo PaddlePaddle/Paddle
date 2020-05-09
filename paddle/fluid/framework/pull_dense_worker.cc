@@ -140,5 +140,16 @@ void PullDenseWorker::ResetThreadVersion(uint64_t table_id) {
   last_versions_[table_id] = current_version_[table_id];
 }
 
+int PullDenseWorker::GetThreadIdByScope(const Scope* scope) {
+  if (scope_to_thread_id_.find(scope) != scope_to_thread_id_.end()) {
+    return scope_to_thread_id_[scope];
+  }
+  return -1;
+}
+
+void PullDenseWorker::SetThreadIdByScope(const Scope* scope, int tid) {
+  scope_to_thread_id_[scope] = tid;
+}
+
 }  // namespace framework
 }  // namespace paddle

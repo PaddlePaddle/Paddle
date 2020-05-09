@@ -47,7 +47,10 @@ class MinusOp : public framework::OperatorWithKernel {
         (framework::product(x_dims) > 0 && framework::product(y_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,
-          "Minus operator must take two tensor with same num of elements");
+          platform::errors::InvalidArgument(
+              "Minus operator must take two tensor with same dim, but received "
+              "input X dim is:[%s], Y dim is:[%s]",
+              x_dims, y_dims));
     }
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");

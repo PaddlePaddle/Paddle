@@ -30,7 +30,8 @@ namespace platform {
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = mkldnn::memory;
 
-template <typename T, typename TForward, typename TBackward>
+template <typename T, typename TForward,
+          typename TBackward = mkldnn_dummy_primitive>
 class MKLDNNHandlerT {
  public:
   MKLDNNHandlerT(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
@@ -351,6 +352,35 @@ class MKLDNNHandler {
   std::string key_common_;
 };
 
+template <typename T>
+class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+ public:
+  BinaryMKLDNNHandler(const dnnl::algorithm algo,
+                      const std::vector<int64_t>& dims,
+                      const MKLDNNMemoryFormat src0_fmt,
+                      const MKLDNNMemoryFormat src1_fmt,
+                      const platform::MKLDNNDeviceContext& dev_ctx,
+                      platform::Place cpu_place, const std::string& uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::binary>(
+            dev_ctx, dev_ctx.GetEngine(), cpu_place,
+            platform::CreateKey(dims, uniq_name)) {
+    // TODO(jczaja): Add function checking if data already exists
+    auto src0_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src0_fmt);
+    auto src1_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src1_fmt);
+    auto dst_md =
+        memory::desc(dims, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+
+    this->AcquireForwardPrimitiveDescriptor(algo, src0_md, src1_md, dst_md);
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
+      const framework::Tensor* input) {
+    const T* input_data = input->data<T>();
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+  }
+};
+
 class SumMKLDNNHandler : public MKLDNNHandler {
  public:
   SumMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
@@ -411,7 +441,7 @@ class ActivationMKLDNNHandler
  public:
   ActivationMKLDNNHandler(const std::vector<int64_t>& dims,
                           mkldnn::algorithm algorithm, float alpha, float beta,
-                          const MKLDNNMemoryFormat fmt, bool is_test,
+                          const MKLDNNMemoryFormat fmt,
                           const platform::MKLDNNDeviceContext& dev_ctx,
                           platform::Place cpu_place,
                           const std::string& unique_name)
@@ -419,13 +449,11 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
+            platform::CreateKey(dims, "a", algorithm, unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
-    this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
-        algorithm, md, alpha, beta);
+    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
+                                            algorithm, md, alpha, beta);
   }
 
   ActivationMKLDNNHandler(const std::vector<int64_t>& dims,
@@ -439,7 +467,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
+            platform::CreateKey(dims, "a", algorithm, unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =

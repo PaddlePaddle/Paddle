@@ -105,6 +105,79 @@ static size_t GetUniqueDeviceIdOfOp(const details::OpHandleBase &op) {
   return dev_idx;
 }
 
+static bool IsDataParallelInferenceGraphImpl(
+    const ir::Graph &graph,
+    std::unordered_map<details::OpHandleBase *, size_t> *p_op_to_dev_idx,
+    size_t *p_place_num) {
+  auto &place_num = *p_place_num;
+  auto &op_to_dev_idx = *p_op_to_dev_idx;
+
+  auto clear_result = [&] {
+    place_num = 0;
+    op_to_dev_idx.clear();
+    return false;
+  };
+
+  clear_result();
+
+  // If sub-block contains multi-devices ops, we cannot separate
+  if (ContainMultiDeviceOp(graph.OriginProgram(), 1)) {
+    return clear_result();
+  }
+
+  auto op_handles = ir::FilterByNodeWrapper<OpHandleBase>(graph);
+  if (op_handles.empty()) {
+    return clear_result();
+  }
+
+  for (auto &op : op_handles) {
+    auto dev_idx = GetUniqueDeviceIdOfOp(*op);
+    if (dev_idx == kUndefinedDevIdx) {
+      VLOG(10) << "Op " << op->Name() << " is not determined";
+      return clear_result();
+    }
+    place_num = std::max(place_num, dev_idx + 1);
+    op_to_dev_idx[op] = dev_idx;
+  }
+
+  for (auto &op : op_handles) {
+    auto dev_idx = op_to_dev_idx.at(op);
+    for (auto &in_var : op->Inputs()) {
+      if (in_var->GeneratedOp()) {
+        auto iter = op_to_dev_idx.find(in_var->GeneratedOp());
+        if (iter == op_to_dev_idx.end() || iter->second != dev_idx) {
+          return clear_result();
+        }
+      }
+    }
+
+    for (auto &out_var : op->Outputs()) {
+      for (auto &pending_op : out_var->PendingOps()) {
+        auto iter = op_to_dev_idx.find(pending_op);
+        if (iter == op_to_dev_idx.end() || iter->second != dev_idx) {
+          return clear_result();
+        }
+      }
+    }
+  }
+
+  PADDLE_ENFORCE_GE(
+      place_num, 1,
+      platform::errors::NotFound(
+          "No place found, this may be a bug.\nIt would be helpful if you "
+          "could inform us of how this conversion went by opening a github "
+          "issue at https://github.com/PaddlePaddle/Paddle/issues/new. And "
+          "we will resolve it with high priority."));
+
+  return true;
+}
+
+bool IsDataParallelInferenceGraph(const ir::Graph &graph) {
+  size_t place_num;
+  std::unordered_map<details::OpHandleBase *, size_t> op_to_dev_idx;
+  return IsDataParallelInferenceGraphImpl(graph, &op_to_dev_idx, &place_num);
+}
+
 /**
  * This function tries to separate the original graph into multiple graphs, in
  * which each graph would only run on single device. This is usually used to
@@ -120,56 +193,11 @@ static size_t GetUniqueDeviceIdOfOp(const details::OpHandleBase &op) {
  */
 std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     ir::Graph *graph) {
-  // If sub-block contains multi-devices ops, we cannot separate
-  if (ContainMultiDeviceOp(graph->OriginProgram(), 1)) {
-    return {};
-  }
-
-  size_t place_num = 0;
-  auto op_handles = ir::FilterByNodeWrapper<OpHandleBase>(*graph);
-  if (op_handles.empty()) {
-    return {};
-  }
-
+  size_t place_num;
   std::unordered_map<details::OpHandleBase *, size_t> op_to_dev_idx;
-  for (auto &op : op_handles) {
-    auto dev_idx = GetUniqueDeviceIdOfOp(*op);
-    if (dev_idx == kUndefinedDevIdx) {
-      VLOG(10) << "Op " << op->Name() << " is not determined";
-      return {};
-    }
-    place_num = std::max(place_num, dev_idx + 1);
-    op_to_dev_idx[op] = dev_idx;
+  if (!IsDataParallelInferenceGraphImpl(*graph, &op_to_dev_idx, &place_num)) {
+    return {};
   }
-
-  for (auto &op : op_handles) {
-    auto dev_idx = op_to_dev_idx.at(op);
-    for (auto &in_var : op->Inputs()) {
-      if (in_var->GeneratedOp()) {
-        auto iter = op_to_dev_idx.find(in_var->GeneratedOp());
-        if (iter == op_to_dev_idx.end() || iter->second != dev_idx) {
-          return {};
-        }
-      }
-    }
-
-    for (auto &out_var : op->Outputs()) {
-      for (auto &pending_op : out_var->PendingOps()) {
-        auto iter = op_to_dev_idx.find(pending_op);
-        if (iter == op_to_dev_idx.end() || iter->second != dev_idx) {
-          return {};
-        }
-      }
-    }
-  }
-
-  PADDLE_ENFORCE_GE(
-      place_num, 1,
-      platform::errors::NotFound(
-          "No place found, this may be a bug.\nIt would be helpful if you "
-          "could inform us of how this conversion went by opening a github "
-          "issue at https://github.com/PaddlePaddle/Paddle/issues/new. And "
-          "we will resolve it with high priority."));
 
   if (place_num == 1) {
     return {};
@@ -182,8 +210,36 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     g->Set(kGraphDepVars, new GraphDepVars());
   }
 
-  for (auto &op : op_handles) {
-    auto dev_idx = op_to_dev_idx.at(op);
+  std::vector<VarHandle *> isolated_var_handles;
+  for (auto *node : graph->Nodes()) {
+    if (!node->IsWrappedBy<VarHandleBase>()) {
+      continue;
+    }
+
+    auto &var_handle_base = node->Wrapper<VarHandleBase>();
+    auto *var_handle = dynamic_cast<VarHandle *>(&var_handle_base);
+    if (var_handle && var_handle->PendingOps().empty() &&
+        var_handle->GeneratedOp() == nullptr) {
+      isolated_var_handles.emplace_back(var_handle);
+    }
+  }
+
+  for (auto *var_handle : isolated_var_handles) {
+    auto dev_idx = var_handle->scope_idx();
+    auto &src_vars = graph->Get<GraphVars>(kGraphVars)[dev_idx];
+    auto *dst_graph = graphs[dev_idx].get();
+    auto &dst_vars = dst_graph->Get<GraphVars>(kGraphVars)[0];
+    VLOG(10) << "Move isolated var " << var_handle->Name() << " at device "
+             << dev_idx;
+    dst_graph->AddNode(graph->RemoveNode(var_handle->Node()).release());
+    dst_vars[var_handle->Name()].emplace_back(var_handle);
+    src_vars.erase(var_handle->Name());
+  }
+
+  for (auto &pair : op_to_dev_idx) {
+    auto *op = pair.first;
+    auto dev_idx = pair.second;
+
     auto *ret_graph = graphs[dev_idx].get();
     auto &ret_vars = ret_graph->Get<GraphVars>(kGraphVars)[0];
     auto &ret_dummy_vars = ret_graph->Get<GraphDepVars>(kGraphDepVars);

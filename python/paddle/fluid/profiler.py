@@ -98,10 +98,12 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     core.nvprof_init(output_file, output_mode, config_file)
     # Enables profiler collection by the active CUDA profiling tool.
     core.nvprof_start()
-    yield
+    try:
+        yield
     # Disables profiler collection.
-    core.nvprof_stop()
-    os.remove(config_file)
+    finally:
+        core.nvprof_stop()
+        os.remove(config_file)
 
 
 def reset_profiler():
@@ -345,5 +347,7 @@ def profiler(state,
             thread0::elementwise_add    8           1.96555     0.191884    0.518004    0.245693    0.196998
     """
     start_profiler(state, tracer_option)
-    yield
-    stop_profiler(sorted_key, profile_path)
+    try:
+        yield
+    finally:
+        stop_profiler(sorted_key, profile_path)
