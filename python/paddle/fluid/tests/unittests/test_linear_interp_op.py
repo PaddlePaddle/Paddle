@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import platform
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -111,7 +111,10 @@ class TestLinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(atol=1e-5)
+        if platform.system() == "Linux":
+            self.check_output(atol=1e-7)
+        else:
+            self.check_output(atol=1e-5)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True)
@@ -383,7 +386,10 @@ class TestLinearInterpOpUint8(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output_with_place(place=core.CPUPlace(), atol=1)
+        if platform.system() == "Linux":
+            self.check_output_with_place(place=core.CPUPlace(), atol=1e-7)
+        else:
+            self.check_output_with_place(place=core.CPUPlace(), atol=1e-5)
 
     def init_test_case(self):
         self.interp_method = 'linear'
