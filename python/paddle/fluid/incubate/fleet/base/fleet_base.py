@@ -20,19 +20,15 @@ import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
+from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+from . import mode
 
-
-class Mode:
-    """
-    There are various mode for fleet, each of them is designed for different model.
-    """
-    TRANSPILER = 1
-    PSLIB = 2
-    COLLECTIVE = 3
+__all__ = ['Fleet', 'DistributedOptimizer']
+__all__ += mode.__all__
 
 
 class Fleet(object):
@@ -275,7 +271,7 @@ class DistributedOptimizer(object):
 
     def __init__(self, optimizer, strategy=None):
         if not isinstance(optimizer, SGD.__bases__) \
-                 and not isinstance(optimizer, OptimizerWithMixedPrecision):
+                and not isinstance(optimizer, OptimizerWithMixedPrecision):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer

@@ -31,9 +31,14 @@ class ArrayOp : public framework::OperatorBase {
   size_t GetOffset(const framework::Scope &scope,
                    const platform::Place &place) const {
     auto *i = scope.FindVar(Input("I"));
-    PADDLE_ENFORCE(i != nullptr, "I must be set");
+    PADDLE_ENFORCE_NOT_NULL(
+        i, platform::errors::NotFound("Input(I) is not found."));
     auto &i_tensor = i->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(i_tensor.numel(), 1);
+    PADDLE_ENFORCE_EQ(i_tensor.numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "Input(I) must have numel 1. "
+                          "But received %d, and it's shape is [%s].",
+                          i_tensor.numel(), i_tensor.dims()));
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

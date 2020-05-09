@@ -95,15 +95,17 @@ class Graph {
 
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
-    PADDLE_ENFORCE_EQ(Has(attr_name), true, "%s attr not registered for graph.",
-                      attr_name);
+    PADDLE_ENFORCE_EQ(
+        Has(attr_name), true,
+        platform::errors::PreconditionNotMet(
+            "%s attribute not registered for current graph.", attr_name));
     try {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
-      PADDLE_THROW(
-          "Invalid attribute type of %s error, expected: %s, actual: %s",
-          attr_name, typeid(AttrType *).name(),
-          attrs_.at(attr_name).type().name());
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid attribute type of %s, expected: %s, received: %s.",
+          attr_name, platform::demangle(typeid(AttrType *).name()),  // NOLINT
+          platform::demangle(attrs_.at(attr_name).type().name())));
     }
   }
 
@@ -112,7 +114,8 @@ class Graph {
     PADDLE_ENFORCE_EQ(
         attrs_.count(attr_name), 0,
         platform::errors::AlreadyExists(
-            "The attribute %s has been set in the graph.", attr_name));
+            "The attribute %s to be set already exists in the graph.",
+            attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -124,8 +127,9 @@ class Graph {
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE_EQ(
         attrs_.count(attr_name), 0,
-        platform::errors::AlreadyExists(
-            "The attribute %s has been set in the graph.", attr_name));
+        platform::errors::AlreadyExists("The attribute %s to be set(not owned) "
+                                        "already exists in the graph.",
+                                        attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = []() {};
   }
@@ -134,7 +138,8 @@ class Graph {
     PADDLE_ENFORCE_NE(
         attrs_.count(attr_name), 0,
         platform::errors::NotFound(
-            "The attribute %s has not been set in the graph.", attr_name));
+            "The attribute %s to be erased does not exist in the graph.",
+            attr_name));
     attr_dels_[attr_name]();
     attrs_.erase(attr_name);
     attr_dels_.erase(attr_name);
@@ -144,7 +149,9 @@ class Graph {
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
-    PADDLE_ENFORCE_NOT_NULL(var_desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        var_desc, platform::errors::InvalidArgument(
+                      "The VarDesc used to create variable node is null."));
     auto *x = AddNode(new ir::Node(var_desc));
     x->SetId(num_node_created_++);
     return x;
@@ -152,7 +159,9 @@ class Graph {
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
-    PADDLE_ENFORCE_NOT_NULL(op_desc);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_desc, platform::errors::InvalidArgument(
+                     "The OpDesc used to create operator node is null."));
     auto *x = AddNode(new ir::Node(op_desc));
     x->SetId(num_node_created_++);
     return x;
@@ -192,7 +201,9 @@ class Graph {
   }
 
   std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE_EQ(node_set_.find(node) != node_set_.end(), true);
+    PADDLE_ENFORCE_EQ(node_set_.find(node) != node_set_.end(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The node to be removed does not exist."));
     std::unique_ptr<ir::Node> ret;
     ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
@@ -218,7 +229,9 @@ class Graph {
 
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
-    PADDLE_ENFORCE_EQ(node_set_.find(node) == node_set_.end(), true);
+    PADDLE_ENFORCE_EQ(node_set_.find(node) == node_set_.end(), true,
+                      platform::errors::PreconditionNotMet(
+                          "The node to be added already exists."));
     nodes_[node].reset(node);
     node_set_.insert(node);
     return node;

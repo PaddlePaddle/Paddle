@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {

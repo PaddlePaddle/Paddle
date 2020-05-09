@@ -159,8 +159,8 @@ class ScatterNdAddGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterNdAddGradNoNeedBufferVarsInference,
-                                      "Updates");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterNdAddGradNoNeedBufferVarsInference,
+                                    "Updates");
 
 }  // namespace operators
 }  // namespace paddle

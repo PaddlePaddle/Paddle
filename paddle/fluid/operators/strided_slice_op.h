@@ -64,7 +64,9 @@ static void StridedSliceOutDims(
       start_index = start_index + axis_size;
     }
     if (end_index < 0) {
-      end_index = end_index + axis_size;
+      if (!(end_index == -1 && stride_index < 0)) {  // skip None stop condition
+        end_index = end_index + axis_size;
+      }
     }
 
     if (stride_index < 0) {
@@ -113,9 +115,11 @@ static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
     if (starts[axis_index] < 0) {
       starts[axis_index] = starts[axis_index] + axis_size;
     }
-
     if (ends[axis_index] < 0) {
-      ends[axis_index] = ends[axis_index] + axis_size;
+      if (!(ends[axis_index] == -1 &&
+            strides[axis_index] < 0)) {  // skip None stop condition
+        ends[axis_index] = ends[axis_index] + axis_size;
+      }
     }
     if (decrease_axis_affect) {
       if (strides[axis_index] < 0) {

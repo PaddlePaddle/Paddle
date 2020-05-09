@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle.fluid.layers.ops as ops
-from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
 import math

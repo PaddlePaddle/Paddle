@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ddim.h"
+#include <set>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -47,6 +48,16 @@ bool DDim::operator==(const DDim& d) const {
 }
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
+
+std::string DDim::to_str() const {
+  std::stringstream ss;
+  ss << '[';
+  if (rank_ > 0) ss << dim_[0];
+
+  for (int i = 1; i < rank_; ++i) ss << ", " << dim_[i];
+  ss << ']';
+  return ss.str();
+}
 
 struct ProductVisitor {
   template <int D>
@@ -119,6 +130,57 @@ DDim stride_numel(const DDim& ddim) {
     strides[i] = strides[i + 1] * ddim[i];
   }
   return strides;
+}
+
+DDim DDim::reshape(const std::vector<int>& shape) const {
+  const int64_t copy_dim_val = 0;
+  const DDim& in_dims = *this;
+  DDim out_dims;
+  out_dims.rank_ = shape.size();
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (shape[i] == copy_dim_val) {
+      PADDLE_ENFORCE_LT(static_cast<int>(i), in_dims.size(),
+                        platform::errors::InvalidArgument(
+                            "Index %d of shape under which the value of 0 "
+                            "is stored, must be lower than the number of "
+                            "old dimensions. But received shape[%d] = 0, "
+                            "dimensions = %d, shape = [%s].",
+                            i, in_dims.size(), in_dims));
+      out_dims[i] = in_dims[i];
+    } else {
+      out_dims[i] = shape[i];
+    }
+  }
+  return out_dims;
+}
+
+DDim DDim::transpose(const std::vector<int>& axis) const {
+  const DDim& in_dims = *this;
+  size_t in_rank = in_dims.size();
+  size_t axis_size = axis.size();
+
+  auto axis_set = std::set<int>(axis.begin(), axis.end());
+  PADDLE_ENFORCE_EQ(axis_set.size(), axis_size,
+                    platform::errors::InvalidArgument(
+                        "In an axis array, elements must be unique."));
+
+  PADDLE_ENFORCE_EQ(
+      in_rank, axis_size,
+      platform::errors::InvalidArgument("The input dimension's size "
+                                        "should be equal to the axis's size. "
+                                        "But received dimension is %d, "
+                                        "axis's size is %d",
+                                        in_rank, axis_size));
+
+  PADDLE_ENFORCE_LT(*std::max_element(axis.begin(), axis.end()), axis_size,
+                    platform::errors::InvalidArgument(
+                        "Axis values must be ranging from 0 to (dims - 1)."));
+
+  DDim out_dims(in_dims);
+  for (size_t i = 0; i < axis_size; i++) {
+    out_dims[i] = in_dims[axis[i]];
+  }
+  return out_dims;
 }
 
 }  // namespace framework

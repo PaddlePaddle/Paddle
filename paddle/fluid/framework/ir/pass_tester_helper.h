@@ -258,23 +258,33 @@ struct Layers {
     return out;
   }
 
-  VarDesc* transpose2(VarDesc* x, std::vector<int> axis) {
+  VarDesc* transpose2(VarDesc* x, std::vector<int> axis,
+                      bool with_xshape = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("transpose2");
     op->SetInput("X", {x->Name()});
     op->SetAttr("axis", axis);
     op->SetOutput("Out", {out->Name()});
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
     return out;
   }
 
-  VarDesc* reshape2(VarDesc* x, std::vector<int> shape) {
+  VarDesc* reshape2(VarDesc* x, std::vector<int> shape,
+                    bool with_xshape = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("reshape2");
     op->SetInput("X", {x->Name()});
     op->SetAttr("shape", shape);
     op->SetOutput("Out", {out->Name()});
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
     return out;
   }
 
@@ -484,7 +494,7 @@ static std::string DebugString(OpDesc* op) {
   return os.str();
 }
 
-static std::string DebugString(Node* node) {
+static std::string DebugString(const Node* node) {
   std::ostringstream os;
   if (node->IsOp() && node->Op()) {
     OpDesc* op = node->Op();
@@ -553,7 +563,7 @@ static std::string DebugString(const std::vector<Node*>& nodes) {
   for (auto* node : nodes) {
     if (node->IsOp() && node->Op()) {
       os << "  ";
-    } else if (node->IsVar() && node->Var()) {
+    } else if ((node->IsVar() && node->Var()) || node->IsCtrlVar()) {
       os << "    ";
     }
     os << DebugString(node) << "\n";
@@ -577,6 +587,17 @@ static std::string DebugString(Graph* graph) {
 
 static std::string DebugString(const std::unique_ptr<Graph>& graph) {
   return DebugString(graph.get());
+}
+
+static std::vector<ir::Node*> GetOpNodes(const std::unique_ptr<Graph>& graph,
+                                         std::string op_type) {
+  std::vector<ir::Node*> rc;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp() && node->Op() && node->Op()->Type() == op_type) {
+      rc.push_back(node);
+    }
+  }
+  return rc;
 }
 
 static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,

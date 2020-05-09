@@ -31,10 +31,12 @@ namespace framework {
 namespace details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
-    ir::Node *node, Scope *scope, const platform::Place &place,
+    ir::Node *node, Scope *scope, size_t scope_idx,
+    const platform::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars, GarbageCollector *gc)
     : OpHandleBase(node),
       scope_(scope),
+      scope_idx_(scope_idx),
       place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {

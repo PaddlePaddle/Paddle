@@ -21,12 +21,12 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_variable_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -34,8 +34,8 @@ __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case',
-    'while_loop'
+    'reorder_lod_tensor_by_rank', 'Print', 'Assert', 'is_empty', 'case',
+    'switch_case', 'while_loop'
 ]
 
 
@@ -56,6 +56,10 @@ def select_output(input, outputs, mask):
         Variable: The outputs variables
     """
     helper = LayerHelper('select_output', **locals())
+    check_type(input, 'input', (Variable), 'select_output')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_output')
+    check_type(outputs, 'outputs', (list, tuple), 'select_output')
+
     helper.append_op(
         type='select_output',
         inputs={'X': input,
@@ -80,13 +84,15 @@ def select_input(inputs, mask):
         Variable: The selected input variable
     """
     helper = LayerHelper('select_input', **locals())
-    if isinstance(inputs, list) or isinstance(inputs, tuple):
-        input_dtype = inputs[0].dtype
-        input_shape = inputs[0].shape
-    else:
-        input_dtype = inputs.dtype
-        input_shape = inputs.shape
-    out = helper.create_variable(dtype=input_dtype, shape=input_shape)
+    check_type(inputs, 'inputs', (list, tuple), 'select_input')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
+
+    input_dtype = inputs[0].dtype
+    input_shape = inputs[0].shape
+    input_type = inputs[0].type
+
+    out = helper.create_variable(
+        dtype=input_dtype, shape=input_shape, type=input_type)
     helper.append_op(
         type='select_input',
         inputs={'X': inputs,
@@ -104,9 +110,9 @@ def split_lod_tensor(input, mask, level=0):
     data into two parts.
 
     Args:
-        input(tuple|list|None): The input tensor that contains complete
+        input(Variable|tuple|list|None): The input tensor that contains complete
                                 lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to split.
 
     Returns:
@@ -129,6 +135,10 @@ def split_lod_tensor(input, mask, level=0):
                 input=x, mask=y, level=level)
 
     """
+    check_type(input, 'input', (Variable, list, tuple, type(None)),
+               'fluid.layers.split_lod_tensor')
+    check_type(mask, 'mask', (Variable, list), 'fluid.layers.split_lod_tensor')
+    check_type(level, 'level', int, 'fluid.layers.split_lod_tensor')
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
     out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -155,11 +165,11 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     to merge the output if True block and False Block.
 
     Args:
-        in_true(tuple|list|None): The True branch to be merged.
-        in_false(tuple|list|None): The False branch to be merged.
-        x(tuple|list|None): The input tensor that contains complete
+        in_true(Variable|tuple|list|None): The True branch to be merged.
+        in_false(Variable|tuple|list|None): The False branch to be merged.
+        x(Variable|tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to merge.
 
     Returns:
@@ -182,6 +192,13 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
+    check_type(x, 'x', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
+    check_type(in_true, 'in_true', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(in_false, 'in_false', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
     out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
@@ -201,6 +218,7 @@ def Print(input,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
+          print_tensor_layout=True,
           print_tensor_lod=True,
           print_phase='both'):
     '''
@@ -221,6 +239,7 @@ def Print(input,
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
         print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
                 'backward' and 'both'. Default: 'both'. If set to 'backward', will 
@@ -274,10 +293,83 @@ def Print(input,
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,
+            'print_tensor_layout': print_tensor_layout,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
         })
     return output
+
+
+def Assert(cond, data=None, summarize=20, name=None):
+    '''
+    This API creates an op that asserts the given condition is true. If the
+    condition is false, prints the tensors in data. ``summarize`` specifies the
+    number of the elements in the tensors to print.
+
+    Args:
+        cond (Variable): The boolean condition tensor whose numel should be 1.
+        data (list|tuple, optional): list or tuple of tensors to print when
+            condition is not true. If it's ``None``, no tensor will be printed.
+            The default value is ``None``.
+        summarize (int, optional): Number of elements in the tensor to be
+            printed. If its value is -1, then all elements in the tensor will
+            be printed. The default value is 20.
+        name (str, optional): The default value is ``None`` . Normally users
+            don't have to set this parameter. For more information, please
+            refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Operator: the created operation.
+
+    Raises:
+        TypeError: If ``cond`` is not boolean Variable.
+        TypeError: If ``data`` is not a list or tuple or ``None``.
+        TypeError: If ``summarize`` is not int.
+        TypeError: If ``name`` is not a string or ``None`` .
+        fluid.core.EnforceNotMet: If the condition is False in running time.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
+            condition = layers.reduce_max(x) < 1.0 # False
+            layers.Assert(condition, [x], 10, "example_assert_layer")
+
+            exe = fluid.Executor()
+            try:
+                exe.run(fluid.default_main_program())
+                # Print x and throws paddle.fluid.core.EnforceNotMet exception
+                # Example printed message for x:
+                #
+                # Variable: fill_constant_0.tmp_0
+                #   - lod: {}
+                #   - place: CPUPlace()
+                #   - shape: [2, 3]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [2 2 2 2 2 2]
+            except fluid.core.EnforceNotMet as e:
+                print("Assert Exception Example")
+
+    '''
+    check_variable_and_dtype(cond, "cond", ["bool"], "fluid.layers.Assert")
+    check_type(data, "data", (list, tuple, type(None)), "fluid.layers.Assert")
+    check_type(summarize, "summarize", int, "fluid.layers.Assert")
+    check_type(name, "name", (str, type(None)), "fluid.layers.Assert")
+
+    layer_name = name if name else ('assert_' + cond.name)
+    helper = LayerHelper(layer_name, **locals())
+
+    op = helper.append_op(
+        type="assert",
+        inputs={"Cond": cond,
+                "Data": [] if data is None else list(data)},
+        attrs={"summarize": summarize})
+
+    return op
 
 
 class BlockGuard(object):
@@ -401,6 +493,7 @@ class StaticRNN(object):
     AFTER_RNN_BLOCK = 2
 
     def __init__(self, name=None):
+        check_type(name, "name", (str, type(None)), "fluid.layers.StaticRNN")
         self.helper = LayerHelper("static_rnn", name=name)
         self.memories = {}  # memory map, from pre_mem.name --> MemoryLink
         self.inputs = []  # input variable list in current block
@@ -505,6 +598,12 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('memory')
+        check_type(init, "init", (Variable, type(None)),
+                   "fluid.layers.StaticRNN.memory")
+        check_type(shape, "shape", (list, tuple, type(None)),
+                   "fluid.layers.StaticRNN.memory")
+        check_type(batch_ref, "batch_ref", (Variable, type(None)),
+                   "fluid.layers.StaticRNN.memory")
         if init is None:
             if shape is None or batch_ref is None:
                 raise ValueError(
@@ -581,8 +680,7 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('step_input')
-        if not isinstance(x, Variable):
-            raise TypeError("step input takes a Variable")
+        check_type(x, "x", Variable, "fluid.layers.StaticRNN.step_input")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
         elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
@@ -635,8 +733,7 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('step_output')
-        if not isinstance(o, Variable):
-            raise TypeError("step output takes a Variable")
+        check_type(o, "o", Variable, "fluid.layers.StaticRNN.step_output")
 
         tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
         self.helper.append_op(
@@ -709,8 +806,8 @@ class StaticRNN(object):
             None
 
         """
-        if not isinstance(mem, Variable) or not isinstance(var, Variable):
-            raise TypeError("update memory should take variables")
+        check_type(mem, "mem", Variable, "fluid.layers.StaticRNN.update_memory")
+        check_type(var, "var", Variable, "fluid.layers.StaticRNN.update_memory")
         self.memories[mem.name].mem = var
 
     def _parent_block(self):
@@ -832,12 +929,18 @@ class While(object):
         A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
         OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
+    Notice:
+        Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally.
+        As a result, they cannot be obtained through ``fetch_list`` of ``Executor``. If you would like to access the variable
+        out of ``while`` , PaddlePaddle provides ``assign`` API to assign local variables to external. Please refer to example
+        code 2 or refer to `issue#22724 <https://github.com/PaddlePaddle/Paddle/issues/22724>`_.
+
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Examples:
+    Examples 1:
           .. code-block:: python
             
             import paddle.fluid as fluid
@@ -847,17 +950,45 @@ class While(object):
 
             loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
 
-            cond = fluid.layers.less_than(x=i, y=loop_len)              
+            cond = fluid.layers.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
-            with while_op.block():  
+            with while_op.block():
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
-                fluid.layers.less_than(x=i, y=loop_len, cond=cond)      
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
 
             res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[i])
-            print(res) # [array([10])]           
+            print(res) # [array([10])]
+
+
+    Examples 2:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
+            data = fluid.data(name='data', shape=[1], dtype='float32')
+            sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+
+            cond = fluid.layers.less_than(x=i, y=loop_len)
+            while_op = fluid.layers.While(cond=cond)
+            with while_op.block():
+                sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
+                fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
+                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                data = fluid.layers.elementwise_add(x=data, y=one)
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+
+            feed_data = np.ones(1).astype('float32')
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            res = exe.run(fluid.default_main_program(), feed={'data': feed_data}, fetch_list=sums)
+            print(res[0])  # [2.]    # Because the data in While does not update the value outside the While, the value of sums is [2.] after the loop
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -867,14 +998,10 @@ class While(object):
     def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
-        if not isinstance(cond, Variable):
-            raise TypeError("condition should be a variable")
-        assert isinstance(cond, Variable)
-        if cond.dtype != core.VarDesc.VarType.BOOL:
-            raise TypeError("condition should be a boolean variable")
+        check_variable_and_dtype(cond, 'cond', ['bool'], 'fluid.layers.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [], but given shape as {0}.".
+                "condition expected shape as [1], but given shape as {0}.".
                 format(list(cond.shape)))
         self.cond_var = cond
         self.is_test = is_test
@@ -924,9 +1051,21 @@ class While(object):
                    "is_test": self.is_test})
 
 
+def assign_skip_lod_tensor_array(inputs, outputs):
+    """
+    Skip the process of copying LoDTensorArray.
+    """
+    if inputs.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assign(inputs, outputs)
+
+
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
+
+    Notice:
+        Local variables defined in ``body`` cannot be obtained through ``fetch_list`` of ``Executor`` , variables should
+        be defined outside ``body`` and placed in ``loop_vars`` for looping, then these variables can be fetched by ``fetch_list`` .
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
@@ -937,7 +1076,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
-    
+
     Returns:
         A list or tuple of tensors or LoDTensorArrays which returned by ``body`` .
     
@@ -984,19 +1123,16 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise TypeError("cond in while_loop should be callable")
     if not callable(body):
         raise TypeError("body in while_loop should be callable")
-    if not isinstance(loop_vars, (list, tuple)):
-        raise TypeError("loop_vars in while_loop should be a list or tuple")
+    check_type(loop_vars, 'loop_vars', (list, tuple), 'fluid.layers.while_loop')
     if len(loop_vars) == 0:
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    if not isinstance(pre_cond, Variable):
-        raise TypeError("cond in while_loop should return a variable")
-    if pre_cond.dtype != core.VarDesc.VarType.BOOL:
-        raise TypeError("cond in while_loop should return a boolean variable")
+    check_variable_and_dtype(pre_cond, 'var of cond returned', ['bool'],
+                             'fluid.layers.while_loop')
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
-            "the shape of the variable returned by cond should be [],"
+            "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
     if in_dygraph_mode():
@@ -1010,19 +1146,31 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            loop_vars = output_vars
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
+    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
     with while_loop_block.block():
-        output_vars = body(*loop_vars)
+        # If a variable with mutable type is included in loop_vars, like `dict/list`,
+        # modifying it in the body function will cause origin variable to be modified
+        # synchronously. This will raise an assignment error out of while block.
+        # Here we make a copy of the mutable vars to avoid this problem.
+        if has_mutable_vars_in_loop:
+            new_loop_vars = copy_mutable_vars(loop_vars)
+            output_vars = body(*new_loop_vars)
+        else:
+            output_vars = body(*loop_vars)
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
-        if len(output_vars) != len(loop_vars):
+        try:
+            assert_same_structure(output_vars, loop_vars, check_types=False)
+        except ValueError as e:
             raise ValueError("body in while_loop should return the same arity "
-                             "(length and structure) and types as loop_vars")
+                             "(length and structure) as loop_vars: {0}".format(
+                                 e))
         now_cond = cond(*output_vars)
-        map_structure(assign, output_vars, loop_vars)
+        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 
@@ -1075,6 +1223,12 @@ def lod_rank_table(x, level=0):
                                   dtype='float32', lod_level=1)
             out = layers.lod_rank_table(x=x, level=0)
     """
+    check_type(x, 'x', (Variable, list), 'lod_rank_table')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_rank_table')
+
     helper = LayerHelper("lod_rank_table", **locals())
     table = helper.create_variable(
         type=core.VarDesc.VarType.LOD_RANK_TABLE,
@@ -1142,6 +1296,16 @@ def lod_tensor_to_array(x, table):
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
     """
+    check_type(x, 'x', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
+    check_type(table, 'table', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name.generate("lod_tensor_to_array"),
@@ -1177,6 +1341,17 @@ def array_to_lod_tensor(x, table):
           array = fluid.layers.lod_tensor_to_array(x, table)
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
+    check_type(x, 'x', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+    check_type(table, 'table', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -1208,6 +1383,8 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'increment')
     helper = LayerHelper("increment", **locals())
     if not in_place:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1271,7 +1448,40 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            x, Variable
+        ), "The input data 'x' in array_write must be Variable in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_write must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
+        i = i.numpy()[0]
+        if array is None:
+            array = create_array(x.dtype)
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        assert i <= len(
+            array
+        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
+        if i < len(array):
+            array[i] = x
+        else:
+            array.append(x)
+        return array
+
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
+    check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
+    if array is not None:
+        if not isinstance(
+                array,
+                Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "array should be tensor array vairable in array_write Op")
     if array is None:
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
@@ -1306,6 +1516,9 @@ def create_array(dtype):
           data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
+    if in_dygraph_mode():
+        return []
+
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -1322,8 +1535,9 @@ def less_than(x, y, force_cpu=None, cond=None):
         x(${x_type}): ${x_comment}.
         y(${y_type}): ${y_comment}.
         force_cpu(${force_cpu_type}): ${force_cpu_comment}.
-        cond(Variable|None): Optional output variable to store the result of *less_than*
-
+        cond(Variable, optional): Optional output which can be any created Variable
+            that meets the requirements to store the result of *less_than*.
+            if cond is None, a new Varibale will be created to store the result.
     Returns:
         ${out_comment}.
 
@@ -1350,6 +1564,15 @@ def less_than(x, y, force_cpu=None, cond=None):
           result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(result_value) # [[True, False], [False, False]]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_than")
+    if force_cpu != None:
+        check_type(force_cpu, "force_cpu", bool, "less_than")
+
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1376,12 +1599,11 @@ def less_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
-            this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
-            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *less_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1394,6 +1616,13 @@ def less_equal(x, y, cond=None):
           out1 = label<= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_equal")
+
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1418,12 +1647,11 @@ def greater_than(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
-            tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
-            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_than*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
@@ -1435,6 +1663,13 @@ def greater_than(x, y, cond=None):
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "greater_than")
+
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1459,12 +1694,11 @@ def greater_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
-            tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
-            type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1478,6 +1712,13 @@ def greater_equal(x, y, cond=None):
           out_1 = label >= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "greater_equal")
+
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1521,6 +1762,13 @@ def equal(x, y, cond=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "equal")
+
     helper = LayerHelper("equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1539,12 +1787,11 @@ def not_equal(x, y, cond=None):
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
-        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
-             tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
-             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *not_equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1555,6 +1802,13 @@ def not_equal(x, y, cond=None):
           limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "not_equal")
+
     helper = LayerHelper("not_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1627,6 +1881,20 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_read must be list in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_read must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
+        i = i.numpy()[0]
+        return array[i]
+
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
@@ -1667,6 +1935,9 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
+    check_type(x, 'x', Variable, 'shrink_memory')
+    check_type(i, 'i', Variable, 'shrink_memory')
+    check_type(table, 'table', Variable, 'shrink_memory')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
@@ -1723,6 +1994,19 @@ def array_length(array):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+
+    if in_dygraph_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        return len(array)
+
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError(
+            "array should be tensor array vairable in array_length Op")
+
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
@@ -1740,8 +2024,7 @@ class ConditionalBlockGuard(BlockGuard):
     """
 
     def __init__(self, block):
-        if not isinstance(block, ConditionalBlock):
-            raise TypeError("block should be conditional block")
+        check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
         super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
         self.block = block
 
@@ -1783,8 +2066,7 @@ class ConditionalBlock(object):
 
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
-            if not isinstance(each_input, Variable):
-                raise TypeError("Each input should be variable")
+            check_type(each_input, "input", Variable, "ConditionalBlock")
         self.inputs = inputs
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
@@ -1799,6 +2081,9 @@ class ConditionalBlock(object):
         intermediate = set()
         params = set()
 
+        # NOTE: Here assumes that all variables are input or output of Ops,
+        # but some variables are created without appendding a real op.
+        # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
         for each_op in inside_block.ops:
             assert isinstance(each_op, Operator)
             for iname in each_op.input_names:
@@ -2055,6 +2340,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                 return false_fn()
         return None
 
+    check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
+    check_type(name, "name", (str, type(None)), "fluid.layers.cond")
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
@@ -2110,7 +2397,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
-    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+    error_message = "{what} of '{arg_name}' in {op_name} must be " \
         "{right_value}, but received: {error_value}.".format(
         what=what,
         arg_name=arg_name,
@@ -2188,16 +2475,13 @@ def case(pred_fn_pairs, default=None, name=None):
         '''
         Check arguments pred_fn_pairs and default. Return canonical pre_fn_pairs and default.
         '''
-        if not isinstance(pred_fn_pairs, (list, tuple)):
-            raise TypeError(
-                _error_message("The type", "pred_fn_pairs", "case",
-                               "list or tuple", type(pred_fn_pairs)))
+        check_type(pred_fn_pairs, 'pred_fn_pairs', (list, tuple), 'case')
 
         for pred_fn in pred_fn_pairs:
             if not isinstance(pred_fn, tuple):
                 raise TypeError(
                     _error_message("The elements' type", "pred_fn_pairs",
-                                   "case", "tuple", type(pred_fn)))
+                                   "case", tuple, type(pred_fn)))
             if len(pred_fn) != 2:
                 raise TypeError(
                     _error_message("The tuple's size", "pred_fn_pairs", "case",
@@ -2249,14 +2533,14 @@ class Switch(object):
         OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
 
     Member Functions:
-        case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        case(condition): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
         
         default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
     Case and default functions can only be used inside the scope of Switch, as shown below:
 
     .. code-block:: python
-        
+
         '''
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
@@ -2311,6 +2595,10 @@ class Switch(object):
     def case(self, condition):
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
+
+        check_variable_and_dtype(
+            condition, 'condition', ['bool'],
+            'the member function case of fluid.layers.Switch')
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
@@ -2465,8 +2753,8 @@ class IfElse(object):
     IN_IF_ELSE_FALSE_BLOCKS = 2
 
     def __init__(self, cond, name=None):
-        if not isinstance(cond, Variable):
-            raise TypeError("cond must be a Variable")
+        check_type(cond, "cond", Variable, "fluid.layers.IfElse")
+        check_type(name, "name", (str, type(None)), "fluid.layers.IfElse")
         self.helper = LayerHelper('ifelse', name=name)
         self.cond = cond
         self.input_table = {}
@@ -2525,8 +2813,8 @@ class IfElse(object):
                                       self.IN_IF_ELSE_TRUE_BLOCKS else 0]
         parent_block = self._parent_block()
         for each_out in outs:
-            if not isinstance(each_out, Variable):
-                raise TypeError("Each output should be a variable")
+            check_type(each_out, "each output", Variable,
+                       "fluid.layers.IfElse.output")
             # create outside tensor
             outside_out = parent_block.create_var(
                 name=unique_name.generate_with_ignorable_key("_".join(
@@ -2740,9 +3028,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("step_input")
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "step_input() can only take a Variable as its input.")
+        check_type(x, 'x', Variable, 'fluid.layers.DynamicRNN.step_input()')
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -2909,9 +3195,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "static_input() can only take a Variable as its input")
+        check_type(x, 'x', Variable, 'fluid.layers.DynamicRNN.static_input()')
         if self.lod_rank_table is None:
             raise RuntimeError(
                 "static_input() must be called after step_input().")
@@ -3076,10 +3360,12 @@ class DynamicRNN(object):
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
+        if shape is not None:
+            check_type(shape, 'shape', (list, tuple),
+                       'fluid.layers.DynamicRNN.memory()')
         if init is not None:
-            if not isinstance(init, Variable):
-                raise TypeError(
-                    "The input arg `init` of memory() must be a Variable")
+            check_type(init, 'init', Variable,
+                       'fluid.layers.DynamicRNN.memory()')
             parent_block = self._parent_block_()
             init_tensor = init
             if need_reorder == True:
@@ -3160,12 +3446,10 @@ class DynamicRNN(object):
             ValueError: When :code:`update_memory()` is called before :code:`step_input()` .
         """
         self._assert_in_rnn_block_('update_memory')
-        if not isinstance(ex_mem, Variable):
-            raise TypeError("The input arg `ex_mem` of update_memory() must "
-                            "be a Variable")
-        if not isinstance(new_mem, Variable):
-            raise TypeError("The input arg `new_mem` of update_memory() must "
-                            "be a Variable")
+        check_type(ex_mem, 'ex_mem', Variable,
+                   'fluid.layers.DynamicRNN.update_memory()')
+        check_type(new_mem, 'new_mem', Variable,
+                   'fluid.layers.DynamicRNN.update_memory()')
 
         mem_array = self.mem_dict.get(ex_mem.name, None)
         if mem_array is None:
@@ -3192,6 +3476,8 @@ class DynamicRNN(object):
         self._assert_in_rnn_block_('output')
         parent_block = self._parent_block_()
         for each in outputs:
+            check_type(each, "outputs", Variable,
+                       "fluid.layers.DynamicRNN.output")
             outside_array = parent_block.create_var(
                 name=unique_name.generate_with_ignorable_key("_".join(
                     [self.helper.name, "output_array", each.name])),
@@ -3292,8 +3578,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
 
                 exe = fluid.Executor(fluid.CPUPlace())
-                res_1, res_2, res_3 = exe.run(main_program,
-                                              fetch_list=[out_1, out_2, out_3])
+                res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
                 print(res_1)  # [[1. 1.]]
                 print(res_2)  # [[2 2] [2 2]]
                 print(res_3)  # [3 3 3]
@@ -3301,24 +3586,14 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     helper = LayerHelper('switch_case', **locals())
 
     def _check_args(branch_index, branch_fns, default):
-        if not isinstance(branch_index, Variable):
-            raise TypeError(
-                _error_message("The type", "branch_index", "switch_case",
-                               "Variable", type(branch_index)))
 
-        if convert_dtype(branch_index.dtype) not in ["uint8", "int32", "int64"]:
-            raise TypeError(
-                _error_message("The data type", "branch_index", "switch_case",
-                               "uint8, int32 or int64",
-                               convert_dtype(branch_index.dtype)))
+        check_variable_and_dtype(branch_index, 'branch_index',
+                                 ['uint8', 'int32', 'int64'], 'switch_case')
 
         if convert_dtype(branch_index.dtype) != "int64":
             branch_index = cast(branch_index, "int64")
 
-        if not isinstance(branch_fns, (list, tuple, dict)):
-            raise TypeError(
-                _error_message("The type", "branch_fns", "switch_case",
-                               "dict, tuple or list", type(branch_fns)))
+        check_type(branch_fns, 'branch_fns', (list, tuple, dict), 'switch_case')
 
         branch_fns = branch_fns.items() if isinstance(branch_fns,
                                                       dict) else branch_fns
@@ -3331,7 +3606,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not isinstance(index_fn_pair, tuple):
                 raise TypeError(
                     _error_message("The elements' type", "branch_fns",
-                                   "switch_case", "tuple", type(branch_fns)))
+                                   "switch_case", tuple, type(branch_fns)))
 
             if len(index_fn_pair) != 2:
                 raise TypeError(
@@ -3344,7 +3619,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not isinstance(key, int):
                 raise TypeError(
                     _error_message("The key's type", "branch_fns",
-                                   "switch_case", "int", type(key)))
+                                   "switch_case", int, type(key)))
 
             if key in keys_of_fns:
                 raise ValueError(
@@ -3406,9 +3681,14 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                            x=data, rank_table=table)
 
     """
+
+    check_type(x, 'x', (Variable), 'reorder_lod_tensor_by_rank')
+    check_type(rank_table, 'rank_table', (Variable),
+               'reorder_lod_tensor_by_rank')
+    if rank_table.type != core.VarDesc.VarType.LOD_RANK_TABLE:
+        raise TypeError("The type of rank_table should be LOD_RANK_TABLE.")
+
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
-    helper.is_instance('x', Variable)
-    helper.is_instance('rank_table', Variable)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(

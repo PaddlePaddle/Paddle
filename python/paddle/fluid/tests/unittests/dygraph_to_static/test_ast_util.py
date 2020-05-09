@@ -34,7 +34,7 @@ class TestAST2Func(unittest.TestCase):
         source = inspect.getsource(func)
         source = textwrap.dedent(source)
         ast_root = gast.parse(source)
-        transformed_func, _ = ast_to_func(ast_root, func.__name__)
+        transformed_func, _ = ast_to_func(ast_root, func)
         return transformed_func
 
     def test_ast2func(self):

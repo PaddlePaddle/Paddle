@@ -80,16 +80,6 @@ if (NOT WIN32)
   endif()
 endif(NOT WIN32)
 
-if (NOT WIN32)
-    set(NGRAPH_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}ngraph")
-    if(EXISTS ${NGRAPH_PATH})
-        include(GNUInstallDirs)
-        include_directories("${NGRAPH_PATH}/include")
-        link_directories("${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}")
-        set(NGRAPH_LIB ${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}/libngraph${CMAKE_SHARED_LIBRARY_SUFFIX})
-    endif()
-endif()
-
 if(WITH_MKL)
   set(MATH_LIB_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mklml")
   include_directories("${MATH_LIB_PATH}/include")
@@ -132,7 +122,7 @@ endif()
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
+      ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags protobuf  xxhash
       ${EXTERNAL_LIB})
 else()
@@ -175,7 +165,6 @@ if(WIN32)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/mklml.dll ${CMAKE_BINARY_DIR}/Release
           COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/libiomp5md.dll ${CMAKE_BINARY_DIR}/Release
-          COMMAND ${CMAKE_COMMAND} -E copy ${MATH_LIB_PATH}/lib/msvcr120.dll ${CMAKE_BINARY_DIR}/Release
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_PATH}/lib/mkldnn.dll  ${CMAKE_BINARY_DIR}/Release
     )
   else()

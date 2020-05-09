@@ -730,7 +730,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 ]
                 sections = self._get_splited_var_sections(splited_vars)
 
-                if self.config.completely_not_async:
+                if self.config.completely_not_async and self.trainer_num > 1:
                     send_varnames = [
                         "{}.trainer_{}".format(var.name, self.trainer_id)
                         for var in splited_vars

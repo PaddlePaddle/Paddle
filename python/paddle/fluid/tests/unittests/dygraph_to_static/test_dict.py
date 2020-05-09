@@ -19,7 +19,8 @@ import numpy as np
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import declarative
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 PLACE = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
@@ -47,7 +48,6 @@ class SubNetWithDict(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=init_weight(0.2))
 
-    @dygraph_to_static_graph
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
 
@@ -59,17 +59,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
             cache_k, cache_v = cache["k"], cache["v"]
             k = 0.1 * cache_k + k
             v = 0.2 * cache_v + v
-            # TODO: currently while_loop can have a dict as loop_vars, but
-            # to change the value in a dict, you have to use layers.assign
-            # because cache["k"] = k is putting k in dict without building
-            # network. So we cannot write:
-            #
-            # cache["k"], cache["v"] = k, v
-            #
-            # we have to support this kind of dict in loop in the future.
-            # For example, automatically change = to assign in AutoTracer
-            fluid.layers.assign(k, cache["k"])
-            fluid.layers.assign(v, cache["v"])
+            cache["k"], cache["v"] = k, v
 
         weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
         weight = fluid.layers.softmax(weight)
@@ -86,7 +76,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
         self.output_size = output_size
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
-    @dygraph_to_static_graph
+    @declarative
     def forward(self, input, max_len=4):
         input = fluid.dygraph.to_variable(input)
         cache = {
@@ -99,27 +89,26 @@ class MainNetWithDict(fluid.dygraph.Layer):
                 dtype='float32',
                 value=0),
         }
-        max_len = input.shape[0] if input.shape[0] != max_len else max_len
+        # TODO(Aurelius84): The following code will be converted into:
+        # max_len = layers.cond(layers.shape(input)[0] != max_len,
+        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # But max_len should be wrapped into tensor, which is not supported.
+
+        # Comment out this line of code for now.
+        # max_len = input.shape[0] if input.shape[0] != max_len else max_len
         out = input
         for i in range(max_len):
             out = self.sub_net(out, cache)
-            cache = self.update_cache(cache)
+            cache = update_cache(cache)
         return out
 
-    def update_cache(self, cache):
-        for k, val in six.iteritems(cache):
-            # TODO: currently while_loop can have a dict as loop_vars, but
-            # to change the value in a dict, you have to use layers.assign
-            # because cache["k"] = k is putting k in dict without building
-            # network. So we cannot write:
-            #
-            # cache[k] = fluid.layers.softmax(val)
-            #
-            # we have to support this kind of dict in loop in the future.
-            # For example, automatically change = to assign in AutoTracer
-            fluid.layers.assign(fluid.layers.softmax(val), cache[k])
 
-        return cache
+# Test to call function defined outside of class.
+def update_cache(cache):
+    for k, val in six.iteritems(cache):
+        cache[k] = fluid.layers.softmax(val)
+
+    return cache
 
 
 class TestNetWithDict(unittest.TestCase):
@@ -133,17 +122,14 @@ class TestNetWithDict(unittest.TestCase):
         self.batch_size = self.x.shape[0]
 
     def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            net = MainNetWithDict(batch_size=self.batch_size)
-            # Transform into static graph
-            out = net(self.x)
-            exe = fluid.Executor(PLACE)
-            exe.run(fluid.default_startup_program())
-            ret = exe.run(main_program, fetch_list=out)
-            return ret[0]
+        return self.train(to_static=True)
 
     def _run_dygraph(self):
+        return self.train(to_static=False)
+
+    def train(self, to_static=False):
+        prog_trans = ProgramTranslator()
+        prog_trans.enable(to_static)
         with fluid.dygraph.guard(PLACE):
             net = MainNetWithDict(batch_size=self.batch_size)
             ret = net(self.x)

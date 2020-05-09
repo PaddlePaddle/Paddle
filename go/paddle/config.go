@@ -138,14 +138,6 @@ func (config *AnalysisConfig) SwitchIrDebug(x bool) {
 	C.PD_SwitchIrDebug(config.c, C.bool(x))
 }
 
-func (config *AnalysisConfig) EnableNgraph() {
-	C.PD_EnableNgraph(config.c)
-}
-
-func (config *AnalysisConfig) NgraphEnabled() bool {
-	return ConvertCBooleanToGo(C.PD_NgraphEnabled(config.c))
-}
-
 func (config *AnalysisConfig) EnableMkldnn() {
 	C.PD_EnableMKLDNN(config.c)
 }

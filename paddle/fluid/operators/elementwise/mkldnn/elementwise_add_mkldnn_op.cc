@@ -56,39 +56,34 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
         y->format(), MKLDNNMemoryFormat::undef,
         platform::errors::InvalidArgument("Wrong format set for Y tensor"));
 
-    const T* x_data = x->data<T>();
-    const T* y_data = y->data<T>();
-
     auto src_x_tz = framework::vectorize<int64_t>(x->dims());
     auto src_y_tz = framework::vectorize<int64_t>(y->dims());
     auto dst_tz = framework::vectorize<int64_t>(z->dims());
 
-    std::vector<float> scales = {1.0f, 1.0f};
+    // Currently MKL-DNN kernel supports only Z <- X + Y, shape(X) == shape(Y)
+    // TODO(jczaja): Binary primitive support broadcasting, so we can support
+    // this in kernel
+    platform::BinaryMKLDNNHandler<T> handler(
+        dnnl::algorithm::binary_add, src_x_tz, x->format(), y->format(),
+        dev_ctx, ctx.GetPlace(), ctx.OutputName("Out"));
 
-    const std::string key =
-        platform::CreateKey(src_x_tz, ctx.OutputName("Out"));
+    auto src_x_memory = handler.AcquireSrcMemory(x);
+    auto src_y_memory = handler.AcquireSecondSrcMemory(y);
 
-    platform::SumMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
+    // For Inplace src and and dst are the same memory object
+    auto dst_memory =
+        x->IsSharedBufferWith(*z) ? src_x_memory : handler.AcquireDstMemory(z);
 
-    auto src_x_memory = handler.AcquireSrcMemory(
-        {{src_x_tz}, platform::MKLDNNGetDataType<T>(), x->format()},
-        paddle::platform::to_void_cast(x_data));
-    auto src_y_memory = handler.AcquireSecondSrcMemory(
-        {{src_y_tz}, platform::MKLDNNGetDataType<T>(), y->format()},
-        paddle::platform::to_void_cast(y_data));
-    auto dst_md = memory::desc({dst_tz}, platform::MKLDNNGetDataType<T>(),
-                               MKLDNNMemoryFormat::any);
-    auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
-        {src_x_memory, src_y_memory}, scales, dst_md);
-    T* z_data =
-        z->mutable_data<T>(ctx.GetPlace(), sum_pd->dst_desc().get_size());
-    auto dst_memory = handler.AcquireDstMemoryFromPrimitive(z_data);
-    auto sum_prim = handler.AcquireSum();
+    auto binary_prim = handler.AcquireForwardPrimitive();
 
     mkldnn::stream astream(mkldnn_engine);
-    sum_prim->execute(astream, {{MKLDNN_ARG_MULTIPLE_SRC, *src_x_memory},
-                                {MKLDNN_ARG_MULTIPLE_SRC + 1, *src_y_memory},
-                                {MKLDNN_ARG_DST, *dst_memory}});
+
+    std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC_0, *src_x_memory},
+        {DNNL_ARG_SRC_1, *src_y_memory},
+        {DNNL_ARG_DST, *dst_memory}};
+
+    binary_prim->execute(astream, args);
     astream.wait();
 
     z->set_layout(DataLayout::kMKLDNN);

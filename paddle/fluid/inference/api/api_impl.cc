@@ -286,8 +286,9 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
-    framework::LoDTensor &fetch =
+    framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+    auto fetch = boost::get<framework::LoDTensor>(fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetchs_[idx]->Input("X")[0];

@@ -412,14 +412,22 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = false, py::arg("use_calib_mode") = true,
+           py::arg("use_static") = false, py::arg("use_calib_mode") = true)
+      .def("set_trt_dynamic_shape_info",
+           &AnalysisConfig::SetTRTDynamicShapeInfo,
            py::arg("min_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("max_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("optim_input_shape") =
-               std::map<std::string, std::vector<int>>({}))
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
+           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
+           py::arg("passes_filter") = std::vector<std::string>(),
+           py::arg("ops_filter") = std::vector<std::string>())
+      .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
@@ -542,7 +550,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const std::vector<std::string> &>())
       .def("enable_cudnn", &PassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &PassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
       .def("use_gpu", &PassStrategy::use_gpu);
 
@@ -551,7 +558,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const CpuPassStrategy &>())
       .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &CpuPassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &CpuPassStrategy::EnableMkldnnQuantizer);
 
   py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
@@ -559,7 +565,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const GpuPassStrategy &>())
       .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &GpuPassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer);
 }
 }  // namespace

@@ -302,8 +302,8 @@ class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    LinearChainCRFGradNoNeedBufferVarsInference, "Transition", "Emission");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LinearChainCRFGradNoNeedBufferVarsInference,
+                                    "Transition", "Emission");
 
 }  // namespace operators
 }  // namespace paddle

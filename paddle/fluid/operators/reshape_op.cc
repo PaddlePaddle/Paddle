@@ -542,8 +542,8 @@ DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInToOut, {"DDX", "DDOut"});
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    ReshapeDoubleGradOpNoNeedBufferVarInference, "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInference,
+                                    "DOut");
 
 }  // namespace operators
 }  // namespace paddle
