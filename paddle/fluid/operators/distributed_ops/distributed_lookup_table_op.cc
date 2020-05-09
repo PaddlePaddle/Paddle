@@ -80,11 +80,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto out_names = context.OutputNames("Outputs");
     auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
-    operators::distributed::prefetchs(
-        id_names, out_names, embedding_name, false, lookup_tables, endpoints,
-        height_sections, context, context.scope());
+    operators::distributed::prefetchs(id_names, out_names, embedding_name,
+                                      false, lookup_tables, endpoints, context,
+                                      context.scope());
   }
 };
 
@@ -109,9 +107,6 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string vector, such as emb_block0, emb_block1)"
         "Server endpoints in the order of input variables for mapping")
         .SetDefault({""});
-    AddAttr<std::vector<int64_t>>("height_sections",
-                                  "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
     AddAttr<std::vector<std::string>>(
         "endpoints",
         "(string vector, default 127.0.0.1:6164)"

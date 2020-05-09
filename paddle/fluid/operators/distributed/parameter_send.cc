@@ -163,14 +163,14 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {
     auto &send_slr = send_var->Get<framework::SelectedRows>();
-    auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
     if (send_rows.size() == 0) {
-      LOG(WARNING) << "WARNING: The variable sent to pserver is empty, which "
-                      "may cause an unknown error. Please check the state of "
-                      "use_double_buffer in pyreader async mode, you need to "
-                      "turn it false.";
+      LOG(WARNING)
+          << "WARNING: The variable sent to pserver is empty, which "
+             "may cause an unknown error. Please check the state of "
+             "use_double_buffer in pyreader/dataloader async mode, you need to "
+             "turn it false.";
     }
 
     std::vector<std::vector<size_t>> outs_rows_idx;
@@ -192,9 +192,10 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       outs.push_back(out);
     }
 
+    auto pserver_num = rpc_ctx.epmap.size();
     // split rows index into output sparse vars
     for (size_t i = 0; i < send_rows.size(); ++i) {
-      auto ep_idx = GetSectionIndex(send_rows[i], abs_sections);
+      auto ep_idx = send_rows[i] % pserver_num;
       auto table_idx = send_rows[i] % multi_parts;
       auto out_idx = ep_idx * multi_parts + table_idx;
       outs_rows_idx[out_idx].push_back(send_rows[i]);
@@ -211,13 +212,13 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
         auto dims = send_slr.GetCompleteDims();
         dims[0] = rows_idx.size();
 
-        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
+        outs[out_idx]->set_height(0);
         outs[out_idx]->mutable_rows()->clear();
         outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
 
         if (rows_idx.size() > 0) {
           for (auto idx : rows_idx) {
-            outs[out_idx]->mutable_rows()->push_back(idx - abs_sections[ctx]);
+            outs[out_idx]->mutable_rows()->push_back(idx);
           }
           auto dst = outs[out_idx]->mutable_value()->mutable_data<T>(place);
           for (size_t j = 0; j < rows_idx.size(); j++) {

@@ -42,35 +42,35 @@ using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
 static std::vector<std::vector<int64_t>> SplitIds(
-    const std::vector<int64_t>& ids_vector,
-    const std::vector<int64_t>& height_section) {
+    const std::vector<int64_t>& ids_vector, const int round_robin) {
   std::set<int64_t> all_ids;
+
   for (auto id : ids_vector) {
     all_ids.insert(id);
   }
 
   auto abs_sections = ToAbsoluteSection(height_section);
+
   std::vector<std::vector<int64_t>> splited_ids;
-  splited_ids.resize(height_section.size() + 1);
   for (auto& id : all_ids) {
-    auto section_index = GetSectionIndex(id, abs_sections);
-    splited_ids[section_index].push_back(id - abs_sections[section_index]);
+    auto section_index = id % round_robin;
+    splited_ids[section_index].push_back(id);
   }
   return splited_ids;
 }
 
 static void SplitIdsIntoMultipleVarsBySection(
-    const std::vector<std::string>& in_var_names,
-    const std::vector<int64_t>& height_section,
+    const std::vector<std::string>& in_var_names, const int pserver_nums,
     const std::vector<std::vector<int64_t>>& splited_ids,
     framework::Scope* scope) {
-  PADDLE_ENFORCE_EQ(in_var_names.size(), height_section.size(), "");
+  PADDLE_ENFORCE_EQ(in_var_names.size(), pserver_nums, "");
 
   auto place = platform::CPUPlace();
 
   for (size_t i = 0; i < in_var_names.size(); ++i) {
     auto* id_tensor =
         scope->Var(in_var_names[i])->GetMutable<framework::LoDTensor>();
+
     auto& ids = splited_ids[i];
     if (!ids.empty()) {
       auto* id_tensor_data = id_tensor->mutable_data<int64_t>(
@@ -84,7 +84,6 @@ typedef std::vector<std::pair<std::string, std::string>> TableAndEndpoints;
 
 void prefetch_core(
     const std::vector<int64_t>& ids, const TableAndEndpoints& tables,
-    const std::vector<int64_t>& height_sections,
     const framework::ExecutionContext& context, const framework::Scope& scope,
     std::unordered_map<int64_t, std::vector<float>>* recved_vec_map) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -99,8 +98,9 @@ void prefetch_core(
     out_var_names.push_back("prefetch_recv@" + tables[i].second);
   }
 
-  auto splited_ids = SplitIds(ids, height_sections);
-  SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
+  auto splited_ids = SplitIds(ids, tables.size());
+
+  SplitIdsIntoMultipleVarsBySection(in_var_names, tables.size(), splited_ids,
                                     local_scope.get());
 
   // create output var in local scope
@@ -129,15 +129,14 @@ void prefetch_core(
     PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
   }
 
-  PADDLE_ENFORCE_EQ(out_var_names.size(), height_sections.size(), "");
-
   auto abs_sections = ToAbsoluteSection(height_sections);
-  for (size_t section_idx = 0; section_idx < out_var_names.size();
-       ++section_idx) {
-    auto& ids_in_this_section = splited_ids[section_idx];
+
+  for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
+    auto& ids_in_this_section = splited_ids[o_idx];
+
     if (!ids_in_this_section.empty()) {
-      auto& prefetch_out_var = local_scope->Var(out_var_names[section_idx])
-                                   ->Get<framework::LoDTensor>();
+      auto& prefetch_out_var =
+          local_scope->Var(out_var_names[o_idx])->Get<framework::LoDTensor>();
       const auto* out_var_data = prefetch_out_var.data<float>();
       auto& dims = prefetch_out_var.dims();
 
@@ -147,8 +146,7 @@ void prefetch_core(
       auto row_numel = dims[1];
 
       for (int64_t i = 0; i < dims[0]; ++i) {
-        auto id = ids_in_this_section[i];
-        auto origin_id = id + abs_sections[section_idx];
+        auto origin_id = ids_in_this_section[i];
         std::vector<float> vecs(row_numel);
         std::copy_n(out_var_data + i * row_numel, row_numel, vecs.begin());
         (*recved_vec_map)[origin_id] = vecs;
@@ -163,11 +161,10 @@ void prefetch(const std::string& id_name, const std::string& out_name,
               const std::string& persistable_var_name, const bool backfill,
               const std::vector<std::string>& table_names,
               const std::vector<std::string>& endpoints,
-              const std::vector<int64_t>& height_sections,
               const framework::ExecutionContext& context,
               const framework::Scope& scope) {
   prefetchs({id_name}, {out_name}, persistable_var_name, backfill, table_names,
-            endpoints, height_sections, context, scope);
+            endpoints, context, scope);
 }
 
 void prefetchs(const std::vector<std::string>& id_var_names,
@@ -175,13 +172,11 @@ void prefetchs(const std::vector<std::string>& id_var_names,
                const std::string& persistable_var_name, const bool backfill,
                const std::vector<std::string>& table_names,
                const std::vector<std::string>& endpoints,
-               const std::vector<int64_t>& height_sections,
                const framework::ExecutionContext& context,
                const framework::Scope& scope) {
   PADDLE_ENFORCE_GT(id_var_names.size(), 0, "");
   PADDLE_ENFORCE_EQ(id_var_names.size(), out_var_names.size(), "");
   PADDLE_ENFORCE_EQ(table_names.size(), endpoints.size(), "");
-  PADDLE_ENFORCE_EQ(table_names.size(), height_sections.size(), "");
 
   auto vec_dim_1 = 0;
   framework::Variable* var = scope.FindVar(persistable_var_name);
@@ -229,8 +224,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   }
 
   std::unordered_map<int64_t, std::vector<float>> recved_vec_map;
-  prefetch_core(ids_union, tables, height_sections, context, scope,
-                &recved_vec_map);
+  prefetch_core(ids_union, tables, context, scope, &recved_vec_map);
 
   auto padding_idx = distributed::kNoPadding;
 

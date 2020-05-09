@@ -119,6 +119,8 @@ class CompileTimeStrategy(object):
         self.origin_dense_pairs = []
 
         self.merged_variables_pairs = []
+        self.merged_dense_pairs = []
+        self.merged_sparse_pairs = []
 
         self.merged_variable_map = {}
         self.param_name_to_grad_name = {}
@@ -380,7 +382,11 @@ class CompileTimeStrategy(object):
                 self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
                 self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
-    def _slice_variable(self, var_list, slice_count, min_block_size):
+    def _slice_variable(self,
+                        var_list,
+                        slice_count,
+                        min_block_size,
+                        uniform=False):
         """
         We may need to split dense tensor to one or more blocks and put
         them equally onto parameter server. One block is a sub-tensor
@@ -401,43 +407,39 @@ class CompileTimeStrategy(object):
         """
         blocks = []
         for var in var_list:
-            split_count = slice_count
-            var_numel = reduce(lambda x, y: x * y, var.shape)
-            max_pserver_count = int(
-                math.floor(var_numel / float(min_block_size)))
-            if max_pserver_count == 0:
-                max_pserver_count = 1
-            if max_pserver_count < slice_count:
-                split_count = max_pserver_count
-            block_size = int(math.ceil(var_numel / float(split_count)))
+            if not uniform:
+                split_count = slice_count
+                var_numel = reduce(lambda x, y: x * y, var.shape)
+                max_pserver_count = int(
+                    math.floor(var_numel / float(min_block_size)))
+                if max_pserver_count == 0:
+                    max_pserver_count = 1
+                if max_pserver_count < slice_count:
+                    split_count = max_pserver_count
 
-            if len(var.shape) >= 2:
-                # align by dim1(width)
-                dim1 = reduce(lambda x, y: x * y, var.shape[1:])
-                remains = block_size % dim1
-                if remains != 0:
-                    block_size += dim1 - remains
-                    # update split_count after aligning
-            split_count = int(math.ceil(var_numel / float(block_size)))
-            for block_id in range(split_count):
-                curr_block_size = min(block_size, var_numel - (
-                    (block_id) * block_size))
-                block = vars_metatools.VarBlock(var.name, block_id,
-                                                curr_block_size)
-                blocks.append(str(block))
+                block_size = int(math.ceil(var_numel / float(split_count)))
+                split_count = int(math.ceil(var_numel / float(block_size)))
+
+                for block_id in range(split_count):
+                    curr_block_size = min(block_size, var_numel - (
+                        (block_id) * block_size))
+                    block = vars_metatools.VarBlock(var.name, block_id,
+                                                    curr_block_size)
+                    blocks.append(str(block))
+            else:
+                split_count = slice_count
+                numel = reduce(lambda x, y: x * y, var.shape)
+
+                for block_id in range(split_count):
+                    block = vars_metatools.VarBlock(var.name, block_id, numel)
+                    blocks.append(str(block))
         return blocks
 
-    def _var_slice_and_distribute(self):
-        # update these mappings for further transpile:
-        # 1. param_var_mapping : param var name->[split params vars]
-        # 2. grad_var_mapping : grad var name->[split grads vars]
-        # 3. grad_param_mapping : grad.blockx->param.blockx
-        # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
-
+    def _get_param_grad_blocks(self, pairs, uniform=False):
         param_list = []
         grad_list = []
         param_grad_set = set()
-        for p, g in self.merged_variables_pairs:
+        for p, g in pairs:
             # todo(tangwei12) skip parameter marked not trainable
             # if type(p) == Parameter and p.trainable == False:
             # continue
@@ -455,10 +457,26 @@ class CompileTimeStrategy(object):
                 # pserver services' count. A pserver may have two or more listening ports.
         grad_blocks = self._slice_variable(grad_list,
                                            len(self.get_ps_endpoints()),
-                                           self.min_block_size)
+                                           self.min_block_size, uniform)
         param_blocks = self._slice_variable(param_list,
                                             len(self.get_ps_endpoints()),
-                                            self.min_block_size)
+                                            self.min_block_size, uniform)
+        return param_blocks, grad_blocks
+
+    def _var_slice_and_distribute(self):
+        # update these mappings for further transpile:
+        # 1. param_var_mapping : param var name->[split params vars]
+        # 2. grad_var_mapping : grad var name->[split grads vars]
+        # 3. grad_param_mapping : grad.blockx->param.blockx
+        # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
+
+        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs, False)
+        sps, sgs = self._get_param_grad_blocks(self.merged_sparse_pairs, True)
+
+        param_blocks = dps + sps
+        grad_blocks = dgs + sgs
+
+        print("param_blocks: {}".format(param_blocks))
 
         assert (len(grad_blocks) == len(param_blocks))
 
@@ -521,6 +539,7 @@ class CompileTimeStrategy(object):
                                ordered_dense_offsets)
         grad = MergedVariable(merged_grad, ordered_grad, ordered_dense_offsets)
 
+        self.merged_dense_pairs.append((param, grad))
         self.merged_variables_pairs.append((param, grad))
 
         for sparse_pair in origin_for_sparse:
@@ -529,6 +548,7 @@ class CompileTimeStrategy(object):
             m_param = MergedVariable(param, [param], [0])
             m_grad = MergedVariable(grad, [grad], [0])
             self.merged_variables_pairs.append((m_param, m_grad))
+            self.merged_sparse_pairs.append((m_param, m_grad))
 
         for merged in self.merged_variables_pairs:
             m_param, m_grad = merged

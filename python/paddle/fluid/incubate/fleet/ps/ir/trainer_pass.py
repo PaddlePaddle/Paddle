@@ -137,7 +137,6 @@ def distributed_ops_pass(program, config):
                     outputs={"Outputs": outputs},
                     attrs={
                         "table_names": tablenames,
-                        "height_sections": sections,
                         "endpoints": eps,
                         "padding_idx": padding_idx,
                         "trainer_id": trainer_id
