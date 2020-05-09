@@ -90,20 +90,6 @@ bool RequestSendHandler::Handle(const std::string& varname,
         AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
                                                               grad_slr.rows());
       }
-
-      auto* var = scope->FindVar(run_varname);
-
-      // for sparse ids
-      if (var->IsType<framework::SelectedRows>()) {
-        auto rows = var->Get<framework::SelectedRows>().rows();
-
-        auto* ids_v = scope->Var(SPARSE_IDS);
-        auto* ids_t = ids_v->GetMutable<framework::LoDTensor>();
-        ids_t->Resize(framework::make_ddim({rows().size()}));
-        auto* t = ids_t->mutable_data<int64_t>(dev_ctx_->GetPlace());
-        std::memcpy(t, rows.data(), rows.size() * sizeof(int64_t));
-      }
-
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                     scope);
 
