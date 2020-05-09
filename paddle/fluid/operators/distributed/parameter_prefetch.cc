@@ -49,9 +49,8 @@ static std::vector<std::vector<int64_t>> SplitIds(
     all_ids.insert(id);
   }
 
-  auto abs_sections = ToAbsoluteSection(height_section);
-
   std::vector<std::vector<int64_t>> splited_ids;
+  splited_ids.resize(round_robin);
   for (auto& id : all_ids) {
     auto section_index = id % round_robin;
     splited_ids[section_index].push_back(id);
@@ -128,8 +127,6 @@ void prefetch_core(
   for (size_t i = 0; i < rets.size(); i++) {
     PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
   }
-
-  auto abs_sections = ToAbsoluteSection(height_sections);
 
   for (size_t o_idx = 0; o_idx < out_var_names.size(); ++o_idx) {
     auto& ids_in_this_section = splited_ids[o_idx];
