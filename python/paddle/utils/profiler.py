@@ -40,6 +40,7 @@ class ProfilerOptions(object):
                 if options.get(key, None) is not None:
                     self.options[key] = options[key]
 
+    # function to set one specified option
     def with_state(self, state):
         self.options['state'] = state
         return self

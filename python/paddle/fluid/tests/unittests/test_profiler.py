@@ -68,7 +68,7 @@ class TestProfiler(unittest.TestCase):
             train_program = fluid.compiler.CompiledProgram(
                 main_program).with_data_parallel(loss_name=avg_cost.name)
         else:
-            train_program = fluid.compiler.CompiledProgram(main_program)
+            train_program = main_program
         return train_program, startup_program, avg_cost, batch_size, batch_acc
 
     def get_profile_path(self):
@@ -136,13 +136,14 @@ class TestProfiler(unittest.TestCase):
                 'profile_path': profile_path
             })
             with utils.Profiler(enabled=True, options=options) as prof:
-                self.assertTrue(utils.profiler.global_profiler() == prof)
                 pass_acc_calculator = fluid.average.WeightedAverage()
                 for iter in range(10):
                     self.run_iter(exe, main_program,
                                   [avg_cost, batch_acc, batch_size],
                                   pass_acc_calculator)
                     utils.global_profiler().add_step()
+                    if batch_range is None and iter == 2:
+                        utils.global_profiler().reset()
 
         self.check_profile_result(profile_path)
 
@@ -166,7 +167,7 @@ class TestProfiler(unittest.TestCase):
                 exe,
                 'GPU',
                 "OpDetail",
-                batch_range=[5, 10],
+                batch_range=[0, 100],
                 use_new_api=use_new_api)
             #self.net_profiler('GPU', "OpDetail", use_parallel_executor=True)
 
@@ -179,9 +180,28 @@ class TestProfiler(unittest.TestCase):
                 exe,
                 'All',
                 "AllOpDetail",
-                batch_range=[5, 10],
+                batch_range=None,
                 use_new_api=use_new_api)
             #self.net_profiler('All', "AllOpDetail", use_parallel_executor=True)
+
+
+class TestProfilerAPIError(unittest.TestCase):
+    def test_errors(self):
+        options = utils.ProfilerOptions()
+        self.assertTrue(options['profile_path'] is None)
+        self.assertTrue(options['timeline_path'] is None)
+
+        options = options.with_state('All')
+        self.assertTrue(options['state'] == 'All')
+        try:
+            print(options['test'])
+        except ValueError:
+            pass
+
+        global_profiler_outer = utils.global_profiler()
+        with utils.Profiler(enabled=True) as prof:
+            self.assertTrue(utils.global_profiler() == prof)
+            self.assertTrue(global_profiler_outer != prof)
 
 
 if __name__ == '__main__':
