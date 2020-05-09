@@ -738,6 +738,7 @@ function card_test() {
     set +m
 }
 
+
 function parallel_test_base() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
