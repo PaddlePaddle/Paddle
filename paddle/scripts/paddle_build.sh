@@ -746,7 +746,6 @@ function parallel_test_base() {
     ========================================
 EOF
 
-set +x
         EXIT_CODE=0;
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
@@ -805,7 +804,6 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
-set -ex
     fi
 }
 
