@@ -40,10 +40,12 @@ limitations under the License. */
 #ifdef _WIN32
 #define cpuid(reg, x) __cpuidex(reg, x, 0)
 #else
+#ifndef WITH_NV_JETSON
 #include <cpuid.h>
 inline void cpuid(int reg[4], int x) {
   __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
 }
+#endif
 #endif
 #endif
 

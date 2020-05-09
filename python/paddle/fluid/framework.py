@@ -647,6 +647,7 @@ def _getitem_impl_(var, item):
     slice_step = []
     use_strided_slice = False
     reverse_axis = []
+    target_block = default_main_program().current_block()
 
     def fill_constant(shape, value, force_cpu=False, out=None):
         var.block.append_op(
@@ -701,8 +702,8 @@ def _getitem_impl_(var, item):
             if isinstance(slice_item, Variable):
                 temp_1 = var.block.create_var(dtype='int32')
                 fill_constant([1], 1, force_cpu=True, out=temp_1)
-                temp_end = var.block.create_var(dtype='int32')
-                var.block.append_op(
+                temp_end = target_block.create_var(dtype='int32')
+                target_block.append_op(
                     type='elementwise_add',
                     inputs={'X': slice_item,
                             'Y': temp_1},
@@ -785,11 +786,11 @@ def _getitem_impl_(var, item):
     out = var
     if use_strided_slice == False and len(slice_axis) > 0:
         # append slice_op here
-        slice_out_var = var.block.create_var(
+        slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
             dtype=var.dtype)
 
-        var.block.append_op(
+        target_block.append_op(
             type="slice",
             inputs=inputs,
             outputs={'Out': [slice_out_var]},
@@ -797,11 +798,11 @@ def _getitem_impl_(var, item):
 
         out = slice_out_var
     elif use_strided_slice == True and len(slice_axis) > 0:
-        strided_slice_out_var = var.block.create_var(
+        strided_slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_strided_slice"),
             dtype=var.dtype)
-        var.block.append_op(
+        target_block.append_op(
             type="strided_slice",
             inputs=inputs,
             outputs={'Out': [strided_slice_out_var]},
@@ -810,11 +811,11 @@ def _getitem_impl_(var, item):
         out = strided_slice_out_var
 
     if len(reverse_axis) > 0:
-        reverse_out_var = var.block.create_var(
+        reverse_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_slice_reverse"),
             dtype=var.dtype)
-        var.block.append_op(
+        target_block.append_op(
             type="reverse",
             inputs={'X': out},
             outputs={'Out': [reverse_out_var]},
@@ -1960,7 +1961,7 @@ class Operator(object):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, Variable):
+                            elif isinstance(arg, (Variable, core.VarBase)):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise TypeError(
