@@ -794,6 +794,7 @@ EOF
                         else
                             single_card_tests_1="$single_card_tests_1|^$testcase$"
                         fi
+                        continue
                     fi
 
                     if [[ "$single_card_tests" == "" ]]; then
@@ -808,8 +809,6 @@ EOF
                 testcase=''
         done <<< "$test_cases";
 
-        echo 1111,$single_card_tests
-        echo 2222,$single_card_tests_1
         card_test "$single_card_tests" 1    # run cases with single GPU
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
