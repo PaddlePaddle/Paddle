@@ -206,6 +206,13 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     std::vector<int64_t> ids;
 
     for (int64_t i = 0; i < id_tensor.numel(); ++i) {
+      if (id_data[i] < 0) {
+        PADDLE_THROW(
+            "Variable value (input) of OP(embedding) "
+            "expected in [0, int64], but got %ld. Please check input value.",
+            ids[i]);
+      }
+
       ids.push_back(id_data[i]);
       ids_union.push_back(id_data[i]);
     }
