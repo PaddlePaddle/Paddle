@@ -793,6 +793,7 @@ set +x
                         else
                             single_card_tests_1="$single_card_tests_1|^$testcase$"
                         fi
+                        continue
                     fi
 
                     if [[ "$single_card_tests" == "" ]]; then
