@@ -179,6 +179,9 @@ class TestModel(unittest.TestCase):
     def test_predict_static(self):
         self.predict(False)
 
+    def test_prepare_context(self):
+        prepare_distributed_context()
+
     def fit(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
@@ -474,9 +477,6 @@ class TestModelFunction(unittest.TestCase):
 
         np.testing.assert_allclose(results, ori_results)
         shutil.rmtree(save_dir)
-
-    def test_prepare_context(self):
-        prepare_distributed_context()
 
 
 if __name__ == '__main__':
