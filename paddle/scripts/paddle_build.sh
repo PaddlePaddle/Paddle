@@ -751,6 +751,7 @@ EOF
         test_cases=$(ctest -N -V) # get all test cases
         exclusive_tests=''        # cases list which would be run exclusively
         single_card_tests=''      # cases list which would take one graph card
+        single_card_tests_1=''
         multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
@@ -807,6 +808,8 @@ EOF
                 testcase=''
         done <<< "$test_cases";
 
+        echo 1111,$single_card_tests
+        echo 2222,$single_card_tests_1
         card_test "$single_card_tests" 1    # run cases with single GPU
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
