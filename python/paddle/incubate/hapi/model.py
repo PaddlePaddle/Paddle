@@ -609,6 +609,9 @@ class DynamicGraphAdapter(object):
         # TODO: if len(self.model._optimizer._accumulators) > 0
         converted_state = dict(optim_state)
         opt_unq_name = self.model._optimizer._name
+        if opt_unq_name is None:
+            opt_unq_name = ''
+            
         opt_cls_name = self.model._optimizer.__class__.__name__
         opt_name = opt_unq_name[:opt_unq_name.rfind("_")]  # remove suffix idx
         param_names = [param.name for param in self.model.parameters()]
