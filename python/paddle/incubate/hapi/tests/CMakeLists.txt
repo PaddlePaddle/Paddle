@@ -27,13 +27,6 @@ function(py_dist_test TARGET_NAME)
                FLAGS_cpu_deterministic=true NCCL_P2P_DISABLE=1 NCCL_SHM_DISABLE=1
                PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_dist_test_ENVS}
                COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
-               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${PADDLE_SOURCE_DIR}/python/paddle/distributed/launch.py ${py_dist_test_SRCS} ${py_dist_test_ARGS}
-               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    else()
-      add_test(NAME ${TARGET_NAME}
-               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-               FLAGS_cpu_deterministic=true
-               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_dist_test_ENVS}
                ${PYTHON_EXECUTABLE} -u ${py_dist_test_SRCS} ${py_dist_test_ARGS}
                WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()

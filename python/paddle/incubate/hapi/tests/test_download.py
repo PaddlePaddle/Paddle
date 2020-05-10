@@ -31,11 +31,19 @@ class TestDownload(unittest.TestCase):
         md5sum = '8ff74f291f72533f2a7956a4efff9d88'
         self.download(url, md5sum)
 
+    def test_download_without_md5sum(self):
+        url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams'
+        self.download(url, None)
+
     def test_download_errors(self):
         with self.assertRaises(RuntimeError):
             url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0t.pdparams'
             md5sum = '8ff74f291f72533f2a7956a4eftttttt'
             self.download(url, md5sum)
+
+        with self.assertRaises(RuntimeError):
+            url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0t.pdparams'
+            self.download(url, None)
 
 
 if __name__ == '__main__':
