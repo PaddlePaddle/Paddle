@@ -1139,7 +1139,7 @@ def inverse(input, out=None, name=None):
             If out is None, a new Varibale will be create to store the result.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information,
-            please refer to :ref:`api_guide_Name`
+            please refer to :ref:`api_guide_Name` .
 
     Returns:
         Variable: A Tensor holds the inverse of input. The shape and data type
@@ -1150,23 +1150,10 @@ def inverse(input, out=None, name=None):
 
             import numpy as np
             import paddle
-            import paddle.fluid as fluid
 
             mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
-
-            # example for static graph
-            input = fluid.data("input", shape=[2, 2], dtype="float32")
-            out = paddle.inverse(input)
-        
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            results = exe.run(feed={"input": mat_np },
-                              fetch_list=[out.name])
-            print(results[0]) # [[0.5, 0], [0, 0.5]]
-
-            # example for dynamic graph
-            with fluid.dygraph.guard():
-                mat = fluid.dygraph.to_variable(mat_np)
+            with paddle.imperative.guard():
+                mat = paddle.imperative.to_variable(mat_np)
                 inv = paddle.inverse(mat)
                 print(inv) # [[0.5, 0], [0, 0.5]]
     """
