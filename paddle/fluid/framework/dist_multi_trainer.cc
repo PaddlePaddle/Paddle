@@ -183,6 +183,10 @@ void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
+  if (mpi_rank_ == 0) {
+    auto heter_ptr_ = HeterWrapper::GetInstance();
+    heter_ptr_->EndPass(root_scope_);
+  }
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {

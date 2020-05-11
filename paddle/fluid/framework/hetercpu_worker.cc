@@ -1224,7 +1224,6 @@ void HeterCpuWorker::TrainFiles() {
     CopyDenseTable();
     CopyDenseVars();
   }
-  heter_ptr_->EndPass(thread_scope_);
 }
 
 }  // end namespace framework

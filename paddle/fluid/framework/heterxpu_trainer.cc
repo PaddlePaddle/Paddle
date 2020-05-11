@@ -176,7 +176,6 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   
   for (size_t i = 0; i < places_.size(); ++i) {
     Scope* scope = &(root_scope_->NewScope());
-   // VLOG(3) << "wxx place: " << i << " scope: " << scope;
     //for (auto &var : block.AllVars()) {
     //  if (var->Persistable()) {
     //    auto *ptr = scope->Var(var->Name());
@@ -257,7 +256,7 @@ void HeterXpuTrainer::Run() {
 }
 
 int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* response) {
-  int scope_num = object_pool_.Size();
+  //int scope_num = object_pool_.Size();
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -265,10 +264,13 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* respons
     }
     LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
 
-    for (int j = 0; j < scope_num; j++) {
-      Scope *cur_thread_scope = (object_pool_.GetElement(i))->scope_;
+    for (size_t j = 0; j < place_scopes_.size(); j++) {
+      Scope *cur_thread_scope = place_scopes_[j];
       Variable *thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      if (thread_var == nullptr) {
+        continue;
+      }
       LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
 //      if (root_tensor->numel() != thread_tensor->numel()) {
 //        continue;
@@ -287,8 +289,10 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* respons
     }                                                                          \
   } while (0)
       _ForEachDataType_(MergeCallback);
-
+      
       if (platform::is_gpu_place(thread_tensor->place())) {
+        auto dev_id = boost::get<platform::CUDAPlace>(thread_tensor->place()).device;
+        platform::CUDADeviceGuard guard(dev_id);
         cudaMemset(thread_tensor->data<void>(), 0, thread_tensor->numel() * SizeOfType(thread_tensor->type()));
       }
       else {
@@ -299,6 +303,8 @@ int HeterXpuTrainer::EndPass(const HeterRequest* request, HeterResponse* respons
     auto* merge_var = response->add_vars();
     heter_ptr_->SerializeToReq(need_merge_var_names_[i], root_scope_, merge_var);
     if (platform::is_gpu_place(root_tensor->place())) {
+      auto dev_id = boost::get<platform::CUDAPlace>(root_tensor->place()).device;
+      platform::CUDADeviceGuard guard(dev_id);
       cudaMemset(root_tensor->data<void>(), 0, root_tensor->numel() * SizeOfType(root_tensor->type()));
     }
     else {
@@ -368,19 +374,9 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
   
   context->Reset();
   auto place = places_[context->place_num_];
- // {
- //   auto dev_id = boost::get<platform::CUDAPlace>(place).device;
- //   VLOG(3) << "wxx dev id: " << dev_id;
- // }
   for (int i = 0; i < request->vars_size(); ++i) {
     heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place);
   }
-  
- // {
- //   auto* var = context->scope_->FindVar("fc_0.tmp_0");
- //   LoDTensor* tensor = var->GetMutable<LoDTensor>();
- //   VLOG(3) << "wxx place num: " << context->place_num_ << " scope: " << context->scope_ << " parent scope:" << context->scope_->parent() << " tensor place: " << tensor->memory_size();
- // }
   
   for (int i = xpu_begin_op_index_; i <= xpu_end_op_index_; ++i) {
     auto& op = (context->ops_)[i];
@@ -391,6 +387,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(context->event_, dev_ctx->stream()));
   //cudaEventSynchronize(context->event_);
   while (cudaEventQuery(context->event_) != cudaSuccess) {
+    VLOG(3) << "wait for kernel";
     bthread_yield();
   }
 

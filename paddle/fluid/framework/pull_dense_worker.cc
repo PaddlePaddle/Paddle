@@ -96,7 +96,9 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
   }
   status_vec->resize(0);
   #ifdef PADDLE_WITH_CUDA
+
   for (size_t i = 0; i < places_.size(); ++i) {
+    
     for (auto& v : dense_value_names_) { 
       for (auto& name : v.second) {
         
@@ -106,12 +108,6 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         Variable* var = thread_scopes_[i]->FindVar(name);
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
-        //std::ostringstream os;
-        //os << name;
-        //for (int x = 0; x < pin_tensor->numel(); x++) {
-        //  os << ":" << *(pin_w + x);
-        //}
-        //std::cout << "wxx " << os.str() << std::endl;
         memory::Copy(
             boost::get<platform::CUDAPlace>(places_[i]),
             w,
@@ -139,6 +135,9 @@ void PullDenseWorker::PullDense(bool force_update) {
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
       #ifdef PADDLE_WITH_CUDA
+      
+      
+      VLOG(3) << "pull dense " << force_update << " " << tid;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_, false);
       #else

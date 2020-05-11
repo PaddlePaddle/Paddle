@@ -114,17 +114,17 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope, Vari
   req_data->resize(tensor->numel() * SizeOfType(tensor->type()));
   char* data_ptr = const_cast<char*>(req_data->data());
 
-  #ifdef PADDLE_WITH_CUDA
-  memory::Copy(
-      platform::CPUPlace(),
-      data_ptr,
-      boost::get<platform::CUDAPlace>(tensor->place()),
-      tensor->data<void>(),
-      tensor->numel() * SizeOfType(tensor->type()), nullptr);
-
-  #else
-  memcpy(data_ptr, tensor->data<void>(), tensor->numel() * SizeOfType(tensor->type()));
-  #endif
+  if (platform::is_cpu_place(tensor->place())) {
+    memcpy(data_ptr, tensor->data<void>(), tensor->numel() * SizeOfType(tensor->type()));
+  }
+  else {
+    memory::Copy(
+        platform::CPUPlace(),
+        data_ptr,
+        boost::get<platform::CUDAPlace>(tensor->place()),
+        tensor->data<void>(),
+        tensor->numel() * SizeOfType(tensor->type()), nullptr);
+  }
 }
 
 //void HeterWrapper::DeSerializeToTensor(Scope* scope, const HeterRequest* request) {
