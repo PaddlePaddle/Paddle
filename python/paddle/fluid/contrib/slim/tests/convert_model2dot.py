@@ -1,4 +1,4 @@
-#   copyright (c) 2019 paddlepaddle authors. all rights reserved.
+#   copyright (c) 2020 paddlepaddle authors. all rights reserved.
 #
 # licensed under the apache license, version 2.0 (the "license");
 # you may not use this file except in compliance with the license.
@@ -16,15 +16,8 @@ import unittest
 import os
 import sys
 import argparse
-import logging
-import struct
-import six
-import numpy as np
-import time
-import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import Qat2Int8MkldnnPass
 from paddle.fluid import core
 
 
@@ -33,53 +26,47 @@ def parse_args():
     parser.add_argument(
         '--model_path', type=str, default='', help='A path to a model.')
     parser.add_argument(
-        '--model_save_path',
+        '--save_graph_dir',
         type=str,
         default='',
-        help='A path to the converted model.')
+        help='A path to save the graph.')
     parser.add_argument(
-        '--file_name',
+        '--save_graph_name',
         type=str,
         default='',
-        help='A name to save file. Default - name from model path will be used')
-    parser.add_argument(
-        '--pdf',
-        type=bool,
-        default=False,
-        help='Convert dot file to pdf. Default False.')
+        help='A name to save the graph. Default - name from model path will be used'
+    )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
 
 
-def convert_model(original_path, save_path, file_name, to_pdf):
+def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     inference_scope = fluid.executor.global_scope()
     with fluid.scope_guard(inference_scope):
-        if os.path.exists(os.path.join(original_path, '__model__')):
+        if os.path.exists(os.path.join(model_path, '__model__')):
             [inference_program, feed_target_names,
-             fetch_targets] = fluid.io.load_inference_model(original_path, exe)
+             fetch_targets] = fluid.io.load_inference_model(model_path, exe)
         else:
             [inference_program, feed_target_names,
-             fetch_targets] = fluid.io.load_inference_model(original_path, exe,
+             fetch_targets] = fluid.io.load_inference_model(model_path, exe,
                                                             'model', 'params')
         graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-        model_name = os.path.basename(os.path.normpath(save_path))
-        if file_name is '':
-            file_name = model_name
-        graph.draw(
-            save_path, file_name, graph.all_op_nodes(), convert_to_pdf=to_pdf)
-        print("Success! Generated"),
-        print("dot file" if to_pdf is False else "dot and pdf files"),
-        print("for {0} model, that can be found at {1} named {2}.\n".format(
-            model_name, save_path, file_name))
+        if not os.path.exists(save_graph_dir):
+            os.makedirs(save_graph_dir)
+        model_name = os.path.basename(os.path.normpath(save_graph_dir))
+        if save_graph_name is '':
+            save_graph_name = model_name
+        graph.draw(save_graph_dir, save_graph_name, graph.all_op_nodes())
+        print(
+            "Success! Generated dot and pdf files for {0} model, that can be found at {1} named {2}.\n".
+            format(model_name, save_graph_dir, save_graph_name))
 
 
 if __name__ == '__main__':
     global test_args
     test_args, remaining_args = parse_args()
-    convert_model(test_args.model_path, test_args.model_save_path,
-                  test_args.file_name, test_args.pdf)
+    generate_dot_for_model(test_args.model_path, test_args.save_graph_dir,
+                           test_args.save_graph_name)
