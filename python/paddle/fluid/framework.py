@@ -376,27 +376,36 @@ def cpu_places(device_count=None):
 
 def cuda_pinned_places(device_count=None):
     """
-    This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
+    This function creates and returns a list of :code:`fluid.CUDAPinnedPlace`
+    (fluid. :ref:`api_fluid_CUDAPinnedPlace` )objects.
 
-    If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the default value is 1,
-    i.e. CPU_NUM=1.
-    :code:`CPU_NUM` indicates the number of devices used in the current task.
-    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
+    If :code:`device_count` is None, the device count would be determined
+    by number of GPUs actually used in current task. Users can change the GPUs
+    available for a task in two ways:
+
+    - Setting environment variable :code:`FLAGS_selected_gpus` , i.e.
+    :code:`export FLAGS_selected_gpus='0,1'` .
+    - Setting environment variable :code:`CUDA_VISIBLE_DEVICES` , i.e.
+    :code:`export CUDA_VISIBLE_DEVICES='0,1'` .
+
+    For more information about how to set GPUs for a task, please reference to
+    fluid. :ref:`api_fluid_cuda_places` .
 
     Parameters:
-        device_count (int, optional): device number. Default: None.
+        device_count (int, optional): the number of GPU devices. Default: None.
 
     Returns:
-        list of fluid.CUDAPinnedPlace: Created list of CUDA pinned places.
+        list of fluid.CUDAPinnedPlace: Created list of :code:`fluid.CUDAPinnedPlaces` .
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            cuda_pinned_places_cpu_num = fluid.cuda_pinned_places()
-            # or
+            # 1) If no environment variable is set, all GPUs will be used.
+            #    8 CUDAPinnedPlace will be created if there are 8 GPUs.
+            # 2) export FLAGS_selected_gpus='0,1', 2 CUDAPinnedPlaces will be created.
+            cuda_pinned_places = fluid.cuda_pinned_places()
+            # 3) Create 1 CUDAPinnedPlace
             cuda_pinned_places = fluid.cuda_pinned_places(1)
 
     """
