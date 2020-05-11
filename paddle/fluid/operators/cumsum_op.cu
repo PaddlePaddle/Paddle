@@ -158,8 +158,8 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   if (block_id == gridDim.x - 1 && remain != 0) block_scan_size = remain;
   int col1 = thread_id;
   int col2 = thread_id + (block_scan_size) / 2;
-  int index1 = blockIdx.y * (scan_dim_size) + block_id * block_scan_size + col1;
-  int index2 = blockIdx.y * (scan_dim_size) + block_id * block_scan_size + col2;
+  int index1 = blockIdx.y * (scan_dim_size) + block_id * blockDim.x * 2 + col1;
+  int index2 = blockIdx.y * (scan_dim_size) + block_id * blockDim.x * 2 + col2;
   int sum_index = blockIdx.y * gridDim.x + block_id;
   if (thread_id < block_scan_size) {
     share_tmp[col1] = in[index1];
@@ -217,9 +217,8 @@ __global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size) {
   int thread_id = threadIdx.x;
   index = idx + size;
   if (index >= scan_dim_size) return;
-  for (int i = block_id_start; i < block_id_end; i++) {
+  for (int i = block_id_start; i <= block_id_end; i++)
     result[idx + size] += sum[i];
-  }
 }
 
 template <typename DeviceContext, typename T>
@@ -270,16 +269,17 @@ class CumCUDAKernel : public framework::OpKernel<T> {
       };
       if (exclusive) {
         int element_per_block = nextPowerOfTwo(scan_dim_size) / 2;
-        if (element_per_block > 1024 || element_per_block < 32) {
+        if (element_per_block > 64 || element_per_block < 32) {
           element_per_block = 32;
         }
         int two_power = element_per_block * 2;
         dim3 block(element_per_block);
-        dim3 grid((scan_dim_size / 2 + block.x - 1) / block.x, outer_dim_size);
+        dim3 grid(((scan_dim_size + 1) / 2 + block.x - 1) / block.x,
+                  outer_dim_size);
         int share_mem_size = element_per_block * 2 * sizeof(T);
         Tensor scan_sum;
         paddle::framework::DDim dims{
-            (scan_dim_size / 2 + block.x - 1) / block.x, outer_dim_size};
+            ((scan_dim_size + 1) / 2 + block.x - 1) / block.x, outer_dim_size};
         scan_sum.Resize(dims);
         T* sum_data = scan_sum.mutable_data<T>(context.GetPlace());
         InnerMostDimExclusiveScan<
@@ -289,10 +289,10 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         // for large scan array we need to do add for correct result
         int element_size = element_per_block * 2;
         if (scan_dim_size > element_size) {
-          dim3 sum_block(element_per_block);
+          dim3 sum_block(element_per_block * 2);
           dim3 sum_grid((scan_dim_size - element_size + block.x - 1) / block.x,
                         outer_dim_size);
-          AddBlockScan<T><<<grid, block, 0, dev_ctx.stream()>>>(
+          AddBlockScan<T><<<sum_grid, sum_block, 0, dev_ctx.stream()>>>(
               out_data, sum_data, element_size, scan_dim_size);
         }
 
