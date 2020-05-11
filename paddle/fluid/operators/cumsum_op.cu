@@ -153,14 +153,14 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   T* share_tmp = reinterpret_cast<T*>(raw_tmp);
   int threadId = threadIdx.x;
   int blockId = blockIdx.x;
-  int block_scan_size = blockDim.x;
-  if (blockId == gridDim.x - 1)
-    block_scan_size = scan_dim_size % (2 * blockDim.x);
+  int block_scan_size = blockDim.x * 2;
+  int remain = scan_dim_size % (2 * blockDim.x);
+  if (blockId == gridDim.x - 1 && remain != 0) block_scan_size = remain;
   int col1 = threadId;
   int col2 = threadId + (block_scan_size) / 2;
   int index1 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col1;
   int index2 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col2;
-
+  int sum_index = blockIdx.y * gridDim.x + blockId;
   // to avoid bank confilict in share memory
   // int bank_offset1 = col1 >> 5;
   // int bank_offset2 = col2 >> 5;
@@ -191,7 +191,7 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   __syncthreads();
 
   if (threadId == 0) {
-    sum_data[blockId] = share_tmp[two_power - 1];
+    sum_data[sum_index] = share_tmp[two_power - 1];
     share_tmp[two_power - 1] = 0;
   }
 
@@ -288,10 +288,10 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         dim3 grid((scan_dim_size / 2 + block.x - 1) / block.x, outer_dim_size);
         int share_mem_size = element_per_block * 2 * sizeof(T);
         Tensor scan_sum;
-        paddle::framework::DDim dims{(scan_dim_size + block.x - 1) / block.x,
-                                     outer_dim_size};
+        paddle::framework::DDim dims{
+            (scan_dim_size / 2 + block.x - 1) / block.x, outer_dim_size};
         scan_sum.Resize(dims);
-        T* sum_data = scan_sum.mutable_data<T>(platform::CUDAPlace());
+        T* sum_data = scan_sum.mutable_data<T>(context.GetPlace());
         InnerMostDimExclusiveScan<
             T><<<grid, block, share_mem_size, dev_ctx.stream()>>>(
             in_data, out_data, sum_data, inner_dim_size, outer_dim_size,
