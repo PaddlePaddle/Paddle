@@ -228,7 +228,7 @@ class LargeScaleKV {
   std::unordered_map<std::string, std::shared_ptr<SparseVariable>>
       sparse_variables;
   std::unordered_map<std::string, std::string> grad_to_variables;
-  std::string grad_names_;
+  std::vector<std::string> grad_names_;
   static std::shared_ptr<LargeScaleKV> scale_kv_;
   static std::once_flag init_flag_;
 };
