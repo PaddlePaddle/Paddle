@@ -160,6 +160,12 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   int col2 = thread_id + (block_scan_size) / 2;
   int index1 = blockIdx.y * (scan_dim_size) + block_id * blockDim.x * 2 + col1;
   int index2 = blockIdx.y * (scan_dim_size) + block_id * blockDim.x * 2 + col2;
+  if (reverse) {
+    index1 = blockIdx.y * (scan_dim_size) + scan_dim_size - 1 -
+             (block_id * blockDim.x * 2 + col1);
+    index2 = blockIdx.y * (scan_dim_size) + scan_dim_size - 1 -
+             (block_id * blockDim.x * 2 + col2);
+  }
   int sum_index = blockIdx.y * gridDim.x + block_id;
   if (thread_id < block_scan_size) {
     share_tmp[col1] = in[index1];
@@ -210,7 +216,7 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
 // for large scan_dim_size array we need to add for correct result
 template <typename T>
 __global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size,
-                             int sum_size) {
+                             int sum_size, bool reverse) {
   int idx = threadIdx.x + blockDim.x * (blockIdx.x + blockIdx.y * gridDim.x);
   int block_id_start = blockIdx.y * sum_size;
   int block_id_end = blockIdx.x + blockIdx.y * sum_size;
@@ -218,10 +224,10 @@ __global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size,
   int thread_id = threadIdx.x;
 
   int col = block_id * blockDim.x + thread_id + size;
-  int index =
-      blockIdx.y * (scan_dim_size) + (block_id * blockDim.x + thread_id) + size;
+  if (reverse) col = scan_dim_size - col;
+  int index = blockIdx.y * (scan_dim_size) + col;
 
-  if (col >= scan_dim_size) return;
+  if (col >= scan_dim_size || col < 0) return;
   for (int i = block_id_start; i <= block_id_end; i++) {
     result[index] += sum[i];
   }
@@ -251,7 +257,6 @@ class CumCUDAKernel : public framework::OpKernel<T> {
 
     int scan_dim_size = in_dims[axis];
     bool optimize_condition = (axis == (in_dims.size() - 1)) ? true : false;
-    optimize_condition = optimize_condition && (exclusive || !reverse);
     int outer_dim_size = 1;
     int inner_dim_size = 1;
     // treat all dim index < axis as outer_dim_size
@@ -300,7 +305,8 @@ class CumCUDAKernel : public framework::OpKernel<T> {
                         outer_dim_size);
           int sum_size = ((scan_dim_size + 1) / 2 + block.x - 1) / block.x;
           AddBlockScan<T><<<sum_grid, sum_block, 0, dev_ctx.stream()>>>(
-              out_data, sum_data, element_size, scan_dim_size, sum_size);
+              out_data, sum_data, element_size, scan_dim_size, sum_size,
+              reverse);
         }
 
       } else {
