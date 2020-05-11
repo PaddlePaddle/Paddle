@@ -151,43 +151,38 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   // https://stackoverflow.com/questions/27570552/templated-cuda-kernel-with-dynamic-shared-memory
   extern __shared__ __align__(sizeof(T)) unsigned char raw_tmp[];
   T* share_tmp = reinterpret_cast<T*>(raw_tmp);
-  int threadId = threadIdx.x;
-  int blockId = blockIdx.x;
+  int thread_id = threadIdx.x;
+  int block_id = blockIdx.x;
   int block_scan_size = blockDim.x * 2;
   int remain = scan_dim_size % (2 * blockDim.x);
-  if (blockId == gridDim.x - 1 && remain != 0) block_scan_size = remain;
-  int col1 = threadId;
-  int col2 = threadId + (block_scan_size) / 2;
-  int index1 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col1;
-  int index2 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col2;
-  int sum_index = blockIdx.y * gridDim.x + blockId;
-
-  if (col1 < block_scan_size) {
+  if (block_id == gridDim.x - 1 && remain != 0) block_scan_size = remain;
+  int col1 = thread_id;
+  int col2 = thread_id + (block_scan_size) / 2;
+  int index1 = blockIdx.y * (scan_dim_size) + block_id * block_scan_size + col1;
+  int index2 = blockIdx.y * (scan_dim_size) + block_id * block_scan_size + col2;
+  int sum_index = blockIdx.y * gridDim.x + block_id;
+  if (thread_id < block_scan_size) {
     share_tmp[col1] = in[index1];
-  } else {
-    share_tmp[col1] = 0;
-  }
-  __syncthreads();
-  if (col2 < block_scan_size) {
     share_tmp[col2] = in[index2];
   } else {
     share_tmp[col1] = 0;
+    share_tmp[col2] = 0;
   }
 
   // Up-Sweep
   int offset = 1;
   for (int d = (two_power / 2); d > 0; d >>= 1) {
     __syncthreads();
-    if (threadId < d) {
-      int tmp_index1 = offset * (2 * threadId + 1) - 1;
-      int tmp_index2 = offset * (2 * threadId + 2) - 1;
+    if (thread_id < d) {
+      int tmp_index1 = offset * (2 * thread_id + 1) - 1;
+      int tmp_index2 = offset * (2 * thread_id + 2) - 1;
       share_tmp[tmp_index2] += share_tmp[tmp_index1];
     }
     offset *= 2;
   }
   __syncthreads();
 
-  if (threadId == 0) {
+  if (thread_id == 0) {
     sum_data[sum_index] = share_tmp[two_power - 1];
     share_tmp[two_power - 1] = 0;
   }
@@ -196,9 +191,9 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   for (int d = 1; d < two_power; d *= 2) {
     offset >>= 1;
     __syncthreads();
-    if (threadId < d) {
-      int tmp_index1 = offset * (2 * threadId + 1) - 1;
-      int tmp_index2 = offset * (2 * threadId + 2) - 1;
+    if (thread_id < d) {
+      int tmp_index1 = offset * (2 * thread_id + 1) - 1;
+      int tmp_index2 = offset * (2 * thread_id + 2) - 1;
 
       T tmp = share_tmp[tmp_index1];
       share_tmp[tmp_index1] = share_tmp[tmp_index2];
