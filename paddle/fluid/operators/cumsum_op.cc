@@ -62,9 +62,11 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("cumsum");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
-    grad_op->SetAttr("axis", boost::get<int>(this->GetAttr("axis")));
-    grad_op->SetAttr("reverse", !boost::get<bool>(this->GetAttr("reverse")));
-    grad_op->SetAttr("exclusive", boost::get<bool>(this->GetAttr("exclusive")));
+    grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("reverse",
+                     !BOOST_GET_CONST(bool, this->GetAttr("reverse")));
+    grad_op->SetAttr("exclusive",
+                     BOOST_GET_CONST(bool, this->GetAttr("exclusive")));
   }
 };
 

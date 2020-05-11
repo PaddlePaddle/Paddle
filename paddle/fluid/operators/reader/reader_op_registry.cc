@@ -93,7 +93,7 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
                       "number of 'shapes'(%d).",
                       need_check_feed.size(), shapes.size());
     framework::VarDesc* reader =
-        boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
     reader->SetLoDLevels(lod_levels);
   }
 }
@@ -115,10 +115,10 @@ void DecoratedReaderInferShape::operator()(
                  "The output decorated reader should not be null.");
   ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));
 
-  framework::VarDesc* in_reader = boost::get<framework::VarDesc*>(
-      ctx->GetInputVarPtrs("UnderlyingReader")[0]);
+  framework::VarDesc* in_reader = BOOST_GET(
+      framework::VarDesc*, ctx->GetInputVarPtrs("UnderlyingReader")[0]);
   framework::VarDesc* out_reader =
-      boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
   out_reader->SetLoDLevels(in_reader->GetLoDLevels());
 }
 

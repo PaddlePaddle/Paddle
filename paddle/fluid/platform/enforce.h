@@ -49,6 +49,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 
@@ -437,6 +438,70 @@ struct EnforceNotMet : public std::exception {
                                         "No %s(%s) found for %s operator.", \
                                         __ROLE, __NAME, __OP_TYPE));        \
   } while (0)
+
+/*
+ * Summary: This BOOST_GET(_**) series macros are used to call boost::get
+ *   safely. boost::get is not a completely safe api, although it will not
+ *   go wrong in most cases, but in extreme cases, it may fail and directly
+ *   throw a boost::bad_get exception, without any stack information.
+ *   This kind of problems is difficult to debug, so add these macros to
+ *   enrich boost::get error information. At the same time, we restrict
+ *   the direct use of boost::get by CI rule.
+ *
+ * Parameters:
+ *     __TYPE: the target variable type
+ *     __VALUE: the target variable to get
+ *
+ * Examples:
+ *     - unsafe writing: int x = boost::get<int>(y);
+ *     - safe writing: int x = BOOST_GET(int, y);
+ *
+ * Note: GCC 4.8 cannot select right overloaded function here, so need
+ *    to define different functions and macros here, after we upgreade
+ *    CI gcc version, we can only define one BOOST_GET macro.
+*/
+namespace details {
+
+#define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
+                              __FuncName)                                      \
+  template <typename OutputType, typename InputType>                           \
+  auto __FuncName(__InputType input, const char* expression, const char* file, \
+                  int line)                                                    \
+      ->typename std::conditional<std::is_pointer<InputType>::value,           \
+                                  __OutputTypePtr, __OutputType>::type {       \
+    try {                                                                      \
+      return boost::get<OutputType>(input);                                    \
+    } catch (boost::bad_get&) {                                                \
+      HANDLE_THE_ERROR                                                         \
+      throw ::paddle::platform::EnforceNotMet(                                 \
+          ::paddle::platform::errors::InvalidArgument(                         \
+              "boost::get failed, cannot get value "                           \
+              "(%s) by type %s, its type is %s.",                              \
+              expression,                                                      \
+              paddle::platform::demangle(typeid(OutputType).name()),           \
+              paddle::platform::demangle(input.type().name())),                \
+          file, line);                                                         \
+      END_HANDLE_THE_ERROR                                                     \
+    }                                                                          \
+  }
+
+DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
+DEFINE_SAFE_BOOST_GET(const InputType&, const OutputType&, const OutputType*,
+                      SafeBoostGetConst);
+DEFINE_SAFE_BOOST_GET(InputType&&, OutputType, OutputType*,
+                      SafeBoostGetMutable);
+
+}  // namespace details
+
+#define BOOST_GET(__TYPE, __VALUE)                                     \
+  ::paddle::platform::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, \
+                                                    __FILE__, __LINE__)
+#define BOOST_GET_CONST(__TYPE, __VALUE)                                    \
+  ::paddle::platform::details::SafeBoostGetConst<__TYPE>(__VALUE, #__VALUE, \
+                                                         __FILE__, __LINE__)
+#define BOOST_GET_MUTABLE(__TYPE, __VALUE)                                    \
+  ::paddle::platform::details::SafeBoostGetMutable<__TYPE>(__VALUE, #__VALUE, \
+                                                           __FILE__, __LINE__)
 
 /** OTHER EXCEPTION AND ENFORCE **/
 

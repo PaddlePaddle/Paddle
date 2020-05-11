@@ -49,7 +49,7 @@ TEST(inference, recognize_digits) {
     LOG(INFO) << "--- CPU Runs: is_combined=" << is_combined << " ---";
     TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1,
                                               FLAGS_repeat, is_combined);
-    auto output1_tensor = boost::get<paddle::framework::LoDTensor>(output1);
+    auto output1_tensor = BOOST_GET(paddle::framework::LoDTensor, output1);
     LOG(INFO) << output1_tensor.dims();
 
 #ifdef PADDLE_WITH_CUDA
@@ -61,7 +61,7 @@ TEST(inference, recognize_digits) {
     LOG(INFO) << "--- GPU Runs: is_combined=" << is_combined << " ---";
     TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2,
                                                FLAGS_repeat, is_combined);
-    auto output2_tensor = boost::get<paddle::framework::LoDTensor>(output2);
+    auto output2_tensor = BOOST_GET(paddle::framework::LoDTensor, output2);
     LOG(INFO) << output2_tensor.dims();
 
     CheckError<float>(output1_tensor, output2_tensor);

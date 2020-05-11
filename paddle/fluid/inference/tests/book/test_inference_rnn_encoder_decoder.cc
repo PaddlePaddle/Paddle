@@ -47,7 +47,7 @@ TEST(inference, rnn_encoder_decoder) {
 
   // Run inference on CPU
   TestInference<paddle::platform::CPUPlace>(dirname, cpu_feeds, cpu_fetchs1);
-  auto output1_tensor = boost::get<paddle::framework::LoDTensor>(output1);
+  auto output1_tensor = BOOST_GET(paddle::framework::LoDTensor, output1);
   LOG(INFO) << output1_tensor.lod();
   LOG(INFO) << output1_tensor.dims();
 
@@ -58,7 +58,7 @@ TEST(inference, rnn_encoder_decoder) {
 
   // Run inference on CUDA GPU
   TestInference<paddle::platform::CUDAPlace>(dirname, cpu_feeds, cpu_fetchs2);
-  auto output2_tensor = boost::get<paddle::framework::LoDTensor>(output2);
+  auto output2_tensor = BOOST_GET(paddle::framework::LoDTensor, output2);
   LOG(INFO) << output2_tensor.lod();
   LOG(INFO) << output2_tensor.dims();
 
