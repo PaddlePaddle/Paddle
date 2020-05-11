@@ -76,6 +76,7 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"matmul", {"Out"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"OutScale", "OutAccum", "OutState"}},
+    {"amp_check_finite_and_scale", {"Out", "FoundInfinite"}},
 };
 
 // clang-format off

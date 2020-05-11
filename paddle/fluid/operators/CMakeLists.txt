@@ -25,6 +25,10 @@ endif()
 
 add_subdirectory(reader)
 
+if (WITH_GPU)
+    add_subdirectory(amp)
+endif()
+
 if (NOT WIN32)
     add_subdirectory(nccl)
 endif()
