@@ -217,7 +217,7 @@ TEST(SecSaveLoadOpSelectRowType, CPU) {
   auto var = scope.Var("test_var");
   auto tensor = var->GetMutable<paddle::framework::SelectedRows>();
   tensor->set_rows(rows);
-  tensor->set_rows(height);
+  tensor->set_height(height);
 
   paddle::framework::Tensor* value = tensor->mutable_value();
   auto* data = value->mutable_data<float>(
