@@ -94,12 +94,46 @@ class TestSumOp8(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((1, 1, 6)).astype("float64")
+        a = np.random.random((4, 5, 17)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.zeros(
+                    (4, 5, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOp9(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 888)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (np.zeros(
                     (1, 1, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOp10(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 888)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.zeros(
+                    (4, 5, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
                 axis=2)
         }
 
