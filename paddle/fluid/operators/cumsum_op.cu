@@ -161,14 +161,13 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   int index1 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col1;
   int index2 = blockIdx.y * (scan_dim_size) + blockId * block_scan_size + col2;
   int sum_index = blockIdx.y * gridDim.x + blockId;
-  // to avoid bank confilict in share memory
-  // int bank_offset1 = col1 >> 5;
-  // int bank_offset2 = col2 >> 5;
+
   if (col1 < block_scan_size) {
     share_tmp[col1] = in[index1];
   } else {
     share_tmp[col1] = 0;
   }
+  __syncthreads();
   if (col2 < block_scan_size) {
     share_tmp[col2] = in[index2];
   } else {
@@ -182,8 +181,6 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
     if (threadId < d) {
       int tmp_index1 = offset * (2 * threadId + 1) - 1;
       int tmp_index2 = offset * (2 * threadId + 2) - 1;
-      // tmp_index1 += (tmp_index1 >> 5);
-      // tmp_index2 += (tmp_index2 >> 5);
       share_tmp[tmp_index2] += share_tmp[tmp_index1];
     }
     offset *= 2;
@@ -202,8 +199,6 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
     if (threadId < d) {
       int tmp_index1 = offset * (2 * threadId + 1) - 1;
       int tmp_index2 = offset * (2 * threadId + 2) - 1;
-      // tmp_index1 += (tmp_index1 >> 5);
-      // tmp_index2 += (tmp_index2 >> 5);
 
       T tmp = share_tmp[tmp_index1];
       share_tmp[tmp_index1] = share_tmp[tmp_index2];
@@ -317,7 +312,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     } else {
       dim3 block(std::min(512, inner_dim_size));
       dim3 grid(outer_dim_size, (inner_dim_size + block.x - 1) / block.x);
-      OuterScan<T><<<block, grid, 0, dev_ctx.stream()>>>(
+      OuterScan<T><<<grid, block, 0, dev_ctx.stream()>>>(
           in_data, out_data, inner_dim_size, outer_dim_size, scan_dim_size,
           exclusive, reverse);
     }
