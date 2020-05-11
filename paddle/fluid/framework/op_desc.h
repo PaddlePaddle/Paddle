@@ -85,7 +85,7 @@ class OpDesc {
   T GetAttrIfExists(const std::string &name) const {
     T result{};
     if (HasAttr(name)) {
-      result = boost::get<T>(GetAttr(name));
+      result = BOOST_GET_CONST(T, GetAttr(name));
     }
     return result;
   }

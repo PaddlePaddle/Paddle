@@ -42,7 +42,7 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // set lod level for compile-time
       framework::VarDesc* out_desc =
-          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+          BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
       out_desc->SetLoDLevel(1);
     }
 

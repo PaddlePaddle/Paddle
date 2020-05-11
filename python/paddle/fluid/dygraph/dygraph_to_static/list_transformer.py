@@ -24,8 +24,6 @@ from paddle.fluid.layers import array_length, array_read, array_write, create_ar
 from paddle.fluid.layers import assign, cast, fill_constant, slice
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
 
-__all__ = ['convert_list_pop']
-
 
 def create_array_in_parent_blcok(null_array):
     # TODO(liym27): Create a null tensor_array with the same name in parent block to avoid a bug in control flow,
@@ -312,7 +310,7 @@ class ListTransformer(gast.NodeTransformer):
         else:
             idx_str = "None"
 
-        new_call_str = "fluid.dygraph.dygraph_to_static.convert_list_pop({}, {})".format(
+        new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_list_pop({}, {})".format(
             target_str, idx_str)
         new_call_node = gast.parse(new_call_str).body[0].value
         return new_call_node
