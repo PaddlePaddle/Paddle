@@ -47,6 +47,9 @@ requirements:
     - graphviz
     - protobuf
     - py-cpuinfo==5.0.0
+    - pathlib
+    - astor
+    - gast>=0.3.3
     - matplotlib
 """
 
@@ -62,6 +65,9 @@ requirements:
     - pillow
     - graphviz
     - protobuf
+    - astor
+    - pathlib
+    - gast>=0.3.3
     - py-cpuinfo==5.0.0
 """
         self.test = """

@@ -51,7 +51,8 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(next_op_out, next_op_out, mkldnn_inplace);
 
     if ((current_op->Op()->HasAttr("use_mkldnn") == false) ||
-        (boost::get<bool>(current_op->Op()->GetAttr("use_mkldnn")) == false)) {
+        (BOOST_GET_CONST(bool, current_op->Op()->GetAttr("use_mkldnn")) ==
+         false)) {
       VLOG(3) << "do not perform mkl-dnn inplace: use_mkldnn missing or set to "
                  "false";
       return;
@@ -109,7 +110,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
 
     // It may be that next op is reusing some of vars, we need to
     // make sure that unwanted inplace is not created
-    // TODO(jczaja): Make UT for that one
     for (auto& n : current_op_out->outputs) {
       auto& n_op_infer_inplace =
           OpInfoMap::Instance().Get(n->Op()->Type()).infer_inplace_;

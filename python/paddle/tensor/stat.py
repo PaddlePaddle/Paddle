@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # TODO: define statistical functions of a tensor  
-__all__ = [  #'mean', 
-    #'reduce_mean', 
-    'std',
-    'var'
-]
+from ..fluid.layers import mean  #DEFINE_ALIAS
+from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
+
+__all__ = ['mean', 'reduce_mean', 'std', 'var']
+
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import in_dygraph_mode
@@ -151,7 +151,7 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
 
     tmp = var(input, axis=axis, keepdim=keepdim, unbiased=unbiased, name=name)
     tmp = layers.sqrt(tmp)
-    if out:
+    if out is not None:
         layers.assign(input=tmp, output=out)
         return out
     else:
