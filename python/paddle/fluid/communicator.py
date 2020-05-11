@@ -151,3 +151,6 @@ class Communicator(object):
                 comm.is_running()
         """
         self.communicator_.is_running()
+
+    def recv(self):
+        self.communicator_.recv()

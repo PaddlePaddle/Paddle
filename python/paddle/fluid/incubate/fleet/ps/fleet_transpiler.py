@@ -576,7 +576,7 @@ class FleetTranspiler(Fleet):
                 "in fleet.save_persistables() function, main_program must be as Program type, CompiledProgram is not allowed"
             )
 
-        fluid.io.save_persistables(executor, dirname, main_program, None)
+        self._save_distributed_persistables(executor, dirname, main_program)
 
     def _set_opt_info(self, opt_info):
         """

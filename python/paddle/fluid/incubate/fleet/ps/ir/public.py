@@ -478,8 +478,6 @@ class CompileTimeStrategy(object):
         param_blocks = dps + sps
         grad_blocks = dgs + sgs
 
-        print("param_blocks: {}".format(param_blocks))
-
         assert (len(grad_blocks) == len(param_blocks))
 
         # origin_param_name->[splited_param_vars]
