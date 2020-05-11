@@ -155,6 +155,19 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
   VLOG(3) << "init large scale kv with " << metas.size() << " params";
 }
 
+// For sync, sparse variables need recover grad type from LodTensor to
+// SelectedRows
+void ResetSparseVarsType() {
+  auto *ins = distributed::LargeScaleKV::GetInstance();
+  auto grads = ins->GetAllGrads();
+
+  for (auto &grad : grads) {
+    auto *v = recv_scope->FindVar(grad);
+    v->Clear();
+    v->GetMutable<framework::SelectedRows>();
+  }
+}
+
 void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
     framework::Scope *recv_scope, platform::DeviceContext *dev_ctx,
@@ -199,19 +212,6 @@ void ListenAndServOp::RunSyncLoop(
       break;
     }
 
-    // For sync, sparse variables need recover grad type from LodTensor to
-    // SelectedRows
-    {
-      auto *ins = distributed::LargeScaleKV::GetInstance();
-      auto grads = ins->GetAllGrads();
-
-      for (auto &grad : grads) {
-        auto *v = recv_scope->FindVar(grad);
-        v->Clear();
-        v->GetMutable<framework::LoDTensor>();
-      }
-    }
-
     // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
     // and this will still work.
     // The optimize blocks which have the same parent ID would run parallel
@@ -238,6 +238,7 @@ void ListenAndServOp::RunSyncLoop(
 
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
+    ResetSparseVarsType();
 
     VLOG(3) << "wait all clients to get parameters back";
     rpc_service_->SetCond(distributed::kRequestGet);
