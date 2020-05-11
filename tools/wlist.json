@@ -314,6 +314,7 @@
         "ParallelEnv",
         "DataParallel",
         "DataParallel.scale_loss",
-        "DataParallel.apply_collective_grads"
+        "DataParallel.apply_collective_grads",
+        "zcl_test"
     ]
 }
