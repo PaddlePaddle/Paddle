@@ -351,6 +351,18 @@ public:
       state_ = DONE;
     }
   }
+  void Reset() {
+    total_time = 0;
+    read_time = 0;
+    pack_time = 0;
+    pull_sparse_local_time = 0;
+    op_all_time = 0;
+    xpu_op_time = 0;
+    cpu_op_time = 0;
+    collect_label_time = 0;
+    fill_sparse_time = 0;
+    push_sparse_time = 0;
+  }
   void Show() {
     std::cout << "features size " << features_.size() << std::endl;
     for (size_t i = 0; i < features_.size(); ++i) {
@@ -369,10 +381,16 @@ public:
   std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
   std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
-  double total_time;
-  double read_time;
-  double pack_time;
-  double pull_sparse_local_time;
+  double total_time{0};
+  double read_time{0};
+  double pack_time{0};
+  double pull_sparse_local_time{0};
+  double op_all_time{0};
+  double xpu_op_time{0};
+  double cpu_op_time{0};
+  double collect_label_time{0};
+  double fill_sparse_time{0};
+  double push_sparse_time{0};
 };
 
 template <class T>
@@ -384,7 +402,9 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
       num_ += 1;
-      std::cout << "pool construct size: " << num_ << std::endl;
+      #ifdef PADDLE_WITH_CUDA
+      VLOG(0) << "pool construct size: " << num_;
+      #endif
       return std::make_shared<T>();
     }
     else {

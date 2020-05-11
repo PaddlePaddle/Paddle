@@ -415,7 +415,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
   VLOG(3) << "push dense gradient done.";
   context->scope_->DropKids();
   object_pool_.Push(context);
-  std::cout << "pool size " << object_pool_.Size() << std::endl;
+  VLOG(0) << "pool size " << object_pool_.Size();
   return 0;
 }
 
