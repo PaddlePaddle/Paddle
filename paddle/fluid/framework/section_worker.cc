@@ -373,6 +373,12 @@ void SectionWorker::TrainFilesWithProfiler() {
       metric_msg->add_data(exe_scope);
     }
 #endif
+    if (need_dump_field_) {
+      DumpField(*scope);
+    }
+    if (need_dump_param_ && pipeline_id_ == 0) {
+      DumpParam(*scope, step_cnt);
+    }
 
     if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
       // FIXME: Temporarily we assume two adjacent sections are in different

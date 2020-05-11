@@ -13,11 +13,61 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/trainer.h"
+#include "io/fs.h"
 
 namespace paddle {
 namespace framework {
 
 void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
+
+void TrainerBase::ParseDumpConfig(const TrainerDesc& trainer_desc) {
+  dump_fields_path_ = trainer_desc.dump_fields_path();
+  dump_converter_ = trainer_desc.dump_converter();
+  need_dump_field_ = false;
+  if (trainer_desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
+    need_dump_field_ = true;
+  }
+  if (need_dump_field_) {
+    auto& file_list = dataset_ptr_->GetFileList();
+    if (file_list.size() == 0) {
+      need_dump_field_ = false;
+    }
+  }
+}
+
+void TrainerBase::DumpWork(int tid) {
+#ifdef _LINUX
+  int err_no = 0;
+  std::string path = GetDumpPath(tid);
+
+  std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
+  while (1) {
+    std::string out_str;
+    if (!queue_->Get(out_str)) {
+      break;
+    }
+    size_t write_count =
+        fwrite_unlocked(out_str.data(), 1, out_str.length(), fp.get());
+    if (write_count != out_str.length()) {
+      VLOG(3) << "dump text failed";
+      continue;
+    }
+    write_count = fwrite_unlocked("\n", 1, 1, fp.get());
+    if (write_count != 1) {
+      VLOG(3) << "dump text failed";
+      continue;
+    }
+  }
+#endif
+}
+
+void TrainerBase::FinalizeDumpEnv() {
+  queue_->Close();
+  for (auto& th : dump_thread_) {
+    th.join();
+  }
+  queue_.reset();
+}
 
 }  // end namespace framework
 }  // end namespace paddle
