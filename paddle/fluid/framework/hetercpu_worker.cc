@@ -28,10 +28,10 @@ namespace paddle {
 namespace framework {
 
 void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int cur_batch, const ProgramDesc& program) {
-  total_time = 0;
-  read_time = 0;
-  pack_time = 0;
-  pull_sparse_local_time = 0;
+  //total_time = 0;
+  //read_time = 0;
+  //pack_time = 0;
+  //pull_sparse_local_time = 0;
   taskid_ = taskid;
   auto &block = program.Block(0);
   if (!scope_) {
@@ -648,10 +648,16 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
     op_total_time[i] = 0.0;
   }
   platform::Timer timeline;
-  //double total_time = 0.0;
-  //double read_time = 0.0;
-  //double pull_sparse_time = 0.0;
-  //double pull_sparse_local_time = 0.0;
+  double total_time = 0.0;
+  double read_time = 0.0;
+  double pack_time = 0.0;
+  double pull_sparse_local_time = 0.0;
+  double op_all_time = 0;
+  double xpu_op_time = 0;
+  double cpu_op_time = 0;
+  double collect_label_time = 0;
+  double fill_sparse_time = 0;
+  double push_sparse_time = 0;
 
   int batch_cnt = 0;
   int done_cnt = 0;
@@ -864,6 +870,17 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         ++done_cnt;
         total_inst += task->cur_batch_;
         object_pool_.Push(task);
+
+        total_time += task->total_time;
+        read_time += task->read_time;
+        pack_time += task->pack_time;
+        pull_sparse_local_time += task->pull_sparse_local_time;
+        op_all_time += task->op_all_time;
+        xpu_op_time += task->xpu_op_time;
+        cpu_op_time += task->cpu_op_time;
+        collect_label_time += task->collect_label_time;
+        fill_sparse_time += task->fill_sparse_time;
+        push_sparse_time += task->push_sparse_time;
         //++batch_cnt;
         if (thread_id_ == 0) {
           // should be configured here
@@ -883,32 +900,31 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             //  fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
             //          i.second / done_cnt);
             //}
-            double total_time = task->total_time;
-            fprintf(stderr, "cpu op run total time: %fs\n", task->cpu_op_time / done_cnt);
-            fprintf(stderr, "xpu op run total time: %fs\n", task->xpu_op_time / done_cnt);
-            fprintf(stderr, "pack task time: %fs\n", task->pack_time / done_cnt);
+            fprintf(stderr, "cpu op run total time: %fs\n", cpu_op_time / done_cnt);
+            fprintf(stderr, "xpu op run total time: %fs\n", xpu_op_time / done_cnt);
+            fprintf(stderr, "pack task time: %fs\n", pack_time / done_cnt);
             fprintf(stderr, "train total time: %fs\n", total_time / done_cnt);
             fprintf(stderr, "pull sparse local time: %fs\n",
-                    task->pull_sparse_local_time / done_cnt);
+                    pull_sparse_local_time / done_cnt);
             fprintf(stderr, "fill sparse time: %fs\n",
-                    task->fill_sparse_time / done_cnt);
+                    fill_sparse_time / done_cnt);
             fprintf(stderr, "push sparse time: %fs\n",
-                    task->push_sparse_time / done_cnt);
+                    push_sparse_time / done_cnt);
             fprintf(stderr, "collect label time: %fs\n",
-                    task->collect_label_time / done_cnt);
-            fprintf(stderr, "mean read time: %fs\n", task->read_time / done_cnt);
-            fprintf(stderr, "IO percent: %f\n", task->read_time / total_time * 100);
-            fprintf(stderr, "cpu op run percent: %f\n", task->cpu_op_time / total_time * 100);
-            fprintf(stderr, "xpu op run percent: %f\n", task->xpu_op_time / total_time * 100);
-            fprintf(stderr, "pack task percent: %f\n", task->pack_time / total_time * 100);
+                    collect_label_time / done_cnt);
+            fprintf(stderr, "mean read time: %fs\n", read_time / done_cnt);
+            fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
+            fprintf(stderr, "cpu op run percent: %f\n", cpu_op_time / total_time * 100);
+            fprintf(stderr, "xpu op run percent: %f\n", xpu_op_time / total_time * 100);
+            fprintf(stderr, "pack task percent: %f\n", pack_time / total_time * 100);
             fprintf(stderr, "pull sparse local time percent: %f\n",
-                    task->pull_sparse_local_time / total_time * 100);
+                    pull_sparse_local_time / total_time * 100);
             fprintf(stderr, "collect label time percent: %f\n",
-                    task->collect_label_time / total_time * 100);
+                    collect_label_time / total_time * 100);
             fprintf(stderr, "fill sparse time percent: %f\n",
-                    task->fill_sparse_time / total_time * 100);
+                    fill_sparse_time / total_time * 100);
             fprintf(stderr, "push sparse time percent: %f\n",
-                    task->push_sparse_time / total_time * 100);
+                    push_sparse_time / total_time * 100);
             fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
           }
         }
