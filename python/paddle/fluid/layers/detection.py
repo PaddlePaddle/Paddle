@@ -3431,7 +3431,6 @@ def matrix_nms(bboxes,
                                           score_threshold=0.5,
                                           post_threshold=0.1,
                                           nms_top_k=400,
-                                          nms_threshold=0.3,
                                           keep_top_k=200,
                                           normalized=False)
     """
@@ -3468,6 +3467,7 @@ def matrix_nms(bboxes,
     output.stop_gradient = True
 
     return output
+
 
 def distribute_fpn_proposals(fpn_rois,
                              min_level,

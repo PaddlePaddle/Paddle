@@ -43,20 +43,19 @@ class MatrixNMSOp : public framework::OperatorWithKernel {
                             "The rank of Input(BBoxes) must be 3."
                             "But received rank = %d.",
                             box_dims.size()));
+      PADDLE_ENFORCE_EQ(box_dims[2] == 4, true,
+                        platform::errors::InvalidArgument(
+                            "The last dimension of Input (BBoxes) must be 4, "
+                            "represents the layout of coordinate "
+                            "[xmin, ymin, xmax, ymax]."));
       PADDLE_ENFORCE_EQ(
-        box_dims[2] == 4,
-        true, platform::errors::InvalidArgument(
-          "The last dimension of Input (BBoxes) must be 4, "
-          "represents the layout of coordinate "
-          "[xmin, ymin, xmax, ymax]."));
-      PADDLE_ENFORCE_EQ(
-        box_dims[1], score_dims[2],
-        platform::errors::InvalidArgument(
-          "The 2nd dimension of Input(BBoxes) must be equal to "
-          "last dimension of Input(Scores), which represents the "
-          "predicted bboxes."
-          "But received box_dims[1](%s) != socre_dims[2](%s)",
-          box_dims[1], score_dims[2]));
+          box_dims[1], score_dims[2],
+          platform::errors::InvalidArgument(
+              "The 2nd dimension of Input(BBoxes) must be equal to "
+              "last dimension of Input(Scores), which represents the "
+              "predicted bboxes."
+              "But received box_dims[1](%s) != socre_dims[2](%s)",
+              box_dims[1], score_dims[2]));
     }
     ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
     if (!ctx->IsRuntime()) {
@@ -104,15 +103,14 @@ void NMSMatrix(const Tensor& bbox, const Tensor& scores,
 
   std::vector<int32_t> perm(num_boxes);
   std::iota(perm.begin(), perm.end(), 0);
-  auto end = std::remove_if(
-    perm.begin(), perm.end(),
-    [&score_ptr, score_threshold](int32_t idx){
-      return score_ptr[idx] <= score_threshold;
-    });
+  auto end = std::remove_if(perm.begin(), perm.end(),
+                            [&score_ptr, score_threshold](int32_t idx) {
+                              return score_ptr[idx] <= score_threshold;
+                            });
 
   auto sort_fn = [&score_ptr](int32_t lhs, int32_t rhs) {
-                   return score_ptr[lhs] > score_ptr[rhs];
-                 };
+    return score_ptr[lhs] > score_ptr[rhs];
+  };
 
   int64_t num_pre = std::distance(perm.begin(), end);
   if (top_k > -1 && num_pre > top_k) {
@@ -158,7 +156,6 @@ void NMSMatrix(const Tensor& bbox, const Tensor& scores,
   }
 }
 
-
 template <typename T>
 class MatrixNMSKernel : public framework::OpKernel<T> {
  public:
@@ -182,9 +179,9 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
       if (c == background_label) continue;
       score_slice = scores.Slice(c, c + 1);
       if (use_gaussian) {
-        NMSMatrix<T, true>(bboxes, score_slice, score_threshold,
-                           post_threshold, gaussian_sigma, nms_top_k,
-                           normalized, &all_indices, &all_scores);
+        NMSMatrix<T, true>(bboxes, score_slice, score_threshold, post_threshold,
+                           gaussian_sigma, nms_top_k, normalized, &all_indices,
+                           &all_scores);
       } else {
         NMSMatrix<T, false>(bboxes, score_slice, score_threshold,
                             post_threshold, gaussian_sigma, nms_top_k,
@@ -204,9 +201,7 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
     std::vector<int32_t> perm(all_indices.size());
     std::iota(perm.begin(), perm.end(), 0);
 
-    std::partial_sort(perm.begin(),
-                      perm.begin() + num_det,
-                      perm.end(),
+    std::partial_sort(perm.begin(), perm.begin() + num_det, perm.end(),
                       [&all_scores](int lhs, int rhs) {
                         return all_scores[lhs] > all_scores[rhs];
                       });
@@ -256,10 +251,10 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
       boxes_slice = boxes->Slice(i, i + 1);
       boxes_slice.Resize({score_dims[2], box_dim});
       std::map<int, std::vector<int>> indices;
-      num_out = MultiClassMatrixNMS(
-        scores_slice, boxes_slice, &detections, background_label, nms_top_k,
-        keep_top_k, normalized, score_threshold, post_threshold,
-        use_gaussian, gaussian_sigma);
+      num_out = MultiClassMatrixNMS(scores_slice, boxes_slice, &detections,
+                                    background_label, nms_top_k, keep_top_k,
+                                    normalized, score_threshold, post_threshold,
+                                    use_gaussian, gaussian_sigma);
       offsets.push_back(offsets.back() + num_out);
     }
 
@@ -308,7 +303,7 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 0.) "
                    "Threshold to filter out bounding boxes with low "
                    "confidence score AFTER decaying.")
-      .SetDefault(0.);
+        .SetDefault(0.);
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
@@ -327,8 +322,8 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether to use Gaussian as decreasing function.")
         .SetDefault(false);
     AddAttr<float>("gaussian_sigma",
-                  "(float) "
-                  "Sigma for Gaussian decreasing function, only takes effect ",
+                   "(float) "
+                   "Sigma for Gaussian decreasing function, only takes effect ",
                    "when 'use_gaussian' is enabled.")
         .SetDefault(2.);
     AddOutput("Out",
@@ -365,8 +360,8 @@ https://arxiv.org/abs/2003.10152
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-  matrix_nms, ops::MatrixNMSOp, ops::MatrixNMSOpMaker,
-  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-  paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    matrix_nms, ops::MatrixNMSOp, ops::MatrixNMSOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(matrix_nms, ops::MatrixNMSKernel<float>,
                        ops::MatrixNMSKernel<double>);

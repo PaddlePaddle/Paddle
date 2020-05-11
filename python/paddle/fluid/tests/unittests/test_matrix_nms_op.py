@@ -70,7 +70,7 @@ def matrix_nms(boxes,
     iou_cmax = np.repeat(iou_cmax[:, np.newaxis], N, axis=1)
 
     if use_gaussian:
-        decay = np.exp((iou_cmax ** 2 - ious ** 2) * gaussian_sigma)
+        decay = np.exp((iou_cmax**2 - ious**2) * gaussian_sigma)
     else:
         decay = (1 - ious) / (1 - iou_cmax)
     decay = decay.min(0)
@@ -93,17 +93,13 @@ def multiclass_nms(boxes, scores, background, score_threshold, post_threshold,
     for c in range(scores.shape[0]):
         if c == background:
             continue
-        decayed_scores, selected_boxes = matrix_nms(boxes,
-                                                    scores[c],
-                                                    score_threshold,
-                                                    post_threshold,
-                                                    nms_top_k,
-                                                    normalized,
-                                                    use_gaussian,
-                                                    gaussian_sigma)
+        decayed_scores, selected_boxes = matrix_nms(
+            boxes, scores[c], score_threshold, post_threshold, nms_top_k,
+            normalized, use_gaussian, gaussian_sigma)
         all_cls.append(np.full(len(decayed_scores), c, decayed_scores.dtype))
         all_boxes.append(selected_boxes)
         all_scores.append(decayed_scores)
+
     all_cls = np.concatenate(all_cls)
     all_boxes = np.concatenate(all_boxes)
     all_scores = np.concatenate(all_scores)
@@ -139,16 +135,8 @@ def batched_multiclass_nms(boxes,
     lod = []
     for n in range(batch_size):
         nmsed_outs = multiclass_nms(
-            boxes[n],
-            scores[n],
-            background,
-            score_threshold,
-            post_threshold,
-            nms_top_k,
-            keep_top_k,
-            normalized,
-            use_gaussian,
-            gaussian_sigma)
+            boxes[n], scores[n], background, score_threshold, post_threshold,
+            nms_top_k, keep_top_k, normalized, use_gaussian, gaussian_sigma)
         nmsed_num = len(nmsed_outs)
         lod.append(nmsed_num)
         if nmsed_num == 0:
@@ -235,6 +223,10 @@ class TestMatrixNMSError(unittest.TestCase):
             N = 7
             C = 21
             BOX_SIZE = 4
+            nms_top_k = 400
+            keep_top_k = 200
+            score_threshold = 0.01
+            post_threshold = 0.
 
             boxes_np = np.random.random((M, C, BOX_SIZE)).astype('float32')
             scores = np.random.random((N * M, C)).astype('float32')
@@ -249,14 +241,40 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_bboxes_Variable():
                 # the bboxes type must be Variable
-                fluid.layers.matrix_nms(bboxes=boxes_np, scores=scores_data)
+                fluid.layers.matrix_nms(
+                    bboxes=boxes_np,
+                    scores=scores_data,
+                    nms_top_k=nms_top_k,
+                    keep_top_k=keep_top_k,
+                    score_threshold=score_threshold,
+                    post_threshold=post_threshold)
 
             def test_scores_Variable():
-                # the bboxes type must be Variable
-                fluid.layers.matrix_nms(bboxes=boxes_data, scores=scores_np)
+                # the scores type must be Variable
+                fluid.layers.matrix_nms(
+                    bboxes=boxes_data,
+                    scores=scores_np,
+                    nms_top_k=nms_top_k,
+                    keep_top_k=keep_top_k,
+                    score_threshold=score_threshold,
+                    post_threshold=post_threshold)
+
+            def test_coverage():
+                # cover correct workflow
+                try:
+                    fluid.layers.matrix_nms(
+                        bboxes=boxes_data,
+                        scores=scores_data,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k,
+                        score_threshold=score_threshold,
+                        post_threshold=post_threshold)
+                except Exception as e:
+                    self.fail(e)
 
             self.assertRaises(TypeError, test_bboxes_Variable)
             self.assertRaises(TypeError, test_scores_Variable)
+            test_coverage()
 
 
 if __name__ == '__main__':
