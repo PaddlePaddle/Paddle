@@ -86,6 +86,10 @@ def _update_padding_nd(padding, channel_last, num_dims):
     return padding, padding_algorithm
 
 
+def _convert_nd_params(input):
+    pass
+
+
 def conv1d(input,
            weight,
            bias=None,
@@ -231,6 +235,32 @@ def conv1d(input,
         data_format = "NCHW"
     elif data_format == "NLC":
         data_format = "NHWC"
+    #stride
+    if isinstance(stride, int):
+        stride = (1, stride)
+    if isinstance(stride, tuple):
+        stride = (1, ) + stride
+    if isinstance(dilation, int):
+        dilation = (1, dilation)
+    if isinstance(dilation, tuple):
+        dilation = (1, ) + dilation
+
+    # padding = 3 -> real padding= 0,0,3,3
+    # padding = (3,4) or [3,4] -> 0,0,3,4
+    # padding = [[0,0],[0,0],[5,6]] -> [[0,0],[0,0],[0,0],[5,6]]
+    # padding = [[0,0],[5,6],[0,0]] -> [[0,0],[0,0],[5,6],[0,0]]
+
+    # H=0, W=padding 
+    if isinstance(padding, int):
+        padding = (0, padding)
+    # Height top, bottom=(0,0), Width left, right=padding
+    if _is_list_or_tuple(padding):
+        padding = _convert_list(padding)
+        if _is_list_or_tuple(padding[0]):
+            padding.insert(1, [0, 0])
+        if isinstance(padding[0], int):
+            padding = [0, 0] + padding
+
     out = conv2d(
         input,
         weight,
