@@ -178,7 +178,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
             calib_res->calib_.get(),
-            boost::get<platform::CUDAPlace>(dev_place).device));
+            BOOST_GET_CONST(platform::CUDAPlace, dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
@@ -302,7 +302,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE(bind_index < num_bindings,
                      "The bind index should be less than num_bindings");
       buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
-          boost::get<platform::CUDAPlace>(dev_place)));
+          BOOST_GET_CONST(platform::CUDAPlace, dev_place)));
 
       output_index += 1;
     }
