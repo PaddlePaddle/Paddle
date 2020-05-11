@@ -50,6 +50,29 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    float mean = context.Attr<float>("mean");
+    float std = context.Attr<float>("std");
+    auto* tensor = context.Output<framework::Tensor>("Out");
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    engine.seed(seed);
+    std::normal_distribution<T> dist(mean, std);
+    int64_t size = tensor->numel();
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = dist(engine);
+    }
+  }
+};
+
 class GaussianRandomOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -166,3 +189,6 @@ REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
                              ops::GaussianRandomOpMaker);
 REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
                        ops::CPUGaussianRandomKernel<double>);
+REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
+                       ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
+                       ops::CPUGaussianRandomBatchSizeLikeKernel<double>);
