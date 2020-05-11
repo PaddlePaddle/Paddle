@@ -175,6 +175,24 @@ class TestSumOp12(OpTest):
         self.check_output()
 
 
+class TestSumOp13(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
+        a = np.random.random((4, 5, 4097)).astype("float64")
+        self.inputs = {'X': a}
+        a = np.flip(a)
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.flip(a[:, :, :-1].cumsum(axis=2)), np.zeros(
+                    (4, 5, 1), dtype=np.float64)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class BadInputTest(unittest.TestCase):
     def test_error(self):
         with fluid.program_guard(fluid.Program()):

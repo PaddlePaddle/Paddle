@@ -224,8 +224,10 @@ __global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size,
   int thread_id = threadIdx.x;
 
   int col = block_id * blockDim.x + thread_id + size;
-  if (reverse) col = scan_dim_size - col;
   int index = blockIdx.y * (scan_dim_size) + col;
+  if (reverse) {
+    index = blockIdx.y * (scan_dim_size) + scan_dim_size - 1 - col;
+  }
 
   if (col >= scan_dim_size || col < 0) return;
   for (int i = block_id_start; i <= block_id_end; i++) {
