@@ -24,13 +24,16 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_api_shape_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
+from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer, NameNodeReplaceTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
+
+import logging
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -202,6 +205,7 @@ class NameVisitor(gast.NodeVisitor):
                 # vars out
                 loop_var_names.add(name)
                 create_var_names.add(name)
+
         return loop_var_names, create_var_names
 
     def visit_Name(self, node):
@@ -371,14 +375,16 @@ class LoopTransformer(gast.NodeTransformer):
         return None
 
     def _is_for_range_iter_node(self, node):
-        return isinstance(node.iter.func,
-                          gast.Name) and node.iter.func.id == "range"
+        return isinstance(node.func, gast.Name) and node.func.id == "range"
 
     def _is_for_iter_node(self, node):
-        return isinstance(node.iter.func,
-                          gast.Attribute) and node.iter.func.attr == 'numpy'
+        return isinstance(node.func,
+                          gast.Attribute) and node.func.attr == 'numpy'
 
-    def get_for_range_args_stmts(self, iter_name, args_list):
+    def _is_for_enumerate_iter_node(self, node):
+        return isinstance(node.func, gast.Name) and node.func.id == "enumerate"
+
+    def get_for_range_args_stmts(self, iter_target, iter_args_list, node_body):
         '''
         Returns 3 gast stmt nodes for argument.
         1. Initailize of iterate variable
@@ -388,32 +394,38 @@ class LoopTransformer(gast.NodeTransformer):
            as "for i in range(10)" will create i = 9 after the loop. But using
            current conversion will make i = 10. We should find a way to change it
         '''
-        len_range_args = len(args_list)
-        assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
-        if len_range_args == 1:
-            init_stmt = get_constant_variable_node(iter_name, 0)
-        else:
-            init_stmt = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=iter_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None)
-                ],
-                value=args_list[0])
+        iter_var_name = iter_target.id
 
-        range_max_node = args_list[0] if len_range_args == 1 else args_list[1]
-        step_node = args_list[2] if len_range_args == 3 else gast.Constant(
+        len_range_args = len(iter_args_list)
+        assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
+
+        init_stmts = []
+        if len_range_args == 1:
+            init_stmts.append(get_constant_variable_node(iter_var_name, 0))
+        else:
+            init_stmts.append(
+                gast.Assign(
+                    targets=[
+                        gast.Name(
+                            id=iter_var_name,
+                            ctx=gast.Store(),
+                            annotation=None,
+                            type_comment=None)
+                    ],
+                    value=iter_args_list[0]))
+
+        range_max_node = iter_args_list[
+            0] if len_range_args == 1 else iter_args_list[1]
+        step_node = iter_args_list[2] if len_range_args == 3 else gast.Constant(
             value=1, kind=None)
 
-        print(astor.dump_tree(range_max_node))
-        print(astor.dump_tree(step_node))
+        logging.info(astor.dump_tree(range_max_node))
+        logging.info(astor.dump_tree(step_node))
 
         cond_stmt = gast.Compare(
             left=gast.BinOp(
                 left=gast.Name(
-                    id=iter_name,
+                    id=iter_var_name,
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None),
@@ -424,76 +436,235 @@ class LoopTransformer(gast.NodeTransformer):
 
         change_stmt = gast.AugAssign(
             target=gast.Name(
-                id=iter_name,
+                id=iter_var_name,
                 ctx=gast.Store(),
                 annotation=None,
                 type_comment=None),
             op=gast.Add(),
             value=step_node)
+        node_body.append(change_stmt)
 
-        return init_stmt, cond_stmt, change_stmt
+        return init_stmts, cond_stmt, node_body
 
-    def get_for_iter_stmts(self, iter_name, iter_node):
-        assert isinstance(iter_node, gast.Call), "iter node mast be gast.Call"
+    def _build_for_enumerate_init_stmts(self, iter_idx_name,
+                                        iter_var_shape_name, iter_node):
+        init_stmts = []
+        # need new created iter var here
+        # TODO: slice bug, no support int64 index
+        init_stmts.append(
+            get_constant_variable_node(
+                name=iter_idx_name, value=0, dtype='int32'))
 
-        init_stmt = get_constant_variable_node(iter_name, 0)
+        # get variable shape as iter length
+        var_shape_assign_node = gast.Assign(
+            targets=[
+                gast.Name(
+                    id=iter_var_shape_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None)
+            ],
+            value=create_api_shape_node(iter_node.func))
+        init_stmts.append(var_shape_assign_node)
+        return init_stmts
+
+    def _build_for_enumerate_cond_stmt(self, iter_idx_name, iter_var_shape_name,
+                                       step_node):
+        # create comparators by variable shape
+        compare_node = gast.Subscript(
+            value=gast.Name(
+                id=iter_var_shape_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None),
+            slice=gast.Index(value=gast.Constant(
+                value=0, kind=None)),
+            ctx=gast.Load())
         step_node = gast.Constant(value=1, kind=None)
-
         cond_stmt = gast.Compare(
             left=gast.BinOp(
                 left=gast.Name(
-                    id=iter_name,
+                    id=iter_idx_name,
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None),
                 op=gast.Add(),
                 right=step_node),
             ops=[gast.LtE()],
-            comparators=[iter_node])
+            comparators=[compare_node])
+        return cond_stmt
 
+    def _build_for_enumerate_body_stmts(self, iter_var_name, iter_idx_name,
+                                        iter_node, step_node, node_body):
+        # append slice for iter_node
+        var_slice_node = gast.Subscript(
+            value=iter_node,
+            slice=gast.Index(value=gast.Name(
+                id=iter_idx_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None)),
+            ctx=gast.Load())
+        for body_node in node_body:
+            NameNodeReplaceTransformer(body_node, iter_var_name, var_slice_node)
         change_stmt = gast.AugAssign(
             target=gast.Name(
-                id=iter_name,
+                id=iter_idx_name,
                 ctx=gast.Store(),
                 annotation=None,
                 type_comment=None),
             op=gast.Add(),
             value=step_node)
+        node_body.append(change_stmt)
+        return node_body
 
-        return init_stmt, cond_stmt, change_stmt
+    def _update_for_enumerate_loop_var_names(self, add_name, remove_name,
+                                             loop_var_names, create_var_names):
+        # now looks like only 1 var need to be added or remove
+        loop_var_names.add(add_name)
+        if remove_name not in create_var_names:
+            loop_var_names.remove(remove_name)
+
+    def get_for_iter_stmts(self, iter_target, iter_node, node_body,
+                           loop_var_names, create_var_names):
+        assert isinstance(iter_node, gast.Call), "iter node mast be gast.Call"
+
+        # 1. prepare related var node names
+        iter_var_name = iter_target.id
+        iter_idx_name = unique_name.generate(
+            GENERATE_VARIABLE_PREFIX) + '_index'
+        iter_var_shape_name = unique_name.generate(
+            GENERATE_VARIABLE_PREFIX) + '_shape'
+
+        # 2. prepare common node in different stmts
+        step_node = gast.Constant(value=1, kind=None)
+
+        # 3. build statements 
+        init_stmts = self._build_for_enumerate_init_stmts(
+            iter_idx_name, iter_var_shape_name, iter_node)
+        cond_stmt = self._build_for_enumerate_cond_stmt(
+            iter_idx_name, iter_var_shape_name, step_node)
+        body_stmts = self._build_for_enumerate_body_stmts(
+            iter_var_name, iter_idx_name, iter_node, step_node, node_body)
+
+        # 4. update loop var names
+        # append i into loop_var_names & remove x from loop_var_names
+        self._update_for_enumerate_loop_var_names(
+            iter_idx_name, iter_var_name, loop_var_names, create_var_names)
+
+        return init_stmts, cond_stmt, body_stmts
+
+    def get_for_enumerate_args_stmts(self, node_target, iter_args_list,
+                                     node_body, loop_var_names,
+                                     create_var_names):
+        assert isinstance(node_target,
+                          gast.Tuple), "for enumerate target should be Tuple"
+        assert len(node_target.elts) == 2, "only for enumerate one element now"
+        len_range_args = len(iter_args_list)
+        assert len_range_args >= 1 and len_range_args <= 2, "enumerate() function takes 1 to 2 arguments"
+
+        # 1. prepare related var node names
+        enum_idx_name = node_target.elts[0].id
+        iter_var_name = node_target.elts[1].id
+        iter_idx_name = unique_name.generate(
+            GENERATE_VARIABLE_PREFIX) + '_index'
+        iter_var_shape_name = unique_name.generate(
+            GENERATE_VARIABLE_PREFIX) + '_shape'
+
+        # 2. prepare common node in different stmts
+        iter_node = iter_args_list[0]
+        step_node = gast.Constant(value=1, kind=None)
+
+        # 3. build statements 
+        init_stmts = self._build_for_enumerate_init_stmts(
+            iter_idx_name, iter_var_shape_name, iter_node)
+        # append enumerate var node
+        if len_range_args == 1:
+            init_stmts.append(
+                get_constant_variable_node(
+                    name=enum_idx_name, value=0))
+        else:
+            init_stmts.append(
+                gast.Assign(
+                    targets=[
+                        gast.Name(
+                            id=enum_idx_name,
+                            ctx=gast.Store(),
+                            annotation=None,
+                            type_comment=None)
+                    ],
+                    value=iter_args_list[1]))
+
+        cond_stmt = self._build_for_enumerate_cond_stmt(
+            iter_idx_name, iter_var_shape_name, step_node)
+        body_stmts = self._build_for_enumerate_body_stmts(
+            iter_var_name, iter_idx_name, iter_node, step_node, node_body)
+        # append enumerate var increaseing node
+        body_stmts.append(
+            gast.AugAssign(
+                target=gast.Name(
+                    id=enum_idx_name,
+                    ctx=gast.Store(),
+                    annotation=None,
+                    type_comment=None),
+                op=gast.Add(),
+                value=step_node))
+
+        # 4. update loop var names
+        # append i into loop_var_names & remove x from loop_var_names
+        self._update_for_enumerate_loop_var_names(
+            iter_idx_name, iter_var_name, loop_var_names, create_var_names)
+
+        return init_stmts, cond_stmt, body_stmts
+
+    def build_transformed_for_stmts(self, node, loop_var_names,
+                                    create_var_names):
+        if self._is_for_range_iter_node(node.iter):
+            return self.get_for_range_args_stmts(node.target, node.iter.args,
+                                                 node.body)
+        elif self._is_for_iter_node(node.iter):
+            return self.get_for_iter_stmts(node.target, node.iter, node.body,
+                                           loop_var_names, create_var_names)
+        elif self._is_for_enumerate_iter_node(node.iter):
+            return self.get_for_enumerate_args_stmts(
+                node.target, node.iter.args, node.body, loop_var_names,
+                create_var_names)
+        else:
+            return None
 
     def get_for_stmt_nodes(self, node):
         # TODO: consider for - else in python
-        # NOTE: Here check whether need to transform
+
+        # 1. check whether need to transform, here will
+        # NOTE: Current need transform cases:
+        #   1). for x in range(VarBase.numpy()[0])
+        #   2). for x in VarBase.numpy()
+        #   3). for i, x in enumerate(VarBase.numpy())
         if not self.name_visitor.is_control_flow_loop(node):
             return [node]
 
-        if not isinstance(node.target, gast.Name):
-            return [node]
-        iter_var_name = node.target.id
-
-        # NOTE: Current support cases:
-        #   1. for x in range(VarBase.numpy()[0])
-        #   2. for x in VarBase.numpy()
-        if self._is_for_range_iter_node(node.iter):
-            init_stmt, cond_stmt, change_stmt = self.get_for_range_args_stmts(
-                iter_var_name, node.iter.args)
-        elif self._is_for_iter_node(node.iter):
-            init_stmt, cond_stmt, change_stmt = self.get_for_iter_stmts(
-                iter_var_name, node.iter)
-        else:
-            return [node]
-
-        print(astor.dump_tree(init_stmt))
-        print(astor.dump_tree(cond_stmt))
-        print(astor.dump_tree(change_stmt))
-
+        # 2. get original loop vars
+        # NOTE: why get loop vars firsyly?
+        # because in 'for x in var' or 'for i, x in enumerate(var)' cases,
+        # we need append new loop var & remove useless loop var
+        #   1. for x in var -> x is no need
+        #   2. for i, x in enumerate(var) -> x is no need
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
 
-        print(loop_var_names)
-        print(create_var_names)
+        # 3. get key statements for different cases
+        # NOTE: three key statements:
+        #   1). init_stmts: list[node], prepare nodes of for loop, may not only one
+        #   2). cond_stmt: node, condition node to judge whether continue loop
+        #   3). body_stmts: list[node], updated loop body, sometimes we should change
+        #       the original statement in body, not just append new statement
+        stmts_tuple = self.build_transformed_for_stmts(node, loop_var_names,
+                                                       create_var_names)
+        if stmts_tuple is None:
+            return [node]
+        init_stmts, cond_stmt, body_stmts = stmts_tuple
 
+        # 4. prepare result statement list
         new_stmts = []
         # Python can create variable in loop and use it out of loop, E.g.
         #
@@ -506,12 +677,13 @@ class LoopTransformer(gast.NodeTransformer):
             if "." not in name:
                 new_stmts.append(create_static_variable_gast_node(name))
 
-        new_stmts.append(init_stmt)
-
+        # 5. append init statements
+        new_stmts.extend(init_stmts)
         # for x in range(10) in dygraph should be convert into static tensor + 1 <= 10
         for name in loop_var_names:
             new_stmts.append(to_static_variable_gast_node(name))
 
+        # 6. create & append condition function node
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_CONDITION_PREFIX),
             args=gast.arguments(
@@ -539,9 +711,9 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(condition_func_node)
 
-        new_body = node.body
-        new_body.append(change_stmt)
-        new_body.append(
+        # 7. create & append loop body function node
+        # append return values for loop body
+        body_stmts.append(
             gast.Return(value=generate_name_node(
                 loop_var_names, ctx=gast.Load())))
         body_func_node = gast.FunctionDef(
@@ -560,7 +732,7 @@ class LoopTransformer(gast.NodeTransformer):
                 kw_defaults=None,
                 kwarg=None,
                 defaults=[]),
-            body=new_body,
+            body=body_stmts,
             decorator_list=[],
             returns=None,
             type_comment=None)
@@ -571,6 +743,7 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
 
+        # 8. create & append while loop node 
         while_loop_node = create_while_node(condition_func_node.name,
                                             body_func_node.name, loop_var_names)
         new_stmts.append(while_loop_node)

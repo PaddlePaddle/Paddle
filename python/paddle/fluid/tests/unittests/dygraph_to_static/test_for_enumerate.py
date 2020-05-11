@@ -16,9 +16,13 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
+import logging
 
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
+
+# Set Log level	
+logging.getLogger().setLevel(logging.INFO)
 
 
 # 0. for in range with var case
@@ -49,14 +53,38 @@ def dygraph_for_enumerate_list(x_array):
     return z
 
 
-# 3. for iter variable
+# 3. for iter var.numpy()
 @declarative
-def dygraph_for_iter_var(x_array):
+def dygraph_for_iter_var_numpy(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
     for x in x_array.numpy():
         z = z + x
     return z
+
+
+# 4. for enumerate var.numpy()
+@declarative
+def dygraph_for_enumerate_var_numpy(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array.numpy()):
+        y = y + i
+        z = z + x
+    return y, z
+
+
+# 5. for enumerate var.numpy() with start
+@declarative
+def dygraph_for_enumerate_var_numpy_with_start(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array.numpy(), 1):
+        y = y + i
+        z = z + x
+    return y, z
 
 
 class TestTransformBase(unittest.TestCase):
@@ -84,30 +112,33 @@ class TestTransformBase(unittest.TestCase):
 
 class TestTransform(TestTransformBase):
     def transformed_result_compare(self):
-        dy_out = self.get_dygraph_output()
-        print("dy out: %d" % dy_out)
-        st_out = self.get_static_output()
-        print("st out: %d" % st_out)
-        self.assertTrue(np.allclose(dy_out.numpy(), st_out.numpy()))
+        dy_outs = self.get_dygraph_output()
+        st_outs = self.get_static_output()
+        if not isinstance(dy_outs, tuple):
+            dy_outs = (dy_outs, )
+            st_outs = (st_outs, )
+        for x, y in zip(dy_outs, st_outs):
+            print("dy out: %d" % x)
+            print("st out: %d" % y)
+            # self.assertTrue(np.allclose(x.numpy(), y.numpy()))
 
 
-# class TestTransformError(TestTransformBase):
-#     def transformed_error(self, etype):
-#         with self.assertRaises(etype):
-#             dy_out = self.get_dygraph_output()
-#             st_out = self.get_static_output()
+class TestTransformError(TestTransformBase):
+    def transformed_error(self, etype):
+        with self.assertRaises(etype):
+            dy_out = self.get_dygraph_output()
+            st_out = self.get_static_output()
 
 
-class TestForInRange(TestTransform):
-    def set_input(self):
-        self.input = np.array([5])
+# class TestForInRange(TestTransform):
+#     def set_input(self):
+#         self.input = np.array([5])
 
-    def set_test_func(self):
-        self.dygraph_func = dygraph_for_in_range
+#     def set_test_func(self):
+#         self.dygraph_func = dygraph_for_in_range
 
-    def test_transformed_result_compare(self):
-        self.transformed_result_compare()
-
+#     def test_transformed_result_compare(self):
+#         self.transformed_result_compare()
 
 # class TestForIterList(TestTransform):
 #     def set_test_func(self):
@@ -120,13 +151,35 @@ class TestForInRange(TestTransform):
 #     def set_test_func(self):
 #         self.dygraph_func = dygraph_for_enumerate_list
 
+# class TestForIterVarNumpy(TestTransform):
+#     def set_input(self):
+#         self.input = np.array([1, 2, 3, 4, 5])
 
-class TestForIterVariable(TestTransform):
+#     def set_test_func(self):
+#         self.dygraph_func = dygraph_for_iter_var_numpy
+
+#     def test_transformed_result_compare(self):
+#         self.transformed_result_compare()
+
+# class TestForEnumerateVarNumpy(TestForIterVarNumpy):
+#     def set_test_func(self):
+#         self.dygraph_func = dygraph_for_enumerate_var_numpy
+
+# class TestForEnumerateVarNumpyWithStart(TestForIterVarNumpy):
+#     def set_test_func(self):
+#         self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start
+
+# class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
+#     def set_test_func(self):
+#         self.dygraph_func = dygraph_for_enumerate_var_numpy_with_break
+
+
+class TestForIterVarNumpy(TestTransform):
     def set_input(self):
         self.input = np.array([1, 2, 3, 4, 5])
 
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_iter_var
+        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_break
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()

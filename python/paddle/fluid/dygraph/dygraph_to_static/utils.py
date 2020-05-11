@@ -25,6 +25,8 @@ import os
 import six
 import tempfile
 
+import logging
+
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
     "ExponentialDecay": "exponential_decay",
@@ -348,6 +350,24 @@ class RenameTransformer(gast.NodeTransformer):
         return node
 
 
+class NameNodeReplaceTransformer(gast.NodeTransformer):
+    """
+    This class transform specfice gast.Name node to replace node
+    """
+
+    def __init__(self, root_node, target_name, replace_node):
+        assert isinstance(target_name, str)
+        self.target_name = target_name
+        self.replace_node = replace_node
+
+        self.visit(root_node)
+
+    def visit_Name(self, node):
+        if node.id == self.target_name:
+            return self.replace_node
+        return node
+
+
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
@@ -355,8 +375,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
     source = ast_to_source_code(ast_root)
-    print("result code:")
-    print(source)
+    logging.info("result code:")
+    logging.info(source)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -510,9 +530,9 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         if not isinstance(node.iter, gast.Call):
             return
 
-        # for in range(v.numpy())
+        # for in range(v.numpy()) or for in enumerate(v.numpy())
         if isinstance(node.iter.func, gast.Name):
-            if node.iter.func.id == "range":
+            if node.iter.func.id == "range" or node.iter.func.id == "enumerate":
                 for arg in node.iter.args:
                     self.visit(arg)
             else:

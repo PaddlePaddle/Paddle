@@ -44,6 +44,8 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
 from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
 
+import logging
+
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
@@ -84,8 +86,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
         BreakContinueTransformer(node_wrapper).transform()
 
         # Transform for loop and while loop
-        print("before loop tree:")
-        print(astor.dump_tree(self.root))
+        logging.info("before loop tree:")
+        logging.info(astor.dump_tree(self.root))
         LoopTransformer(node_wrapper).transform()
 
         # Transform all if/else statement of Dygraph into Static Graph.
@@ -151,14 +153,14 @@ def convert_to_static(dyfunc):
     raw_code = inspect.getsource(dyfunc)
     code = textwrap.dedent(raw_code)
     root = gast.parse(code)
-    print("source tree:")
-    print(astor.dump_tree(root))
+    logging.info("source tree:")
+    logging.info(astor.dump_tree(root))
 
     # Transform AST
     dygraph_to_static = DygraphToStaticAst()
     root_wrapper = dygraph_to_static.get_static_ast(root)
-    print("result tree:")
-    print(astor.dump_tree(root_wrapper.node))
+    logging.info("result tree:")
+    logging.info(astor.dump_tree(root_wrapper.node))
 
     # Get static_func from AST
     static_func, file_name = ast_to_func(root_wrapper.node, dyfunc)
