@@ -199,6 +199,19 @@ void ListenAndServOp::RunSyncLoop(
       break;
     }
 
+    // For sync, sparse variables need recover grad type from LodTensor to
+    // SelectedRows
+    {
+      auto *ins = distributed::LargeScaleKV::GetInstance();
+      auto grads = ins->GetAllGrads();
+
+      for (auto &grad : grads) {
+        auto *v = recv_scope->FindVar(grad);
+        v->Clear();
+        v->GetMutable<framework::LoDTensor>();
+      }
+    }
+
     // NOTE: if is_gpu_place, CUDA kernels are launched by multiple threads
     // and this will still work.
     // The optimize blocks which have the same parent ID would run parallel

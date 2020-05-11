@@ -67,19 +67,19 @@ struct SparseMeta {
 };
 
 struct VALUE {
-  explicit VALUE(const std::vector<std::string>& names) : names_(names) {
+  explicit VALUE(const std::vector<std::string> &names) : names_(names) {
     values_.resize(names.size());
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
       places[names[i]] = i;
     }
   }
 
-  void set(std::vector<std::vector<float>>&& values) {
+  void set(std::vector<std::vector<float>> &&values) {
     values_ = std::move(values);
   }
 
-  void set(const std::vector<std::string>& names,
-           const std::vector<std::vector<float>>& values) {
+  void set(const std::vector<std::string> &names,
+           const std::vector<std::vector<float>> &values) {
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
       auto idx = places[names[i]];
       auto value = values[i];
@@ -105,7 +105,7 @@ struct VALUE {
 
 class SparseVariable {
  public:
-  explicit SparseVariable(const SparseMeta& meta) {
+  explicit SparseVariable(const SparseMeta &meta) {
     meta_.name = meta.name;
     meta_.mode = meta.mode;
     meta_.value_names = meta.value_names;
@@ -118,9 +118,9 @@ class SparseVariable {
     }
   }
 
-  void Get(const std::vector<int64_t>& ids,
-           const std::vector<std::string>& value_names,
-           std::vector<std::vector<std::vector<float>>>* values) {
+  void Get(const std::vector<int64_t> &ids,
+           const std::vector<std::string> &value_names,
+           std::vector<std::vector<std::vector<float>>> *values) {
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto id : ids) {
       auto got = values_.find(id);
@@ -133,9 +133,10 @@ class SparseVariable {
       values->push_back(value->get(value_names));
     }
   }
-  void Set(const std::vector<int64_t>& ids,
-           const std::vector<std::string>& value_names,
-           const std::vector<std::vector<std::vector<float>>>& values) {
+
+  void Set(const std::vector<int64_t> &ids,
+           const std::vector<std::string> &value_names,
+           const std::vector<std::vector<std::vector<float>>> &values) {
     std::lock_guard<std::mutex> lock(mutex_);
     for (int i = 0; i < static_cast<int>(ids.size()); i++) {
       auto value = values_.at(ids[i]);
@@ -144,12 +145,12 @@ class SparseVariable {
     }
   }
 
-  void Get(const framework::Tensor& ids,
+  void Get(const framework::Tensor &ids,
            const std::vector<std::string> value_names,
-           std::vector<framework::Tensor>* values) {}
+           std::vector<framework::Tensor> *values) {}
 
-  void Dims(std::vector<std::string> value_names, std::vector<int64_t>* dims) {
-    for (auto& name : value_names) {
+  void Dims(std::vector<std::string> value_names, std::vector<int64_t> *dims) {
+    for (auto &name : value_names) {
       dims->push_back(values_dims.at(name));
     }
   }
@@ -178,52 +179,56 @@ class SparseVariable {
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims;
   std::vector<int> initializers_;
-  std::unordered_map<int64_t, VALUE*> values_;
+  std::unordered_map<int64_t, VALUE *> values_;
 };
 
 class LargeScaleKV {
  public:
   LargeScaleKV() {}
 
-  explicit LargeScaleKV(const std::vector<SparseMeta>& table_metas) {
-    for (auto& sparse_meta : table_metas) {
+  explicit LargeScaleKV(const std::vector<SparseMeta> &table_metas) {
+    for (auto &sparse_meta : table_metas) {
       auto table_name = sparse_meta.name;
       auto meta = std::shared_ptr<SparseVariable>(
           new SparseVariable(std::move(sparse_meta)));
       sparse_variables[table_name] = meta;
       grad_to_variables[sparse_meta.grad_name] = table_name;
+      grad_names.push_back(sparse_meta.grad_name);
     }
   }
 
   ~LargeScaleKV() {}
 
-  static LargeScaleKV* GetInstance() { return scale_kv_.get(); }
+  static LargeScaleKV *GetInstance() { return scale_kv_.get(); }
 
-  static LargeScaleKV* InitInstance(
-      const std::vector<SparseMeta>& table_metas) {
+  static LargeScaleKV *InitInstance(
+      const std::vector<SparseMeta> &table_metas) {
     std::call_once(init_flag_, &LargeScaleKV::Init, table_metas);
     return scale_kv_.get();
   }
 
-  static void Init(const std::vector<SparseMeta>& table_metas) {
+  static void Init(const std::vector<SparseMeta> &table_metas) {
     if (scale_kv_.get() == nullptr) {
       scale_kv_.reset(new LargeScaleKV(table_metas));
     }
   }
 
-  SparseVariable* Get(std::string name) {
+  SparseVariable *Get(std::string name) {
     auto variable = sparse_variables.at(name);
     return variable.get();
   }
 
-  SparseVariable* GetByGrad(std::string name) {
+  SparseVariable *GetByGrad(std::string name) {
     return Get(grad_to_variables[name]);
   }
+
+  const std::vector<std::string> &GetAllGrads() { return grad_names_; }
 
  private:
   std::unordered_map<std::string, std::shared_ptr<SparseVariable>>
       sparse_variables;
   std::unordered_map<std::string, std::string> grad_to_variables;
+  std::string grad_names_;
   static std::shared_ptr<LargeScaleKV> scale_kv_;
   static std::once_flag init_flag_;
 };

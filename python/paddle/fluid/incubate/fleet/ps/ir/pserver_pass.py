@@ -740,6 +740,10 @@ def large_scale_sparse_pass(program, config):
         names_str = ",".join(value_names)
         dims_str = ",".join([str(dim) for dim in value_dims])
         cached_str = ",".join(acture_names + ["kSparseIDs"])
+
+        if config.is_sync_mode():
+            cached_str = ""
+
         meta_str = ":".join(
             [param, names_str, dims_str, mode, grad.name, cached_str])
         large_scale_kv_metas.append(meta_str)
