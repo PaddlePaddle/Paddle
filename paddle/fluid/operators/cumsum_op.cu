@@ -209,16 +209,22 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
 
 // for large scan_dim_size array we need to add for correct result
 template <typename T>
-__global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size) {
+__global__ void AddBlockScan(T* result, T* sum, int size, int scan_dim_size,
+                             int sum_size) {
   int idx = threadIdx.x + blockDim.x * (blockIdx.x + blockIdx.y * gridDim.x);
-  int index = threadIdx.x + blockIdx.x * blockDim.x;
-  int block_id_start = blockIdx.y * gridDim.x;
-  int block_id_end = blockIdx.x + blockIdx.y * gridDim.x;
+  int block_id_start = blockIdx.y * sum_size;
+  int block_id_end = blockIdx.x + blockIdx.y * sum_size;
+  int block_id = blockIdx.x;
   int thread_id = threadIdx.x;
-  index = idx + size;
-  if (index >= scan_dim_size) return;
-  for (int i = block_id_start; i <= block_id_end; i++)
-    result[idx + size] += sum[i];
+
+  int col = block_id * blockDim.x + thread_id + size;
+  int index =
+      blockIdx.y * (scan_dim_size) + (block_id * blockDim.x + thread_id) + size;
+
+  if (col >= scan_dim_size) return;
+  for (int i = block_id_start; i <= block_id_end; i++) {
+    result[index] += sum[i];
+  }
 }
 
 template <typename DeviceContext, typename T>
@@ -269,7 +275,7 @@ class CumCUDAKernel : public framework::OpKernel<T> {
       };
       if (exclusive) {
         int element_per_block = nextPowerOfTwo(scan_dim_size) / 2;
-        if (element_per_block > 64 || element_per_block < 32) {
+        if (element_per_block > 512 || element_per_block < 32) {
           element_per_block = 32;
         }
         int two_power = element_per_block * 2;
@@ -292,8 +298,9 @@ class CumCUDAKernel : public framework::OpKernel<T> {
           dim3 sum_block(element_per_block * 2);
           dim3 sum_grid((scan_dim_size - element_size + block.x - 1) / block.x,
                         outer_dim_size);
+          int sum_size = ((scan_dim_size + 1) / 2 + block.x - 1) / block.x;
           AddBlockScan<T><<<sum_grid, sum_block, 0, dev_ctx.stream()>>>(
-              out_data, sum_data, element_size, scan_dim_size);
+              out_data, sum_data, element_size, scan_dim_size, sum_size);
         }
 
       } else {
