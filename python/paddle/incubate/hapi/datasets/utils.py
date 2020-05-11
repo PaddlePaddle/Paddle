@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import hapi
+from __future__ import print_function
 
-__all__ = []
-__all__ += hapi.__all__
+import os
+import paddle.dataset.common
+
+
+def _check_exists_and_download(path, url, md5, module_name, download=True):
+    if path and os.path.exists(path):
+        return path
+
+    if download:
+        return paddle.dataset.common.download(url, module_name, md5)
+    else:
+        raise ValueError('{} not exists and auto download disabled'.format(
+            path))
