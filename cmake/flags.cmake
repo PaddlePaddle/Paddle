@@ -76,7 +76,7 @@ macro(safe_set_nvflag flag_name)
     CHECK_C_COMPILER_FLAG(${flag_name} C_COMPILER_SUPPORT_FLAG_${safe_name})
     set(safe_name C_COMPILER_SUPPORT_FLAG_${safe_name})
     if(${safe_name})
-        LIST(APPEND CUDA_NVCC_FLAGS -Xcompiler ${flag_name})
+        set(SAFE_GPU_COMMON_FLAGS "${SAFE_GPU_COMMON_FLAGS} -Xcompiler=\"${flag_name}\"")
     endif()
 endmacro()
 
@@ -137,59 +137,59 @@ endif()
 
 # https://github.com/PaddlePaddle/Paddle/issues/12773
 if (NOT WIN32)
-set(COMMON_FLAGS
-    -fPIC
-    -fno-omit-frame-pointer
-    -Werror
-    -Wall
-    -Wextra
-    -Wnon-virtual-dtor
-    -Wdelete-non-virtual-dtor
-    -Wno-unused-parameter
-    -Wno-unused-function
-    -Wno-error=literal-suffix
-    -Wno-error=unused-local-typedefs
-    -Wno-error=parentheses-equality # Warnings in pybind11
-    -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
-    -Wno-error=terminate  # Warning in PADDLE_ENFORCE
-    -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
-    -Wimplicit-fallthrough=0 # Warning in tinyformat.h
-    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
-    ${fsanitize}
-)
+    set(COMMON_FLAGS
+        -fPIC
+        -fno-omit-frame-pointer
+        -Werror
+        -Wall
+        -Wextra
+        -Wnon-virtual-dtor
+        -Wdelete-non-virtual-dtor
+        -Wno-unused-parameter
+        -Wno-unused-function
+        -Wno-error=literal-suffix
+        -Wno-error=unused-local-typedefs
+        -Wno-error=parentheses-equality # Warnings in pybind11
+        -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
+        -Wno-error=terminate  # Warning in PADDLE_ENFORCE
+        -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
+        -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+        -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
+        ${fsanitize}
+    )
 
-if(NOT APPLE)
-    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
-        set(COMMON_FLAGS
-                ${COMMON_FLAGS}
-                -Wno-format-truncation # Warning in boost gcc 8.2
-                -Wno-error=cast-function-type # Warning in boost gcc 8.2
-                -Wno-error=parentheses # Warning in boost gcc 8.2
-                -Wno-error=catch-value # Warning in boost gcc 8.2
-                -Wno-error=nonnull-compare # Warning in boost gcc 8.2
-                -Wno-error=address # Warning in boost gcc 8.2
-                -Wno-ignored-qualifiers # Warning in boost gcc 8.2
-                -Wno-ignored-attributes # Warning in Eigen gcc 8.3 
-                -Wno-parentheses # Warning in Eigen gcc 8.3
-                )
+    if(NOT APPLE)
+        if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+            set(COMMON_FLAGS
+                    ${COMMON_FLAGS}
+                    -Wno-format-truncation # Warning in boost gcc 8.2
+                    -Wno-error=cast-function-type # Warning in boost gcc 8.2
+                    -Wno-error=parentheses # Warning in boost gcc 8.2
+                    -Wno-error=catch-value # Warning in boost gcc 8.2
+                    -Wno-error=nonnull-compare # Warning in boost gcc 8.2
+                    -Wno-error=address # Warning in boost gcc 8.2
+                    -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+                    -Wno-ignored-attributes # Warning in Eigen gcc 8.3
+                    -Wno-parentheses # Warning in Eigen gcc 8.3
+                    )
+        endif()
+    endif(NOT APPLE)
+
+    set(GPU_COMMON_FLAGS
+        -fPIC
+        -fno-omit-frame-pointer
+        -Wnon-virtual-dtor
+        -Wdelete-non-virtual-dtor
+        -Wno-unused-parameter
+        -Wno-unused-function
+        -Wno-error=literal-suffix
+        -Wno-error=unused-local-typedefs
+        -Wno-error=unused-function  # Warnings in Numpy Header.
+        -Wno-error=array-bounds # Warnings in Eigen::array
+    )
+    if (NOT WITH_NV_JETSON)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
     endif()
-endif(NOT APPLE)
-
-set(GPU_COMMON_FLAGS
-    -fPIC
-    -fno-omit-frame-pointer
-    -Wnon-virtual-dtor
-    -Wdelete-non-virtual-dtor
-    -Wno-unused-parameter
-    -Wno-unused-function
-    -Wno-error=literal-suffix
-    -Wno-error=unused-local-typedefs
-    -Wno-error=unused-function  # Warnings in Numpy Header.
-    -Wno-error=array-bounds # Warnings in Eigen::array
-)
-if (NOT WITH_NV_JETSON) 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-endif()
 endif(NOT WIN32)
 
 if (APPLE)
@@ -212,9 +212,13 @@ foreach(flag ${COMMON_FLAGS})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
 endforeach()
 
+set(SAFE_GPU_COMMON_FLAGS "")
 foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
+
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${SAFE_GPU_COMMON_FLAGS}")
+
 
 if(WIN32 AND MSVC_STATIC_CRT)
 # windows build turn off warnings.
