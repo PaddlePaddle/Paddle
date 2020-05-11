@@ -74,7 +74,7 @@ class RandpermOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
+        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
     ctx->SetOutputDataType("Out", var_data_type);
   }
 };

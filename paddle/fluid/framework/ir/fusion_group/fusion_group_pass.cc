@@ -94,7 +94,7 @@ static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
   for (auto* n : subgraph->Nodes()) {
     if (n && n->IsOp() && n->Op()) {
       if (n->Op()->HasAttr(attr_name)) {
-        op_roles.insert(boost::get<int>(n->Op()->GetAttr(attr_name)));
+        op_roles.insert(BOOST_GET_CONST(int, n->Op()->GetAttr(attr_name)));
       }
     }
   }

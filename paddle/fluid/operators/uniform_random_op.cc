@@ -233,7 +233,7 @@ class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
+        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
 
     if (ctx->GetOutputType("Out") != framework::proto::VarType::SELECTED_ROWS) {
       ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR);

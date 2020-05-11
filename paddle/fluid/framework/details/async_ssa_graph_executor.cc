@@ -54,21 +54,22 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
     if (node && node->IsOp()) {
       if (node->Name() == "send") {
         auto send_var_name = node->Op()->Input("X")[0];
-        auto send_varnames = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("send_varnames"));
-        auto epmap = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("epmap"));
-        auto height_section = boost::get<std::vector<int64_t>>(
-            node->Op()->GetNullableAttr("sections"));
+        auto send_varnames =
+            BOOST_GET_CONST(std::vector<std::string>,
+                            node->Op()->GetNullableAttr("send_varnames"));
+        auto epmap = BOOST_GET_CONST(std::vector<std::string>,
+                                     node->Op()->GetNullableAttr("epmap"));
+        auto height_section = BOOST_GET_CONST(
+            std::vector<int64_t>, node->Op()->GetNullableAttr("sections"));
         auto trainer_id =
-            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
+            BOOST_GET_CONST(int, node->Op()->GetNullableAttr("trainer_id"));
         auto merge_add =
-            boost::get<bool>(node->Op()->GetNullableAttr("merge_add"));
+            BOOST_GET_CONST(bool, node->Op()->GetNullableAttr("merge_add"));
         if (!merge_add) {
           merge_add = FLAGS_communicator_is_sgd_optimizer;
         }
-        auto use_send_handler =
-            boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
+        auto use_send_handler = BOOST_GET_CONST(
+            bool, node->Op()->GetNullableAttr("use_send_handler"));
         send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
             send_var_name, send_varnames, epmap, height_section, trainer_id,
             merge_add, use_send_handler);
@@ -198,16 +199,16 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   HandleException();
 
   FetchList ret;
-  auto &val = boost::get<FetchList>(fetch_data);
+  auto &val = BOOST_GET(FetchList, fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
     if (data_is_lod_tensor(val.at(fetch_idx))) {
       std::vector<const LoDTensor *> lodtensor_ptrs;
-      lodtensor_ptrs.push_back(&(boost::get<LoDTensor>(val.at(fetch_idx))));
+      lodtensor_ptrs.push_back(&(BOOST_GET(LoDTensor, val.at(fetch_idx))));
       LoDTensor var;
       var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
       ret.emplace_back(var);
     } else {
-      auto array = boost::get<LoDTensorArray>(val.at(fetch_idx));
+      auto array = BOOST_GET(LoDTensorArray, val.at(fetch_idx));
       LoDTensorArray item_array;
       item_array.reserve(array.size());
       for (size_t i = 0; i < array.size(); ++i) {
