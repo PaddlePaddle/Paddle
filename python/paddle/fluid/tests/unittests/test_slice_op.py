@@ -168,7 +168,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+                (1)).astype('int64') * ele))
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
         self.outputs = {'Out': self.out}
@@ -297,7 +297,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.inputs = {
             'Input': self.input,
             "StartsTensor": np.array(
-                self.starts, dtype="int32"),
+                self.starts, dtype="int64"),
             "EndsTensor": np.array(
                 self.ends, dtype="int32")
         }
@@ -486,7 +486,7 @@ class TestSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
-        minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+        minus_3 = fluid.layers.fill_constant([1], "int64", -3)
         starts = fluid.layers.data(
             name='starts', shape=[1, 3], append_batch_size=False)
         ends = fluid.layers.data(

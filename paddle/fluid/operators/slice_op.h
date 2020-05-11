@@ -18,42 +18,11 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-
-inline std::vector<int> get_new_data_from_tensorlist(
-    const std::vector<const Tensor*>& list_new_data_tensor) {
-  // get tensor from
-  std::vector<int> vec_new_data;
-  for (size_t i = 0; i < list_new_data_tensor.size(); ++i) {
-    auto tensor = list_new_data_tensor[i];
-    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
-    if (platform::is_gpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-      vec_new_data.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
-    } else {
-      vec_new_data.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
-    }
-  }
-  return vec_new_data;
-}
-inline std::vector<int> get_new_data_from_tensor(
-    const Tensor* new_data_tensor) {
-  std::vector<int> vec_new_data;
-  auto* new_data = new_data_tensor->data<int>();
-  framework::Tensor cpu_starts_tensor;
-  if (platform::is_gpu_place(new_data_tensor->place())) {
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
-    new_data = cpu_starts_tensor.data<int>();
-  }
-  vec_new_data =
-      std::vector<int>(new_data, new_data + new_data_tensor->numel());
-  return vec_new_data;
-}
 
 template <typename DeviceContext, typename T>
 class SliceKernel : public framework::OpKernel<T> {
@@ -118,15 +87,15 @@ class SliceKernel : public framework::OpKernel<T> {
     if (need_infer) {
       if (context.HasInput("StartsTensor")) {
         auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-        starts = get_new_data_from_tensor(starts_tensor);
+        starts = GetDataFromTensor<int>(starts_tensor);
       } else if (list_new_starts_tensor.size() > 0) {
-        starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+        starts = GetDataFromTensorList<int>(list_new_starts_tensor);
       }
       if (context.HasInput("EndsTensor")) {
         auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-        ends = get_new_data_from_tensor(ends_tensor);
+        ends = GetDataFromTensor<int>(ends_tensor);
       } else if (list_new_ends_tensor.size() > 0) {
-        ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+        ends = GetDataFromTensorList<int>(list_new_ends_tensor);
       }
     }
     PADDLE_ENFORCE_EQ(
@@ -333,17 +302,17 @@ class SliceGradKernel : public framework::OpKernel<T> {
         context.MultiInput<framework::Tensor>("StartsTensorList");
 
     if (list_new_starts_tensor.size() > 0) {
-      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+      starts = GetDataFromTensorList<int>(list_new_starts_tensor);
     } else if (context.HasInput("StartsTensor")) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-      starts = get_new_data_from_tensor(starts_tensor);
+      starts = GetDataFromTensor<int>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
-      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+      ends = GetDataFromTensorList<int>(list_new_ends_tensor);
     } else if (context.HasInput("EndsTensor")) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-      ends = get_new_data_from_tensor(ends_tensor);
+      ends = GetDataFromTensor<int>(ends_tensor);
     }
     framework::Variable* d_input_var =
         context.OutputVar(framework::GradVarName("Input"));

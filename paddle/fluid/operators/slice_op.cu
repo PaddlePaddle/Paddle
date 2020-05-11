@@ -69,10 +69,10 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
         ctx.MultiInput<framework::Tensor>("StartsTensorList");
 
     if (list_new_starts_tensor.size() > 0) {
-      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+      starts = GetDataFromTensorList<int>(list_new_starts_tensor);
     } else if (ctx.HasInput("StartsTensor")) {
       auto* starts_tensor = ctx.Input<framework::Tensor>("StartsTensor");
-      starts = get_new_data_from_tensor(starts_tensor);
+      starts = GetDataFromTensor<int>(starts_tensor);
     }
 
     for (size_t i = 0; i < starts.size(); ++i) {

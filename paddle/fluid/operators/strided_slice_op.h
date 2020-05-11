@@ -203,24 +203,24 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         context.MultiInput<framework::Tensor>("StridesTensorList");
 
     if (list_new_starts_tensor.size() > 0) {
-      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+      starts = GetDataFromTensorList<int>(list_new_starts_tensor);
     } else if (context.HasInput("StartsTensor")) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-      starts = get_new_data_from_tensor(starts_tensor);
+      starts = GetDataFromTensor<int>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
-      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+      ends = GetDataFromTensorList<int>(list_new_ends_tensor);
     } else if (context.HasInput("EndsTensor")) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-      ends = get_new_data_from_tensor(ends_tensor);
+      ends = GetDataFromTensor<int>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
-      strides = get_new_data_from_tensorlist(list_new_strides_tensor);
+      strides = GetDataFromTensorList<int>(list_new_strides_tensor);
     } else if (context.HasInput("StridesTensor")) {
       auto* strides_tensor = context.Input<framework::Tensor>("StridesTensor");
-      strides = get_new_data_from_tensor(strides_tensor);
+      strides = GetDataFromTensor<int>(strides_tensor);
     }
 
     std::vector<int> out_dims_vector(in_dims.size(), -1);
@@ -365,24 +365,24 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
         context.MultiInput<framework::Tensor>("StridesTensorList");
 
     if (list_new_starts_tensor.size() > 0) {
-      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+      starts = GetDataFromTensorList<int>(list_new_starts_tensor);
     } else if (context.HasInput("StartsTensor")) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-      starts = get_new_data_from_tensor(starts_tensor);
+      starts = GetDataFromTensor<int>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
-      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+      ends = GetDataFromTensorList<int>(list_new_ends_tensor);
     } else if (context.HasInput("EndsTensor")) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-      ends = get_new_data_from_tensor(ends_tensor);
+      ends = GetDataFromTensor<int>(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
-      strides = get_new_data_from_tensorlist(list_new_strides_tensor);
+      strides = GetDataFromTensorList<int>(list_new_strides_tensor);
     } else if (context.HasInput("StridesTensor")) {
       auto* strides_tensor = context.Input<framework::Tensor>("StridesTensor");
-      strides = get_new_data_from_tensor(strides_tensor);
+      strides = GetDataFromTensor<int>(strides_tensor);
     }
 
     auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
