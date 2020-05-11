@@ -327,3 +327,20 @@ def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
 
     return inputs
+
+
+def _convert_to_tensor_list(old_list, dtype="int32"):
+    """
+    Converts all elements of a list to Variable.
+    """
+    from .tensor import fill_constant
+    new_list_tensor = []
+    for ele in old_list:
+        if isinstance(ele, Variable):
+            ele.stop_gradient = True
+            new_list_tensor.append(ele)
+        else:
+            assert (isinstance(ele, int))
+            temp_out = fill_constant([1], dtype, ele, force_cpu=True)
+            new_list_tensor.append(temp_out)
+    return new_list_tensor

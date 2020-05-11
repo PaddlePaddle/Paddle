@@ -15,9 +15,7 @@
 from __future__ import print_function
 
 import collections
-from collections import defaultdict
 from collections import Iterable
-import contextlib
 from .wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import os
 import re
@@ -28,12 +26,12 @@ import numpy as np
 import subprocess
 import multiprocessing
 import sys
-import logging
 from .. import compat as cpt
 from .proto import framework_pb2
 
 from . import core
 from . import unique_name
+from layers.utils import _contain_var, _convert_to_tensor_list
 import paddle.version as fluid_version
 import warnings
 
@@ -720,25 +718,6 @@ def _getitem_impl_(var, item):
                 slice_end.append(slice_item + 1
                                  if slice_item != -1 else 10000000)
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
-    def get_new_list_tensor(old_list):
-        new_list_tensor = []
-        for dim in old_list:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_list_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int32')
-                fill_constant([1], dim, force_cpu=True, out=temp_out)
-                new_list_tensor.append(temp_out)
-        return new_list_tensor
-
     inputs = {'Input': [var]}
     attrs = {
         'axes': slice_axis,
@@ -751,8 +730,8 @@ def _getitem_impl_(var, item):
     infer_flags = list(1 for i in range(len(slice_axis)))
 
     # starts
-    if contain_var(slice_start):
-        inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
+    if _contain_var(slice_start):
+        inputs['StartsTensorList'] = _convert_to_tensor_list(slice_start)
         for i, dim in enumerate(slice_start):
             if isinstance(dim, Variable):
                 attrs['starts'].append(-1)
@@ -763,8 +742,8 @@ def _getitem_impl_(var, item):
         attrs['starts'] = slice_start
 
     # ends
-    if contain_var(slice_end):
-        inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
+    if _contain_var(slice_end):
+        inputs['EndsTensorList'] = _convert_to_tensor_list(slice_end)
         for i, dim in enumerate(slice_end):
             if isinstance(dim, Variable):
                 attrs['ends'].append(-1)
@@ -776,8 +755,8 @@ def _getitem_impl_(var, item):
 
     # strides
     if use_strided_slice == True:
-        if contain_var(slice_step):
-            inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
+        if _contain_var(slice_step):
+            inputs['StridesTensorList'] = _convert_to_tensor_list(slice_step)
             for i, dim in enumerate(slice_step):
                 if isinstance(dim, Variable):
                     attrs['strides'].append(-1)
