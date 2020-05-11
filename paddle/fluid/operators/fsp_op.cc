@@ -23,9 +23,9 @@ class FSPOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fsp_op");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fsp_op");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fsp_op");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fsp");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fsp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fsp");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
