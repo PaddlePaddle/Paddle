@@ -193,7 +193,7 @@ class LargeScaleKV {
           new SparseVariable(std::move(sparse_meta)));
       sparse_variables[table_name] = meta;
       grad_to_variables[sparse_meta.grad_name] = table_name;
-      grad_names.push_back(sparse_meta.grad_name);
+      grad_names_.push_back(sparse_meta.grad_name);
     }
   }
 

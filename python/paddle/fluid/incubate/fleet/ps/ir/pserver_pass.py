@@ -407,8 +407,6 @@ def _clone_var(block, var, persistable=True):
 def add_optimizer_pass(program, config):
     def _append_pserver_grad_merge_ops(optimize_block, grad_varname_for_block,
                                        endpoint, grad_to_block_id):
-
-        is_sync = config.get_distributed_mode() == DistributedMode.SYNC
         trainers = config.get_trainers()
 
         program = optimize_block.program
@@ -442,7 +440,7 @@ def add_optimizer_pass(program, config):
             shape=grad_block.shape)
 
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
-        if is_sync and trainers > 1:
+        if config.is_sync_mode() and trainers > 1:
             vars2merge = []
             for i in range(trainers):
                 per_trainer_name = "%s.trainer_%d" % \
@@ -740,9 +738,6 @@ def large_scale_sparse_pass(program, config):
         names_str = ",".join(value_names)
         dims_str = ",".join([str(dim) for dim in value_dims])
         cached_str = ",".join(acture_names + ["kSparseIDs"])
-
-        if config.is_sync_mode():
-            cached_str = ""
 
         meta_str = ":".join(
             [param, names_str, dims_str, mode, grad.name, cached_str])

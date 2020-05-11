@@ -157,7 +157,7 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
 
 // For sync, sparse variables need recover grad type from LodTensor to
 // SelectedRows
-void ResetSparseVarsType() {
+void ResetSparseVarsType(framework::Scope *recv_scope) {
   auto *ins = distributed::LargeScaleKV::GetInstance();
   auto grads = ins->GetAllGrads();
 
@@ -238,7 +238,7 @@ void ListenAndServOp::RunSyncLoop(
 
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
-    ResetSparseVarsType();
+    ResetSparseVarsType(recv_scope);
 
     VLOG(3) << "wait all clients to get parameters back";
     rpc_service_->SetCond(distributed::kRequestGet);

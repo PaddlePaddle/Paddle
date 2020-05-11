@@ -160,17 +160,19 @@ class CompileTimeStrategy(object):
     def get_origin_startup_program(self):
         return self.origin_startup_program
 
-    def build_ctx(self, vars, mapping):
+    def build_ctx(self, vars, mapping, is_grad):
         def get_grad_var_ep(slices):
             names = []
             eps = []
             sections = []
 
             for slice in slices:
-                if self.get_distributed_mode(
-                ) == DistributedMode.SYNC and self.get_trainers() >= 1:
-                    names.append("{}.trainer_{}".format(slice.name,
-                                                        self.get_role_id()))
+                if self.is_sync_mode() and self.get_trainers() >= 1:
+                    if is_grad:
+                        names.append("{}.trainer_{}".format(slice.name,
+                                                            self.get_role_id()))
+                    else:
+                        names.append(slice.name)
                 else:
                     names.append(slice.name)
 
@@ -187,13 +189,13 @@ class CompileTimeStrategy(object):
 
         if isinstance(vars, MergedVariable):
             name = vars.merged_var.name
-            slice_grads = mapping[name]
-            names, eps, sections = get_grad_var_ep(slice_grads)
+            slices = mapping[name]
+            names, eps, sections = get_grad_var_ep(slices)
             origin_varnames = [var.name for var in vars.ordered_vars]
         else:
             name = vars.name
-            slice_grads = mapping[name]
-            names, eps, sections = get_grad_var_ep(slice_grads)
+            slices = mapping[name]
+            names, eps, sections = get_grad_var_ep(slices)
             origin_varnames = [vars.name]
 
         trainer_id = self.get_role_id()
@@ -207,7 +209,7 @@ class CompileTimeStrategy(object):
         send_ctx = {}
         for merged in self.merged_variables_pairs:
             grads = merged[1]
-            ctx = self.build_ctx(grads, self.grad_var_mapping)
+            ctx = self.build_ctx(grads, self.grad_var_mapping, True)
             send_ctx[ctx.merged_varname()] = ctx
         return send_ctx
 
@@ -228,12 +230,12 @@ class CompileTimeStrategy(object):
             if params.merged_var.name in sparse_varnames:
                 continue
 
-            ctx = self.build_ctx(params, self.param_var_mapping)
+            ctx = self.build_ctx(params, self.param_var_mapping, False)
             dense_recv_ctx[ctx.merged_varname()] = ctx
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
-            ctx = self.build_ctx(param, self.param_var_mapping)
+            ctx = self.build_ctx(param, self.param_var_mapping, False)
             sparse_recv_ctx[ctx.merged_varname()] = ctx
 
         if recv_type == 1:
