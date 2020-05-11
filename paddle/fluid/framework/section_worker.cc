@@ -95,13 +95,28 @@ void SyncFunctor::Synchronize() {
 }
 
 std::atomic<int> SectionWorker::cpu_id_(0);
-void SectionWorker::Initialize(const TrainerDesc& trainer_desc) {
+void SectionWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
-      trainer_desc.section_param().section_config(section_id_).program_desc()));
+      desc.section_param().section_config(section_id_).program_desc()));
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
+  }
+  dump_fields_.resize(desc.dump_fields_size());
+  for (int i = 0; i < desc.dump_fields_size(); ++i) {
+    dump_fields_[i] = desc.dump_fields(i);
+    VLOG(0) << "dump_fields_[" << i << "]: " << dump_fields_[i];
+  }
+
+  need_dump_param_ = false;
+  dump_param_.resize(desc.dump_param_size());
+  for (int i = 0; i < desc.dump_param_size(); ++i) {
+    dump_param_[i] = desc.dump_param(i);
+    VLOG(0) << "dump_param_[" << i << "]: " << dump_param_[i];
+  }
+  if (desc.dump_param_size() != 0) {
+    need_dump_param_ = true;
   }
 }
 
@@ -373,6 +388,12 @@ void SectionWorker::TrainFilesWithProfiler() {
       metric_msg->add_data(exe_scope);
     }
 #endif
+    if (need_dump_field_) {
+      DumpField(*scope);
+    }
+    if (need_dump_param_ && pipeline_id_ == 0) {
+      DumpParam(*scope, step_cnt);
+    }
 
     if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
       // FIXME: Temporarily we assume two adjacent sections are in different
@@ -409,6 +430,9 @@ void SectionWorker::TrainFilesWithProfiler() {
     ++step_cnt;
     accum_num += batch_size;
     main_timer.Pause();
+  }
+  if (need_dump_field_) {
+    writer_.Flush();
   }
   outer_timer.Pause();
 
