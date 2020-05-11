@@ -57,7 +57,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents,
     const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
     const size_t IV_SIZE = paddle::framework::DEFAULT_AES_IV_SIZE;
     fin = std::make_shared<paddle::framework::CryptIfstream>(
-        filename.data(), std::ios::in | std::ios::binary, true,
+        filename.data(), std::ios::in | std::ios::binary,
         reinterpret_cast<const unsigned char*>(key.data()), key.size(),
         TAG_SIZE);
     PADDLE_ENFORCE_EQ(fin->is_open(), true,

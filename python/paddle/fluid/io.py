@@ -1514,12 +1514,6 @@ def load_inference_model(dirname,
             )
         load_dirname = dirname
         program_desc_str = model_filename
-        if decrypt:
-            iv_size = 12
-            iv = program_desc_str[0:iv_size]
-            aesgcm = AESGCM(key)
-            program_desc_str = aesgcm.decrypt(iv, program_desc_str[iv_size:],
-                                              None)
         params_filename = params_filename
 
     program = Program.parse_from_string(program_desc_str)

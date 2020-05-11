@@ -765,7 +765,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
       const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
       const size_t IV_SIZE = paddle::framework::DEFAULT_AES_IV_SIZE;
       fin = std::make_shared<paddle::framework::CryptIfstream>(
-          filename.data(), std::ios::in | std::ios::binary, true,
+          filename.data(), std::ios::in | std::ios::binary,
           reinterpret_cast<const unsigned char *>(key.data()), key.size(),
           TAG_SIZE);
       PADDLE_ENFORCE_EQ(fin->is_open(), true,
@@ -996,7 +996,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
                           "The input parameter 'key' is empty, "
                           "Please input valid key for enabling encryption."));
     outfile = std::make_shared<paddle::framework::CryptOfstream>(
-        model_name.data(), std::ios::binary, true,
+        model_name.data(), std::ios::binary,
         reinterpret_cast<const unsigned char *>(key.data()), key.size(),
         TAG_SIZE);
   } else {

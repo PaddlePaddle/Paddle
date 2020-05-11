@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-TEST(test_fstream_ext, normal_function) {
+TEST(test_fstream_ext, normal_ctr) {
   const char* input = "hello world";
   const char* filename = "test.txt";
   const char* filename1 = "test1.txt";
@@ -69,7 +69,7 @@ TEST(test_fstream_ext, security_string) {
   fout_normal.write(input.c_str(), size);
   fout_normal.close();
 
-  CryptOfstream fout(filename, std::ios::out | std::ios_base::binary, true, key,
+  CryptOfstream fout(filename, std::ios::out | std::ios_base::binary, key,
                      sizeof(key), TAG_SIZE);
   fout.write(input.c_str(), size);
   fout.close();
@@ -78,7 +78,7 @@ TEST(test_fstream_ext, security_string) {
   char* output = new char[size];
   fin_normal.read(output, size);
   fin_normal.close();
-  CryptIfstream fin(filename, std::ios_base::binary, true, key, sizeof(key),
+  CryptIfstream fin(filename, std::ios_base::binary, key, sizeof(key),
                     TAG_SIZE);
   char* output1 = new char[size];
   fin.read(output1, size);
@@ -102,7 +102,7 @@ TEST(test_fstream_ext, security_vector) {
   prng.GenerateBlock(key, sizeof(key));
 
   std::ofstream fout_normal(filename1, std::ios_base::binary);
-  CryptOfstream fout(filename, std::ios_base::binary, true, key, sizeof(key),
+  CryptOfstream fout(filename, std::ios_base::binary, key, sizeof(key),
                      TAG_SIZE);
   for (auto& i : input) {
     fout_normal.write(reinterpret_cast<char*>(&i), sizeof(i));
@@ -112,7 +112,7 @@ TEST(test_fstream_ext, security_vector) {
   fout.close();
 
   std::ifstream fin_normal(filename1, std::ios_base::binary);
-  CryptIfstream fin(filename, std::ios_base::binary, true, key, sizeof(key),
+  CryptIfstream fin(filename, std::ios_base::binary, key, sizeof(key),
                     TAG_SIZE);
 
   std::vector<double> output;
@@ -145,14 +145,14 @@ TEST(test_fstream_ext, mac_failed) {
   CryptoPP::byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
   prng.GenerateBlock(key, sizeof(key));
 
-  CryptOfstream fout(filename, std::ios_base::binary, true, key, sizeof(key),
+  CryptOfstream fout(filename, std::ios_base::binary, key, sizeof(key),
                      TAG_SIZE);
   auto size = strlen(input) + 1;
   fout.write(input, size);
   fout.close();
 
   // no alter mac value
-  CryptIfstream fin(filename, std::ios_base::binary, true, key, sizeof(key),
+  CryptIfstream fin(filename, std::ios_base::binary, key, sizeof(key),
                     TAG_SIZE);
   char* output = new char[size];
   fin.read(output, size);
@@ -165,7 +165,7 @@ TEST(test_fstream_ext, mac_failed) {
   fout_a.write("1", 1);
   fout_a.close();
 
-  CryptIfstream fin_a(filename, std::ios_base::binary, true, key, sizeof(key),
+  CryptIfstream fin_a(filename, std::ios_base::binary, key, sizeof(key),
                       TAG_SIZE);
   char* output_a = new char[size + 1];
   fin_a.read(output_a, size + 1);

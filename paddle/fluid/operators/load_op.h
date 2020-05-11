@@ -44,7 +44,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
                             "The input parameter 'key' is empty, "
                             "Please input valid key for enabling decryption."));
       fin = std::make_shared<paddle::framework::CryptIfstream>(
-          filename.data(), std::ios::binary, true,
+          filename.data(), std::ios::binary,
           reinterpret_cast<const unsigned char *>(key.data()), key.size(),
           TAG_SIZE);
     } else {

@@ -112,7 +112,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                 "The input parameter 'key' is empty, "
                 "Please input valid key for enabling encryption."));
         fout = std::make_shared<paddle::framework::CryptOfstream>(
-            filename.data(), std::ios::binary, true,
+            filename.data(), std::ios::binary,
             reinterpret_cast<const unsigned char *>(key.data()), key.size(),
             TAG_SIZE);
       } else {

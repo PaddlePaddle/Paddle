@@ -44,13 +44,14 @@ class TestBook(unittest.TestCase):
         enable_encrypt = False
         enable_decrypt = False
         key = None
-        if sec_model_test:
-            enable_decrypt = True
-            enable_encrypt = True
-            key = gen_key()
 
         MODEL_DIR = "./tmp/inference_model"
         UNI_MODEL_DIR = "./tmp/inference_model1"
+
+        if sec_model_test:
+            enable_decrypt = True
+            enable_encrypt = True
+            key = gen_key(filename="./tmp/inference_model/key")
 
         init_program = Program()
         program = Program()
@@ -113,14 +114,18 @@ class TestBook(unittest.TestCase):
                 MODEL_DIR, exe, decrypt=enable_decrypt, key=key))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
             model_str = f.read()
-        model_1 = self.InferModel(
-            load_inference_model(
-                None,
-                exe,
-                model_str,
-                params_str,
-                decrypt=enable_decrypt,
-                key=key))
+        if enable_decrypt:
+            model_1 = self.InferModel(
+                load_inference_model(
+                    UNI_MODEL_DIR,
+                    exe,
+                    'model',
+                    'params',
+                    decrypt=enable_decrypt,
+                    key=key))
+        else:
+            model_1 = self.InferModel(
+                load_inference_model(None, exe, model_str, params_str))
 
         for model in [model_0, model_1]:
             outs = exe.run(model.program,
@@ -138,6 +143,20 @@ class TestBook(unittest.TestCase):
 
         self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
                           model_str, None)
+        if sec_model_test:
+            self.assertRaises(
+                ValueError,
+                fluid.io.save_inference_model,
+                MODEL_DIR, ["x", "y"], [avg_cost],
+                exe,
+                program,
+                encrypt=enable_encrypt)
+            self.assertRaises(
+                ValueError,
+                load_inference_model,
+                MODEL_DIR,
+                exe,
+                decrypt=enable_decrypt)
 
     def test_fit_line_secure_inference_model(self):
         self.test_fit_line_inference_model(sec_model_test=True)
