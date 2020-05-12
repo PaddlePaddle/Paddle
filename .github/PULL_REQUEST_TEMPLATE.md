@@ -1,4 +1,4 @@
-####Required（必填）（支持多选，建议不超过两项）
+####Required（必填multiple choices, two at most）
 - PR type（PR 类型） is ( ):
 A. New features（新功能）--------------- D. Performance optimization（性能优化）
 B. Bug fixes（问题修复）------------------ E. Breaking changes（向后不兼容的改变）
