@@ -208,7 +208,7 @@ RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
 # ar mishandles 4GB files
 # https://sourceware.org/bugzilla/show_bug.cgi?id=14625
 # remove them when apt-get support 2.27 and higher version
-RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/2.27-9ubuntu1/binutils_2.27.orig.tar.gz && \
+RUN wget -q https://paddle-ci.gz.bcebos.com/binutils_2.27.orig.tar.gz && \
     tar -xzf binutils_2.27.orig.tar.gz && \
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
@@ -220,12 +220,12 @@ RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz
     apt-get install libprotobuf-dev -y
 RUN pip --no-cache-dir install -U netifaces==0.10.9
 
-# ccache 3.6
-RUN wget https://paddle-ci.cdn.bcebos.com/ccache-3.6.tar.gz && \
-    tar xf ccache-3.6.tar.gz && mkdir /usr/local/ccache-3.6 && cd ccache-3.6 && \
-    ./configure -prefix=/usr/local/ccache-3.6 && \
+# ccache 3.7.9
+RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
+    tar xf ccache-3.7.9.tar.gz && mkdir /usr/local/ccache-3.7.9 && cd ccache-3.7.9 && \
+    ./configure -prefix=/usr/local/ccache-3.7.9 && \
     make -j8 && make install && \
-    ln -s /usr/local/ccache-3.6/bin/ccache /usr/local/bin/ccache
+    ln -s /usr/local/ccache-3.7.9/bin/ccache /usr/local/bin/ccache
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
