@@ -24,18 +24,33 @@ class RangeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasInput("Start")) {
       auto s_dims = ctx->GetInputDim("Start");
-      PADDLE_ENFORCE((s_dims.size() == 1) && (s_dims[0] == 1),
-                     "The shape of Input(Start) should be [1].");
+      PADDLE_ENFORCE_EQ(s_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The shape of Input(Start) should be [1]"));
+
+      PADDLE_ENFORCE_EQ(s_dims[0], 1,
+                        platform::errors::InvalidArgument(
+                            "The shape of Input(Start) should be [1]."));
     }
     if (ctx->HasInput("End")) {
       auto e_dims = ctx->GetInputDim("End");
-      PADDLE_ENFORCE((e_dims.size() == 1) && (e_dims[0] == 1),
-                     "The shape of Input(End) should be [1].");
+      PADDLE_ENFORCE_EQ(e_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The shape of Input(End) should be [1]"));
+
+      PADDLE_ENFORCE_EQ(e_dims[0], 1,
+                        platform::errors::InvalidArgument(
+                            "The shape of Input(End) should be [1]."));
     }
     if (ctx->HasInput("Step")) {
       auto step_dims = ctx->GetInputDim("Step");
-      PADDLE_ENFORCE((step_dims.size() == 1) && (step_dims[0] == 1),
-                     "The shape of Input(Step) should be [1].");
+      PADDLE_ENFORCE_EQ(step_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The shape of Input(Step) should be [1]"));
+
+      PADDLE_ENFORCE_EQ(step_dims[0], 1,
+                        platform::errors::InvalidArgument(
+                            "The shape of Input(Step) should be [1]."));
     }
     ctx->SetOutputDim("Out", {-1});
   }

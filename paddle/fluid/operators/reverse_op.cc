@@ -24,11 +24,16 @@ class ReverseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument("Output(Out) should not be null"));
     const auto& x_dims = ctx->GetInputDim("X");
     const auto& axis = ctx->Attrs().Get<std::vector<int>>("axis");
-    PADDLE_ENFORCE(!axis.empty(), "'axis' can not be empty.");
+    PADDLE_ENFORCE_NE(axis.empty(), true, platform::errors::InvalidArgument(
+                                              "'axis' can not be empty."));
     for (int a : axis) {
       PADDLE_ENFORCE_LT(a, x_dims.size(),
                         paddle::platform::errors::OutOfRange(

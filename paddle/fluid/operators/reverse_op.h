@@ -80,9 +80,9 @@ class ReverseKernel : public framework::OpKernel<T> {
         functor6(dev_ctx, *x, out, axis);
         break;
       default:
-        PADDLE_THROW(
+        PADDLE_THROW(paddle::platform::errors::OutOfRange(
             "Reserve operator doesn't supports tensors whose ranks are greater "
-            "than 6.");
+            "than 6."));
     }
   }
 };
