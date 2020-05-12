@@ -14,8 +14,10 @@
 
 from __future__ import print_function
 from paddle.fluid import core, layers, dygraph
+from paddle.fluid.framework import _varbase_creator
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
+import numpy as np
 
 __all__ = ['Scaler']
 
@@ -41,7 +43,6 @@ class Scaler(object):
 
             self._init_scale = init_scale
             # self._scale will be lazily initialized during the first call to scale()
-            self._scale = init_scale
             self._growth_factor = growth_factor
             self._backoff_factor = backoff_factor
             self._growth_interval = growth_interval
@@ -50,7 +51,11 @@ class Scaler(object):
             self._growth_tracker = 0
             # READY = self.READY
             # self._per_optimizer_states = defaultdict(lambda: {"stage": READY, "found_inf_per_device": {}})
-            self._found_inf = False
+            self._found_inf = dygraph.to_variable(
+                np.array([0]).astype(np.int32))
+            self._scale = dygraph.to_variable(
+                np.array([self._init_scale]).astype(np.float32))
+            self._cache_founf_inf = None
 
     def scale(self, output):
         """
@@ -84,15 +89,12 @@ class Scaler(object):
         if not self._enable:
             return
         inv_scale = 1.0 / self._scale
-        for param in optimizer._parameter_list:
-            if param._grad_ivar() is not None:
-                if layers.isfinite(param._grad_ivar()):
-                    self.scale_inplace(param._grad_ivar(), inv_scale)
-                else:
-                    #print(param._grad_ivar())
-                    self._found_inf = True
-                    return
-        self._found_inf = False
+        param_grads = [
+            param._grad_ivar() for param in optimizer._parameter_list
+            if param._grad_ivar() is not None
+        ]
+        core.ops.amp_check_finite_and_scale(param_grads, inv_scale, param_grads,
+                                            self._found_inf)
 
     def step(self, optimizer, *args, **kwargs):
         if not self._enable:
@@ -101,8 +103,11 @@ class Scaler(object):
         #  unscale the grad
         self.unscale_(optimizer)
 
-        if not self._found_inf:
+        if self._found_inf:
+            self._cache_founf_inf = True
+        else:
             optimizer.minimize(*args, **kwargs)
+            self._cache_founf_inf = False
 
     def update(self, new_scale=None):
         """
@@ -112,13 +117,14 @@ class Scaler(object):
             return
 
         if new_scale is not None:
-            self._scale = new_scale
+            self._scale = dygraph.to_variable(
+                np.array([new_scale]).astype(np.float32))
             return
 
-        if self._found_inf:
-            self._scale = float(self._scale) * self._backoff_factor
+        if self._cache_founf_inf:
+            self._scale = self._scale * self._backoff_factor
             self._growth_tracker = 0
-            print('found infinite', self._scale, self._backoff_factor)
+            print('found infinite', float(self._scale))
         else:
             self._growth_tracker = self._growth_tracker + 1
             if self._growth_tracker == self._growth_interval:
