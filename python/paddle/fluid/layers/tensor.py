@@ -1076,6 +1076,9 @@ def reverse(x, axis):
           result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
           result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int32', 'int64', 'uint8'], 'reverse')
+    check_type(axis, [int, tuple, list])
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
@@ -1271,6 +1274,9 @@ def range(start, end, step, dtype):
              data = fluid.layers.range(0, 10, 2, 'int32')
 
     """
+    check_type(start, 'start', [float, int, Variable], 'range')
+    check_type(end, 'end', [float, int, Variable], 'range')
+    check_type(step, 'step', [float, int, Variable], 'range')
     helper = LayerHelper("range", **locals())
 
     check_dtype(dtype, 'create data type',
