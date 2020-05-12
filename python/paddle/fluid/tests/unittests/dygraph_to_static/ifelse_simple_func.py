@@ -248,3 +248,26 @@ def if_with_class_var(x, y=None):
     else:
         x = x - foo.b
     return x
+
+
+def if_tensor_case(x):
+    x = fluid.dygraph.to_variable(x)
+
+    # Note: `if Tensor` only support Tensor.shape = [1] in dygraph
+    mean = fluid.layers.mean(x)
+    # It is equivalent to `if mean != 0`
+    if mean:
+        for i in range(0, 10):
+            if i > 5:
+                x += 1
+                break
+            x += 1
+    else:
+        for i in range(0, 37):
+            x += 1
+            break
+            x += i
+
+    if fluid.layers.mean(x) + 1:
+        x -= 1
+    return x
