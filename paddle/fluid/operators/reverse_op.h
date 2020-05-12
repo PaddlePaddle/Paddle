@@ -81,8 +81,8 @@ class ReverseKernel : public framework::OpKernel<T> {
         break;
       default:
         PADDLE_THROW(paddle::platform::errors::OutOfRange(
-            "Reserve operator doesn't supports tensors whose ranks are greater "
-            "than 6."));
+            "The reserve operator does not support input tensors"
+            "whose ranks are greater than 6."));
     }
   }
 };

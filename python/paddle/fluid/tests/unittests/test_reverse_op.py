@@ -102,8 +102,7 @@ class TestCase4(TestReverseOp):
         pass
 
     def test_error(self):
-        self.assertRaises(
-            core.EnforceNotMet, self.check_output, check_dygraph=False)
+        self.assertRaises(core.EnforceNotMet, self.check_output)
 
 
 if __name__ == '__main__':
