@@ -1274,9 +1274,9 @@ def range(start, end, step, dtype):
              data = fluid.layers.range(0, 10, 2, 'int32')
 
     """
-    check_type(start, 'start', [float, int, Variable], 'range')
-    check_type(end, 'end', [float, int, Variable], 'range')
-    check_type(step, 'step', [float, int, Variable], 'range')
+    check_type(start, 'start', (float, int, Variable), 'range')
+    check_type(end, 'end', (float, int, Variable), 'range')
+    check_type(step, 'step', (float, int, Variable), 'range')
     helper = LayerHelper("range", **locals())
 
     check_dtype(dtype, 'create data type',
