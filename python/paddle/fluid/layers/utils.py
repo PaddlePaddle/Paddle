@@ -18,8 +18,7 @@ import copy
 import six
 import numpy as np
 from ..framework import Variable
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..layer_helper import LayerHelper
+from ..data_feeder import convert_dtype, check_dtype
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -336,6 +335,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     from .tensor import fill_constant
     new_list_tensor = []
     for ele in old_list:
+
         if isinstance(ele, Variable):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
