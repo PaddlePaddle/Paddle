@@ -412,8 +412,10 @@ function(nv_library TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     if(nv_library_SRCS)
-      # Attention: cuda_add_library is deprecated, use add_library for CUDA please.
-      # https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
+      # Attention:
+      # 1. cuda_add_library is deprecated after cmake v3.10, use add_library for CUDA please.
+      # 2. cuda_add_library does not support ccache.
+      # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
       if (nv_library_SHARED OR nv_library_shared) # build *.so
         add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
       else()
@@ -466,8 +468,10 @@ function(nv_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    # Attention: cuda_add_executable is deprecated, use add_executable for CUDA please.
-    # https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
+    # Attention:
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
+    # 2. cuda_add_executable does not support ccache.
+    # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${os_dependency_modules})

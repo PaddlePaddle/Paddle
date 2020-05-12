@@ -24,7 +24,7 @@ project(paddle CXX C)
 include(init)
 
 # enable language CUDA
-# TODO: replace find_package(CUDA) completely.
+# TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 if(WITH_GPU AND NOT APPLE)
