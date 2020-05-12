@@ -129,11 +129,6 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_NE(dxs.empty(), true,
                       platform::errors::InvalidArgument(
                           "Output(X@Grad) should not be null."));
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
-
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "MultiplexGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "MultiplexGrad");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
