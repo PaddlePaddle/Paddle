@@ -23,7 +23,7 @@ class DatasetFactory(object):
     """
     DatasetFactory is a factory which create dataset by its name,
     you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
-    the default is "QueueDataset".
+    or "DummpyDataset", the default is "QueueDataset".
 
     Example:
         .. code-block:: python
@@ -40,7 +40,7 @@ class DatasetFactory(object):
     def create_dataset(self, datafeed_class="QueueDataset"):
         """
         Create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
-        the default is "QueueDataset".
+        or "DummpyDataset", the default is "QueueDataset".
 
         Args:
             datafeed_class(str): datafeed class name, QueueDataset or InMemoryDataset.
@@ -1074,3 +1074,41 @@ class BoxPSDataset(InMemoryDataset):
 
     def _dynamic_adjust_after_train(self):
         pass
+
+
+class DummpyDataset(DatasetBase):
+    """
+    DummpyDataset
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory.create_dataset("DummpyDataset")
+    """
+
+    def __init__(self):
+        """
+        Initialize FileInstantDataset
+        This class should be created by DatasetFactory
+        """
+        super(DummpyDataset, self).__init__()
+        self.proto_desc.name = "DummpyDataFeed"
+
+    def local_shuffle(self):
+        """
+        Local shuffle
+        DummpyDataset does not support local shuffle
+        """
+        raise NotImplementedError(
+            "DummpyDataset does not support local shuffle, "
+            "please use InMemoryDataset for local_shuffle")
+
+    def global_shuffle(self, fleet=None):
+        """
+        Global shuffle
+        DummpyDataset does not support global shuffle
+        """
+        raise NotImplementedError(
+            "DummpyDataset does not support global shuffle, "
+            "please use InMemoryDataset for global_shuffle")

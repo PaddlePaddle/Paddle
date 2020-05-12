@@ -462,7 +462,8 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
                   << " for minibatch scope";
           // op->Run(*minibatch_scope_, place_);
           // timeline.Start();
-          op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          // op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          op->Run(*macrobatch_scopes_[0], place_);
           if (gc) {
             DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
@@ -594,7 +595,8 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
                   << " for minibatch scope";
           // op->Run(*minibatch_scope_, place_);
           // timeline.Start();
-          op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          // op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          op->Run(*macrobatch_scopes_[0], place_);
           if (gc) {
             DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
                                 op.get(), unused_vars_, gc.get());

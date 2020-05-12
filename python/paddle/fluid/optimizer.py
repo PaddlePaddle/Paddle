@@ -4497,7 +4497,8 @@ class ModelParallelOptimizer(object):
         first_prog = programs[0]['program']
         first_block = first_prog.block(0)
         enqueue_index = 0
-        if first_block.ops[0].type == "create_py_reader":
+        if first_block.ops[0].type == "create_py_reader" or (
+                first_block.ops[1].type == "create_py_reader"):
             for op in first_block.ops:
                 if op.type == "read":
                     enqueue_index += 1
@@ -4586,7 +4587,7 @@ class ModelParallelOptimizer(object):
 
     def _add_default_opdevice_attr(self, block):
         """
-        1. Add default op_device and op_device index attribute for
+        1. Add default op_device and op_device_index attribute for
            optimizer (lr) related ops. The default values are the ones that
            of the first place (CPUPlace or CUDAPlace).
         2. Add default op_device attribute for ops that have no kernel.
@@ -4595,10 +4596,10 @@ class ModelParallelOptimizer(object):
         3. Add default op_device_index attribute for sum ops added during
            optimization. For these ops, we set the op_device_index attribute
            as the one of its post op, i.e, which op has the output of the sum op
-           as input.
+           as an input.
         """
-        devcie = ""
-        device_index = ""
+        first_devcie = ""
+        first_device_index = ""
 
         # Get the device spec of the first place.
         # device_spec: 'cpu' for cpu device and 'gpu:id' for gpu device,
@@ -4606,23 +4607,18 @@ class ModelParallelOptimizer(object):
         for op in block.ops:
             if op.has_attr(self._op_device_key) and (
                     op.attr(self._op_device_key) != ""):
-                device = op.attr(self._op_device_key)
-                device_index = op.attr(self._op_device_index_key)
+                first_device = op.attr(self._op_device_key)
+                first_device_index = op.attr(self._op_device_index_key)
                 break
+        assert first_device and first_device_index
 
         # set op_device and op_device_index attr for optimizer related ops
+        # Todo: deal with ops that have no kernel and not optimizer related
         lrsched_role = int(self._op_role.LRSched)
         for op in block.ops:
             if not op.has_attr(self._op_device_key) or (
                     op.attr(self._op_device_key) == ""):
-                # Todo: add op_device for sum op in backward pass
-                # we set it as "gpu" just for evluation
-                if not op.type == "sum":
-                    # Todo: deal with ops that have no kernel.
-                    assert op.attr(self._op_role_key) == lrsched_role, (
-                        "Ops whose op_device attr have not been set for model"
-                        " parallel must be of the role LRSched.")
-                else:
+                if op.type == "sum":
                     # For sum ops that compute the sum of @RENAMED@ vars
                     for name in op.desc.input_arg_names():
                         assert '@RENAME@' in name
@@ -4631,11 +4627,16 @@ class ModelParallelOptimizer(object):
                     post_op = self._find_post_op(block.ops, op, out_name)
                     device = post_op.attr(self._op_device_key)
                     device_index = post_op.attr(self._op_device_index_key)
+                    assert device and device_index
                     op._set_attr(self._op_device_key, device)
                     op._set_attr(self._op_device_index_key, device_index)
+                    continue
 
-                op._set_attr(self._op_device_key, device)
-                op._set_attr(self._op_device_index_key, device_index)
+                assert op.attr(self._op_role_key) == lrsched_role, (
+                    "Op whose op_device attr has not been set for model"
+                    " parallel must be of the role LRSched.")
+                op._set_attr(self._op_device_key, first_device)
+                op._set_attr(self._op_device_index_key, first_device_index)
 
     def _check_validation(self, block):
         """
@@ -4643,8 +4644,8 @@ class ModelParallelOptimizer(object):
         """
         for op in block.ops:
             type = op.type
-            if op.type == "conditional_block":
-                assert op.attr(self._op_role_key) & 1 == 0
+            # if op.type == "conditional_block":
+            #     assert op.attr(self._op_role_key) & 1 == 0
             if not op._has_kernel(type):
                 assert op.type == "conditional_block" and (
                     op.attr(self._op_role_key) == int(self._op_role.LRSched)), (
@@ -4671,8 +4672,8 @@ class ModelParallelOptimizer(object):
         device_specs = []
         for op in block.ops:
             type = op.type
-            if not op._has_kernel(type):
-                continue
+            #if not op._has_kernel(type):
+            #    continue
             device = op.attr(self._op_device_key)
             device_index = op.attr(self._op_device_index_key)
             if device == "cpu":
@@ -4687,10 +4688,11 @@ class ModelParallelOptimizer(object):
         Insert a pair of enqueue and dequeue ops for every two
         consecutive ops on different devices.
         """
-
-        # device_spec: 1. cpu 2. gpu:index, e.g., gpu:0, gpu:1
-        device_specs = set()
         startup_block = startup_program.global_block()
+
+        # A map from var to device spec where op takes it as input,
+        # avoiding multiple enqueue and dequeue.
+        var_devspec = dict()
 
         for index, op in reversed(list(enumerate(block.ops))):
             cur_device = op.attr(self._op_device_key)
@@ -4700,7 +4702,6 @@ class ModelParallelOptimizer(object):
                 cur_device_spec = cur_device
             else:
                 cur_device_spec = cur_device + ":" + cur_device_index
-            device_specs.add(cur_device_spec)
 
             for var_name in op.input_arg_names:
                 prev_op = self._find_real_prev_op(block.ops, op, var_name)
@@ -4715,6 +4716,11 @@ class ModelParallelOptimizer(object):
                     prev_device_spec = prev_device + ":" + prev_device_index
 
                 if prev_device_spec != cur_device_spec:
+                    if var_name not in var_devspec:
+                        var_devspec[var_name] = []
+                    if cur_device_spec in var_devspec[var_name]: continue
+                    var_devspec[var_name].append(cur_device_spec)
+
                     queue_name = var_name + "@blocking_queue@"
                     queue_name = unique_name.generate(queue_name)
                     queue_var = startup_block.create_var(
@@ -4972,10 +4978,12 @@ class ModelParallelOptimizer(object):
             startup_program = default_startup_program()
         _, params_grads = self._optimizer.minimize(loss, startup_program,
                                                    parameter_list, no_grad_set)
+
         # Step1: add default op_device and op_device_index for optimizer
         # (lr) related ops, because we put Optimizer out of the scope
         # of device_guard.
         self._add_default_opdevice_attr(main_block)
+
         self._check_validation(main_block)
         device_specs = self._get_device_specs(main_block)
 

@@ -68,5 +68,6 @@ REGISTER_DATAFEED_CLASS(PaddleBoxDataFeed);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 REGISTER_DATAFEED_CLASS(MultiSlotFileInstantDataFeed);
 #endif
+REGISTER_DATAFEED_CLASS(DummpyDataFeed);
 }  // namespace framework
 }  // namespace paddle
