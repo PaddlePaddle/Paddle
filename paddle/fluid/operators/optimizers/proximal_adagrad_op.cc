@@ -28,10 +28,9 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
                    "ProximalAdagradOp");
     OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment",
                    "ProximalAdagradOp")
-        : OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad",
-                         "ProximalAdagradOp")
-        : OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
-                         "ProximalAdagradOp");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "ProximalAdagradOp")
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
+                   "ProximalAdagradOp");
 
     OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut",
                    "ProximalAdagradOp");
@@ -40,24 +39,29 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
-                      "The shape of Intput(Param) should be equal to the "
-                      "Input(Grad) of ProximalAdagrad Op. But received "
-                      "Input(Param).dimensions=[%s], "
-                      "Input(Grad).dimensions=[%s]",
-                      param_dim, ctx->GetInputDim("Grad"));
+                      platform::errors::InvalidArgument(
+                          "The shape of Intput(Param) should be equal to the "
+                          "Input(Grad) of ProximalAdagrad Op. But received "
+                          "Input(Param).dimensions=[%s], "
+                          "Input(Grad).dimensions=[%s]",
+                          param_dim, ctx->GetInputDim("Grad")));
 
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Moment"),
-                      "The shape of Intput(Param) should be equal to the "
-                      "Input(Moment) of ProximalAdagrad Op. But received "
-                      "Input(Param).dimensions=[%s], "
-                      "Input(Moment).dimensions=[%s]",
-                      param_dim, ctx->GetInputDim("Moment"));
+                      platform::errors::InvalidArgument(
+                          "The shape of Intput(Param) should be equal to the "
+                          "Input(Moment) of ProximalAdagrad Op. But received "
+                          "Input(Param).dimensions=[%s], "
+                          "Input(Moment).dimensions=[%s]",
+                          param_dim, ctx->GetInputDim("Moment")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+    PADDLE_ENFORCE_EQ(
+        framework::product(lr_dim), 1,
+        platform::errors::InvalidArgument(
+            "Learning Rate should be a scalar. But received:[%s]", lr_dim))
+        :
 
-    ctx->SetOutputDim("ParamOut", param_dim);
+          ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
   }
   framework::OpKernelType GetExpectedKernelType(
