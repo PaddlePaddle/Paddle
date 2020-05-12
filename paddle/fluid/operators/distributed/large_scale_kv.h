@@ -121,7 +121,7 @@ class SparseVariable {
   void Get(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            std::vector<std::vector<std::vector<float>>> *values) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::shared_lock<std::mutex> lock(mutex_);
     for (auto id : ids) {
       auto got = values_.find(id);
       if (got == values_.end()) {
