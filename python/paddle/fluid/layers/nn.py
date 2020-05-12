@@ -15521,6 +15521,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
                                                    nshards=2,
                                                    shard_id=0)
     """
+    check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
     if shard_id < 0 or shard_id >= nshards:
