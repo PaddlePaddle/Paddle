@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 from paddle.fluid import core
 
 
@@ -90,19 +91,23 @@ class TestCase3_neg(TestReverseOp):
         self.axis = [-1, -2]
 
 
-class TestCase4(TestReverseOp):
-    def initTestCase(self):
-        self.x = np.random.random((1, 1, 1, 1, 1, 1, 1)).astype('float64')
-        self.axis = [-1, -2]
-
-    def test_check_output(self):
-        pass
-
-    def test_check_grad(self):
-        pass
-
+class TestCase4(unittest.TestCase):
     def test_error(self):
-        self.assertRaises(core.EnforceNotMet, self.check_output)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            label = fluid.layers.data(
+                name="label", shape=[1, 1, 1, 1, 1, 1, 1, 1], dtype="int64")
+            rev = fluid.layers.reverse(label, axis=[-1, -2])
+
+        def _run_program():
+            x = np.random.random(size=(10, 1, 1, 1, 1, 1, 1)).astype('int64')
+            exe.run(train_program, feed={"label": x})
+
+        self.assertRaises(core.EnforceNotMet, _run_program)
 
 
 if __name__ == '__main__':
