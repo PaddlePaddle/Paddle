@@ -79,12 +79,6 @@ class Scaler(object):
                 "output must be a Variable or an list/tuple of Variables")
 
     @dygraph.no_grad
-    def scale_inplace(self, var, scale):
-        #TODO(zhiqiu): support inplace operation directly in the future
-        new_var = core.ops.scale(var, 'scale', scale)
-        layers.assign(new_var, var)
-        return None
-
     def unscale_(self, optimizer):
         if not self._enable:
             return
@@ -109,6 +103,7 @@ class Scaler(object):
             optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 
+    @dygraph.no_grad
     def update(self, new_scale=None):
         """
         Updates the scale factor.

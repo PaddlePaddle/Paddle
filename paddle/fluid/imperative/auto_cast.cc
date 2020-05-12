@@ -94,6 +94,10 @@ const std::unordered_set<std::string> gray_ops = {
     "cast",
 };
 
+static inline std::string GetDataTypeStr(const std::shared_ptr<VarBase>& var) {
+  return framework::DataTypeToString(var->DataType());
+}
+
 inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
   if (!platform::is_gpu_place(var->Place())) {
     return false;
@@ -122,7 +126,6 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
     AutoCastGuard guard(tracer, false);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
-
   return out;
 }
 
@@ -130,6 +133,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToFP16(
     const std::shared_ptr<VarBase>& var) {
   auto dst_type = framework::proto::VarType::FP16;
   if (NeedCast(var) && (var->DataType() != dst_type)) {
+    VLOG(5) << "need cast";
     return CastToType(var, dst_type);
   }
   return var;
@@ -162,8 +166,9 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   NameVarBaseMap new_ins = {};
   if (white_ops.count(op_type)) {
     for (const auto& pair : ins) {
-      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << " to FP16";
+      VLOG(5) << "Cast input(" << pair.first << ") from "
+              << GetDataTypeStr(*pair.second.cbegin()) << " to float16 "
+              << "in Operator(" + op_type + ")";
       for (const auto& var : pair.second) {
         auto new_var = CastToFP16(var);
         new_ins[pair.first].emplace_back(new_var);
@@ -172,8 +177,9 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   } else if (black_ops.count(op_type)) {
     for (const auto& pair : ins) {
-      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << " to FP16";
+      VLOG(5) << "Cast input(" << pair.first << ") from "
+              << GetDataTypeStr(*pair.second.cbegin()) << " to float32 "
+              << "in Operator(" + op_type + ")";
       for (const auto& var : pair.second) {
         auto new_var = CastToFP32(var);
         new_ins[pair.first].emplace_back(new_var);
@@ -182,10 +188,11 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   } else if (gray_ops.count(op_type)) {
     auto dst_type = GetPromoteType(ins);
-
     for (const auto& pair : ins) {
-      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << " to " << dst_type;
+      VLOG(5) << "Cast input(" << pair.first << ") from "
+              << GetDataTypeStr(*pair.second.cbegin()) << " to "
+              << framework::DataTypeToString(dst_type)
+              << " in Operator(" + op_type + ")";
       for (const auto& var : pair.second) {
         // NOTE(zhiqiu): Conv + BN always occur together, we needn't
         // cast X of batch_norm to FP32, which is produced by conv as FP16 type.
