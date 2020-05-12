@@ -96,9 +96,9 @@ class TestQuantizationScalePass(unittest.TestCase):
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            exe.run(startup)
+        scope = fluid.global_scope()
+        #with fluid.scope_guard(scope):
+        exe.run(startup)
 
         transform_pass = QuantizationTransformPass(
             scope=scope,
@@ -153,6 +153,9 @@ class TestQuantizationScalePass(unittest.TestCase):
 
         scale_inference_pass = OutScaleForInferencePass(scope=scope)
         scale_inference_pass.apply(test_graph)
+        for var in test_graph.all_var_nodes():
+            if '@scale' in var.name():
+                print("++++++++++++", var.name())
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.
         freeze_pass = QuantizationFreezePass(
