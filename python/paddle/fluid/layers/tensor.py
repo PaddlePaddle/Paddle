@@ -1077,8 +1077,8 @@ def reverse(x, axis):
           result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64', 'uint8'], 'reverse')
-    check_type(axis, 'axis', [int, tuple, list], 'reverse')
+        x, 'x', ('float32', 'float64', 'int32', 'int64', 'uint8'), 'reverse')
+    check_type(axis, 'axis', (int, tuple, list), 'reverse')
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
