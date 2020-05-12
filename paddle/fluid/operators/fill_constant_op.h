@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
@@ -31,38 +32,14 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx,
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto *shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
-    auto *shape_data = shape_tensor->data<int>();
-    framework::Tensor cpu_shape_tensor;
-    if (platform::is_gpu_place(shape_tensor->place())) {
-      TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
-      shape_data = cpu_shape_tensor.data<int>();
-    }
-    auto vec_shape =
-        std::vector<int>(shape_data, shape_data + shape_tensor->numel());
+    auto vec_shape = GetDataFromTensor<int>(shape_tensor);
     return framework::make_ddim(vec_shape);
   }
 
   // 2. shape is a list/tuple containing Tensor
   auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
   if (shape_tensor_list.size() > 0) {
-    std::vector<int> vec_shape;
-    for (size_t i = 0; i < shape_tensor_list.size(); ++i) {
-      auto tensor = shape_tensor_list[i];
-      PADDLE_ENFORCE_EQ(
-          tensor->dims(), framework::make_ddim({1}),
-          platform::errors::InvalidArgument(
-              "If the element type of 'shape'(tensor_list type) in "
-              "%s is Tensor, the shape of this Tensor element must "
-              "be [1]. But received the Tensor element's shape is [%s]",
-              op_type, tensor->dims()));
-      if (platform::is_gpu_place(tensor->place())) {
-        framework::Tensor temp;
-        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-        vec_shape.push_back(*temp.data<int>());
-      } else {
-        vec_shape.push_back(*tensor->data<int>());
-      }
-    }
+    auto vec_shape = GetDataFromTensorList(shape_tensor_list);
     return framework::make_ddim(vec_shape);
   }
 
