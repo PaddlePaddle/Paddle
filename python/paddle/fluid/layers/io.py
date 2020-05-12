@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
@@ -922,4 +921,4 @@ def load(out, file_path, load_as_fp16=None):
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)
+    helper.append_op(type="load", inputs={}, outputs={"Out": out}, attrs=attrs)

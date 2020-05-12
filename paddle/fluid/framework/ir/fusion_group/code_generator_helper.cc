@@ -83,26 +83,26 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
     proto::AttrType attr_type =
         static_cast<proto::AttrType>(it->second.which() - 1);
     if (attr_type == proto::AttrType::BOOLEAN) {
-      bool result = boost::get<bool>(attr);
+      bool result = BOOST_GET(bool, attr);
       if (result) {
         ret = "true";
       } else {
         ret = "false";
       }
     } else if (attr_type == proto::AttrType::INT) {
-      int result = boost::get<int>(attr);
+      int result = BOOST_GET(int, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::LONG) {
-      int64_t result = boost::get<int64_t>(attr);
+      int64_t result = BOOST_GET(int64_t, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::FLOAT) {
-      float result = boost::get<float>(attr);
+      float result = BOOST_GET(float, attr);
       str_cvt << result;
       ret = str_cvt.str();
     } else if (attr_type == proto::AttrType::STRING) {
-      std::string result = boost::get<std::string>(attr);
+      std::string result = BOOST_GET(std::string, attr);
       ret = result;
     }
   } else {
@@ -149,8 +149,6 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
                               "Expected %d-th input id > 0 for operation < %s "
                               ">. Received %d.",
                               index, op_type_, input_ids_[index]));
-        // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we
-        // need to add general fp16 compute later.
         var_name = TmpName(input_ids_[index]);
         rhs.replace(pos, length + 3, var_name);
         used->insert(input_ids_[index]);

@@ -19,6 +19,8 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 
@@ -64,6 +66,7 @@ class SubGraph {
   }
 
   int GetType() const { return type_; }
+  bool RemoveIntermediateOut() { return !save_intermediate_out_; }
 
   void SetFuncName(std::string func_name) { func_name_ = func_name; }
   std::string GetFuncName() const { return func_name_; }
@@ -133,30 +136,45 @@ class SubGraph {
         }
       }
     }
+    return output_vars_all;
+  }
 
-    if (save_intermediate_out_) {
-      return output_vars_all;
-    }
+  std::vector<Node*> GetIntermediateOutVarNodes() {
+    return intermediate_out_nodes_;
+  }
 
-    std::vector<Node*> output_vars_outside;
-    for (auto* n : output_vars_all) {
-      // If one of the var_node's outputs is the input of some operator
-      // outside the subgraph, it is considered the output var node of the
-      // subgraph.
-      bool is_found = true;
-      if (n->outputs.size() == 0U) {
-        is_found = false;
-      }
-      for (auto* out : n->outputs) {
-        if (!Has(out)) {
-          is_found = false;
+  void DetectIntermediateOutWithGraph(Graph* graph) {
+    auto graph_nodes = graph->Nodes();
+
+    for (auto* n : SortedNodes()) {
+      bool enable_remove = true;
+
+      if (n && n->IsVar() && n->Var()) {
+        bool leaf_graph = true;
+        for (auto* node : graph_nodes) {
+          if (node->IsOp()) {
+            auto inputs = node->inputs;
+            for (auto* in : inputs) {
+              if (in && in->Name() == n->Name()) {
+                if (!Has(node)) enable_remove = false;
+                leaf_graph = false;
+              }
+            }
+          }
+          if (!enable_remove) {
+            break;
+          }
         }
+        if (leaf_graph) enable_remove = false;
+
+      } else {
+        enable_remove = false;
       }
-      if (!is_found) {
-        output_vars_outside.push_back(n);
+
+      if (enable_remove) {
+        intermediate_out_nodes_.push_back(n);
       }
     }
-    return output_vars_outside;
   }
 
  private:
@@ -170,7 +188,7 @@ class SubGraph {
       }
 
       for (auto* n : nodes_set_) {
-        if (n && n->IsVar() && n->Var()) {
+        if (n && ((n->IsVar() && n->Var()) || n->IsCtrlVar())) {
           // Set the input of subgraph's input var node to null.
           std::vector<Node*> inputs;
           for (auto* in : n->inputs) {
@@ -218,6 +236,7 @@ class SubGraph {
   bool save_intermediate_out_{true};
 
   std::unordered_set<Node*> nodes_set_;
+  std::vector<Node*> intermediate_out_nodes_{};
   bool is_sorted_{false};
   std::vector<Node*> sorted_nodes_;
 };

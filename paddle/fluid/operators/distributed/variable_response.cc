@@ -51,7 +51,7 @@ bool VariableResponse::ReadRaw(::google::protobuf::io::CodedInputStream* input,
       }
       // This log is useful to see how long a internal block size is of rpc.
       VLOG(7) << "copy " << size_to_write << " data to CUDAPlace";
-      memory::Copy(boost::get<platform::CUDAPlace>(place),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place),
                    reinterpret_cast<void*>(p), cpu, data, size_to_write,
                    gpu_dev_ctx.stream());
       p += size_to_write;

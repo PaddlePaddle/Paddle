@@ -13,6 +13,9 @@
 # limitations under the License.
 
 # TODO: define function of recurrent neural network  
-# __all__ = ['gru_unit',
-#            'lstm',
-#            'lstm_unit']
+
+__all__ = [
+    #       'gru_unit',
+    #       'lstm',
+    #       'lstm_unit'
+]

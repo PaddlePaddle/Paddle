@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 
 def add_fn(x):
@@ -142,7 +141,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
-    @dygraph_to_static_func
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:

@@ -45,19 +45,13 @@ class SumOpMaker : public OpProtoAndCheckerMaker {
 class SumOpVarTypeInference : public VarTypeInference {
  public:
   void operator()(InferVarTypeContext *ctx) const override {
-    auto &inputs = ctx->Input("X");
     auto default_var_type = proto::VarType::SELECTED_ROWS;
 
-    bool any_input_is_lod_tensor = std::any_of(
-        inputs.begin(), inputs.end(), [&ctx](const std::string &name) {
-          return ctx->GetType(name) == proto::VarType::LOD_TENSOR;
-        });
-    if (any_input_is_lod_tensor) {
+    if (ctx->InputTypeAnyOf("X", proto::VarType::LOD_TENSOR)) {
       default_var_type = proto::VarType::LOD_TENSOR;
     }
 
-    auto out_var_name = ctx->Output("Out").front();
-    ctx->SetType(out_var_name, default_var_type);
+    ctx->SetOutputType("Out", default_var_type);
   }
 };
 
