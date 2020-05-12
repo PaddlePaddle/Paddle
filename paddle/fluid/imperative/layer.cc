@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/imperative/layer.h"
+#include <gflags/gflags.h>
 #include <algorithm>
 #include <queue>
 #include <utility>
@@ -29,6 +30,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_uint64(imperative_check_nan_inf);
 namespace paddle {
 namespace imperative {
 
@@ -307,6 +309,10 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   prepared_op.Run(ins, outs, attrs);
 
   VLOG(4) << LayerDebugString(op.Type(), ins, outs);
+
+  if (FLAGS_imperative_check_nan_inf) {
+    CheckNanInf<VarType>(op.Type(), outs);
+  }
 }
 
 void OpBase::Run(const framework::OperatorBase& op,
@@ -383,5 +389,36 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
+template <typename VarType>
+void CheckNanInf(std::string op_type, const NameVarMap<VarType>& outs) {
+  for (auto& pair : outs) {
+    for (auto& var : pair.second) {
+      const auto tensor = *(var->GetTensorPtr());
+      if (tensor.memory_size() == 0) {
+        continue;
+      }
+      if (tensor.type() != framework::proto::VarType::FP32 &&
+          tensor.type() != framework::proto::VarType::FP64) {
+        continue;
+      }
+      if (framework::TensorContainsInf(tensor)) {
+        VLOG(2) << "Operator(" + op_type + ")'s output Tensor(" + pair.first +
+                       ") contains Inf";
+        if (FLAGS_imperative_check_nan_inf == 1) {
+          PADDLE_THROW("Operator(%s)'s output Tensor(%s) contains Inf", op_type,
+                       pair.first);
+        }
+      }
+      if (framework::TensorContainsNAN(tensor)) {
+        VLOG(2) << "Operator(" + op_type + ")'s output Tensor(" + pair.first +
+                       ") contains NAN";
+        if (FLAGS_imperative_check_nan_inf == 1) {
+          PADDLE_THROW("Operator(%s)'s output Tensor(%s) contains NAN", op_type,
+                       pair.first);
+        }
+      }
+    }
+  }
+}
 }  // namespace imperative
 }  // namespace paddle

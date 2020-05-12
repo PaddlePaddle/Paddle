@@ -92,23 +92,24 @@ class VariableWrapper {
   bool HasGradNode() const { return !grad_node_.expired(); }
 
   framework::proto::VarType::Type DataType() const {
-    const framework::Tensor* tensor = nullptr;
-    if (var_.IsInitialized()) {
-      if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
-      } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
-        tensor = &(var_.Get<framework::SelectedRows>().value());
-      } else {
-        VLOG(6) << "Variable " << name_ << " is not initialized";
-        return data_type_;
-      }
-    }
+    const framework::Tensor* tensor = GetTensorPtr();
     if (tensor && tensor->IsInitialized()) {
       return tensor->type();
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
       return data_type_;
     }
+  }
+
+  const framework::Tensor* GetTensorPtr() const {
+    if (var_.IsInitialized()) {
+      if (var_.IsType<framework::LoDTensor>()) {
+        return &(var_.Get<framework::LoDTensor>());
+      } else if (var_.IsType<framework::SelectedRows>()) {
+        return &(var_.Get<framework::SelectedRows>().value());
+      }
+    }
+    return nullptr;
   }
 
  private:
