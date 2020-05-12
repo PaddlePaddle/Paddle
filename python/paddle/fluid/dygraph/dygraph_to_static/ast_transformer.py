@@ -35,6 +35,7 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysi
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
+import astor
 import logging
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']

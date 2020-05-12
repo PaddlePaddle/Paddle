@@ -19,10 +19,13 @@ import unittest
 import logging
 
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 
+program_translator = ProgramTranslator()
+
 # Set Log level	
-logging.getLogger().setLevel(logging.INFO)
+logging.getLogger().setLevel(logging.DEBUG)
 
 
 # 0. for in range with var case
@@ -87,16 +90,6 @@ def dygraph_for_enumerate_var_numpy_with_start(x_array):
     return y, z
 
 
-# 6. for iter var
-@declarative
-def dygraph_for_iter_var(x_array):
-    z = fluid.layers.fill_constant([1], 'int32', 0)
-    x_array = fluid.dygraph.to_variable(x_array)
-    for x in x_array:
-        z = z + x
-    return z
-
-
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -111,26 +104,37 @@ class TestTransformBase(unittest.TestCase):
         raise NotImplementedError(
             "For Enumerate test should implement set_test_func")
 
-    def get_dygraph_output(self):
+    def _run(self, to_static):
+        program_translator.enable(to_static)
         with fluid.dygraph.guard():
             return self.dygraph_func(self.input)
 
+    def get_dygraph_output(self):
+        return self._run(to_static=False)
+
     def get_static_output(self):
-        with fluid.program_guard(fluid.Program()):
-            return self.dygraph_func(self.input)
+        return self._run(to_static=True)
 
 
 class TestTransform(TestTransformBase):
     def transformed_result_compare(self):
         dy_outs = self.get_dygraph_output()
-        st_outs = self.get_static_output()
         if not isinstance(dy_outs, tuple):
             dy_outs = (dy_outs, )
+        for x in dy_outs:
+            print("dy out: %d" % x.numpy())
+
+        # NOTE: return type is difference
+        st_outs = self.get_static_output()
+        if not isinstance(st_outs, list):
             st_outs = (st_outs, )
+        else:
+            st_outs = tuple(st_outs)
+        for y in st_outs:
+            print("st out: %d" % y.numpy())
+
         for x, y in zip(dy_outs, st_outs):
-            print("dy out: %d" % x)
-            print("st out: %d" % y)
-            # self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+            self.assertTrue(np.allclose(x.numpy(), y.numpy()))
 
 
 class TestTransformError(TestTransformBase):
@@ -183,11 +187,6 @@ class TestForEnumerateVarNumpy(TestForIterVarNumpy):
 class TestForEnumerateVarNumpyWithStart(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start
-
-
-class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
-    def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_break
 
 
 if __name__ == '__main__':
