@@ -30,12 +30,13 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+                   platform::errors::InvalidArgument("It must use CPUPlace."));
 
     const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE(
-        is_test == true,
-        "ConvTransposeMKLDNN works only for inference!. Set is_test = True");
+    PADDLE_ENFORCE_EQ(is_test, true,
+                      platform::errors::InvalidArgument(
+                          "ConvTransposeMKLDNN works only for inference. "
+                          "Set is_test = True. but got is_test=False ."));
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
@@ -46,29 +47,47 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
+    PADDLE_ENFORCE_EQ(
+        input->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "Got wrong layout = %d for Input tensor.", input->layout()));
     PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+                      platform::errors::InvalidArgument(
+                          "Got wrong format for Input tensor."));
 
-    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_EQ(
+        filter->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "Got wrong layout =%d for Filter tensor.", filter->layout()));
     PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Filter tensor");
+                      platform::errors::InvalidArgument(
+                          "Got wrong formats for Filter tensor."));
 
-    PADDLE_ENFORCE_EQ(input->dims().size(), 4,
-                      "Input must be with 4 dimensions, i.e. NCHW");
-    PADDLE_ENFORCE_EQ(filter->dims().size(), 4,
-                      "Filter must be with 4 dimensions, i.e. OIHW");
+    PADDLE_ENFORCE_EQ(
+        input->dims().size(), 4,
+        platform::errors::InvalidArgument(
+            "Input must be with 4 dimensions, i.e. NCHW. but got dimension =%d",
+            input->dims().size()));
+    PADDLE_ENFORCE_EQ(
+        filter->dims().size(), 4,
+        platform::errors::InvalidArgument("Filter must be with 4 dimensions, "
+                                          "i.e. OIHW, but got dimension =%d",
+                                          filter->dims().size()));
 
     if (bias) {
-      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_EQ(
+          bias->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "Got wrong layout = %d for Bias tensor.", bias->layout()));
       PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
-                        "Wrong format set for Bias tensor");
+                        platform::errors::InvalidArgument(
+                            "Got wrong format for Bias tensor."));
 
-      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
-                        "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(
+          bias->dims().size(), 1,
+          platform::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                            "i.e. X, but got dimension = %d .",
+                                            bias->dims().size()));
     }
 
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
