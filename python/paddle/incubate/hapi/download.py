@@ -270,7 +270,6 @@ def _uncompress_file_zip(filepath):
     file_dir = os.path.dirname(filepath)
 
     if _is_a_single_file(file_list):
-        print('debug here!!')
         rootpath = file_list[0]
         uncompressed_path = os.path.join(file_dir, rootpath)
 
@@ -285,7 +284,6 @@ def _uncompress_file_zip(filepath):
             files.extract(item, file_dir)
 
     else:
-        print('debug more file!!')
         rootpath = os.path.splitext(filepath)[0].split(os.sep)[-1]
         uncompressed_path = os.path.join(file_dir, rootpath)
         if not os.path.exists(uncompressed_path):
