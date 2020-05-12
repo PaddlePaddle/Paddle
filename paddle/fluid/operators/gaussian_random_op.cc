@@ -22,6 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 template <typename T>
 class CPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
@@ -96,6 +97,14 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
 
       return;
+    }
+    if (!(ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList"))) {
+      PADDLE_ENFORCE_GT(
+          shape.size(), 0UL,
+          platform::errors::InvalidArgument(
+              "Attribute(shape) of GaussianRandomOp must be set "
+              "and shape.size() > 0, but reveived shape.size() is %d",
+              shape.size()));
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
