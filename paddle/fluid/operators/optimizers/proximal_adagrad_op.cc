@@ -58,10 +58,10 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         framework::product(lr_dim), 1,
         platform::errors::InvalidArgument(
-            "Learning Rate should be a scalar. But received:[%s]", lr_dim))
-        :
+            "Learning Rate should be a scalar. But received dimension[%s]",
+            lr_dim));
 
-          ctx->SetOutputDim("ParamOut", param_dim);
+    ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
   }
   framework::OpKernelType GetExpectedKernelType(
