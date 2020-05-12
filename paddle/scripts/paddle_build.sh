@@ -286,7 +286,8 @@ function check_style() {
             commit_files=off
         fi
     done 
-    
+   
+    sleep 1 
     if [ $commit_files == 'off' ];then
         echo "code format error"
         exit 1
