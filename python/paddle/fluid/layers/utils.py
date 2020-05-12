@@ -18,7 +18,8 @@ import copy
 import six
 import numpy as np
 from ..framework import Variable
-from ..data_feeder import convert_dtype, check_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..layer_helper import LayerHelper
 
 
 def convert_to_list(value, n, name, dtype=np.int):

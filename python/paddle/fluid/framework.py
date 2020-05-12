@@ -655,6 +655,20 @@ def _getitem_impl_(var, item):
     reverse_axis = []
     target_block = default_main_program().current_block()
 
+    def fill_constant(shape, value, force_cpu=False, out=None):
+        target_block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'shape': shape,
+                'dtype': out.dtype,
+                'value': float(value),
+                'force_cpu': force_cpu
+            })
+        out.stop_gradient = True
+        return out
+
     for dim, slice_item in enumerate(item):
         if isinstance(slice_item, slice):
             start = slice_item.start
@@ -691,14 +705,13 @@ def _getitem_impl_(var, item):
             slice_start.append(slice_item)
             slice_step.append(1)
             if isinstance(slice_item, Variable):
-                from layers.tensor import fill_constant
-                temp_y = fill_constant(
-                    shape=[1], dtype=slice_item.dtype, value=1, force_cpu=True)
+                temp_1 = target_block.create_var(dtype=slice_item.dtype)
+                fill_constant([1], 1, force_cpu=True, out=temp_1)
                 temp_end = target_block.create_var(dtype=slice_item.dtype)
                 target_block.append_op(
                     type='elementwise_add',
                     inputs={'X': slice_item,
-                            'Y': temp_y},
+                            'Y': temp_1},
                     outputs={'Out': temp_end},
                     attrs={'axis': -1})
                 slice_end.append(temp_end)
@@ -720,7 +733,7 @@ def _getitem_impl_(var, item):
                 new_list_tensor.append(dim)
             else:
                 assert (isinstance(dim, int))
-                temp_out = var.block.create_var(dtype='int32')
+                temp_out = target_block.create_var(dtype='int32')
                 fill_constant([1], dim, force_cpu=True, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
