@@ -182,7 +182,7 @@ class ResNet(Model):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import ResNet, BottleneckBlock, BasicBlock
+            from paddle.incubate.hapi.vision.models import ResNet, BottleneckBlock, BasicBlock
 
             resnet50 = ResNet(BottleneckBlock, 50)
 
@@ -291,7 +291,7 @@ def resnet18(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import resnet18
+            from paddle.incubate.hapi.vision.models import resnet18
 
             # build model
             model = resnet18()
@@ -311,7 +311,7 @@ def resnet34(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import resnet34
+            from paddle.incubate.hapi.vision.models import resnet34
 
             # build model
             model = resnet34()
@@ -331,7 +331,7 @@ def resnet50(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import resnet50
+            from paddle.incubate.hapi.vision.models import resnet50
 
             # build model
             model = resnet50()
@@ -351,7 +351,7 @@ def resnet101(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import resnet101
+            from paddle.incubate.hapi.vision.models import resnet101
 
             # build model
             model = resnet101()
@@ -371,7 +371,7 @@ def resnet152(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import resnet152
+            from paddle.incubate.hapi.vision.models import resnet152
 
             # build model
             model = resnet152()

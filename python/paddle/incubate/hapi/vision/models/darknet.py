@@ -143,7 +143,7 @@ class DarkNet(Model):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import DarkNet
+            from paddle.incubate.hapi.vision.models import DarkNet
 
             model = DarkNet()
     """
@@ -239,7 +239,7 @@ def darknet53(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import darknet53
+            from paddle.incubate.hapi.vision.models import darknet53
 
             # build model
             model = darknet53()

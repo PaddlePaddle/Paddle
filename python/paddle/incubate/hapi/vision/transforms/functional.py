@@ -44,7 +44,7 @@ def flip(image, code):
         .. code-block:: python
 
             import numpy as np
-            from hapi.vision.transforms import functional as F
+            from paddle.incubate.hapi.vision.transforms import functional as F
 
             fake_img = np.random.rand(224, 224, 3)
 
@@ -73,7 +73,7 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
         .. code-block:: python
 
             import numpy as np
-            from hapi.vision.transforms import functional as F
+            from paddle.incubate.hapi.vision.transforms import functional as F
 
             fake_img = np.random.rand(256, 256, 3)
 

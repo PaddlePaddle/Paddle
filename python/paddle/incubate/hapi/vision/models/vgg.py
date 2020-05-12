@@ -146,7 +146,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import vgg11
+            from paddle.incubate.hapi.vision.models import vgg11
 
             # build model
             model = vgg11()
@@ -170,7 +170,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import vgg13
+            from paddle.incubate.hapi.vision.models import vgg13
 
             # build model
             model = vgg13()
@@ -194,7 +194,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import vgg16
+            from paddle.incubate.hapi.vision.models import vgg16
 
             # build model
             model = vgg16()
@@ -218,7 +218,7 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from hapi.vision.models import vgg19
+            from paddle.incubate.hapi.vision.models import vgg19
 
             # build model
             model = vgg19()
