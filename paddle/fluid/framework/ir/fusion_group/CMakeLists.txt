@@ -2,7 +2,7 @@ cc_library(code_generator
     SRCS operation.cc code_generator.cc code_generator_helper.cc
     DEPS graph subgraph_detector)
 if(WITH_GPU)
-    cc_test(test_code_generator SRCS code_generator_tester.cc DEPS code_generator device_code lod_tensor graph_viz_pass)
+#    cc_test(test_code_generator SRCS code_generator_tester.cc DEPS code_generator device_code lod_tensor graph_viz_pass)
 endif()
 
 cc_library(fusion_group_pass

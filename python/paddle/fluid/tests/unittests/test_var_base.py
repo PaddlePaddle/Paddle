@@ -39,6 +39,13 @@ class TestVarBase(unittest.TestCase):
             self.assertEqual(var.shape, self.shape)
             self.assertEqual(var.dtype, core.VarDesc.VarType.FP32)
             self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+            # The type of input must be 'ndarray' or 'Variable', it will raise TypeError
+            with self.assertRaises(TypeError):
+                var = fluid.dygraph.to_variable("test", name="abc")
+            # test to_variable of LayerObjectHelper(LayerHelperBase)
+            with self.assertRaises(TypeError):
+                linear = fluid.dygraph.Linear(32, 64)
+                var = linear._helper.to_variable("test", name="abc")
 
     def test_write_property(self):
         with fluid.dygraph.guard():
@@ -174,13 +181,24 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
 
+    def _test_for_var(self):
+        np_value = np.random.random((30, 100, 100)).astype('float32')
+        w = fluid.dygraph.to_variable(np_value)
+
+        for i, e in enumerate(w):
+            self.assertTrue(np.array_equal(e.numpy(), np_value[i]))
+
     def test_slice(self):
         with fluid.dygraph.guard():
             self._test_slice()
+            self._test_for_var()
 
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))
             self.assertTrue(np.array_equal(var[::-1].numpy(), self.array[::-1]))
+
+            with self.assertRaises(IndexError):
+                y = var[self.shape[0]]
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
@@ -188,6 +206,25 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(
                 np.array_equal(var.numpy(),
                                fluid.framework._var_base_to_np(var)))
+
+    def test_if(self):
+        with fluid.dygraph.guard():
+            var1 = fluid.dygraph.to_variable(np.array([[[0]]]))
+            var2 = fluid.dygraph.to_variable(np.array([[[1]]]))
+
+            var1_bool = False
+            var2_bool = False
+
+            if var1:
+                var1_bool = True
+
+            if var2:
+                var2_bool = True
+
+            assert var1_bool == False, "if var1 should be false"
+            assert var2_bool == True, "if var2 should be true"
+            assert bool(var1) == False, "bool(var1) is False"
+            assert bool(var2) == True, "bool(var2) is True"
 
 
 if __name__ == '__main__':

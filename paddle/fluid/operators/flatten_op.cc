@@ -246,8 +246,7 @@ DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInToOut, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceinToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(FlattenGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FlattenGradNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

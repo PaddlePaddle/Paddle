@@ -19,9 +19,9 @@ import textwrap
 import gast
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import get_name_ids
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfConditionVisitor
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IsControlFlowVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+from paddle.fluid.dygraph.dygraph_to_static.utils import IsControlFlowVisitor
 
 
 class TestGetNameIds(unittest.TestCase):
@@ -135,7 +135,15 @@ class TestIsControlFlowIf(unittest.TestCase):
         self.check_false_case("a+b")
 
     def test_expr2(self):
-        self.check_false_case("a + x.numpy()[1]")
+        # x is a Tensor.
+        node = gast.parse("a + x.numpy()")
+        node_test = node.body[0].value
+
+        if_visitor = IfConditionVisitor(node_test)
+        self.assertTrue(if_visitor.is_control_flow())
+        # No transformation will be applied.
+        new_node, assign_nodes = if_visitor.transform()
+        self.assertTrue(len(assign_nodes) == 0)
 
     def test_is_None(self):
         self.check_false_case("x is None")

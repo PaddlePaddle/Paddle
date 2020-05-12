@@ -38,7 +38,6 @@ class PassTest(unittest.TestCase):
         self.pass_attrs = {}
         self.fused_op_type = None
         self.num_fused_ops = -1
-        self.backward = True
 
         np.random.seed(123)
         random.seed(124)
@@ -49,7 +48,11 @@ class PassTest(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         return places
 
-    def append_gradinets(self, outs):
+    def grad(self, var):
+        grad_name = var.name + "@GRAD"
+        return self.main_program.global_block().var(grad_name)
+
+    def append_gradients(self, outs):
         with fluid.program_guard(self.main_program, self.startup_program):
             loss = fluid.layers.mean(outs)
             fluid.backward.append_backward(loss)

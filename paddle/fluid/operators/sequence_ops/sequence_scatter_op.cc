@@ -95,9 +95,9 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
     // Enforce LoD of ids and updates be the same
     if (ctx->IsRuntime()) {
       framework::Variable* ids_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Ids")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Ids")[0]);
       framework::Variable* updates_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Updates")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Updates")[0]);
 
       auto& ids_lod = ids_var->Get<LoDTensor>().lod();
       auto& updates_lod = updates_var->Get<LoDTensor>().lod();
@@ -157,7 +157,7 @@ class SequenceScatterGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceScatterGradNoNeedBufferVarsInference, "Updates");
 
 }  // namespace operators

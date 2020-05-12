@@ -471,34 +471,54 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ROIPerspectiveTransformOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("ROIs"),
-        "Input(ROIs) of ROIPerspectiveTransformOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
-        "Output(Out) of ROIPerspectiveTransformOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "roi_perspective_transform");
+    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs",
+                   "roi_perspective_transform");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Ountput", "Out",
+                   "roi_perspective_transform");
+
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
-    PADDLE_ENFORCE(input_dims.size() == 4,
-                   "The format of input tensor is NCHW.");
-    PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
-                   "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]");
-    PADDLE_ENFORCE(rois_dims[1] == 8,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
-                   "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...].");
+
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "The format of input tensor must be NCHW. But "
+                          "received input dims is %d.",
+                          input_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
+            "rois dims is %d",
+            rois_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        rois_dims[1], 8,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
+            rois_dims[1]));
+
     int transformed_height = ctx->Attrs().Get<int>("transformed_height");
     int transformed_width = ctx->Attrs().Get<int>("transformed_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
-    PADDLE_ENFORCE_GT(transformed_height, 0,
-                      "The transformed output height must greater than 0");
-    PADDLE_ENFORCE_GT(transformed_width, 0,
-                      "The transformed output width must greater than 0");
-    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      "The spatial scale must greater than 0");
+    PADDLE_ENFORCE_GT(
+        transformed_height, 0,
+        platform::errors::InvalidArgument("The transformed output height must "
+                                          "greater than 0. But received %d.",
+                                          transformed_height));
+    PADDLE_ENFORCE_GT(
+        transformed_width, 0,
+        platform::errors::InvalidArgument("The transformed output width must "
+                                          "greater than 0. But received %d.",
+                                          transformed_width));
+    PADDLE_ENFORCE_GT(
+        spatial_scale, 0.0f,
+        platform::errors::InvalidArgument(
+            "The spatial scale must greater than 0. But received %f.",
+            spatial_scale));
     std::vector<int64_t> out_dims_v({rois_dims[0],   // num_rois
                                      input_dims[1],  // channels
                                      static_cast<int64_t>(transformed_height),
@@ -536,10 +556,11 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@Grad", "roi_perspective_transform_grad");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
+                   "X@Grad", "roi_perspective_transform_grad");
+
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 

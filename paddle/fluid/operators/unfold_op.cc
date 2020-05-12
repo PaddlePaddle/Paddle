@@ -163,8 +163,7 @@ class UnfoldGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(UnfoldGradOpNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradOpNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

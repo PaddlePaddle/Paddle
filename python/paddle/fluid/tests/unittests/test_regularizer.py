@@ -230,6 +230,46 @@ class TestRegularizer(unittest.TestCase):
                     b=dense_sparse_p_sum[1][i],
                     rtol=5e-5)
 
+    def test_repeated_regularization(self):
+        l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
+        l2 = fluid.regularizer.L2Decay(regularization_coeff=0.01)
+        fc_param_attr = fluid.ParamAttr(regularizer=l1)
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            x = fluid.layers.uniform_random([2, 2, 3])
+            out = fluid.layers.fc(x, 5, param_attr=fc_param_attr)
+            loss = fluid.layers.reduce_sum(out)
+            sgd = fluid.optimizer.SGD(learning_rate=0.1, regularization=l2)
+            sgd.minimize(loss)
+        with fluid.dygraph.guard():
+            input = fluid.dygraph.to_variable(
+                np.random.randn(3, 5).astype('float32'))
+            fluid.default_main_program().random_seed = 1
+
+            linear1 = fluid.dygraph.Linear(
+                5, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+            linear2 = fluid.dygraph.Linear(
+                5, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr)
+
+            loss1 = linear1(input)
+            loss1.backward()
+            # set l2 regularizer in optimizer, but l1 in fluid.ParamAttr
+
+            fluid.optimizer.SGD(parameter_list=linear1.parameters(),
+                                learning_rate=1e-2,
+                                regularization=l2).minimize(loss1)
+            # only set l1 in fluid.ParamAttr
+            loss2 = linear2(input)
+            loss2.backward()
+            fluid.optimizer.SGD(parameter_list=linear2.parameters(),
+                                learning_rate=1e-2).minimize(loss2)
+            # they should both be applied by l1, and keep the same
+            self.assertTrue(
+                np.allclose(linear1.weight.numpy(), linear2.weight.numpy()),
+                "weight should use the regularization in fluid.ParamAttr!")
+            self.assertTrue(
+                np.allclose(linear1.bias.numpy(), linear2.bias.numpy()),
+                "bias should use the regularization in fluid.ParamAttr!")
+
 
 if __name__ == '__main__':
     unittest.main()

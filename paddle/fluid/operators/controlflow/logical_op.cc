@@ -79,10 +79,7 @@ class UnaryLogicalOp : public LogicalOp {
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of %s operator must not be null",
-                                   comment.type));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
@@ -96,10 +93,8 @@ class BinaryLogicalOp : public LogicalOp {
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
-                      "Input(X) of %s operator must not be null", comment.type);
-    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
-                      "Input(Y) of %s operator must not be null", comment.type);
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
@@ -107,10 +102,11 @@ class BinaryLogicalOp : public LogicalOp {
     int product_y = framework::product(dim_y);
     bool check = context->IsRuntime() || (product_x >= 0 && product_y >= 0);
     if (check) {
-      PADDLE_ENFORCE_EQ(
-          product_x, product_y,
-          "The number of elements in X and Y should be same, %d != %d",
-          product_x, product_y);
+      PADDLE_ENFORCE_EQ(product_x, product_y,
+                        platform::errors::InvalidArgument(
+                            "The number of elements in X and Y should be same, "
+                            "but received %d != %d",
+                            product_x, product_y));
     }
 
     context->SetOutputDim("Out", context->GetInputDim("X"));

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..wrapped_decorator import signature_safe_contextmanager
 import multiprocessing
 import os
 import six
@@ -31,6 +30,7 @@ from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 from ..transpiler.distribute_transpiler import DistributedMode
 import logging
+from ..data_feeder import check_dtype, check_type
 
 __all__ = [
     'data', 'read_file', 'double_buffer', 'py_reader',
@@ -73,7 +73,7 @@ def data(name,
     Args:
        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
-       shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
+       shape(list|tuple): Tuple declaring the shape. If :code:`append_batch_size` is
             True and there is no -1 inside :code:`shape`, it should be 
             considered as the shape of the each sample. Otherwise, it should
             be considered as the shape of the batched data.  
@@ -107,6 +107,10 @@ def data(name,
           data = fluid.layers.data(name='x', shape=[784], dtype='float32')
     """
     helper = LayerHelper('data', **locals())
+
+    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
     shape = list(shape)
     for i in six.moves.range(len(shape)):
         if shape[i] is None:
@@ -429,7 +433,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, False)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -917,4 +921,4 @@ def load(out, file_path, load_as_fp16=None):
     attrs = {"file_path": file_path}
     if load_as_fp16 is not None:
         attrs['load_as_fp16'] = load_as_fp16
-    helper.append_op(type="load", inputs={}, output={"Out": out}, attrs=attrs)
+    helper.append_op(type="load", inputs={}, outputs={"Out": out}, attrs=attrs)

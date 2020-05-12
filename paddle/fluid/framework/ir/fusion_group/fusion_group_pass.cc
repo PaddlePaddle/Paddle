@@ -33,6 +33,8 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     AddStatis(num_elementwise_groups);
+    LOG(INFO) << "Detect " << num_elementwise_groups
+              << " elementwise fusion groups.";
   }
 }
 
@@ -46,15 +48,20 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 
   int num_subgraphs = 0;
   size_t min_subgraph_size = 2;
-  bool save_intermediate_out = true;
+  bool save_intermediate_out = false;
   for (auto& vec : subgraphs) {
     fusion_group::SubGraph subgraph(
         type, "", save_intermediate_out,
         std::unordered_set<Node*>(vec.begin(), vec.end()));
     VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 
+    // In elementwise fused kernel, memory is the bound of execution,
+    // here we remove the output id to use less memory and less time.
+    if (subgraph.RemoveIntermediateOut()) {
+      subgraph.DetectIntermediateOutWithGraph(graph);
+    }
     if (subgraph.IsValid(min_subgraph_size)) {
-      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
+      subgraph.SetFuncName("FusedElementwise" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {
         InsertFusionGroupOp(graph, &subgraph);
         num_subgraphs++;
@@ -87,7 +94,7 @@ static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
   for (auto* n : subgraph->Nodes()) {
     if (n && n->IsOp() && n->Op()) {
       if (n->Op()->HasAttr(attr_name)) {
-        op_roles.insert(boost::get<int>(n->Op()->GetAttr(attr_name)));
+        op_roles.insert(BOOST_GET_CONST(int, n->Op()->GetAttr(attr_name)));
       }
     }
   }
@@ -104,6 +111,8 @@ void FusionGroupPass::InsertFusionGroupOp(
       subgraph->GetInputVarNodes();
   const std::vector<Node*>& output_vars_of_subgraph =
       subgraph->GetOutputVarNodes();
+  const std::vector<Node*> intermediate_vars_of_subgraph =
+      subgraph->GetIntermediateOutVarNodes();
   std::unordered_set<Node*> external_nodes;
 
   OpDesc op_desc;
@@ -120,9 +129,18 @@ void FusionGroupPass::InsertFusionGroupOp(
 
   std::vector<std::string> output_names;
   std::vector<std::string> outs_data_types;
+  std::vector<Node*> output_var_without_intermediate;
   for (auto* n : output_vars_of_subgraph) {
-    output_names.push_back(n->Name());
-    outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
+    auto it_input =
+        find(input_vars_of_subgraph.begin(), input_vars_of_subgraph.end(), n);
+    auto it_intermediate = find(intermediate_vars_of_subgraph.begin(),
+                                intermediate_vars_of_subgraph.end(), n);
+    if (it_intermediate == intermediate_vars_of_subgraph.end() &&
+        it_input == input_vars_of_subgraph.end()) {
+      output_names.push_back(n->Name());
+      outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
+      output_var_without_intermediate.push_back(n);
+    }
     external_nodes.insert(n);
   }
 
@@ -139,7 +157,7 @@ void FusionGroupPass::InsertFusionGroupOp(
     IR_NODE_LINK_TO(in, fusion_group_node);
   }
 
-  for (auto* out : output_vars_of_subgraph) {
+  for (auto* out : output_var_without_intermediate) {
     IR_NODE_LINK_TO(fusion_group_node, out);
   }
 

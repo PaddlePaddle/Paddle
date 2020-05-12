@@ -118,7 +118,10 @@ class RecurrentBase : public framework::OperatorBase {
                                      const std::vector<std::string> &dst_vars,
                                      Callback callback,
                                      bool is_backward = false) {
-    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size(),
+                      platform::errors::InvalidArgument(
+                          "Sizes of source vars and destination vars are not "
+                          "equal in LinkTensor."));
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
@@ -136,7 +139,10 @@ class RecurrentBase : public framework::OperatorBase {
                                      const std::vector<std::string> &dst_vars,
                                      Callback callback,
                                      bool is_backward = false) {
-    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size());
+    PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size(),
+                      platform::errors::InvalidArgument(
+                          "Sizes of source vars and destination vars are not "
+                          "equal in LinkTensor."));
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
@@ -159,7 +165,9 @@ class RecurrentBase : public framework::OperatorBase {
     if (is_backward && src_var == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_NOT_NULL(src_var, "%s is not found.", src_var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        src_var, platform::errors::NotFound("Source variable %s is not found.",
+                                            src_var_name));
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
 
     auto *dst_var = dst_scope->Var(dst_var_name);
@@ -178,9 +186,13 @@ class RecurrentBase : public framework::OperatorBase {
       return;
     }
     auto *src_var = src_scope.FindVar(src_var_name);
-    PADDLE_ENFORCE_NOT_NULL(src_var, "%s is not found.", src_var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        src_var, platform::errors::NotFound("Source variable %s is not found.",
+                                            src_var_name));
     auto &src_tensor = src_var->Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_NOT_NULL(dst_var, "%s is not found.", dst_var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        dst_var, platform::errors::NotFound(
+                     "Destination variable %s is not found.", src_var_name));
     auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
     callback(src_tensor, dst_tensor);
   }

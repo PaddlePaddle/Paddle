@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 
 
 class MyLayer(fluid.Layer):
@@ -66,7 +67,7 @@ class TestImperativeNamedParameters(unittest.TestCase):
             fc1 = fluid.Linear(10, 3)
             fc2 = fluid.Linear(3, 10, bias_attr=False)
             custom = MyLayer(3, 10)
-            model = fluid.dygraph.Sequential(fc1, fc2, custom)
+            model = paddle.imperative.Sequential(fc1, fc2, custom)
 
             named_parameters = list(model.named_parameters())
             expected_named_parameters = list()

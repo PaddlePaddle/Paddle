@@ -123,7 +123,7 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GatherGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

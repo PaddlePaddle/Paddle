@@ -199,7 +199,7 @@ class CropGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GropNoNeedBufferVarInference, "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GropNoNeedBufferVarInference, "Y");
 
 }  // namespace operators
 }  // namespace paddle

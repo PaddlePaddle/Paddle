@@ -21,7 +21,7 @@
 #include <unordered_map>
 #include <vector>
 #include "ThreadPool.h"
-#include "paddle/fluid/imperative/engine.h"
+#include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/platform/macros.h"
@@ -46,7 +46,7 @@ class Tracer {
 
  public:
   Tracer()
-      : engine_(new BasicEngine()),
+      : basic_engine_(new BasicEngine()),
         program_desc_tracer_(new jit::ProgramDescTracer()),
         generator_(new UniqueNameGenerator()) {
     expected_place_ = platform::CPUPlace();
@@ -64,8 +64,6 @@ class Tracer {
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
 
-  Engine* GetDefaultEngine() const { return engine_.get(); }
-
   void SetEnableProgramDescTracing(bool enabled) {
     enable_program_desc_tracing_ = enabled;
   }
@@ -82,32 +80,23 @@ class Tracer {
     return generator_->Generate(key);
   }
 
+  BasicEngine* GetEngine() const { return basic_engine_.get(); }
+
   platform::Place ExpectedPlace() const { return expected_place_; }
 
   void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
 
-  bool NoGrad() const { return no_grad_; }
+  bool HasGrad() const { return has_grad_; }
 
-  void SetNoGrad(bool no_grad) { no_grad_ = no_grad; }
-
- private:
-  void TraceBackward(const framework::OpInfo& info, const std::string& type,
-                     const NameVarBaseMap& ins, const NameVarBaseMap& outs,
-                     const framework::AttributeMap& attrs,
-                     const platform::Place& place);
-
-  static size_t GenerateUniqueId() {
-    static std::atomic<size_t> id{0};
-    return id.fetch_add(1);
-  }
+  void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
  private:
-  std::unique_ptr<Engine> engine_;
+  std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool no_grad_{false};
+  bool has_grad_{true};
 };
 
 // To access static variable current_tracer

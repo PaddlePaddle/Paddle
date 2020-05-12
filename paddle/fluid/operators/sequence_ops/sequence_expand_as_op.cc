@@ -42,9 +42,9 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Y")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
       auto& x_dim = x_var->Get<LoDTensor>().dims();
       auto& y_lod = y_var->Get<LoDTensor>().lod();
@@ -175,9 +175,9 @@ class SequenceExpandAsOpGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequenceExpandAsOpNoNeedBufferVarsInference, "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandAsOpNoNeedBufferVarsInference,
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceExpandAsGradOpNoNeedBufferVarsInference, "X", "Y");
 
 }  // namespace operators
