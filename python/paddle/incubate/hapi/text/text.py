@@ -472,7 +472,7 @@ class RNN(Layer):
 
             inputs = paddle.rand((2, 4, 32))
             cell = StackedLSTMCell(input_size=32, hidden_size=64)
-            rnn = RNN(cell=cell, inputs=inputs)
+            rnn = RNN(cell=cell)
             outputs, _ = rnn(inputs)  # [2, 4, 64]
     """
 
@@ -766,7 +766,7 @@ class StackedLSTMCell(RNNCell):
 
             inputs = paddle.rand((2, 4, 32))
             cell = StackedLSTMCell(input_size=32, hidden_size=64)
-            rnn = RNN(cell=cell, inputs=inputs)
+            rnn = RNN(cell=cell)
             outputs, _ = rnn(inputs)  # [2, 4, 64]
     """
 
@@ -996,7 +996,7 @@ class BidirectionalRNN(Layer):
         .. code-block:: python
 
             import paddle
-            from paddle.incubate.hapi.text import BasicLSTMCell, StackedRNNCell
+            from paddle.incubate.hapi.text import StackedLSTMCell, BidirectionalRNN
 
             inputs = paddle.rand((2, 4, 32))
             cell_fw = StackedLSTMCell(32, 64)
@@ -1357,11 +1357,11 @@ class StackedGRUCell(RNNCell):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import StackedLSTMCell, RNN
+            from paddle.incubate.hapi.text import StackedGRUCell, RNN
 
             inputs = paddle.rand((2, 4, 32))
             cell = StackedGRUCell(input_size=32, hidden_size=64)
-            rnn = RNN(cell=cell, inputs=inputs)
+            rnn = RNN(cell=cell)
             outputs, _ = rnn(inputs)  # [2, 4, 64]
     """
 
@@ -1497,7 +1497,7 @@ class GRU(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.incubate.hapi.text import LSTM
+            from paddle.incubate.hapi.text import GRU
 
             inputs = paddle.rand((2, 4, 32))
             gru = GRU(input_size=32, hidden_size=64, num_layers=2)
@@ -1620,7 +1620,7 @@ class BidirectionalGRU(Layer):
             from paddle.incubate.hapi.text import BidirectionalGRU
 
             inputs = paddle.rand((2, 4, 32))
-            gru = BidirectionalGRU(input_size=32, hidden_size=64, num_layers=2)
+            bi_gru = BidirectionalGRU(input_size=32, hidden_size=64, num_layers=2)
             outputs, _ = bi_gru(inputs)  # [2, 4, 128]
     """
 
@@ -1774,6 +1774,7 @@ class DynamicDecode(Layer):
 
             import paddle
             import paddle.fluid as fluid
+            from paddle.fluid.layers import BeamSearchDecoder
             from paddle.incubate.hapi.text import StackedLSTMCell, DynamicDecode
 
             vocab_size, d_model, = 100, 32
@@ -2685,7 +2686,7 @@ class MultiHeadAttention(Layer):
             query = paddle.rand((2, 4, 128))
             # self attention bias: [batch_size, n_head, src_len, src_len]
             attn_bias = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = MultiHeadAttention(64, 64, 2, 128)
+            multi_head_attn = MultiHeadAttention(64, 64, 128, n_head=2)
             output = multi_head_attn(query, attn_bias=attn_bias)  # [2, 4, 128]
     """
 
@@ -2968,8 +2969,8 @@ class TransformerEncoderLayer(Layer):
             enc_input = paddle.rand((2, 4, 128))
             # self attention bias: [batch_size, n_head, src_len, src_len]
             attn_bias = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(2, 2, 64, 64, 128, 512)
-            enc_output = encoder_layer(inputs, attn_bias)  # [2, 4, 128]
+            encoder_layer = TransformerEncoderLayer(2, 64, 64, 128, 512)
+            enc_output = encoder_layer(enc_input, attn_bias)  # [2, 4, 128]
     """
 
     def __init__(self,
@@ -3072,7 +3073,7 @@ class TransformerEncoder(Layer):
             # self attention bias: [batch_size, n_head, src_len, src_len]
             attn_bias = paddle.rand((2, 2, 4, 4))
             encoder = TransformerEncoder(2, 2, 64, 64, 128, 512)
-            enc_output = encoder(inputs, attn_bias)  # [2, 4, 128]
+            enc_output = encoder(enc_input, attn_bias)  # [2, 4, 128]
     """
 
     def __init__(self,
@@ -3528,6 +3529,7 @@ class LinearChainCRF(Layer):
 
         .. code-block:: python
 
+            import numpy as np
             import paddle
             import paddle.fluid as fluid
             from paddle.incubate.hapi.text import LinearChainCRF
@@ -3536,9 +3538,10 @@ class LinearChainCRF(Layer):
             emission = paddle.rand((2, 8, 5))
             # label: [batch_size, sequence_length, num_tags]
             # dummy label just for example usage
-            label = fluid.layers.ones((2, 8, 5), dtype='int64')  
+            label = paddle.ones((2, 8), dtype='int64')  
+            length = fluid.layers.assign(np.array([6, 8]).astype('int64'))
             crf = LinearChainCRF(size=5)
-            cost = crf(emission, label)  # [2, 1]
+            cost = crf(emission, label, length)  # [2, 1]
     """
 
     def __init__(self, size, param_attr=None, dtype='float32'):
@@ -3659,9 +3662,10 @@ class CRFDecoding(Layer):
             from paddle.incubate.hapi.text import CRFDecoding
 
             # emission: [batch_size, sequence_length, num_tags]
-            emission = paddle.rand((2, 8, 5)) 
+            emission = paddle.rand((2, 8, 5))
+            length = fluid.layers.assign(np.array([6, 8]).astype('int64'))
             crf_decoding = CRFDecoding(size=5)
-            cost = crf_decoding(emission)  # [2, 8]
+            cost = crf_decoding(emission, length)  # [2, 8]
     """
 
     def __init__(self, size, param_attr=None, dtype='float32'):
@@ -3827,7 +3831,8 @@ class SequenceTagging(Layer):
             from paddle.incubate.hapi.text import SequenceTagging
 
             # word: [batch_size, sequence_length]
-            word = fluid.layers.ones([2, 8])  # dummy input just for example
+            # dummy input just for example
+            word = paddle.ones((2, 8), dtype='int64')
             length = fluid.layers.assign(np.array([6, 8]).astype('int64'))
             seq_tagger = SequenceTagging(vocab_size=100, num_labels=5)
             outputs = seq_tagger(word, length)
