@@ -1173,7 +1173,7 @@ class OutScaleForTrainingPass(object):
                 data_type = 'float64' if in_node.dtype() \
                     == core.VarDesc.VarType.FP64 else 'float32'
                 _init_var_node(
-                    state_node,
+                    scale_node,
                     np.ones(
                         [1], dtype=data_type),
                     self._scope,
