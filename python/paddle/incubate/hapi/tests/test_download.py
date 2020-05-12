@@ -45,6 +45,18 @@ class TestDownload(unittest.TestCase):
             url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0t.pdparams'
             self.download(url, None)
 
+    def test_download_and_uncompress(self):
+        urls = [
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/files.zip",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_dir.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_dir.zip",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_file.tar",
+            "https://paddle-hapi.bj.bcebos.com/unittest/single_file.zip",
+        ]
+        for url in urls:
+            self.download(url, None)
+
 
 if __name__ == '__main__':
     unittest.main()
