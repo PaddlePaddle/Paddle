@@ -197,7 +197,6 @@ class NodeTestTransformer(gast.NodeTransformer):
                     node.values[i] = self._create_cast_node(child)
                 else:
                     node.values[i] = self._create_bool_node(child)
-                continue
         self.generic_visit(node)
         new_node = self._create_logic_node(node)
         return new_node
