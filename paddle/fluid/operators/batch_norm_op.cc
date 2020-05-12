@@ -60,12 +60,11 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
-    PADDLE_ENFORCE_EQ(
-        mom.size(), 1,
-        platform::errors::InvalidArgument(
-            "Input(MomentumTensor) size must be 1"
-            "But received: the size of Input(MomentumTensor) is [%d]",
-            mom.size()));
+    PADDLE_ENFORCE_EQ(mom.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "The input tensor MomentumTensor's size must be 1"
+                          "But received: MomentumTensor's size is [%d]",
+                          mom.size()));
   }
 
   PADDLE_ENFORCE_GE(
@@ -301,16 +300,18 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "The Input X dimension size should be larger than 1."
-                          "But received: the dimension size of Input X is [%d]",
-                          x_dims.size()));
-    PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                      platform::errors::InvalidArgument(
-                          "The Input X dimension size should be less than 6."
-                          "But received: the dimension size of Input X is [%d]",
-                          x_dims.size()));
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The size of input X's dimensions should be larger than 1."
+            "But received: the size of input X's dimensions is [%d]",
+            x_dims.size()));
+    PADDLE_ENFORCE_LE(
+        x_dims.size(), 5,
+        platform::errors::InvalidArgument(
+            "The size of input X's dimensions should be less than 6."
+            "But received: the size of input X's dimensionss is [%d]",
+            x_dims.size()));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -613,16 +614,18 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "The Input X dimension size should be larger than 1."
-                          "But received: the dimension size of Input X is [%d]",
-                          x_dims.size()));
-    PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                      platform::errors::InvalidArgument(
-                          "The Input X dimension size should be less than 6."
-                          "But received: the dimension size of Input X is [%d]",
-                          x_dims.size()));
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The size of input X's dimensions should be larger than 1."
+            "But received: the size of input X's dimensions is [%d]",
+            x_dims.size()));
+    PADDLE_ENFORCE_LE(
+        x_dims.size(), 5,
+        platform::errors::InvalidArgument(
+            "The size of input X's dimensions should be less than 6."
+            "But received: the size of input X's dimensions is [%d]",
+            x_dims.size()));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
