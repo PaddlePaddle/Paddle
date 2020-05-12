@@ -61,10 +61,10 @@ class UnfoldOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UnfoldOp should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"),
-                   "Output(Y) of UnfoldOp should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of UnfoldOp should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
+                      "Output(Y) of UnfoldOp should not be null");
     auto in_dims = ctx->GetInputDim("X");
     std::vector<int> kernel_sizes =
         ctx->Attrs().Get<std::vector<int>>("kernel_sizes");
@@ -74,12 +74,12 @@ class UnfoldOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<int>>("dilations");
 
     // Only [N, C, H, W] input supported now
-    PADDLE_ENFORCE(
-        in_dims.size() == 4,
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 4,
         "Input should be 4-D tensor of format [N, C, H, W], but get %u",
         in_dims.size());
-    PADDLE_ENFORCE(
-        in_dims.size() - kernel_sizes.size() == 2U,
+    PADDLE_ENFORCE_EQ(
+        in_dims.size() - kernel_sizes.size(), 2U,
         "The dims of X should be larger than that of kernel_sizes "
         "by a number of 2, due to the batch size and input channel dim. "
         "But recieved dims(X:%u) - dims(kernel_sizes:%u) != 2",
@@ -131,11 +131,12 @@ class UnfoldGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "The gradient of Y should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "The gradient of X should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
+                      "The gradient of Y should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "The input X should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      "The gradient of X should not be null");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
