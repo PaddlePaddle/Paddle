@@ -10000,7 +10000,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (Tuple[int] | List[int] | Tensor | TensorList): Shape of the generated random tensor.
+        shape (tuple[int] | list[int] | Variable | list(Variable)): Shape of the generated random tensor.
         
         mean (float): Mean of the random tensor, defaults to 0.0.
             
