@@ -105,6 +105,11 @@ def enable_imperative(place=None):
             import paddle.fluid as fluid
 
             fluid.enable_imperative()  # Now we are in imperative mode
+            x = fluid.layers.ones( (2, 2), "float32")
+            y = fluid.layers.zeros( (2, 2), "float32")
+            z = x + y
+            print( z.numpy() )   #[[1, 1], [1, 1]]
+
     """
     enable_dygraph(place)
 
@@ -122,6 +127,10 @@ def disable_imperative():
             import paddle.fluid as fluid
 
             fluid.enable_imperative()  # Now we are in imperative mode
+            x = fluid.layers.ones( (2, 2), "float32")
+            y = fluid.layers.zeros( (2, 2), "float32")
+            z = x + y
+            print( z.numpy() )   #[[1, 1], [1, 1]]
             fluid.disable_imperative() # Now we are in declarative mode
     """
     disable_dygraph()
