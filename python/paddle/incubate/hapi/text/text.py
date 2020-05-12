@@ -2219,7 +2219,7 @@ class CNNEncoder(Layer):
         return out
 
 
-class TransformerCell(Layer):
+class TransformerCell(RNNCell):
     """
     TransformerCell wraps a Transformer decoder producing logits from `inputs`
     composed by ids and position.
@@ -2242,9 +2242,13 @@ class TransformerCell(Layer):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.fluid.dygraph import Embedding
+            from paddle.fluid.dygraph import Embedding, Linear
+            from paddle.incubate.hapi.text import TransformerDecoder
             from paddle.incubate.hapi.text import TransformerCell
             from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
+            from paddle.incubate.hapi.text import DynamicDecode
+
+            paddle.enable_dygraph()
 
             class Embedder(fluid.dygraph.Layer):
                 def __init__(self):
@@ -2252,8 +2256,7 @@ class TransformerCell(Layer):
                     self.word_embedder = Embedding(size=[1000, 128])
                     self.pos_embedder = Embedding(size=[500, 128])
 
-                def forward(self, inputs):
-                    word, position = inputs
+                def forward(self, word, position):
                     return self.word_embedder(word) + self.pos_embedder(position)
 
             embedder = Embedder()
@@ -2263,18 +2266,18 @@ class TransformerCell(Layer):
             dynamic_decoder = DynamicDecode(
                 TransformerBeamSearchDecoder(
                     transformer_cell,
-                    bos_id=0,
-                    eos_id=1,
+                    start_token=0,
+                    end_token=1,
                     beam_size=4,
                     var_dim_in_state=2),
-                max_step_num,
+                max_step_num=10,
                 is_test=True)
             
-            enc_output = paddle.rand((2, 4, 64))
+            enc_output = paddle.rand((2, 4, 128))
             # cross attention bias: [batch_size, n_head, trg_len, src_len]
             trg_src_attn_bias = paddle.rand((2, 2, 1, 4))
             # inputs for beam search on Transformer
-            states = cell.get_initial_states(encoder_output)
+            caches = transformer_cell.get_initial_states(enc_output)
             enc_output = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
                 enc_output, beam_size=4)
             trg_src_attn_bias = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
@@ -2382,7 +2385,7 @@ class TransformerCell(Layer):
         return [{
             "k": [self.decoder.n_head, 0, self.decoder.d_key],
             "v": [self.decoder.n_head, 0, self.decoder.d_value],
-        } for i in range(len(self.decoder.n_layer))]
+        } for i in range(self.decoder.n_layer)]
 
 
 class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
@@ -2406,17 +2409,21 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
 
             import paddle
             import paddle.fluid as fluid
-            from paddle.fluid.dygraph import Embedding
+            from paddle.fluid.dygraph import Embedding, Linear
+            from paddle.incubate.hapi.text import TransformerDecoder
             from paddle.incubate.hapi.text import TransformerCell
             from paddle.incubate.hapi.text import TransformerBeamSearchDecoder
+            from paddle.incubate.hapi.text import DynamicDecode
+
+            paddle.enable_dygraph()
 
             class Embedder(fluid.dygraph.Layer):
                 def __init__(self):
+                    super(Embedder, self).__init__()
                     self.word_embedder = Embedding(size=[1000, 128])
                     self.pos_embedder = Embedding(size=[500, 128])
 
-                def forward(self, inputs):
-                    word, position = inputs
+                def forward(self, word, position):
                     return self.word_embedder(word) + self.pos_embedder(position)
 
             embedder = Embedder()
@@ -2426,18 +2433,18 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
             dynamic_decoder = DynamicDecode(
                 TransformerBeamSearchDecoder(
                     transformer_cell,
-                    bos_id=0,
-                    eos_id=1,
+                    start_token=0,
+                    end_token=1,
                     beam_size=4,
                     var_dim_in_state=2),
-                max_step_num,
+                max_step_num=10,
                 is_test=True)
             
             enc_output = paddle.rand((2, 4, 128))
             # cross attention bias: [batch_size, n_head, trg_len, src_len]
             trg_src_attn_bias = paddle.rand((2, 2, 1, 4))
             # inputs for beam search on Transformer
-            states = cell.get_initial_states(encoder_output)
+            caches = transformer_cell.get_initial_states(enc_output)
             enc_output = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
                 enc_output, beam_size=4)
             trg_src_attn_bias = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
