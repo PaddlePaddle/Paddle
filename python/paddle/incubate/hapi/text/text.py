@@ -220,6 +220,19 @@ class BasicLSTMCell(RNNCell):
         forget_bias(float, optional): forget bias used when computing forget gate.
             Default 1.0
         dtype(string, optional): The data type used in this cell. Default float32.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            from paddle.incubate.hapi.text import BasicLSTMCell, RNN
+
+            inputs = paddle.rand((2, 4, 32))
+            cell = BasicLSTMCell(input_size=32, hidden_size=64)
+            rnn = RNN(cell=cell)
+            outputs, _ = rnn(inputs)  # [2, 4, 64]
     """
 
     def __init__(self,
@@ -337,6 +350,19 @@ class BasicGRUCell(RNNCell):
             GRU, that is :math:`act_c` in the formula. Default: None,
             representing for 'fluid.layers.tanh'.
         dtype(string, optional): The data type used in this cell. Default float32.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            from paddle.incubate.hapi.text import BasicGRUCell, RNN
+
+            inputs = paddle.rand((2, 4, 32))
+            cell = BasicGRUCell(input_size=32, hidden_size=64)
+            rnn = RNN(cell=cell)
+            outputs, _ = rnn(inputs)  # [2, 4, 64]
     """
 
     def __init__(self,
@@ -1782,7 +1808,7 @@ class DynamicDecode(Layer):
             trg_embeder = fluid.dygraph.Embedding(size=[vocab_size, d_model])
             output_layer = fluid.dygraph.Linear(d_model, vocab_size)
             cell = StackedLSTMCell(input_size=d_model, hidden_size=d_model)
-            decoder = BeamSearchDecoder(decoder_cell,
+            decoder = BeamSearchDecoder(cell,
                                         start_token=0,
                                         end_token=1,
                                         beam_size=4,
@@ -3657,6 +3683,7 @@ class CRFDecoding(Layer):
 
         .. code-block:: python
 
+            import numpy as np
             import paddle
             import paddle.fluid as fluid
             from paddle.incubate.hapi.text import CRFDecoding
