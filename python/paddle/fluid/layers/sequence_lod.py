@@ -17,6 +17,8 @@ from __future__ import print_function
 from .layer_function_generator import templatedoc
 from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..core import VarDesc
 
 __all__ = [
     'sequence_conv',
@@ -405,6 +407,13 @@ def sequence_concat(input, name=None):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_concat', **locals())
+
+    check_type(input, 'input', list, 'fluid.layers.sequence_concat')
+    for i, input_x in enumerate(input):
+        check_variable_and_dtype(input_x, 'input[' + str(i) + ']',
+                                 ['int64', 'float32', 'float64'],
+                                 'fluid.layers.sequence_concat')
+
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
@@ -460,6 +469,10 @@ def sequence_first_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
+    check_variable_and_dtype(input, 'input',
+                             ['float32'],
+                             'sequence_first_step')
+    check_type(input, 'input', Variable,'sequence_first_step')
     return sequence_pool(input=input, pool_type="first")
 
 
@@ -513,6 +526,10 @@ def sequence_last_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
+    check_variable_and_dtype(input, 'input',
+                             ['float32'],
+                             'sequence_last_step')
+    check_type(input, 'input', Variable, 'sequence_last_step')
     return sequence_pool(input=input, pool_type="last")
 
 
@@ -926,9 +943,14 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_pad', input=x, **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'fluid.layers.sequence_pad')
+    check_variable_and_dtype(pad_value, 'pad_value',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'fluid.layers.sequence_pad')
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
-    length = helper.create_variable_for_type_inference(dtype)
+    length = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
 
     pad_value.stop_gradient = True
     length.stop_gradient = True
@@ -1001,6 +1023,10 @@ def sequence_unpad(x, length, name=None):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_unpad', input=x, **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'fluid.layers.sequence_unpad')
+    check_variable_and_dtype(length, 'length', ['int64'],
+                             'fluid.layers.sequence_unpad')
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
 
@@ -1062,6 +1088,9 @@ def sequence_reshape(input, new_dim):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_reshape', **locals())
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'fluid.layers.sequence_reshape')
     out = helper.create_variable_for_type_inference(helper.input_dtype())
     helper.append_op(
         type='sequence_reshape',
@@ -1270,6 +1299,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     """
     helper = LayerHelper('sequence_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
+    check_variable_and_dtype(x, 'x',
+                             ['int64'], 'sequence_mask')
+    check_type(x, 'x', Variable, 'sequence_mask')
+    check_dtype(dtype, 'dtype', ['int64'], 'sequence_mask')
 
     inputs = {'X': [x]}
     attrs = {'out_dtype': out.dtype}
@@ -1334,6 +1367,9 @@ def sequence_reverse(x, name=None):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper("sequence_reverse", **locals())
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'int8', 'int32', 'int64'],
+                             'fluid.layers.sequence_reverse')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
