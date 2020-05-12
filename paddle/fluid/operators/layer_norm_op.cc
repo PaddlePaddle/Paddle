@@ -180,7 +180,8 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
     if (var == nullptr) {
-      PADDLE_THROW(platform::errors::NotFound("can't find Y@GRAD"));
+      PADDLE_THROW(
+          platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found"));
     }
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
@@ -189,7 +190,8 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
       t = &var->Get<LoDTensor>();
     }
     if (t == nullptr) {
-      PADDLE_THROW(platform::errors::NotFound("can't find Y@GRAD"));
+      PADDLE_THROW(
+          platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found"));
     }
     return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
