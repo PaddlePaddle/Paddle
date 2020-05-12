@@ -13799,6 +13799,8 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     helper = LayerHelper("unfold", **locals())
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
+
     assert len(x.shape) == 4, \
             "input should be the format of [N, C, H, W]"
 
