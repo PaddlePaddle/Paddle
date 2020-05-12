@@ -229,7 +229,7 @@ class LSTMCell(Layer):
                 elementwise_mul(pre_cell,
                                 self._gate_activation(
                                     elementwise_add(f, self._forget_bias))),
-                elementwise_mul(sigmoid(i), tanh(j)))
+                elementwise_mul(self._gate_activation(i), self._activation(j)))
             new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
         return new_hidden, new_cell
