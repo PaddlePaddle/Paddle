@@ -10641,6 +10641,11 @@ def shape(input):
 
 def rank(input):
     """
+    ..api_attr:imperative
+    ..alias_main::paddle.rank
+    ..alias::paddle.rank,paddle.tensor.rank,paddle.tensor.attribute.rank
+    ..old_api::paddle.fluid.layers.rank
+
     The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
 
     Args:
