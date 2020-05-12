@@ -64,10 +64,10 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet50(self):
         self.models_infer('resnet50')
 
-    def test_resbet101(self):
+    def test_resnet101(self):
         self.models_infer('resnet101')
 
-    def test_resbet152(self):
+    def test_resnet152(self):
         self.models_infer('resnet152')
 
     def test_darknet53(self):
