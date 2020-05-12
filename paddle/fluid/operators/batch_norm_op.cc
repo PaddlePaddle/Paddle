@@ -60,9 +60,12 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
-    PADDLE_ENFORCE_EQ(mom.size(), 1,
-                      platform::errors::InvalidArgument(
-                          "Input(MomentumTensor) size must be 1"));
+    PADDLE_ENFORCE_EQ(
+        mom.size(), 1,
+        platform::errors::InvalidArgument(
+            "Input(MomentumTensor) size must be 1"
+            "But received: the size of Input(MomentumTensor) is [%d]",
+            mom.size()));
   }
 
   PADDLE_ENFORCE_GE(
@@ -300,10 +303,14 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       platform::errors::InvalidArgument(
-                          "The Input X dim size should be larger than 1."));
+                          "The Input X dimension size should be larger than 1."
+                          "But received: the dimension size of Input X is [%d]",
+                          x_dims.size()));
     PADDLE_ENFORCE_LE(x_dims.size(), 5,
                       platform::errors::InvalidArgument(
-                          "The Input X dim size should be less than 6."));
+                          "The Input X dimension size should be less than 6."
+                          "But received: the dimension size of Input X is [%d]",
+                          x_dims.size()));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -608,10 +615,14 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       platform::errors::InvalidArgument(
-                          "The Input X dim size should be larger than 1."));
+                          "The Input X dimension size should be larger than 1."
+                          "But received: the dimension size of Input X is [%d]",
+                          x_dims.size()));
     PADDLE_ENFORCE_LE(x_dims.size(), 5,
                       platform::errors::InvalidArgument(
-                          "The Input X dim size should be less than 6."));
+                          "The Input X dimension size should be less than 6."
+                          "But received: the dimension size of Input X is [%d]",
+                          x_dims.size()));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
