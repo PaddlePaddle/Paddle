@@ -70,9 +70,6 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
-    def test_darknet53(self):
-        self.models_infer('darknet53')
-
     def test_lenet(self):
         lenet = models.__dict__['LeNet']()
 
