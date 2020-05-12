@@ -3728,11 +3728,12 @@ def is_empty(x, cond=None):
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')
     check_type(cond, 'cond', (Variable, type(None)), 'is_empty')
-    check_dtype(cond.dtype, 'cond', ['bool'], 'is_empty')
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
+    else:
+        check_dtype(cond.dtype, 'cond', ['bool'], 'is_empty')
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
     return cond
