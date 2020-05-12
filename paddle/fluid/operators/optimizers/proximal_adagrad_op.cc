@@ -28,7 +28,7 @@ class ProximalAdagradOp : public framework::OperatorWithKernel {
                    "ProximalAdagradOp");
     OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment",
                    "ProximalAdagradOp")
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "ProximalAdagradOp")
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "ProximalAdagradOp");
     OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
                    "ProximalAdagradOp");
 
