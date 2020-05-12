@@ -52,6 +52,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     const std::string op_type = "gaussian_random";
     auto shape = GetShape(context, op_type);
+    tensor->Resize(shape);
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     int64_t size = tensor->numel();
