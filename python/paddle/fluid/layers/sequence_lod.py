@@ -560,7 +560,7 @@ def sequence_slice(input, offset, length, name=None):
 
     Args:
         input(Variable): LoDTensor, The input Variable which consists of the complete
-                         sequences.The data type is float32 or float64.
+                         sequences.The data type can be float32, float64, int32 or int64
         offset(Variable): LoDTensor, The offset to slice each sequence. The data
                          type is int32 or int64.
         length(Variable): LoDTensor, The length of each subsequence. The data
@@ -1146,7 +1146,7 @@ def sequence_scatter(input, index, updates, name=None):
 
     Args:
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
-        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
+        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type can be int32 or int64.
         updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
                             same data type  with the input. Supported data types: float32, float64, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
@@ -1174,7 +1174,8 @@ def sequence_scatter(input, index, updates, name=None):
     check_variable_and_dtype(input, 'input',
                              ['float32', 'float64', 'int32', 'int64'],
                              'sequence_scatter')
-    check_variable_and_dtype(index, 'index', ['int64'], 'sequence_scatter')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'sequence_scatter')
     check_variable_and_dtype(updates, 'updates',
                              ['float32', 'float64', 'int32', 'int64'],
                              'sequence_scatter')

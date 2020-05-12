@@ -10515,14 +10515,13 @@ def strided_slice(input, axes, starts, ends, strides):
 
     def check_list_elements_dtype(list_input, input_name):
         if isinstance(list_input, Variable):
-            check_dtype(list_input, input_name, ['int32'], 'strided_slice')
+            check_dtype(list_input.dtype, input_name, ['int32'],
+                        'strided_slice')
         else:
             for i, var in enumerate(list_input):
                 var_name = input_name + '[' + str(i) + ']'
                 if isinstance(var, Variable):
-                    check_dtype(var, var_name, ['int32'], 'strided_slice')
-                else:
-                    check_type(var, var_name, int, 'strided_slice')
+                    check_dtype(var.dtype, var_name, ['int32'], 'strided_slice')
 
     check_list_elements_dtype(axes, 'axes')
     check_list_elements_dtype(starts, 'starts')
