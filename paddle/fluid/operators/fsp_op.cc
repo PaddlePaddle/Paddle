@@ -106,7 +106,7 @@ class FSPOpGrad : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fsp_grad");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "fsp_grad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "fsp_grad");
+                   framework::GradVarName("Out"), "fsp_grad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
