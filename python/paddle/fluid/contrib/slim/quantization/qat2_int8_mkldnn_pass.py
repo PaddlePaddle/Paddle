@@ -36,7 +36,7 @@ class Qat2Int8MkldnnPass(object):
     """
 
     def __init__(self,
-                 _quantized_ops,
+                 _ops_to_quantize,
                  _scope=None,
                  _place=None,
                  _core=None,
@@ -53,7 +53,7 @@ class Qat2Int8MkldnnPass(object):
         self._fake_dequantize_types = [
             'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
         ]
-        self._quantized_ops = _quantized_ops
+        self._ops_to_quantize = _ops_to_quantize
         self._scale_immutable_ops = [
             'transpose2', 'reshape2', 'pool2d', 'scale'
         ]
@@ -101,10 +101,11 @@ class Qat2Int8MkldnnPass(object):
         return tensor
 
     def _is_conv_quantized(self):
-        return any(op_type in self._quantized_ops for op_type in self._conv_ops)
+        return any(op_type in self._ops_to_quantize
+                   for op_type in self._conv_ops)
 
     def _is_fc_quantized(self):
-        return 'fc' in self._quantized_ops
+        return 'fc' in self._ops_to_quantize
 
     def _gather_input_scales_from_fake(self, graph):
         def _add_scale_for_vars(var_names, use_unsigned_int, lod_tensor):
@@ -238,27 +239,13 @@ class Qat2Int8MkldnnPass(object):
         return np.array(scope.find_var(param_name).get_tensor())
 
     def _remove_fake_ops(self, graph):
-        '''
-        When FC isn't quantized:
-        Remove fake (de)quantize ops that do not surround mul.
-        When FC is quantized:
-        Remove all fake (de)quantize ops.
-        '''
-        is_fc_quantized = self._is_fc_quantized()
         for op in graph.all_op_nodes():
             if op.name() in self._fake_quantize_types:
-                op_out = graph._find_node_by_name(op.outputs,
-                                                  op.output("Out")[0])
-                next_op = op_out.outputs[0]
-                if next_op.name() not in self._mul_ops or is_fc_quantized:
-                    self._remove_fake_quantize(graph, op)
+                self._remove_fake_quantize(graph, op)
 
         for op in graph.all_op_nodes():
             if op.name() in self._fake_dequantize_types:
-                op_in = graph._find_node_by_name(op.inputs, op.input("X")[0])
-                prev_op = op_in.inputs[0]
-                if prev_op.name() not in self._mul_ops or is_fc_quantized:
-                    self._remove_fake_dequantize(graph, op)
+                self._remove_fake_dequantize(graph, op)
 
         return graph
 
@@ -305,7 +292,7 @@ class Qat2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.name() in self._conv_ops:
                 self._dequantize_op_weights(graph, op, "Filter", "Output")
-            elif self._is_fc_quantized() and op.name() in self._mul_ops:
+            elif op.name() in self._mul_ops:
                 self._dequantize_op_weights(graph, op, "Y", "Out")
         return graph
 
@@ -357,19 +344,16 @@ class Qat2Int8MkldnnPass(object):
         graph = self._remove_ctrl_vars(graph)
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
-        if self._is_conv_quantized():
-            graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
-            graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
-            graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
-            graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
-            graph = self._apply_pass(graph,
-                                     'conv_elementwise_add_mkldnn_fuse_pass')
-            graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
-            graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
-        if self._is_fc_quantized():
-            graph = self._apply_pass(graph, 'fc_fuse_pass',
-                                     ['use_gpu', 'use_fc_padding'],
-                                     [False, False])
+        graph = self._apply_pass(graph, 'depthwise_conv_mkldnn_pass')
+        graph = self._apply_pass(graph, 'conv_bn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_eltwiseadd_bn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_bias_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_elementwise_add_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
+        graph = self._apply_pass(graph, 'fc_fuse_pass',
+                                 ['use_gpu', 'use_fc_padding'], [False, False])
+        if self._is_fc_quantized:
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
         graph = self._apply_pass(graph, 'matmul_transpose_reshape_fuse_pass')
         return graph
@@ -492,7 +476,7 @@ class Qat2Int8MkldnnPass(object):
     def _quantize_fp32_graph(self, graph):
         ir_pass = self._core.get_pass('cpu_quantize_placement_pass')
         cpp_graph = graph.graph
-        ir_pass.set('quantize_enabled_op_types', self._quantized_ops)
+        ir_pass.set('quantize_enabled_op_types', self._ops_to_quantize)
         ir_pass.set('quantize_excluded_op_ids',
                     self._find_avg_pooling_ids(graph))
         ir_pass.apply(cpp_graph)

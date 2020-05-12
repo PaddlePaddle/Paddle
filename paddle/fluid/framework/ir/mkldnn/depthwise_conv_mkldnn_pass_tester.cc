@@ -95,12 +95,12 @@ TEST(DepthwiseConvMKLDNNPass, basic) {
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->Type() == "conv2d") {
-        if (boost::get<bool>(op->GetAttr("use_mkldnn")))
+        if (BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))
           after.mkldnn_conv_nodes++;
         else
           after.other_conv_nodes++;
       } else if (op->Type() == "depthwise_conv2d") {
-        if (boost::get<bool>(op->GetAttr("use_mkldnn")))
+        if (BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))
           after.mkldnn_depthwise_conv_nodes++;
         else
           after.other_depthwise_conv_nodes++;

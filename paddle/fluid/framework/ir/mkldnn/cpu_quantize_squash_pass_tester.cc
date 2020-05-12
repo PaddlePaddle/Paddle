@@ -386,8 +386,8 @@ void EqualScaleTest(const ProgramDesc& prog, const std::string& op_name,
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() &&
-        boost::get<std::string>(node->Op()->GetAttr("name")) == op_name) {
-      float op_scale = boost::get<float>(node->Op()->GetAttr(scale_name));
+        BOOST_GET_CONST(std::string, node->Op()->GetAttr("name")) == op_name) {
+      float op_scale = BOOST_GET_CONST(float, node->Op()->GetAttr(scale_name));
       EXPECT_EQ(op_scale, scale);
     }
   }
@@ -403,9 +403,11 @@ void CheckRequantScalesTest(const ProgramDesc& prog, float scale_in,
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "requantize") {
-      float op_scale_in = boost::get<float>(node->Op()->GetAttr("Scale_in"));
+      float op_scale_in =
+          BOOST_GET_CONST(float, node->Op()->GetAttr("Scale_in"));
       EXPECT_EQ(op_scale_in, scale_in);
-      float op_scale_out = boost::get<float>(node->Op()->GetAttr("Scale_out"));
+      float op_scale_out =
+          BOOST_GET_CONST(float, node->Op()->GetAttr("Scale_out"));
       EXPECT_EQ(op_scale_out, scale_out);
     }
   }
