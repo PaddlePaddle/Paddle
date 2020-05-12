@@ -159,6 +159,21 @@ class SparseVariable {
     return meta_.cached_varnames;
   }
 
+  void Save() { Save(meta_.value_names); }
+
+  void Save(const std::vector<std::string> &value_names) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    for (auto value : value_names) {
+      auto it = std::find(value_names.begin(), value_names.end(), value);
+
+      if (it == value_names.end()) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "[%s] is invalid param for [%s]", value, meta_.name));
+      }
+    }
+  }
+
   int64_t Size() { return static_cast<int64_t>(values_.size()); }
 
  private:
