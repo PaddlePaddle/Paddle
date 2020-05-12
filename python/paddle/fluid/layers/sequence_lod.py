@@ -560,11 +560,11 @@ def sequence_slice(input, offset, length, name=None):
 
     Args:
         input(Variable): LoDTensor, The input Variable which consists of the complete
-                         sequences.The data type can be float32, float64, int32 or int64.
+                         sequences.The data type is float32 or float64.
         offset(Variable): LoDTensor, The offset to slice each sequence. The data
-                         type is int64.
+                         type is int32 or int64.
         length(Variable): LoDTensor, The length of each subsequence. The data
-                         type is int64.
+                         type is int32 or int64.
         name(str|None): The default value is None.  Normally there is no need
                         for user to set this property.  For more information,
                         please refer to :ref:`api_guide_Name`
@@ -592,8 +592,10 @@ def sequence_slice(input, offset, length, name=None):
     check_variable_and_dtype(input, 'input',
                              ['float32', 'float64', 'int32', 'int64'],
                              'sequence_slice')
-    check_variable_and_dtype(offset, 'offset', ['int64'], 'sequence_slice')
-    check_variable_and_dtype(length, 'length', ['int64'], 'sequence_slice')
+    check_variable_and_dtype(offset, 'offset', ['int32', 'int64'],
+                             'sequence_slice')
+    check_variable_and_dtype(length, 'length', ['int32', 'int64'],
+                             'sequence_slice')
 
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)

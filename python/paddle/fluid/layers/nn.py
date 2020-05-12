@@ -10512,12 +10512,22 @@ def strided_slice(input, axes, starts, ends, strides):
     check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
     check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
     check_type(strides, 'strides', (list, tuple, Variable), 'strided_slice')
-    if isinstance(starts, Variable):
-        check_dtype(starts, 'starts', ['int32'], 'strided_slice')
-    if isinstance(ends, Variable):
-        check_dtype(ends, 'ends', ['int32'], 'strided_slice')
-    if isinstance(strides, Variable):
-        check_dtype(strides, 'strides', ['int32'], 'strided_slice')
+
+    def check_list_elements_dtype(list_input, input_name):
+        if isinstance(list_input, Variable):
+            check_dtype(list_input, input_name, ['int32'], 'strided_slice')
+        else:
+            for i, var in enumerate(list_input):
+                var_name = input_name + '[' + str(i) + ']'
+                if isinstance(var, Variable):
+                    check_dtype(var, var_name, ['int32'], 'strided_slice')
+                else:
+                    check_type(var, var_name, int, 'strided_slice')
+
+    check_list_elements_dtype(axes, 'axes')
+    check_list_elements_dtype(starts, 'starts')
+    check_list_elements_dtype(ends, 'ends')
+    check_list_elements_dtype(strides, 'strides')
 
     def get_new_list_tensor(old_list):
         new_list_tensor = []
