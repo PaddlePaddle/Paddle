@@ -95,6 +95,7 @@ __all__ = [
     'dice_loss',
     'image_resize',
     'image_resize_short',
+    'resize_linear',
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
@@ -186,6 +187,7 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
+    'unbind',
 ]
 
 
@@ -983,12 +985,11 @@ def dropout(x,
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        seed = seed if seed is not None else 0
         _is_test = not _dygraph_tracer()._train_mode
-        out, mask = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
-                                     _is_test, 'fix_seed', seed is not None,
-                                     'seed', seed, 'dropout_implementation',
-                                     dropout_implementation)
+        out, mask = core.ops.dropout(
+            x, 'dropout_prob', dropout_prob, 'is_test', _is_test, 'fix_seed',
+            seed is not None, 'seed', seed if seed is not None else 0,
+            'dropout_implementation', dropout_implementation)
         return out
 
     helper = LayerHelper('dropout', **locals())
@@ -1138,7 +1139,7 @@ def chunk_eval(input,
 
     this_input = {"Inference": [input], "Label": [label]}
 
-    if seq_length:
+    if seq_length is not None:
         this_input["SeqLength"] = [seq_length]
 
     helper.append_op(
@@ -3406,6 +3407,8 @@ def layer_norm(input,
     assert in_dygraph_mode(
     ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'layer_norm')
     dtype = helper.input_dtype()
 
     # create intput and parameters
@@ -3510,7 +3513,8 @@ def group_norm(input,
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
-
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'group_norm')
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
@@ -5528,6 +5532,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
     dtype = helper.input_dtype()
     filter_shape = [future_context_size + 1, input.shape[-1]]
     filter_param = helper.create_parameter(
@@ -5948,20 +5953,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
             )
-        attrs = {}
         if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-            attrs['shape'] = shape
-        else:
-            raise TypeError(
-                "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        out, _ = core.ops.reshape2(x, 'shape', shape)
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+            shape = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in shape
+            ]
+            out, _ = core.ops.reshape2(x, 'shape', shape)
+            return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
@@ -6268,8 +6266,7 @@ def lod_reset(x, y=None, target_lod=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
         check_type(y, 'y', (Variable), 'lod_reset')
-        if y.lod_level == 0:
-            check_variable_and_dtype(y, 'y', ['int32'], 'lod_reset')
+        #TODO: check y.lod_level = 0 dtype
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6340,8 +6337,7 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
-        if level.lod_level == 0:
-            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
+        #TODO: check y.lod_level = 0 dtype
     else:
         attrs['target_lod'] = level
     helper.append_op(
@@ -6894,7 +6890,8 @@ def image_resize(input,
     """
     This op resizes a batch of images.
 
-    The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
+    The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
+    or a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels),
     and the resizing only applies on the three dimensions(depth, height and width).
@@ -6903,13 +6900,17 @@ def image_resize(input,
     future and only use :attr:`out_shape` instead.
 
     Supporting resample methods:
+        'LINEAR' : Linear interpolation 
 
         'BILINEAR' : Bilinear interpolation
 
         'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
-
+    
+    Linear interpolation is the method of using a line connecting two known quantities 
+    to determine the value of an unknown quantity between the two known quantities.
+    
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -6962,6 +6963,23 @@ def image_resize(input,
 
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
+
+        linear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
+
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,W_in)
+              output: (N,C,H_out,W_out) where:
+
+              W_out = W_{in} * scale_{factor}
 
         Bilinear interpolation:
 
@@ -7066,15 +7084,17 @@ def image_resize(input,
         TypeError: actual_shape should either be Variable or None.
         ValueError: The 'resample' of image_resize can only be 'BILINEAR',
                     'TRILINEAR' or 'NEAREST' currently.
+        ValueError: 'LINEAR' only support 3-D tensor.
         ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
         ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
+        ValueError: out_shape length should be 1 for input 3-D tensor.
         ValueError: out_shape length should be 2 for input 4-D tensor.
         ValueError: out_shape length should be 3 for input 5-D tensor.
         ValueError: scale should be greater than zero.
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+        ValueError: data_format can only be 'NCW', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -7139,19 +7159,24 @@ def image_resize(input,
 
     """
     resample_methods = {
+        'LINEAR': 'linear',
         'BILINEAR': 'bilinear',
         'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
+        'LINEAR': 'linear',
     }
+    resample = resample.upper()
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR' "
+            "The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR', 'TRILINEAR' "
             "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
 
-    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+    if resample == 'LINEAR' and len(input.shape) != 3:
+        raise ValueError("'LINER only support 3-D tensor.")
+    elif resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
         raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
-    if resample == 'TRILINEAR' and len(input.shape) != 5:
+    elif resample == 'TRILINEAR' and len(input.shape) != 5:
         raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
     if not isinstance(align_corners, bool):
@@ -7164,7 +7189,11 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+    if len(input.shape) == 3 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 3-D input.")
+    elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCHW` or `NHWC` supported for 4-D input.")
@@ -7228,7 +7257,16 @@ def image_resize(input,
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
 
-            if len(input.shape) == 4:
+            if len(input.shape) == 3:
+                if len(out_shape) != 1:
+                    raise ValueError("out_shape length should be 1 for "
+                                     "input 3-D tensor.")
+                if contain_var:
+                    attrs['out_w'] = size_list[0]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_w'] = out_shape[0]
+            elif len(input.shape) == 4:
                 if len(out_shape) != 2:
                     raise ValueError("out_shape length should be 2 for "
                                      "input 4-D tensor.")
@@ -7274,7 +7312,6 @@ def image_resize(input,
         inputs["OutSize"] = actual_shape
     elif actual_shape is not None:
         raise TypeError("actual_shape should either be Variable or None.")
-
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='{}_interp'.format(resample_type),
@@ -7282,6 +7319,132 @@ def image_resize(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
+
+@templatedoc(op_type="linear_interp")
+def resize_linear(input,
+                  out_shape=None,
+                  scale=None,
+                  name=None,
+                  actual_shape=None,
+                  align_corners=True,
+                  align_mode=1,
+                  data_format='NCHW'):
+    """
+    This op resizes the input by performing linear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
+    in priority order.
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in 
+    the future and only use :attr:`out_shape` instead.
+
+    Align_corners and align_mode are optional parameters,the calculation 
+    method of interpolation can be selected by them.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+          
+            if align_corners = True && out_size > 1 :
+
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+
+        Linear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
+              
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
+              W_out = W_{in} * scale_{factor}
+
+    Parameters:
+        input(Variable): 3-D Tensor(NCHW), its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize linear
+            layer, the shape is (out_w,). Default: None. If a list, each 
+            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             Default: None.
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occurred in graph constructing stage.
+                                Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+	Variable: 3-D tensor(NCHW or NHWC).
+    
+    Examples:
+        .. code-block:: python
+	
+	    #declarative mode
+	    import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[None,3,100])
+
+	    output = fluid.layers.resize_linear(input=input,out_shape=[50,])
+
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+ 
+	    input_data = np.random.rand(1,3,100).astype("float32")
+
+	    output_data = exe.run(fluid.default_main_program(),
+                feed={"input":input_data},
+                fetch_list=[output],
+                return_numpy=True)
+ 
+	    print(output_data[0].shape)
+
+	    # (1, 3, 50)
+
+	    #imperative mode
+	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		output = fluid.layers.resize_linear(input=input, out_shape=[50,])
+    		print(output.shape)
+
+		# [1L, 3L, 50L]
+
+    """
+
+    return image_resize(input, out_shape, scale, name, 'LINEAR', actual_shape,
+                        align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="bilinear_interp")
@@ -8189,6 +8352,10 @@ def random_crop(x, shape, seed=None):
 
     """
     helper = LayerHelper("random_crop", **locals())
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'uint8', 'int16', 'int32'],
+                             'random_crop')
+    check_type(shape, 'shape', (list, Variable), 'random_crop')
     dtype = x.dtype
     out = helper.create_variable_for_type_inference(dtype)
     if seed is None:
@@ -9770,16 +9937,12 @@ def expand(x, expand_times, name=None):
     """
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
-            if utils._contain_var(expand_times):
-                raise TypeError(
-                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+            expand_times = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in expand_times
+            ]
 
-        return core.ops.expand(x, 'expand_times', expand_times)
+            return core.ops.expand(x, 'expand_times', expand_times)
 
     inputs = {"X": [x]}
     attrs = {}
@@ -10057,6 +10220,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10150,6 +10316,12 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    check_type(input, 'input', (Variable),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'int'],
+                'fluid.layers.gaussian_random_batch_size_like')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10318,28 +10490,19 @@ def slice(input, axes, starts, ends):
     """
     if in_dygraph_mode():
         infer_flags = list(1 for i in range(len(axes)))
-        if isinstance(starts, (list, tuple)):
-            if utils._contain_var(starts):
-                raise TypeError(
-                    "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+        if isinstance(starts, (list, tuple)) and isinstance(ends,
+                                                            (list, tuple)):
+            starts = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in starts
+            ]
+            ends = [
+                item.numpy()[0] if isinstance(item, Variable) else item
+                for item in ends
+            ]
 
-        if isinstance(ends, (list, tuple)):
-            if utils._contain_var(ends):
-                raise TypeError(
-                    "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
-                              ends, 'infer_flags', infer_flags)
+            return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
+                                  ends, 'infer_flags', infer_flags)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -12083,6 +12246,9 @@ def affine_channel(x,
 
     """
     helper = LayerHelper("affine_channel", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'affine_channel')
+    check_type(scale, 'scale', (Variable, type(None)), 'affine_channel')
+    check_type(bias, 'bias', (Variable, type(None)), 'affine_channel')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
@@ -12401,6 +12567,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'log_loss')
+    check_variable_and_dtype(label, 'label', ['float32'], 'log_loss')
 
     loss = helper.create_variable_for_type_inference(dtype=input.dtype)
 
@@ -12464,6 +12632,8 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     helper = LayerHelper('add_position_encoding', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "add_position_encoding")
     dtype = helper.input_dtype()
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -12585,6 +12755,11 @@ def get_tensor_from_selected_rows(x, name=None):
             out = fluid.layers.get_tensor_from_selected_rows(input)
     """
 
+    check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
+    if x.type != core.VarDesc.VarType.SELECTED_ROWS:
+        raise TypeError(
+            "The type of 'x' in get_tensor_from_selected_rows must be SELECTED_ROWS."
+        )
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -14219,6 +14394,9 @@ def gather_tree(ids, parents):
             final_sequences = fluid.layers.gather_tree(ids, parents)
     """
     helper = LayerHelper('gather_tree', **locals())
+    check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+    check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
+                             'gather_tree')
     out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
     helper.append_op(
@@ -14323,7 +14501,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
-    attrs = {'seed': seed, 'min': min, 'max': max}
+    attrs = {'seed': seed, 'min': min, 'max': max, 'dtype': dtype}
     if in_dygraph_mode():
         attrs['shape'] = shape
     else:
@@ -14343,3 +14521,57 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def unbind(input, axis=0):
+    """
+    Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
+    Args:
+        input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.
+       
+        axis (int32|int64, optional): A scalar with type ``int32|int64`` shape [1]. The dimension along which to unbind. If :math:`axis < 0`, the
+            dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+    Returns:
+        list(Variable): The list of segmented Tensor variables.
+
+    Example:
+        .. code-block:: python
+            import paddle
+            # input is a variable which shape is [3, 4, 5]
+            input = paddle.fluid.data(
+                 name="input", shape=[3, 4, 5], dtype="float32")
+            [x0, x1, x2] = paddle.tensor.unbind(input, axis=0)
+            # x0.shape [4, 5]
+            # x1.shape [4, 5]
+            # x2.shape [4, 5]
+            [x0, x1, x2, x3] = paddle.tensor.unbind(input, axis=1)
+            # x0.shape [3, 5]
+            # x1.shape [3, 5]
+            # x2.shape [3, 5]
+            # x3.shape [3, 5]
+
+    """
+    helper = LayerHelper("unbind", **locals())
+    check_type(input, 'input', (Variable), 'unbind')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'unbind', ['float32', 'float64', 'int32', 'int64'],
+                'unbind')
+    if not isinstance(axis, (int)):
+        raise TypeError("The type of 'axis'  must be int, but received %s." %
+                        (type(axis)))
+    if isinstance(axis, np.generic):
+        axis = np.asscalar(axis)
+    input_shape = input.shape
+    axis_ = axis if axis >= 0 else len(input_shape) + axis
+    num = input_shape[axis_]
+    outs = [
+        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+        for i in range(num)
+    ]
+
+    helper.append_op(
+        type="unbind",
+        inputs={"X": input},
+        outputs={"Out": outs},
+        attrs={"axis": axis})
+    return outs

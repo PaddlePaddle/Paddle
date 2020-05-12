@@ -29,19 +29,19 @@ from paddle.fluid.core import create_paddle_predictor
 
 
 class InferencePassTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.main_program = fluid.Program()
-        cls.startup_program = fluid.Program()
-        cls.feeds = None
-        cls.fetch_list = None
+    def __init__(self, methodName='runTest'):
+        super(InferencePassTest, self).__init__(methodName)
+        self.main_program = fluid.Program()
+        self.startup_program = fluid.Program()
+        self.feeds = None
+        self.fetch_list = None
 
-        cls.enable_mkldnn = False
-        cls.enable_trt = False
-        cls.trt_parameters = None
-        cls.enable_lite = False
-        cls.lite_parameters = None
-        cls.path = "./inference_pass/"
+        self.enable_mkldnn = False
+        self.enable_trt = False
+        self.trt_parameters = None
+        self.enable_lite = False
+        self.lite_parameters = None
+        self.path = "./inference_pass/" + self.__class__.__name__ + "/"
         np.random.seed(1)
         random.seed(1)
 

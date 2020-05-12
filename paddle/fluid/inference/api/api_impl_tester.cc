@@ -108,7 +108,7 @@ void MainWord2Vec(bool use_gpu) {
 
   TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
-  auto output1_tensor = boost::get<paddle::framework::LoDTensor>(output1);
+  auto output1_tensor = BOOST_GET(paddle::framework::LoDTensor, output1);
   float* lod_data = output1_tensor.data<float>();
   for (int i = 0; i < output1_tensor.numel(); ++i) {
     EXPECT_LT(lod_data[i] - data[i], ACC_DIFF);
@@ -155,7 +155,7 @@ void MainImageClassification(bool use_gpu) {
   size_t len = outputs[0].data.length();
   float* data = static_cast<float*>(outputs[0].data.data());
   float* lod_data =
-      boost::get<paddle::framework::LoDTensor>(output1).data<float>();
+      BOOST_GET(paddle::framework::LoDTensor, output1).data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     EXPECT_NEAR(lod_data[j], data[j], ACC_DIFF);
   }
@@ -209,7 +209,7 @@ void MainThreadsWord2Vec(bool use_gpu) {
       }
 
       // check outputs correctness
-      auto ref_tensor = boost::get<paddle::framework::LoDTensor>(refs[tid]);
+      auto ref_tensor = BOOST_GET(paddle::framework::LoDTensor, refs[tid]);
       float* ref_data = ref_tensor.data<float>();
       EXPECT_EQ(ref_tensor.numel(), static_cast<int64_t>(len / sizeof(float)));
       for (int i = 0; i < ref_tensor.numel(); ++i) {
@@ -262,7 +262,7 @@ void MainThreadsImageClassification(bool use_gpu) {
       ASSERT_EQ(local_outputs.size(), 1UL);
       const size_t len = local_outputs[0].data.length();
       float* data = static_cast<float*>(local_outputs[0].data.data());
-      auto ref_tensor = boost::get<paddle::framework::LoDTensor>(refs[tid]);
+      auto ref_tensor = BOOST_GET(paddle::framework::LoDTensor, refs[tid]);
       float* ref_data = ref_tensor.data<float>();
       EXPECT_EQ((size_t)ref_tensor.numel(), len / sizeof(float));
       for (int i = 0; i < ref_tensor.numel(); ++i) {

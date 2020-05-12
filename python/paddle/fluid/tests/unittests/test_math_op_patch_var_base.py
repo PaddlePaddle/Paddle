@@ -237,6 +237,20 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             str1 = "just test"
             self.assertTrue(str1[var1] == 's')
 
+    def test_np_left_mul(self):
+        with fluid.dygraph.guard():
+            t = np.sqrt(2.0 * np.pi)
+            x = fluid.layers.ones((2, 2), dtype="float32")
+            y = t * x
+
+            self.assertTrue(
+                np.allclose(
+                    y.numpy(),
+                    t * np.ones(
+                        (2, 2), dtype="float32"),
+                    rtol=1e-05,
+                    atol=0.0))
+
 
 if __name__ == '__main__':
     unittest.main()

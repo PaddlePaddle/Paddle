@@ -35,7 +35,7 @@ class NCCLCommImpl : public NCCLComm {
   int rank() const override { return rank_; }
 
   int device_id() const override {
-    return boost::get<CUDAPlace>(dev_ctx_->GetPlace()).device;
+    return BOOST_GET_CONST(CUDAPlace, dev_ctx_->GetPlace()).device;
   }
 
   void set_comm(ncclComm_t comm) { comm_ = comm; }
