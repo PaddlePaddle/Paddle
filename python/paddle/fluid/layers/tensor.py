@@ -1078,7 +1078,7 @@ def reverse(x, axis):
     """
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64', 'uint8'], 'reverse')
-    check_type(axis, [int, tuple, list])
+    check_type(axis, 'axis', [int, tuple, list], 'reverse')
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
