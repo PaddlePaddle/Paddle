@@ -34,7 +34,12 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
-                      "Two input of ProximalGD Op's dimension must be same.");
+                      platform::errors::InvalidArgument(
+                          "The shape of Intput(Param) should be equal to the "
+                          "Input(Grad) of ProximalGD Op. But received "
+                          "Input(Param).dimensions=[%s], "
+                          "Input(Grad).dimensions=[%s]",
+                          param_dim, ctx->GetInputDim("Grad")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(
