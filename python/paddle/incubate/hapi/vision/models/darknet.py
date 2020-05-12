@@ -244,8 +244,8 @@ def darknet53(pretrained=False, **kwargs):
             # build model
             model = darknet53()
 
-            #build model and load imagenet pretrained weight
-            model = darknet53(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = darknet53(pretrained=True)
             
     """
     return _darknet('darknet53', 53, pretrained, **kwargs)

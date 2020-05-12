@@ -60,6 +60,19 @@ class VGG(Model):
         num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
         classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.incubate.hapi.vision.models import VGG
+            from paddle.incubate.hapi.vision.models.vgg import make_layers
+
+            vgg11_cfg = [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M']
+
+            features = make_layers(vgg11_cfg)
+
+            vgg11 = VGG(features)
+
     """
 
     def __init__(self,
@@ -151,7 +164,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
             # build model
             model = vgg11()
 
-            #build vgg11 model with batch_norm
+            # build vgg11 model with batch_norm
             model = vgg11(batch_norm=True)
     """
     model_name = 'vgg11'
@@ -175,7 +188,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
             # build model
             model = vgg13()
 
-            #build vgg13 model with batch_norm
+            # build vgg13 model with batch_norm
             model = vgg13(batch_norm=True)
     """
     model_name = 'vgg13'
@@ -199,7 +212,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
             # build model
             model = vgg16()
 
-            #build vgg16 model with batch_norm
+            # build vgg16 model with batch_norm
             model = vgg16(batch_norm=True)
     """
     model_name = 'vgg16'
@@ -223,7 +236,7 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
             # build model
             model = vgg19()
 
-            #build vgg19 model with batch_norm
+            # build vgg19 model with batch_norm
             model = vgg19(batch_norm=True)
     """
     model_name = 'vgg19'

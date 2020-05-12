@@ -296,10 +296,10 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
             # build model
             model = mobilenet_v1()
 
-            #build model and load imagenet pretrained weight
-            model = mobilenet_v1(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = mobilenet_v1(pretrained=True)
 
-            #build mobilenet v1 with scale=0.5
+            # build mobilenet v1 with scale=0.5
             model = mobilenet_v1(scale=0.5)
     """
     model = _mobilenet(

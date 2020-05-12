@@ -25,8 +25,7 @@ from ...model import Model
 from ...download import get_weights_path_from_url
 
 __all__ = [
-    'ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152',
-    'BottleneckBlock', 'BasicBlock'
+    'ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152'
 ]
 
 model_urls = {
@@ -182,7 +181,8 @@ class ResNet(Model):
     Examples:
         .. code-block:: python
 
-            from paddle.incubate.hapi.vision.models import ResNet, BottleneckBlock, BasicBlock
+            from paddle.incubate.hapi.vision.models import ResNet
+            from paddle.incubate.hapi.vision.models.resnet import BottleneckBlock, BasicBlock
 
             resnet50 = ResNet(BottleneckBlock, 50)
 
@@ -296,8 +296,8 @@ def resnet18(pretrained=False, **kwargs):
             # build model
             model = resnet18()
 
-            #build model and load imagenet pretrained weight
-            model = resnet18(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = resnet18(pretrained=True)
     """
     return _resnet('resnet18', BasicBlock, 18, pretrained, **kwargs)
 
@@ -316,8 +316,8 @@ def resnet34(pretrained=False, **kwargs):
             # build model
             model = resnet34()
 
-            #build model and load imagenet pretrained weight
-            model = resnet34(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = resnet34(pretrained=True)
     """
     return _resnet('resnet34', BasicBlock, 34, pretrained, **kwargs)
 
@@ -336,8 +336,8 @@ def resnet50(pretrained=False, **kwargs):
             # build model
             model = resnet50()
 
-            #build model and load imagenet pretrained weight
-            model = resnet50(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = resnet50(pretrained=True)
     """
     return _resnet('resnet50', BottleneckBlock, 50, pretrained, **kwargs)
 
@@ -356,8 +356,8 @@ def resnet101(pretrained=False, **kwargs):
             # build model
             model = resnet101()
 
-            #build model and load imagenet pretrained weight
-            model = resnet101(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = resnet101(pretrained=True)
     """
     return _resnet('resnet101', BottleneckBlock, 101, pretrained, **kwargs)
 
@@ -376,7 +376,7 @@ def resnet152(pretrained=False, **kwargs):
             # build model
             model = resnet152()
 
-            #build model and load imagenet pretrained weight
-            model = resnet152(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = resnet152(pretrained=True)
     """
     return _resnet('resnet152', BottleneckBlock, 152, pretrained, **kwargs)

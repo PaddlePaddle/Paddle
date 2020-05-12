@@ -272,10 +272,10 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
             # build model
             model = mobilenet_v2()
 
-            #build model and load imagenet pretrained weight
-            model = mobilenet_v2(pretrained=True)
+            # build model and load imagenet pretrained weight
+            # model = mobilenet_v2(pretrained=True)
 
-            #build mobilenet v2 with scale=0.5
+            # build mobilenet v2 with scale=0.5
             model = mobilenet_v2(scale=0.5)
     """
     model = _mobilenet(
