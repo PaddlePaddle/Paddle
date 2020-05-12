@@ -172,19 +172,6 @@ class UpSample(layers.Layer):
                         will be named automatically.
         resample(str): The resample method. It supports 'LINEAR',  'BILINEAR', 'TRILINEAR' ,
                        'BICUBIC' and 'NEAREST' currently. Default: 'BILINEAR'
-        actual_shape(Variable): An optional input to specify output shape
-                                dynamically. If provided, image resize
-                                according to this given shape rather than
-                                :attr:`out_shape` and :attr:`scale` specifying
-                                shape. That is to say actual_shape has the
-                                highest priority. It is recommended to use
-                                :attr:`out_shape` if you want to specify output
-                                shape dynamically, because :attr:`actual_shape`
-                                will be deprecated. When using actual_shape to
-                                specify output shape, one of :attr:`out_shape`
-                                and :attr:`scale` should also be set, otherwise
-                                errors would be occurred in graph constructing stage.
-                                Default: None
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
@@ -237,7 +224,6 @@ class UpSample(layers.Layer):
                  out_shape=None,
                  scale=None,
                  resample='BILINEAR',
-                 actual_shape=None,
                  align_corners=True,
                  align_mode=1,
                  data_format='NCHW'):
@@ -245,7 +231,6 @@ class UpSample(layers.Layer):
         self.out_shape = out_shape
         self.scale = scale
         self.resample = resample
-        self.actual_shape = actual_shape
         self.align_corners = align_corners
         self.align_mode = align_mode
         self.data_format = data_format
@@ -256,7 +241,6 @@ class UpSample(layers.Layer):
             out_shape=self.out_shape,
             scale=self.scale,
             resample=self.resample,
-            actual_shape=self.actual_shape,
             align_corners=self.align_corners,
             align_mode=self.align_mode,
             data_format=self.data_format)

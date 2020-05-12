@@ -7165,6 +7165,7 @@ def image_resize(input,
         'NEAREST': 'nearest',
         'LINEAR': 'linear',
     }
+    resample = resample.upper()
     if resample not in resample_methods:
         raise ValueError(
             "The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR', 'TRILINEAR' "
