@@ -62,6 +62,7 @@ class Qat2Int8MkldnnPass(object):
         self._mul_ops = ['mul']
         self._fc_ops = ['fc']
         self._matmul_ops = ['matmul']
+        self._relu_ops = ['relu', 'relu6']
         self._weight_scales = {}
         # Collect the Input and Output sclaes from Fake QAT models
         self._var_quant_scales = {}
@@ -459,14 +460,16 @@ class Qat2Int8MkldnnPass(object):
             return graph
 
         if self._is_conv_quantized():
-            conv_predicate = lambda op: op.attr("fuse_activation") == 'relu' and \
-                op.attr("fuse_residual_connection") == False
+            conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops \
+                and op.attr("fuse_residual_connection") == False
             graph = _update_scale(graph, self._conv_ops, "Output",
                                   conv_predicate)
 
         if self._is_fc_quantized():
-            fc_predicate = lambda op: op.attr("activation_type") == 'relu'
+            fc_predicate = lambda op: op.attr("activation_type") in self._relu_ops
             graph = _update_scale(graph, self._fc_ops, "Out", fc_predicate)
+
+        graph = _update_scale(graph, self._relu_ops, "Out", lambda op: True)
 
         return graph
 
