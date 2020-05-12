@@ -124,12 +124,9 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
   float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
   float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaMemcpyAsync(output_ptrs, h_odatas,
-                      d_output_ptrs_.size() * sizeof(float*),
-                      cudaMemcpyHostToDevice, stream),
-      platform::errors::External(
-          "CUDA Memcpy failed during split plugin run."));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
+      cudaMemcpyHostToDevice, stream));
 
   int outer_rows = outer_rows_ * batchSize;
 
@@ -244,12 +241,9 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
     float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpyAsync(output_ptrs, h_odatas,
-                        d_output_ptrs.size() * sizeof(float*),
-                        cudaMemcpyHostToDevice, stream),
-        platform::errors::External(
-            "CUDA Memcpy failed during split plugin run."));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+        output_ptrs, h_odatas, d_output_ptrs.size() * sizeof(float*),
+        cudaMemcpyHostToDevice, stream));
 
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
@@ -263,12 +257,9 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     half* const* h_odatas = reinterpret_cast<half* const*>(outputs);
     half** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs[0]);
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpyAsync(output_ptrs, h_odatas,
-                        d_output_ptrs.size() * sizeof(half*),
-                        cudaMemcpyHostToDevice, stream),
-        platform::errors::External(
-            "CUDA Memcpy failed during split plugin run."));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
+        output_ptrs, h_odatas, d_output_ptrs.size() * sizeof(half*),
+        cudaMemcpyHostToDevice, stream));
 
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,

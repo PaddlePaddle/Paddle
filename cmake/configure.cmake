@@ -69,10 +69,14 @@ endif()
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)
+    # The compiler fully support const expressions since c++14,
+    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
+    # use following definition to set EIGEN_HAS_CONSTEXPR=0 to avoid compilation error in c++11
+    add_definitions(-DEIGEN_MAX_CPP_VER=11)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
         message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
@@ -85,7 +89,7 @@ if(WITH_GPU)
     else()
         message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
     endif()
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${SIMD_FLAG}\"")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
@@ -93,11 +97,11 @@ if(WITH_GPU)
 
     if(TENSORRT_FOUND)
         if(WIN32)
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 9)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 9)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 9.0 to compile on Windows")
             endif()
         else()
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 8)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
             endif()
             if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)

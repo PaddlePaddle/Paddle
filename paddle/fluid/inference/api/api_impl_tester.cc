@@ -102,14 +102,15 @@ void MainWord2Vec(bool use_gpu) {
   cpu_feeds.push_back(&third_word);
   cpu_feeds.push_back(&fourth_word);
 
-  framework::LoDTensor output1;
-  std::vector<paddle::framework::LoDTensor*> cpu_fetchs1;
+  framework::FetchType output1;
+  std::vector<paddle::framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
   TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
-  float* lod_data = output1.data<float>();
-  for (int i = 0; i < output1.numel(); ++i) {
+  auto output1_tensor = BOOST_GET(paddle::framework::LoDTensor, output1);
+  float* lod_data = output1_tensor.data<float>();
+  for (int i = 0; i < output1_tensor.numel(); ++i) {
     EXPECT_LT(lod_data[i] - data[i], ACC_DIFF);
     EXPECT_GT(lod_data[i] - data[i], -ACC_DIFF);
   }
@@ -137,8 +138,8 @@ void MainImageClassification(bool use_gpu) {
   std::vector<framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
-  framework::LoDTensor output1;
-  std::vector<framework::LoDTensor*> cpu_fetchs1;
+  framework::FetchType output1;
+  std::vector<framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
   TestInference<platform::CPUPlace, false, true>(
@@ -153,7 +154,8 @@ void MainImageClassification(bool use_gpu) {
   ASSERT_EQ(outputs.size(), 1UL);
   size_t len = outputs[0].data.length();
   float* data = static_cast<float*>(outputs[0].data.data());
-  float* lod_data = output1.data<float>();
+  float* lod_data =
+      BOOST_GET(paddle::framework::LoDTensor, output1).data<float>();
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     EXPECT_NEAR(lod_data[j], data[j], ACC_DIFF);
   }
@@ -168,7 +170,7 @@ void MainThreadsWord2Vec(bool use_gpu) {
   constexpr int num_jobs = 3;
   std::vector<std::vector<framework::LoDTensor>> jobs(num_jobs);
   std::vector<std::vector<PaddleTensor>> paddle_tensor_feeds(num_jobs);
-  std::vector<framework::LoDTensor> refs(num_jobs);
+  std::vector<framework::FetchType> refs(num_jobs);
   for (size_t i = 0; i < jobs.size(); ++i) {
     // each job has 4 words
     jobs[i].resize(4);
@@ -181,7 +183,7 @@ void MainThreadsWord2Vec(bool use_gpu) {
 
     // get reference result of each job
     std::vector<paddle::framework::LoDTensor*> ref_feeds;
-    std::vector<paddle::framework::LoDTensor*> ref_fetches(1, &refs[i]);
+    std::vector<paddle::framework::FetchType*> ref_fetches(1, &refs[i]);
     for (auto& word : jobs[i]) {
       ref_feeds.push_back(&word);
     }
@@ -207,9 +209,10 @@ void MainThreadsWord2Vec(bool use_gpu) {
       }
 
       // check outputs correctness
-      float* ref_data = refs[tid].data<float>();
-      EXPECT_EQ(refs[tid].numel(), static_cast<int64_t>(len / sizeof(float)));
-      for (int i = 0; i < refs[tid].numel(); ++i) {
+      auto ref_tensor = BOOST_GET(paddle::framework::LoDTensor, refs[tid]);
+      float* ref_data = ref_tensor.data<float>();
+      EXPECT_EQ(ref_tensor.numel(), static_cast<int64_t>(len / sizeof(float)));
+      for (int i = 0; i < ref_tensor.numel(); ++i) {
         EXPECT_NEAR(ref_data[i], data[i], 2e-3);
       }
     });
@@ -230,7 +233,7 @@ void MainThreadsImageClassification(bool use_gpu) {
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
   std::vector<framework::LoDTensor> jobs(num_jobs);
   std::vector<std::vector<PaddleTensor>> paddle_tensor_feeds(num_jobs);
-  std::vector<framework::LoDTensor> refs(num_jobs);
+  std::vector<framework::FetchType> refs(num_jobs);
   for (size_t i = 0; i < jobs.size(); ++i) {
     // prepare inputs
     std::vector<std::vector<int64_t>> feed_target_shapes =
@@ -242,7 +245,7 @@ void MainThreadsImageClassification(bool use_gpu) {
 
     // get reference result of each job
     std::vector<framework::LoDTensor*> ref_feeds(1, &jobs[i]);
-    std::vector<framework::LoDTensor*> ref_fetches(1, &refs[i]);
+    std::vector<framework::FetchType*> ref_fetches(1, &refs[i]);
     TestInference<platform::CPUPlace>(config.model_dir, ref_feeds, ref_fetches);
   }
 
@@ -259,9 +262,10 @@ void MainThreadsImageClassification(bool use_gpu) {
       ASSERT_EQ(local_outputs.size(), 1UL);
       const size_t len = local_outputs[0].data.length();
       float* data = static_cast<float*>(local_outputs[0].data.data());
-      float* ref_data = refs[tid].data<float>();
-      EXPECT_EQ((size_t)refs[tid].numel(), len / sizeof(float));
-      for (int i = 0; i < refs[tid].numel(); ++i) {
+      auto ref_tensor = BOOST_GET(paddle::framework::LoDTensor, refs[tid]);
+      float* ref_data = ref_tensor.data<float>();
+      EXPECT_EQ((size_t)ref_tensor.numel(), len / sizeof(float));
+      for (int i = 0; i < ref_tensor.numel(); ++i) {
         EXPECT_NEAR(ref_data[i], data[i], ACC_DIFF);
       }
     });
