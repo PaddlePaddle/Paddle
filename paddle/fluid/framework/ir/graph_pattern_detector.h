@@ -143,7 +143,7 @@ struct PDNode {
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {
       return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
-             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+             BOOST_GET_CONST(T, x->Op()->GetAttr(attr_name)) == attr;
     });
     return this;
   }

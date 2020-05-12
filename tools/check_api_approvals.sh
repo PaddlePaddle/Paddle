@@ -36,6 +36,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
+           "tools/wlist.json"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -139,6 +140,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py" ];then
         echo_line="You must have one RD (Shixiaowei02 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators. For more information, please refer to[https://github.com/PaddlePaddle/Paddle/wiki/It's-recommend-to-set-no_grad_set-to-be-None].\n"
         check_approval 1 39303645 6836917 43953930
+      elif [ "${API_FILE}" == "tools/wlist.json" ];then
+        echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api whitelist for the tools/wlist.json.\n"
+        check_approval 1 31623103 2870059 27208573
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -150,6 +154,12 @@ HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for the usage (either add or delete) of const_cast.\n"
     check_approval 1 3048612 46782768 12538138 6836917 32832641
+fi
+
+HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "boost::get" || true`
+if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="boost::get is not recommended, because it may throw an bad_get exception without any stack information, so please use BOOST_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle boost::get and specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
+    check_approval 1 6836917 47554610 22561442
 fi
 
 HAS_DEFINE_FLAG=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "DEFINE_int32" |grep -o -m 1 "DEFINE_bool" | grep -o -m 1 "DEFINE_string" || true`

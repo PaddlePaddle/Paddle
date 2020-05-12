@@ -61,7 +61,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   int64_t tmp_dim_0 = -1;
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(), false, "The Input(X) must hold lod info.");
     const auto& x_lod_0 = x_lod[0];
@@ -72,7 +72,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
         "The Input(X)'s lod info mismatches the actual tensor shape.");
 
     framework::Variable* y_var =
-        boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Y")[0]);
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
     const auto& y_lod = y_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(), false, "The Input(Y) must hold lod info.");
     const auto& y_lod_0 = y_lod[0];
@@ -97,10 +97,10 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     // compile time
     framework::VarDesc* x_desc =
-        boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
     PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
     framework::VarDesc* y_desc =
-        boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Y")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(y_desc->GetLoDLevel(), 1);
     ctx->ShareLoD("X", "Out");
   }
