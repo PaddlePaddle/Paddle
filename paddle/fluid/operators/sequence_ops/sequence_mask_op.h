@@ -80,7 +80,10 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
       auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
-      PADDLE_ENFORCE(max_len_tensor != NULL, "MaxLenTensor is NULL");
+      PADDLE_ENFORCE_NE(max_len_tensor, NULL,
+                        platform::errors::InvalidArgument(
+                            "MaxLenTensor should not be NULL."
+                            "But received MaxLEnTensor is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*max_len_tensor, platform::CPUPlace(), &temp);
@@ -94,7 +97,10 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       y->Resize(framework::make_ddim(y_dim));
 
       PADDLE_ENFORCE_GT(maxlen, 0,
-                        "MaxLenTensor value should be greater than 0");
+                        platform::errors::InvalidArgument(
+                            "MaxLenTensor value should be greater than 0. But "
+                            "received MaxLenTensor value = %d.",
+                            maxlen));
     }
 
     auto *x_data = x->data<Tx>();
