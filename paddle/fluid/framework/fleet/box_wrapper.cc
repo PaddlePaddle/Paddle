@@ -118,6 +118,10 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
+void BoxWrapper::SetTestMode(bool is_test) const {
+  boxps_ptr_->SetTestMode(is_test);
+}
+
 void BoxWrapper::EndPass(bool need_save_delta) const {
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
@@ -147,7 +151,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();
+    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
     LoDTensor& total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
@@ -220,7 +224,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();
+    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
     LoDTensor& cached_total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
@@ -232,7 +236,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
     push_boxps_timer.Start();
     int ret = boxps_ptr_->PushSparseGPU(
         total_keys, total_grad_values_gpu, static_cast<int>(total_length),
-        boost::get<platform::CUDAPlace>(place).GetDeviceId());
+        BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId());
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "PushSparseGPU failed in BoxPS."));
     push_boxps_timer.Pause();

@@ -229,31 +229,30 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    auto w_grad_var_name = ctx->Output(framework::GradVarName("W")).front();
-    auto has_bias_grad_var = ctx->HasOutput(framework::GradVarName("Bias"));
-    std::string bias_grad_var_name;
-    bool hasBias = false;
-    if (has_bias_grad_var) {
-      hasBias = true;
-      bias_grad_var_name = ctx->Output(framework::GradVarName("Bias")).front();
+    auto w_grad_var_name = framework::GradVarName("W");
+    auto bias_grad_var_name = framework::GradVarName("Bias");
+    if (ctx->HasOutput(bias_grad_var_name)) {
+      VLOG(3) << "hierarchical_sigmoid_grad op "
+              << framework::GradVarName("Bias") << " is set to LoDTensor";
+      ctx->SetOutputType(bias_grad_var_name,
+                         framework::proto::VarType::LOD_TENSOR);
     }
+
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
-      ctx->SetType(w_grad_var_name, framework::proto::VarType::SELECTED_ROWS);
+      ctx->SetOutputType(w_grad_var_name,
+                         framework::proto::VarType::SELECTED_ROWS);
     } else {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to LoDTensor";
-      ctx->SetType(w_grad_var_name, framework::proto::VarType::LOD_TENSOR);
+      ctx->SetOutputType(w_grad_var_name,
+                         framework::proto::VarType::LOD_TENSOR);
     }
-    if (hasBias) {
-      VLOG(3) << "hierarchical_sigmoid_grad op "
-              << framework::GradVarName("Bias") << " is set to LoDTensor";
-      ctx->SetType(bias_grad_var_name, framework::proto::VarType::LOD_TENSOR);
-    }
-    ctx->SetDataType(w_grad_var_name, ctx->GetDataType(ctx->Input("W")[0]));
+
+    ctx->SetOutputDataType(w_grad_var_name, ctx->GetInputDataType("W"));
   }
 };
 

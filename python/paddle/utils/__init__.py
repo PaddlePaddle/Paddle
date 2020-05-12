@@ -13,15 +13,13 @@
 # limitations under the License.
 
 from .plot import Ploter
+from .profiler import ProfilerOptions
+from .profiler import Profiler
+from .profiler import get_profiler
+
 __all__ = ['dump_config', 'Ploter']
 
 #TODO: define new api under this directory
-# __all__ = ['profiler',
-#            'profiler.cuda_profiler',
-#            'profiler.profiler',
-#            'profiler.reset_profiler',
-#            'profiler.start_profiler',
-#            'profiler.stop_profiler',
-#            'unique_name',
+# __all__ = ['unique_name',
 #            'load_op_library',
 #            'require_version']

@@ -50,8 +50,9 @@ def is_api_in_module(node, module_prefix):
         #  source_file = inspect.getfile(dyfunc)
         #  import_statements = ImportVisitor(source_file).transform()
         #  import_str = "".join(import_statements)
-        import paddle.fluid as fluid
         import paddle
+        import paddle.fluid as fluid
+        import paddle.fluid.layers as layers
         from paddle.fluid.dygraph import to_variable
         import paddle.fluid.dygraph as dygraph
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
@@ -61,6 +62,10 @@ def is_api_in_module(node, module_prefix):
 
 
 def is_dygraph_api(node):
+    # Note: A api in module dygraph_to_static is not a real dygraph api.
+    if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
+        return False
+
     return is_api_in_module(node, "paddle.fluid.dygraph")
 
 
@@ -84,29 +89,19 @@ def is_numpy_api(node):
         return False
 
 
-def is_control_flow_to_transform(node, var_name_to_type):
+def is_control_flow_to_transform(node,
+                                 static_analysis_visitor=None,
+                                 var_name_to_type=None):
     """
-    Determines whether the node is a Paddle control flow statement which needs to
-    transform into a static graph control flow statement.
+    Determines whether the node is a PaddlePaddle control flow statement which needs to
+    be transformed into a static graph control flow statement.
     """
     assert isinstance(node, gast.AST), \
         "The type of input node must be gast.AST, but received %s." % type(node)
-
-    if isinstance(node, gast.If):
-        from .ifelse_transformer import IfConditionVisitor
-        if_visitor = IfConditionVisitor(
-            node.test, node_var_type_map=var_name_to_type)
-        return if_visitor.is_control_flow()
-
-    if isinstance(node, gast.For):
-        # TODO: make a better condition
-        return True
-
-    if isinstance(node, gast.While):
-        # TODO: make a better condition
-        return True
-
-    return False
+    visitor = IsControlFlowVisitor(
+        node, static_analysis_visitor, node_var_type_map=var_name_to_type)
+    need_to_transform = visitor.transform()
+    return need_to_transform
 
 
 def _delete_keywords_from(node):
@@ -411,3 +406,216 @@ def ast_to_source_code(ast_node):
         ast_node = gast.gast_to_ast(ast_node)
     source_code = astor.to_source(ast_node)
     return source_code
+
+
+def is_candidate_node(node):
+    """
+    Nodes with specified type will be dependent on tensor.
+    """
+    is_compare_node = isinstance(node, (gast.Compare, gast.BoolOp, gast.UnaryOp,
+                                        gast.For, gast.If, gast.While))
+    # TODO(Aurelius84): `.numpy()` may be an customized function,
+    # and should consider a more elegant way to solve this problem.
+    has_numpy_attr = ".numpy()" in ast_to_source_code(node)
+    return is_compare_node or has_numpy_attr
+
+
+def compare_with_none(node):
+    """
+    Whether the comparator of `gast.Compare` node is `None`.
+    """
+    if isinstance(node, gast.Compare):
+        for child in [node.left, node.comparators]:
+            # node.comparators is a list.
+            if isinstance(child, list):
+                child = child[0]
+            if (isinstance(child, gast.Constant) and child.value is None) or (
+                    isinstance(child, gast.Name) and child.id == 'None'):
+                return True
+    return False
+
+
+class IsControlFlowVisitor(gast.NodeVisitor):
+    """
+    Judge whether the ast_node of control flow from Dygraph code dependent on paddle Tensor.
+    `ast_node` can be gast.If, gast.For, gast.While, gast.If.test(gast.Compare, gast.BoolOp, gast.UnaryOp).
+
+    If returns True,
+    gast.If.test must meet at least one of the following requirements:
+        1. involves at least one var whose type is Tensor.
+        2. the Tensor var calls `.numpy()[]` interface or Tensor.shape is [1].
+        3. involves Tensor.shape[i] and the shape[i] is unknown in compile time.
+    gast.While must meet at least one of the requirements 1 to 5:
+        4. has `break` statement.
+        5. has `continue` statement.
+    gast.For must meet at least one of the requirements 4 to 6:
+        6. calls `range` function in `for` statement and the argument of range is Tensor.
+        TODO: Support non-range case
+
+    The following examples should not be considered as control_flow_if:
+        1. `if Tensor_var` or `if Tensor_var is None`
+        2. if Tensor.shape[i] is determined with fixed value (not -1 or None)
+
+    Note: pred in ConditionalBlock require variable, which means all vars should be Tensor
+          or transformed into Tensor, like fill_constant(shape=[1], dtype='int32', value=Tensor.shape[i]).
+
+    TODO: 1. need to deal with `tensor.shape[i]` which need to eval the data of shape[i],
+             because reshape_op may be called before this statement.
+    """
+
+    def __init__(self,
+                 ast_node,
+                 static_analysis_visitor=None,
+                 node_var_type_map=None):
+        assert isinstance(
+            ast_node, gast.AST
+        ), "Type of input node should be gast.AST, but received %s." % type(
+            ast_node)
+        self.ast_root = ast_node
+        if static_analysis_visitor is None:
+            from .static_analysis import StaticAnalysisVisitor
+            static_analysis_visitor = StaticAnalysisVisitor(ast_node)
+        self.static_analysis_visitor = static_analysis_visitor
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
+        self.node_var_type_map = node_var_type_map
+
+        self.is_control_flow_num = 0
+        self._compare_node_tenor_set = set()
+
+    def transform(self):
+        node = self.ast_root
+        if is_candidate_node(node):
+            if isinstance(node, gast.If):
+                self._visit_If(node)
+            if isinstance(node, gast.For):
+                self._visit_For(node)
+            elif isinstance(node, gast.While):
+                self._visit_While(node)
+            else:
+                self.visit(node)
+        return self.is_control_flow_num > 0
+
+    def _visit_If(self, node):
+        assert isinstance(node, gast.If)
+        self.visit(node.test)
+        return
+
+    def _visit_For(self, node):
+        assert isinstance(node, gast.For)
+        # TODO
+        # self.is_control_flow_num += 1
+        if not isinstance(node.iter, gast.Call):
+            return
+        if not isinstance(node.iter.func, gast.Name):
+            return
+        if node.iter.func.id != "range":
+            return
+        for arg in node.iter.args:
+            self.visit(arg)
+
+        for child_node in gast.walk(node):
+            if isinstance(child_node, (gast.Continue, gast.Break)):
+                self._visit_break_continue(child_node)
+        return
+
+    def _visit_While(self, node):
+        assert isinstance(node, gast.While)
+        test = node.test
+        self.generic_visit(test)
+        for child_node in gast.walk(node):
+            if isinstance(child_node, (gast.Continue, gast.Break)):
+                self._visit_break_continue(child_node)
+        return
+
+    def _visit_break_continue(self, node):
+        assert isinstance(node, (gast.Break, gast.Continue))
+        wrapper_node = self.node_to_wrapper_map.get(node)
+        if not wrapper_node:
+            # Transformed node is not in node_to_wrapper_map
+            return
+
+        while wrapper_node.parent:
+            parent_node = wrapper_node.parent.node
+            if isinstance(parent_node, (gast.For, gast.While)):
+                if parent_node is self.ast_root:
+                    self.is_control_flow_num += 1
+                    return
+                else:
+                    return
+
+            wrapper_node = wrapper_node.parent
+
+        return
+
+    def visit_BoolOp(self, node):
+        for i, child in enumerate(node.values):
+            if is_candidate_node(child):
+                self.visit(child)
+        return node
+
+    def visit_Compare(self, node):
+        # Ignores child node with `if x` or `if x is None`
+        # TODO(Aurelius84): `if tensor` will be supported in dygraph
+        # and should be considered as is_control_flow.
+        pre_control_flow_num = self.is_control_flow_num
+        if not compare_with_none(node):
+            self.generic_visit(node)
+            for child in gast.walk(node):
+                if isinstance(child, gast.Subscript):
+                    self._visit_Subscript(child)
+        if self.is_control_flow_num > pre_control_flow_num:
+            self._compare_node_tenor_set.add(node)
+        return node
+
+    def _visit_Subscript(self, node):
+        self.generic_visit(node)
+        if hasattr(node, 'value') and isinstance(node.value, gast.Call):
+            self._visit_Call(node.value)
+        return node
+
+    def _visit_Call(self, node):
+        assert isinstance(node, gast.Call)
+        if isinstance(node.func, gast.Attribute):
+            attr_node = node.func
+            if attr_node.attr == 'numpy':
+                self.is_control_flow_num += 1
+
+    def visit_Call(self, node):
+        self._visit_Call(node)
+        if is_paddle_api(node):
+            self.is_control_flow_num += 1
+        return node
+
+    def visit_Name(self, node):
+        if self._is_node_with_tensor(node, node.id):
+            self.is_control_flow_num += 1
+        return node
+
+    def visit_Constant(self, node):
+        if self._is_node_with_tensor(node, node.value):
+            self.is_control_flow_num += 1
+        return node
+
+    def _is_node_with_tensor(self, node, name_id):
+        from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+
+        tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
+        # Look up the node_var_type_map by name_id.
+        if self.node_var_type_map:
+            if name_id and isinstance(name_id, six.string_types):
+                var_type = self.node_var_type_map.get(name_id, None)
+                if var_type and var_type & tensor_types:
+                    return True
+        # if not found, look up the node_to_wrapper_map by node.
+        node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
+        wrapper_node = node_to_wrapper_map.get(node, None)
+        if wrapper_node is not None:
+            if wrapper_node.node_var_type & tensor_types:
+                return True
+
+        return False
+
+    def get_compare_nodes_with_tensor(self):
+        return self._compare_node_tenor_set

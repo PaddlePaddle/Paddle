@@ -161,7 +161,7 @@ class GradOpDescMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
@@ -192,7 +192,7 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDesc>> operator()() const {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
     this->Apply(retv.front().get());
@@ -209,7 +209,7 @@ class SingleGradOpMaker<imperative::OpBase>
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::shared_ptr<imperative::GradOpNode> operator()() const {
+  std::shared_ptr<imperative::GradOpNode> operator()() const final {
     auto node = this->NewGradNode();
     {
       imperative::TracedGradOp traced_grad_op(node);
