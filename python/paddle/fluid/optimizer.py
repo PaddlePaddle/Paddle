@@ -39,6 +39,7 @@ from paddle.fluid.layers import tensor
 from functools import reduce
 from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
+from .data_feeder import check_type
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
@@ -295,6 +296,40 @@ class Optimizer(object):
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
+
+    @framework.dygraph_only
+    def set_lr(self, value):
+        """
+        .. note::
+          **This API is ONLY available in Dygraph mode**
+          
+        Args:
+            value (float|Variable): 
+        """
+        check_type(value, 'value', (framework.Variable, float), 'set_lr')
+        if isinstance(self._learning_rate, LearningRateDecay):
+            raise RuntimeError(
+                "optimizer's learning rate can't be LearningRateDecay when invoke this API, because this will lead to conflict."
+            )
+
+        if isinstance(value, float):
+            self._learning_rate = value
+            current_lr = self._global_learning_rate()
+            if current_lr is not None:
+                global_block = framework.default_main_program().global_block()
+                global_block.append_op(
+                    type='fill_constant',
+                    outputs={'Out': [current_lr]},
+                    attrs={
+                        'dtype': current_lr.dtype,
+                        'shape': list(current_lr.shape),
+                        'value': float(value)
+                    },
+                    stop_gradient=True)
+        else:
+            assert len(value.shape) == 1 and value.shape[
+                0] == 1, "optimizer's learning rate must be 1-D Tensor with shape[1]"
+            self._learning_rate_map[framework.default_main_program()] = value
 
     @framework.dygraph_only
     def current_step_lr(self):
