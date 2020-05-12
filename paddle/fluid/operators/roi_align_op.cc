@@ -40,7 +40,7 @@ class ROIAlignOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           rois_lod_dims.size(), 1,
           platform::errors::InvalidArgument("The RoisLod dimension should be 1"
-                                            ", but got dim = %d",
+                                            ", but got dimension = %d",
                                             rois_lod_dims.size()));
     }
     PADDLE_ENFORCE_EQ(
@@ -69,20 +69,21 @@ class ROIAlignOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GT(pooled_height, 0,
                       platform::errors::InvalidArgument(
-                          "The pooled output "
-                          "height must greater than 0. But received "
-                          "pooled_height = %d",
+                          "The 'pooled_height' attribute in RoIAlignOp is "
+                          "invalid. The height must be greater than 0. But "
+                          "received 'pooled_height' = %d",
                           pooled_height));
     PADDLE_ENFORCE_GT(pooled_width, 0,
                       platform::errors::InvalidArgument(
-                          "The pooled output "
-                          "width must greater than 0. But received "
-                          "pooled_width = %d",
+                          "The 'pooled_width' attribute in RoIAlignOp is "
+                          "invalid. The width must be greater than 0. But "
+                          "received 'pooled_width' = %d",
                           pooled_width));
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
                       platform::errors::InvalidArgument(
-                          "The spatial scale "
-                          "must greater than 0 But received spatial_scale = %f",
+                          "The 'spatial_scale' attribute in RoIAlignOp is "
+                          "invalid. The scale must be greater than 0. But "
+                          "received 'spatial_scale' = %f",
                           spatial_scale));
 
     auto out_dims = input_dims;
