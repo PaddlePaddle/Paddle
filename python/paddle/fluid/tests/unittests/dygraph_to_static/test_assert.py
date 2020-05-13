@@ -18,18 +18,53 @@ import numpy
 import unittest
 
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 
 
+@declarative
 def dyfunc_assert_variable(x):
     x_v = fluid.dygraph.to_variable(x)
     assert x_v
 
 
+@declarative
+def dyfunc_assert_non_variable(x=True):
+    assert x
+
+
 class TestAssertVariable(unittest.TestCase):
-    def test(self):
-        with fluid.dygraph.guard():
-            dyfunc_assert_variable(numpy.asarray([1]))
+    def _run(self, func, x, with_exception, to_static):
+        ProgramTranslator().enable(to_static)
+        if with_exception:
+            with self.assertRaises(BaseException):
+                with fluid.dygraph.guard():
+                    func(x)
+        else:
+            with fluid.dygraph.guard():
+                func(x)
+
+    def _run_dy_static(self, func, x, with_exception):
+        self._run(func, x, with_exception, True)
+        self._run(func, x, with_exception, False)
+
+    def test_non_variable(self):
+        self._run_dy_static(
+            dyfunc_assert_non_variable, x=False, with_exception=True)
+        self._run_dy_static(
+            dyfunc_assert_non_variable, x=True, with_exception=False)
+
+    def test_bool_variable(self):
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([False]), with_exception=True)
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([True]), with_exception=False)
+
+    def test_int_variable(self):
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([0]), with_exception=True)
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([1]), with_exception=False)
 
 
 if __name__ == '__main__':

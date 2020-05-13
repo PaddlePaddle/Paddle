@@ -39,16 +39,15 @@ class AssertTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     def visit_Assert(self, node):
-        generic_visit(node)
         if not self.static_analysis_visitor.is_tensor_node(node.test):
             return node
         cast_node = gast.Call(
             func=gast.parse("fluid.layers.cast").body[0].value,
             args=[node.test, gast.Constant(
                 value="bool", kind=None)],
-            keywards=[])
+            keywords=[])
         assert_node = gast.Call(
             func=gast.parse("fluid.layers.Assert").body[0].value,
             args=[cast_node],
             keywords=[])
-        return assert_node
+        return gast.Expr(value=assert_node)
