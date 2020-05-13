@@ -29,6 +29,8 @@ __all__ = [
     'guard',
     'enable_dygraph',
     'disable_dygraph',
+    'enable_imperative',
+    'disable_imperative',
     'enabled',
     'to_variable',
 ]
@@ -84,6 +86,54 @@ def enabled():
             print(fluid.dygraph.enabled())  # False
     """
     return framework.in_dygraph_mode()
+
+
+def enable_imperative(place=None):
+    """
+    This function enables imperative mode.
+
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place for imperative execution.
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
+
+    return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_imperative()  # Now we are in imperative mode
+            x = fluid.layers.ones( (2, 2), "float32")
+            y = fluid.layers.zeros( (2, 2), "float32")
+            z = x + y
+            print( z.numpy() )   #[[1, 1], [1, 1]]
+
+    """
+    enable_dygraph(place)
+
+
+def disable_imperative():
+    """
+    This function disables imperative mode.
+
+    return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_imperative()  # Now we are in imperative mode
+            x = fluid.layers.ones( (2, 2), "float32")
+            y = fluid.layers.zeros( (2, 2), "float32")
+            z = x + y
+            print( z.numpy() )   #[[1, 1], [1, 1]]
+            fluid.disable_imperative() # Now we are in declarative mode
+    """
+    disable_dygraph()
 
 
 def enable_dygraph(place=None):
