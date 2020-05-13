@@ -13603,10 +13603,10 @@ def similarity_focus(input, axis, indexes, name=None):
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
-    if isinstance(axis, int) is False:
-        raise TypeError("axis must be int type.")
-    if isinstance(indexes, list) is False:
-        raise TypeError("indexes must be list type.")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "similarity_focus")
+    check_type(axis, 'axis', int, "similarity_focus")
+    check_type(indexes, 'indexes', list, "similarity_focus")
     if axis != 1 and axis != 2 and axis != 3:
         raise ValueError("axis must be 1, 2 or 3.")
     if len(indexes) == 0:
