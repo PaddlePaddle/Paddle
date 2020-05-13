@@ -53,10 +53,10 @@ inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
       trans6(dev_ctx, in, out, axis);
       break;
     default:
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "Tensors with rank at most 6 are supported"
           ", but received input tensor's rank is %d,",
-          dim);
+          dim));
   }
 }
 
