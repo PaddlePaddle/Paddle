@@ -47,11 +47,12 @@ class LSTMOp : public framework::OperatorWithKernel {
                                      "should not be null at the same time."));
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE_EQ(h_dims, c_dims,
-                        platform::errors::InvalidArgument(
-                            "The dimension of Input(H0) and Input(C0) should "
-                            "be the same, but received %d vs %d.",
-                            h_dims, c_dims));
+      PADDLE_ENFORCE_EQ(
+          h_dims, c_dims,
+          platform::errors::InvalidArgument(
+              "The dimension of Input(H0) and Input(C0) should "
+              "be the same, but received [%d, %d] (H0) vs [%d, %d] (C0).",
+              h_dims[0], h_dims[1], c_dims[0], c_dims[1]));
     }
 
     int frame_size = in_dims[1] / 4;
