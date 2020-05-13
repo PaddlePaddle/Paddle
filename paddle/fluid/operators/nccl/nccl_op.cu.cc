@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <functional>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -37,6 +38,21 @@ class NCCLTypeWrapper<double> {
   static const ncclDataType_t type = ncclDouble;
 };
 
+static ncclRedOp_t str_to_nccl_red_type(std::string reduction) {
+  static const std::unordered_map<std::string, ncclRedOp_t> str_to_type = {
+      {"ncclSum", ncclSum},
+      {"ncclMin", ncclMin},
+      {"ncclMax", ncclMax},
+      {"ncclProd", ncclProd},
+  };
+  auto it = str_to_type.find(reduction);
+  PADDLE_ENFORCE_EQ(it != str_to_type.end(), true,
+                    platform::errors::InvalidArgument(
+                        "Invalid nccl reduction. Must be ncclMin | ncclMax | "
+                        "ncclProd | ncclSum"));
+  return it->second;
+}
+
 template <typename T>
 class NCCLAllReduceKernel : public framework::OpKernel<T> {
  public:
@@ -49,19 +65,8 @@ class NCCLAllReduceKernel : public framework::OpKernel<T> {
     auto* comm = ctx.Input<Communicator>("Communicator");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
-    ncclRedOp_t reduction_op_ = ncclSum;
-    if (reduction == "ncclMin") {
-      reduction_op_ = ncclMin;
-    } else if (reduction == "ncclMax") {
-      reduction_op_ = ncclMax;
-    } else if (reduction == "ncclSum") {
-      reduction_op_ = ncclSum;
-    } else if (reduction == "ncclProd") {
-      reduction_op_ = ncclProd;
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid reduction. default ncclSum."));
-    }
+    auto reduction_op_ = str_to_nccl_red_type(reduction);
+
     // device id
     int gpu_id =
         BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
@@ -92,19 +97,8 @@ class NCCLReduceKernel : public framework::OpKernel<T> {
     int root = ctx.Attr<int>("root");
     std::string reduction = ctx.Attr<std::string>("reduction");
 
-    ncclRedOp_t reduction_op_ = ncclSum;
-    if (reduction == "ncclMin") {
-      reduction_op_ = ncclMin;
-    } else if (reduction == "ncclMax") {
-      reduction_op_ = ncclMax;
-    } else if (reduction == "ncclSum") {
-      reduction_op_ = ncclSum;
-    } else if (reduction == "ncclProd") {
-      reduction_op_ = ncclProd;
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Invalid reduction. default ncclSum."));
-    }
+    auto reduction_op_ = str_to_nccl_red_type(reduction);
+
     // device id
     int gpu_id =
         BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();

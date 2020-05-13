@@ -38,8 +38,8 @@ class NCCLInitOp : public framework::OperatorBase {
     const auto &name = Output("Communicator");
     PADDLE_ENFORCE_NOT_NULL(
         scope.FindVar(name),
-        platform::errors::NotFound("Can not find variable '%s' in the scope.",
-                                   name));
+        platform::errors::NotFound(
+            "Output(%s) is needed for ncclInit operator.", name));
     // A parallel do may not use all the gpus. For example, the batch size is 7
     // in the last batch while we have 8 gpu. In this case, parallel_do will
     // create 7 parallel scopes, so should ncclInitOp create 7 gpu peers
@@ -52,11 +52,6 @@ class NCCLInitOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(!gpus.empty(), true,
                       platform::errors::PreconditionNotMet(
                           "gpus is empty, NCCL must init with gpus"));
-
-    if (scope.FindVar(name) == nullptr) {
-      PADDLE_THROW(platform::errors::NotFound(
-          "Output(Communicator) is needed for ncclInit operator."));
-    }
 
     platform::Communicator *comm =
         scope.FindVar(name)->GetMutable<platform::Communicator>();
