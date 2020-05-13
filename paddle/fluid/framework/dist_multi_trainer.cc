@@ -177,9 +177,12 @@ Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
 }
 
 void DistMultiTrainer::Finalize() {
+  //VLOG(0) << "before run";
   for (auto &th : threads_) {
     th.join();
+  //  VLOG(0) << "th_run_finish";
   }
+  //VLOG(0) << "after run";
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -214,12 +217,17 @@ void DistMultiTrainer::Finalize() {
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }
+  //VLOG(0) << "before pull_dense_worker_->Stop";
   pull_dense_worker_->Stop();
+  //VLOG(0) << "after pull_dense_worker_->Stop";
   root_scope_->DropKids();
 
   // flush local client push queue
   auto fleet_ptr_ = FleetWrapper::GetInstance();
+  //VLOG(0) << "before flush";
   fleet_ptr_->ClientFlush();
+   //VLOG(0) << "after flush";
+  VLOG(0) << "after trainer Finalize";
 }
 
 template <typename T>

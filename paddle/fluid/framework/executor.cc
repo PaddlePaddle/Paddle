@@ -177,8 +177,11 @@ void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
 }
 
 void Executor::ReleaseTrainer(std::shared_ptr<TrainerBase> trainer) {
-  VLOG(3) << "Trainer going to finalize";
+  VLOG(0) << "Trainer going to finalize";
   trainer->Finalize();
+//  VLOG(0) << "Trainer going to sleep 10s";
+//  sleep(10);
+  VLOG(0) << "Trainer end";// to sleep 10s";
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,

@@ -48,8 +48,11 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${PSLIB_SOURCE_DIR}
     DOWNLOAD_DIR          ${PSLIB_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      cp /home/xujiaqi/disk5/pslib_local/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz .
-                          && tar zxvf ${PSLIB_NAME}.tar.gz
+    DOWNLOAD_COMMAND      cp /home/xujiaqi/disk5/pslib_pulllocal_v3/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz . && tar zxvf ${PSLIB_NAME}.tar.gz
+#    DOWNLOAD_COMMAND      cp /home/xujiaqi/disk5/pslib_pulllocal/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz . && tar zxvf ${PSLIB_NAME}.tar.gz
+#    DOWNLOAD_COMMAND      cp /home/xujiaqi/disk5/pslib_local/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz . && tar zxvf ${PSLIB_NAME}.tar.gz
+#    DOWNLOAD_COMMAND      cp /home/xujiaqi/disk5/paddle_heter/baidu/paddlepaddle/pslib/${PSLIB_NAME}.tar.gz . && tar zxvf ${PSLIB_NAME}.tar.gz
+#                          && tar zxvf ${PSLIB_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""
     CMAKE_ARGS            -DCMAKE_INSTALL_PREFIX=${PSLIB_INSTALL_ROOT}

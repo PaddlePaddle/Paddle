@@ -59,7 +59,9 @@ namespace framework {
 
 class FleetWrapper {
  public:
-  virtual ~FleetWrapper() {}
+  virtual ~FleetWrapper() {
+    VLOG(0) << "~FleetWrapper destructor";
+  }
   FleetWrapper() {
     scale_sparse_gradient_with_batch_size_ = true;
     // trainer sleep some time for pslib core dump
@@ -296,9 +298,20 @@ class FleetWrapper {
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
 
-  void SetLocal(bool local) {
+  void LocalInit(const std::string& dist_desc) {
 #ifdef PADDLE_WITH_PSLIB 
-    pslib_ptr_->set_local(local);
+    pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
+        new paddle::distributed::PSlib());
+    pslib_ptr_->local_init(dist_desc);
+#endif
+  }
+
+  void LocalStop() {
+#ifdef PADDLE_WITH_PSLIB
+    pslib_ptr_->local_stop();
+    //VLOG(0) << "before pslib_ptr_ reset";
+    //pslib_ptr_.reset();
+    // VLOG(0) << "after pslib_ptr_ reset";
 #endif
   }
 

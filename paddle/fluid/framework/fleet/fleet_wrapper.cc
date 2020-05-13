@@ -571,15 +571,15 @@ void FleetWrapper::PullSparseVarsSync(
       exit(-1);
     }
   }
-  std::stringstream ss;
-  ss << "\n";
-  for (size_t j = 0; j < fea_keys->size(); ++j) {
-    ss << "\nPullSparseVarsSync " << fea_keys->at(j) << ":";
-    for (auto& k : fea_values->at(j)) {
-        ss << " " << k;
-    }
-  }
-  VLOG(0) << ss.str();
+//  std::stringstream ss;
+//  ss << "\n";
+//  for (size_t j = 0; j < fea_keys->size(); ++j) {
+//    ss << "\nPullSparseVarsSync " << fea_keys->at(j) << ":";
+//    for (auto& k : fea_values->at(j)) {
+//        ss << " " << k;
+//    }
+//  }
+//  VLOG(0) << ss.str();
 #endif
 }
 
@@ -695,15 +695,16 @@ void FleetWrapper::PushDenseParamSync(
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* g = tensor->mutable_data<float>(place);
-    std::stringstream ss;
-    ss << "PushDenseParamSync " << t << ":";
-    for (int j = 0; j < tensor->numel(); ++j) {
-        ss <<" " << g[j];
-    }
-    VLOG(0) << ss.str();
+//    std::stringstream ss;
+//    ss << "PushDenseParamSync " << t << ":";
+//    for (int j = 0; j < tensor->numel(); ++j) {
+//        ss <<" " << g[j];
+//    }
+//    VLOG(0) << ss.str();
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
+//  VLOG(0) << "PushDenseParamSync " << table_id;
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
   push_status.wait();
@@ -1175,13 +1176,13 @@ void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
                                            const int mode,
                                            const std::string& prefix) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode),
-                                           prefix);
-  ret.wait();
-  if (ret.get() != 0) {
-    LOG(ERROR) << "save model (with prefix) of table id: " << table_id
-               << ", to path: " << path << " failed";
-  }
+//  auto ret = pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode),
+//                                           prefix);
+//  ret.wait();
+//  if (ret.get() != 0) {
+//    LOG(ERROR) << "save model (with prefix) of table id: " << table_id
+ //              << ", to path: " << path << " failed";
+//  }
 #else
   VLOG(0) << "FleetWrapper::SaveModelOneTablePrefix does nothing when no pslib";
 #endif

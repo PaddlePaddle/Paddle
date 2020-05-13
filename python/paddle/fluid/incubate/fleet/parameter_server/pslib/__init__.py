@@ -195,10 +195,10 @@ class PSLib(Fleet):
                 raise Exception("You should run DistributedOptimizer.minimize() first")
         self._dist_desc_str = text_format.MessageToString(self._opt_info["fleet_desc"])
         self._dist_desc = self._opt_info["fleet_desc"]
+#        self._fleet_ptr.init_server(self._dist_desc_str, 0)
 #        self._fleet_ptr.set_local(True)
-        self._fleet_ptr.init_server(self._dist_desc_str, 0)
-        self._fleet_ptr.set_local(True)
-        self._fleet_ptr.init_worker(self._dist_desc_str, [1], 1, 2)
+#        self._fleet_ptr.init_worker(self._dist_desc_str, [1], 1, 2)
+        self._fleet_ptr.local_init(self._dist_desc_str)
 
         if True:#self._role_maker.is_first_worker():
             tables = []
@@ -225,10 +225,16 @@ class PSLib(Fleet):
                                 "var " + var_name + " not found in scope, "
                                 + "you should run startup program first")
                         var_name_list.append(var_name)
+                    #print("skip push dense param")
                     self._fleet_ptr.init_model(scope,
                                                int(table.table_id),
                                                var_name_list)
+                
 
+    def local_stop(self):
+        self._fleet_ptr.local_stop()
+#        self._fleet_ptr.finalize_worker()
+#        self._fleet_ptr.stop_server()
 
     def stop_worker(self):
         """

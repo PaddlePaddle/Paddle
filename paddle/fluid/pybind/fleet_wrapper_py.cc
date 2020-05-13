@@ -81,7 +81,8 @@ void BindFleetWrapper(py::module* m) {
       .def("save_model_one_table", &framework::FleetWrapper::SaveModelOneTable)
       .def("save_model_one_table_with_prefix",
            &framework::FleetWrapper::SaveModelOneTablePrefix)
-      .def("set_local", &framework::FleetWrapper::SetLocal)
+      .def("local_init", &framework::FleetWrapper::LocalInit)
+      .def("local_stop", &framework::FleetWrapper::LocalStop)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);

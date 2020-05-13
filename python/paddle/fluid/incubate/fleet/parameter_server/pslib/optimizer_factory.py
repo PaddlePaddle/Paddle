@@ -507,6 +507,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ps_param.fs_client_param.hadoop_bin = "$HADOOP_HOME/bin/hadoop"
 
         opt_info = {}
+        opt_info["worker_name"] = strategy.get("worker_name", "DownpourWorker")
         opt_info["program_id_to_worker"] = prog_id_to_worker
         opt_info["program_configs"] = program_configs
         opt_info["trainer"] = "DistMultiTrainer"
