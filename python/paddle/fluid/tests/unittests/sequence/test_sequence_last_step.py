@@ -34,7 +34,7 @@ class TestSequenceLastStepOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_input_level():
-                # the elements of input must less than maxlen
+                # the lod_level of input is no more than 2
                 y = fluid.layers.data(
                     name='y', shape=[1], dtype='float32', lod_level=3)
                 fluid.layers.sequence_last_step(y)
