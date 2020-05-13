@@ -52,15 +52,14 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
 
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(rois_batch_size, batch_size,
-                      platform::errors::InvalidArgument(
-                          "the rois_batch_size "
-                          "and input(X) batch_size should be the same."));
-    int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(
-        rois_num_with_lod, rois_num,
-        platform::errors::InvalidArgument("the rois_num from "
-                                          "input and lod must be the same"));
+        rois_batch_size, batch_size,
+        platform::errors::InvalidArgument("the rois_batch_size and input(X) "
+                                          "batch_size should be the same."));
+    int rois_num_with_lod = rois_lod[rois_batch_size];
+    PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
+                      platform::errors::InvalidArgument(
+                          "the rois_num from input and lod must be the same"));
 
     PADDLE_ENFORCE_EQ(input_channels,
                       output_channels * pooled_height * pooled_width,

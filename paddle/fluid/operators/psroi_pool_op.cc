@@ -81,34 +81,31 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) of "
-                                          "PSROIPoolOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ROIs"), true,
-        platform::errors::InvalidArgument("Input(ROIs) of "
-                                          "PSROIPoolOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument("Output(Out) of "
-                                          "PSROIPoolOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of PSROIPoolOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(ROIs) of PSROIPoolOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of PSROIPoolOp should not be null."));
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE_EQ(input_dims.size(), 4,
                       platform::errors::InvalidArgument(
                           "The format of input tensor is NCHW"));
-    PADDLE_ENFORCE_EQ(rois_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "ROIs should be "
-                          "a 2-D LoDTensor of shape (num_rois, 4) "
-                          "given as [(x1, y1, x2, y2), ...]"));
-    PADDLE_ENFORCE_EQ(rois_dims[1], 4,
-                      platform::errors::InvalidArgument(
-                          "ROIs should be "
-                          "a 2-D LoDTensor of shape (num_rois, 4) "
-                          "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims[1], 4,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
