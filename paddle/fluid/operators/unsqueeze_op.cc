@@ -54,9 +54,9 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     } else if (ctx->HasInputs("AxesTensorList")) {
       auto AxesTensorList = ctx->Inputs("AxesTensorList");
       int output_size = x_dims.size() + static_cast<int>(AxesTensorList.size());
-      PADDLE_ENFORCE_LE(output_size, 6, platform::errors::InvalidArgument(
-                                            "The output tensor's "
-                                            "rank should be less than 6."));
+      PADDLE_ENFORCE_LE(output_size, 6,
+                        platform::errors::InvalidArgument(
+                            "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
     } else if (ctx->HasInput("AxesTensor")) {
@@ -70,14 +70,14 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
                             axes_dims, axes_dims.size()));
       PADDLE_ENFORCE_GE(
           axes_dims[0], 0,
-          platform::errors::InvalidArgument("Input(AxesTensor)'s "
-                                            "shape must be known. But received "
-                                            "AxesTensor's shape = [%s]",
-                                            axes_dims));
+          platform::errors::InvalidArgument(
+              "Input(AxesTensor)'s shape must be known. But received "
+              "AxesTensor's shape = [%s]",
+              axes_dims));
       int output_size = x_dims.size() + static_cast<int>(axes_dims[0]);
-      PADDLE_ENFORCE_LE(output_size, 6, platform::errors::InvalidArgument(
-                                            "The output tensor's "
-                                            "rank should be less than 6."));
+      PADDLE_ENFORCE_LE(output_size, 6,
+                        platform::errors::InvalidArgument(
+                            "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
     }
@@ -90,21 +90,20 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
     std::vector<int64_t> output_shape(output_size, 0);
 
     // Validity Check: rank range.
-    PADDLE_ENFORCE_LE(output_size, 6, platform::errors::InvalidArgument(
-                                          "The output tensor's "
-                                          "rank should be less than 6."));
+    PADDLE_ENFORCE_LE(output_size, 6,
+                      platform::errors::InvalidArgument(
+                          "The output tensor's rank should be less than 6."));
 
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
       PADDLE_ENFORCE_GE(cur, 0, platform::errors::InvalidArgument(
-                                    "The insert dimension "
-                                    "value should not be less than 0"));
+                                    "The insert dimension value should "
+                                    "not be less than 0"));
       PADDLE_ENFORCE_LE(cur, cur_output_size,
                         platform::errors::InvalidArgument(
-                            "The insert dimension "
-                            "value shoud not be larger than "
-                            "the dimension size of input tensor"));
+                            "The insert dimension value shoud not be larger "
+                            "than the dimension size of input tensor"));
       // Move old axis, and insert new axis
       for (int i = cur_output_size; i >= cur; --i) {
         if (output_shape[i] == 1) {

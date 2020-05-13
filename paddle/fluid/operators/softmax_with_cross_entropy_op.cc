@@ -126,16 +126,14 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Label");
     auto logits_rank = logits_dims.size();
-    PADDLE_ENFORCE_GE(
-        axis, -logits_rank,
-        platform::errors::InvalidArgument("Attr(axis) value "
-                                          "should be in range [-R, R-1], "
-                                          "R is the rank of Input(Logits)."));
-    PADDLE_ENFORCE_LT(
-        axis, logits_rank,
-        platform::errors::InvalidArgument("Attr(axis) value "
-                                          "should be in range [-R, R-1], "
-                                          "R is the rank of Input(Logits)."));
+    PADDLE_ENFORCE_GE(axis, -logits_rank,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(Logits)."));
+    PADDLE_ENFORCE_LT(axis, logits_rank,
+                      platform::errors::InvalidArgument(
+                          "Attr(axis) value should be in range [-R, R-1], "
+                          "R is the rank of Input(Logits)."));
 
     axis = CanonicalAxis(axis, logits_rank);
     for (int i = 0; i < logits_rank; i++) {
@@ -143,9 +141,8 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
           PADDLE_ENFORCE_EQ(logits_dims[i], labels_dims[i],
                             platform::errors::InvalidArgument(
-                                "Input(Logits) and "
-                                "Input(Label) should in same shape in "
-                                "dimensions except axis."));
+                                "Input(Logits) and Input(Label) should in "
+                                "same shape in dimensions except axis."));
         }
       }
     }
