@@ -14,8 +14,10 @@
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestInf(OpTest):
@@ -36,6 +38,20 @@ class TestInf(OpTest):
 
     def test_output(self):
         self.check_output()
+
+
+class TestRaiseError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.isfinite([10])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data = fluid.data(shape=[10], dtype="float16", name="input")
+            fluid.layers.isfinite(data)
+
+        self.assertRaises(TypeError, test_dtype)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -98,6 +114,23 @@ class TestIsfinite(OpTest):
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class BadInputTest(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_has_inf_bad_x():
+                data = [1, 2, 3]
+                result = fluid.layers.has_inf(data)
+
+            self.assertRaises(TypeError, test_has_inf_bad_x)
+
+            def test_has_nan_bad_x():
+                data = [1, 2, 3]
+                result = fluid.layers.has_nan(data)
+
+            self.assertRaises(TypeError, test_has_nan_bad_x)
 
 
 if __name__ == '__main__':

@@ -69,6 +69,11 @@ class ProgramStats(object):
                     for idx in self.var_op_deps[name]["var_as_input_ops"]:
                         if idx >= end_op_idx:
                             var_name.append(name)
+            for name in self.ops[i].desc.input_arg_names():
+                if name in self.var_op_deps:
+                    for idx in self.var_op_deps[name]["var_as_output_ops"]:
+                        if idx < begin_op_idx:
+                            var_name.append(name)
         return var_name
 
     def is_subgraph(self, var_group1, var_group2):
@@ -701,7 +706,7 @@ def _append_backward_ops_with_checkpoints_(
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
-    # b. output of dropout op will be held in memory
+    # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
     vars_should_be_hold.extend(program_stat.get_input_nodes())
@@ -822,6 +827,19 @@ def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
     return sub_block.ops
 
 
+def _is_grad_op_(op):
+    op_maker = core.op_proto_and_checker_maker
+    backward = core.op_proto_and_checker_maker.OpRole.Backward
+    if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+        return True
+    return False
+
+
+def _rename_grad_name_(name, grad_order):
+    return 'grad/' * grad_order + name
+
+
 def _append_backward_ops_(block,
                           ops,
                           target_block,
@@ -857,6 +875,8 @@ def _append_backward_ops_(block,
     grad_op_descs = []
     program = block.program
 
+    rename_var_map = {}
+
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
@@ -888,6 +908,33 @@ def _append_backward_ops_(block,
             op_device = op.desc.attr(device_attr_name)
             for op_desc in grad_op_desc:
                 op_desc._set_attr(device_attr_name, op_device)
+
+        # Rename internal gradient variables in multiple backward
+        # so that they have different names with previous backward.
+        # For example:
+        #  y = x * x, grad = fluid.gradients(fluid.gradients(y, x) + y * y, x)
+        # In second-time backward, gradient variable names of partial
+        # forward network (y * y) may be have same names with first-time
+        # fluid.gradients(y, x).
+        # So rename here before _addup_repetitive_outputs_.
+        if program._appending_grad_times > 1:
+            for op_desc in grad_op_desc:
+                if not _is_grad_op_(op):
+                    for name in op_desc.input_arg_names():
+                        if name in rename_var_map:
+                            op_desc._rename_input(name, rename_var_map[name])
+                for name in op_desc.output_arg_names():
+                    if "@GRAD" not in name:
+                        continue
+                    if block.desc.find_var(name.encode("ascii")):
+                        new_name = _rename_grad_name_(
+                            name, program._appending_grad_times)
+                        op_desc._rename_output(name, new_name)
+                        rename_var_map[name] = new_name
+
+                        if name in op_grad_to_var:
+                            op_grad_to_var[new_name] = op_grad_to_var[name]
+                            op_grad_to_var.pop(name)
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.

@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -254,6 +255,32 @@ class TestWith3x3(TestModulatedDeformableConvOp):
 class TestWithGroup(TestModulatedDeformableConvOp):
     def init_group(self):
         self.groups = 2
+
+
+class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
+    def test_error(self):
+        def test_invalid_input():
+            input = [1, 3, 32, 32]
+            offset = fluid.data(
+                name='offset', shape=[None, 3, 32, 32], dtype='float32')
+            mask = fluid.data(
+                name='mask', shape=[None, 3, 32, 32], dtype='float32')
+            loss = fluid.layers.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=1)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_offset():
+            input = fluid.data(
+                name='input', shape=[None, 3, 32, 32], dtype='int32')
+            offset = fluid.data(
+                name='offset', shape=[None, 3, 32, 32], dtype='float32')
+            mask = fluid.data(
+                name='mask', shape=[None, 3, 32, 32], dtype='float32')
+            loss = fluid.layers.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=1)
+
+        self.assertRaises(TypeError, test_invalid_offset)
 
 
 if __name__ == '__main__':

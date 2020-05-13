@@ -17,6 +17,7 @@ from . import core
 from . import framework
 from . import executor
 from . import compiler
+from .data_feeder import check_type
 import sys
 
 __all__ = ['ParallelExecutor']
@@ -357,14 +358,14 @@ class ParallelExecutor(object):
 
               parallel_exe.drop_local_exe_scopes()
         """
-        assert isinstance(
-            self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor.drop_local_exe_scopes")
         self._compiled_program._executor.drop_local_exe_scopes()
 
     # This API is used to check whether DropLocalExeScopes can work.
     def _need_create_local_exe_scopes(self):
-        assert isinstance(
-            self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+        check_type(self._compiled_program._executor,
+                   "the Executor of compiled program", core.ParallelExecutor,
+                   "ParallelExecutor._need_create_local_exe_scopes")
         return self._compiled_program._executor._need_create_local_exe_scopes()

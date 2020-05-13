@@ -43,10 +43,11 @@ def parse_args():
         default='',
         help='Saved optimized and quantized INT8 model')
     parser.add_argument(
-        '--quantized_ops',
+        '--ops_to_quantize',
         type=str,
         default='',
-        help='A comma separated list of quantized operators.')
+        help='A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
+    )
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -65,9 +66,12 @@ def transform_and_save_model(original_path, save_path, save_type):
              fetch_targets] = fluid.io.load_inference_model(original_path, exe,
                                                             'model', 'params')
 
-        quantized_ops = set(test_args.quantized_ops.split(','))
+        ops_to_quantize = set()
+        if len(test_args.ops_to_quantize) > 0:
+            ops_to_quantize = set(test_args.ops_to_quantize.split(','))
+
         transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
-            quantized_ops, _scope=inference_scope, _place=place, _core=core)
+            ops_to_quantize, _scope=inference_scope, _place=place, _core=core)
 
         graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
         if save_type == 'FP32':

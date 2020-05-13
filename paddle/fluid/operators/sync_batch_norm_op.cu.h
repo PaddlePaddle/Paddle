@@ -183,7 +183,7 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     Tensor c_g_st;
     auto *c_g_st_d = c_g_st.mutable_data<BatchNormParamType<T>>(
         {2 * C + 1}, platform::CPUPlace());
-    auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
     memory::Copy(platform::CPUPlace(), c_g_st_d, gplace, stats, bytes, 0);
 
 #ifndef WIN32
@@ -191,12 +191,9 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     if (comm) {
       int dtype = platform::ToNCCLDataType(mean_out->type());
       // In-place operation
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::ncclAllReduce(stats, stats, 2 * C + 1,
-                                           static_cast<ncclDataType_t>(dtype),
-                                           ncclSum, comm, stream),
-          platform::errors::InvalidArgument(
-              "ncclAllReduce in Op(sync_batch_norm) failed"));
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+          stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
+          comm, stream));
     }
 #endif
 
@@ -468,12 +465,9 @@ void SyncBatchNormGradFunctor(
   if (comm) {
     int dtype = platform::ToNCCLDataType(scale->type());
     // In-place operation
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::ncclAllReduce(stats, stats, 2 * C + 1,
-                                         static_cast<ncclDataType_t>(dtype),
-                                         ncclSum, comm, stream),
-        platform::errors::InvalidArgument(
-            "ncclAllReduce in Op(sync_batch_norm) failed"));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+        stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
   }
 #endif
 

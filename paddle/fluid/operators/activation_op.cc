@@ -71,8 +71,9 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     if ((static_cast<int>(kDepValue) &
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
-        FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
-                             boost::get<bool>(op->GetAttr("use_mkldnn")))) {
+        FLAGS_use_mkldnn ||
+        (op->HasAttr("use_mkldnn") &&
+         BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
       op->SetInput("X", this->Input("X"));
     }
 
@@ -129,9 +130,10 @@ class ActivationOp : public framework::OperatorWithKernel {
 class ActivationOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -274,6 +276,15 @@ UNUSED constexpr char LogDoc[] = R"DOC(
 Log Activation Operator.
 
 $$out = \ln(x)$$
+
+Natural logarithm of x.
+
+)DOC";
+
+UNUSED constexpr char Log1pDoc[] = R"DOC(
+Log Activation Operator.
+
+$out = \ln(x+1)$
 
 Natural logarithm of x.
 
@@ -634,6 +645,7 @@ REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);

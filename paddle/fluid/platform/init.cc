@@ -50,7 +50,8 @@ std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
 std::once_flag glog_warning_once_flag;
 
-void InitGflags(std::vector<std::string> argv) {
+bool InitGflags(std::vector<std::string> argv) {
+  bool successed = false;
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
     // NOTE(zhiqiu): dummy is needed, since the function
@@ -71,7 +72,9 @@ void InitGflags(std::vector<std::string> argv) {
             << ", Init commandline: " << line;
     google::ParseCommandLineFlags(&argc, &arr, true);
     VLOG(1) << "After Parse: argc is " << argc;
+    successed = true;
   });
+  return successed;
 }
 
 void InitP2P(std::vector<int> devices) {

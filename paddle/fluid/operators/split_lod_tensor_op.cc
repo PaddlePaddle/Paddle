@@ -58,7 +58,8 @@ class SplitLoDTensorOp : public framework::OperatorBase {
       framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx,
                             cpu_mask.get());
 #else
-      PADDLE_THROW("Not supported GPU, Please compile WITH_GPU option");
+      PADDLE_THROW(paddle::platform::errors::Fatal(
+          "Not support GPU, Please compile WITH_GPU option"));
 #endif
     }
     auto *mask_data = cpu_mask->data<bool>();
@@ -146,34 +147,34 @@ class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class SplitLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "SplitLoDTensorOp must have input X.");
-    PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "SplitLoDTensorOp must have input Mask.");
-    PADDLE_ENFORCE(context->HasOutput("OutTrue"),
-                   "SplitLoDTensorOp must have output OutTrue.");
-    PADDLE_ENFORCE(context->HasOutput("OutFalse"),
-                   "SplitLoDTensorOp must have output OutFalse.");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "SplitLoDTensor");
+    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask",
+                   "SplitLoDTensor");
+    OP_INOUT_CHECK(context->HasOutput("OutTrue"), "Output", "OutTrue",
+                   "SplitLoDTensor");
+    OP_INOUT_CHECK(context->HasOutput("OutFalse"), "Output", "OutFalse",
+                   "SplitLoDTensor");
 
     auto mask_dim = context->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
-                      "If you are using IfElse OP:"
-                      "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
-                      "ie.true_block():\n    out_1 = ie.input(x)\n\n"
-                      "Please ensure that the cond should be a 2-D tensor and "
-                      "the second dim size of cond should be 1. "
-                      "But now the cond's shape is [",
-                      *mask_dim.Get(), "].\n");
-    if (context->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(mask_dim[1], 1,
-                        "If you are using IfElse OP:"
-                        "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
-                        "ie.true_block():\n    out_1 = ie.input(x)\n\n"
-                        "Please ensure that the cond should be a 2-D tensor "
-                        "and the second dim size of cond should be 1. "
-                        "But now the cond's shape is [",
-                        *mask_dim.Get(), "].\n");
-    }
+    PADDLE_ENFORCE_EQ(
+        mask_dim.size(), 2,
+        platform::errors::InvalidArgument(
+            "If you are using IfElse OP:"
+            "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+            "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+            "Please ensure that the cond should be a 2-D tensor and "
+            "the second dim size of cond should be 1. "
+            "But now the cond's shape is [",
+            *mask_dim.Get(), "].\n"));
+    PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+                      platform::errors::InvalidArgument(
+                          "If you are using IfElse OP:"
+                          "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                          "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                          "Please ensure that the cond should be a 2-D tensor "
+                          "and the second dim size of cond should be 1. "
+                          "But now the cond's shape is [",
+                          *mask_dim.Get(), "].\n"));
 
     context->SetOutputDim("OutTrue", context->GetInputDim("X"));
     context->SetOutputDim("OutFalse", context->GetInputDim("X"));

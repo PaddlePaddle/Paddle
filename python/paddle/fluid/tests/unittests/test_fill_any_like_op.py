@@ -107,6 +107,7 @@ class TestFillAnyLikeOp_attr_out(unittest.TestCase):
             fill_value = 2.0
             input = fluid.data(name='input', dtype='float32', shape=[2, 3])
             output = paddle.full_like(input, fill_value)
+            output_dtype = paddle.full_like(input, fill_value, dtype='float32')
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -246,6 +247,34 @@ class TestOnesZerosError(unittest.TestCase):
                 paddle.zeros_like(data, dtype="float")
 
         self.assertRaises(ValueError, test_device_error4)
+
+        def test_ones_like_type_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                fluid.layers.ones_like([10], dtype="float")
+
+        self.assertRaises(TypeError, test_ones_like_type_error)
+
+        def test_ones_like_dtype_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float16")
+                fluid.layers.ones_like(data, dtype="float32")
+
+        self.assertRaises(TypeError, test_ones_like_dtype_error)
+
+        def test_ones_like_out_type_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                fluid.layers.ones_like(data, dtype="float32", out=[10])
+
+        self.assertRaises(TypeError, test_ones_like_out_type_error)
+
+        def test_ones_like_out_dtype_error():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                out = fluid.data(name="out", shape=[10], dtype="float16")
+                fluid.layers.ones_like(data, dtype="float32", out=out)
+
+        self.assertRaises(TypeError, test_ones_like_out_dtype_error)
 
 
 if __name__ == "__main__":

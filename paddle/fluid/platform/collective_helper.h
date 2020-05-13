@@ -101,7 +101,7 @@ class NCCLCommContext {
 
   // retrieve a communicator by the ring id and place
   NCCLComm* Get(int ring_id, Place place) const {
-    return Get(ring_id, boost::get<CUDAPlace>(place).device);
+    return Get(ring_id, BOOST_GET_CONST(CUDAPlace, place).device);
   }
 
  private:
@@ -109,8 +109,6 @@ class NCCLCommContext {
   std::mutex comm_map_mutex_;
   // ring id to dev-NCCLComm
   std::map<int, std::map<int, std::unique_ptr<NCCLComm>>> comm_map_;
-
-  std::vector<ncclComm_t> comm_vec_;
 
   void ReleaseNCCLComms();
 
