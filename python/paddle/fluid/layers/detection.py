@@ -1754,6 +1754,8 @@ def prior_box(input,
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(
+        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box')
 
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
@@ -1932,18 +1934,18 @@ def density_prior_box(input,
     """
     helper = LayerHelper("density_prior_box", **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'density_prior_box')
 
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if not _is_list_or_tuple_(densities):
-        raise TypeError('densities should be a list or a tuple or None.')
-    if not _is_list_or_tuple_(fixed_sizes):
-        raise TypeError('fixed_sizes should be a list or a tuple or None.')
-    if not _is_list_or_tuple_(fixed_ratios):
-        raise TypeError('fixed_ratios should be a list or a tuple or None.')
+    check_type(densities, 'densities', (list, tuple), 'density_prior_box')
+    check_type(fixed_sizes, 'fixed_sizes', (list, tuple), 'density_prior_box')
+    check_type(fixed_ratios, 'fixed_ratios', (list, tuple), 'density_prior_box')
     if len(densities) != len(fixed_sizes):
         raise ValueError('densities and fixed_sizes length should be euqal.')
+
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
         raise ValueError('steps should be a list or tuple ',
                          'with length 2, (step_width, step_height).')
