@@ -205,9 +205,9 @@ from .tensor.stat import var  #DEFINE_ALIAS
 
 from . import incubate
 from .incubate import hapi
-from .fluid.dygraph.base import enable_dygraph  #DEFINE_ALIAS
-from .fluid.dygraph.base import disable_dygraph  #DEFINE_ALIAS
-from .fluid.framework import in_dygraph_mode  #DEFINE_ALIAS
-enable_imperative = enable_dygraph  #DEFINE_ALIAS
-disable_imperative = disable_dygraph  #DEFINE_ALIAS
-in_imperative_mode = in_dygraph_mode
+from .fluid.dygraph.base import enable_dygraph as enable_imperative  #DEFINE_ALIAS
+from .fluid.dygraph.base import disable_dygraph as disable_imperative  #DEFINE_ALIAS
+from .fluid.framework import in_dygraph_mode as in_imperative_mode  #DEFINE_ALIAS
+from .fluid.Executor import Executor  #DEFINE_ALIAS
+from .fluid.Executor import scope_guard  #DEFINE_ALIAS
+from .fluid.core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
