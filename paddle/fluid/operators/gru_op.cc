@@ -331,18 +331,20 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
                                        frame_size * 2 /*width of weight*/,
                                        frame_size /*height of height*/);
-      PADDLE_ENFORCE_NOT_NULL(packed_gate,
-                              "The caculation result of packed_gate by "
-                              "GEMM_ALLOC should not be null when using MKL.");
+      PADDLE_ENFORCE_NOT_NULL(
+          packed_gate, platform::errors::NotFound(
+                           "The caculation result of packed_gate by "
+                           "GEMM_ALLOC should not be null when using MKL."));
       blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size * 2,
                      frame_size, T(1.0), gru_value.gate_weight, frame_size * 2,
                      packed_gate);
       T* packed_state = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
                                         frame_size /*width of weight*/,
                                         frame_size /*height of height*/);
-      PADDLE_ENFORCE_NOT_NULL(packed_state,
-                              "The caculation result of packed_state by "
-                              "GEMM_ALLOC should not be null when using MKL.");
+      PADDLE_ENFORCE_NOT_NULL(
+          packed_state, platform::errors::NotFound(
+                            "The caculation result of packed_state by "
+                            "GEMM_ALLOC should not be null when using MKL."));
       blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size,
                      frame_size, T(1.0), gru_value.state_weight, frame_size,
                      packed_state);
