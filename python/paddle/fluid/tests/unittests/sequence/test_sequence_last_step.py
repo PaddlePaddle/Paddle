@@ -25,24 +25,18 @@ from op_test import OpTest
 class TestSequenceLastStepOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            input_data = np.random.randint(1, 5, [4]).astype("int64")
 
             def test_Variable():
                 # the input must be Variable
+                input_data = np.random.randint(1, 5, [4]).astype("int64")
                 fluid.layers.sequence_last_step(input_data)
 
             self.assertRaises(TypeError, test_Variable)
 
-            def test_input_level():
-                # the lod_level of input is no more than 2
-                y = fluid.layers.data(
-                    name='y', shape=[1], dtype='float32', lod_level=3)
-                fluid.layers.sequence_last_step(y)
-
-            self.assertRaises(TypeError, test_input_level)
-
             def test_input_dtype():
                 # the dtype of input must be int64
+                input_data = fluid.layers.data(
+                    name='x', shape=[4], dtype='float32')
                 fluid.layers.sequence_last_step(input_data)
 
             self.assertRaises(TypeError, test_input_dtype)
