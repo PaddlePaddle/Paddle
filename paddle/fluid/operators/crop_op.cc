@@ -52,9 +52,8 @@ class CropOp : public framework::OperatorWithKernel {
       auto y_dim = ctx->GetInputDim("Y");
       PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y_dim),
                         platform::errors::InvalidArgument(
-                            "The number of "
-                            "dimension (%d) of CropOp's input(X) must be equal "
-                            "to the one of input(Y).",
+                            "The number of dimension (%d) of CropOp's input(X) "
+                            "must be equal to the one of input(Y).",
                             framework::arity(x_dim), framework::arity(y_dim)));
       ctx->SetOutputDim("Out", y_dim);
     }
