@@ -43,7 +43,7 @@ static std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(
   for (auto &op : op_handles) {
     auto &dev_ctx = op->DeviceContext();
     auto &p = dev_ctx.begin()->first;
-    int dev_id = boost::get<platform::CUDAPlace>(p).device;
+    int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
     auto &dev_dummys = graphs[dev_id]->Get<GraphDepVars>(kGraphDepVars);
     graphs[dev_id]->AddNode(graph->RemoveNode(op->Node()).release());
 
@@ -256,13 +256,14 @@ FetchResultType ParallelSSAGraphExecutor::Run(
         if (!is_valid[scope_idx]) {
           continue;
         }
-        const auto &fetch_list = boost::get<FetchList>(fetch_data[scope_idx]);
+        const auto &fetch_list =
+            BOOST_GET_CONST(FetchList, fetch_data[scope_idx]);
         if (data_is_lod_tensor(fetch_list[fetch_idx])) {
           lodtensor_ptrs.push_back(
-              &(boost::get<LoDTensor>(fetch_list[fetch_idx])));
+              &(BOOST_GET_CONST(LoDTensor, fetch_list[fetch_idx])));
         } else {
           lodtensorarray_ptrs.push_back(
-              &(boost::get<LoDTensorArray>(fetch_list[fetch_idx])));
+              &(BOOST_GET_CONST(LoDTensorArray, fetch_list[fetch_idx])));
         }
       }
       if (lodtensor_ptrs.size() != 0) {
@@ -295,7 +296,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
           continue;
         }
         const auto &fetch_list =
-            boost::get<FetchUnmergedList>(fetch_data[scope_idx]);
+            BOOST_GET_CONST(FetchUnmergedList, fetch_data[scope_idx]);
         PADDLE_ENFORCE_EQ(
             fetch_list[fetch_idx].size(), 1,
             platform::errors::Fatal("Each place must have only one fetched "

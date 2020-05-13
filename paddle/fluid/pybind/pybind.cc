@@ -957,6 +957,10 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("get_bytes",
+           [](Variable &self) {
+             return py::bytes(*self.GetMutable<std::string>());
+           })
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
            py::return_value_policy::reference)
@@ -1297,7 +1301,7 @@ All parameter, weight, gradient are variables in Paddle.
         .. code-block:: python
 
           import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()to be allocated
+          cpu_place = fluid.CPUPlace()
 
         )DOC")
       .def(py::init<>())
@@ -1358,7 +1362,7 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("gpu_device_id",
            [](platform::Place &self) {
-             return boost::get<platform::CUDAPlace>(self).device;
+             return BOOST_GET_CONST(platform::CUDAPlace, self).device;
            })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
@@ -1513,9 +1517,9 @@ All parameter, weight, gradient are variables in Paddle.
            size_t index) -> py::object {
           auto &var = framework::GetFetchVariable(scope, var_name, index);
           if (data_is_lod_tensor(var)) {
-            return py::cast(boost::get<LoDTensor>(var));
+            return py::cast(BOOST_GET(LoDTensor, var));
           } else {
-            return py::cast(boost::get<LoDTensorArray>(var));
+            return py::cast(BOOST_GET(LoDTensorArray, var));
           }
         });
   m.def("get_variable_tensor", framework::GetVariableTensor);
@@ -1605,10 +1609,10 @@ All parameter, weight, gradient are variables in Paddle.
              py::list res(self.size());
              for (size_t i = 0; i < self.size(); ++i) {
                if (data_is_lod_tensor(self[i])) {
-                 auto &data = boost::get<LoDTensor>(self[i]);
+                 auto &data = BOOST_GET(LoDTensor, self[i]);
                  res[i] = py::cast(std::move(data));
                } else {
-                 auto &data = boost::get<LoDTensorArray>(self[i]);
+                 auto &data = BOOST_GET(LoDTensorArray, self[i]);
                  py::list tmp(data.size());
                  for (size_t j = 0; j < data.size(); ++j) {
                    tmp[j] = py::cast(std::move(data[j]));
@@ -1624,7 +1628,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("append",
            [](FetchList &self, const LoDTensor &t) {
              self.emplace_back();
-             auto &lod_tensor = boost::get<LoDTensor>(self.back());
+             auto &lod_tensor = BOOST_GET(LoDTensor, self.back());
              lod_tensor.ShareDataWith(t);
              lod_tensor.set_lod(t.lod());
            },
@@ -1633,7 +1637,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("append",
            [](FetchList &self, const LoDTensorArray &t) {
              self.emplace_back();
-             auto &lod_tensor_array = boost::get<LoDTensorArray>(self.back());
+             auto &lod_tensor_array = BOOST_GET(LoDTensorArray, self.back());
              for (size_t i = 0; i < t.size(); ++i) {
                lod_tensor_array[i].ShareDataWith(t[i]);
                lod_tensor_array[i].set_lod(t[i].lod());
@@ -1651,10 +1655,10 @@ All parameter, weight, gradient are variables in Paddle.
                py::list tmp(self[i].size());
                for (size_t j = 0; j < self[i].size(); ++j) {
                  if (data_is_lod_tensor(self[i][j])) {
-                   auto &var = boost::get<LoDTensor>(self[i][j]);
+                   auto &var = BOOST_GET(LoDTensor, self[i][j]);
                    tmp[j] = py::cast(std::move(var));
                  } else {
-                   auto &var = boost::get<LoDTensorArray>(self[i][j]);
+                   auto &var = BOOST_GET(LoDTensorArray, self[i][j]);
                    py::list tmp_array(var.size());
                    for (size_t k = 0; k < var.size(); ++k) {
                      tmp_array[k] = std::move(var[k]);
@@ -2395,10 +2399,10 @@ All parameter, weight, gradient are variables in Paddle.
              }
              if (return_merged) {
                return py::cast(
-                   std::move(boost::get<paddle::framework::FetchList>(ret)));
+                   std::move(BOOST_GET(paddle::framework::FetchList, ret)));
              } else {
                return py::cast(std::move(
-                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
+                   BOOST_GET(paddle::framework::FetchUnmergedList, ret)));
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);

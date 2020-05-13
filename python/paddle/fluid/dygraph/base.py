@@ -19,6 +19,7 @@ import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 import objgraph
@@ -51,12 +52,34 @@ def program_desc_tracing_guard(enable):
     if tracer:
         original_val = tracer._enable_program_desc_tracing
         tracer._enable_program_desc_tracing = enable
-    yield
-    if tracer:
-        tracer._enable_program_desc_tracing = original_val
+    try:
+        yield
+    finally:
+        if tracer:
+            tracer._enable_program_desc_tracing = original_val
 
 
 _functional_dygraph_context_manager = None
+
+
+@signature_safe_contextmanager
+def param_guard(parameters):
+    # Note: parameters is a reference of self._parameters
+    if not framework.in_dygraph_mode() and parameters:
+        origin_parameters = parameters.copy()
+        for name, var_base in parameters.items():
+            if isinstance(var_base, core.VarBase):
+                new_var = framework.Parameter(
+                    var_base.block,
+                    var_base.shape,
+                    var_base.dtype,
+                    var_base.type,
+                    name=var_base.name)
+                parameters[name] = new_var
+        yield
+        parameters.update(origin_parameters)
+    else:
+        yield
 
 
 def enabled():
@@ -112,6 +135,9 @@ def enable_dygraph(place=None):
         _functional_dygraph_context_manager = guard(place=place)
         _functional_dygraph_context_manager.__enter__()
 
+        # call disable_dygraph when Python exit
+        CleanupFuncRegistrar.register(disable_dygraph)
+
 
 def disable_dygraph():
     """
@@ -136,14 +162,16 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
         mode = tracer._train_mode
         tracer._train_mode = is_train
-        yield
-        tracer._train_mode = mode
+        try:
+            yield
+        finally:
+            tracer._train_mode = mode
     else:
         yield
 

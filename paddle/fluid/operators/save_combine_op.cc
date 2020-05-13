@@ -71,6 +71,22 @@ to a file on disk.
         "The \"file_path\" where the LoDTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string& path) { return !path.empty(); });
+    AddAttr<bool>("save_to_memory",
+                  "(boolean, default false)"
+                  "If true, the variables will be saved to binary strings.")
+        .SetDefault(false);
+    AddOutput("Y",
+              "(RAW, default empty)."
+              "This output is used when saving variables to binary strings.")
+        .AsDispensable();
+  }
+};
+
+class SaveCombineOpInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    ctx->SetOutputType("Y", framework::proto::VarType::RAW,
+                       framework::ALL_ELEMENTS);
   }
 };
 
@@ -80,7 +96,7 @@ to a file on disk.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
-                  ops::SaveCombineOpProtoMaker);
+                  ops::SaveCombineOpProtoMaker, ops::SaveCombineOpInferVarType);
 
 REGISTER_OP_CPU_KERNEL(
     save_combine,

@@ -13,10 +13,14 @@
 # limitations under the License.
 
 # TODO: define normalization api  
-# __all__ = ['BatchNorm',
-#            'GroupNorm',
-#            'LayerNorm',
-#            'SpectralNorm']
-__all__ = ['InstanceNorm']
 
 from ...fluid.dygraph.nn import InstanceNorm
+
+from ...fluid.dygraph import BatchNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import GroupNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import LayerNorm  #DEFINE_ALIAS
+from ...fluid.dygraph import SpectralNorm  #DEFINE_ALIAS
+
+__all__ = [
+    'BatchNorm', 'GroupNorm', 'LayerNorm', 'SpectralNorm', 'InstanceNorm'
+]

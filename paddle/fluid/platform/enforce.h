@@ -49,6 +49,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/platform/variant.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 
@@ -56,6 +57,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
@@ -437,6 +439,70 @@ struct EnforceNotMet : public std::exception {
                                         __ROLE, __NAME, __OP_TYPE));        \
   } while (0)
 
+/*
+ * Summary: This BOOST_GET(_**) series macros are used to call boost::get
+ *   safely. boost::get is not a completely safe api, although it will not
+ *   go wrong in most cases, but in extreme cases, it may fail and directly
+ *   throw a boost::bad_get exception, without any stack information.
+ *   This kind of problems is difficult to debug, so add these macros to
+ *   enrich boost::get error information. At the same time, we restrict
+ *   the direct use of boost::get by CI rule.
+ *
+ * Parameters:
+ *     __TYPE: the target variable type
+ *     __VALUE: the target variable to get
+ *
+ * Examples:
+ *     - unsafe writing: int x = boost::get<int>(y);
+ *     - safe writing: int x = BOOST_GET(int, y);
+ *
+ * Note: GCC 4.8 cannot select right overloaded function here, so need
+ *    to define different functions and macros here, after we upgreade
+ *    CI gcc version, we can only define one BOOST_GET macro.
+*/
+namespace details {
+
+#define DEFINE_SAFE_BOOST_GET(__InputType, __OutputType, __OutputTypePtr,      \
+                              __FuncName)                                      \
+  template <typename OutputType, typename InputType>                           \
+  auto __FuncName(__InputType input, const char* expression, const char* file, \
+                  int line)                                                    \
+      ->typename std::conditional<std::is_pointer<InputType>::value,           \
+                                  __OutputTypePtr, __OutputType>::type {       \
+    try {                                                                      \
+      return boost::get<OutputType>(input);                                    \
+    } catch (boost::bad_get&) {                                                \
+      HANDLE_THE_ERROR                                                         \
+      throw ::paddle::platform::EnforceNotMet(                                 \
+          ::paddle::platform::errors::InvalidArgument(                         \
+              "boost::get failed, cannot get value "                           \
+              "(%s) by type %s, its type is %s.",                              \
+              expression,                                                      \
+              paddle::platform::demangle(typeid(OutputType).name()),           \
+              paddle::platform::demangle(input.type().name())),                \
+          file, line);                                                         \
+      END_HANDLE_THE_ERROR                                                     \
+    }                                                                          \
+  }
+
+DEFINE_SAFE_BOOST_GET(InputType&, OutputType&, OutputType*, SafeBoostGet);
+DEFINE_SAFE_BOOST_GET(const InputType&, const OutputType&, const OutputType*,
+                      SafeBoostGetConst);
+DEFINE_SAFE_BOOST_GET(InputType&&, OutputType, OutputType*,
+                      SafeBoostGetMutable);
+
+}  // namespace details
+
+#define BOOST_GET(__TYPE, __VALUE)                                     \
+  ::paddle::platform::details::SafeBoostGet<__TYPE>(__VALUE, #__VALUE, \
+                                                    __FILE__, __LINE__)
+#define BOOST_GET_CONST(__TYPE, __VALUE)                                    \
+  ::paddle::platform::details::SafeBoostGetConst<__TYPE>(__VALUE, #__VALUE, \
+                                                         __FILE__, __LINE__)
+#define BOOST_GET_MUTABLE(__TYPE, __VALUE)                                    \
+  ::paddle::platform::details::SafeBoostGetMutable<__TYPE>(__VALUE, #__VALUE, \
+                                                           __FILE__, __LINE__)
+
 /** OTHER EXCEPTION AND ENFORCE **/
 
 struct EOFException : public std::exception {
@@ -680,6 +746,44 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
 #endif
 }
 
+/***** CUSOLVER ERROR *****/
+inline bool is_error(cusolverStatus_t stat) {
+  return stat != CUSOLVER_STATUS_SUCCESS;
+}
+
+inline const char* cusolverGetErrorString(cusolverStatus_t stat) {
+  switch (stat) {
+    case CUSOLVER_STATUS_NOT_INITIALIZED:
+      return "CUSOLVER_STATUS_NOT_INITIALIZED";
+    case CUSOLVER_STATUS_ALLOC_FAILED:
+      return "CUSOLVER_STATUS_ALLOC_FAILED";
+    case CUSOLVER_STATUS_INVALID_VALUE:
+      return "CUSOLVER_STATUS_INVALID_VALUE";
+    case CUSOLVER_STATUS_ARCH_MISMATCH:
+      return "CUSOLVER_STATUS_ARCH_MISMATCH";
+    case CUSOLVER_STATUS_EXECUTION_FAILED:
+      return "CUSOLVER_STATUS_EXECUTION_FAILED";
+    case CUSOLVER_STATUS_INTERNAL_ERROR:
+      return "CUSOLVER_STATUS_INTERNAL_ERROR";
+    case CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+      return "CUSOLVER_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+    default:
+      return "Unknown cusolver status";
+  }
+}
+inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
+  std::string msg(" Cublas error, ");
+  return msg + cusolverGetErrorString(stat) + " ";
+}
+
+inline void throw_on_error(cusolverStatus_t stat, const std::string& msg) {
+#ifndef REPLACE_ENFORCE_GLOG
+  throw std::runtime_error(msg);
+#else
+  LOG(FATAL) << msg;
+#endif
+}
+
 /****** NCCL ERROR ******/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
@@ -716,6 +820,7 @@ DEFINE_CUDA_STATUS_TYPE(cudaError_t, cudaSuccess);
 DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
+DEFINE_CUDA_STATUS_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);

@@ -28,7 +28,7 @@ cc_library(flags SRCS flags.cc DEPS gflags)
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
-cc_library(enforce INTERFACE SRCS enforce.cc DEPS flags errors cuda_error_proto)
+cc_library(enforce INTERFACE SRCS enforce.cc DEPS flags errors cuda_error_proto boost)
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
 set(CPU_INFO_DEPS gflags glog enforce)

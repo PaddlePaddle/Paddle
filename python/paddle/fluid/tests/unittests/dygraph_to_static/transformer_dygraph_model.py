@@ -76,7 +76,13 @@ class PrePostProcessLayer(Layer):
 
 
 class MultiHeadAttention(Layer):
-    def __init__(self, d_key, d_value, d_model, n_head=1, dropout_rate=0.):
+    def __init__(self,
+                 d_key,
+                 d_value,
+                 d_model,
+                 n_head=1,
+                 dropout_rate=0.,
+                 param_initializer=None):
         super(MultiHeadAttention, self).__init__()
         self.n_head = n_head
         self.d_key = d_key
@@ -84,13 +90,25 @@ class MultiHeadAttention(Layer):
         self.d_model = d_model
         self.dropout_rate = dropout_rate
         self.q_fc = Linear(
-            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+            input_dim=d_model,
+            output_dim=d_key * n_head,
+            bias_attr=False,
+            param_attr=fluid.ParamAttr(initializer=param_initializer))
         self.k_fc = Linear(
-            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+            input_dim=d_model,
+            output_dim=d_key * n_head,
+            bias_attr=False,
+            param_attr=fluid.ParamAttr(initializer=param_initializer))
         self.v_fc = Linear(
-            input_dim=d_model, output_dim=d_value * n_head, bias_attr=False)
+            input_dim=d_model,
+            output_dim=d_value * n_head,
+            bias_attr=False,
+            param_attr=fluid.ParamAttr(initializer=param_initializer))
         self.proj_fc = Linear(
-            input_dim=d_value * n_head, output_dim=d_model, bias_attr=False)
+            input_dim=d_value * n_head,
+            output_dim=d_model,
+            bias_attr=False,
+            param_attr=fluid.ParamAttr(initializer=param_initializer))
 
     def forward(self, queries, keys, values, attn_bias, cache=None):
         # compute q ,k ,v

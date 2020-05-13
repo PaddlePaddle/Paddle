@@ -440,6 +440,11 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
             numpy.array(list(map(lambda x: int(x.shape[axis]), input))))
         return res, sizes
 
+    check_type(input, 'input', (list, Variable), 'tensor_array_to_tensor')
+    if isinstance(input, list):
+        for i, input_x in enumerate(input):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'tensor_array_to_tensor')
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     out_index = helper.create_variable_for_type_inference(dtype="int32")
@@ -1076,6 +1081,9 @@ def reverse(x, axis):
           result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
           result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
     """
+    check_variable_and_dtype(
+        x, 'x', ('float32', 'float64', 'int32', 'int64', 'uint8'), 'reverse')
+    check_type(axis, 'axis', (int, tuple, list), 'reverse')
     if isinstance(axis, int):
         axis = [axis]
     helper = LayerHelper("reverse", **locals())
@@ -1271,6 +1279,9 @@ def range(start, end, step, dtype):
              data = fluid.layers.range(0, 10, 2, 'int32')
 
     """
+    check_type(start, 'start', (float, int, Variable), 'range')
+    check_type(end, 'end', (float, int, Variable), 'range')
+    check_type(step, 'step', (float, int, Variable), 'range')
     helper = LayerHelper("range", **locals())
 
     check_dtype(dtype, 'create data type',
