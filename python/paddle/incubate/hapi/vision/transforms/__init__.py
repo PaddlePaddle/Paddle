@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import models
 from . import transforms
-from .models import *
-from .transforms import *
+from . import functional
 
-__all__ = models.__all__ \
-        + transforms.__all__
+from .transforms import *
+from .functional import *
+
+__all__ = transforms.__all__ \
+        + functional.__all__

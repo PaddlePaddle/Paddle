@@ -10798,7 +10798,8 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
@@ -12354,10 +12355,10 @@ def similarity_focus(input, axis, indexes, name=None):
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
-    if isinstance(axis, int) is False:
-        raise TypeError("axis must be int type.")
-    if isinstance(indexes, list) is False:
-        raise TypeError("indexes must be list type.")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "similarity_focus")
+    check_type(axis, 'axis', int, "similarity_focus")
+    check_type(indexes, 'indexes', list, "similarity_focus")
     if axis != 1 and axis != 2 and axis != 3:
         raise ValueError("axis must be 1, 2 or 3.")
     if len(indexes) == 0:
@@ -13489,6 +13490,8 @@ def continuous_value_model(input, cvm, use_cvm=True):
     """
     helper = LayerHelper('cvm', **locals())
     out = helper.create_variable(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'cvm')
     helper.append_op(
         type='cvm',
         inputs={'X': [input],
