@@ -57,7 +57,7 @@ class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class MaxSeqenceLenInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(ctx->HasInput("RankTable"), "Input", "RankTable",
+    OP_INOUT_CHECK(context->HasInput("RankTable"), "Input", "RankTable",
                    "MaxSeqenceLen");
     context->SetOutputDim("Out", {1});
   }

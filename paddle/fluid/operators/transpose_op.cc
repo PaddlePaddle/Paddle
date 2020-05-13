@@ -32,7 +32,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Transpose");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "Transpose");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
@@ -262,7 +262,7 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("XShape"), "Input", "XShape",
                    "Transpose2OpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Output",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "Transpose2OpGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       auto xshape_dim = ctx->GetInputDim("XShape");
