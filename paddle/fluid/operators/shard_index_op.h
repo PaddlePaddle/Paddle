@@ -51,9 +51,8 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LT(
         shard_id, nshards,
         platform::errors::InvalidArgument(
-            "The value 'shard_id' "
-            "for Op(shard_index) must be less than nshards (%d), but the"
-            " value given is %d.",
+            "The value 'shard_id' for Op(shard_index) must be less than "
+            "nshards (%d), but the value given is %d.",
             nshards, shard_id));
 
     int shard_size = (index_num + nshards - 1) / nshards;
