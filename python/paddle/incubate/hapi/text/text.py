@@ -1803,6 +1803,8 @@ class DynamicDecode(Layer):
             from paddle.fluid.layers import BeamSearchDecoder
             from paddle.incubate.hapi.text import StackedLSTMCell, DynamicDecode
 
+            paddle.enable_dygraph()
+
             vocab_size, d_model, = 100, 32
             encoder_output = paddle.rand((2, 4, d_model))
             trg_embeder = fluid.dygraph.Embedding(size=[vocab_size, d_model])
