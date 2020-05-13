@@ -11929,17 +11929,30 @@ def strided_slice(input, axes, starts, ends, strides):
             sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
-    if not isinstance(starts, (list, tuple, Variable)):
-        raise ValueError(
-            "Input starts must be an Variable, python list or tuple.")
-    if not isinstance(ends, (list, tuple, Variable)):
-        raise ValueError(
-            "Input ends must be an Variable, python list or tuple.")
-    if not isinstance(strides, (list, tuple, Variable)):
-        raise ValueError(
-            "Input strides must be an Variable, python list or tuple.")
-
     helper = LayerHelper('strided_slice', **locals())
+
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'strided_slice')
+    check_type(axes, 'axes', (list, tuple), 'strided_slice')
+    check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
+    check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
+    check_type(strides, 'strides', (list, tuple, Variable), 'strided_slice')
+
+    def check_list_elements_dtype(list_input, input_name):
+        if isinstance(list_input, Variable):
+            check_dtype(list_input.dtype, input_name, ['int32'],
+                        'strided_slice')
+        else:
+            for i, var in enumerate(list_input):
+                var_name = input_name + '[' + str(i) + ']'
+                if isinstance(var, Variable):
+                    check_dtype(var.dtype, var_name, ['int32'], 'strided_slice')
+
+    check_list_elements_dtype(axes, 'axes')
+    check_list_elements_dtype(starts, 'starts')
+    check_list_elements_dtype(ends, 'ends')
+    check_list_elements_dtype(strides, 'strides')
 
     def get_new_list_tensor(old_list):
         new_list_tensor = []
