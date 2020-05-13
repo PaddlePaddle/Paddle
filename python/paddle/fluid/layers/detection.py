@@ -919,7 +919,8 @@ def yolov3_loss(x,
                 downsample_ratio,
                 gt_score=None,
                 use_label_smooth=True,
-                name=None):
+                name=None,
+                scale_x_y=1.):
     """
     ${comment}
 
@@ -945,6 +946,7 @@ def yolov3_loss(x,
         gt_score (Variable): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
+        scale_x_y (float): ${scale_x_y_comment}
 
     Returns:
         Variable: A 1-D tensor with shape [N], the value of yolov3 loss
@@ -1017,6 +1019,7 @@ def yolov3_loss(x,
         "ignore_thresh": ignore_thresh,
         "downsample_ratio": downsample_ratio,
         "use_label_smooth": use_label_smooth,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -1039,7 +1042,8 @@ def yolo_box(x,
              conf_thresh,
              downsample_ratio,
              clip_bbox=True,
-             name=None):
+             name=None,
+             scale_x_y=1.):
     """
     ${comment}
 
@@ -1051,6 +1055,7 @@ def yolo_box(x,
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         clip_bbox (bool): ${clip_bbox_comment}
+        scale_x_y (float): ${scale_x_y_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1099,6 +1104,7 @@ def yolo_box(x,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
         "clip_bbox": clip_bbox,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -1758,6 +1764,8 @@ def prior_box(input,
     """
     helper = LayerHelper("prior_box", **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(
+        input, 'input', ['uint8', 'int8', 'float32', 'float64'], 'prior_box')
 
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
@@ -1936,18 +1944,18 @@ def density_prior_box(input,
     """
     helper = LayerHelper("density_prior_box", **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'density_prior_box')
 
     def _is_list_or_tuple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if not _is_list_or_tuple_(densities):
-        raise TypeError('densities should be a list or a tuple or None.')
-    if not _is_list_or_tuple_(fixed_sizes):
-        raise TypeError('fixed_sizes should be a list or a tuple or None.')
-    if not _is_list_or_tuple_(fixed_ratios):
-        raise TypeError('fixed_ratios should be a list or a tuple or None.')
+    check_type(densities, 'densities', (list, tuple), 'density_prior_box')
+    check_type(fixed_sizes, 'fixed_sizes', (list, tuple), 'density_prior_box')
+    check_type(fixed_ratios, 'fixed_ratios', (list, tuple), 'density_prior_box')
     if len(densities) != len(fixed_sizes):
         raise ValueError('densities and fixed_sizes length should be euqal.')
+
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
         raise ValueError('steps should be a list or tuple ',
                          'with length 2, (step_width, step_height).')

@@ -485,15 +485,14 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
     def transform(self):
         node = self.ast_root
-        if is_candidate_node(node):
-            if isinstance(node, gast.If):
-                self._visit_If(node)
-            if isinstance(node, gast.For):
-                self._visit_For(node)
-            elif isinstance(node, gast.While):
-                self._visit_While(node)
-            else:
-                self.visit(node)
+        if isinstance(node, gast.If):
+            self._visit_If(node)
+        elif isinstance(node, gast.For):
+            self._visit_For(node)
+        elif isinstance(node, gast.While):
+            self._visit_While(node)
+        else:
+            self.visit(node)
         return self.is_control_flow_num > 0
 
     def _visit_If(self, node):
@@ -503,8 +502,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
-        # TODO
-        # self.is_control_flow_num += 1
         if not isinstance(node.iter, gast.Call):
             return
         if not isinstance(node.iter.func, gast.Name):
@@ -550,14 +547,10 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
     def visit_BoolOp(self, node):
         for i, child in enumerate(node.values):
-            if is_candidate_node(child):
-                self.visit(child)
+            self.visit(child)
         return node
 
     def visit_Compare(self, node):
-        # Ignores child node with `if x` or `if x is None`
-        # TODO(Aurelius84): `if tensor` will be supported in dygraph
-        # and should be considered as is_control_flow.
         pre_control_flow_num = self.is_control_flow_num
         if not compare_with_none(node):
             self.generic_visit(node)
@@ -600,19 +593,16 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     def _is_node_with_tensor(self, node, name_id):
         from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 
-        tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
             if name_id and isinstance(name_id, six.string_types):
                 var_type = self.node_var_type_map.get(name_id, None)
-                if var_type and var_type & tensor_types:
+                if var_type and var_type & NodeVarType.TENSOR_TYPES:
                     return True
         # if not found, look up the node_to_wrapper_map by node.
-        node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
-        )
-        wrapper_node = node_to_wrapper_map.get(node, None)
+        wrapper_node = self.node_to_wrapper_map.get(node, None)
         if wrapper_node is not None:
-            if wrapper_node.node_var_type & tensor_types:
+            if wrapper_node.node_var_type & NodeVarType.TENSOR_TYPES:
                 return True
 
         return False
