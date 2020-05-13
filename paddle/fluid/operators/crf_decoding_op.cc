@@ -93,7 +93,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                    "CRFDecoding");
     OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
                    "CRFDecoding");
-    OP_INOUT_CHECK(ctx->HasOutput("ViterbiPath"), "Input", "ViterbiPath",
+    OP_INOUT_CHECK(ctx->HasOutput("ViterbiPath"), "Output", "ViterbiPath",
                    "CRFDecoding");
 
     auto emission_dims = ctx->GetInputDim("Emission");
@@ -170,8 +170,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
-                "shape "
-                "[%u]; received Input(Label): rank %u, shape [%s].",
+                "shape [%s]; received Input(Label): rank %u, shape [%s].",
                 emission_dims.size(), emission_dims, label_dims.size(),
                 label_dims));
       }

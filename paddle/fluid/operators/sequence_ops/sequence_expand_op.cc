@@ -213,8 +213,7 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceExpandOpGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   ctx->HasInput(framework::GradVarName("Out")),
-                   "SequenceExpandOpGrad");
+                   framework::GradVarName("Out"), "SequenceExpandOpGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

@@ -130,7 +130,7 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
-              "input shape [%u].",
+              "input shape [%s].",
               og_dims.size(), og_dims, x_dims.size(), x_dims));
     }
 
