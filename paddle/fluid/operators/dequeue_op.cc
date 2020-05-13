@@ -64,12 +64,11 @@ class DequeueOp : public framework::OperatorBase {
       std::vector<LoDTensor> lod_tensor_vec;
       bool success = false;
       lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
-      PADDLE_ENFORCE_EQ(
-          lod_tensor_vec.size(), 1,
-          platform::errors::InvalidArgument("Expected to pop only one element "
-                                            "per Pop call for Op(dequeue), but "
-                                            "poped %d element.",
-                                            lod_tensor_vec.size()));
+      PADDLE_ENFORCE_EQ(lod_tensor_vec.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Expected to pop only one element per Pop call for "
+                            "Op(dequeue), but poped %d element.",
+                            lod_tensor_vec.size()));
       for (size_t j = 0; j < lod_tensor_vec.size(); ++j) {
         TensorCopySync(lod_tensor_vec[j], dev_place, out_tensor);
       }
@@ -95,5 +94,4 @@ class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = ::paddle::operators;
 
-REGISTER_OPERATOR_WITHOUT_GRADIENT(dequeue, ops::DequeueOp,
-                                   ops::DequeueOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(dequeue, ops::DequeueOp, ops::DequeueOpMaker);

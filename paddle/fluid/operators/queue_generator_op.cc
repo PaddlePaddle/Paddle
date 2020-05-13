@@ -16,12 +16,11 @@ limitations under the License. */
 #include <ostream>
 #include <string>
 
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-#include "paddle/fluid/platform/nccl_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -37,16 +36,16 @@ class QueueGeneratorOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     std::vector<std::string> names = Attr<std::vector<std::string>>("names");
-    PADDLE_ENFORCE_GT(names.size(), 0,
-                      platform::errors::InvalidArgument(
-                          "The attribute 'names' for Op(queue_generator) must "
-                          "be set."));
+    PADDLE_ENFORCE_GT(names.size(), 0, platform::errors::InvalidArgument(
+                                           "The attribute 'names' for "
+                                           "Op(queue_generator) must be set."));
+
     int capacity = Attr<int>("capacity");
     PADDLE_ENFORCE_GT(
         capacity, 0,
         platform::errors::InvalidArgument(
-            "The attribute 'capacity' for Op(queue_generator) must"
-            " be set a positive value, but the one received is %d." capacity));
+            "The attribute 'capacity' for Op(queue_generator) must "
+            "be set a positive value, but the one received is %d." capacity));
 
     // generate queue vars and initialize them
     for (const auto& name : names) {
@@ -89,5 +88,5 @@ Generate and initialize one or more LodTensorBlockingQueueHolders.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR_WITHOUT_GRADIENT(queue_generator, ops::QueueGeneratorOp,
-                                   ops::QueueGeneratorOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(queue_generator, ops::QueueGeneratorOp,
+                             ops::QueueGeneratorOpMaker);

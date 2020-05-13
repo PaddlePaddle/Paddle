@@ -76,5 +76,4 @@ class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = ::paddle::operators;
 
-REGISTER_OPERATOR_WITHOUT_GRADIENT(enqueue, ops::EnqueueOp,
-                                   ops::EnqueueOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(enqueue, ops::EnqueueOp, ops::EnqueueOpMaker);
