@@ -305,6 +305,8 @@ def sequence_conv_pool(input,
                                                      act="tanh",
                                                      pool_type="sqrt")
     """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
     conv_out = layers.sequence_conv(
         input=input,
         num_filters=num_filters,
