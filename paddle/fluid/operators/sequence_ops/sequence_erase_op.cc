@@ -24,7 +24,7 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceErase");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "SequenceErase");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SequenceErase");
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
                    platform::errors::InvalidArgument(
