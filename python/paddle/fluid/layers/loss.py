@@ -147,6 +147,10 @@ def center_loss(input,
 
 def bpr_loss(input, label, name=None):
     """
+    :alias_main: paddle.nn.functional.bpr_loss
+	:alias: paddle.nn.functional.bpr_loss,paddle.nn.functional.loss.bpr_loss
+	:old_api: paddle.fluid.layers.bpr_loss
+
     **Bayesian Personalized Ranking Loss Operator**
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
@@ -1163,6 +1167,10 @@ def softmax_with_cross_entropy(logits,
                                return_softmax=False,
                                axis=-1):
     """
+    :alias_main: paddle.nn.functional.softmax_with_cross_entropy
+	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
+	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
+
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
     to provide a more numerically stable gradient.
@@ -1286,6 +1294,10 @@ def softmax_with_cross_entropy(logits,
 
 def rank_loss(label, left, right, name=None):
     """
+    :alias_main: paddle.nn.functional.rank_loss
+	:alias: paddle.nn.functional.rank_loss,paddle.nn.functional.loss.rank_loss
+	:old_api: paddle.fluid.layers.rank_loss
+
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
     indicates whether A is ranked higher than B or not. Please refer to more details: 
@@ -1409,6 +1421,10 @@ def sigmoid_cross_entropy_with_logits(x,
                                       name=None,
                                       normalize=False):
     """
+    :alias_main: paddle.nn.functional.sigmoid_cross_entropy_with_logits
+	:alias: paddle.nn.functional.sigmoid_cross_entropy_with_logits,paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits
+	:old_api: paddle.fluid.layers.sigmoid_cross_entropy_with_logits
+
     ${comment}
 
     Args:
@@ -1459,6 +1475,10 @@ def teacher_student_sigmoid_loss(input,
                                  soft_max_up_bound=15.0,
                                  soft_max_lower_bound=-15.0):
     """
+    :alias_main: paddle.nn.functional.teacher_student_sigmoid_loss
+	:alias: paddle.nn.functional.teacher_student_sigmoid_loss,paddle.nn.functional.loss.teacher_student_sigmoid_loss
+	:old_api: paddle.fluid.layers.teacher_student_sigmoid_loss
+
     **Teacher Student Log Loss Layer**
 
     This layer accepts input predictions and target label and returns the
