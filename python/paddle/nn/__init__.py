@@ -17,10 +17,12 @@
 
 from .layer import norm
 from .functional import extension
+from .layer import common
 
 __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
+__all__ += common.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue        #DEFINE_ALIAS
@@ -64,7 +66,7 @@ from .layer.common import BilinearTensorProduct  #DEFINE_ALIAS
 from .layer.common import Pool2D  #DEFINE_ALIAS
 from .layer.common import Embedding  #DEFINE_ALIAS
 from .layer.common import Linear  #DEFINE_ALIAS
-# from .layer.common import UpSample        #DEFINE_ALIAS
+from .layer.common import UpSample  #DEFINE_ALIAS
 from .layer.conv import Conv2D  #DEFINE_ALIAS
 from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
 from .layer.conv import Conv3D  #DEFINE_ALIAS
