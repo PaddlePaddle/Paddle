@@ -29,7 +29,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
                    "ProximalGDOp");
 
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"), "Output", "Paramout",
+    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "Paramout",
                    "ProximalGDOp");
 
     auto param_dim = ctx->GetInputDim("Param");
