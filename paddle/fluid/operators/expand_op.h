@@ -96,15 +96,19 @@ class ExpandKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto rank = context.Input<Tensor>("X")->dims().size();
-    switch (rank) {
-      REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED)
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Op(expand) only support input "
-            "with no more than 6 dimensions, but the number of "
-            "dimension of the input tensor is %d.",
+    PADDLE_ENFORCE_GE(
+        rank, 1,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'x' for Op(expand) "
+            "must be greater than or equal to 1, but the received value is %d.",
             rank));
-    }
+    PADDLE_ENFORCE_LE(
+        rank, MAX_RANK_SUPPORTED,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'x' for Op(expand) "
+            "must be less than or equal to %d, but the received value is %d.",
+            MAX_RANK_SUPPORTED, rank));
+    switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
   }
 
  protected:
@@ -179,15 +183,20 @@ class ExpandGradKernel : public framework::OpKernel<T> {
       framework::TensorCopy(*in0, context.GetPlace(), context.device_context(),
                             out0);
     } else {
-      switch (dims) {
-        REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Op(expand) only support input "
-              "with no more than 6 dimensions, but the number of "
-              "dimension of the input tensor is %d.",
-              dims));
-      }
+      PADDLE_ENFORCE_GE(dims, 1, platform::errors::InvalidArgument(
+                                     "The number of dimensions of the input "
+                                     "'Out@GRAD' for Op(expand_grad)"
+                                     " must be greater than or equal to 1, but "
+                                     "the received value is %d.",
+                                     dims));
+      PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
+                        platform::errors::InvalidArgument(
+                            "The number of dimensions of the input 'Out@GRAD' "
+                            "for Op(expand_grad)"
+                            " must be less than or equal to %d, but the "
+                            "received value is %d.",
+                            MAX_RANK_SUPPORTED, dims));
+      switch (dims) { REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
     }
   }
 

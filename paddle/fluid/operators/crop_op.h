@@ -47,7 +47,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
         rank, offsets_tensor->dims()[0],
         platform::errors::InvalidArgument("The number of elements (%d) for "
                                           "input 'Offsets' must be equal to "
-                                          "the number of dimensions size (%d) "
+                                          "the number of dimensions (%d) "
                                           "of the input tensor.",
                                           offsets_tensor->dims()[0], rank));
     const int* offsets_data;
@@ -107,6 +107,18 @@ class CropKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     int rank = context.Input<Tensor>("X")->dims().size();
+    PADDLE_ENFORCE_GE(
+        rank, 1,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'x' for Op(crop) must be "
+            "greater than or equal to 1, but the received value is %d.",
+            rank));
+    PADDLE_ENFORCE_LE(
+        rank, 6,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'x' for Op(crop) must be "
+            "less than or equal to 6, but the received value is %d.",
+            rank));
     switch (rank) {
       case 1:
         CropFunction<DeviceContext, T, 1>(context);
@@ -126,12 +138,6 @@ class CropKernel : public framework::OpKernel<T> {
       case 6:
         CropFunction<DeviceContext, T, 6>(context);
         break;
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "CropOp only support input "
-            "tensors with no more than 6 dimensions, but the number of "
-            "dimension of the input tensor is %d.",
-            rank));
     }
   }
 };
@@ -163,6 +169,20 @@ class CropGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     size_t rank =
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
+    PADDLE_ENFORCE_GE(
+        rank, 1,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'Out@GRAD' for "
+            "Op(crop_grad) "
+            "must be greater than or equal to 1, but the received value is %d.",
+            rank));
+    PADDLE_ENFORCE_LE(
+        rank, 6,
+        platform::errors::InvalidArgument(
+            "The number of dimensions of the input 'Out@GRAD' for "
+            "Op(crop_grad) "
+            "must be less than or equal to 6, but the received value is %d.",
+            rank));
     switch (rank) {
       case 1:
         CropGradFunction<DeviceContext, T, 1>(context);
@@ -182,12 +202,6 @@ class CropGradKernel : public framework::OpKernel<T> {
       case 6:
         CropGradFunction<DeviceContext, T, 6>(context);
         break;
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "CropOp only support input "
-            "tensors with no more than 6 dimensions, but the number of "
-            "dimension of the input tensor is %d.",
-            rank));
     }
   }
 };

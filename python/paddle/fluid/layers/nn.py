@@ -9902,11 +9902,9 @@ def crop(x, shape=None, offsets=None, name=None):
             crop = fluid.layers.crop(z, shape=[2, 2, 3])
 
     """
+    check_variable_and_dtype(x, 'x', ['float32'], 'crop_tensor')
+    check_type(shape, 'shape', (list, tuple, Variable), 'crop')
     helper = LayerHelper('crop', **locals())
-
-    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-            isinstance(shape, Variable)):
-        raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
         offsets = [0] * len(x.shape)
