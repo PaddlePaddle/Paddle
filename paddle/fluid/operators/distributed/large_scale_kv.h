@@ -208,10 +208,13 @@ class SparseVariable {
         std::stringstream ss;
         ss << id << "\t";
 
-        ss << vs.size();
+        ss << vs.size() << "\t";
+
         for (auto v : vs) {
           ss << v << " ";
         }
+
+        ss << "\n";
 
         fouts[i]->write(ss.str().c_str(), sizeof(char) * ss.str().size());
       }
