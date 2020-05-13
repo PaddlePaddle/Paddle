@@ -9628,6 +9628,8 @@ def flatten(x, axis=1, name=None):
             out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):
@@ -12466,6 +12468,9 @@ def hash(input, hash_size, num_hash=1, name=None):
             #   [386]
             #   [901]]]
     """
+    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'hash')
+    check_type(hash_size, 'hash_size', ['int32', 'int64'], 'hash')
+    check_type(num_hash, 'num_hash', ['int32', 'int64'], 'hash')
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
         helper.input_dtype(), stop_gradient=True)
