@@ -51,6 +51,9 @@ def interpolate(input,
                 align_mode=1,
                 data_format='NCHW'):
     """
+	:alias_main: paddle.nn.functional.interpolate
+	:alias: paddle.nn.functional.interpolate,paddle.nn.functional.common.interpolate
+
     This op resizes a batch of images.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
