@@ -247,7 +247,8 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
-    PADDLE_THROW("cannot find Y@GRAD");
+    PADDLE_THROW(
+        platform::errors::NotFound("cannot find gradient variable of Y"));
   }
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
@@ -256,7 +257,8 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
     t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
-    PADDLE_THROW("cannot find Y@GRAD");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
@@ -387,7 +389,8 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar("DY");
   if (var == nullptr) {
-    PADDLE_THROW("cannot find Y@GRAD");
+    PADDLE_THROW(
+        platform::errors::NotFound("cannot find gradient variable of Y"));
   }
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
@@ -396,7 +399,8 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
     t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
-    PADDLE_THROW("cannot find Y@GRAD");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
