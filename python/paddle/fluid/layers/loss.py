@@ -192,6 +192,8 @@ def bpr_loss(input, label, name=None):
     """
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                              'bpr_loss')
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
@@ -1358,15 +1360,11 @@ def rank_loss(label, left, right, name=None):
 
     """
     helper = LayerHelper('rank_loss', **locals())
-
-    if not (isinstance(label, Variable)):
-        raise ValueError("The label should be a Variable")
-
-    if not (isinstance(left, Variable)):
-        raise ValueError("The left should be a Variable")
-
-    if not (isinstance(right, Variable)):
-        raise ValueError("The right should be a Variable")
+    check_variable_and_dtype(label, 'label', ['float32'], "rank_loss")
+    check_variable_and_dtype(left, 'left', ['float32'], "rank_loss")
+    check_variable_and_dtype(right, 'right', ['float32'], "rank_loss")
+	
+    
 
     out = helper.create_variable_for_type_inference("float32")
 
