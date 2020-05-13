@@ -32,11 +32,8 @@ from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransfor
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func, ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
-
-import astor
-import logging
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -78,8 +75,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         BreakContinueTransformer(node_wrapper).transform()
 
         # Transform for loop and while loop
-        logging.info("before loop tree:")
-        logging.info(astor.dump_tree(self.root))
         LoopTransformer(node_wrapper).transform()
 
         # Transform all if/else statement of Dygraph into Static Graph.
@@ -148,14 +143,10 @@ def convert_to_static(dyfunc):
     raw_code = inspect.getsource(dyfunc)
     code = textwrap.dedent(raw_code)
     root = gast.parse(code)
-    logging.info("source tree:")
-    logging.info(astor.dump_tree(root))
 
     # Transform AST
     dygraph_to_static = DygraphToStaticAst()
     root_wrapper = dygraph_to_static.get_static_ast(root)
-    logging.info("result tree:")
-    logging.info(astor.dump_tree(root_wrapper.node))
 
     # Get static_func from AST
     static_func, file_name = ast_to_func(root_wrapper.node, dyfunc)

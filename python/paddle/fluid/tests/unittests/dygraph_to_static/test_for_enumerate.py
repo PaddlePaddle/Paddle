@@ -90,6 +90,46 @@ def dygraph_for_enumerate_var_numpy_with_start(x_array):
     return y, z
 
 
+# 6. for in range with break
+@declarative
+def dygraph_for_in_range_with_break(x):
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x = fluid.dygraph.to_variable(x)
+    for i in range(x.numpy()[0]):
+        z = z + i
+        if i > 2:
+            break
+    return z
+
+
+# 7. for enumerate var.numpy() with break
+@declarative
+def dygraph_for_enumerate_var_numpy_with_break(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array.numpy()):
+        y = y + i
+        z = z + x
+        if i > 2:
+            break
+    return y, z
+
+
+# 8. for enumerate var.numpy() with continue
+@declarative
+def dygraph_for_enumerate_var_numpy_with_continue(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array.numpy()):
+        y = y + i
+        if i > 2:
+            continue
+        z = z + x
+    return y, z
+
+
 class TestTransformBase(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -121,8 +161,6 @@ class TestTransform(TestTransformBase):
         dy_outs = self.get_dygraph_output()
         if not isinstance(dy_outs, tuple):
             dy_outs = (dy_outs, )
-        for x in dy_outs:
-            print("dy out: %d" % x.numpy())
 
         # NOTE: return type is difference
         st_outs = self.get_static_output()
@@ -130,8 +168,6 @@ class TestTransform(TestTransformBase):
             st_outs = (st_outs, )
         else:
             st_outs = tuple(st_outs)
-        for y in st_outs:
-            print("st out: %d" % y.numpy())
 
         for x, y in zip(dy_outs, st_outs):
             self.assertTrue(np.allclose(x.numpy(), y.numpy()))
@@ -168,6 +204,11 @@ class TestForEnumerateSimple(TestForIterList):
         self.dygraph_func = dygraph_for_enumerate_list
 
 
+class TestForInRangeWithBreak(TestForInRange):
+    def set_test_func(self):
+        self.dygraph_func = dygraph_for_in_range_with_break
+
+
 class TestForIterVarNumpy(TestTransform):
     def set_input(self):
         self.input = np.array([1, 2, 3, 4, 5])
@@ -187,6 +228,16 @@ class TestForEnumerateVarNumpy(TestForIterVarNumpy):
 class TestForEnumerateVarNumpyWithStart(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start
+
+
+class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_break
+
+
+class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_continue
 
 
 if __name__ == '__main__':
