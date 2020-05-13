@@ -58,7 +58,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         filter->layout(), DataLayout::kMKLDNN,
         platform::errors::InvalidArgument(
-            "Got wrong layout =%d for Filter tensor.", filter->layout()));
+            "The filter tensor's laytout should be %d, but got %d.",
+            DataLayout::kMKLDNN, filter->layout()));
     PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
                       platform::errors::InvalidArgument(
                           "Got wrong formats for Filter tensor."));
@@ -78,7 +79,8 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           bias->layout(), DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
-              "Got wrong layout = %d for Bias tensor.", bias->layout()));
+              "The bias tensor's laytout should be %d, but got %d.",
+              DataLayout::kMKLDNN, bias->layout()));
       PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
                         platform::errors::InvalidArgument(
                             "Got wrong format for Bias tensor."));
