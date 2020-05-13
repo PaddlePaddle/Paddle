@@ -59,6 +59,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'reduce_sum',
+    'resize_linear',
     'reduce_mean',
     'reduce_max',
     'reduce_min',
