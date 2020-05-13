@@ -229,7 +229,7 @@ class TestGRUOpReverseOriginMode(TestGRUOp):
         self.origin_mode = True
 
 
-class TestLstmpOpError(unittest.TestCase):
+class TestGruOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
