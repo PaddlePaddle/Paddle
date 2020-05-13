@@ -41,10 +41,10 @@ class CropOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
           platform::errors::InvalidArgument(
-              "The shape size (%lld) of CropOp's "
+              "The shape size (%d) of CropOp's "
               "'shape' attribute should be equal to the number of dimensions "
-              "(%lld) of the input tensor.",
-              int64_t(shape.size()), x_dim.size()));
+              "(%d) of the input tensor.",
+              shape.size(), x_dim.size()));
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
