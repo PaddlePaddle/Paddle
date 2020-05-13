@@ -106,9 +106,13 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
         }
         if (i == section_num_ - 1) {
           this_worker->SetNeedDumpField(need_dump_field_);
+          this_worker->SetNeedDumpParam(need_dump_param_);
+          this_worker->SetDumpFieldVector(dump_fields_);
+          this_worker->SetDumpParamVector(dump_param_);
         }
         this_worker->SetPlace(place);
         this_worker->Initialize(trainer_desc);
+        this_worker->InitRandomDumpConfig(trainer_desc);
       }
     }
   }

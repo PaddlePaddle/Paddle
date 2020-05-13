@@ -65,9 +65,11 @@ class TrainerBase {
 
   // For dump param or field
   bool need_dump_field_;
+  bool need_dump_param_;
   std::string dump_fields_path_;
   std::string dump_converter_;
-
+  std::vector<std::string> dump_param_;
+  std::vector<std::string> dump_fields_;
   int dump_thread_num_;
   std::vector<std::thread> dump_thread_;
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;

@@ -32,22 +32,8 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   use_cvm_ = desc.use_cvm();
   thread_barrier_ = desc.thread_barrier();
 
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-  }
-
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
     stat_var_name_map_[param_.stat_var_names(i)] = 1;
-  }
-
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
   }
 }
 
@@ -163,7 +149,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     }
 
     if (need_dump_field_) {
-      DumpField(*thread_scope_);
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
     }
     if (need_dump_param_ && thread_id_ == 0) {
       DumpParam(*thread_scope_, batch_cnt);

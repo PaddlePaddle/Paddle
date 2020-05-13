@@ -103,21 +103,6 @@ void SectionWorker::Initialize(const TrainerDesc& desc) {
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-    VLOG(0) << "dump_fields_[" << i << "]: " << dump_fields_[i];
-  }
-
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-    VLOG(0) << "dump_param_[" << i << "]: " << dump_param_[i];
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
-  }
 }
 
 void SectionWorker::AutoSetCPUAffinity(bool reuse) {
@@ -389,7 +374,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     }
 #endif
     if (need_dump_field_) {
-      DumpField(*scope);
+      DumpField(*scope, dump_mode_, dump_interval_);
     }
     if (need_dump_param_ && pipeline_id_ == 0) {
       DumpParam(*scope, step_cnt);

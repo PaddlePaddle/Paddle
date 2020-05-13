@@ -80,19 +80,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
-  }
   for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
     check_nan_var_names_.push_back(desc.check_nan_var_names(i));
   }
@@ -891,7 +879,7 @@ void DownpourWorker::TrainFiles() {
       }
     }
     if (need_dump_field_) {
-      DumpField(*thread_scope_);
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
     }
     if (need_dump_param_ && thread_id_ == 0) {
       DumpParam(*thread_scope_, batch_cnt);

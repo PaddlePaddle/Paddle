@@ -49,8 +49,12 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
         trainer_desc.device_worker_name());
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
-    workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetNeedDumpField(need_dump_field_);
+    workers_[i]->SetNeedDumpParam(need_dump_param_);
+    workers_[i]->SetDumpFieldVector(dump_fields_);
+    workers_[i]->SetDumpParamVector(dump_param_);
+    workers_[i]->InitRandomDumpConfig(trainer_desc);
+    workers_[i]->Initialize(trainer_desc);
   }
 
   VLOG(3) << "going to initialize pull dense worker";

@@ -20,17 +20,30 @@ namespace framework {
 
 void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
 
-void TrainerBase::ParseDumpConfig(const TrainerDesc& trainer_desc) {
-  dump_fields_path_ = trainer_desc.dump_fields_path();
-  dump_converter_ = trainer_desc.dump_converter();
+void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
+  dump_fields_path_ = desc.dump_fields_path();
+  dump_converter_ = desc.dump_converter();
   need_dump_field_ = false;
-  if (trainer_desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
+  if (desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
     need_dump_field_ = true;
   }
   if (need_dump_field_) {
     auto& file_list = dataset_ptr_->GetFileList();
     if (file_list.size() == 0) {
       need_dump_field_ = false;
+    }
+  }
+  dump_fields_.resize(desc.dump_fields_size());
+  for (int i = 0; i < desc.dump_fields_size(); ++i) {
+    dump_fields_[i] = desc.dump_fields(i);
+  }
+
+  need_dump_param_ = false;
+  if (desc.dump_param_size() != 0) {
+    need_dump_param_ = true;
+    dump_param_.resize(desc.dump_param_size());
+    for (int i = 0; i < desc.dump_param_size(); ++i) {
+      dump_param_[i] = desc.dump_param(i);
     }
   }
 }

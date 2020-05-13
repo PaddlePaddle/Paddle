@@ -120,6 +120,7 @@ class DeviceWorker {
   }
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
+  virtual void InitRandomDumpConfig(const TrainerDesc& desc);
   virtual void SetDeviceIndex(int tid) = 0;
   virtual void TrainFiles() = 0;
   virtual void PrintFetchVars() = 0;
@@ -131,6 +132,15 @@ class DeviceWorker {
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
+  }
+  virtual void SetNeedDumpParam(bool need_dump_param) {
+    need_dump_param_ = need_dump_param;
+  }
+  virtual void SetDumpFieldVector(const std::vector<std::string>& dump_fields) {
+    dump_fields_ = &dump_fields;
+  }
+  virtual void SetDumpParamVector(const std::vector<std::string>& dump_param) {
+    dump_param_ = &dump_param;
   }
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {
     writer_.Reset(queue);
@@ -145,7 +155,8 @@ class DeviceWorker {
 
  protected:
   virtual void DumpParam(const Scope& scope, const int batch_id);
-  virtual void DumpField(const Scope& scope);
+  virtual void DumpField(const Scope& scope, int dump_mode,
+                         int dump_interval = 10000);
   Scope* root_scope_ = nullptr;
   Scope* thread_scope_;
   paddle::platform::Place place_;
@@ -158,8 +169,11 @@ class DeviceWorker {
   // dump params or grads for debug
   bool need_dump_param_;
   bool need_dump_field_;
-  std::vector<std::string> dump_param_;
-  std::vector<std::string> dump_fields_;
+  const std::vector<std::string>* dump_param_;
+  const std::vector<std::string>* dump_fields_;
+
+  int dump_mode_;
+  int dump_interval_ = 10000;
   ChannelWriter<std::string> writer_;
 };
 
@@ -206,12 +220,6 @@ class HogwildWorker : public CPUWorkerBase {
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
   std::map<std::string, int> stat_var_name_map_;
-  // dump params or grads for debug
-  bool need_dump_param_;
-  bool need_dump_field_;
-  std::vector<std::string> dump_param_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
 };
 
 class DownpourWorker : public HogwildWorker {
