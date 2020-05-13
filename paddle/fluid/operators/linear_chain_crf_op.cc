@@ -201,7 +201,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                               "The batch size of Input(Emission) "
                               "and Input(Label) should be the same. But "
                               "received Input(Emission): "
-                              "rank %u, shape [%u]; received Input(Label): "
+                              "rank %u, shape [%s]; received Input(Label): "
                               "rank %u, shape [%s].",
                               emission_dims.size(), emission_dims,
                               label_dims.size(), label_dims));
@@ -210,7 +210,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                               "The max length of Input(Emission) "
                               "and Input(Label) should be the same. But "
                               "received Input(Emission): "
-                              "rank %u, shape [%u]; received Input(Label): "
+                              "rank %u, shape [%s]; received Input(Label): "
                               "rank %u, shape [%s].",
                               emission_dims.size(), emission_dims,
                               label_dims.size(), label_dims));
@@ -250,7 +250,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
                 "shape "
-                "[%u]; received Input(Label): rank %u, shape [%s].",
+                "[%s]; received Input(Label): rank %u, shape [%s].",
                 emission_dims.size(), emission_dims, label_dims.size(),
                 label_dims));
       }

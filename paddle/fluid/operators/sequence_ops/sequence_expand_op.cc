@@ -80,7 +80,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
                 "size of Input(Y)'s referred level lod. But received: "
                 "Input(X).lod[0].size() = %u, Input(Y).lod[%d].size() = "
                 "%u",
-                x_lod[0].size(), y_lod[ref_level].size()));
+                x_lod[0].size(), ref_level, y_lod[ref_level].size()));
       } else {
         PADDLE_ENFORCE_EQ(
             x_dims[0], static_cast<int64_t>(y_lod[ref_level].size()) - 1,
