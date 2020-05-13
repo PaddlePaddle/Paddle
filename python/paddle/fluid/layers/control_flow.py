@@ -3777,11 +3777,7 @@ def is_empty(x, cond=None):
           # fluid.layers.is_empty(x=input, cond=res)
 
     """
-    helper = LayerHelper("is_empty", **locals())
-    if cond is None:
-        cond = helper.create_variable_for_type_inference(dtype='bool')
-        cond.stop_gradient = True
-	
+    
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                               'is_empty')
      check_type(cond, 'cond', (Variable, type(None)), 'is_empty')
