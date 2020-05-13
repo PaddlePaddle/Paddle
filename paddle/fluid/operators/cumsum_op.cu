@@ -283,13 +283,13 @@ class CumCUDAKernel : public framework::OpKernel<T> {
       if (exclusive) {
         int element_per_block = nextPowerOfTwo(scan_dim_size) / 2;
         if (element_per_block > 512 || element_per_block < 32) {
-          element_per_block = 32;
+          element_per_block = 64;
         }
         int two_power = element_per_block * 2;
         dim3 block(element_per_block);
         dim3 grid(((scan_dim_size + 1) / 2 + block.x - 1) / block.x,
                   outer_dim_size);
-        int share_mem_size = element_per_block * 2 * sizeof(T);
+        int share_mem_size = (element_per_block * 2) * sizeof(T);
         Tensor scan_sum;
         paddle::framework::DDim dims{
             ((scan_dim_size + 1) / 2 + block.x - 1) / block.x, outer_dim_size};
