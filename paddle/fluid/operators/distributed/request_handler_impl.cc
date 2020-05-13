@@ -259,9 +259,9 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       const std::string& out_var_name,
                                       const std::string& table_name) {
   VLOG(4) << "receive save var " << varname << " with path " << out_var_name;
-  auto checkpoint_op = BuildCheckpointOp(varname, out_var_name);
-  paddle::platform::CPUPlace cpu_place;
-  checkpoint_op->Run(*scope_, cpu_place);
+  //  auto checkpoint_op = BuildCheckpointOp(varname, out_var_name);
+  //  paddle::platform::CPUPlace cpu_place;
+  //  checkpoint_op->Run(*scope_, cpu_place);
   return true;
 }
 

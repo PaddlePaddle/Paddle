@@ -37,6 +37,7 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     std::string dirname = Attr<std::string>("dirname");
     std::string varname = Attr<std::string>("varname");
     auto is_slice = Attr<bool>("is_slice");
+    VLOG(1) << "is_slice: " << is_slice;
 
     std::vector<std::string> slice_varnames =
         Attr<std::vector<std::string>>("slice_varnames");
@@ -48,13 +49,7 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
     for (size_t i = 0; i < epmap.size(); i++) {
-      std::string save_path = "";
-      if (is_slice) {
-        save_path =
-            string::Sprintf("%s/%s/%s", dirname, varname, slice_varnames[i]);
-      } else {
-        save_path = string::Sprintf("%s/%s", dirname, varname);
-      }
+      auto save_path = string::Sprintf("%s/%s", dirname, varname);
 
       rpc_client->AsyncCheckpointNotify(epmap[i], save_path,
                                         remote_varnames[i]);

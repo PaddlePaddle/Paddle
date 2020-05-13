@@ -32,6 +32,8 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
@@ -159,18 +161,63 @@ class SparseVariable {
     return meta_.cached_varnames;
   }
 
-  void Save() { Save(meta_.value_names); }
+  void Save(const std::string &dirname) {
+    MkDirRecursively(dirname.c_str());
 
-  void Save(const std::vector<std::string> &value_names) {
+    std::vector<std::string> filenames;
+    for (auto &value_name : meta_.value_names) {
+      auto filename = string::Sprintf("%s/%s", dirname, value_name);
+      filenames.push_back(filename);
+    }
+
+    Save(filenames, meta_value_names);
+  }
+
+  void Save(const std::vector<std::string> &filenames,
+            const std::vector<std::string> &valuenames) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    for (auto value : value_names) {
-      auto it = std::find(value_names.begin(), value_names.end(), value);
+    auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
+                        value_name);
+    if (it == meta_.value_names.end()) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "[%s] is invalid param for [%s]", value, meta_.name));
+    }
 
-      if (it == value_names.end()) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "[%s] is invalid param for [%s]", value, meta_.name));
+    std::vector<std::ofstream> fouts;
+
+    for (auto filename : filenames) {
+      std::ofstream fout(filename, std::ios::binary);
+
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                        platform::errors::Unavailable(
+                            "Cannot open %s to save variables.", filename));
+
+      fouts.push_back(fout);
+    }
+
+    for (auto value : values_) {
+      std::vector<std::vector<float>> vss = value.second.get(valuenames);
+
+      auto id = value.fitst;
+
+      for (int i = 0; i < vss.size(); i++) {
+        auto &vs = vss[i];
+
+        std::stringstream ss;
+        ss << id << "\t";
+
+        ss << vs.size();
+        for (auto v : vs) {
+          ss << v << " ";
+        }
+
+        fouts[i] << ss.str();
       }
+    }
+
+    for (auto fout : fouts) {
+      fout.close();
     }
   }
 
