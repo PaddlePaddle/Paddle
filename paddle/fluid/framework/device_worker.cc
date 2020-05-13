@@ -132,9 +132,10 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
                                                    // 2: random with random
                                                    // number
   size_t batch_size = device_reader_->GetCurBatchSize();
-  std::vector<std::string> ars(batch_size);
   auto& ins_id_vec = device_reader_->GetInsIdVec();
   auto& ins_content_vec = device_reader_->GetInsContentVec();
+  batch_size = ins_id_vec.size();
+  std::vector<std::string> ars(batch_size);
 
   std::vector<bool> hit(batch_size, false);
   if (dump_mode == 1) {
