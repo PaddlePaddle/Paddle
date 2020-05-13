@@ -197,13 +197,14 @@ class TestSumOp13(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
-        a = np.random.random((4, 5, 4097)).astype("float64")
+        a = np.random.random((4, 5, 6)).astype("float64")
         self.inputs = {'X': a}
-        a = np.flip(a)
+        a = np.flip(a, axis=2)
         self.outputs = {
             'Out': np.concatenate(
-                (np.flip(a[:, :, :-1].cumsum(axis=2)), np.zeros(
-                    (4, 5, 1), dtype=np.float64)),
+                (np.flip(
+                    a[:, :, :-1].cumsum(axis=2), axis=2), np.zeros(
+                        (4, 5, 1), dtype=np.float64)),
                 axis=2)
         }
 
