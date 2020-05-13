@@ -55,13 +55,13 @@ class ModuleApiTest(unittest.TestCase):
         return __impl__
 
     @staticmethod
-    def model_init(self, *args, **kwargs):
+    def model_init(model, *args, **kwargs):
         raise NotImplementedError(
             "model_init acts as `Model.__init__`, thus must implement it")
 
     @staticmethod
-    def model_forward(self, *args, **kwargs):
-        return self.module(*args, **kwargs)
+    def model_forward(model, *args, **kwargs):
+        return model.module(*args, **kwargs)
 
     def make_inputs(self):
         # TODO(guosheng): add default from `self.inputs`
@@ -117,7 +117,7 @@ class ModuleApiTest(unittest.TestCase):
 
 class TestBasicLSTM(ModuleApiTest):
     def setUp(self):
-        # TODO(guosheng): Change to big size. Currentlys bigger hidden size for
+        # TODO(guosheng): Change to big size. Currently bigger hidden size for
         # LSTM would fail, the second static graph run might get diff output
         # with others.
         shape = (2, 4, 16)
@@ -127,8 +127,8 @@ class TestBasicLSTM(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self, input_size, hidden_size):
-        self.lstm = RNN(
+    def model_init(model, input_size, hidden_size):
+        model.lstm = RNN(
             BasicLSTMCell(
                 input_size,
                 hidden_size,
@@ -136,8 +136,8 @@ class TestBasicLSTM(ModuleApiTest):
                 bias_attr=fluid.ParamAttr(name="lstm_bias")))
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.lstm(inputs)[0]
+    def model_forward(model, inputs):
+        return model.lstm(inputs)[0]
 
     def make_inputs(self):
         inputs = [
@@ -161,12 +161,12 @@ class TestBasicGRU(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self, input_size, hidden_size):
-        self.gru = RNN(BasicGRUCell(input_size, hidden_size))
+    def model_init(model, input_size, hidden_size):
+        model.gru = RNN(BasicGRUCell(input_size, hidden_size))
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.gru(inputs)[0]
+    def model_forward(model, inputs):
+        return model.gru(inputs)[0]
 
     def make_inputs(self):
         inputs = [
@@ -219,8 +219,8 @@ class TestBeamSearch(ModuleApiTest):
             decoder, max_step_num=max_step_num, is_test=True)
 
     @staticmethod
-    def model_forward(self, init_hidden, init_cell):
-        return self.beam_search_decoder([init_hidden, init_cell])[0]
+    def model_forward(model, init_hidden, init_cell):
+        return model.beam_search_decoder([init_hidden, init_cell])[0]
 
     def make_inputs(self):
         inputs = [
@@ -256,7 +256,7 @@ class TestTransformerEncoder(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self,
+    def model_init(model,
                    n_layer,
                    n_head,
                    d_key,
@@ -269,14 +269,14 @@ class TestTransformerEncoder(ModuleApiTest):
                    preprocess_cmd="n",
                    postprocess_cmd="da",
                    ffn_fc1_act="relu"):
-        self.encoder = TransformerEncoder(
+        model.encoder = TransformerEncoder(
             n_layer, n_head, d_key, d_value, d_model, d_inner_hid,
             prepostprocess_dropout, attention_dropout, relu_dropout,
             preprocess_cmd, postprocess_cmd, ffn_fc1_act)
 
     @staticmethod
-    def model_forward(self, enc_input, attn_bias):
-        return self.encoder(enc_input, attn_bias)
+    def model_forward(model, enc_input, attn_bias):
+        return model.encoder(enc_input, attn_bias)
 
     def make_inputs(self):
         inputs = [
@@ -319,7 +319,7 @@ class TestTransformerDecoder(TestTransformerEncoder):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self,
+    def model_init(model,
                    n_layer,
                    n_head,
                    d_key,
@@ -331,20 +331,20 @@ class TestTransformerDecoder(TestTransformerEncoder):
                    relu_dropout=0.1,
                    preprocess_cmd="n",
                    postprocess_cmd="da"):
-        self.decoder = TransformerDecoder(
+        model.decoder = TransformerDecoder(
             n_layer, n_head, d_key, d_value, d_model, d_inner_hid,
             prepostprocess_dropout, attention_dropout, relu_dropout,
             preprocess_cmd, postprocess_cmd)
 
     @staticmethod
-    def model_forward(self,
+    def model_forward(model,
                       dec_input,
                       enc_output,
                       self_attn_bias,
                       cross_attn_bias,
                       caches=None):
-        return self.decoder(dec_input, enc_output, self_attn_bias,
-                            cross_attn_bias, caches)
+        return model.decoder(dec_input, enc_output, self_attn_bias,
+                             cross_attn_bias, caches)
 
     def make_inputs(self):
         inputs = [
@@ -392,7 +392,7 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self,
+    def model_init(model,
                    vocab_size,
                    n_layer,
                    n_head,
@@ -409,7 +409,7 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
                    eos_id=1,
                    beam_size=4,
                    max_step_num=20):
-        self.beam_size = beam_size
+        model.beam_size = beam_size
 
         def embeder_init(self, size):
             Layer.__init__(self)
@@ -421,12 +421,13 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
         })
         embedder = Embedder(size=[vocab_size, d_model])
         output_layer = Linear(d_model, vocab_size)
-        self.decoder = TransformerDecoder(
+        model.decoder = TransformerDecoder(
             n_layer, n_head, d_key, d_value, d_model, d_inner_hid,
             prepostprocess_dropout, attention_dropout, relu_dropout,
             preprocess_cmd, postprocess_cmd)
-        transformer_cell = TransformerCell(self.decoder, embedder, output_layer)
-        self.beam_search_decoder = DynamicDecode(
+        transformer_cell = TransformerCell(model.decoder, embedder,
+                                           output_layer)
+        model.beam_search_decoder = DynamicDecode(
             TransformerBeamSearchDecoder(
                 transformer_cell, bos_id, eos_id, beam_size,
                 var_dim_in_state=2),
@@ -434,14 +435,14 @@ class TestTransformerBeamSearchDecoder(ModuleApiTest):
             is_test=True)
 
     @staticmethod
-    def model_forward(self, enc_output, trg_src_attn_bias):
-        caches = self.decoder.prepare_incremental_cache(enc_output)
+    def model_forward(model, enc_output, trg_src_attn_bias):
+        caches = model.decoder.prepare_incremental_cache(enc_output)
         enc_output = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
-            enc_output, self.beam_size)
+            enc_output, model.beam_size)
         trg_src_attn_bias = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
-            trg_src_attn_bias, self.beam_size)
-        static_caches = self.decoder.prepare_static_cache(enc_output)
-        rs, _ = self.beam_search_decoder(
+            trg_src_attn_bias, model.beam_size)
+        static_caches = model.decoder.prepare_static_cache(enc_output)
+        rs, _ = model.beam_search_decoder(
             inits=caches,
             enc_output=enc_output,
             trg_src_attn_bias=trg_src_attn_bias,
@@ -477,7 +478,7 @@ class TestSequenceTagging(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self,
+    def model_init(model,
                    vocab_size,
                    num_labels,
                    word_emb_dim=128,
@@ -486,13 +487,13 @@ class TestSequenceTagging(ModuleApiTest):
                    crf_learning_rate=0.1,
                    bigru_num=2,
                    init_bound=0.1):
-        self.tagger = SequenceTagging(vocab_size, num_labels, word_emb_dim,
-                                      grnn_hidden_dim, emb_learning_rate,
-                                      crf_learning_rate, bigru_num, init_bound)
+        model.tagger = SequenceTagging(vocab_size, num_labels, word_emb_dim,
+                                       grnn_hidden_dim, emb_learning_rate,
+                                       crf_learning_rate, bigru_num, init_bound)
 
     @staticmethod
-    def model_forward(self, word, lengths, target=None):
-        return self.tagger(word, lengths, target)
+    def model_forward(model, word, lengths, target=None):
+        return model.tagger(word, lengths, target)
 
     def make_inputs(self):
         inputs = [
@@ -529,13 +530,13 @@ class TestStackedRNN(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self, input_size, hidden_size, num_layers):
+    def model_init(model, input_size, hidden_size, num_layers):
         cells = [
             BasicLSTMCell(input_size, hidden_size),
             BasicLSTMCell(hidden_size, hidden_size)
         ]
         stacked_cell = StackedRNNCell(cells)
-        self.lstm = RNN(stacked_cell)
+        model.lstm = RNN(stacked_cell)
 
     @staticmethod
     def model_forward(self, inputs):
@@ -563,12 +564,12 @@ class TestLSTM(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self, input_size, hidden_size, num_layers):
-        self.lstm = LSTM(input_size, hidden_size, num_layers=num_layers)
+    def model_init(model, input_size, hidden_size, num_layers):
+        model.lstm = LSTM(input_size, hidden_size, num_layers=num_layers)
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.lstm(inputs)[0]
+    def model_forward(model, inputs):
+        return model.lstm(inputs)[0]
 
     def make_inputs(self):
         inputs = [
@@ -592,13 +593,13 @@ class TestBiLSTM(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self,
+    def model_init(model,
                    input_size,
                    hidden_size,
                    num_layers,
                    merge_mode="concat",
                    merge_each_layer=False):
-        self.bilstm = BidirectionalLSTM(
+        model.bilstm = BidirectionalLSTM(
             input_size,
             hidden_size,
             num_layers=num_layers,
@@ -606,8 +607,8 @@ class TestBiLSTM(ModuleApiTest):
             merge_each_layer=merge_each_layer)
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.bilstm(inputs)[0]
+    def model_forward(model, inputs):
+        return model.bilstm(inputs)[0]
 
     def make_inputs(self):
         inputs = [
@@ -635,12 +636,12 @@ class TestGRU(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self, input_size, hidden_size, num_layers):
-        self.gru = GRU(input_size, hidden_size, num_layers=num_layers)
+    def model_init(model, input_size, hidden_size, num_layers):
+        model.gru = GRU(input_size, hidden_size, num_layers=num_layers)
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.gru(inputs)[0]
+    def model_forward(model, inputs):
+        return model.gru(inputs)[0]
 
     def make_inputs(self):
         inputs = [
@@ -664,13 +665,13 @@ class TestBiGRU(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self,
+    def model_init(model,
                    input_size,
                    hidden_size,
                    num_layers,
                    merge_mode="concat",
                    merge_each_layer=False):
-        self.bigru = BidirectionalGRU(
+        model.bigru = BidirectionalGRU(
             input_size,
             hidden_size,
             num_layers=num_layers,
@@ -678,8 +679,8 @@ class TestBiGRU(ModuleApiTest):
             merge_each_layer=merge_each_layer)
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.bigru(inputs)[0]
+    def model_forward(model, inputs):
+        return model.bigru(inputs)[0]
 
     def make_inputs(self):
         inputs = [
@@ -707,8 +708,8 @@ class TestCNNEncoder(ModuleApiTest):
         self.param_states = {}
 
     @staticmethod
-    def model_init(self, num_channels, num_filters, num_layers):
-        self.cnn_encoder = CNNEncoder(
+    def model_init(model, num_channels, num_filters, num_layers):
+        model.cnn_encoder = CNNEncoder(
             num_layers=2,
             num_channels=num_channels,
             num_filters=num_filters,
@@ -716,8 +717,8 @@ class TestCNNEncoder(ModuleApiTest):
             pool_size=[7, 6])
 
     @staticmethod
-    def model_forward(self, inputs):
-        return self.cnn_encoder(inputs)
+    def model_forward(model, inputs):
+        return model.cnn_encoder(inputs)
 
     def make_inputs(self):
         inputs = [
@@ -727,7 +728,7 @@ class TestCNNEncoder(ModuleApiTest):
         ]
         return inputs
 
-    def test_check_output_merge0(self):
+    def test_check_output(self):
         self.check_output()
 
 
