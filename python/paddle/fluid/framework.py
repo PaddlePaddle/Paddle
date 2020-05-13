@@ -656,7 +656,7 @@ def _getitem_impl_(var, item):
     target_block = default_main_program().current_block()
 
     def fill_constant(shape, value, force_cpu=False, out=None):
-        target_block.append_op(
+        var.block.append_op(
             type='fill_constant',
             inputs={},
             outputs={'Out': [out]},
@@ -705,7 +705,7 @@ def _getitem_impl_(var, item):
             slice_start.append(slice_item)
             slice_step.append(1)
             if isinstance(slice_item, Variable):
-                temp_1 = target_block.create_var(dtype=slice_item.dtype)
+                temp_1 = var.block.create_var(dtype=slice_item.dtype)
                 fill_constant([1], 1, force_cpu=True, out=temp_1)
                 temp_end = target_block.create_var(dtype=slice_item.dtype)
                 target_block.append_op(
@@ -733,7 +733,7 @@ def _getitem_impl_(var, item):
                 new_list_tensor.append(dim)
             else:
                 assert (isinstance(dim, int))
-                temp_out = target_block.create_var(dtype='int32')
+                temp_out = var.block.create_var(dtype='int32')
                 fill_constant([1], dim, force_cpu=True, out=temp_out)
                 new_list_tensor.append(temp_out)
         return new_list_tensor
