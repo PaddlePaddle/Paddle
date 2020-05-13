@@ -51,8 +51,10 @@ void BindCommunicatorContext(py::module* m) {
            [](const CommContext& self) { return self.trainer_id; })
       .def("merged_varname",
            [](const CommContext& self) { return self.var_name; })
-      .def("merged_endpoints",
-           [](const CommContext& self) { return self.emap; })
+      .def("split_varnames",
+           [](const CommContext& self) { return self.splited_varnames; })
+      .def("split_endpoints",
+           [](const CommContext& self) { return self.epmap; })
       .def("origin_varnames",
            [](const CommContext& self) { return self.origin_varnames; })
       .def("__str__", [](const CommContext& self) { return self.print(); });

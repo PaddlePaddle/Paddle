@@ -162,6 +162,8 @@ class SparseVariable {
   }
 
   void Save(const std::string &dirname) {
+    VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " begin";
+
     MkDirRecursively(dirname.c_str());
 
     std::vector<std::string> filenames;
@@ -171,6 +173,8 @@ class SparseVariable {
     }
 
     Save(filenames, meta_.value_names);
+
+    VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " done";
   }
 
   void Save(const std::vector<std::string> &filenames,
@@ -186,14 +190,10 @@ class SparseVariable {
       }
     }
 
-    std::vector<std::ofstream> fouts;
+    std::vector<std::unique_ptr<std::ostream>> fouts;
+
     for (auto filename : filenames) {
-      std::ofstream fout(filename, std::ios::binary);
-
-      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
-                        platform::errors::Unavailable(
-                            "Cannot open %s to save variables.", filename));
-
+      std::unique_ptr<std::ostream> fout(new std::ofstream(filename));
       fouts.push_back(std::move(fout));
     }
 
@@ -213,12 +213,12 @@ class SparseVariable {
           ss << v << " ";
         }
 
-        fouts[i] << ss.str();
+        fouts[i]->write(ss.str().c_str(), sizeof(char) * ss.str().size());
       }
     }
 
     for (int i = 0; i < static_cast<int>(fouts.size()); i++) {
-      fouts[i].close();
+      fouts[i]->close();
     }
   }
 
