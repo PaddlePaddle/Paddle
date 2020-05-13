@@ -667,24 +667,22 @@ class LinearLrWarmup(LearningRateDecay):
 
 class ReduceLROnPlateau(LearningRateDecay):
     """
-    Reduce learning rate when ``loss`` has stopped improving. Models often benefit from reducing the learning rate 
-    by 2 to 10 times once learning stagnates.
+    Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate 
+    by 2 to 10 times once model performance has no longer improvement.
 
-    The ``loss`` is the one which has been pass into ``optimizer.minimize`` , it must be 1-D Tensor with shape [1].
-    In ``'min'`` mode, when ``loss`` stop decreasing for a ``patience`` number of epochs, the learning rate will be 
-    reduced to ``learning_rate * decay_rate`` . In ``'max'`` mode, all is the same when ``loss`` stop increasing. 
-    
+    The ``loss`` is the one which has been pass into ``step`` , it must be 1-D Tensor with shape [1]. When ``loss`` 
+    stop descending for a ``patience`` number of epochs, the learning rate will be reduced to ``learning_rate * decay_rate`` . 
+    (Specially, ``mode`` can also be set to ``'max`` , in this case, when ``loss`` stop ascending for a ``patience`` number 
+    of epochs, the learning rate will be reduced.)
+
     In addition, After each reduction, it will wait a ``cooldown`` number of epochs before resuming normal operation.
 
     Args:
-        loss (): A ``Variable`` that will be monitored to determine whether the learning rate will reduce. 
-            If it has no improvement, the learning rate will reduce. It should be 1-D Tensor with shape [1]. 
-            Usually, it is the ``loss`` in the network.
         learning_rate (Variable|float|int): The initial learning rate. It can be set to python float or int number.
             If the type is Variable, it should be 1-D Tensor with shape [1], the data type can be 'float32' or 'float64'.
-        mode (str, optional): ``'min'`` or ``'max'`` can be selected. ``'min'`` means that the learning rate will reduce when 
-            ``loss`` stops decreasing, and ``'max'`` means that the learning rate will reduce when ``loss`` stops increasing. 
-            Default: ``'min'`` .
+        mode (str, optional): ``'min'`` or ``'max'`` can be selected. Normally, it is ``'min'`` , which means that the 
+            learning rate will reduce when ``loss`` stops descending. Specially, if it's set to ``'max'`` ,  the learning 
+            rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
         patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced. 
@@ -700,7 +698,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             'float32', 'float64'. Default: 'float32'. 
     
     Returns:
-        None
+        Reduced learning rate.
 
     Examples:
     
@@ -713,21 +711,30 @@ class ReduceLROnPlateau(LearningRateDecay):
             x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
             linear = fluid.dygraph.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
-            
-            adam = fluid.optimizer.Adam(
-                learning_rate = fluid.dygraph.ReduceLROnPlateau(
+
+            reduce_lr = fluid.dygraph.ReduceLROnPlateau(
                                     learning_rate = 1.0,
                                     decay_rate = 0.5,
                                     patience = 5,
-                                    cooldown = 3),
+                                    cooldown = 3)
+            adam = fluid.optimizer.Adam(
+                learning_rate = reduce_lr,
                 parameter_list = linear.parameters())
 
-            for epoch in range(20):
-                out = linear(input)
-                loss = fluid.layers.reduce_mean(out)
-                adam.minimize(loss)
+            for epoch in range(10):
+                total_loss = 0
+                for bath_id in range(5):
+                    out = linear(input)
+                    loss = fluid.layers.reduce_mean(out)
+                    total_loss += loss
+                    adam.minimize(loss)
+                
+                avg_loss = total_loss/5
+
+                # adjust learning rate according to avg_loss
+                reduce_lr.step(avg_loss)
                 lr = adam.current_step_lr()
-                print("current loss is %s, current lr is %s" % (loss.numpy()[0], lr))
+                print("current avg_loss is %s, current lr is %s" % (avg_loss.numpy()[0], lr))
 
     """
 
@@ -777,6 +784,22 @@ class ReduceLROnPlateau(LearningRateDecay):
         return self.learning_rate
 
     def step(self, loss):
+        """
+        It should be invoked on each epoch. Update the learning rate in optimizer according to ``loss`` .  
+        The new learning rate will take effect on next call to ``optimizer.minimize`` .
+
+        Args:
+            loss (Variable): A ``Variable`` that will be monitored to determine whether the learning rate will reduce. 
+                If it stop descending for a ``patience`` number of epochs, the learning rate will reduce. It should 
+                be 1-D Tensor with shape [1]. 
+                Specially, if ``mode`` has been set to ``'max'`` ,  the learning rate will reduce when it stops ascending.
+        Returns:
+            None
+        
+        Examples:
+            Please refer to the example of current LearningRateDecay.
+        """
+
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
         assert len(loss.shape) == 1 and loss.shape[0] == 1, "the loss.shape " \
@@ -785,21 +808,20 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         if self.cooldown_counter > 0:
             self.cooldown_counter -= 1
-            return self.learning_rate
-
-        if self.best_loss is None or self._is_better(loss, self.best_loss):
-            self.best_loss = loss
-            self.num_bad_epochs = 0
         else:
-            self.num_bad_epochs += 1
+            if self.best_loss is None or self._is_better(loss, self.best_loss):
+                self.best_loss = loss
+                self.num_bad_epochs = 0
+            else:
+                self.num_bad_epochs += 1
 
-        if self.num_bad_epochs > self.patience:
-            from .. import layers
-            self.cooldown_counter = self.cooldown
-            self.num_bad_epochs = 0
-            new_lr = layers.elementwise_max(self.learning_rate *
-                                            self.decay_rate, self.min_lr)
-            self.learning_rate = new_lr
+            if self.num_bad_epochs > self.patience:
+                from .. import layers
+                self.cooldown_counter = self.cooldown
+                self.num_bad_epochs = 0
+                new_lr = layers.elementwise_max(self.learning_rate *
+                                                self.decay_rate, self.min_lr)
+                self.learning_rate = new_lr
 
     def _is_better(self, current, best):
         if self.mode == 'min' and self.threshold_mode == 'rel':
