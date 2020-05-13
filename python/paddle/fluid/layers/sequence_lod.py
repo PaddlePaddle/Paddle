@@ -52,6 +52,8 @@ def sequence_conv(input,
                   act=None,
                   name=None):
     """
+	:api_attr: Static Graph
+
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
 
     This operator receives input sequences with variable length and other convolutional
@@ -172,6 +174,8 @@ def sequence_conv(input,
 
 def sequence_softmax(input, use_cudnn=False, name=None):
     """
+	:api_attr: Static Graph
+
     **Note**:
     
     **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
@@ -252,6 +256,8 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     """
+	:api_attr: Static Graph
+
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
 
     This operator only supports LoDTensor as input. It will apply specified pooling
@@ -363,6 +369,8 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
 @templatedoc()
 def sequence_concat(input, name=None):
     """
+	:api_attr: Static Graph
+
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
 
     This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
@@ -422,6 +430,8 @@ def sequence_concat(input, name=None):
 
 def sequence_first_step(input):
     """
+	:api_attr: Static Graph
+
     This operator only supports LoDTensor as input. Given the input LoDTensor, it will
     select first time-step feature of each sequence as output.
 
@@ -474,6 +484,8 @@ def sequence_first_step(input):
 
 def sequence_last_step(input):
     """
+	:api_attr: Static Graph
+
     This operator only supports LoDTensor as input. Given the input LoDTensor, it will
     select last time-step feature of each sequence as output.
 
@@ -527,6 +539,8 @@ def sequence_last_step(input):
 
 def sequence_slice(input, offset, length, name=None):
     """
+	:api_attr: Static Graph
+
     **Sequence Slice Layer**
 
     The layer crops a subsequence from given sequence with given start
@@ -603,7 +617,10 @@ def sequence_slice(input, offset, length, name=None):
 
 
 def sequence_expand(x, y, ref_level=-1, name=None):
-    """Sequence Expand Layer. This layer will expand the input variable ``x`` \
+    """
+	:api_attr: Static Graph
+
+        Sequence Expand Layer. This layer will expand the input variable ``x`` \
         according to specified level ``ref_level`` lod of ``y``. Please note that \
         the lod level of ``x`` is at most 1. If the lod level of ``x`` is 1, than \
         the size of lod of ``x`` must be equal to the length of ``ref_level`` lod \
@@ -734,7 +751,10 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
 
 def sequence_expand_as(x, y, name=None):
-    """Sequence Expand As Layer. This OP will expand the input variable ``x`` \
+    """
+	:api_attr: Static Graph
+
+        Sequence Expand As Layer. This OP will expand the input variable ``x`` \
         according to the zeroth level lod of ``y``. Current implementation requires \
         the level number of ``y``'s lod must be 1, and the first dimension of \
         ``x`` should be equal to the size of ``y``'s zeroth level lod, thus \
@@ -849,6 +869,8 @@ def sequence_expand_as(x, y, name=None):
 
 def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
+	:api_attr: Static Graph
+
     This layer padding the sequences in a same batch to a common length (according \
          to ``maxlen``). The padding value is defined by ``pad_value``, and will be \
         appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``: \
@@ -961,6 +983,8 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
 def sequence_unpad(x, length, name=None):
     """
+	:api_attr: Static Graph
+
     **Note**:
     
     **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
@@ -1034,6 +1058,8 @@ def sequence_unpad(x, length, name=None):
 
 def sequence_reshape(input, new_dim):
     """
+	:api_attr: Static Graph
+
     **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
 
     This operator only supports LoDTensor as input. Given :attr:`new_dim` ,
@@ -1094,6 +1120,8 @@ def sequence_reshape(input, new_dim):
 
 def sequence_scatter(input, index, updates, name=None):
     """
+	:api_attr: Static Graph
+
     **Note**:
     
     **The index and updates parameters of the OP must be LoDTensor.**
@@ -1172,6 +1200,8 @@ def sequence_scatter(input, index, updates, name=None):
 
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
     """
+	:api_attr: Static Graph
+
     Generate a new sequence for the input index sequence with \
         shape ``[d_1, win_size]``, which enumerates all the \
         sub-sequences with length ``win_size`` of the input with \
