@@ -25,7 +25,7 @@ class SamplingIdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SampleIn");
-    OP_INPUT_CHECK(ctx->HasOutput("Out"), "Output", "X", "SampleOut");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "X", "SampleOut");
     PADDLE_ENFORCE_LT(
         ctx->Attrs().Get<float>("min"), ctx->Attrs().Get<float>("max"),
         platform::errors::InvalidArgument(
