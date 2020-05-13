@@ -55,7 +55,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
     if (axis != rank_x - 1 && axis != -1) {
-      PADDLE_ENFORCE_EQ(use_cudnn, true,
+      PADDLE_ENFORCE_EQ(use_cudnn, false,
                         platform::errors::InvalidArgument(
                             "CUDNN kernel only support axis as -1."));
     }
