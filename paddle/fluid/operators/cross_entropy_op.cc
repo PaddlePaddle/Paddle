@@ -25,10 +25,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CrossEntropyOpBase");
-    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
-                   "CrossEntropyOpBase");
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "CrossEntropyOpBase");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CrossEntropy");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "CrossEntropy");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "CrossEntropy");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
