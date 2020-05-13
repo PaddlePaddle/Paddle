@@ -444,11 +444,11 @@ class TestStridedSliceAPI(unittest.TestCase):
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
         starts = fluid.layers.data(
-            name='starts', shape=[3], append_batch_size=False)
+            name='starts', shape=[3], dtype='int32', append_batch_size=False)
         ends = fluid.layers.data(
-            name='ends', shape=[3], append_batch_size=False)
+            name='ends', shape=[3], dtype='int32', append_batch_size=False)
         strides = fluid.layers.data(
-            name='strides', shape=[3], append_batch_size=False)
+            name='strides', shape=[3], dtype='int32', append_batch_size=False)
 
         x = fluid.layers.data(
             name="x",

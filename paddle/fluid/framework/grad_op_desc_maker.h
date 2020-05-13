@@ -161,7 +161,7 @@ class GradOpDescMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }

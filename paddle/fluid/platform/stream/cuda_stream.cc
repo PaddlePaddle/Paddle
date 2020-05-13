@@ -27,7 +27,7 @@ bool CUDAStream::Init(const Place& place, const Priority& priority) {
                     platform::errors::InvalidArgument(
                         "Cuda stream must be created using cuda place."));
   place_ = place;
-  CUDADeviceGuard guard(boost::get<CUDAPlace>(place_).device);
+  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
   if (priority == Priority::kHigh) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaStreamCreateWithPriority(&stream_, kDefaultFlag, -1));
@@ -42,7 +42,7 @@ bool CUDAStream::Init(const Place& place, const Priority& priority) {
 }
 
 void CUDAStream::Destroy() {
-  CUDADeviceGuard guard(boost::get<CUDAPlace>(place_).device);
+  CUDADeviceGuard guard(BOOST_GET_CONST(CUDAPlace, place_).device);
   Wait();
   WaitCallback();
   if (stream_) {

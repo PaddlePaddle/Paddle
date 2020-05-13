@@ -50,7 +50,7 @@ static platform::CPUPlace GetCpuPlace(
   auto place = ctx.GetPlace();
   PADDLE_ENFORCE(paddle::platform::is_cpu_place(place),
                  "It must use CPUPlace.");
-  return boost::get<platform::CPUPlace>(place);
+  return BOOST_GET_CONST(platform::CPUPlace, place);
 }
 
 static const mkldnn::engine& GetMKLDNNEngine(

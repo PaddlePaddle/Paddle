@@ -54,6 +54,9 @@ class NodeVarType(object):
     # We use this enum value to denote the type return by a Paddle API
     PADDLE_RETURN_TYPES = 304
 
+    # If node.node_var_type in TENSOR_TYPES, it can be considered as tensor-dependent.
+    TENSOR_TYPES = {TENSOR, PADDLE_RETURN_TYPES}
+
     @staticmethod
     def binary_op_output_type(in_type1, in_type2):
         if in_type1 == in_type2:
@@ -66,7 +69,8 @@ class NodeVarType(object):
 
         supported_types = [
             NodeVarType.BOOLEAN, NodeVarType.INT, NodeVarType.FLOAT,
-            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR
+            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR,
+            NodeVarType.PADDLE_RETURN_TYPES
         ]
 
         if in_type1 not in supported_types:

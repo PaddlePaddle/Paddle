@@ -60,10 +60,10 @@ struct ExtractAttribute<bool> {
 
   bool* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET_CONST(int, attr);
       attr = static_cast<bool>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      float val = boost::get<float>(attr);
+      float val = BOOST_GET_CONST(float, attr);
       attr = static_cast<bool>(val);
     }
     bool* attr_value = nullptr;
@@ -86,10 +86,10 @@ struct ExtractAttribute<int64_t> {
 
   int64_t* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET_CONST(int, attr);
       attr = static_cast<int64_t>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      int val = boost::get<float>(attr);
+      int val = BOOST_GET_CONST(float, attr);
       attr = static_cast<int64_t>(val);
     }
     int64_t* attr_value = nullptr;
@@ -112,11 +112,11 @@ struct ExtractAttribute<std::vector<int64_t>> {
 
   std::vector<int64_t>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = boost::get<std::vector<int>>(attr);
+      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = boost::get<std::vector<float>>(attr);
+      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     }
@@ -140,10 +140,10 @@ struct ExtractAttribute<float> {
 
   float* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET_CONST(int, attr);
       attr = static_cast<float>(val);
     } else if (attr.type() == typeid(int64_t)) {  // NOLINT
-      int64_t val = boost::get<int64_t>(attr);
+      int64_t val = BOOST_GET_CONST(int64_t, attr);
       attr = static_cast<float>(val);
     }
     float* attr_value = nullptr;

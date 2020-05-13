@@ -122,12 +122,10 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &o : ctx->Output("selected_ids")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
-    }
-    for (auto &o : ctx->Output("selected_scores")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
-    }
+    ctx->SetOutputType("selected_ids", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType("selected_scores", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
   }
 };
 

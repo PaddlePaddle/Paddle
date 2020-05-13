@@ -78,7 +78,7 @@ inline void EmplaceDeviceContext(
   map_ptr->emplace(p, std::async(std::launch::deferred, [=] {
                      // lazy evaluation. i.e., only create device context at
                      // first `Get`
-                     return PtrType(new DevCtx(boost::get<PlaceType>(p)));
+                     return PtrType(new DevCtx(BOOST_GET_CONST(PlaceType, p)));
                    }));
 }
 
@@ -408,7 +408,10 @@ framework::DataLayout get_cur_paddle_data_layout(void) {
   return cur_paddle_data_layout;
 }
 
-void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }
+void MKLDNNDeviceContext::ResetBlobMap() const {
+  VLOG(3) << "Clearing DNNL cache.";
+  p_blobmap_->clear();
+}
 
 size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
   std::lock_guard<std::mutex> lock(*p_mutex_);

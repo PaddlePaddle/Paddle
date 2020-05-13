@@ -33,7 +33,7 @@ class ConcatOpConverter : public OpConverter {
     for (auto& input_name : op_desc.Input("X")) {
       itensors.push_back(engine_->GetITensor(input_name));
     }
-    int axis = boost::get<int>(op_desc.GetAttr("axis"));
+    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     PADDLE_ENFORCE(axis > 0,
                    "The axis attr of Concat op should be large than 0 for trt");
 

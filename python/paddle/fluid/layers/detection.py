@@ -919,7 +919,8 @@ def yolov3_loss(x,
                 downsample_ratio,
                 gt_score=None,
                 use_label_smooth=True,
-                name=None):
+                name=None,
+                scale_x_y=1.):
     """
     ${comment}
 
@@ -945,6 +946,7 @@ def yolov3_loss(x,
         gt_score (Variable): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
+        scale_x_y (float): ${scale_x_y_comment}
 
     Returns:
         Variable: A 1-D tensor with shape [N], the value of yolov3 loss
@@ -1017,6 +1019,7 @@ def yolov3_loss(x,
         "ignore_thresh": ignore_thresh,
         "downsample_ratio": downsample_ratio,
         "use_label_smooth": use_label_smooth,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -1039,7 +1042,8 @@ def yolo_box(x,
              conf_thresh,
              downsample_ratio,
              clip_bbox=True,
-             name=None):
+             name=None,
+             scale_x_y=1.):
     """
     ${comment}
 
@@ -1051,6 +1055,7 @@ def yolo_box(x,
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
         clip_bbox (bool): ${clip_bbox_comment}
+        scale_x_y (float): ${scale_x_y_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1099,6 +1104,7 @@ def yolo_box(x,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
         "clip_bbox": clip_bbox,
+        "scale_x_y": scale_x_y,
     }
 
     helper.append_op(
@@ -2746,7 +2752,8 @@ def generate_proposals(scores,
                        nms_thresh=0.5,
                        min_size=0.1,
                        eta=1.0,
-                       name=None):
+                       name=None,
+                       return_rois_num=False):
     """
     **Generate proposal Faster-RCNN**
 
@@ -2793,7 +2800,10 @@ def generate_proposals(scores,
             width < min_size. The data type must be float32. `0.1` by default.
         eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
             `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's 
+            num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
+            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model. 
+            'False' by default. 
     Returns:
         tuple:
         A tuple with format ``(rpn_rois, rpn_roi_probs)``.
@@ -2847,7 +2857,10 @@ def generate_proposals(scores,
     rpn_roi_probs.stop_gradient = True
     rpn_rois_lod.stop_gradient = True
 
-    return rpn_rois, rpn_roi_probs, rpn_rois_lod
+    if return_rois_num:
+        return rpn_rois, rpn_roi_probs, rpn_rois_lod
+    else:
+        return rpn_rois, rpn_roi_probs
 
 
 def box_clip(input, im_info, name=None):

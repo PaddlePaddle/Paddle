@@ -31,22 +31,24 @@ from ifelse_simple_func import dyfunc_with_if_else
 np.random.seed(0)
 
 
+# TODO(Aurelius): Currently, `declarative` don't support decorate the function
+# that contains layers with initialized operation, like `fc = linear(10, 3)`.
+# Because initialized ops will be added into program and be executed many times.
+# The parameters are assumed to initialized outside of the function.
 def simple_func(x, weight_numpy):
-    weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
-    linear = Linear(32, 64, param_attr=weight_initalizer, bias_attr=False)
     x = fluid.dygraph.to_variable(x)
-    y = linear(x)
-    z = linear(x)
+    w = fluid.dygraph.to_variable(weight_numpy)
+    y = fluid.layers.matmul(x, w)
+    z = fluid.layers.mean(y)
     return z
 
 
 @declarative
 def decorated_simple_func(x, weight_numpy):
-    weight_initalizer = fluid.initializer.NumpyArrayInitializer(weight_numpy)
-    linear = Linear(32, 64, param_attr=weight_initalizer, bias_attr=False)
     x = fluid.dygraph.to_variable(x)
-    y = linear(x)
-    z = linear(x)
+    w = fluid.dygraph.to_variable(weight_numpy)
+    y = fluid.layers.matmul(x, w)
+    z = fluid.layers.mean(y)
     return z
 
 
@@ -100,6 +102,14 @@ class StaticCode2():
         return x_v
 
 
+class NetWithError(fluid.dygraph.layers.Layer):
+    @declarative
+    def forward(self, x):
+        linear = fluid.dygraph.Linear(32, 64)
+        y = linear(x)
+        return y
+
+
 class TestDygraphToStaticCode(unittest.TestCase):
     def setUp(self):
         # set to print all string diff when assertEqual fails
@@ -120,75 +130,79 @@ class TestDygraphToStaticCode(unittest.TestCase):
 
 
 class TestEnableDeclarative(unittest.TestCase):
-    def test_enable_disable_get_output(self):
-        x = np.random.randn(30, 10, 32).astype('float32')
-        weight = np.random.randn(32, 64).astype('float32')
-        program_translator = ProgramTranslator()
+    def setUp(self):
+        self.x = np.random.randn(30, 10, 32).astype('float32')
+        self.weight = np.random.randn(32, 64).astype('float32')
+        self.program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable(True)
-            static_output = program_translator.get_output(simple_func, x,
-                                                          weight)
-
-        program_translator.enable(False)
+    def test_raise_error(self):
         with fluid.dygraph.guard():
-            dygraph_output = program_translator.get_output(simple_func, x,
-                                                           weight)
+            self.program_translator.enable(True)
+            net = NetWithError()
+            with self.assertRaises(ValueError):
+                net(fluid.dygraph.to_variable(self.x))
+
+    def test_enable_disable_get_output(self):
+        self.program_translator.enable(True)
+        with fluid.dygraph.guard():
+            static_output = self.program_translator.get_output(
+                simple_func, self.x, self.weight)
+
+        self.program_translator.enable(False)
+        with fluid.dygraph.guard():
+            dygraph_output = self.program_translator.get_output(
+                simple_func, self.x, self.weight)
             self.assertTrue(
                 np.allclose(
                     static_output.numpy(), dygraph_output.numpy(), atol=1e-4))
 
     def test_enable_disable_get_func(self):
-        x = np.random.randn(30, 10, 32).astype('float32')
-        weight = np.random.randn(32, 64).astype('float32')
-        program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable(True)
-            static_func = program_translator.get_func(simple_func)
+        self.program_translator.enable(True)
+        with fluid.dygraph.guard():
+            static_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(static_func))
-            static_output = static_func(x, weight)
+            static_output = static_func(self.x, self.weight)
             self.assertTrue(isinstance(static_output, fluid.Variable))
 
-        program_translator.enable(False)
+        self.program_translator.enable(False)
         with fluid.dygraph.guard():
-            dygraph_func = program_translator.get_func(simple_func)
+            dygraph_func = self.program_translator.get_func(simple_func)
             self.assertTrue(callable(dygraph_func))
-            dygraph_output = dygraph_func(x, weight)
+            dygraph_output = dygraph_func(self.x, self.weight)
             self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
 
     def test_enable_disable_get_program(self):
-        x = np.random.randn(30, 10, 32).astype('float32')
-        weight = np.random.randn(32, 64).astype('float32')
-        program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable(True)
-            static_output = program_translator.get_program(simple_func, x,
-                                                           weight)
-            self.assertTrue(isinstance(static_output, tuple))
-            self.assertEqual(len(static_output), 4)
-            self.assertTrue(isinstance(static_output[0], fluid.Program))
-            self.assertTrue(isinstance(static_output[1], fluid.Program))
+        self.program_translator.enable(True)
+        static_output = self.program_translator.get_program(simple_func, self.x,
+                                                            self.weight)
+        self.assertTrue(isinstance(static_output, tuple))
+        self.assertEqual(len(static_output), 4)
+        self.assertTrue(isinstance(static_output[0], fluid.Program))
+        self.assertTrue(isinstance(static_output[1], fluid.Program))
+        # Check all inputs and outputs are Variable
+        for var in static_output[2]:
+            self.assertTrue(isinstance(var, fluid.Variable))
 
-        program_translator.enable(False)
+        for var in static_output[3]:
+            self.assertTrue(isinstance(var, fluid.Variable))
+
+        self.program_translator.enable(False)
         with fluid.dygraph.guard():
-            dygraph_output = program_translator.get_program(simple_func, x,
-                                                            weight)
+            dygraph_output = self.program_translator.get_program(
+                simple_func, self.x, self.weight)
             self.assertTrue(isinstance(dygraph_output, fluid.core.VarBase))
 
     def test_enable_disable_declarative(self):
-        x = np.random.randn(30, 10, 32).astype('float32')
-        weight = np.random.randn(32, 64).astype('float32')
-        program_translator = ProgramTranslator()
 
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            program_translator.enable(True)
-            static_output = decorated_simple_func(x, weight)
-
-        program_translator.enable(False)
+        self.program_translator.enable(True)
         with fluid.dygraph.guard():
-            dygraph_output = decorated_simple_func(x, weight)
+            static_output = decorated_simple_func(self.x, self.weight)
+
+        self.program_translator.enable(False)
+        with fluid.dygraph.guard():
+            dygraph_output = decorated_simple_func(self.x, self.weight)
             self.assertTrue(
                 np.allclose(
                     static_output.numpy(), dygraph_output.numpy(), atol=1e-4))

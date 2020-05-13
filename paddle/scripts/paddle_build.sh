@@ -253,8 +253,6 @@ EOF
 function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    # show statistics summary of ccache
-    ccache -s cache directory
     cmake_base $1
 }
 
@@ -789,6 +787,15 @@ set +x
                         multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
+                    if [[ "${#single_card_tests}" -gt 3000 ]];then
+                        if [[ "$single_card_tests_1" == "" ]]; then 
+                            single_card_tests_1="^$testcase$"
+                        else
+                            single_card_tests_1="$single_card_tests_1|^$testcase$"
+                        fi
+                        continue
+                    fi
+
                     if [[ "$single_card_tests" == "" ]]; then
                         single_card_tests="^$testcase$"
                     else
@@ -801,9 +808,8 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
-        echo "For UT Random Fail, will delete soon"
-        find / -name "proto" -type d | xargs ls
         card_test "$single_card_tests" 1    # run cases with single GPU
+        card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then

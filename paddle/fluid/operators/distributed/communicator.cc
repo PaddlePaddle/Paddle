@@ -96,35 +96,35 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
     VLOG(3) << "node name " << op->Type();
     if (op->Type() == "send") {
       auto send_var_name = op->Input("X")[0];
-      auto send_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("send_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto height_section =
-          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
-      auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
+      auto send_varnames = BOOST_GET_CONST(
+          std::vector<std::string>, op->GetNullableAttr("send_varnames"));
+      auto epmap = BOOST_GET_CONST(std::vector<std::string>,
+                                   op->GetNullableAttr("epmap"));
+      auto height_section = BOOST_GET_CONST(std::vector<int64_t>,
+                                            op->GetNullableAttr("sections"));
+      auto trainer_id = BOOST_GET_CONST(int, op->GetNullableAttr("trainer_id"));
+      auto merge_add = BOOST_GET_CONST(bool, op->GetNullableAttr("merge_add"));
       if (!merge_add) {
         merge_add = is_sgd_optimizer_;
       }
       auto use_send_handler =
-          boost::get<bool>(op->GetNullableAttr("use_send_handler"));
+          BOOST_GET_CONST(bool, op->GetNullableAttr("use_send_handler"));
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id,
           merge_add, use_send_handler);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
-      auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
+      auto do_not_run = BOOST_GET_CONST(int, op->GetNullableAttr("do_not_run"));
       PADDLE_ENFORCE_GT(do_not_run, 0,
                         platform::errors::InvalidArgument(
                             "recv op's attr `do_not_run` must be True!"));
       auto recv_var_name = op->Output("Out")[0];
-      auto recv_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("recv_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      auto recv_varnames = BOOST_GET_CONST(
+          std::vector<std::string>, op->GetNullableAttr("recv_varnames"));
+      auto epmap = BOOST_GET_CONST(std::vector<std::string>,
+                                   op->GetNullableAttr("epmap"));
+      auto trainer_id = BOOST_GET_CONST(int, op->GetNullableAttr("trainer_id"));
       recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
     }
@@ -981,28 +981,28 @@ void HalfAsyncCommunicator::InitImpl(
     VLOG(3) << "node name " << op->Type();
     if (op->Type() == "send") {
       auto send_var_name = op->Input("X")[0];
-      auto send_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("send_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto height_section =
-          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      auto send_varnames = BOOST_GET_CONST(
+          std::vector<std::string>, op->GetNullableAttr("send_varnames"));
+      auto epmap = BOOST_GET_CONST(std::vector<std::string>,
+                                   op->GetNullableAttr("epmap"));
+      auto height_section = BOOST_GET_CONST(std::vector<int64_t>,
+                                            op->GetNullableAttr("sections"));
+      auto trainer_id = BOOST_GET_CONST(int, op->GetNullableAttr("trainer_id"));
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
-      auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
+      auto do_not_run = BOOST_GET_CONST(int, op->GetNullableAttr("do_not_run"));
       PADDLE_ENFORCE_GT(do_not_run, 0,
                         platform::errors::InvalidArgument(
                             "recv op's attr `do_not_run` must be True!"));
       auto recv_var_name = op->Output("Out")[0];
-      auto recv_varnames = boost::get<std::vector<std::string>>(
-          op->GetNullableAttr("recv_varnames"));
-      auto epmap =
-          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
-      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      auto recv_varnames = BOOST_GET_CONST(
+          std::vector<std::string>, op->GetNullableAttr("recv_varnames"));
+      auto epmap = BOOST_GET_CONST(std::vector<std::string>,
+                                   op->GetNullableAttr("epmap"));
+      auto trainer_id = BOOST_GET_CONST(int, op->GetNullableAttr("trainer_id"));
       recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
       VLOG(3) << "find and init an recv op: "

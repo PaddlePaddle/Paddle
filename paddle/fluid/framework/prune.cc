@@ -405,8 +405,8 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   for (size_t i = 0; i < origin_clone.Size(); i++) {
     auto block_ops = origin_clone.Block(i).AllOps();
     for (auto op : block_ops) {
-      int op_role = boost::get<int>(
-          op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
+      int op_role = BOOST_GET_MUTABLE(
+          int, op->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
       if (op_role == (static_cast<int>(OpRole::kBackward) |
                       static_cast<int>(OpRole::kLoss))) {
         op->SetIsTarget(false);

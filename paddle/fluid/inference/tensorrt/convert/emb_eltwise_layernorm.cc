@@ -79,7 +79,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
         get_persistable_data(op_desc.Input("Scale").front(), &scale_dims);
     int64_t bias_size = framework::product(bias_dims);
     int64_t scale_size = framework::product(scale_dims);
-    float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
+    float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {

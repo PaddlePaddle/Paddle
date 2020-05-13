@@ -99,17 +99,15 @@ class KronGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "kron_grad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "kron_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "kron_grad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Y")), "Output",
-                   framework::GradVarName("Y"), "kron_grad");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
-    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ x_grad_name);
-    ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
-    ctx->ShareLoD("Y", /*->*/ y_grad_name);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    }
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
+    }
   }
 
  protected:

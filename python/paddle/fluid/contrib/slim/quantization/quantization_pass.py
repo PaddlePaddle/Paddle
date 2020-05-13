@@ -1170,6 +1170,14 @@ class OutScaleForTrainingPass(object):
                     var_type=core.VarDesc.VarType.LOD_TENSOR,
                     shape=[1],
                     var_dtype=in_node.dtype())
+                data_type = 'float64' if in_node.dtype() \
+                    == core.VarDesc.VarType.FP64 else 'float32'
+                _init_var_node(
+                    scale_node,
+                    np.ones(
+                        [1], dtype=data_type),
+                    self._scope,
+                    self._place)
                 ins = {'X': in_node}
                 outs = {'Out': out_node, 'OutScale': scale_node}
                 if not self._is_test:
@@ -1178,8 +1186,6 @@ class OutScaleForTrainingPass(object):
                         var_type=core.VarDesc.VarType.LOD_TENSOR,
                         var_dtype=in_node.dtype(),
                         shape=[1])
-                    data_type = 'float64' if in_node.dtype(
-                    ) == core.VarDesc.VarType.FP64 else 'float32'
                     _init_var_node(
                         state_in_node,
                         np.ones(

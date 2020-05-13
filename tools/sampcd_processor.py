@@ -478,10 +478,11 @@ def get_filenames():
                 filename = filename + module_py
             else:
                 filename = ''
-                print("\n----Exception in get api filename----\n")
+                print("\nWARNING:----Exception in get api filename----\n")
                 print("\n" + api + ' module is ' + module + "\n")
-            if filename not in filenames:
-                filenames.append(filename)
+            if filename != '':
+                if filename not in filenames:
+                    filenames.append(filename)
             # get all methods
             method = ''
             if inspect.isclass(eval(api)):
@@ -492,7 +493,7 @@ def get_filenames():
                 name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
             else:
                 name = ''
-                print("\n----Exception in get api methods----\n")
+                print("\nWARNING:----Exception in get api methods----\n")
                 print("\n" + line + "\n")
                 print("\n" + api + ' method is None!!!' + "\n")
             for j in range(2, len(module.split('.'))):

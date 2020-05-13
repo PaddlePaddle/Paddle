@@ -47,14 +47,14 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                "Can not find %s presistale var in scope.", filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
   float* weight_data = nullptr;
-  bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+  bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
     CHECK(op_desc.HasAttr("Input_scale"));
-    float in_scale = boost::get<float>(op_desc.GetAttr("Input_scale"));
+    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
     auto weight_scale =
-        boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+        BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
     weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
                                            true, weight_scale);
     engine->SetTensorDynamicRange(X, in_scale);
@@ -73,13 +73,13 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   const int n_input = Y_t->dims()[1];
   const int filter_h = Y_t->dims()[2];
   const int filter_w = Y_t->dims()[3];
-  const int groups = boost::get<int>(op_desc.GetAttr("groups"));
+  const int groups = BOOST_GET_CONST(int, op_desc.GetAttr("groups"));
   const std::vector<int> dilations =
-      boost::get<std::vector<int>>(op_desc.GetAttr("dilations"));
+      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("dilations"));
   const std::vector<int> strides =
-      boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
+      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   const std::vector<int> paddings =
-      boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
+      BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
 
   nvinfer1::DimsHW nv_ksize(filter_h, filter_w);
   nvinfer1::DimsHW nv_dilations(dilations[0], dilations[1]);
