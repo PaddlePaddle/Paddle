@@ -469,10 +469,7 @@ def sequence_first_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
-    check_variable_and_dtype(input, 'input',
-                             ['float32'],
-                             'sequence_first_step')
-    check_type(input, 'input', Variable,'sequence_first_step')
+    check_variable_and_dtype(input, 'input', ['float32'], 'sequence_first_step')
     return sequence_pool(input=input, pool_type="first")
 
 
@@ -526,10 +523,7 @@ def sequence_last_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_last_step = fluid.layers.sequence_last_step(input=x)
     """
-    check_variable_and_dtype(input, 'input',
-                             ['float32'],
-                             'sequence_last_step')
-    check_type(input, 'input', Variable, 'sequence_last_step')
+    check_variable_and_dtype(input, 'input', ['float32'], 'sequence_last_step')
     return sequence_pool(input=input, pool_type="last")
 
 
@@ -1297,12 +1291,10 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             mask = layers.sequence_mask(x=x)
 
     """
+    check_variable_and_dtype(x, 'x', ['int64'], 'sequence_mask')
+    check_dtype(dtype, 'dtype', ['int64'], 'sequence_mask')
     helper = LayerHelper('sequence_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
-    check_variable_and_dtype(x, 'x',
-                             ['int64'], 'sequence_mask')
-    check_type(x, 'x', Variable, 'sequence_mask')
-    check_dtype(dtype, 'dtype', ['int64'], 'sequence_mask')
 
     inputs = {'X': [x]}
     attrs = {'out_dtype': out.dtype}
