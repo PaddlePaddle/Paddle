@@ -37,16 +37,14 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
             index_num));
     PADDLE_ENFORCE_GT(nshards, 0,
                       platform::errors::InvalidArgument(
-                          "The value 'nshard' "
-                          "for Op(shard_index) must be greater than 0, but the "
-                          "value given is %d.",
+                          "The value 'nshard' for Op(shard_index) must be "
+                          "greater than 0, but the value given is %d.",
                           nshards));
     PADDLE_ENFORCE_GE(
         shard_id, 0,
         platform::errors::InvalidArgument(
-            "The value 'shard_id' "
-            "for Op(shard_index) must be greater or equal to 0, but the "
-            "value given is %d.",
+            "The value 'shard_id' for Op(shard_index) must be greater or "
+            "equal to 0, but the value given is %d.",
             shard_id));
     PADDLE_ENFORCE_LT(
         shard_id, nshards,
