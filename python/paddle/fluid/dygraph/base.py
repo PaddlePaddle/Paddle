@@ -111,6 +111,10 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
+    :alias_main: paddle.enable_dygraph
+	:alias: paddle.enable_dygraph,paddleenable_imperative .enable_dygraph
+	:old_api: .fluid.dygraph.base.enable_dygraph
+
     This function enables dynamic graph mode.
 
     Parameters:
@@ -141,6 +145,10 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
+    :alias_main: paddle.disable_dygraph
+	:alias: paddle.disable_dygraph,paddledisable_imperative .disable_dygraph
+	:old_api: .fluid.dygraph.base.disable_dygraph
+
     This function disables dynamic graph mode.
 
     return:
@@ -178,6 +186,8 @@ def _switch_tracer_mode_guard_(is_train=True):
 
 def no_grad(func=None):
     """
+    :api_attr: imperative
+
     Create a context which disables dygraph gradient calculation.
     In this mode, the result of every computation will have `stop_gradient=True`.
 
@@ -236,6 +246,8 @@ def no_grad(func=None):
 @signature_safe_contextmanager
 def guard(place=None):
     """
+    :api_attr: imperative
+
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
@@ -520,6 +532,8 @@ def grad(outputs,
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None):
     """
+    :api_attr: imperative
+
     The API will create a ``Variable`` or ``ComplexVariable`` object from 
     numpy\.ndarray, Variable or ComplexVariable object.
 
