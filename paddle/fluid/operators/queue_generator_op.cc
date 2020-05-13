@@ -41,11 +41,11 @@ class QueueGeneratorOp : public framework::OperatorBase {
                                            "Op(queue_generator) must be set."));
 
     int capacity = Attr<int>("capacity");
-    PADDLE_ENFORCE_GT(
-        capacity, 0,
-        platform::errors::InvalidArgument(
-            "The attribute 'capacity' for Op(queue_generator) must "
-            "be set a positive value, but the one received is %d." capacity));
+    PADDLE_ENFORCE_GT(capacity, 0,
+                      platform::errors::InvalidArgument(
+                          "The attribute 'capacity' for Op(queue_generator) "
+                          "must be set a positive value, "
+                          "but the one received is %d." capacity));
 
     // generate queue vars and initialize them
     for (const auto& name : names) {
