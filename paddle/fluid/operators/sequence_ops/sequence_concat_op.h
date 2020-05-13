@@ -73,16 +73,23 @@ class SeqConcatKernel : public framework::OpKernel<T> {
     for (auto &x : xs) {
       if (lod_size == 0) {
         PADDLE_ENFORCE_EQ(x.get().lod().empty(), false,
-                          "Input(X) Tensor of SequenceConcatOp does not "
-                          "contain LoD information.");
+                          platform::errors::InvalidArgument(
+                              "Input(X) Tensor of SequenceConcatOp does not "
+                              "contain LoD information."));
         lod_size = x.get().lod()[0].size();
       } else {
-        PADDLE_ENFORCE_EQ(
-            lod_size, x.get().lod()[0].size(),
-            "The number of sequence must be same between each input");
+        PADDLE_ENFORCE_EQ(lod_size, x.get().lod()[0].size(),
+                          platform::errors::InvalidArgument(
+                              "The number of sequence must be same between "
+                              "each input. But received (%d) != (%d)",
+                              lod_size, x.get().lod()[0].size()));
       }
     }
-    PADDLE_ENFORCE_NE(lod_size, 0, "Each input must have sequence information");
+    PADDLE_ENFORCE_NE(lod_size, 0,
+                      platform::errors::InvalidArgument(
+                          "Each input must have sequence information. But "
+                          "received input lod size is(%d)",
+                          lod_size));
 
     std::vector<framework::Tensor> x_in_order;
     out.set_lod(detail::ConcatLoD(xs, &x_in_order));
@@ -100,7 +107,11 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
     auto xs = context.MultiInput<framework::LoDTensor>("X");
     auto dxs =
         context.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
-    PADDLE_ENFORCE_EQ(xs.size(), dxs.size());
+    PADDLE_ENFORCE_EQ(xs.size(), dxs.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of Input X and Output Grad X must be "
+                          "same, But received (%d) != (%d)",
+                          xs.size(), dxs.size()));
     for (size_t i = 0; i < dxs.size(); ++i) {
       if (dxs[i] != nullptr) {
         dxs[i]->set_lod(xs[i]->lod());
