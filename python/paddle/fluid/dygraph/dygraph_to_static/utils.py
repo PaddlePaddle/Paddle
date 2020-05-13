@@ -665,7 +665,7 @@ class ForNodeParser(object):
 
     In this process, the semantics of for does not change.
 
-    Now only need to parse 3 type statements:
+    Now only can parse 3 type statements:
         1). for x in range(***)
         2). for x in var.numpy()
         3). for i, x enumerate(var.numpy())
@@ -801,21 +801,24 @@ class ForNodeParser(object):
         return init_stmts, cond_stmt, body_stmts
 
     def _build_index_init_node(self):
-        # TODO: slice bug, only support int32 index
-        index_var_name = self.iter_var_name if self.is_for_range_iter(
-        ) else self.iter_idx_name
-        index_init_node = get_constant_variable_node(
-            index_var_name, 0, dtype='int32')
-        if self.is_for_range_iter() and self.args_length != 1:
-            index_init_node = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=index_var_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None)
-                ],
-                value=self.iter_args[0])
+        if self.is_for_range_iter():
+            if self.args_length == 1:
+                index_init_node = get_constant_variable_node(self.iter_var_name,
+                                                             0)
+            else:
+                index_init_node = gast.Assign(
+                    targets=[
+                        gast.Name(
+                            id=self.iter_var_name,
+                            ctx=gast.Store(),
+                            annotation=None,
+                            type_comment=None)
+                    ],
+                    value=self.iter_args[0])
+        else:
+            # TODO: slice bug, only support int32 index
+            index_init_node = get_constant_variable_node(
+                self.iter_idx_name, 0, dtype='int32')
         return index_init_node
 
     def _build_var_shape_assign_node(self):

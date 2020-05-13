@@ -16,16 +16,12 @@ from __future__ import print_function
 
 import numpy as np
 import unittest
-import logging
 
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import declarative
 
 program_translator = ProgramTranslator()
-
-# Set Log level	
-logging.getLogger().setLevel(logging.DEBUG)
 
 
 # 0. for in range with var case
@@ -123,6 +119,34 @@ def dygraph_for_enumerate_var_numpy_with_continue(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
     for i, x in enumerate(x_array.numpy()):
+        y = y + i
+        if i > 2:
+            continue
+        z = z + x
+    return y, z
+
+
+# 9. for enumerate var.numpy() with start & break
+@declarative
+def dygraph_for_enumerate_var_numpy_with_start_break(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array.numpy(), 1):
+        y = y + i
+        z = z + x
+        if i > 2:
+            break
+    return y, z
+
+
+# 10. for enumerate var.numpy() with start & continue
+@declarative
+def dygraph_for_enumerate_var_numpy_with_start_continue(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array.numpy(), 1):
         y = y + i
         if i > 2:
             continue
@@ -238,6 +262,16 @@ class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
 class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
     def set_test_func(self):
         self.dygraph_func = dygraph_for_enumerate_var_numpy_with_continue
+
+
+class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start_break
+
+
+class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start_continue
 
 
 if __name__ == '__main__':

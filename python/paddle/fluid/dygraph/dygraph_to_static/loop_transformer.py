@@ -360,7 +360,7 @@ class LoopTransformer(gast.NodeTransformer):
     def get_for_stmt_nodes(self, node):
         # TODO: consider for - else in python
 
-        # 1. check whether need to transform, here will
+        # 1. check whether need to transform
         # NOTE: Current need transform cases:
         #   1). for x in range(VarBase.numpy()[0])
         #   2). for x in VarBase.numpy()
@@ -383,7 +383,7 @@ class LoopTransformer(gast.NodeTransformer):
         # 3. get original loop vars
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
-        # in 'for x in var' or 'for i, x in enumerate(var)' cases,
+        # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
         # we need append new loop var & remove useless loop var
         #   1. for x in var -> x is no need
         #   2. for i, x in enumerate(var) -> x is no need

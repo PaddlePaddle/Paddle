@@ -32,7 +32,7 @@ from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransfor
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func, ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
