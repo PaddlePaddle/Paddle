@@ -69,6 +69,8 @@ class LearningRateDecay(object):
 
 class PiecewiseDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+    
     Piecewise decay scheduler.
 
     The algorithm can be described as the code below.
@@ -128,6 +130,8 @@ class PiecewiseDecay(LearningRateDecay):
 
 class NaturalExpDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies natural exponential decay to the initial learning rate.
     
     The algorithm can be described as following.
@@ -207,6 +211,8 @@ class NaturalExpDecay(LearningRateDecay):
 
 class ExponentialDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies exponential decay to the learning rate.
 
     The algorithm can be described as following.
@@ -287,6 +293,8 @@ class ExponentialDecay(LearningRateDecay):
 
 class InverseTimeDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies inverse time decay to the initial learning rate.
 
     The algorithm can be described as following.
@@ -363,6 +371,8 @@ class InverseTimeDecay(LearningRateDecay):
 
 class PolynomialDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies polynomial decay to the initial learning rate.
 
     The algorithm can be described as following.
@@ -455,6 +465,8 @@ class PolynomialDecay(LearningRateDecay):
 
 class CosineDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies cosine decay to the learning rate.
 
     The algorithm can be described as following.
@@ -511,6 +523,8 @@ class CosineDecay(LearningRateDecay):
 
 class NoamDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies Noam decay to the initial learning rate. 
 
     The algorithm can be described as following.
