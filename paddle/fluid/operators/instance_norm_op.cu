@@ -70,18 +70,27 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must be CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must be CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
 
     auto *x = ctx.Input<Tensor>("X");
     auto &x_dims = x->dims();
-    PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
-        "the dimension of input X must greater than or equal to 2");
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
-        "the dimension of input X must smaller than or equal to 5");
+    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the size of X's dimensions must greater than "
+                          "or equal to 2. But received: "
+                          "the size of X's dimensions is [%d]",
+                          x_dims.size()));
+    PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the size of X's dimensions must smaller than"
+                          "or equal to 5. But received: "
+                          "the size of X's dimensions is [%d]",
+                          x_dims.size()));
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
     int NxC = N * C;
@@ -231,8 +240,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *x = ctx.Input<Tensor>("X");
@@ -257,8 +267,22 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
     }
-    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
+    PADDLE_ENFORCE_EQ(
+        scale->dims().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The `shape` in InstanceNormOp is invalid: "
+            "the size of scale's dimensions must be equal to 1. But "
+            "received: the size of scale's dimensions"
+            "is [%d]",
+            scale->dims().size()));
+    PADDLE_ENFORCE_EQ(scale->dims()[0], C,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the first dimension of scale must be equal to "
+                          "Channels([%d]). But received: "
+                          "the first dimension of scale is [%d],"
+                          "the dimensions of scale is [%s], ",
+                          C, scale->dims()[0], scale->dims()));
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
