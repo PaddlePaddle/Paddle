@@ -33,15 +33,13 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(ctx.Attr<std::vector<int>>("offsets").empty(), true,
                       platform::errors::InvalidArgument(
-                          "Input 'Offsets' "
-                          "and attribute 'offsets' should not be used at the "
-                          "same time."));
+                          "Input 'Offsets' and attribute 'offsets' "
+                          "should not be used at the same time."));
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
                       platform::errors::InvalidArgument(
-                          "The number of "
-                          "dimensions of input 'Offsets' must be 1, but the "
-                          "value you give is: %d.",
+                          "The number of dimensions of input 'Offsets' for "
+                          "Op(crop) must be 1, but the value you give is: %d.",
                           offsets_tensor->dims().size()));
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],
@@ -170,19 +168,17 @@ class CropGradKernel : public framework::OpKernel<T> {
     size_t rank =
         context.Input<Tensor>(framework::GradVarName("Out"))->dims().size();
     PADDLE_ENFORCE_GE(
-        rank, 1,
-        platform::errors::InvalidArgument(
-            "The number of dimensions of the input 'Out@GRAD' for "
-            "Op(crop_grad) "
-            "must be greater than or equal to 1, but the received value is %d.",
-            rank));
+        rank, 1, platform::errors::InvalidArgument(
+                     "The number of dimensions of the input 'Out@GRAD' for "
+                     "Op(crop_grad) must be greater than or equal "
+                     "to 1, but the received value is %d.",
+                     rank));
     PADDLE_ENFORCE_LE(
-        rank, 6,
-        platform::errors::InvalidArgument(
-            "The number of dimensions of the input 'Out@GRAD' for "
-            "Op(crop_grad) "
-            "must be less than or equal to 6, but the received value is %d.",
-            rank));
+        rank, 6, platform::errors::InvalidArgument(
+                     "The number of dimensions of the input 'Out@GRAD' for "
+                     "Op(crop_grad) must be less than or equal "
+                     "to 6, but the received value is %d.",
+                     rank));
     switch (rank) {
       case 1:
         CropGradFunction<DeviceContext, T, 1>(context);

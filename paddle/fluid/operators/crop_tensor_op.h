@@ -142,17 +142,16 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
                       platform::errors::InvalidArgument(
-                          "The number of "
-                          "dimensions of input 'Offsets' must be 1, but the "
-                          "value you give is: %d.",
+                          "The number of dimensions of input 'Offsets' must "
+                          "be 1, but the value you give is: %d.",
                           offsets_tensor->dims().size()));
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],
-        platform::errors::InvalidArgument("The number of elements (%d) for "
-                                          "input 'Offsets' must be equal to "
-                                          "the number of dimensions size (%d) "
-                                          "of the input tensor.",
-                                          offsets_tensor->dims()[0], rank));
+        platform::errors::InvalidArgument(
+            "The number of elements (%d) for "
+            "input 'Offsets' must be equal to "
+            "the number of dimensions size (%d) of the input tensor.",
+            offsets_tensor->dims()[0], rank));
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
