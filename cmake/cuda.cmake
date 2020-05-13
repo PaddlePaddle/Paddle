@@ -104,12 +104,12 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Pascal")
     set(cuda_arch_bin "60 61")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
-    if (NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
+    if (NOT ${CUDA_VERSION} LESS 10.0)
       add_definitions("-DSUPPORTS_CUDA_FP16")
     endif()
     set(cuda_arch_bin "70")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
-    if (NOT ${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0)
+    if (NOT ${CUDA_VERSION} LESS 10.0)
       add_definitions("-DSUPPORTS_CUDA_FP16")
     endif()
     set(cuda_arch_bin "75")
@@ -142,19 +142,19 @@ function(select_nvcc_arch_flags out_variable)
   foreach(arch ${cuda_arch_bin})
     if(arch MATCHES "([0-9]+)\\(([0-9]+)\\)")
       # User explicitly specified PTX for the concrete BIN
-      string(APPEND nvcc_flags " -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1}")
-      string(APPEND nvcc_archs_readable " sm_${CMAKE_MATCH_1}")
+      list(APPEND nvcc_flags -gencode arch=compute_${CMAKE_MATCH_2},code=sm_${CMAKE_MATCH_1})
+      list(APPEND nvcc_archs_readable sm_${CMAKE_MATCH_1})
     else()
       # User didn't explicitly specify PTX for the concrete BIN, we assume PTX=BIN
-      string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=sm_${arch}")
-      string(APPEND nvcc_archs_readable " sm_${arch}")
+      list(APPEND nvcc_flags -gencode arch=compute_${arch},code=sm_${arch})
+      list(APPEND nvcc_archs_readable sm_${arch})
     endif()
   endforeach()
 
   # Tell NVCC to add PTX intermediate code for the specified architectures
   foreach(arch ${cuda_arch_ptx})
-    string(APPEND nvcc_flags " -gencode arch=compute_${arch},code=compute_${arch}")
-    string(APPEND nvcc_archs_readable " compute_${arch}")
+    list(APPEND nvcc_flags -gencode arch=compute_${arch},code=compute_${arch})
+    list(APPEND nvcc_archs_readable compute_${arch})
   endforeach()
 
   string(REPLACE ";" " " nvcc_archs_readable "${nvcc_archs_readable}")
@@ -162,32 +162,32 @@ function(select_nvcc_arch_flags out_variable)
   set(${out_variable}_readable ${nvcc_archs_readable} PARENT_SCOPE)
 endfunction()
 
-message(STATUS "CUDA detected: " ${CMAKE_CUDA_COMPILER_VERSION})
-if (${CMAKE_CUDA_COMPILER_VERSION} LESS 7.0)
+message(STATUS "CUDA detected: " ${CUDA_VERSION})
+if (${CUDA_VERSION} LESS 7.0)
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs})
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 8.0) # CUDA 7.x
+elseif (${CUDA_VERSION} LESS 8.0) # CUDA 7.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs7})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 9.0) # CUDA 8.x
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+elseif (${CUDA_VERSION} LESS 9.0) # CUDA 8.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs8})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
   # CUDA 8 may complain that sm_20 is no longer supported. Suppress the
   # warning for now.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 10.0) # CUDA 9.x
+  list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
+elseif (${CUDA_VERSION} LESS 10.0) # CUDA 9.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs9})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
-elseif (${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0) # CUDA 10.x
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
+elseif (${CUDA_VERSION} LESS 11.0) # CUDA 10.x
   set(paddle_known_gpu_archs ${paddle_known_gpu_archs10})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D_MWAITXINTRIN_H_INCLUDED")
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__STRICT_ANSI__")
+  list(APPEND CUDA_NVCC_FLAGS "-D_MWAITXINTRIN_H_INCLUDED")
+  list(APPEND CUDA_NVCC_FLAGS "-D__STRICT_ANSI__")
 endif()
+add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}\"")
 
-message(STATUS "PADDLE_CUDA_BINVER=${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINOR}")
-
+include_directories(${CUDA_INCLUDE_DIRS})
 if(NOT WITH_DSO)
     if(WIN32)
       set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY})
@@ -196,24 +196,37 @@ endif(NOT WITH_DSO)
 
 # setting nvcc arch flags
 select_nvcc_arch_flags(NVCC_FLAGS_EXTRA)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
-message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
+list(APPEND CUDA_NVCC_FLAGS ${NVCC_FLAGS_EXTRA})
+message(STATUS "Added CUDA NVCC flags for: ${NVCC_FLAGS_EXTRA_readable}")
 
 # Set C++11 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-if (NOT WIN32) # windows msvc2015 support c++11 natively.
-    # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++11")
+if (NOT WIN32) # windows msvc2015 support c++11 natively. 
+# -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
+list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
-# in cuda9, suppress cuda warning on eigen
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
+# in cuda9, suppress cuda warning on eigen 
+list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 
-if (WIN32)
+if (NOT WIN32)
+  if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
+      list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
+  elseif(CMAKE_BUILD_TYPE  STREQUAL "Release")
+      list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
+  elseif(CMAKE_BUILD_TYPE  STREQUAL "RelWithDebInfo")
+      list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+  elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
+      # nvcc 9 does not support -Os. Use Release flags instead
+      list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
+  endif()
+else(NOT WIN32)
   list(APPEND CUDA_NVCC_FLAGS  "-Xcompiler \"/wd 4244 /wd 4267 /wd 4819\"")
   list(APPEND CUDA_NVCC_FLAGS  "--compiler-options;/bigobj")
   if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
@@ -223,9 +236,9 @@ if (WIN32)
   elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CUDA_NVCC_FLAGS "-O3 -DNDEBUG")
   else()
-    message(FATAL "Windows only support Release or Debug build now. Please set visual studio build type to Release/Debug, x64 build.")
-  endif()
-endif(WIN32)
+  message(FATAL "Windows only support Release or Debug build now. Please set visual studio build type to Release/Debug, x64 build.")
+endif()
+endif(NOT WIN32)
 
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)
 mark_as_advanced(CUDA_SDK_ROOT_DIR CUDA_SEPARABLE_COMPILATION)

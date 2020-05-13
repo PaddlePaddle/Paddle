@@ -76,7 +76,7 @@ if(WITH_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
+    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
         message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
@@ -89,7 +89,7 @@ if(WITH_GPU)
     else()
         message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
     endif()
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${SIMD_FLAG}\"")
+    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
@@ -97,11 +97,11 @@ if(WITH_GPU)
 
     if(TENSORRT_FOUND)
         if(WIN32)
-            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 9)
+            if(${CUDA_VERSION_MAJOR} VERSION_LESS 9)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 9.0 to compile on Windows")
             endif()
         else()
-            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 8)
+            if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
             endif()
             if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
