@@ -484,6 +484,7 @@ class FleetTranspiler(Fleet):
     def _save_sparse_params(self, executor, dirname, context, main_program):
         prog = Program()
         block = prog.global_block()
+
         #
         # # recv optimize vars from pserver
         # for name, remote_ctx in context.items():

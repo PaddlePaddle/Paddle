@@ -123,7 +123,7 @@ class SparseVariable {
   void Get(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            std::vector<std::vector<std::vector<float>>> *values) {
-    std::shared_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     for (auto id : ids) {
       auto got = values_.find(id);
       if (got == values_.end()) {
@@ -170,22 +170,23 @@ class SparseVariable {
       filenames.push_back(filename);
     }
 
-    Save(filenames, meta_value_names);
+    Save(filenames, meta_.value_names);
   }
 
   void Save(const std::vector<std::string> &filenames,
             const std::vector<std::string> &valuenames) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
-                        value_name);
-    if (it == meta_.value_names.end()) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "[%s] is invalid param for [%s]", value, meta_.name));
+    for (auto &value_name : valuenames) {
+      auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
+                          value_name);
+      if (it == meta_.value_names.end()) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "[%s] is invalid param for [%s]", value_name, meta_.name));
+      }
     }
 
     std::vector<std::ofstream> fouts;
-
     for (auto filename : filenames) {
       std::ofstream fout(filename, std::ios::binary);
 
@@ -193,15 +194,15 @@ class SparseVariable {
                         platform::errors::Unavailable(
                             "Cannot open %s to save variables.", filename));
 
-      fouts.push_back(fout);
+      fouts.push_back(std::move(fout));
     }
 
     for (auto value : values_) {
-      std::vector<std::vector<float>> vss = value.second.get(valuenames);
+      std::vector<std::vector<float>> vss = value.second->get(valuenames);
 
-      auto id = value.fitst;
+      auto id = value.first;
 
-      for (int i = 0; i < vss.size(); i++) {
+      for (int i = 0; i < static_cast<int>(vss.size()); i++) {
         auto &vs = vss[i];
 
         std::stringstream ss;
@@ -216,8 +217,8 @@ class SparseVariable {
       }
     }
 
-    for (auto fout : fouts) {
-      fout.close();
+    for (int i = 0; i < static_cast<int>(fouts.size()); i++) {
+      fouts[i].close();
     }
   }
 
