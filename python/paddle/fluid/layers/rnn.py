@@ -2083,7 +2083,21 @@ def dynamic_lstm(input,
     """
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstm."
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_lstm')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstm')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_lstm')
+
+    check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstm')
+    if isinstance(c_0, Variable):
+        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
+                                 'dynamic_lstm')
+
     helper = LayerHelper('lstm', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -2449,6 +2463,20 @@ def dynamic_lstmp(input,
     ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_lstmp')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstmp')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_lstmp')
+
+    check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstmp')
+    if isinstance(c_0, Variable):
+        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
+                                 'dynamic_lstmp')
+
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
     weight = helper.create_parameter(

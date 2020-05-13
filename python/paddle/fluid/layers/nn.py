@@ -10172,33 +10172,55 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (Tuple[int] | List[int]): Shape of the generated random tensor.
-
+        shape (tuple[int] | list[int] | Variable | list[Variable]): Shape of the generated random tensor.
+        
         mean (float): Mean of the random tensor, defaults to 0.0.
-
+            
         std (float): Standard deviation of the random tensor, defaults to 1.0.
-
+        
         seed (int): ${seed_comment}
-
+        
         dtype(np.dtype | core.VarDesc.VarType | str): Output data type, float32 or float64.
 
     Returns:
         Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
 
     Examples:
+
        .. code-block:: python
 
-           # declarative mode
+            import paddle.fluid as fluid
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = fluid.layers.gaussian_random(shape=[3, 4])
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            dim_1 = fluid.layers.fill_constant([1],"int64",3)
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.gaussian_random(shape=[dim_1, dim_2])
+
+            # example 3:
+            # attr shape is a Variable, the data type must be int64 or int32.
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            result_3 = fluid.layers.gaussian_random(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.gaussian_random(var_shape_int32)
+       
+       .. code-block:: python
+       
+           # declarative mode 
            import numpy as np
            from paddle import fluid
-
+   
            x = fluid.layers.gaussian_random((2, 3), std=2., seed=10)
-
+   
            place = fluid.CPUPlace()
            exe = fluid.Executor(place)
            start = fluid.default_startup_program()
            main = fluid.default_main_program()
-
+   
            exe.run(start)
            x_np, = exe.run(main, feed={}, fetch_list=[x])
 
@@ -10212,33 +10234,44 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            import numpy as np
            from paddle import fluid
            import paddle.fluid.dygraph as dg
-
+    
            place = fluid.CPUPlace()
            with dg.guard(place) as g:
                x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-               x_np = x.numpy()
+               x_np = x.numpy()       
            x_np
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
     helper = LayerHelper('gaussian_random', **locals())
-    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
-    check_dtype(dtype, 'dtype', ['float32', 'float64'],
-                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
+            "received %s." % (type(shape)))
     c_dtype = convert_np_dtype_to_dtype_(dtype)
+    attrs = {
+        'mean': mean,
+        'std': std,
+        'seed': seed,
+        'dtype': c_dtype,
+        'use_mkldnn': False
+    }
+
+    inputs = {}
+    utils._get_shape_tensor_inputs(
+        inputs=inputs,
+        helper=helper,
+        attrs=attrs,
+        shape=shape,
+        op_type='gaussian_random')
+
     helper.append_op(
         type='gaussian_random',
+        inputs=inputs,
         outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype,
-            'use_mkldnn': False
-        })
+        attrs=attrs)
 
     return out
 
@@ -10674,17 +10707,30 @@ def strided_slice(input, axes, starts, ends, strides):
             sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
-    if not isinstance(starts, (list, tuple, Variable)):
-        raise ValueError(
-            "Input starts must be an Variable, python list or tuple.")
-    if not isinstance(ends, (list, tuple, Variable)):
-        raise ValueError(
-            "Input ends must be an Variable, python list or tuple.")
-    if not isinstance(strides, (list, tuple, Variable)):
-        raise ValueError(
-            "Input strides must be an Variable, python list or tuple.")
-
     helper = LayerHelper('strided_slice', **locals())
+
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'strided_slice')
+    check_type(axes, 'axes', (list, tuple), 'strided_slice')
+    check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
+    check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
+    check_type(strides, 'strides', (list, tuple, Variable), 'strided_slice')
+
+    def check_list_elements_dtype(list_input, input_name):
+        if isinstance(list_input, Variable):
+            check_dtype(list_input.dtype, input_name, ['int32'],
+                        'strided_slice')
+        else:
+            for i, var in enumerate(list_input):
+                var_name = input_name + '[' + str(i) + ']'
+                if isinstance(var, Variable):
+                    check_dtype(var.dtype, var_name, ['int32'], 'strided_slice')
+
+    check_list_elements_dtype(axes, 'axes')
+    check_list_elements_dtype(starts, 'starts')
+    check_list_elements_dtype(ends, 'ends')
+    check_list_elements_dtype(strides, 'strides')
 
     def get_new_list_tensor(old_list):
         new_list_tensor = []
@@ -10801,7 +10847,8 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
@@ -12357,10 +12404,10 @@ def similarity_focus(input, axis, indexes, name=None):
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
-    if isinstance(axis, int) is False:
-        raise TypeError("axis must be int type.")
-    if isinstance(indexes, list) is False:
-        raise TypeError("indexes must be list type.")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "similarity_focus")
+    check_type(axis, 'axis', int, "similarity_focus")
+    check_type(indexes, 'indexes', list, "similarity_focus")
     if axis != 1 and axis != 2 and axis != 3:
         raise ValueError("axis must be 1, 2 or 3.")
     if len(indexes) == 0:
@@ -13492,6 +13539,8 @@ def continuous_value_model(input, cvm, use_cvm=True):
     """
     helper = LayerHelper('cvm', **locals())
     out = helper.create_variable(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'cvm')
     helper.append_op(
         type='cvm',
         inputs={'X': [input],
@@ -13976,6 +14025,8 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     """
 
     helper = LayerHelper("unfold", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
 
     assert len(x.shape) == 4, \
             "input should be the format of [N, C, H, W]"
