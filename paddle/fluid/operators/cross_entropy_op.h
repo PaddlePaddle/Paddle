@@ -166,11 +166,19 @@ struct HardLabelCrossEntropyForwardFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     auto label = label_[idx];
     if (label != ignore_index_) {
-      PADDLE_ENFORCE(label >= 0 && label < feature_size_,
-                     "Variable value (label) of "
-                     "OP(fluid.layers.cross_entropy) expected >= 0 "
-                     "and < %ld, but got %ld. Please check label value.",
-                     feature_size_, label);
+      PADDLE_ENFORCE_GE(
+          label, 0UL,
+          platform::errors::InvalidArgument(
+              "The input label should not be less than 0. But received "
+              "label = %ld",
+              label));
+      PADDLE_ENFORCE_LT(
+          label, feature_size_,
+          platform::errors::InvalidArgument(
+              "The input label should be less than feature_size_. But "
+              "received label = %ld, feature_size_ = %ld",
+              label, feature_size_));
+
       auto match_x = x_[idx * feature_size_ + label];
       y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
       match_x_[idx] = match_x;

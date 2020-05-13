@@ -183,8 +183,6 @@ def bpr_loss(input, label, name=None):
     """
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
-                             'bpr_loss')
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
@@ -1331,9 +1329,15 @@ def rank_loss(label, left, right, name=None):
 
     """
     helper = LayerHelper('rank_loss', **locals())
-    check_variable_and_dtype(label, 'label', ['float32'], "rank_loss")
-    check_variable_and_dtype(left, 'left', ['float32'], "rank_loss")
-    check_variable_and_dtype(right, 'right', ['float32'], "rank_loss")
+
+    if not (isinstance(label, Variable)):
+        raise ValueError("The label should be a Variable")
+
+    if not (isinstance(left, Variable)):
+        raise ValueError("The left should be a Variable")
+
+    if not (isinstance(right, Variable)):
+        raise ValueError("The right should be a Variable")
 
     out = helper.create_variable_for_type_inference("float32")
 
@@ -1408,9 +1412,14 @@ def sigmoid_cross_entropy_with_logits(x,
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}
-        label(${label_type}): ${label_comment}
-        ignore_index(int): ${ignore_index_comment}
+        x(Variable): a 2-D tensor with shape N x D, where N is the batch size and
+                D is the number of classes. This input is a tensor of logits computed
+                by the previous operator. Logits are unscaled log probabilities given
+                as log(p/(1-p)) The data type should be float32 or float64.
+        label (Variable): a 2-D tensor of the same type and shape as X.
+                This input is a tensor of probabalistic labels for each logit.
+        ignore_index(int): Specifies a target value that is ignored and 
+                does not contribute to the input gradient.
         name(str|None): The default value is None.  Normally there is
             no need for user to set this property.  For more information,
             please refer to :ref:`api_guide_Name`
@@ -1435,6 +1444,8 @@ def sigmoid_cross_entropy_with_logits(x,
                 normalize=True) # or False
             # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'sigmoid_cross_entropy_with_logits')
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
 
