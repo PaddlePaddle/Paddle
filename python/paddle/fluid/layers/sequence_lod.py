@@ -724,8 +724,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int32', 'int64'],
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'sequence_expand')
     helper = LayerHelper('sequence_expand', input=x, **locals())
     dtype = helper.input_dtype()
