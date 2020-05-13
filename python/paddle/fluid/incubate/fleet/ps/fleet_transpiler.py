@@ -510,10 +510,10 @@ class FleetTranspiler(Fleet):
                 attrs={
                     "varname": name,
                     "is_slice": True,
-                    "slice_varnames": [],
+                    "slice_varnames": var_ctx.split_varnames(),
                     "remote_varnames": var_ctx.split_varnames(),
                     "endpoints": var_ctx.split_endpoints(),
-                    "dirname": os.path.join(dirname, "sparse")
+                    "dirname": dirname
                 })
 
         executor.run(prog)

@@ -190,10 +190,10 @@ class SparseVariable {
       }
     }
 
-    std::vector<std::unique_ptr<std::ostream>> fouts;
+    std::vector<std::unique_ptr<std::ofstream>> fouts;
 
     for (auto filename : filenames) {
-      std::unique_ptr<std::ostream> fout(new std::ofstream(filename));
+      std::unique_ptr<std::ofstream> fout(new std::ofstream(filename));
       fouts.push_back(std::move(fout));
     }
 

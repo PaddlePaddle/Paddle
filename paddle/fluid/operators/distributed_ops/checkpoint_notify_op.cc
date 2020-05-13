@@ -49,7 +49,8 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
     for (size_t i = 0; i < epmap.size(); i++) {
-      auto save_path = string::Sprintf("%s/%s", dirname, varname);
+      auto save_path =
+          string::Sprintf("%s/%s/%s", dirname, varname, slice_varnames[i]);
 
       rpc_client->AsyncCheckpointNotify(epmap[i], save_path,
                                         remote_varnames[i]);
