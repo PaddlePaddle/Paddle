@@ -95,11 +95,17 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
   const auto& ctx = context.device_context();
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      "index.dims()[1] should be 1 when index.dims().size() == "
-                      "2 in scatter_op.");
+                      platform::errors::InvalidArgument(
+                          "index.dims()[1] should be 1 when "
+                          "index.dims().size() = 2 in scatter_op."
+                          "But received value is [%d]",
+                          index.dims()[1]));
   } else {
     PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      "index.dims().size() should be 1 or 2 in scatter_op.");
+                      platform::errors::InvalidArgument(
+                          "index.dims().size() should be 1 or 2 in scatter_op."
+                          "But received value is [%d]",
+                          index.dims().size()));
   }
   int index_size = index.dims()[0];
 
