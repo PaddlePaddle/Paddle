@@ -2616,6 +2616,14 @@ def dynamic_gru(input,
     assert in_dygraph_mode(
     ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
 
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_gru')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_gru')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_gru')
+
     helper = LayerHelper('gru', **locals())
     dtype = helper.input_dtype()
 
