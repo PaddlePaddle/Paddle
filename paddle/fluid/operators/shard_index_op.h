@@ -66,12 +66,11 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
                             "The input_index for Op(shard_index) must be "
                             "greater or equal to 0, but the value given is %d.",
                             in_data[i]));
-      PADDLE_ENFORCE_LT(
-          in_data[i], index_num,
-          platform::errors::InvalidArgument(
-              "The input_index for Op(shard_index) must be "
-              "less than index_num (%d), but the value given is %d.",
-              index_num, in_data[i]));
+      PADDLE_ENFORCE_LT(in_data[i], index_num,
+                        platform::errors::InvalidArgument(
+                            "The input_index for Op(shard_index) must be less "
+                            "than index_num (%d), but the value given is %d.",
+                            index_num, in_data[i]));
       if (in_data[i] / shard_size == shard_id) {
         out_data[i] = in_data[i] % shard_size;
       } else {
