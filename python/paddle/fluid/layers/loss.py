@@ -183,6 +183,8 @@ def bpr_loss(input, label, name=None):
     """
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'bpr_loss')
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
