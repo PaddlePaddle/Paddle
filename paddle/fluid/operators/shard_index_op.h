@@ -32,8 +32,7 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GT(
         index_num, 0,
         platform::errors::InvalidArgument(
-            "The value "
-            "'index_num' for Op(shard_index) must be greater than 0, "
+            "The value 'index_num' for Op(shard_index) must be greater than 0, "
             "but the value given is %d.",
             index_num));
     PADDLE_ENFORCE_GT(nshards, 0,
