@@ -168,11 +168,11 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   }
   int sum_index = blockIdx.y * gridDim.x + block_id;
   if (thread_id < block_scan_size) {
-    share_tmp[col1] = in[index1];
-    share_tmp[col2] = in[index2];
+    share_tmp[col1 + (col1 >> 5)] = in[index1];
+    share_tmp[col2 + (col2 >> 5)] = in[index2];
   } else {
-    share_tmp[col1] = 0;
-    share_tmp[col2] = 0;
+    share_tmp[col1 + (col1 >> 5)] = 0;
+    share_tmp[col2 + (col2 >> 5)] = 0;
   }
 
   // Up-Sweep
@@ -182,6 +182,9 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
     if (thread_id < d) {
       int tmp_index1 = offset * (2 * thread_id + 1) - 1;
       int tmp_index2 = offset * (2 * thread_id + 2) - 1;
+      tmp_index1 = tmp_index1 + (tmp_index1 >> 5);
+      tmp_index2 = tmp_index2 + (tmp_index2 >> 5);
+
       share_tmp[tmp_index2] += share_tmp[tmp_index1];
     }
     offset *= 2;
@@ -189,8 +192,9 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
   __syncthreads();
 
   if (thread_id == 0) {
-    sum_data[sum_index] = share_tmp[two_power - 1];
-    share_tmp[two_power - 1] = 0;
+    int tmp_index = (two_power - 1) + ((two_power - 1) >> 5);
+    sum_data[sum_index] = share_tmp[tmp_index];
+    share_tmp[tmp_index] = 0;
   }
 
   // Down Sweep
@@ -200,6 +204,8 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
     if (thread_id < d) {
       int tmp_index1 = offset * (2 * thread_id + 1) - 1;
       int tmp_index2 = offset * (2 * thread_id + 2) - 1;
+      tmp_index1 = tmp_index1 + (tmp_index1 >> 5);
+      tmp_index2 = tmp_index2 + (tmp_index2 >> 5);
 
       T tmp = share_tmp[tmp_index1];
       share_tmp[tmp_index1] = share_tmp[tmp_index2];
@@ -209,8 +215,8 @@ __global__ void InnerMostDimExclusiveScan(const T* in, T* out, T* sum_data,
 
   __syncthreads();
 
-  if (col1 < block_scan_size) out[index1] = share_tmp[col1];
-  if (col2 < block_scan_size) out[index2] = share_tmp[col2];
+  if (col1 < block_scan_size) out[index1] = share_tmp[col1 + (col1 >> 5)];
+  if (col2 < block_scan_size) out[index2] = share_tmp[col2 + (col2 >> 5)];
 }
 
 // for large scan_dim_size array we need to add for correct result
@@ -289,7 +295,8 @@ class CumCUDAKernel : public framework::OpKernel<T> {
         dim3 block(element_per_block);
         dim3 grid(((scan_dim_size + 1) / 2 + block.x - 1) / block.x,
                   outer_dim_size);
-        int share_mem_size = (element_per_block * 2) * sizeof(T);
+        int offset_size = (element_per_block * 2) >> 5;
+        int share_mem_size = (element_per_block * 2 + offset_size) * sizeof(T);
         Tensor scan_sum;
         paddle::framework::DDim dims{
             ((scan_dim_size + 1) / 2 + block.x - 1) / block.x, outer_dim_size};
