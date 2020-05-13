@@ -28,9 +28,9 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
     auto* scores = context.Input<framework::LoDTensor>("scores");
     auto* pre_ids = context.Input<framework::LoDTensor>("pre_ids");
     auto* pre_scores = context.Input<framework::LoDTensor>("pre_scores");
-
-    ctx->HasInput("scores"), true,
-    platform::errors::NotFound("Input(score) of BeamSearchOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("scores"), true,
+                      platform::errors::NotFound(
+                          "Input(score) of BeamSearchOp is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("pre_ids"), true,
                       platform::errors::NotFound(
                           "Input(pre_ids) of BeamSearchOp is not found."));
