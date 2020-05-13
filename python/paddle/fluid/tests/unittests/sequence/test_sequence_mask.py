@@ -157,19 +157,13 @@ class SequenceMaskTest5_tensor_attr(SequenceMaskTestBase_tensor_attr):
 class TestSequenceMaskOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            input_data = np.random.randint(1, 5, [4]).astype("float32")
+            input_data = np.random.uniform(1, 5, [4]).astype("float32")
 
             def test_Variable():
                 # the input must be Variable
                 fluid.layers.sequence_mask(input_data, maxlen=4)
 
             self.assertRaises(TypeError, test_Variable)
-
-            def test_input_value():
-                # the elements of input must less than maxlen
-                fluid.layers.sequence_mask(input_data, maxlen=4)
-
-            self.assertRaises(TypeError, test_input_value)
 
             def test_input_dtype():
                 # the dtype of input must be int64
