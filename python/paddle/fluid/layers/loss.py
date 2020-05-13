@@ -57,6 +57,11 @@ def center_loss(input,
                 param_attr,
                 update_center=True):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.functional.center_loss
+	:alias: paddle.nn.functional.center_loss,paddle.nn.functional.loss.center_loss
+	:old_api: paddle.fluid.layers.center_loss
+
     **Center loss Cost layer**
     
     This OP accepts input (deep features,the output of the last hidden layer)
@@ -147,6 +152,10 @@ def center_loss(input,
 
 def bpr_loss(input, label, name=None):
     """
+    :alias_main: paddle.nn.functional.bpr_loss
+	:alias: paddle.nn.functional.bpr_loss,paddle.nn.functional.loss.bpr_loss
+	:old_api: paddle.fluid.layers.bpr_loss
+
     **Bayesian Personalized Ranking Loss Operator**
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
@@ -193,6 +202,10 @@ def bpr_loss(input, label, name=None):
 
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
+    :alias_main: paddle.nn.functional.cross_entropy
+	:alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
+	:old_api: paddle.fluid.layers.cross_entropy
+
     This operator computes the cross entropy between input and label. It
     supports both hard-label and and soft-label cross entropy computation.
 
@@ -286,6 +299,10 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def square_error_cost(input, label):
     """
+    :alias_main: paddle.nn.functional.square_error_cost
+	:alias: paddle.nn.functional.square_error_cost,paddle.nn.functional.loss.square_error_cost
+	:old_api: paddle.fluid.layers.square_error_cost
+
     This op accepts input predictions and target label and returns the
     squared error cost.
 
@@ -659,6 +676,8 @@ def nce(input,
         seed=0,
         is_sparse=False):
     """
+    :api_attr: Static Graph
+
     ${comment}
 
     Args:
@@ -870,6 +889,8 @@ def hsigmoid(input,
              is_custom=False,
              is_sparse=False):
     """
+    :api_attr: Static Graph
+    
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -1163,6 +1184,10 @@ def softmax_with_cross_entropy(logits,
                                return_softmax=False,
                                axis=-1):
     """
+    :alias_main: paddle.nn.functional.softmax_with_cross_entropy
+	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
+	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
+
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
     to provide a more numerically stable gradient.
@@ -1286,6 +1311,10 @@ def softmax_with_cross_entropy(logits,
 
 def rank_loss(label, left, right, name=None):
     """
+    :alias_main: paddle.nn.functional.rank_loss
+	:alias: paddle.nn.functional.rank_loss,paddle.nn.functional.loss.rank_loss
+	:old_api: paddle.fluid.layers.rank_loss
+
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
     indicates whether A is ranked higher than B or not. Please refer to more details: 
@@ -1409,6 +1438,10 @@ def sigmoid_cross_entropy_with_logits(x,
                                       name=None,
                                       normalize=False):
     """
+    :alias_main: paddle.nn.functional.sigmoid_cross_entropy_with_logits
+	:alias: paddle.nn.functional.sigmoid_cross_entropy_with_logits,paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits
+	:old_api: paddle.fluid.layers.sigmoid_cross_entropy_with_logits
+
     ${comment}
 
     Args:
@@ -1459,6 +1492,10 @@ def teacher_student_sigmoid_loss(input,
                                  soft_max_up_bound=15.0,
                                  soft_max_lower_bound=-15.0):
     """
+    :alias_main: paddle.nn.functional.teacher_student_sigmoid_loss
+	:alias: paddle.nn.functional.teacher_student_sigmoid_loss,paddle.nn.functional.loss.teacher_student_sigmoid_loss
+	:old_api: paddle.fluid.layers.teacher_student_sigmoid_loss
+
     **Teacher Student Log Loss Layer**
 
     This layer accepts input predictions and target label and returns the
@@ -1578,6 +1615,10 @@ def huber_loss(input, label, delta):
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
     """
+    :alias_main: paddle.nn.functional.kldiv_loss
+	:alias: paddle.nn.functional.kldiv_loss,paddle.nn.functional.loss.kldiv_loss
+	:old_api: paddle.fluid.layers.kldiv_loss
+
     ${comment}
 
     Args:
@@ -1638,6 +1679,10 @@ from .control_flow import equal
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
+    :alias_main: paddle.nn.functional.npair_loss
+	:alias: paddle.nn.functional.npair_loss,paddle.nn.functional.loss.npair_loss
+	:old_api: paddle.fluid.layers.npair_loss
+
   **Npair Loss Layer**
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
@@ -1704,6 +1749,10 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 def mse_loss(input, label):
     """
+    :alias_main: paddle.nn.functional.mse_loss
+	:alias: paddle.nn.functional.mse_loss,paddle.nn.functional.loss.mse_loss
+	:old_api: paddle.fluid.layers.mse_loss
+
     This op accepts input predications and target label and returns the mean square error.
 
     The loss can be described as:
