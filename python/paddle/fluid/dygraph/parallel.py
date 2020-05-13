@@ -28,6 +28,9 @@ ParallelStrategy = core.ParallelStrategy
 
 
 def prepare_context(strategy=None):
+    '''
+    :api_attr: imperative
+    '''
     if strategy is None:
         strategy = ParallelStrategy()
         strategy.nranks = Env().nranks
