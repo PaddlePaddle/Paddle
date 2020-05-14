@@ -110,6 +110,11 @@ function(copy_part_of_thrid_party TARGET DST)
         SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)    
             
+    set(dst_dir "${DST}/third_party/install/absl")
+    copy(${TARGET}
+            SRCS ${ABSEIL_INCLUDE_DIR} ${ABSEIL_LIB_DIR}
+            DSTS ${dst_dir} ${dst_dir})
+
     if (NOT PROTOBUF_FOUND OR WIN32)
         set(dst_dir "${DST}/third_party/install/protobuf")
         copy(${TARGET}

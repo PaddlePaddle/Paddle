@@ -197,6 +197,7 @@ endif()
 
 ########################### include third_party according to flags ###############################
 include(external/zlib)      # download, build, install zlib
+include(external/abseil)    # download, build, install abseil
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
 include(external/boost)     # download boost
@@ -207,7 +208,7 @@ include(external/xxhash)    # download, build, install xxhash
 include(external/warpctc)   # download, build, install warpctc
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
-list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool extern_abseil)
 
 # download file
 set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
