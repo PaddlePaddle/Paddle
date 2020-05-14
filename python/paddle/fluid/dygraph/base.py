@@ -146,7 +146,7 @@ def enable_dygraph(place=None):
 def disable_dygraph():
     """
     :alias_main: paddle.disable_dygraph
-	:alias: paddle.disable_dygraph,paddledisable_imperative.disable_dygraph
+	:alias: paddle.disable_dygraph,paddle.disable_imperative.disable_dygraph
 	:old_api: paddle.fluid.dygraph.base.disable_dygraph
 
     This function disables dynamic graph mode.
