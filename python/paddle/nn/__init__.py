@@ -19,7 +19,7 @@ from .layer import norm
 from .functional import extension
 from .layer import common
 
-import initializer
+from . import initializer
 
 __all__ = []
 __all__ += norm.__all__
