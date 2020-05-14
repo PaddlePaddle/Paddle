@@ -28,8 +28,10 @@ from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 
+from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+
 __all__ = [
-    #       'create_tensor',
+    'create_tensor',
     #       'create_lod_tensor',
     #       'create_random_int_lodtensor',
     'crop_tensor',

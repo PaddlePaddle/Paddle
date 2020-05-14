@@ -43,10 +43,12 @@ import paddle.metric
 import paddle.incubate.complex as complex
 
 # TODO: define alias in tensor and framework directory
+
 from .tensor.random import randperm
+
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
-# from .tensor.creation import create_tensor        #DEFINE_ALIAS
+from .tensor.creation import create_tensor  #DEFINE_ALIAS
 # from .tensor.creation import create_lod_tensor        #DEFINE_ALIAS
 # from .tensor.creation import create_random_int_lodtensor        #DEFINE_ALIAS
 from .tensor.creation import crop_tensor  #DEFINE_ALIAS
@@ -102,13 +104,13 @@ from .tensor.manipulation import expand  #DEFINE_ALIAS
 from .tensor.manipulation import expand_as  #DEFINE_ALIAS
 from .tensor.manipulation import flatten  #DEFINE_ALIAS
 from .tensor.manipulation import gather  #DEFINE_ALIAS
-# from .tensor.manipulation import gather_nd        #DEFINE_ALIAS
+from .tensor.manipulation import gather_nd  #DEFINE_ALIAS
 from .tensor.manipulation import reshape  #DEFINE_ALIAS
 from .tensor.manipulation import reverse  #DEFINE_ALIAS
 from .tensor.manipulation import scatter  #DEFINE_ALIAS
-# from .tensor.manipulation import scatter_nd_add        #DEFINE_ALIAS
-# from .tensor.manipulation import scatter_nd        #DEFINE_ALIAS
-# from .tensor.manipulation import shard_index        #DEFINE_ALIAS
+from .tensor.manipulation import scatter_nd_add  #DEFINE_ALIAS
+from .tensor.manipulation import scatter_nd  #DEFINE_ALIAS
+from .tensor.manipulation import shard_index  #DEFINE_ALIAS
 from .tensor.manipulation import slice  #DEFINE_ALIAS
 from .tensor.manipulation import split  #DEFINE_ALIAS
 from .tensor.manipulation import squeeze  #DEFINE_ALIAS
@@ -116,11 +118,11 @@ from .tensor.manipulation import stack  #DEFINE_ALIAS
 from .tensor.manipulation import strided_slice  #DEFINE_ALIAS
 from .tensor.manipulation import transpose  #DEFINE_ALIAS
 from .tensor.manipulation import unique  #DEFINE_ALIAS
-# from .tensor.manipulation import unique_with_counts        #DEFINE_ALIAS
+from .tensor.manipulation import unique_with_counts  #DEFINE_ALIAS
 from .tensor.manipulation import unsqueeze  #DEFINE_ALIAS
 from .tensor.manipulation import unstack  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
-# from .tensor.manipulation import unbind        #DEFINE_ALIAS
+from .tensor.manipulation import unbind  #DEFINE_ALIAS
 from .tensor.manipulation import roll  #DEFINE_ALIAS
 from .tensor.math import abs  #DEFINE_ALIAS
 from .tensor.math import acos  #DEFINE_ALIAS
@@ -140,10 +142,10 @@ from .tensor.math import elementwise_pow  #DEFINE_ALIAS
 from .tensor.math import elementwise_sub  #DEFINE_ALIAS
 from .tensor.math import exp  #DEFINE_ALIAS
 from .tensor.math import floor  #DEFINE_ALIAS
-# from .tensor.math import increment        #DEFINE_ALIAS
+from .tensor.math import increment  #DEFINE_ALIAS
 from .tensor.math import log  #DEFINE_ALIAS
 from .tensor.math import mul  #DEFINE_ALIAS
-# from .tensor.math import multiplex        #DEFINE_ALIAS
+from .tensor.math import multiplex  #DEFINE_ALIAS
 from .tensor.math import pow  #DEFINE_ALIAS
 from .tensor.math import reciprocal  #DEFINE_ALIAS
 from .tensor.math import reduce_max  #DEFINE_ALIAS
@@ -159,7 +161,7 @@ from .tensor.math import sqrt  #DEFINE_ALIAS
 from .tensor.math import square  #DEFINE_ALIAS
 from .tensor.math import stanh  #DEFINE_ALIAS
 from .tensor.math import sum  #DEFINE_ALIAS
-# from .tensor.math import sums        #DEFINE_ALIAS
+from .tensor.math import sums  #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.math import elementwise_sum  #DEFINE_ALIAS
 from .tensor.math import max  #DEFINE_ALIAS
