@@ -14,9 +14,6 @@
 
 from __future__ import print_function
 
-import os
-os.environ['FLAGS_imperative_check_nan_inf'] = '1'
-
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -27,6 +24,7 @@ class TestImperativeCheckNanInf(unittest.TestCase):
         self.a_np = np.array([1]).astype(np.float32)
         self.b_np = np.array([0]).astype(np.float32)
         self.c_np = np.array([0]).astype(np.float32)
+        fluid.set_flags({"FLAGS_imperative_check_nan_inf": 1})
 
     def test_normal_run(self):
         with fluid.dygraph.guard():
@@ -34,13 +32,13 @@ class TestImperativeCheckNanInf(unittest.TestCase):
             b = fluid.dygraph.to_variable(self.b_np)
             out = fluid.layers.elementwise_div(b, a)
 
-    def test_normal_inf(self):
+    def test_inf(self):
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(self.a_np)
             b = fluid.dygraph.to_variable(self.b_np)
             self.assertRaises(Exception, fluid.layers.elementwise_div, a, b)
 
-    def test_normal_nan(self):
+    def test_nan(self):
         with fluid.dygraph.guard():
             b = fluid.dygraph.to_variable(self.b_np)
             c = fluid.dygraph.to_variable(self.c_np)

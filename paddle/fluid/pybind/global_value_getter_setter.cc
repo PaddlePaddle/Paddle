@@ -85,6 +85,9 @@ DECLARE_int32(rpc_send_thread_num);
 DECLARE_int32(rpc_get_thread_num);
 DECLARE_int32(rpc_prefetch_thread_num);
 #endif
+// imperative only flags
+DECLARE_uint64(dygraph_debug);
+DECLARE_uint64(imperative_check_nan_inf);
 
 namespace paddle {
 namespace pybind {
@@ -333,6 +336,9 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_use_mkldnn,
                               FLAGS_free_idle_chunk,
                               FLAGS_free_when_no_cache_hit);
+  // imperative
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_dygraph_debug,
+                             FLAGS_imperative_check_nan_inf);
 
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,

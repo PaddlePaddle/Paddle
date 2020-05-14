@@ -342,7 +342,7 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
   for (auto& slot : no_need_buffer_slots) {
     auto iter = ins->find(slot);
     if (iter == ins->end()) continue;
-    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
+    VLOG(3) << "Clear data buffer of " << slot << " in " << op->Type();
 
     PADDLE_ENFORCE_EQ(
         iter->second.IsGrad(), false,
@@ -405,16 +405,18 @@ void CheckNanInf(std::string op_type, const NameVarMap<VarType>& outs) {
         VLOG(2) << "Operator(" + op_type + ")'s output Tensor(" + pair.first +
                        ") contains Inf";
         if (FLAGS_imperative_check_nan_inf == 1) {
-          PADDLE_THROW("Operator(%s)'s output Tensor(%s) contains Inf", op_type,
-                       pair.first);
+          PADDLE_THROW(platform::errors::OutOfRange(
+              "Operator(%s)'s output Tensor(%s) contains Inf", op_type,
+              pair.first));
         }
       }
       if (framework::TensorContainsNAN(tensor)) {
         VLOG(2) << "Operator(" + op_type + ")'s output Tensor(" + pair.first +
                        ") contains NAN";
         if (FLAGS_imperative_check_nan_inf == 1) {
-          PADDLE_THROW("Operator(%s)'s output Tensor(%s) contains NAN", op_type,
-                       pair.first);
+          PADDLE_THROW(platform::errors::OutOfRange(
+              "Operator(%s)'s output Tensor(%s) contains NAN", op_type,
+              pair.first));
         }
       }
     }
