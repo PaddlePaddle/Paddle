@@ -50,10 +50,9 @@ std::ostream &operator<<(std::ostream &os, const LoD &lod) {
 }
 
 std::ostream &operator<<(std::ostream &os, const LoDTensor &t) {
-  if (t.lod().size() > 0) {
-    os << "  - lod: " << t.lod() << "\n";
-  }
-  os << static_cast<Tensor>(t);
+  os << "\tlod: " << t.lod() << "\n";
+  os << static_cast<Tensor>(t) << "\n";
+
   return os;
 }
 
