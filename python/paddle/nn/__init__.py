@@ -33,12 +33,12 @@ from .clip import GradientClipByNorm  #DEFINE_ALIAS
 from .clip import GradientClipByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
-# from .clip import clip_by_norm        #DEFINE_ALIAS
+from .clip import clip_by_norm  #DEFINE_ALIAS
 from .control_flow import case  #DEFINE_ALIAS
 from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-# from .control_flow import switch_case        #DEFINE_ALIAS
+from .control_flow import switch_case  #DEFINE_ALIAS
 from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
 # from .decode import BeamSearchDecoder        #DEFINE_ALIAS
@@ -48,7 +48,7 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import crf_decoding        #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
-# from .decode import gather_tree        #DEFINE_ALIAS
+from .decode import gather_tree  #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 # from .layer.activation import PReLU        #DEFINE_ALIAS
@@ -90,6 +90,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
+
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
 from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
