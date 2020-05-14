@@ -1155,8 +1155,8 @@ Scope* OperatorWithKernel::PrepareData(
         if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
-            (paddle::platform::get_cur_paddle_data_layout() ==
-             DataLayout::kNHWC)) {
+            (paddle::platform::MKLDNNDeviceContext::tls()
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();
