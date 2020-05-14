@@ -24,7 +24,7 @@ from ..fluid.dygraph.base import enabled, guard, no_grad, to_variable, grad
 from ..fluid.dygraph.container import LayerList, ParameterList, Sequential
 from ..fluid.dygraph.checkpoint import load_dygraph as load
 from ..fluid.dygraph.checkpoint import save_dygraph as save
-from ..fluid.dygraph.parallel import prepare_context
+from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
 from ..fluid.dygraph.jit import TracedLayer
 
 BackwardStrategy = core.BackwardStrategy
