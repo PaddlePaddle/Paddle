@@ -69,8 +69,7 @@ class NodeVarType(object):
 
         supported_types = [
             NodeVarType.BOOLEAN, NodeVarType.INT, NodeVarType.FLOAT,
-            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR,
-            NodeVarType.PADDLE_RETURN_TYPES
+            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR
         ]
 
         if in_type1 not in supported_types:
