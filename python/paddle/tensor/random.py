@@ -88,8 +88,9 @@ def randint(low,
 
     Examples:
         .. code-block:: python
+
             import paddle
-            import paddle.tensor as tensor
+            import paddle.fluid as fluid
 
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
@@ -104,7 +105,7 @@ def randint(low,
             # example 3:
             # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = padddle.randint(low=-5, high=5, shape=var_shape, dtype="int32")
+            result_3 = paddle.randint(low=-5, high=5, shape=var_shape, dtype="int32")
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = paddle.randint(low=-5, high=5, shape=var_shape_int32, dtype="int64")
 
