@@ -179,18 +179,16 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
-    if (var == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
-    }
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                     "Y@GRAD of LayerNorm Op is not found."));
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
     } else if (var->IsType<LoDTensor>()) {
       t = &var->Get<LoDTensor>();
     }
-    if (t == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
     return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
 };

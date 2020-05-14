@@ -54,6 +54,9 @@ __all__ = [
 
 def equal(x, y, axis=-1, name=None):
     """
+	:alias_main: paddle.equal
+	:alias: paddle.equal,paddle.tensor.equal,paddle.tensor.logic.equal
+
     This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
     **NOTICE**: The output of this OP has no gradient, and this OP supports broadcasting by :attr:`axis`.
@@ -122,6 +125,9 @@ def equal(x, y, axis=-1, name=None):
 @templatedoc()
 def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
+	:alias_main: paddle.allclose
+	:alias: paddle.allclose,paddle.tensor.allclose,paddle.tensor.logic.allclose
+
     ${comment}
 
     Args:
@@ -204,6 +210,9 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
 def elementwise_equal(x, y, name=None):
     """
+	:alias_main: paddle.elementwise_equal
+	:alias: paddle.elementwise_equal,paddle.tensor.elementwise_equal,paddle.tensor.logic.elementwise_equal
+
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:

@@ -502,8 +502,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
-        # TODO
-        # self.is_control_flow_num += 1
         if not isinstance(node.iter, gast.Call):
             return
         if not isinstance(node.iter.func, gast.Name):

@@ -42,7 +42,7 @@ class Metric(object):
         m.accumulate()
         
     Advanced usage for :code:`add_metric_op`
-    Metric calculating con be accelerate by calucateing metric states
+    Metric calculation can be accelerated by calculating metric states
     from model outputs and labels by Paddle OPs in :code:`add_metric_op`,
     metric states will be fetch as numpy array and call :code:`update`
     with states in numpy format.
