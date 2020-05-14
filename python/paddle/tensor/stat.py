@@ -28,6 +28,9 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 
 def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     """
+	:alias_main: paddle.var
+	:alias: paddle.var,paddle.tensor.var,paddle.tensor.stat.var
+
     Computes the variance of the input Variable's elements along the specified 
     axis.
 
@@ -104,6 +107,9 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
 
 def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     """
+	:alias_main: paddle.std
+	:alias: paddle.std,paddle.tensor.std,paddle.tensor.stat.std
+
     Computes the standard-deviation  of the input Variable's elements along the specified 
     axis.
 

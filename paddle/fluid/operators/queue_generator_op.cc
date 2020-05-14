@@ -45,7 +45,8 @@ class QueueGeneratorOp : public framework::OperatorBase {
                       platform::errors::InvalidArgument(
                           "The attribute 'capacity' for Op(queue_generator) "
                           "must be set a positive value, "
-                          "but the one received is %d." capacity));
+                          "but the one received is %d.",
+                          capacity));
 
     // generate queue vars and initialize them
     for (const auto& name : names) {
