@@ -217,6 +217,9 @@ from .framework import Program  #DEFINE_ALIAS
 from .framework import program_guard  #DEFINE_ALIAS
 from .framework import Variable  #DEFINE_ALIAS
 from .framework import WeightNormParamAttr  #DEFINE_ALIAS
+from .framework import CPUPlace  #DEFINE_ALIAS
+from .framework import CUDAPlace  #DEFINE_ALIAS
+from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS

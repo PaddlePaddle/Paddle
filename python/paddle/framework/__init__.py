@@ -18,7 +18,8 @@ __all__ = [
     'BuildStrategy', 'CompiledProgram', 'default_main_program',
     'default_startup_program', 'create_global_var', 'create_parameter', 'Print',
     'py_func', 'ExecutionStrategy', 'name_scope', 'ParallelExecutor',
-    'ParamAttr', 'Program', 'program_guard', 'Variable', 'WeightNormParamAttr'
+    'ParamAttr', 'Program', 'program_guard', 'Variable', 'WeightNormParamAttr',
+    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
 ]
 
 from . import random
@@ -32,3 +33,4 @@ from ..fluid.layers.nn import py_func
 from ..fluid.parallel_executor import ParallelExecutor
 from ..fluid.param_attr import ParamAttr, WeightNormParamAttr
 from ..fluid.layers.tensor import create_global_var, create_parameter
+from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
