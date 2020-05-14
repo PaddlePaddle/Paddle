@@ -45,20 +45,17 @@ class PrintTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     # NOTE: deal with print in PY3
-    def visit_Assign(self, node):
-        if isinstance(node.value, gast.Call):
-            if isinstance(node.value.func,
-                          gast.Name) and node.value.func.id == 'print':
-                node.value = self._transform_call_node(node.value)
-        return node
-
-    def visit_Expr(self, node):
-        if isinstance(node.value, gast.Call):
-            if isinstance(node.value.func,
-                          gast.Name) and node.value.func.id == 'print':
-                print_assign_node = self._create_assign_node(node.value)
+    def visit_Call(self, node):
+        if isinstance(node.func, gast.Name) and node.func.id == 'print':
+            parent_node = self.node_to_wrapper_map[node].parent.node
+            if isinstance(parent_node, gast.Expr):
+                # NOTE: why need transform to gast.Assign node
+                # only fluid.layers.Print(x) will be pruned when exe.run(use_prune=True)
+                print_assign_node = self._create_assign_node(node)
                 if print_assign_node is not None:
                     return print_assign_node
+            else:
+                node.value = self._transform_call_node(node)
         return node
 
     # NOTE: deal with print in PY2
@@ -82,8 +79,6 @@ class PrintTransformer(gast.NodeTransformer):
         if var_node is None:
             return None
         if self._need_transform(var_node, node):
-            # NOTE: why need transform to gast.Assign node
-            # only fluid.layers.Print(x) will be pruned when exe.run(use_prune=True)
             return gast.Assign(
                 targets=[var_node], value=self._build_print_call_node(var_node))
         return None
