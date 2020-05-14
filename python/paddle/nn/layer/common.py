@@ -33,12 +33,12 @@ class UpSample(layers.Layer):
     **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
     future and only use :attr:`out_shape` instead.
     Supporting resample methods:
-        'LINEAR' : linear interpolation
-        'BILINEAR' : Bilinear interpolation
-        'TRILINEAR' : Trilinear interpolation
-        'NEAREST' : Nearest neighbor interpolation
-        'BICUBIC' : Bicubic interpolation
-    
+        'linear' : Linear interpolation
+        'bilinear' : Bilinear interpolation
+        'trilinear' : Trilinear interpolation
+        'nearest' : Nearest neighbor interpolation
+        'bicubic' : Bicubic interpolation
+
     Linear interpolation is the method of using a line connecting two known quantities 
     to determine the value of an unknown quantity between the two known quantities. 
     
@@ -68,7 +68,7 @@ class UpSample(layers.Layer):
 
     .. code-block:: text
 
-        For scale:
+        For scale_factor:
 
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
@@ -79,6 +79,7 @@ class UpSample(layers.Layer):
 
 
         Nearest neighbor interpolation:
+
           if:
               align_corners = False
               input : (N,C,H_in,W_in)
@@ -91,39 +92,35 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
-
-        Linear interpolation:
-          if:
-              align_corners = False , align_mode = 0
-              input : (N,C,W_in)
-              output: (N,C,W_out) where:
-              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
-          else:
-              input : (N,C,W_in)
-              output: (N,C,W_out) where:
-              W_out = W_{in} * scale_{factor}
-
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
+
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
           else:
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
         Bicubic interpolation:
+
           if:
               align_corners = False
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
+
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
           else:
+
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = H_{in} * scale_{factor}
@@ -132,78 +129,78 @@ class UpSample(layers.Layer):
         Trilinear interpolation:
           if:
               align_corners = False , align_mode = 0
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
+
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
           else:
+
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
 
+    https://en.wikipedia.org/wiki/Linear_interpolation.
+    For details of linear interpolation, please refer to Wikipedia:
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-    For details of bilinear interpolation, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
     For details of bicubic interpolation, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Bicubic_interpolation 
-
+    https://en.wikipedia.org/wiki/Bicubic_interpolation
     Parameters:
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        out_shape(list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_w, ) when input is 3-D Tensor ,
-             the shape is (out_h, out_w) when input is a 4-D Tensor and is
+        size (list|tuple|Variable|None): Output shape of image resize
+             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
              (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If
              a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
-        scale(float|Variable|None): The multiplier for the input height or width. At
-             least one of :attr:`out_shape` or :attr:`scale` must be set.
-             And :attr:`out_shape` has a higher priority than :attr:`scale`.
+        scale_factor (float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
+             And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
              Default: None.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-        resample(str): The resample method. It supports 'LINEAR',  'BILINEAR', 'TRILINEAR' ,
-                       'BICUBIC' and 'NEAREST' currently. Default: 'BILINEAR'
+        mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
+                       'bicubic' and 'trilinear' currently. Default: 'BILINEAR'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
-                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
-                            src_idx = scale*dst_index.
+                            for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                            src_idx = scale_factor*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:'NCW', `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-    
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
+        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_h, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
-        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels). 
-
+        or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
     Raises:
-        TypeError: out_shape should be a list or tuple or Variable.
-        TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
-                    'TRILINEAR', 'BICUBIC', or 'NEAREST' currently.
-        ValueError: 'BILINEAR', 'BICUBIC' and 'NEAREST' only support 4-D tensor.
-        ValueError: 'TRILINEAR' only support 5-D tensor.
-        ValueError: One of out_shape and scale must not be None.
-        ValueError: out_shape length should be 2 for input 4-D tensor.
-        ValueError: out_shape length should be 3 for input 5-D tensor.
-        ValueError: scale should be greater than zero.
+        TypeError: size should be a list or tuple or Variable.
+        ValueError: The 'mode' of image_resize can only be 'linear', 'bilinear',
+                    'trilinear', 'bicubic', or 'nearest' currently.
+        ValueError: 'linear' only support 3-D tensor.
+        ValueError: 'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.
+        ValueError: 'trilinear' only support 5-D tensor.
+        ValueError: One of size and scale_factor must not be None.
+        ValueError: size length should be 1 for input 3-D tensor.
+        ValueError: size length should be 2 for input 4-D tensor.
+        ValueError: size length should be 3 for input 5-D tensor.
+        ValueError: scale_factor should be greater than zero.
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCW', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'. 
+        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -221,16 +218,16 @@ class UpSample(layers.Layer):
     """
 
     def __init__(self,
-                 out_shape=None,
-                 scale=None,
-                 resample='BILINEAR',
+                 size=None,
+                 scale_factor=None,
+                 mode='bilinear',
                  align_corners=True,
                  align_mode=1,
                  data_format='NCHW'):
         super(UpSample, self).__init__()
-        self.out_shape = out_shape
-        self.scale = scale
-        self.resample = resample
+        self.size = size
+        self.scale_factor = scale_factor
+        self.mode = mode.lower()
         self.align_corners = align_corners
         self.align_mode = align_mode
         self.data_format = data_format
@@ -238,9 +235,9 @@ class UpSample(layers.Layer):
     def forward(self, input):
         out = F.interpolate(
             input,
-            out_shape=self.out_shape,
-            scale=self.scale,
-            resample=self.resample,
+            size=self.size,
+            scale_factor=self.scale_factor,
+            mode=self.mode,
             align_corners=self.align_corners,
             align_mode=self.align_mode,
             data_format=self.data_format)
