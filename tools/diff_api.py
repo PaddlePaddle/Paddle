@@ -36,3 +36,4 @@ if error:
     print('API Difference is: ')
     for each_diff in diffs:
         print(each_diff)
+print(1)
