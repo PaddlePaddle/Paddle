@@ -101,13 +101,13 @@ class ExpandKernel : public framework::OpKernel<T> {
         rank, 1,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
-            "must be greater than or equal to 1, but the received value is %d.",
+            "must be greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank, MAX_RANK_SUPPORTED,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for Op(expand) "
-            "must be less than or equal to %d, but the received value is %d.",
+            "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
     switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
   }
@@ -123,8 +123,8 @@ class ExpandKernel : public framework::OpKernel<T> {
         static_cast<size_t>(in_dims.size()), expand_times.size(),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of 'expand_times' for "
-            "Op(expand) must be equal to the number of dimensions "
-            "(%d) of the input.",
+            "Op(expand) must be equal to the number "
+            "of dimensions (%d) of the input.",
             expand_times.size(), static_cast<size_t>(in_dims.size())));
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
@@ -194,14 +194,13 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                                      "The number of dimensions of the input "
                                      "'Out@GRAD' for Op(expand_grad)"
                                      " must be greater than or equal to 1, but "
-                                     "the received value is %d.",
+                                     "the value received is %d.",
                                      dims));
       PADDLE_ENFORCE_LE(dims, MAX_RANK_SUPPORTED,
                         platform::errors::InvalidArgument(
                             "The number of dimensions of the input 'Out@GRAD' "
-                            "for Op(expand_grad)"
-                            " must be less than or equal to %d, but the "
-                            "received value is %d.",
+                            "for Op(expand_grad) must be less than or equal "
+                            "to %d, but the value received is %d.",
                             MAX_RANK_SUPPORTED, dims));
       switch (dims) { REP_EXPAND_GRAD_TEMPLATE(MAX_RANK_SUPPORTED) }
     }

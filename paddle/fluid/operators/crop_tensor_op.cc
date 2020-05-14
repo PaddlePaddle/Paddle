@@ -39,7 +39,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
           inputs_name.size(), 0,
           platform::errors::InvalidArgument(
               "The number of elements of the input 'ShapeTensor' for "
-              "Op(crop_tensor) must be greater than zero, "
+              "CropTensor must be greater than zero, "
               "but the value received is %d.",
               inputs_name.size()));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
@@ -61,14 +61,14 @@ class CropTensorOp : public framework::OperatorWithKernel {
       auto shape_dim = ctx->GetInputDim("Shape");
       PADDLE_ENFORCE_EQ(shape_dim.size(), 1,
                         platform::errors::InvalidArgument(
-                            "The number of dimensions of the input 'Shape' for "
-                            "Op(crop_tensor) must be 1, "
+                            "The number of dimensions of the input "
+                            "'Shape' for CropTensor must be 1, "
                             "but the value received is %d.",
                             shape_dim.size()));
       PADDLE_ENFORCE_EQ(shape_dim[0], x_dim.size(),
                         platform::errors::InvalidArgument(
                             "The number of elements (%d) of the input 'Shape' "
-                            "for Op(crop_tensor) must be equal to the number of"
+                            "for CropTensor must be equal to the number of"
                             " dimensions (%d) of the input.",
                             shape_dim[0], x_dim.size()));
       if (ctx->IsRuntime()) {
@@ -86,7 +86,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
         int64_t(shape.size()), x_dim.size(),
         platform::errors::InvalidArgument(
             "The number of elements (%d) of attribute 'shape' for "
-            "Op(crop_tensor) must be equal to the number of "
+            "CropTensor must be equal to the number of "
             "dimensions (%d) of the input.",
             shape.size(), x_dim.size()));
     std::vector<int64_t> out_shape(shape.size(), -1);

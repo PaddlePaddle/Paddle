@@ -35,9 +35,9 @@ class CropOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
           platform::errors::InvalidArgument(
-              "The shape size (%d) of CropOp's "
+              "The number of elements (%d) of CropOp's "
               "'shape' attribute should be equal to the number of dimensions "
-              "(%d) of the input tensor.",
+              "(%d) of the Input(X).",
               shape.size(), x_dim.size()));
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
@@ -49,7 +49,7 @@ class CropOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y_dim),
                         platform::errors::InvalidArgument(
                             "The number of dimensions (%d) of CropOp's input(X)"
-                            " must be equal to the one of input(Y).",
+                            " must be equal to that (%d) of input(Y).",
                             framework::arity(x_dim), framework::arity(y_dim)));
       ctx->SetOutputDim("Out", y_dim);
     }

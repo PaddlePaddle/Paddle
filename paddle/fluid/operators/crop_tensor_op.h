@@ -36,10 +36,9 @@ inline std::vector<int> get_new_data(
     PADDLE_ENFORCE_EQ(
         tensor->dims(), framework::make_ddim({1}),
         platform::errors::InvalidArgument(
-            "The number of dimensions of the %uth tensor for the input "
-            "'OffsetsTensor' of the crop_tensor op must be 1, "
+            "The tensor's shape in list of Op(crop_tensor) should be [1], "
             "but the value received is %d.",
-            i, tensor->dims()));
+            tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -67,16 +66,15 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
   std::vector<int64_t> output_shape(shape.size(), 0);
   for (size_t i = 0; i < shape.size(); ++i) {
     if (shape[i] <= 0 && in_dims[i] > 0) {
-      PADDLE_ENFORCE_NE(
-          shape[i], 0,
-          platform::errors::InvalidArgument(
-              "The value (%d) of the %uth element for shape of Op(crop_tensor) "
-              "should not be zero.",
-              shape[i], i));
+      PADDLE_ENFORCE_NE(shape[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The value (%d) of the %uth element for shape of "
+                            "Op(crop_tensor) should not be zero.",
+                            shape[i], i));
       PADDLE_ENFORCE_EQ(shape[i], -1, platform::errors::InvalidArgument(
                                           "When the value (%d) of the %uth "
-                                          "element for shape Op(crop_tensor) "
-                                          "is negative, only -1 is supported.",
+                                          "element for shape of Op(crop_tensor)"
+                                          " is negative, only -1 is supported.",
                                           shape[i], i));
       output_shape[i] = in_dims[i] - offsets[i];
     } else {
@@ -138,20 +136,19 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
         ctx.Attr<std::vector<int>>("offsets").empty(), true,
         platform::errors::InvalidArgument(
             "Input 'Offsets' and attribute 'offsets' for Op(crop_tensor) "
-            "should not be used at the same time."));
+            "cannot be used at the same time."));
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
                       platform::errors::InvalidArgument(
                           "The number of dimensions of input 'Offsets' must "
                           "be 1, but the value received is: %d.",
                           offsets_tensor->dims().size()));
-    PADDLE_ENFORCE_EQ(
-        rank, offsets_tensor->dims()[0],
-        platform::errors::InvalidArgument(
-            "The number of elements (%d) for "
-            "input 'Offsets' must be equal to "
-            "the number of dimensions size (%d) of the input tensor.",
-            offsets_tensor->dims()[0], rank));
+    PADDLE_ENFORCE_EQ(rank, offsets_tensor->dims()[0],
+                      platform::errors::InvalidArgument(
+                          "The number of elements (%d) for "
+                          "input 'Offsets' must be equal to "
+                          "the number of dimensions (%d) of the input tensor.",
+                          offsets_tensor->dims()[0], rank));
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
@@ -168,7 +165,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
         rank, static_cast<int>(res.size()),
         platform::errors::InvalidArgument("The number of elements (%d) for "
                                           "input 'Offsets' must be equal to "
-                                          "the number of dimensions size (%d) "
+                                          "the number of dimensions (%d) "
                                           "of the input tensor.",
                                           static_cast<int>(res.size()), rank));
   }
@@ -197,7 +194,7 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
   for (size_t i = 0; i < offsets.size(); ++i) {
     PADDLE_ENFORCE_LE(offsets[i] + shape[i], x_dims[i],
                       platform::errors::InvalidArgument(
-                          "The sum of the %uth elements for "
+                          "The sum of the %uth elements of "
                           "offsets (%d) and shape (%d) of Op(crop_tensor) "
                           "should be less than or "
                           "equal to the size of %uth dimension of the input.",
@@ -227,13 +224,13 @@ class CropTensorKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'x' for "
             "Op(crop_tensor) must be greater than or equal to 1, but the "
-            "received value is %d.",
+            "value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank, 6, platform::errors::InvalidArgument(
                      "The number of dimensions of the input 'x' for "
                      "Op(crop_tensor) must be less than or equal to 6, but the "
-                     "received value is %d.",
+                     "value received is %d.",
                      rank));
     switch (rank) {
       case 1:
@@ -290,14 +287,14 @@ class CropTensorGradKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'Out@GRAD' for "
             "Op(crop_tensor_grad) must be greater than or equal to 1, but the "
-            "received value is %d.",
+            "value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank, 6,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input 'Out@GRAD' for "
             "Op(crop_tensor_grad) must be less than or equal to 6, but the "
-            "received value is %d.",
+            "value received is %d.",
             rank));
     switch (rank) {
       case 1:

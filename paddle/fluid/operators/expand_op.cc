@@ -40,7 +40,7 @@ class ExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         static_cast<size_t>(x_dims.size()), expand_times.size(),
         platform::errors::InvalidArgument(
-            "The number elements (%d) of 'expand_times' for "
+            "The number of elements (%d) of 'expand_times' for "
             "Op(expand) must be equal to the number of dimensions "
             "(%d) of the input.",
             expand_times.size(), static_cast<size_t>(x_dims.size())));
@@ -48,8 +48,7 @@ class ExpandOp : public framework::OperatorWithKernel {
         x_dims.size(), 6,
         platform::errors::InvalidArgument(
             "The number of dimensions of the input for Op(expand) "
-            "must not be greater than 6, but the value you give is "
-            "%d.",
+            "must not be greater than 6, but the value received is %d.",
             x_dims.size()));
 
     std::vector<int64_t> out_shape(x_dims.size());
@@ -180,7 +179,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
               x_dims[i] * expand_times[i], out_dims[i],
               platform::errors::InvalidArgument(
                   "The %uth dimension size (%d) of Input(Out@GRAD) should be "
-                  "equal to the multiplication of crroresponding dimension "
+                  "equal to the multiplication of the crroresponding dimension "
                   "sizes of Input(X) (%d) and expand_times (%d).",
                   i, out_dims[i], x_dims[i], expand_times[i]));
         }
