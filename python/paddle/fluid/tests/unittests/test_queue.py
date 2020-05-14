@@ -66,8 +66,8 @@ class TestQueue(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup_program)
         ret = exe.run(main_program, fetch_list=[data_out.name])
-        #self.assertTrue(
-        #    np.allclose(np.asarray(ret), np.full((3, 2), -1, np.int32)))
+        self.assertTrue(
+            np.allclose(np.asarray(ret), np.full((3, 2), value, np.int32)))
 
 
 if __name__ == '__main__':
