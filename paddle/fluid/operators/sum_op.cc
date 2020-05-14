@@ -114,6 +114,13 @@ class SumOp : public framework::OperatorWithKernel {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
 
+    PADDLE_ENFORCE_GT(x_vars.size(), 0, platform::errors::InvalidArgument(
+                                            "Input[X] should not be empty"));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        x_vars[0], platform::errors::NotFound(
+                       "Input var[%s] should not be nullptr", x_vars_name[0]));
+
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
