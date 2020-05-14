@@ -35,12 +35,12 @@ class MergeSelectedRowsOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("X").front(),
         framework::proto::VarType::SELECTED_ROWS,
         platform::errors::InvalidArgument("Input(X) of MergeSelectedRowsOp "
-                                          "should be SelectedRows."));
+                                          "should be of type SelectedRows."));
     PADDLE_ENFORCE_EQ(
         ctx->GetOutputsVarType("Out").front(),
         framework::proto::VarType::SELECTED_ROWS,
         platform::errors::InvalidArgument("Output(Out) of MergeSelectedRowsOp "
-                                          "should be SelectedRows."));
+                                          "should be of type SelectedRows."));
 
     ctx->ShareDim("X", /*->*/ "Out");
   }
