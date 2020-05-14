@@ -14,15 +14,20 @@
 
 # TODO: define the initializers to create a Parameter in neural network
 
-from ..fluid.initializer import Bilinear  #DEFINE_ALIAS
-from ..fluid.initializer import Constant  #DEFINE_ALIAS
-from ..fluid.initializer import MSRA  #DEFINE_ALIAS
-from ..fluid.initializer import Normal  #DEFINE_ALIAS
-from ..fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
-from ..fluid.initializer import Uniform  #DEFINE_ALIAS
-from ..fluid.initializer import Xavier  #DEFINE_ALIAS
+from ...fluid.initializer import Bilinear  #DEFINE_ALIAS
+from ...fluid.initializer import Constant  #DEFINE_ALIAS
+from ...fluid.initializer import MSRA  #DEFINE_ALIAS
+from ...fluid.initializer import Normal  #DEFINE_ALIAS
+from ...fluid.initializer import TruncatedNormal  #DEFINE_ALIAS
+from ...fluid.initializer import Uniform  #DEFINE_ALIAS
+from ...fluid.initializer import Xavier  #DEFINE_ALIAS
 
 __all__ = [
-    'Bilinear', 'Constant', 'MSRA', 'Normal', 'TruncatedNormal', 'Uniform',
-    'Xavier'
+    'Bilinear',
+    'Constant',
+    'MSRA',
+    'Normal',
+    'TruncatedNormal',
+    'Uniform',
+    'Xavier',
 ]

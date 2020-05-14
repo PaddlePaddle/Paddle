@@ -38,10 +38,11 @@ import paddle.tensor
 import paddle.nn
 import paddle.framework
 import paddle.imperative
+import paddle.optimizer
+import paddle.metric
 import paddle.incubate.complex as complex
 
 # TODO: define alias in tensor and framework directory
-from .framework.random import manual_seed  #DEFINE_ALIAS
 
 from .tensor.random import randperm
 
@@ -196,20 +197,43 @@ from .tensor.search import where  #DEFINE_ALIAS
 from .tensor.search import index_select  #DEFINE_ALIAS
 from .tensor.search import nonzero  #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
+from .framework.random import manual_seed  #DEFINE_ALIAS
+from .framework import append_backward  #DEFINE_ALIAS
+from .framework import gradients  #DEFINE_ALIAS
+from .framework import Executor  #DEFINE_ALIAS
+from .framework import global_scope  #DEFINE_ALIAS
+from .framework import scope_guard  #DEFINE_ALIAS
+from .framework import BuildStrategy  #DEFINE_ALIAS
+from .framework import CompiledProgram  #DEFINE_ALIAS
+from .framework import default_main_program  #DEFINE_ALIAS
+from .framework import default_startup_program  #DEFINE_ALIAS
+from .framework import create_global_var  #DEFINE_ALIAS
+from .framework import create_parameter  #DEFINE_ALIAS
+from .framework import Print  #DEFINE_ALIAS
+from .framework import py_func  #DEFINE_ALIAS
+from .framework import ExecutionStrategy  #DEFINE_ALIAS
+from .framework import name_scope  #DEFINE_ALIAS
+from .framework import ParallelExecutor  #DEFINE_ALIAS
+from .framework import ParamAttr  #DEFINE_ALIAS
+from .framework import Program  #DEFINE_ALIAS
+from .framework import program_guard  #DEFINE_ALIAS
+from .framework import Variable  #DEFINE_ALIAS
+from .framework import WeightNormParamAttr  #DEFINE_ALIAS
+from .framework import CPUPlace  #DEFINE_ALIAS
+from .framework import CUDAPlace  #DEFINE_ALIAS
+from .framework import CUDAPinnedPlace  #DEFINE_ALIAS
 from .tensor.search import index_sample  #DEFINE_ALIAS
 from .tensor.stat import mean  #DEFINE_ALIAS
 from .tensor.stat import reduce_mean  #DEFINE_ALIAS
 from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
+from .fluid.data import data
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
 
 from . import incubate
 from .incubate import hapi
-from .fluid.dygraph.base import enable_dygraph  #DEFINE_ALIAS
-from .fluid.dygraph.base import disable_dygraph  #DEFINE_ALIAS
-from .fluid.framework import in_dygraph_mode  #DEFINE_ALIAS
-enable_imperative = enable_dygraph  #DEFINE_ALIAS
-disable_imperative = disable_dygraph  #DEFINE_ALIAS
-in_imperative_mode = in_dygraph_mode
+from .fluid.dygraph.base import enable_dygraph as enable_imperative  #DEFINE_ALIAS
+from .fluid.dygraph.base import disable_dygraph as disable_imperative  #DEFINE_ALIAS
+from .fluid.framework import in_dygraph_mode as in_imperative_mode  #DEFINE_ALIAS

@@ -19,6 +19,8 @@ from .layer import norm
 from .functional import extension
 from .layer import common
 
+from . import initializer
+
 __all__ = []
 __all__ += norm.__all__
 __all__ += extension.__all__
@@ -92,3 +94,4 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
 from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS
+from ..fluid.dygraph.container import LayerList, ParameterList, Sequential  #DEFINE_ALIAS
