@@ -37,13 +37,13 @@ class TestQueue(unittest.TestCase):
                 shape=[2, 3],
                 value=value,
                 dtype="float32",
-                persistable=False,
+                persistable=True,
                 name='var_in')
             data_out = layers.create_global_var(
                 shape=[2, 3],
                 value=value - 1.0,
                 dtype="float32",
-                persistable=False,
+                persistable=True,
                 name='var_out')
         startup_block = startup_program.block(0)
         queue_name = 'blocking_queue'
@@ -67,7 +67,7 @@ class TestQueue(unittest.TestCase):
         exe.run(startup_program)
         ret = exe.run(main_program, fetch_list=[data_out.name])
         self.assertTrue(
-            np.allclose(np.asarray(ret), np.full((3, 2), value, np.float32)))
+            np.allclose(np.asarray(ret), np.full((2, 3), value, np.float32)))
 
 
 if __name__ == '__main__':
