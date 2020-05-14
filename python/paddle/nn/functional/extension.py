@@ -48,6 +48,9 @@ from ...fluid.layers.layer_function_generator import templatedoc
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
+	:alias_main: paddle.nn.functional.diag_embed
+	:alias: paddle.nn.functional.diag_embed,paddle.nn.functional.extension.diag_embed
+
     This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2) 
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions 
     of the returned tensor will be selected.
@@ -165,6 +168,9 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 @templatedoc()
 def row_conv(input, weight, act=None):
     """
+	:alias_main: paddle.nn.functional.row_conv
+	:alias: paddle.nn.functional.row_conv,paddle.nn.functional.extension.row_conv
+
     ${comment}
 
     Args:

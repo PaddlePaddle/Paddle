@@ -47,6 +47,9 @@ def randint(low,
             seed=0,
             name=None):
     """
+	:alias_main: paddle.randint
+	:alias: paddle.randint,paddle.tensor.randint,paddle.tensor.random.randint
+
     This function returns a Tensor filled with random integers from the "discrete uniform" distribution of the
     specified data type in the interval [low, high). If high is None (the default), then results are from [0, low).
 
@@ -209,6 +212,9 @@ def randn(shape,
           stop_gradient=True,
           name=None):
     """
+	:alias_main: paddle.randn
+	:alias: paddle.randn,paddle.tensor.randn,paddle.tensor.random.randn
+
     This function returns a tensor filled with random numbers from a normal 
     distribution with mean 0 and variance 1 (also called the standard normal
     distribution).
@@ -317,6 +323,9 @@ def randperm(n,
              stop_gradient=True,
              seed=0):
     """
+	:alias_main: paddle.randperm
+	:alias: paddle.randperm,paddle.tensor.randperm,paddle.tensor.random.randperm
+
     ${comment}
 
     Args:
@@ -398,6 +407,9 @@ def randperm(n,
 
 def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
     """
+	:alias_main: paddle.rand
+	:alias: paddle.rand,paddle.tensor.rand,paddle.tensor.random.rand
+
     This OP initializes a variable with random values sampled from a
     uniform distribution in the range [0, 1).
 
