@@ -389,5 +389,65 @@ class SectionWorker : public DeviceWorker {
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
+
+class ModelParallelWorker : public DeviceWorker {
+ public:
+  ModelParallelWorker() { local_batch_id_ = 0; }
+  ~ModelParallelWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+
+  void BindingDataFeedMemory() override {}
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+  void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
+  void SetSectionIndex(int sec_id) { section_id_ = sec_id; }
+  void SetDeviceIndex(int tid) override {}
+  void SetMacrobatchNum(int num) { num_macrobatches_ = num; }
+  void SetMacrobatchScopes(const std::vector<Scope*>& scope) {
+    macrobatch_scopes_ = scope;
+  }
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override;
+
+  void PrintFetchVars() override {}
+  void SetSkipVars(const std::vector<std::string>& skip_vars) {
+    skip_vars_ = skip_vars;
+  }
+
+  const platform::Place& place() const { return place_; }
+
+  static std::atomic<int> cpu_id_;
+
+ protected:
+  int thread_id_;
+  int section_id_;
+  int num_macrobatches_;
+  std::vector<Scope*> macrobatch_scopes_;
+  std::vector<std::string> skip_vars_;
+  const Scope* minibatch_scope_;
+
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+  static std::mutex thread_mutex;
+  static std::condition_variable thread_condition;
+  static bool threads_completed;
+  std::shared_ptr<framework::ProgramDesc> program_;
+
+  void AutoSetCPUAffinity(bool reuse);
+  void ForwardPass(int macrobatch_id);
+  void BackwardPass(int macrobatch_id);
+  void OptimizePass();
+  void ForwardPassProfile(int macrobatch_id);
+  void BackwardPassProfile(int macrobatch_id);
+  void OptimizePassProfile();
+
+  // uint64_t is large enough to track all batches
+  static uint64_t batch_id_;
+  uint64_t local_batch_id_;
+
+  platform::DeviceContext* dev_ctx_ = nullptr;
+};
+
 }  // namespace framework
 }  // namespace paddle

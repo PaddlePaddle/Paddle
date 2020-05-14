@@ -65,5 +65,6 @@ REGISTER_DEVICE_WORKER_CLASS(DownpourWorkerOpt);
 #if defined(PADDLE_WITH_NCCL)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif
+REGISTER_DEVICE_WORKER_CLASS(ModelParallelWorker);
 }  // namespace framework
 }  // namespace paddle

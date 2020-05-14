@@ -17,6 +17,7 @@ limitations under the License. */
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -172,5 +173,42 @@ class PipelineTrainer : public TrainerBase {
   void construct_sync_functor();
 };
 #endif
+
+class ModelParallelTrainer : public TrainerBase {
+ public:
+  ModelParallelTrainer() {}
+  ~ModelParallelTrainer() override {}
+  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
+  void InitTrainerEnv(const ProgramDesc& main_program,
+                      const platform::Place& place) override;
+  void InitOtherEnv(const ProgramDesc& main_program) override {}
+  void Run() override;
+  void Finalize() override;
+  void GetSkipVars(int section_id, const ProgramDesc& main_program);
+  virtual Scope* GetWorkerScope(int thread_id);
+
+ protected:
+  int section_num_;
+  int num_macrobatches_;
+  int start_cpu_core_id_;
+  std::vector<std::string> feed_var_names_;
+  std::vector<platform::Place> places_;
+  std::vector<std::vector<std::string>> skip_vars_;
+  TrainerDesc trainer_desc_;
+
+  // worker: [section_id]
+  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
+  std::vector<std::thread> threads_;
+  // minibatch_scopes_: [section_id]
+  std::vector<Scope*> minibatch_scopes_;
+  // macrobatch_scopes_: [section_id][macrobatch_id]
+  std::vector<std::vector<Scope*>> macrobatch_scopes_;
+
+  void CopyParameters(int section_id, int macrobatch_id,
+                      const ProgramDesc& program, const platform::Place& place);
+  bool isPersistableVarGrad(std::string name);
+  bool isPersistable(VarDesc* var);
+};
+
 }  // namespace framework
 }  // namespace paddle
