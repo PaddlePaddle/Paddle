@@ -22,12 +22,12 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT
 #include <random>
+#include <set>
 #include <stack>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -283,7 +283,8 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
 void SetEvent(bool merge_thread, const Event &analyze_event,
               size_t *max_name_width, std::list<Event> *pushed_events,
               std::vector<EventItem> *event_items,
-              std::unordered_map<std::string, int> *event_idx) {
+              std::unordered_map<std::string, int> *event_idx,
+              const std::set<std::string> &main_thread_event_name) {
   if (analyze_event.type() == EventType::kPushRange) {
     pushed_events->push_back(analyze_event);
   } else if (analyze_event.type() == EventType::kPopRange) {
@@ -313,8 +314,35 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
       if (merge_thread) {
         event_name = rit->name();
       } else {
-        event_name =
-            "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+        if (!main_thread_event_name.empty()) {
+          auto origin_name = rit->name();
+          int index = 1;
+          int split_pos = 0;
+          while ((split_pos = FindNthReversePos(origin_name, '/', index)) !=
+                 -1) {
+            auto prefix_str = origin_name.substr(0, split_pos);
+            if (main_thread_event_name.count(prefix_str)) {
+              break;
+            }
+            index++;
+          }
+          if (split_pos == -1 && !main_thread_event_name.count(rit->name())) {
+            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
+                         rit->name();
+          } else {
+            if (!main_thread_event_name.count(rit->name())) {
+              event_name =
+                  origin_name.substr(0, split_pos + 1) + "thread" +
+                  std::to_string(rit->thread_id()) + "::" +
+                  origin_name.substr(split_pos + 1, origin_name.length() - 1);
+            } else {
+              event_name = rit->name();
+            }
+          }
+        } else {
+          event_name =
+              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+        }
       }
       auto print_name_size = event_name.size();
       int found_pos = 0;
@@ -608,6 +636,16 @@ void AnalyzeEvent(
     std::function<bool(const EventItem &, const EventItem &)> sorted_func,
     EventSortingKey sorted_by, size_t *max_name_width, OverHead *overhead,
     bool merge_thread) {
+  // In oreder to deal with special event in main thread
+  std::set<std::string> main_thread_event_name;
+  for (size_t i = 0; i < (*analyze_events).size(); i++) {
+    for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
+      Event event = (*analyze_events)[i][j];
+      if (event.role() == EventRole::kSpecial) {
+        main_thread_event_name.insert(event.name());
+      }
+    }
+  }
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
@@ -619,7 +657,7 @@ void AnalyzeEvent(
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
       Event analyze_event = (*analyze_events)[i][j];
       SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
-               &event_items, &event_idx);
+               &event_items, &event_idx, main_thread_event_name);
     }
 
     auto table_size = event_items.size();
