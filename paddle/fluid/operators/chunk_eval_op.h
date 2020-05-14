@@ -202,26 +202,11 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
           platform::errors::InvalidArgument(
               "Only support one level LoD sequence now, but received %d.",
               lod.size()));
-      if (lod != inference->lod()) {
-        std::stringstream ss;
-        for (size_t i = 0; i < lod[0].size(); ++i) {
-          ss << lod[0][i] << ", ";
-        }
-        std::string label_lod_str = ss.str();
-        ss.str("");
-        auto infer_lod = inference->lod();
-        for (size_t i = 0; i < infer_lod[0].size(); ++i) {
-          ss << infer_lod[0][i] << ", ";
-        }
-        std::string infer_lod_str = ss.str();
-
-        PADDLE_ENFORCE_EQ(lod, infer_lod,
-                          platform::errors::InvalidArgument(
-                              "Input(Inference) and Input(Label) should have "
-                              "the same LoD information, but received [[%s]] "
-                              "(Inference) vs [[%s]] (Label).",
-                              infer_lod_str, label_lod_str));
-      }
+      PADDLE_ENFORCE_EQ(
+          lod, inference->lod(),
+          platform::errors::InvalidArgument(
+              "Input(Inference) and Input(Label) of Op(chunk_eval) should have "
+              "same LoD information."));
       num_sequences = lod[0].size() - 1;
 
       for (int i = 0; i < num_sequences; ++i) {
