@@ -498,8 +498,11 @@ class TestSliceAPI(unittest.TestCase):
             append_batch_size=False,
             dtype="float64")
 
+        # value_int64 is greater than 2147483647 which is the max of int32
+        value_int64 = fluid.layers.fill_constant([1], "int64", 2147483648)
+
         out_1 = fluid.layers.slice(
-            x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 100, -1])
+            x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[value_int64, 100, -1])
         out_2 = fluid.layers.slice(
             x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1])
         out_3 = fluid.layers.slice(
@@ -564,9 +567,15 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                 self.sliced_arr = output = arr[0]
 
             elif case_num == 2:
-                end = fluid.layers.array_length(arr) - 1
-                end = fluid.layers.cast(end, "int32")
+                end = fluid.layers.array_length(
+                    arr) - 1  # dtype of end is int64
                 self.sliced_arr = slice_arr = arr[self.start:end]
+                output, _ = fluid.layers.tensor_array_to_tensor(
+                    slice_arr, axis=self.axis, use_stack=True)
+            elif case_num == 3:
+                value_int64 = fluid.layers.fill_constant([1], "int64",
+                                                         2147483648)
+                self.sliced_arr = slice_arr = arr[self.start:value_int64]
                 output, _ = fluid.layers.tensor_array_to_tensor(
                     slice_arr, axis=self.axis, use_stack=True)
 
@@ -607,6 +616,22 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
         self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
         self.assertTrue(np.array_equal(self.g_x2, np.zeros_like(self.data)))
+
+    def test_case_3(self):
+        main_program = fluid.Program()
+        self.set_program_and_run(main_program, 3)
+
+        self.assertTrue(
+            self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
+        self.assertTrue(
+            np.array_equal(
+                self.out,
+                np.stack(
+                    [self.data, self.data, self.data], axis=self.axis)))
+        self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x1, np.ones_like(self.data)))
+        self.assertTrue(np.array_equal(self.g_x2, np.ones_like(self.data)))
 
 
 if __name__ == '__main__':

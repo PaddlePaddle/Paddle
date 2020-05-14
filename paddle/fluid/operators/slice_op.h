@@ -67,9 +67,11 @@ class SliceKernel : public framework::OpKernel<T> {
     bool out_is_tensor_array = out_var->IsType<framework::LoDTensorArray>();
 
     auto axes = context.Attr<std::vector<int>>("axes");
-    auto starts = context.Attr<std::vector<int>>("starts");
 
-    auto ends = context.Attr<std::vector<int>>("ends");
+    auto starts_int = context.Attr<std::vector<int>>("starts");
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+    auto ends_int = context.Attr<std::vector<int>>("ends");
+    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
     auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
     auto infer_flags = context.Attr<std::vector<int>>("infer_flags");
     auto list_new_ends_tensor =
@@ -87,15 +89,15 @@ class SliceKernel : public framework::OpKernel<T> {
     if (need_infer) {
       if (context.HasInput("StartsTensor")) {
         auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-        starts = GetDataFromTensor<int>(starts_tensor);
+        starts = GetDataFromTensor<int64_t>(starts_tensor);
       } else if (list_new_starts_tensor.size() > 0) {
-        starts = GetDataFromTensorList<int>(list_new_starts_tensor);
+        starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
       }
       if (context.HasInput("EndsTensor")) {
         auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-        ends = GetDataFromTensor<int>(ends_tensor);
+        ends = GetDataFromTensor<int64_t>(ends_tensor);
       } else if (list_new_ends_tensor.size() > 0) {
-        ends = GetDataFromTensorList<int>(list_new_ends_tensor);
+        ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
       }
     }
     PADDLE_ENFORCE_EQ(
@@ -109,11 +111,12 @@ class SliceKernel : public framework::OpKernel<T> {
     if (input_is_tensor_array) {
       auto in_array = context.Input<framework::LoDTensorArray>("Input");
       // If the input is LoDTensorArray, the rank of input is 1.
-      int in_size = in_array->size();
-      int start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
-      int end = ends[0] < 0 ? (ends[0] + in_size) : ends[0];
-      start = std::max(start, 0);
-      end = std::max(end, 0);
+      int64_t in_size = in_array->size();
+      int64_t start = starts[0] < 0 ? (starts[0] + in_size) : starts[0];
+      int64_t end = ends[0] < 0 ? (ends[0] + in_size) : ends[0];
+
+      start = std::max(start, static_cast<int64_t>(0));
+      end = std::max(end, static_cast<int64_t>(0));
       end = std::min(end, in_size);
 
       PADDLE_ENFORCE_GT(end, start,
@@ -121,7 +124,7 @@ class SliceKernel : public framework::OpKernel<T> {
                             "Attr(ends) should be greater than attr(starts) in "
                             "slice op. But received ends = %d, starts = %d.",
                             end, start));
-      int out_size = end - start;
+      int64_t out_size = end - start;
 
       if (out_is_tensor_array) {
         auto out_array = context.Output<framework::LoDTensorArray>("Out");
@@ -156,7 +159,7 @@ class SliceKernel : public framework::OpKernel<T> {
     auto in_dims = in->dims();
     if (need_infer) {
       out_dims = in_dims;
-      int dim_value, start, end;
+      int64_t dim_value, start, end;
       for (size_t i = 0; i < axes.size(); ++i) {
         dim_value = out_dims[axes[i]];
         if (dim_value > 0) {
@@ -171,17 +174,22 @@ class SliceKernel : public framework::OpKernel<T> {
 
           start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
           end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
-          start = std::max(start, 0);
-          end = std::max(end, 0);
+          start = std::max(start, static_cast<int64_t>(0));
+          end = std::max(end, static_cast<int64_t>(0));
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+          PADDLE_ENFORCE_GT(
+              end, start,
+              platform::errors::InvalidArgument(
+                  "Attr(ends) should be greater than attr(starts) in "
+                  "slice op. But received ends = %d, starts = %d.",
+                  end, start));
           out_dims[axes[i]] = end - start;
         }
       }
       out->Resize(out_dims);
       // generate new shape
       if (decrease_axis.size() > 0) {
-        std::vector<int> new_out_shape;
+        std::vector<int64_t> new_out_shape;
         for (size_t i = 0; i < decrease_axis.size(); ++i) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
                             "decrease dim should be 1");
@@ -229,19 +237,19 @@ class SliceKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     auto new_out_dims = out->dims();
-    auto offsets = Eigen::array<int, D>();
-    auto extents = Eigen::array<int, D>();
+    auto offsets = Eigen::array<int64_t, D>();
+    auto extents = Eigen::array<int64_t, D>();
     for (size_t i = 0; i < D; ++i) {
       offsets[i] = 0;
       extents[i] = new_out_dims[i];
     }
-    int start;
+    int64_t start;
     for (size_t i = 0; i < axes.size(); ++i) {
       start = starts[i];
       if (start < 0) {
         start = (start + in_dims[axes[i]]);
       }
-      start = std::max(start, 0);
+      start = std::max(start, static_cast<int64_t>(0));
       offsets[axes[i]] = start;
     }
     auto in_t =
@@ -294,25 +302,30 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
     auto axes = context.Attr<std::vector<int>>("axes");
-    auto starts = context.Attr<std::vector<int>>("starts");
-    auto ends = context.Attr<std::vector<int>>("ends");
+
+    auto starts_int = context.Attr<std::vector<int>>("starts");
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+
+    auto ends_int = context.Attr<std::vector<int>>("ends");
+    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
+
     auto list_new_ends_tensor =
         context.MultiInput<framework::Tensor>("EndsTensorList");
     auto list_new_starts_tensor =
         context.MultiInput<framework::Tensor>("StartsTensorList");
 
     if (list_new_starts_tensor.size() > 0) {
-      starts = GetDataFromTensorList<int>(list_new_starts_tensor);
+      starts = GetDataFromTensorList<int64_t>(list_new_starts_tensor);
     } else if (context.HasInput("StartsTensor")) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-      starts = GetDataFromTensor<int>(starts_tensor);
+      starts = GetDataFromTensor<int64_t>(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
-      ends = GetDataFromTensorList<int>(list_new_ends_tensor);
+      ends = GetDataFromTensorList<int64_t>(list_new_ends_tensor);
     } else if (context.HasInput("EndsTensor")) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-      ends = GetDataFromTensor<int>(ends_tensor);
+      ends = GetDataFromTensor<int64_t>(ends_tensor);
     }
     framework::Variable* d_input_var =
         context.OutputVar(framework::GradVarName("Input"));
@@ -327,12 +340,12 @@ class SliceGradKernel : public framework::OpKernel<T> {
       auto* d_input_array = context.Output<framework::LoDTensorArray>(
           framework::GradVarName("Input"));
 
-      int d_in_size = input_array->size();
+      int64_t d_in_size = input_array->size();
       d_input_array->resize(d_in_size);
       // If the input is LoDTensorArray, the rank of input is 1.
       // So only use the 0th element of starts.
-      int start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
-      start = std::max(start, 0);
+      int64_t start = starts[0] < 0 ? (starts[0] + d_in_size) : starts[0];
+      start = std::max(start, static_cast<int64_t>(0));
       // set zero
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -401,22 +414,22 @@ class SliceGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto offsets = Eigen::array<int, D>();
-    auto extents = Eigen::array<int, D>();
+    auto offsets = Eigen::array<int64_t, D>();
+    auto extents = Eigen::array<int64_t, D>();
     for (size_t i = 0; i < D; ++i) {
       offsets[i] = 0;
       extents[i] = out_dims[i];
     }
-    int start;
+    int64_t start;
     for (size_t i = 0; i < axes.size(); ++i) {
       start = starts[i];
       if (start < 0) {
         start = (start + in_dims[axes[i]]);
       }
-      start = std::max(start, 0);
+      start = std::max(start, static_cast<int64_t>(0));
       offsets[axes[i]] = start;
     }
-    Eigen::array<std::pair<int, int>, D> paddings;
+    Eigen::array<std::pair<int64_t, int64_t>, D> paddings;
     for (size_t i = 0; i < paddings.size(); ++i) {
       paddings[i].first = offsets[i];
       paddings[i].second = (in_dims[i] - out_dims[i]) - offsets[i];
