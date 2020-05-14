@@ -86,6 +86,8 @@ def _has_optimizer_in_control_flow(program):
 
 class CompiledProgram(object):
     """
+    :api_attr: Static Graph
+    
     The CompiledProgram is used to transform a program or graph for
     various optimizations according to the configuration of build_strategy,
     for example, the operators' fusion in the computation graph, memory
