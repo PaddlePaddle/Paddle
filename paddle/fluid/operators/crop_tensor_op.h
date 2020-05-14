@@ -37,8 +37,8 @@ inline std::vector<int> get_new_data(
         tensor->dims(), framework::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The number of dimensions of the %uth tensor for the input "
-            "'OffsetsTensor' of the crop_tensor op must be 1, but the "
-            "value you give is %d.",
+            "'OffsetsTensor' of the crop_tensor op must be 1, "
+            "but the value received is %d.",
             i, tensor->dims()));
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
@@ -143,7 +143,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
                       platform::errors::InvalidArgument(
                           "The number of dimensions of input 'Offsets' must "
-                          "be 1, but the value you give is: %d.",
+                          "be 1, but the value received is: %d.",
                           offsets_tensor->dims().size()));
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],

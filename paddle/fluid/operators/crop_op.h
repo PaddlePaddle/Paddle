@@ -64,7 +64,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
         rank, static_cast<int>(res.size()),
         platform::errors::InvalidArgument("The number of elements (%d) for "
                                           "input 'Offsets' must be equal to "
-                                          "the number of dimensions size (%d) "
+                                          "the number of dimensions (%d) "
                                           "of the input tensor.",
                                           static_cast<int>(res.size()), rank));
   }

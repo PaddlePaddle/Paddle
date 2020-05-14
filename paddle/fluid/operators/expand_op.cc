@@ -28,13 +28,8 @@ class ExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) should not be null."));
-
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument("Output(Out) should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Expand");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Expand");
     auto x_dims = ctx->GetInputDim("X");
     auto expand_times = ctx->Attrs().Get<std::vector<int>>("expand_times");
 
@@ -155,12 +150,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "ExpandGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_times =
