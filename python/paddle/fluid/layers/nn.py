@@ -5701,9 +5701,15 @@ def multiplex(inputs, index):
     """
     helper = LayerHelper('multiplex', **locals())
 
-    if not isinstance(inputs, list) and len(inputs) < 2:
-        raise ValueError("inputs should be a list object and contains at least "
-                         "2 elements.")
+    check_type(inputs, 'inputs', (list), 'multiplex')
+    if len(inputs) < 2:
+        raise ValueError(
+            "inputs should be a list object with at least 2 elements.")
+    for id, x in enumerate(inputs):
+        check_variable_and_dtype(x, 'input[' + str(id) + ']',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'multiplex')
+    check_variable_and_dtype(index, "index", ['int32', 'int64'], 'multiplex')
 
     out = helper.create_variable_for_type_inference(inputs[0].dtype)
     helper.append_op(
