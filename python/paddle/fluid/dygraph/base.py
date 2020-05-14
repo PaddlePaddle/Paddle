@@ -112,7 +112,8 @@ def enabled():
 def enable_dygraph(place=None):
     """
     :alias_main: paddle.enable_dygraph
-	:alias: paddle.enable_dygraph,paddleenable_imperative .enable_dygraph
+    
+	:alias: paddle.enable_dygraph, paddle.enable_imperative.enable_dygraph
 	:old_api: .fluid.dygraph.base.enable_dygraph
 
     This function enables dynamic graph mode.
