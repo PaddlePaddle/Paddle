@@ -393,10 +393,12 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                     'learning_rate': base_lr,
                     'decay_rate': decay_rate,
                     'threshold': threshold,
+                    'verbose': True,
                     'patience': patience,
                     'cooldown': cooldown,
                     'mode': m,
-                    'threshold_mode': n
+                    'threshold_mode': n,
+                    'eps': 1e-6
                 }
                 print("class=" + fluid.dygraph.ReduceLROnPlateau.__name__ +
                       " kwargs=" + str(kwargs))
