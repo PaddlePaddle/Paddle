@@ -25,13 +25,13 @@ from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 
-from ...fluid.layers import fc  #DEFINE_ALIAS
+#from ...fluid.layers import fc  #DEFINE_ALIAS
 from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
 
 __all__ = [
     'dropout',
     #       'embedding',
-    'fc',
+    #       'fc',
     'label_smooth',
     'one_hot',
     'pad',

@@ -41,11 +41,10 @@ import paddle.imperative
 import paddle.incubate.complex as complex
 
 # TODO: define alias in tensor and framework directory
+from .framework.random import manual_seed  #DEFINE_ALIAS
+
 from .tensor.random import randperm
 
-from . import incubate
-from .incubate import hapi
-in_imperative_mode = in_dygraph_mode
 from .tensor.attribute import rank  #DEFINE_ALIAS
 from .tensor.attribute import shape  #DEFINE_ALIAS
 from .tensor.creation import create_tensor  #DEFINE_ALIAS
@@ -205,3 +204,6 @@ from .tensor.stat import var  #DEFINE_ALIAS
 # from .tensor.tensor import Tensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensor        #DEFINE_ALIAS
 # from .tensor.tensor import LoDTensorArray        #DEFINE_ALIAS
+
+from . import incubate
+from .incubate import hapi
