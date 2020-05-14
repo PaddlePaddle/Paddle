@@ -41,9 +41,14 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         in->lod().empty(), false,
-        "Input(X) Tensor of SequenceConvOp does not contain LoD information.");
-    PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
-                      "Only support one level sequence now.");
+        platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
+                                          "does not contain LoD information."));
+    PADDLE_ENFORCE_EQ(
+        in->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Only support input sequence with lod level equal to 1 at "
+            "present. But received: lod level %u.",
+            in->lod().size()));
 
     const Tensor* padding_data = nullptr;
     if (padding_trainable) {
@@ -90,8 +95,12 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
-    PADDLE_ENFORCE_EQ(in->lod().size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        in->lod().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Only support input sequence with lod level equal to 1 at "
+            "present. But received: lod level %u.",
+            in->lod().size()));
     auto lod_g_level_0 = in->lod()[0];
 
     int up_pad = std::max(0, -context_start);
