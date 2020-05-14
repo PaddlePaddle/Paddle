@@ -454,6 +454,10 @@ def rpn_target_assign(bbox_pred,
 
 def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     """
+	:alias_main: paddle.nn.functional.sigmoid_focal_loss
+	:alias: paddle.nn.functional.sigmoid_focal_loss,paddle.nn.functional.loss.sigmoid_focal_loss
+	:old_api: paddle.fluid.layers.sigmoid_focal_loss
+
     **Sigmoid Focal Loss Operator.**
 
     `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is used to address the foreground-background
@@ -550,6 +554,10 @@ def detection_output(loc,
                      nms_eta=1.0,
                      return_index=False):
     """
+	:alias_main: paddle.nn.functional.detection_output
+	:alias: paddle.nn.functional.detection_output,paddle.nn.functional.vision.detection_output
+	:old_api: paddle.fluid.layers.detection_output
+
     Given the regression locations, classification confidences and prior boxes,
     calculate the detection outputs by performing following steps:
 
@@ -679,6 +687,10 @@ def detection_output(loc,
 @templatedoc()
 def iou_similarity(x, y, box_normalized=True, name=None):
     """
+	:alias_main: paddle.nn.functional.iou_similarity
+	:alias: paddle.nn.functional.iou_similarity,paddle.nn.functional.loss.iou_similarity
+	:old_api: paddle.fluid.layers.iou_similarity
+
     ${comment}
 
     Args:
@@ -735,6 +747,10 @@ def box_coder(prior_box,
               name=None,
               axis=0):
     """
+	:alias_main: paddle.nn.functional.box_coder
+	:alias: paddle.nn.functional.box_coder,paddle.nn.functional.vision.box_coder
+	:old_api: paddle.fluid.layers.box_coder
+
     **Box Coder Layer**
 
     Encode/Decode the target bounding box with the priorbox information.
@@ -922,6 +938,10 @@ def yolov3_loss(x,
                 name=None,
                 scale_x_y=1.):
     """
+	:alias_main: paddle.nn.functional.yolov3_loss
+	:alias: paddle.nn.functional.yolov3_loss,paddle.nn.functional.vision.yolov3_loss
+	:old_api: paddle.fluid.layers.yolov3_loss
+
     ${comment}
 
     Args:
@@ -1045,6 +1065,10 @@ def yolo_box(x,
              name=None,
              scale_x_y=1.):
     """
+	:alias_main: paddle.nn.functional.yolo_box
+	:alias: paddle.nn.functional.yolo_box,paddle.nn.functional.vision.yolo_box
+	:old_api: paddle.fluid.layers.yolo_box
+
     ${comment}
 
     Args:
@@ -1220,6 +1244,10 @@ def bipartite_match(dist_matrix,
                     dist_threshold=None,
                     name=None):
     """
+	:alias_main: paddle.nn.functional.bipartite_match
+	:alias: paddle.nn.functional.bipartite_match,paddle.nn.functional.vision.bipartite_match
+	:old_api: paddle.fluid.layers.bipartite_match
+
     This operator implements a greedy bipartite matching algorithm, which is
     used to obtain the matching with the maximum distance based on the input
     distance matrix. For input 2D matrix, the bipartite matching algorithm can
@@ -1310,6 +1338,10 @@ def target_assign(input,
                   mismatch_value=None,
                   name=None):
     """
+	:alias_main: paddle.nn.functional.target_assign
+	:alias: paddle.nn.functional.target_assign,paddle.nn.functional.extension.target_assign
+	:old_api: paddle.fluid.layers.target_assign
+
     This operator can be, for given the target bounding boxes or labels,
     to assign classification and regression targets to each prediction as well as
     weights to prediction. The weights is used to specify which prediction would
@@ -1424,6 +1456,10 @@ def ssd_loss(location,
              normalize=True,
              sample_size=None):
     """
+	:alias_main: paddle.nn.functional.ssd_loss
+	:alias: paddle.nn.functional.ssd_loss,paddle.nn.functional.loss.ssd_loss
+	:old_api: paddle.fluid.layers.ssd_loss
+
     **Multi-box loss layer for object detection algorithm of SSD**
 
     This layer is to compute detection loss for SSD given the location offset
@@ -1667,6 +1703,10 @@ def prior_box(input,
               name=None,
               min_max_aspect_ratios_order=False):
     """
+	:alias_main: paddle.nn.functional.prior_box
+	:alias: paddle.nn.functional.prior_box,paddle.nn.functional.vision.prior_box
+	:old_api: paddle.fluid.layers.prior_box
+
     This op generates prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
     Each position of the input produce N prior boxes, N is determined by
     the count of min_sizes, max_sizes and aspect_ratios, The size of the
@@ -1824,6 +1864,10 @@ def density_prior_box(input,
                       flatten_to_2d=False,
                       name=None):
     """
+	:alias_main: paddle.nn.functional.density_prior_box
+	:alias: paddle.nn.functional.density_prior_box,paddle.nn.functional.vision.density_prior_box
+	:old_api: paddle.fluid.layers.density_prior_box
+
 
     This op generates density prior boxes for SSD(Single Shot MultiBox Detector) 
     algorithm. Each position of the input produce N prior boxes, N is 
@@ -2012,6 +2056,8 @@ def multi_box_head(inputs,
                    name=None,
                    min_max_aspect_ratios_order=False):
     """
+	:api_attr: Static Graph
+
     Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
     regression location and classification confidence on multiple input feature
     maps, then output the concatenate results. The details of this algorithm,
@@ -2287,6 +2333,10 @@ def anchor_generator(input,
                      offset=0.5,
                      name=None):
     """
+	:alias_main: paddle.nn.functional.anchor_generator
+	:alias: paddle.nn.functional.anchor_generator,paddle.nn.functional.vision.anchor_generator
+	:old_api: paddle.fluid.layers.anchor_generator
+
     **Anchor generator operator**
 
     Generate anchors for Faster RCNN algorithm.
@@ -2488,6 +2538,10 @@ def generate_proposal_labels(rpn_rois,
                              is_cls_agnostic=False,
                              is_cascade_rcnn=False):
     """
+	:alias_main: paddle.nn.functional.generate_proposal_labels
+	:alias: paddle.nn.functional.generate_proposal_labels,paddle.nn.functional.vision.generate_proposal_labels
+	:old_api: paddle.fluid.layers.generate_proposal_labels
+
     **Generate Proposal Labels of Faster-RCNN**
 
     This operator can be, for given the GenerateProposalOp output bounding boxes and groundtruth,
@@ -2602,6 +2656,10 @@ def generate_proposal_labels(rpn_rois,
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
+	:alias_main: paddle.nn.functional.generate_mask_labels
+	:alias: paddle.nn.functional.generate_mask_labels,paddle.nn.functional.vision.generate_mask_labels
+	:old_api: paddle.fluid.layers.generate_mask_labels
+
     **Generate Mask Labels for Mask-RCNN**
 
     This operator can be, for given the RoIs and corresponding labels,
@@ -2757,6 +2815,10 @@ def generate_proposals(scores,
                        name=None,
                        return_rois_num=False):
     """
+	:alias_main: paddle.nn.functional.generate_proposals
+	:alias: paddle.nn.functional.generate_proposals,paddle.nn.functional.vision.generate_proposals
+	:old_api: paddle.fluid.layers.generate_proposals
+
     **Generate proposal Faster-RCNN**
 
     This operation proposes RoIs according to each box with their
@@ -2867,6 +2929,10 @@ def generate_proposals(scores,
 
 def box_clip(input, im_info, name=None):
     """
+	:alias_main: paddle.nn.functional.box_clip
+	:alias: paddle.nn.functional.box_clip,paddle.nn.functional.vision.box_clip
+	:old_api: paddle.fluid.layers.box_clip
+	
     Clip the box into the size given by im_info
     For each input box, The formula is given as follows:
         
@@ -3092,6 +3158,10 @@ def multiclass_nms(bboxes,
                    background_label=0,
                    name=None):
     """
+	:alias_main: paddle.nn.functional.multiclass_nms
+	:alias: paddle.nn.functional.multiclass_nms,paddle.nn.functional.extension.multiclass_nms
+	:old_api: paddle.fluid.layers.multiclass_nms
+
     **Multiclass NMS**
     
     This operator is to do multi-class non maximum suppression (NMS) on
@@ -3369,6 +3439,10 @@ def distribute_fpn_proposals(fpn_rois,
                              refer_scale,
                              name=None):
     """
+	:alias_main: paddle.nn.functional.distribute_fpn_proposals
+	:alias: paddle.nn.functional.distribute_fpn_proposals,paddle.nn.functional.vision.distribute_fpn_proposals
+	:old_api: paddle.fluid.layers.distribute_fpn_proposals
+	
     **This op only takes LoDTensor as input.** In Feature Pyramid Networks 
     (FPN) models, it is needed to distribute all proposals into different FPN 
     level, with respect to scale of the proposals, the referring scale and the 
@@ -3454,6 +3528,10 @@ def box_decoder_and_assign(prior_box,
                            box_clip,
                            name=None):
     """
+	:alias_main: paddle.nn.functional.box_decoder_and_assign
+	:alias: paddle.nn.functional.box_decoder_and_assign,paddle.nn.functional.vision.box_decoder_and_assign
+	:old_api: paddle.fluid.layers.box_decoder_and_assign
+	
     ${comment}
     Args:
         prior_box(${prior_box_type}): ${prior_box_comment}
@@ -3525,6 +3603,10 @@ def collect_fpn_proposals(multi_rois,
                           post_nms_top_n,
                           name=None):
     """
+	:alias_main: paddle.nn.functional.collect_fpn_proposals
+	:alias: paddle.nn.functional.collect_fpn_proposals,paddle.nn.functional.vision.collect_fpn_proposals
+	:old_api: paddle.fluid.layers.collect_fpn_proposals
+	
     **This OP only supports LoDTensor as input**. Concat multi-level RoIs 
     (Region of Interest) and select N RoIs with respect to multi_scores. 
     This operation performs the following steps:
