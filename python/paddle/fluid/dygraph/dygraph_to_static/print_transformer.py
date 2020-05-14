@@ -55,7 +55,7 @@ class PrintTransformer(gast.NodeTransformer):
                 if print_assign_node is not None:
                     return print_assign_node
             else:
-                node.value = self._transform_call_node(node)
+                return self._transform_call_node(node)
         return node
 
     # NOTE: deal with print in PY2
