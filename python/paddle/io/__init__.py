@@ -39,4 +39,4 @@ from ..fluid.io import DataLoader
 from ..fluid.dataloader import Dataset, BatchSampler
 from ..fluid.io import load, save, load_program_state, set_program_state, \
         load_inference_model, save_inference_model, batch
-from ..fluid.decorator import shuffle, buffered, cache, chain, firstn, compose, map_readers, xmap_readers
+from ..reader import shuffle, buffered, cache, chain, firstn, compose, map_readers, xmap_readers
