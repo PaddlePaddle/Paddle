@@ -15,8 +15,8 @@
 # define api used to run in imperative mode 
 __all__ = [
     'BackwardStrategy', 'enabled', 'grad', 'guard', 'LayerList', 'load', 'save',
-    'prepare_context', 'to_variable', 'TracedLayer', 'no_grad', 'ParameterList',
-    'Sequential', 'ProgramTranslator', 'declarative'
+    'prepare_context', 'to_variable', 'TracedLayer', 'no_grad', 'ParallelEnv',
+    'ProgramTranslator', 'declarative', 'DataParallel'
 ]
 
 __all__ += [

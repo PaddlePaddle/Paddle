@@ -35,10 +35,31 @@ from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
 from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
 
 __all__ = [
-    'brelu', 'elu', 'erf', 'gelu', 'hard_shrink', 'hard_sigmoid', 'hard_swish',
-    'hsigmoid', 'leaky_relu', 'logsigmoid', 'maxout', 'relu', 'relu6', 'selu',
-    'sigmoid', 'soft_relu', 'softmax', 'softplus', 'softshrink', 'softsign',
-    'swish', 'tanh_shrink', 'thresholded_relu', 'log_softmax'
+    'brelu',
+    'elu',
+    'erf',
+    'gelu',
+    'hard_shrink',
+    'hard_sigmoid',
+    'hard_swish',
+    'hsigmoid',
+    'leaky_relu',
+    'logsigmoid',
+    'maxout',
+    #       'prelu',
+    'relu',
+    'relu6',
+    'selu',
+    'sigmoid',
+    'soft_relu',
+    'softmax',
+    'softplus',
+    'softshrink',
+    'softsign',
+    'swish',
+    'tanh_shrink',
+    'thresholded_relu',
+    'log_softmax'
 ]
 
 import warnings
