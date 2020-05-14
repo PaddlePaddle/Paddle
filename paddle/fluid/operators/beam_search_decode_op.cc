@@ -203,9 +203,9 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
                    "BeamSearchDecode");
     OP_INOUT_CHECK(context->HasInput("Scores"), "Input", "Scores",
                    "BeamSearchDecode");
-    OP_INOUT_CHECK(context->HasInput("SentenceIds"), "Output", "SentenceIds",
+    OP_INOUT_CHECK(context->HasOutput("SentenceIds"), "Output", "SentenceIds",
                    "BeamSearchDecode");
-    OP_INOUT_CHECK(context->HasInput("SentenceScores"), "Output",
+    OP_INOUT_CHECK(context->HasOutput("SentenceScores"), "Output",
                    "SentenceScores", "BeamSearchDecode");
   }
 };
