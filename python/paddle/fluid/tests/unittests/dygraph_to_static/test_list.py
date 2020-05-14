@@ -42,8 +42,7 @@ def test_list_in_if(x):
         a.append(
             fluid.layers.fill_constant(
                 shape=[1, 2], value=9, dtype="int64"))
-    # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
-    return a[0]
+    return a
 
 
 def test_list_in_for_loop(x, iter_num):
@@ -55,7 +54,7 @@ def test_list_in_for_loop(x, iter_num):
     a = []
     for i in range(iter_num):
         a.append(x)
-    return a[0]
+    return a
 
 
 def test_list_in_for_loop_with_concat(x, iter_num):
@@ -83,7 +82,7 @@ def test_list_in_while_loop(x, iter_num):
     while i < iter_num.numpy()[0]:
         a.append(x)
         i += 1
-    return a[0]
+    return a
 
 
 def test_list_in_while_loop_with_stack(x, iter_num):
@@ -108,9 +107,6 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
     def init_dygraph_func(self):
         self.dygraph_func = test_list_without_control_flow
-
-    def run_static_mode(self):
-        return self.train(to_static=True)
 
     def run_dygraph_mode(self):
         with fluid.dygraph.guard():
@@ -187,15 +183,6 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
         exe = fluid.Executor(self.place)
         numpy_res = exe.run(main_program, fetch_list=static_outs)
         return numpy_res
-
-    def train(self, to_static=False):
-
-        with fluid.dygraph.guard():
-            if to_static:
-                res = declarative(self.dygraph_func)(self.input, self.iter_num)
-            else:
-                res = self.dygraph_func(self.input, self.iter_num)
-            return self.varbase_to_numpy(res)
 
 
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
