@@ -49,6 +49,7 @@ class OpProtoAndCheckerMaker {
   static const char *OpNamescopeAttrName() { return "op_namescope"; }
   static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
   static const char *OpDeviceAttrName() { return "op_device"; }
+  static const char *OpDeviceIndexAttrName() { return "op_device_index"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
