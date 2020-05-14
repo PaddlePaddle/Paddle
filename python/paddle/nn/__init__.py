@@ -31,28 +31,28 @@ from .clip import GradientClipByNorm  #DEFINE_ALIAS
 from .clip import GradientClipByValue  #DEFINE_ALIAS
 # from .clip import set_gradient_clip        #DEFINE_ALIAS
 from .clip import clip  #DEFINE_ALIAS
-# from .clip import clip_by_norm        #DEFINE_ALIAS
+from .clip import clip_by_norm  #DEFINE_ALIAS
 from .control_flow import case  #DEFINE_ALIAS
 from .control_flow import cond  #DEFINE_ALIAS
 # from .control_flow import DynamicRNN        #DEFINE_ALIAS
 # from .control_flow import StaticRNN        #DEFINE_ALIAS
-# from .control_flow import switch_case        #DEFINE_ALIAS
+from .control_flow import switch_case  #DEFINE_ALIAS
 from .control_flow import while_loop  #DEFINE_ALIAS
 # from .control_flow import rnn        #DEFINE_ALIAS
 # from .decode import BeamSearchDecoder        #DEFINE_ALIAS
 # from .decode import Decoder        #DEFINE_ALIAS
 from .decode import beam_search  #DEFINE_ALIAS
 from .decode import beam_search_decode  #DEFINE_ALIAS
-# from .decode import crf_decoding        #DEFINE_ALIAS
+from .decode import crf_decoding  #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
-# from .decode import dynamic_decode        #DEFINE_ALIAS
-# from .decode import gather_tree        #DEFINE_ALIAS
+from .decode import dynamic_decode  #DEFINE_ALIAS
+from .decode import gather_tree  #DEFINE_ALIAS
 # from .initalizer import Bilinear        #DEFINE_ALIAS
 # from .initalizer import Constant        #DEFINE_ALIAS
 # from .initalizer import MSRA        #DEFINE_ALIAS
-# from .initalizer import Normal        #DEFINE_ALIAS
+from .initalizer import Normal  #DEFINE_ALIAS
 # from .initalizer import TruncatedNormal        #DEFINE_ALIAS
-# from .initalizer import Uniform        #DEFINE_ALIAS
+from .initalizer import Uniform  #DEFINE_ALIAS
 # from .initalizer import Xavier        #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
@@ -71,16 +71,16 @@ from .layer.conv import Conv2D  #DEFINE_ALIAS
 from .layer.conv import Conv2DTranspose  #DEFINE_ALIAS
 from .layer.conv import Conv3D  #DEFINE_ALIAS
 from .layer.conv import Conv3DTranspose  #DEFINE_ALIAS
-# from .layer.conv import TreeConv        #DEFINE_ALIAS
+from .layer.conv import TreeConv  #DEFINE_ALIAS
 # from .layer.conv import Conv1D        #DEFINE_ALIAS
 from .layer.extension import RowConv  #DEFINE_ALIAS
-# from .layer.learning_rate import CosineDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import ExponentialDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import InverseTimeDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NaturalExpDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import NoamDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PiecewiseDecay        #DEFINE_ALIAS
-# from .layer.learning_rate import PolynomialDecay        #DEFINE_ALIAS
+from .layer.learning_rate import CosineDecay  #DEFINE_ALIAS
+from .layer.learning_rate import ExponentialDecay  #DEFINE_ALIAS
+from .layer.learning_rate import InverseTimeDecay  #DEFINE_ALIAS
+from .layer.learning_rate import NaturalExpDecay  #DEFINE_ALIAS
+from .layer.learning_rate import NoamDecay  #DEFINE_ALIAS
+from .layer.learning_rate import PiecewiseDecay  #DEFINE_ALIAS
+from .layer.learning_rate import PolynomialDecay  #DEFINE_ALIAS
 # from .layer.loss import NCELoss        #DEFINE_ALIAS
 from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
 from .layer.loss import MSELoss  #DEFINE_ALIAS
@@ -95,6 +95,3 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell        #DEFINE_ALIAS
 # from .layer.rnn import GRUCell        #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell        #DEFINE_ALIAS
-from .layer import loss  #DEFINE_ALIAS
-from .layer import conv  #DEFINE_ALIAS
-from ..fluid.dygraph.layers import Layer  #DEFINE_ALIAS

@@ -16,13 +16,14 @@
 from ...fluid.layers import l2_normalize  #DEFINE_ALIAS
 from ...fluid.layers import lrn  #DEFINE_ALIAS
 
+from ...fluid.layers import batch_norm  #DEFINE_ALIAS
+from ...fluid.layers import data_norm  #DEFINE_ALIAS
+from ...fluid.layers import group_norm  #DEFINE_ALIAS
+from ...fluid.layers import instance_norm  #DEFINE_ALIAS
+from ...fluid.layers import layer_norm  #DEFINE_ALIAS
+from ...fluid.layers import spectral_norm  #DEFINE_ALIAS
+
 __all__ = [
-    #       'batch_norm',
-    #       'data_norm',
-    #       'group_norm',
-    #       'instance_norm',
-    'l2_normalize',
-    #       'layer_norm',
-    'lrn',
-    #       'spectral_norm'
+    'batch_norm', 'data_norm', 'group_norm', 'instance_norm', 'l2_normalize',
+    'layer_norm', 'lrn', 'spectral_norm'
 ]

@@ -14,12 +14,15 @@
 
 # TODO: define the initializers to create a Parameter in neural network
 
+from ..fluid.layers import Normal  #DEFINE_ALIAS
+from ..fluid.layers import Uniform  #DEFINE_ALIAS
+
 __all__ = [
     #       'Bilinear',
     #       'Constant',
     #       'MSRA',
-    #       'Normal',
+    'Normal',
     #       'TruncatedNormal',
-    #       'Uniform',
+    'Uniform',
     #       'Xavier'
 ]

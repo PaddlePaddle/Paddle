@@ -14,12 +14,14 @@
 
 # TODO: define classes of convolutional neural network
 
+from ...fluid.dygraph import TreeConv  #DEFINE_ALIAS
+
 __all__ = [
     'Conv2D',
     'Conv2DTranspose',
     'Conv3D',
     'Conv3DTranspose',
-    #       'TreeConv',
+    'TreeConv',
     #       'Conv1D'
 ]
 
