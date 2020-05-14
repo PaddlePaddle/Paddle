@@ -203,6 +203,20 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.array_equal(dy_out1, dy_out2))
         self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
 
+    def test_anable_imperative(self):
+        self.assertFalse(fluid.dygraph.enabled())
+        fluid.enable_imperative()
+        self.assertTrue(fluid.dygraph.enabled())
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        var_inp = fluid.dygraph.base.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out1 = out.numpy()
+        out.backward()
+        dy_grad1 = mlp._linear1.weight.gradient()
+        fluid.disable_imperative()
+        self.assertFalse(fluid.dygraph.enabled())
+
     def test_isinstance(self):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))

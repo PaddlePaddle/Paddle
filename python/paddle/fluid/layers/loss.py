@@ -177,6 +177,8 @@ def bpr_loss(input, label, name=None):
     """
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'bpr_loss')
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
@@ -610,8 +612,14 @@ def warpctc(input,
             print(output)
     """
     helper = LayerHelper('warpctc', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], "warpctc")
+    check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
     this_inputs = {'Logits': [input], 'Label': [label]}
     if input_length is not None and label_length is not None:
+        check_variable_and_dtype(input_length, 'LogitsLength', ['int64'],
+                                 "warpctc")
+        check_variable_and_dtype(label_length, 'LabelLength', ['int64'],
+                                 "warpctc")
         this_inputs['LogitsLength'] = [input_length]
         this_inputs['LabelLength'] = [label_length]
 
@@ -1317,15 +1325,9 @@ def rank_loss(label, left, right, name=None):
 
     """
     helper = LayerHelper('rank_loss', **locals())
-
-    if not (isinstance(label, Variable)):
-        raise ValueError("The label should be a Variable")
-
-    if not (isinstance(left, Variable)):
-        raise ValueError("The left should be a Variable")
-
-    if not (isinstance(right, Variable)):
-        raise ValueError("The right should be a Variable")
+    check_variable_and_dtype(label, 'label', ['float32'], "rank_loss")
+    check_variable_and_dtype(left, 'left', ['float32'], "rank_loss")
+    check_variable_and_dtype(right, 'right', ['float32'], "rank_loss")
 
     out = helper.create_variable_for_type_inference("float32")
 
@@ -1374,12 +1376,9 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
     helper = LayerHelper('margin_rank_loss', **locals())
-    if not isinstance(label, Variable):
-        raise ValueError("The label should be a Variable.")
-    if not isinstance(left, Variable):
-        raise ValueError("The left should be a Variable.")
-    if not isinstance(right, Variable):
-        raise ValueError("The right should be a Variable.")
+    check_variable_and_dtype(label, 'label', ['float32'], 'margin_rank_loss')
+    check_variable_and_dtype(label, 'left', ['float32'], 'margin_rank_loss')
+    check_variable_and_dtype(label, 'right', ['float32'], 'margin_rank_loss')
     out = helper.create_variable_for_type_inference(left.dtype)
     act = helper.create_variable_for_type_inference(left.dtype)
     helper.append_op(

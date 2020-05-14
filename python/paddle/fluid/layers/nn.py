@@ -6920,6 +6920,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
         >>> out = fluid.layers.row_conv(input=x, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
     dtype = helper.input_dtype()
     filter_shape = [future_context_size + 1, input.shape[-1]]
     filter_param = helper.create_parameter(
@@ -10853,6 +10854,8 @@ def flatten(x, axis=1, name=None):
             out = fluid.layers.flatten(x=x, axis=2)
             # out shape is [16, 3]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
     helper = LayerHelper('flatten', **locals())
 
     if not (isinstance(x, Variable)):
@@ -11449,6 +11452,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -11542,6 +11548,12 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    check_type(input, 'input', (Variable),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'int'],
+                'fluid.layers.gaussian_random_batch_size_like')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -11919,17 +11931,30 @@ def strided_slice(input, axes, starts, ends, strides):
             sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
             # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
-    if not isinstance(starts, (list, tuple, Variable)):
-        raise ValueError(
-            "Input starts must be an Variable, python list or tuple.")
-    if not isinstance(ends, (list, tuple, Variable)):
-        raise ValueError(
-            "Input ends must be an Variable, python list or tuple.")
-    if not isinstance(strides, (list, tuple, Variable)):
-        raise ValueError(
-            "Input strides must be an Variable, python list or tuple.")
-
     helper = LayerHelper('strided_slice', **locals())
+
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'strided_slice')
+    check_type(axes, 'axes', (list, tuple), 'strided_slice')
+    check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
+    check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
+    check_type(strides, 'strides', (list, tuple, Variable), 'strided_slice')
+
+    def check_list_elements_dtype(list_input, input_name):
+        if isinstance(list_input, Variable):
+            check_dtype(list_input.dtype, input_name, ['int32'],
+                        'strided_slice')
+        else:
+            for i, var in enumerate(list_input):
+                var_name = input_name + '[' + str(i) + ']'
+                if isinstance(var, Variable):
+                    check_dtype(var.dtype, var_name, ['int32'], 'strided_slice')
+
+    check_list_elements_dtype(axes, 'axes')
+    check_list_elements_dtype(starts, 'starts')
+    check_list_elements_dtype(ends, 'ends')
+    check_list_elements_dtype(strides, 'strides')
 
     def get_new_list_tensor(old_list):
         new_list_tensor = []
@@ -12046,7 +12071,8 @@ def shape(input):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([  3, 100, 100], dtype=int32)]
     """
-
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'], 'shape')
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
     helper.append_op(
@@ -13602,10 +13628,10 @@ def similarity_focus(input, axis, indexes, name=None):
     """
     helper = LayerHelper('similarity_focus', **locals())
     # check attrs
-    if isinstance(axis, int) is False:
-        raise TypeError("axis must be int type.")
-    if isinstance(indexes, list) is False:
-        raise TypeError("indexes must be list type.")
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "similarity_focus")
+    check_type(axis, 'axis', int, "similarity_focus")
+    check_type(indexes, 'indexes', list, "similarity_focus")
     if axis != 1 and axis != 2 and axis != 3:
         raise ValueError("axis must be 1, 2 or 3.")
     if len(indexes) == 0:
@@ -13667,6 +13693,9 @@ def hash(input, hash_size, num_hash=1, name=None):
             #   [386]
             #   [901]]]
     """
+    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'hash')
+    check_type(hash_size, 'hash_size', ['int32', 'int64'], 'hash')
+    check_type(num_hash, 'num_hash', ['int32', 'int64'], 'hash')
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
         helper.input_dtype(), stop_gradient=True)
@@ -13880,6 +13909,8 @@ def add_position_encoding(input, alpha, beta, name=None):
 
     """
     helper = LayerHelper('add_position_encoding', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             "add_position_encoding")
     dtype = helper.input_dtype()
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -14733,6 +14764,8 @@ def continuous_value_model(input, cvm, use_cvm=True):
     """
     helper = LayerHelper('cvm', **locals())
     out = helper.create_variable(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'cvm')
     helper.append_op(
         type='cvm',
         inputs={'X': [input],
@@ -15636,6 +15669,9 @@ def gather_tree(ids, parents):
             final_sequences = fluid.layers.gather_tree(ids, parents)
     """
     helper = LayerHelper('gather_tree', **locals())
+    check_variable_and_dtype(ids, 'ids', ['int32', 'int64'], 'gather_tree')
+    check_variable_and_dtype(parents, 'parents', ['int32', 'int64'],
+                             'gather_tree')
     out = helper.create_variable_for_type_inference(dtype=ids.dtype)
 
     helper.append_op(
