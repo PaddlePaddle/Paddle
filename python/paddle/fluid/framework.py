@@ -181,7 +181,7 @@ def in_dygraph_mode():
     """
     :alias_main: paddle.in_dygraph_mode
 	:alias: paddle.in_dygraph_mode
-	:old_api: .fluid.framework.in_dygraph_mode
+	:old_api: paddle.fluid.framework.in_dygraph_mode
 
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
@@ -228,7 +228,7 @@ def _dygraph_only_(func):
 # in our implementation, there some APIs not supported, like numpy, because Variable contains the desc.
 # So, those APIs are listed under class Variable to generate docs only.
 # TODO(zhiqiu): We should make VarBase consistent with Variable in future, for example, by inheritting
-# same base class. 
+# same base class.
 def _fake_interface_only_(func):
     def __impl__(*args, **kwargs):
         raise AssertionError(
@@ -253,12 +253,12 @@ def _current_expected_place():
 
 # TODO(zhiqiu): remove this function.
 def _var_base_to_np(var_base):
-    """	
-    convert VarBase tp numpy	
-    	
-    Args:	
-        var_base(VarBase) : the VarBase to convert	
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase	
+    """
+    convert VarBase tp numpy
+
+    Args:
+        var_base(VarBase) : the VarBase to convert
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase
     """
 
     warnings.warn(
@@ -324,9 +324,9 @@ def cuda_places(device_ids=None):
 
     If :code:`device_ids` is not None, it should be the device
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
+    the returned list would be
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
-    
+
     Parameters:
         device_ids (list or tuple of int, optional): list of GPU device ids.
 
@@ -352,9 +352,9 @@ def cuda_places(device_ids=None):
 def cpu_places(device_count=None):
     """
     This function creates a list of :code:`fluid.CPUPlace` objects, and returns the created list.
-    
+
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
     :code:`CPU_NUM` indicates the number of devices used in the current task.
@@ -383,7 +383,7 @@ def cuda_pinned_places(device_count=None):
     This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
-    be determined by environment variable :code:`CPU_NUM`. 
+    be determined by environment variable :code:`CPU_NUM`.
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
     :code:`CPU_NUM` indicates the number of devices used in the current task.
@@ -444,7 +444,7 @@ def name_scope(prefix=None):
 
     Generate hierarchical name prefix for the operators.
 
-    Note: 
+    Note:
         This should only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
 
@@ -467,7 +467,7 @@ def name_scope(prefix=None):
           with fluid.name_scope("s4"):
                 g = f - 1
 
-          # Op are created in the default main program.  
+          # Op are created in the default main program.
           for op in fluid.default_main_program().block(0).ops:
               # elementwise_add is created in /s1/
               if op.type == 'elementwise_add':
@@ -993,14 +993,13 @@ class Variable(object):
 
         Examples:
             .. code-block:: python
-
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
                 from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-                with fluid.dygraph.guard():
+                with fluid.dygraph.g duard():
                     linear = Linear(32, 64)
                     data = to_variable(data)
                     x = linear(data)
@@ -1377,7 +1376,7 @@ class Variable(object):
         **Notes: This is a read-only property. It simply returns name of
           gradient Variable from a naming convention but doesn't guarantee
           the gradient exists.**
-       
+
         Examples:
           .. code-block:: python
 
@@ -1503,7 +1502,7 @@ class Variable(object):
             key(str): Key for this information.
             value(object): The value associated to the key.
 
-        Returns: 
+        Returns:
             None
         """
         if not hasattr(self, "_info"):
@@ -1517,7 +1516,7 @@ class Variable(object):
         Args:
             key(str): Key for this information.
 
-        Returns: 
+        Returns:
             object
         """
         if hasattr(self, "_info") and key in self._info:
@@ -1691,10 +1690,10 @@ def get_all_op_protos():
 
 class ComplexVariable(object):
     """
-    The Variable defined on the complex number domain. It contains two common 
-    real number Variables as its members, :attr:`real` and :attr:`imag` 
+    The Variable defined on the complex number domain. It contains two common
+    real number Variables as its members, :attr:`real` and :attr:`imag`
     holding the real part and imaginary part of complex numbers respectively.
-    
+
     **Notes**:
         **The constructor of ComplexVariable should not be invoked directly.**
 
@@ -1703,7 +1702,7 @@ class ComplexVariable(object):
     Args:
         real (Variable): The Variable holding real-part data.
         imag (Variable): The Variable holding imaginery-part data.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1714,7 +1713,7 @@ class ComplexVariable(object):
             with fluid.dygraph.guard():
                 var = fluid.dygraph.to_variable(a, name="new_var")
                 print(var.name, var.dtype, var.shape)
-                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L]) 
+                # ({'real': u'new_var.real', 'imag': u'new_var.imag'}, 'complex128', [2L])
                 print(var.numpy())
                 # [1. +2.j 0.2+0.j]
     """
@@ -2739,7 +2738,7 @@ class Block(object):
                 for op in block.ops:
                     if var.name in op.output_arg_names:
                         # In startup_program, "c_broadcast" and "c_sync_comm_stream"
-                        # are treated as initialization ops that cause error. 
+                        # are treated as initialization ops that cause error.
                         # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
                         if op.type in ["c_broadcast", "c_sync_comm_stream"]:
                             continue
@@ -4320,7 +4319,7 @@ class Program(object):
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
-                    
+
                     def network():
                         img = fluid.layers.data(name='image', shape=[784])
                         hidden = fluid.layers.fc(input=img, size=200, act='relu')
@@ -4405,8 +4404,8 @@ class Program(object):
     def _prune_with_input(self, feeded_var_names, targets):
         """
         Prune operators and variables which are not needed to generate
-        :code:`targets`. Prune operators and variables which are needed 
-        to generate feeded_var 
+        :code:`targets`. Prune operators and variables which are needed
+        to generate feeded_var
 
         Notes: This is a very low level API. Users should not use this API
         directly. This API is in flux and not stable.
@@ -4464,7 +4463,7 @@ class Program(object):
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
                         # NOTE(zhiqiu): Find op that generate target name.
-                        # Skip optimize op except for optimize op in targets, 
+                        # Skip optimize op except for optimize op in targets,
                         # since optimize op generates parameters.
                         if op._is_optimize_op() and op not in targets:
                             continue
@@ -4843,8 +4842,8 @@ class Program(object):
         Args:
             other(Program): Other program
             pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
-            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
-            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is
+            cloned from block 0 in other, etc. Default is None, which means default mapped,
             {0:0, 1:1,..., n:n}.
 
         Returns:
@@ -5197,18 +5196,18 @@ def default_startup_program():
 
 def default_main_program():
     """
-    This API can be used to get ``default main program`` which store the 
+    This API can be used to get ``default main program`` which store the
     descriptions of ``op`` and ``variable``.
-    
-    For example ``z = fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
-    ``op`` and a new ``z`` ``variable``, and they will be recorded in ``default main program`` 
 
-    The ``default_main_program`` is the default value for ``Program`` parameter in 
+    For example ``z = fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add``
+    ``op`` and a new ``z`` ``variable``, and they will be recorded in ``default main program``
+
+    The ``default_main_program`` is the default value for ``Program`` parameter in
     a lot of ``fluid`` APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
     If you want to replace the ``default main program``, you can use :ref:`api_fluid_program_guard`
-    
+
     Returns:
         :ref:`api_fluid_Program`: a ``Program`` which holding the descriptions of ops and variables in the network.
 
@@ -5220,17 +5219,17 @@ def default_main_program():
             # Sample Network:
             data = fluid.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-            
+
             conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
             bn1 = fluid.layers.batch_norm(conv1, act='relu')
             pool1 = fluid.layers.pool2d(bn1, 2, 'max', 2)
             conv2 = fluid.layers.conv2d(pool1, 16, 5, 1, act=None)
             bn2 = fluid.layers.batch_norm(conv2, act='relu')
             pool2 = fluid.layers.pool2d(bn2, 2, 'max', 2)
-            
+
             fc1 = fluid.layers.fc(pool2, size=50, act='relu')
             fc2 = fluid.layers.fc(fc1, size=102, act='softmax')
-            
+
             loss = fluid.layers.cross_entropy(input=fc2, label=label)
             loss = fluid.layers.mean(loss)
             opt = fluid.optimizer.Momentum(
@@ -5238,7 +5237,7 @@ def default_main_program():
                 momentum=0.9,
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
-            
+
             #print the number of blocks in the program, 1 in this case
             print(fluid.default_main_program().num_blocks)
 
@@ -5291,14 +5290,14 @@ def program_guard(main_program, startup_program=None):
 
     Args:
         main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program, optional): New startup program inside `"with"` 
-            statement. :code:`None` means not changing startup program, 
+        startup_program(Program, optional): New startup program inside `"with"`
+            statement. :code:`None` means not changing startup program,
             default_startup_program is still used.
             Default: None.
 
     Examples:
        .. code-block:: python
-       
+
          import paddle.fluid as fluid
 
          main_program = fluid.Program()
@@ -5319,7 +5318,7 @@ def program_guard(main_program, startup_program=None):
          # does not care about startup program. Just pass a temporary value.
          with fluid.program_guard(main_program, fluid.Program()):
              data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
-    
+
     """
     from .data_feeder import check_type
     check_type(main_program, 'main_program', Program, 'fluid.program_guard')
@@ -5385,7 +5384,7 @@ def _dygraph_place_guard(place):
 def load_op_library(lib_filename):
     """
     :api_attr: Static Graph
-    
+
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.

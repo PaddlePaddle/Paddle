@@ -112,8 +112,8 @@ def enabled():
 def enable_dygraph(place=None):
     """
     :alias_main: paddle.enable_dygraph
-	:alias: paddle.enable_dygraph,paddleenable_imperative .enable_dygraph
-	:old_api: .fluid.dygraph.base.enable_dygraph
+	:alias: paddle.enable_dygraph,paddle.enable_imperative .enable_dygraph
+	:old_api: paddle.fluid.dygraph.base.enable_dygraph
 
     This function enables dynamic graph mode.
 
@@ -146,8 +146,8 @@ def enable_dygraph(place=None):
 def disable_dygraph():
     """
     :alias_main: paddle.disable_dygraph
-	:alias: paddle.disable_dygraph,paddledisable_imperative .disable_dygraph
-	:old_api: .fluid.dygraph.base.disable_dygraph
+	:alias: paddle.disable_dygraph,paddle.disable_imperative .disable_dygraph
+	:old_api: paddle.fluid.dygraph.base.disable_dygraph
 
     This function disables dynamic graph mode.
 
@@ -251,7 +251,7 @@ def guard(place=None):
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
-        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
             If None, the running place will be determined according to the way of paddle compilation. Default: None
 
     return:
@@ -320,55 +320,55 @@ def grad(outputs,
          allow_unused=False,
          no_grad_vars=None,
          backward_strategy=None):
-    ''' 
+    '''
     .. note::
         **This API is ONLY available in Dygraph mode.**
 
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
     Parameters:
-        outputs (Variable|list(Variable)|tuple(Variable)): the output Variable or 
+        outputs (Variable|list(Variable)|tuple(Variable)): the output Variable or
             Variable list/tuple of the graph to compute gradients.
-        inputs (Variable|list(Variable)|tuple(Variable)): the input Variable or 
+        inputs (Variable|list(Variable)|tuple(Variable)): the input Variable or
             Variable list/tuple of the graph to compute gradients. The returned
-            values of this API are the gradients of `inputs` . 
-        grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional): 
-            initial gradient values of `outputs` . If `grad_outputs` is None, 
-            the initial gradient values of `outputs` would be Tensors filled with 1; 
-            if `grad_outputs` is not None, it must have the same length as `outputs` , 
+            values of this API are the gradients of `inputs` .
+        grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional):
+            initial gradient values of `outputs` . If `grad_outputs` is None,
+            the initial gradient values of `outputs` would be Tensors filled with 1;
+            if `grad_outputs` is not None, it must have the same length as `outputs` ,
             and in this case, the initial gradient value of the i-th `outputs` would
-            be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
+            be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs`
             is None; (2) the i-th element of `grad_outputs` when the i-th element of
             `grad_outputs` is a Variable. Default None.
-        retain_graph (bool, optional): whether to retain the forward graph which 
-            is used to calculate the gradient. When it is True, the graph would 
-            be retained, in which way users can calculate backward twice for the 
+        retain_graph (bool, optional): whether to retain the forward graph which
+            is used to calculate the gradient. When it is True, the graph would
+            be retained, in which way users can calculate backward twice for the
             same graph. When it is False, the graph would be freed. Default None,
-            which means it is equal to `create_graph` . 
+            which means it is equal to `create_graph` .
         create_graph (bool, optional): whether to create the gradient graphs of
             the computing process. When it is True, higher order derivatives are
             supported to compute; when it is False, the gradient graphs of the
             computing process would be discarded. Default False.
         only_inputs (bool, optional): whether to only compute the gradients of
-            `inputs` . If it is False, the gradients of all remaining leaf 
-            Variables in the graph would be also computed and accumulated. 
+            `inputs` . If it is False, the gradients of all remaining leaf
+            Variables in the graph would be also computed and accumulated.
             If it is True, only the gradients of `inputs` would be computed.
             Default True. only_inputs=False is under development, and it is
-            not supported yet.    
-        allow_unused (bool, optional): whether to raise error or return None if some 
-            Variables of `inputs` are unreachable in the graph. If some Variables of 
-            `inputs` are unreachable in the graph (i.e., their gradients are None),  
+            not supported yet.
+        allow_unused (bool, optional): whether to raise error or return None if some
+            Variables of `inputs` are unreachable in the graph. If some Variables of
+            `inputs` are unreachable in the graph (i.e., their gradients are None),
             error would be raised if allow_unused=False, or None would be returned as
             their gradients if allow_unused=True. Default False.
-        no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
+        no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional):
             the Variables whose gradients are not needed to compute. Default None.
         backward_strategy (BackwardStrategy, optional): The backward strategy to
             compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
             details. Default None.
 
     Returns:
-        tuple: a tuple of Variables, whose length is the same as the Variable number 
-        inside `inputs`, and the i-th returned Variable is the sum of gradients of 
+        tuple: a tuple of Variables, whose length is the same as the Variable number
+        inside `inputs`, and the i-th returned Variable is the sum of gradients of
         `outputs` with respect to the i-th `inputs`.
 
     Examples 1:
@@ -377,16 +377,16 @@ def grad(outputs,
             import paddle.fluid as fluid
 
             def test_dygraph_grad(create_graph):
-                with fluid.dygraph.guard(): 
-                    x = fluid.layers.ones(shape=[1], dtype='float32') 
+                with fluid.dygraph.guard():
+                    x = fluid.layers.ones(shape=[1], dtype='float32')
                     x.stop_gradient = False
                     y = x * x
 
-                    # Since y = x * x, dx = 2 * x 
+                    # Since y = x * x, dx = 2 * x
                     dx = fluid.dygraph.grad(
                             outputs=[y],
-                            inputs=[x], 
-                            create_graph=create_graph, 
+                            inputs=[x],
+                            create_graph=create_graph,
                             retain_graph=True)[0]
 
                     z = y + dx
@@ -394,16 +394,16 @@ def grad(outputs,
                     # If create_graph = False, the gradient of dx
                     # would not be backpropagated. Therefore,
                     # z = x * x + dx, and x.gradient() = 2 * x = 2.0
-                    
+
                     # If create_graph = True, the gradient of dx
-                    # would be backpropagated. Therefore, 
+                    # would be backpropagated. Therefore,
                     # z = x * x + dx = x * x + 2 * x, and
-                    # x.gradient() = 2 * x + 2 = 4.0 
+                    # x.gradient() = 2 * x + 2 = 4.0
 
                     z.backward()
-                    return x.gradient() 
+                    return x.gradient()
 
-            print(test_dygraph_grad(create_graph=False)) # [2.] 
+            print(test_dygraph_grad(create_graph=False)) # [2.]
             print(test_dygraph_grad(create_graph=True)) # [4.]
 
     Examples 2:
@@ -418,7 +418,7 @@ def grad(outputs,
                 x.stop_gradient = False
 
                 y1 = x * x
-                y2 = x * 3 
+                y2 = x * 3
 
                 # If grad_outputs=None, dy1 = [1], dy2 = [1].
                 # If grad_outputs=[g1, g2], then:
@@ -431,7 +431,7 @@ def grad(outputs,
                 # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
 
                 dx = fluid.dygraph.grad(
-                    outputs=[y1, y2], 
+                    outputs=[y1, y2],
                     inputs=[x],
                     grad_outputs=grad_outputs)[0]
 
@@ -444,7 +444,7 @@ def grad(outputs,
             print(test_dygraph_grad(None)) # [7.]
 
             # dy1 = [1], dy2 = [4]
-            print(test_dygraph_grad([None, FOUR])) # [16.] 
+            print(test_dygraph_grad([None, FOUR])) # [16.]
 
             # dy1 = [4], dy2 = [1]
             print(test_dygraph_grad([FOUR, None])) # [19.]
@@ -534,20 +534,20 @@ def to_variable(value, name=None, zero_copy=None):
     """
     :api_attr: imperative
 
-    The API will create a ``Variable`` or ``ComplexVariable`` object from 
+    The API will create a ``Variable`` or ``ComplexVariable`` object from
     numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
-            or ComplexVariable object that needs to be converted, it can be 
-            multi-dimension, and the data type is one of numpy\.{float16, 
-            float32, float64, int16, int32, int64, uint8, uint16, complex64, 
+        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable
+            or ComplexVariable object that needs to be converted, it can be
+            multi-dimension, and the data type is one of numpy\.{float16,
+            float32, float64, int16, int32, int64, uint8, uint16, complex64,
             complex128}.
-        name(str, optional): The default value is None. Normally there is no 
-            need for user to set this property. For more information, please 
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name` .
-        zero_copy(bool, optional): Whether to share memory with the input numpy 
-            array. This parameter only works with CPUPlace and will be set to 
+        zero_copy(bool, optional): Whether to share memory with the input numpy
+            array. This parameter only works with CPUPlace and will be set to
             True when it is None. Default: None.
 
     Returns:
