@@ -453,6 +453,8 @@ def edit_distance(input,
             # [4]
 
     """
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
