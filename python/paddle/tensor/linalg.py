@@ -30,7 +30,8 @@ __all__ = [
     'cross',
     'cholesky',
     #       'tensordot',
-    'bmm'
+    'bmm',
+    'histc'
 ]
 
 
@@ -750,4 +751,44 @@ def bmm(x, y, name=None):
         return core.ops.bmm(x, y)
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def histc(input, bins=100, min=0, max=0):
+    """
+    Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max. 
+    If min and max are both zero, the minimum and maximum values of the data are used.
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64.
+        bins (int): number of histogram bins
+        min (int): lower end of the range (inclusive)
+        max (int): upper end of the range (inclusive)
+    Returns:
+        Variable: Tensor or LoDTensor calculated by histc layer. The data type is int64.
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+          with fluid.dygraph.guard(fluid.CPUPlace()):
+              inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
+              inputs = fluid.dygraph.to_variable(inputs_np)
+              result = paddle.histc(inputs, bins=5, min=1, max=5)
+              print(result) # [0, 3, 0, 2, 1]
+    """
+    if in_dygraph_mode():
+        return core.ops.histc(input, "bins", bins, "min", min, "max", max)
+
+    helper = LayerHelper('histc', **locals())
+    check_variable_and_dtype(input, 'X',
+                             ['int32', 'int64', 'float32', 'float64'], 'histc')
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='histc',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'bins': bins,
+               'min': min,
+               'max': max})
     return out
