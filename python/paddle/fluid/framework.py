@@ -179,6 +179,10 @@ def require_version(min_version, max_version=None):
 
 def in_dygraph_mode():
     """
+    :alias_main: paddle.in_dygraph_mode
+	:alias: paddle.in_dygraph_mode
+	:old_api: paddle.fluid.framework.in_dygraph_mode
+
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
     or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
@@ -436,6 +440,8 @@ _name_scope = NameScope()
 @signature_safe_contextmanager
 def name_scope(prefix=None):
     """
+    :api_attr: Static Graph
+
     Generate hierarchical name prefix for the operators.
 
     Note: 
@@ -5277,6 +5283,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
+    :api_attr: Static Graph
+
     Change the global main program and startup program with `"with"` statement.
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
@@ -5376,6 +5384,8 @@ def _dygraph_place_guard(place):
 
 def load_op_library(lib_filename):
     """
+    :api_attr: Static Graph
+    
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
