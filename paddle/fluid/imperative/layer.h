@@ -231,7 +231,8 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const platform::Place& place);
 
 template <typename VarType>
-void CheckNanInf(std::string op_type, const NameVarMap<VarType>& outs);
+void CheckNanInf(std::string op_type, const NameVarMap<VarType>& ins,
+                 const NameVarMap<VarType>& outs);
 
 }  // namespace imperative
 }  // namespace paddle
