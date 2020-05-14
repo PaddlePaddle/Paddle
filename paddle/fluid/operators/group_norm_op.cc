@@ -122,12 +122,20 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 1.0f,
-                         "'epsilon' should be between 0.0 and 1.0.");
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 1.0f, true,
+                            platform::errors::InvalidArgument(
+                                "'epsilon' in Op(GroupNorm) should be between"
+                                "0.0 and 1.0f, But received [%s].",
+                                epsilon));
         });
     AddAttr<int>("groups", "The number of groups that divided from channels.")
         .AddCustomChecker([](const int &groups) {
-          PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
+          PADDLE_ENFORCE_GT(
+              groups, 0,
+              platform::errors::InvalidArgument(
+                  "'groups' in Op(GroupNorm) should be greater than zero,"
+                  "But received [%s].",
+                  groups));
         });
     AddAttr<std::string>("data_layout",
                          "An optional string from: \"NHWC\", \"NCHW\". ")
