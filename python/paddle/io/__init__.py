@@ -14,25 +14,10 @@
 
 # TODO: define all functions about input & output in this directory 
 __all__ = [
-    'Dataset',
-    'BatchSampler',
-    #            'Transform',
-    'DataLoader',
-    #            'load',
-    #            'save',
-    #            'load_program_state',
-    #            'set_program_state',
-    #            'load_inference_model',
-    #            'save_inference_model',
-    #            'batch',
-    #            'shuffle',
-    #            'buffered',
-    #            'cache',
-    #            'chain',
-    #            'firstn',
-    #            'compose',
-    #            'map_readers',
-    #            'xmap_readers'
+    'Dataset', 'BatchSampler', 'Transform', 'DataLoader', 'load', 'save',
+    'load_program_state', 'set_program_state', 'load_inference_model',
+    'save_inference_model', 'batch', 'shuffle', 'buffered', 'cache', 'chain',
+    'firstn', 'compose', 'map_readers', 'xmap_readers'
 ]
 
 from ..fluid.io import DataLoader

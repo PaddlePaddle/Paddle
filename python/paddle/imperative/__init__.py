@@ -16,15 +16,23 @@
 __all__ = [
     'BackwardStrategy', 'enabled', 'grad', 'guard', 'LayerList', 'load', 'save',
     'prepare_context', 'to_variable', 'TracedLayer', 'no_grad', 'ParameterList',
-    'Sequential'
+    'Sequential', 'ProgramTranslator', 'declarative'
+]
+
+__all__ += [
+    'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
+    'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay'
 ]
 
 from paddle.fluid import core
 from ..fluid.dygraph.base import enabled, guard, no_grad, to_variable, grad
-from ..fluid.dygraph.container import LayerList, ParameterList, Sequential
 from ..fluid.dygraph.checkpoint import load_dygraph as load
 from ..fluid.dygraph.checkpoint import save_dygraph as save
-from ..fluid.dygraph.parallel import prepare_context
-from ..fluid.dygraph.jit import TracedLayer
+from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
+from ..fluid.dygraph.jit import TracedLayer, declarative
+from ..fluid.dygraph import ProgramTranslator
+
+from ..fluid.dygraph.learning_rate_scheduler import NoamDecay, PiecewiseDecay, NaturalExpDecay, ExponentialDecay, \
+        InverseTimeDecay, PolynomialDecay, CosineDecay
 
 BackwardStrategy = core.BackwardStrategy

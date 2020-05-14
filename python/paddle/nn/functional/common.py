@@ -26,17 +26,7 @@ from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 
 __all__ = [
-    'dropout',
-    #       'embedding',
-    #       'fc',
-    'label_smooth',
-    'one_hot',
-    'pad',
-    #       'pad_constant_like',
-    'pad2d',
-    'unfold',
-    #       'bilinear_tensor_product',
-    'assign',
+    'dropout', 'label_smooth', 'one_hot', 'pad', 'pad2d', 'unfold', 'assign',
     'interpolate'
 ]
 
