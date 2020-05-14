@@ -15,25 +15,30 @@
 from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
-from ..fluid.framework import in_dygraph_mode
+from ..fluid.framework import in_dygraph_mode, _varbase_creator
+
+from ..fluid.layers import transpose  #DEFINE_ALIAS
 
 __all__ = [
     'matmul',
     'dot',
-    #  'einsum',
+    #       'einsum',
     'norm',
-    #  'transpose',
+    'transpose',
     'dist',
     't',
     'cross',
-    #  'cholesky',
-    #  'tensordot',
+    'cholesky',
+    #       'tensordot',
     'bmm'
 ]
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
+	:alias_main: paddle.matmul
+	:alias: paddle.matmul,paddle.tensor.matmul,paddle.tensor.linalg.matmul
+
     Applies matrix multiplication to two tensors.
 
     Currently, the input tensors' rank can be any, but when the rank of any
@@ -111,8 +116,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     }
 
     if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
+        out = _varbase_creator(dtype=x.dtype)
+        core.ops.matmul(x, y, out, 'transpose_X', transpose_x, 'transpose_Y',
+                        transpose_y, 'alpha', float(alpha))
+        return out
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -165,6 +172,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     """
+	:alias_main: paddle.norm
+	:alias: paddle.norm,paddle.tensor.norm,paddle.tensor.linalg.norm
+
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
 
@@ -340,10 +350,36 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
 
 def dist(x, y, p=2):
     """
-    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
-    of distance. The shapes of x and y must be broadcastable.
+	:alias_main: paddle.dist
+	:alias: paddle.dist,paddle.tensor.dist,paddle.tensor.linalg.dist
 
-    Where, z = x - y,
+    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
+    details, please refer to the `numpy's broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_:
+
+    - Each input has at least one dimension.
+    - Match the two input dimensions from back to front, the dimension sizes must either be equal, one of them is 1, or one of them does not exist.
+
+    Where, z = x - y, the shapes of x and y are broadcastable, then the shape of z can be
+    obtained as follows:
+
+    1. If the number of dimensions of x and y are not equal, prepend 1 to the dimensions of the
+    tensor with fewer dimensions.
+
+    For example, The shape of x is [8, 1, 6, 1], the shape of y is [7, 1, 5], prepend 1 to the
+    dimension of y.
+
+    x (4-D Tensor):  8 x 1 x 6 x 1
+
+    y (4-D Tensor):  1 x 7 x 1 x 5
+
+    2. Determine the size of each dimension of the output z: choose the maximum value from the
+    two input dimensions.
+
+    z (4-D Tensor):  8 x 7 x 6 x 5
+
+    If the number of dimensions of the two inputs are the same, the size of the output can be
+    directly determined in step 2. When p takes different values, the norm formula is as follows:
 
     When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
 
@@ -415,6 +451,9 @@ def dist(x, y, p=2):
 
 def dot(x, y, name=None):
     """
+	:alias_main: paddle.dot
+	:alias: paddle.dot,paddle.tensor.dot,paddle.tensor.linalg.dot
+
     This operator calculates inner product for vectors.
    
     .. note::
@@ -471,6 +510,9 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
+	:alias_main: paddle.t
+	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
+
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
     the fluid.layers.transpose function which perm dimensions set 0 and 1.
@@ -542,6 +584,9 @@ def t(input, name=None):
 
 def cross(input, other, dim=None):
     """
+	:alias_main: paddle.cross
+	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
+
     Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
     Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
     If `dim` is not given, it defaults to the first dimension found with the size 3.
@@ -602,8 +647,67 @@ def cross(input, other, dim=None):
     return out
 
 
+def cholesky(x, upper=False):
+    """
+	:alias_main: paddle.cholesky
+	:alias: paddle.cholesky,paddle.tensor.cholesky,paddle.tensor.linalg.cholesky
+
+    Computes the Cholesky decomposition of one symmetric positive-definite
+    matrix or batches of symmetric positive-definite matrice. 
+    
+    If `upper` is `True`, the decomposition has the form :math:`A = U^{T}U` ,
+    and the returned matrix :math:`U` is upper-triangular. Otherwise, the
+    decomposition has the form  :math:`A = LL^{T}` , and the returned matrix
+    :math:`L` is lower-triangular.
+
+    Args:
+        x (Variable): The input tensor. Its shape should be `[*, M, M]`,
+            where * is zero or more batch dimensions, and matrices on the
+            inner-most 2 dimensions all should be symmetric positive-definite.
+            Its data type should be float32 or float64.
+        upper (bool): The flag indicating whether to return upper or lower
+            triangular matrices. Default: False.
+
+    Returns:
+        Variable: A Tensor with same shape and data type as `x`. It represents \
+            triangular matrices generated by Cholesky decomposition.
+        
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            with fluid.dygraph.guard():
+                a = np.random.rand(3, 3)
+                a_t = np.transpose(a, [1, 0])
+                x = np.matmul(a, a_t) + 1e-03
+                x = fluid.dygraph.to_variable(x)
+                out = paddle.cholesky(x, upper=False)
+                print(out.numpy())
+                # [[1.190523   0.         0.        ]
+                #  [0.9906703  0.27676893 0.        ]
+                #  [1.25450498 0.05600871 0.06400121]]
+
+    """
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
+    check_type(upper, 'upper', bool, 'cholesky')
+    helper = LayerHelper('cholesky', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='cholesky',
+        inputs={'X': [x]},
+        outputs={'Out': out},
+        attrs={'upper': upper})
+    return out
+
+
 def bmm(x, y, name=None):
     """
+	:alias_main: paddle.bmm
+	:alias: paddle.bmm,paddle.tensor.bmm,paddle.tensor.linalg.bmm
+
     Applies batched matrix multiplication to two tensors.
 
     Both of the two input tensors must be three-dementional and share the same batch size.

@@ -31,8 +31,9 @@ template <typename T>
 class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
-                   "This kernel only runs on CPU.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(context.GetPlace()), true,
+        platform::errors::Unimplemented("This kernel only runs on CPU."));
     const Tensor* logits = context.Input<Tensor>("Logits");
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* softmax = context.Output<Tensor>("Softmax");

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["RowConv"]
+__all__ = ['RowConv']
 
 from ...fluid.dygraph import layers
 from .. import functional as F
@@ -20,6 +20,9 @@ from .. import functional as F
 
 class RowConv(layers.Layer):
     """
+	:alias_main: paddle.nn.RowConv
+	:alias: paddle.nn.RowConv,paddle.nn.layer.RowConv,paddle.nn.layer.extension.RowConv
+
     **Row-convolution operator**
 
     The row convolution is called lookahead convolution.  This operator was 

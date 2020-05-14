@@ -139,6 +139,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   if (cpu_isa == isa_any) {
     return true;
   } else {
+#ifndef WITH_NV_JETSON
     int reg[4];
     cpuid(reg, 0);
     int nIds = reg[0];
@@ -164,6 +165,7 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
         return (reg[1] & avx512f_mask) != 0;
       }
     }
+#endif
     return false;
   }
 }
