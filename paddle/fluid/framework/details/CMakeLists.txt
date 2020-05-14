@@ -73,7 +73,7 @@ set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
     eager_deletion_pass
     buffer_shared_inplace_op_pass
     buffer_shared_cross_op_memory_reuse_pass
-    set_reader_device_info_pass
+    set_reader_device_info_utils
     add_reader_dependency_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 

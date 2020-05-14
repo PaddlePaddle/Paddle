@@ -195,7 +195,7 @@ def monkey_patch_math_varbase():
 
             axis = -1
             math_op = getattr(core.ops, op_type)
-            return math_op(self, other_var, 'aixs', axis)
+            return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
@@ -249,3 +249,13 @@ def monkey_patch_math_varbase():
     core.VarBase.__len__ = _len_
     core.VarBase.__index__ = _index_
     core.VarBase.astype = astype
+    """
+    When code is written like this
+    y = np.pi * var
+    ndarray.__mul__(self, var) is called, var will be traced as an array(by using __len__, __getitem__), which is not right.
+    when var.__array_ufunc__  is set to None, var.__rmul__(self,  np) will be called.
+
+    The details can be seen bellow:
+    https://docs.scipy.org/doc/numpy-1.13.0/neps/ufunc-overrides.html#behavior-in-combination-with-python-s-binary-operations
+    """
+    core.VarBase.__array_ufunc__ = None

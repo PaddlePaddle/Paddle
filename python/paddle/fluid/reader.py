@@ -21,28 +21,27 @@ import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
+from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
+from .dataloader import BatchSampler, Dataset
+from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
 from .dataset import DatasetBase, InMemoryDataset
 
 ### Dygraph DataLoader configs ###
-import atexit
 import os
 import multiprocessing
 import signal
+
 # NOTE: queue has a different name in python2 and python3
-if sys.version_info[0] == 2:
+if six.PY2:
     import Queue as queue
 else:
     import queue
+
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
-
-# NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
-# the data in the queue needs to be popped. Then the LoDTensor read by the main process
-# from the child process will automatically clear the memory-mapped file.
-multiprocess_queue_set = set()
 
 __all__ = ['PyReader', 'DataLoader']
 
@@ -75,84 +74,6 @@ def _convert_places(places):
     return ret
 
 
-def _clear_multiprocess_queue_set():
-    global multiprocess_queue_set
-    for data_queue in multiprocess_queue_set:
-        while True:
-            try:
-                data_queue.get_nowait()
-            except queue.Empty:
-                break
-
-
-# NOTE: main process clear function at exit
-def _cleanup():
-    # NOTE: inter-process Queue shared memory objects clear function
-    _clear_multiprocess_queue_set()
-    # NOTE: main process memory map files clear funciton
-    core._cleanup_mmap_fds()
-
-
-# NOTE used for register a function to be executed at interpreter exit.
-class CleanupFuncRegistrar():
-    # Record the cleanup functions that have been executed
-    _executed_func_set = set()
-    # Record the cleanup functions that have been registered
-    _registered_func_set = set()
-
-    @classmethod
-    def register(cls, function, signals=[signal.SIGTERM]):
-        def _func_exectuor():
-            if function not in cls._executed_func_set:
-                try:
-                    function()
-                finally:
-                    cls._executed_func_set.add(function)
-
-        def _func_register(function):
-            if not callable(function):
-                raise TypeError("%s is not callable object." % (function))
-            # check function object whether hash-able
-            set([function])
-            if function not in cls._registered_func_set:
-                atexit.register(_func_exectuor)
-                cls._registered_func_set.add(function)
-
-        def _signal_handler(signum=None, frame=None):
-            _func_exectuor()
-            if signum is not None:
-                if signum == signal.SIGINT:
-                    raise KeyboardInterrupt
-                sys.exit(signum)
-
-        def _signal_register(signals):
-            signals = set(signals)
-            for sig in signals:
-                orig_handler = signal.signal(sig, _signal_handler)
-                if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                    if (sig == signal.SIGINT and
-                            orig_handler is signal.default_int_handler):
-                        continue
-                    if orig_handler not in cls._registered_func_set:
-                        atexit.register(orig_handler)
-                        cls._registered_func_set.add(orig_handler)
-
-        # deal with signals
-        _signal_register(signals)
-        # deal with function
-        _func_register(function)
-
-
-# NOTE: [ mmap files clear ] When the main process exits unexpectedly, the remaining
-# shared memory objects in the inter-process Queue and the main process (mostly in the
-# BlockingQueue) may not be completely released, resulting in the corresponding
-# memory-mapped file remaining on the disk (/dev/shm), so register this function
-# to clean up shared memory objects in these two queues before the python interpreter exits.
-# NOTE: Currently multi-process DataLoader only supports Linux platform
-if not (sys.platform == 'darwin' or sys.platform == 'win32'):
-    CleanupFuncRegistrar.register(_cleanup)
-
-
 class DataLoaderBase(object):
     def __init__(self):
         self._places = None
@@ -177,6 +98,264 @@ class DataLoaderBase(object):
 
 
 class DataLoader(object):
+    """
+    DataLoader prodives an iterator which iterates given dataset
+    once by the batch_sampler.
+
+    DataLoader supports single-process and multi-prcess data loading,
+    multi-process workers will be used to load data asynchronously if
+    :attr:`num_workers` is set as a positive number.
+
+    DataLoader only supports map-style dataset(can get a sample from
+    dataset with a given index) currently, for a map-style dataset,
+    please see :code:`paddle.io.Dataset`.
+
+    batch_sampler please see :code:`paddle.io.BatchSampler`
+
+    Args:  
+        dataset(Dataset): the dataset to load data from, should be an
+            instance of subclass of :code:`paddle.io.Dataset`.
+        feed_list (list(Variable)|tuple(Variable)): feed variable list.
+            The variables should be created by :code:`fluid.data()`.
+            :attr:`feed_list` must be set if :attr:`return_list` is
+            False. Default None.
+        places(list(Place)|tuple(Place)): a list of Place, to put data
+            onto, :attr:`places` must be set in both static graph and 
+            dynamic graph mode, in dynamic graph mode, place number must
+            be 1. Default None.
+        return_list (bool): whether the return value on each device is 
+            presented as a list. If :attr:`return_list=False`, the return
+            value on each device would be a dict of str -> LoDTensor, where
+            the key of the dict is the name of each fed variables. If 
+            :attr:`return_list=True`, the return value on each device would
+            be a list(LoDTensor). :attr:`return_list` can only be True
+            in dynamic graph mode. Default False.
+        batch_sampler(BatchSampler): an instance of `paddle.io.BatchSampler`
+            to generate batch indices to draw samples from :attr:`dataset`
+            and combine a batch. Default None.
+        batch_size(int): sample number in a mini-batch, a substitution
+            parameter for :attr:`batch_sampler`, if :attr:`batch_sampler`
+            is not set, a default `paddle.io.BatchSampler` will be used
+            and initialize by :attr:`batch_size`, :attr:`shuffle` and
+            :attr:`drop_last`. Default 1.
+        shuffle(bool): whther to shuffle indices order before genrate
+            batch indices, a substitution parameter for :attr:`batch_sampler`
+            see :attr:`batch_size`. Default False.
+        drop_last(bool): whether drop the last incomplete batch dataset size
+            is not divisible by the batch size, a substitution parameter
+            for :attr:`batch_sampler`, see :attr:`batch_size`. Default False
+        collate_fn(callable): function to generate mini-batch data by merging
+            the sample list, None for only stack each fields of sample in axis
+            0(same as :attr::`np.stack(..., axis=0)`). Default None
+        num_workers(int): the number of subprocess to load data, 0 for no
+            subprocess used and loading data in main process. Default 0
+        use_buffer_reader (bool): whether to use bufferred reader. 
+            If use_buffer_reader=True, the DataLoader would prefetch next 
+            batch data asynchronously, so it would speed up data feeding 
+            and occupies a little more CPU or GPU memory, i.e., the memory
+            of one batch input data. Default True.
+        use_shared_memory (bool): whether to use shared memory to speed up
+            putting data into inter-process queue, set :attr:`use_shared_memory`
+            as True only when the shared memory space on your machine(e.g.
+            space of '/dev/shm' on Linux operating sysytem) is large enough.
+            Shared memory will only be enabled in multi-process mode(num_workers
+            > 0). Default True.
+        timeout(int): the timeout value for getting data form output queue
+            of subprocesses. Default 0.
+        worker_init_fn(callable): init function which will be called with
+            worker id on each subproces starting if not set as None. Default
+            None.
+
+    Returns:
+        DataLoader: an iterable object for data iterating
+
+    Examples:
+        
+        .. code-block:: python
+
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.io import Dataset, BatchSampler, DataLoader
+
+            BATCH_NUM = 20
+            BATCH_SIZE = 16
+            EPOCH_NUM = 4
+
+            IMAGE_SIZE = 784
+            CLASS_NUM = 10
+
+            USE_GPU = False # whether use GPU to run model
+
+            # define a random dataset
+            class RandomDataset(Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+
+                def __getitem__(self, idx):
+                    image = np.random.random([IMAGE_SIZE]).astype('float32')
+                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                    return image, label
+
+                def __len__(self):
+                    return self.num_samples
+
+            # get places
+            places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
+
+            # -------------------- static graph ---------------------
+
+            def simple_net(image, label):
+                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
+                cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
+                loss = fluid.layers.reduce_mean(cross_entropy)
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+                return loss
+
+            image = fluid.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+
+            loss = simple_net(image, label)
+
+            exe = fluid.Executor(places[0])
+            exe.run(fluid.default_startup_program())
+
+            prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
+
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+
+            loader = DataLoader(dataset,
+                                feed_list=[image, label],
+                                places=places,
+                                batch_size=BATCH_SIZE, 
+                                shuffle=True,
+                                drop_last=True,
+                                num_workers=2)
+
+            for e in range(EPOCH_NUM):
+                for i, data in enumerate(loader()):
+                    l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
+                    print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
+
+            # -------------------------------------------------------
+                
+            # --------------------- dygraph mode --------------------
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
+                    self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
+
+                def forward(self, image, label=None):
+                    return self.fc(image)
+
+            with fluid.dygraph.guard(places[0]):
+                simple_net = SimpleNet()
+                opt = fluid.optimizer.SGD(learning_rate=1e-3,
+                                          parameter_list=simple_net.parameters())
+
+                loader = DataLoader(dataset,
+                                    places=places[0],
+                                    batch_size=BATCH_SIZE,
+                                    shuffle=True,
+                                    drop_last=True,
+                                    num_workers=2)
+
+                for e in range(EPOCH_NUM):
+                    for i, (image, label) in enumerate(loader()):
+                        out = simple_net(image)
+                        loss = fluid.layers.cross_entropy(out, label)
+                        avg_loss = fluid.layers.reduce_mean(loss)
+                        avg_loss.backward()
+                        opt.minimize(avg_loss)
+                        simple_net.clear_gradients()
+                        print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
+
+            # -------------------------------------------------------
+
+    """
+
+    def __init__(self,
+                 dataset,
+                 feed_list=None,
+                 places=None,
+                 return_list=False,
+                 batch_sampler=None,
+                 batch_size=1,
+                 shuffle=False,
+                 drop_last=False,
+                 collate_fn=None,
+                 num_workers=0,
+                 use_buffer_reader=True,
+                 use_shared_memory=True,
+                 timeout=0,
+                 worker_init_fn=None):
+        self.return_list = return_list
+        self.collate_fn = collate_fn
+        self.use_buffer_reader = use_buffer_reader
+        self.worker_init_fn = worker_init_fn
+
+        assert isinstance(dataset, Dataset), \
+            "dataset should be subclass instance of paddle.io.Dataset"
+        self.dataset = dataset
+
+        if not return_list and not in_dygraph_mode():
+            assert feed_list is not None, \
+                    "feed_list should be set when return_list=False"
+        self.feed_list = feed_list
+
+        assert places is not None, "places cannot be None"
+        self.places = _convert_places(places)
+        if in_dygraph_mode():
+            assert len(self.places) == 1, \
+                    "Number of places must be 1 in dygraph mode"
+
+        assert num_workers >= 0, "num_workers should be a non-negative value"
+        if num_workers > 0 and (sys.platform == 'darwin' or
+                                sys.platform == 'win32'):
+            logging.warning(
+                "multi-process mode not support MacOs and Windows currently." \
+                " use signle-process with num_workers = 0 instead")
+            num_workers = 0
+        self.num_workers = num_workers
+
+        self.use_shared_memory = use_shared_memory
+        if use_shared_memory and num_workers == 0:
+            self.use_shared_memory = False
+
+        assert timeout >= 0, "timeout should be a non-negative value"
+        self.timeout = timeout
+
+        if batch_sampler is not None:
+            assert isinstance(batch_sampler, BatchSampler), \
+                "batch_sampler should be None or subclass instance " \
+                "of paddle.io.BatchSampler"
+            assert batch_size == 1 and not shuffle and not drop_last, \
+                "batch_size/shuffle/drop_last should not be set when " \
+                "batch_sampler is given"
+            self.batch_sampler = batch_sampler
+        else:
+            assert batch_size is not None and batch_size > 0, \
+                "batch_size should be a positive value when " \
+                "batch_sampler is not given"
+            self.batch_sampler = BatchSampler(
+                dataset=dataset,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last)
+
+    def __len__(self):
+        return len(self.batch_sampler)
+
+    def __iter__(self):
+        if self.num_workers == 0:
+            return _DataLoaderIterSingleProcess(self)
+        else:
+            return _DataLoaderIterMultiProcess(self)
+
+    def __call__(self):
+        return self.__iter__()
+
     @staticmethod
     def from_generator(feed_list=None,
                        capacity=None,
@@ -553,22 +732,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         if process is not None:
             process.join()
             # erase process id
-            core._erase_process_pid(id(self))
-
-    def _set_child_signal_handler(self):
-        core._set_process_pid(id(self), self._process.pid)
-        current_handler = signal.getsignal(signal.SIGCHLD)
-        if not callable(current_handler):
-            current_handler = None
-
-        def __handler__(signum, frame):
-            # NOTE: Here the signum is SIGDHLD, when the child process exits, this handler
-            # will be called whenever the child process exits normally or abnormally.
-            core._throw_error_if_process_failed()
-            if current_handler is not None:
-                current_handler(signum, frame)
-
-        signal.signal(signal.SIGCHLD, __handler__)
+            core._erase_process_pids(id(self))
 
     def _init_iterable(self):
         self._wait_thread_ends()
@@ -605,7 +769,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # with SIGSEGV and SIGBUS of child process; 2. if the main process end before child
             # process, it shuts the all its daemonic children down with a SIGTERM (instead of 
             # joining them without a timeout), so here nedd to deal with SIGTERM.
-            self._set_child_signal_handler()
+            core._set_process_pids(id(self), [self._process.pid])
+            _set_SIGCHLD_handler()
 
             # Set reader_thread
             self._thread_done_event = threading.Event()
@@ -666,16 +831,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # set signal handler
             core._set_process_signal_handler()
 
-            # child process clear function at exit
-            def _cleanup():
-                # clear memory map files in child process
-                core._cleanup_mmap_fds()
-
             # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
             # some shared memory objects may have been applied for but have not yet
             # been put into the inter-process Queue. This part of the object needs
             # to be cleaned up when the process ends.
-            CleanupFuncRegistrar.register(_cleanup)
+            CleanupFuncRegistrar.register(_cleanup_mmap)
 
             for batch in self._batch_reader():
                 tensor_list = core._convert_to_tensor_list(batch)

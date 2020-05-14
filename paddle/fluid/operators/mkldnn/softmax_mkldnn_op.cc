@@ -45,7 +45,8 @@ class SoftmaxMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
                                  mkldnn::softmax_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
+            // Softmax may be inplace then uniq_name is no longer unique
+            platform::CreateKey(dims, axis, uniq_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
@@ -60,7 +61,7 @@ class SoftmaxMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::softmax_forward,
                                  mkldnn::softmax_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
+            platform::CreateKey(dims, axis, uniq_name)) {
     auto data_softmax_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     auto diff_softmax_md =
@@ -95,13 +96,13 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     auto softmax_p = handler.AcquireForwardPrimitive();
     // For Inplace src and and dst are the same memory object
-    auto softmax_dst_memory_p = input->Holder() == output->Holder()
+    auto softmax_dst_memory_p = input->IsSharedBufferWith(*output)
                                     ? softmax_src_memory_p
                                     : handler.AcquireDstMemory(output);
 
     mkldnn::stream astream(dev_ctx.GetEngine());
-    softmax_p->execute(astream, {{MKLDNN_ARG_SRC, *softmax_src_memory_p},
-                                 {MKLDNN_ARG_DST, *softmax_dst_memory_p}});
+    softmax_p->execute(astream, {{DNNL_ARG_SRC, *softmax_src_memory_p},
+                                 {DNNL_ARG_DST, *softmax_dst_memory_p}});
     astream.wait();
 
     const bool is_test = ctx.Attr<bool>("is_test");

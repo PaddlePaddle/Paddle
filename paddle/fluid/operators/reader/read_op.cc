@@ -54,7 +54,7 @@ class ReadInferShape : public framework::InferShapeBase {
               "The reader's dim number doesn't match the output number."));
       ctx->SetOutputsDim("Out", reader_dims);
       auto in_desc =
-          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Reader")[0]);
+          BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Reader")[0]);
       auto in_lod_levels = in_desc->GetLoDLevels();
       auto out_var_ptrs = ctx->GetOutputVarPtrs("Out");
       PADDLE_ENFORCE_EQ(
@@ -63,25 +63,25 @@ class ReadInferShape : public framework::InferShapeBase {
               "LoDLevels of Input(Reader) must be the same as the "
               "number of Outputs(Out)."));
       for (size_t i = 0; i < out_var_ptrs.size(); ++i) {
-        auto* out_desc = boost::get<framework::VarDesc*>(out_var_ptrs[i]);
+        auto* out_desc = BOOST_GET(framework::VarDesc*, out_var_ptrs[i]);
         out_desc->SetLoDLevel(in_lod_levels[i]);
       }
     }
   }
 };
 
-class ReadInferVarType : public framework::VarTypeInference {
+class ReadInferVarType : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    bool infer_out = boost::get<bool>(ctx->GetAttr("infer_out"));
+    bool infer_out = BOOST_GET_CONST(bool, ctx->GetAttr("infer_out"));
     if (infer_out) {
-      std::string reader_name = ctx->Input("Reader")[0];
-      std::vector<std::string> out_names = ctx->Output("Out");
-      auto dtypes = ctx->GetDataTypes(reader_name);
+      std::string reader_name = Input(ctx, "Reader")[0];
+      auto& out_names = Output(ctx, "Out");
+      auto dtypes = GetDataTypes(ctx, reader_name);
       PADDLE_ENFORCE_EQ(dtypes.size(), out_names.size());
       for (size_t i = 0; i < dtypes.size(); ++i) {
-        ctx->SetType(out_names[i], framework::proto::VarType::LOD_TENSOR);
-        ctx->SetDataType(out_names[i], dtypes[i]);
+        SetType(ctx, out_names[i], framework::proto::VarType::LOD_TENSOR);
+        SetDataType(ctx, out_names[i], dtypes[i]);
       }
     }
   }

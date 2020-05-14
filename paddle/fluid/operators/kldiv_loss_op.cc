@@ -23,15 +23,9 @@ class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of KLDivLossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Target"), true,
-                      platform::errors::NotFound(
-                          "Input(Target) of KLDivLossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Loss"), true,
-                      platform::errors::NotFound(
-                          "Output(Loss) of KLDivLossOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "KLDivLoss");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_target = ctx->GetInputDim("Target");
@@ -135,15 +129,10 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Target"), true,
-        platform::errors::NotFound("Input(Target) should not be null"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Loss")), true,
-        platform::errors::NotFound("Input(Loss@GRAD) should not be null"));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   "Loss@GRAD", "KLDivLossGrad");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);

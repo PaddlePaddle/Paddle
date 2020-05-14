@@ -46,8 +46,12 @@ struct UniqueOpFunctor {
     std::unordered_map<InT, int64_t> dict;
     std::vector<InT> uniq;
 
-    PADDLE_ENFORCE(in_->numel() < pow(2, 31),
-                   "numel of Unique op input should less than INT_MAX");
+    PADDLE_ENFORCE_LT(
+        in_->numel(), pow(2, 31),
+        platform::errors::InvalidArgument(
+            "The num of Input(X) elements should be less then INT_MAX, "
+            "but received num is %d.",
+            in_->numel()));
 
     for (auto i = 0; i < in_->numel(); i++) {
       auto it = dict.find(in_data[i]);
@@ -71,13 +75,15 @@ struct UniqueOpFunctor {
       const auto& index_type = index_->type();
       bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                               index_type == framework::proto::VarType::INT64;
-      PADDLE_ENFORCE(
-          index_type_match,
-          "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
-          paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-          paddle::framework::DataTypeToString(
-              framework::proto::VarType::INT64));
+      PADDLE_ENFORCE_EQ(index_type_match, true,
+                        platform::errors::InvalidArgument(
+                            "Index holds the wrong type, it holds %s, "
+                            "but desires to be %s or %s",
+                            paddle::framework::DataTypeToString(index_type),
+                            paddle::framework::DataTypeToString(
+                                framework::proto::VarType::INT32),
+                            paddle::framework::DataTypeToString(
+                                framework::proto::VarType::INT64)));
 
       if (index_type == framework::proto::VarType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {

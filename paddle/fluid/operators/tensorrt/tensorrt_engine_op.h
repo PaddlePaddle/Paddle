@@ -178,7 +178,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         calib_res->engine_.reset(new TensorRTEngine(
             max_batch_size_, workspace_size_, precision_mode_,
             calib_res->calib_.get(),
-            boost::get<platform::CUDAPlace>(dev_place).device));
+            BOOST_GET_CONST(platform::CUDAPlace, dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
@@ -232,8 +232,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto t_shape = framework::vectorize<int64_t>(t.dims());
       runtime_batch = t_shape[0];
       const int bind_index = engine->engine()->getBindingIndex(x.c_str());
-      PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
+      PADDLE_ENFORCE_LT(
+          bind_index, num_bindings,
+          platform::errors::InvalidArgument(
+              "Wrong TRT engine input binding index. Expected The "
+              "binding index of TRT engine input to be less than "
+              "the number of inputs and outputs. Received binding "
+              "index=%d >= total inputs and outputs=%d",
+              bind_index, num_bindings));
       if (!engine->with_dynamic_shape()) {
         // check if the input shapes are consistent with model.
         if (HasAttr(x + "_shape")) {
@@ -281,7 +287,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #if IS_TRT_VERSION_GE(6000)
         auto *trt_context = engine->context();
         auto dims = trt_context->getBindingDimensions(bind_index);
-        for (int i = 0; i < dims.nbDims; i++) ddim.push_back(dims.d[i]);
+        int nb_dims = dims.nbDims;
+        for (; nb_dims > 0; nb_dims--) {
+          if (dims.d[nb_dims - 1] != 1) break;
+        }
+        for (int i = 0; i < nb_dims; i++) ddim.push_back(dims.d[i]);
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
@@ -292,29 +302,34 @@ class TensorRTEngineOp : public framework::OperatorBase {
       PADDLE_ENFORCE(bind_index < num_bindings,
                      "The bind index should be less than num_bindings");
       buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
-          boost::get<platform::CUDAPlace>(dev_place)));
+          BOOST_GET_CONST(platform::CUDAPlace, dev_place)));
 
       output_index += 1;
     }
 
-    PADDLE_ENFORCE_LE(
-        runtime_batch, max_batch_size_,
-        platform::errors::InvalidArgument(
-            "The runtime batch size (%d) is greater than the max batch "
-            "size(%d).\n"
-            "There are two possible causes for this problem: \n"
-            "1. Check whether the runtime batch is larger than the max_batch "
-            "set by EnableTensorrtEngine()\n"
-            "2. Check whether the model you are running has multiple trt "
-            "subgraphs: \n "
-            "\tIf there are multiple trt subgraphs, you need to ensure that "
-            "the first dimension of the input tensor of these subgraphs is "
-            "consistent.\n"
-            "\tIf there are inconsistent subgraphs, you need to filter them by "
-            "setting min_subgraph_size using EnableTensorrtEngine interface.\n"
-            "\tThe min_subgraph_size shouble to be greater than the number of "
-            "nodes in the inconsistent subgraph.\n",
-            runtime_batch, max_batch_size_));
+    if (!engine->with_dynamic_shape()) {
+      PADDLE_ENFORCE_LE(
+          runtime_batch, max_batch_size_,
+          platform::errors::InvalidArgument(
+              "The runtime batch size (%d) is greater than the max batch "
+              "size(%d).\n"
+              "There are two possible causes for this problem: \n"
+              "1. Check whether the runtime batch is larger than the max_batch "
+              "set by EnableTensorrtEngine()\n"
+              "2. Check whether the model you are running has multiple trt "
+              "subgraphs: \n "
+              "\tIf there are multiple trt subgraphs, you need to ensure that "
+              "the first dimension of the input tensor of these subgraphs is "
+              "consistent.\n"
+              "\tIf there are inconsistent subgraphs, you need to filter them "
+              "by "
+              "setting min_subgraph_size using EnableTensorrtEngine "
+              "interface.\n"
+              "\tThe min_subgraph_size shouble to be greater than the number "
+              "of "
+              "nodes in the inconsistent subgraph.\n",
+              runtime_batch, max_batch_size_));
+    }
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
   }

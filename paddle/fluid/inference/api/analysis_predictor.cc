@@ -37,9 +37,14 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
@@ -104,7 +109,7 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
-    auto dst_gpu_place = boost::get<platform::CUDAPlace>(place);
+    auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
     memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
@@ -209,9 +214,18 @@ bool AnalysisPredictor::PrepareProgram(
   return true;
 }
 bool AnalysisPredictor::CreateExecutor() {
-  if (config_.use_gpu_) {
+  if (config_.use_gpu()) {
     status_use_gpu_ = true;
-    place_ = paddle::platform::CUDAPlace(config_.device_id_);
+    place_ = paddle::platform::CUDAPlace(config_.gpu_device_id());
+#ifdef PADDLE_WITH_CUDA
+    if (config_.thread_local_stream_enabled()) {
+      auto *ctx = static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
+      VLOG(3) << "The prediction process will be completed using a separate "
+                 "normal-priority stream on each thread.";
+      ctx->ResetThreadContext(platform::stream::Priority::kNormal);
+    }
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -255,6 +269,14 @@ void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
+    if (VLOG_IS_ON(2)) {
+      auto shape_blob_size = static_cast<platform::MKLDNNDeviceContext *>(
+                                 (&platform::DeviceContextPool::Instance())
+                                     ->Get(platform::CPUPlace()))
+                                 ->GetShapeBlobSize();
+      CHECK_LE(shape_blob_size,
+               static_cast<size_t>(config_.mkldnn_cache_capacity_));
+    }
     paddle::platform::set_cur_mkldnn_session_id(
         platform::kMKLDNNSessionID_Default);
     platform::set_cur_input_shape_cache_capacity(0);
@@ -309,6 +331,12 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
+#if defined(PADDLE_WITH_MKLML)
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  platform::dynload::MKL_Free_Buffers();
+#endif
   return true;
 }
 
@@ -338,7 +366,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       }
       idx = feed_names_[name];
     } else {
-      idx = boost::get<int>(feeds_[i]->GetAttr("col"));
+      idx = BOOST_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }
     framework::SetFeedVariable(scope, *input, "feed", idx);
   }
@@ -370,10 +398,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetches_.size());
   for (size_t i = 0; i < fetches_.size(); ++i) {
-    int idx = boost::get<int>(fetches_[i]->GetAttr("col"));
+    int idx = BOOST_GET_CONST(int, fetches_[i]->GetAttr("col"));
     PADDLE_ENFORCE((size_t)idx == i);
-    framework::LoDTensor &fetch =
+    framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+    auto &fetch = BOOST_GET(framework::LoDTensor, fetch_var);
     auto type = fetch.type();
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -491,30 +520,69 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE(config.is_valid(),
                  "Note: Each config can only be used for one predictor.");
+
   if (config.use_gpu()) {
-    // 1. GPU memory
-    PADDLE_ENFORCE_GE(config.memory_pool_init_size_mb(), 0.f);
-    PADDLE_ENFORCE_GE(config.gpu_device_id(), 0, "Invalid device id %d",
-                      config.gpu_device_id());
-    std::vector<std::string> flags;
+    static std::once_flag gflags_initialized;
+    static bool process_level_allocator_enabled;
 
-    float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
-    if (fraction_of_gpu_memory > 0.95f) {
-      LOG(ERROR)
-          << "Allocate too much memory for the GPU memory pool, assigned "
-          << config.memory_pool_init_size_mb() << " MB";
-      LOG(ERROR)
-          << "Try to shink the value by setting AnalysisConfig::EnableGpu(...)";
-    }
+    std::call_once(gflags_initialized, [&]() {
+      std::vector<std::string> gflags;
+      PADDLE_ENFORCE_GE(
+          config.memory_pool_init_size_mb(), 0.f,
+          platform::errors::InvalidArgument(
+              "The size of memory pool should be greater than 0."));
+      PADDLE_ENFORCE_GE(
+          config.gpu_device_id(), 0,
+          platform::errors::InvalidArgument(
+              "Invalid device id (%d). The device id should be greater than 0.",
+              config.gpu_device_id()));
+      gflags.push_back("dummy");
 
-    if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummy");
-      std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                         std::to_string(fraction_of_gpu_memory);
-      flags.push_back(flag);
-      flags.push_back("--cudnn_deterministic=True");
-      VLOG(3) << "set flag: " << flag;
-      framework::InitGflags(flags);
+      float fraction_of_gpu_memory = config.fraction_of_gpu_memory_for_pool();
+      if (fraction_of_gpu_memory > 0.95f) {
+        LOG(ERROR)
+            << "Allocate too much memory for the GPU memory pool, assigned "
+            << config.memory_pool_init_size_mb() << " MB";
+        LOG(ERROR) << "Try to shink the value by setting "
+                      "AnalysisConfig::EnableGpu(...)";
+      }
+
+      if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
+        std::string flag = "--fraction_of_gpu_memory_to_use=" +
+                           std::to_string(fraction_of_gpu_memory);
+        VLOG(3) << "set flag: " << flag;
+        gflags.push_back(flag);
+        gflags.push_back("--cudnn_deterministic=True");
+      }
+
+      if (config.thread_local_stream_enabled()) {
+        gflags.push_back("--allocator_strategy=thread_local");
+        process_level_allocator_enabled = false;
+      } else {
+        gflags.push_back("--allocator_strategy=naive_best_fit");
+        process_level_allocator_enabled = true;
+      }
+
+      if (framework::InitGflags(gflags)) {
+        VLOG(3) << "The following gpu analysis configurations only take effect "
+                   "for the first predictor: ";
+        for (size_t i = 1; i < gflags.size(); ++i) {
+          VLOG(3) << gflags[i];
+        }
+      } else {
+        LOG(WARNING) << "The one-time configuration of analysis predictor "
+                        "failed, which may be due to native predictor called "
+                        "first and its configurations taken effect.";
+      }
+    });
+
+    if (config.thread_local_stream_enabled() &&
+        process_level_allocator_enabled) {
+      LOG(FATAL) << " When binding threads and streams, the use of "
+                    "process-level allocators will result in undefined result "
+                    "errors due to memory asynchronous operations."
+                    "The thread and stream binding configuration of all "
+                    "predictors should be the same in a single process.";
     }
   }
 
@@ -551,7 +619,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
   CreateFeedFetchVar(sub_scope_);
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
@@ -559,7 +627,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
       idx2feeds_[idx] = op->Output("Out")[0];
     } else if (op->Type() == "fetch") {
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       if (fetches_.size() <= static_cast<size_t>(idx)) {
         fetches_.resize(idx + 1);
       }
@@ -572,9 +640,9 @@ void AnalysisPredictor::PrepareFeedFetch() {
 void AnalysisPredictor::CreateFeedFetchVar(framework::Scope *scope) {
   PADDLE_ENFORCE_NOT_NULL(scope);
   auto *var = scope->Var("feed");
-  var->GetMutable<framework::FeedFetchList>();
+  var->GetMutable<framework::FeedList>();
   var = scope->Var("fetch");
-  var->GetMutable<framework::FeedFetchList>();
+  var->GetMutable<framework::FetchList>();
 }
 
 std::vector<std::string> AnalysisPredictor::GetInputNames() {
@@ -615,7 +683,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
-    auto gpu_place = boost::get<platform::CUDAPlace>(place_);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
 
@@ -632,7 +700,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
   if (platform::is_cpu_place(place_)) {
     res->SetPlace(PaddlePlace::kCPU);
   } else {
-    auto gpu_place = boost::get<platform::CUDAPlace>(place_);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place_);
     res->SetPlace(PaddlePlace::kGPU, gpu_place.GetDeviceId());
   }
   return res;
@@ -648,6 +716,12 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#if defined(PADDLE_WITH_MKLML)
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  platform::dynload::MKL_Free_Buffers();
+#endif
   return true;
 }
 
@@ -760,7 +834,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
   for (auto &op_desc : block.AllOps()) {
     if (op_desc->Type() == "tensorrt_engine") {
       std::string engine_name =
-          boost::get<std::string>(op_desc->GetAttr("engine_key"));
+          BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
         LOG(ERROR) << "You should run the predictor(with trt) on the real data "
                       "to generate calibration info";
@@ -942,6 +1016,8 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(hard_sigmoid);
+USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
@@ -954,4 +1030,6 @@ USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
 USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
 USE_TRT_CONVERTER(skip_layernorm);
+USE_TRT_CONVERTER(slice);
+USE_TRT_CONVERTER(scale);
 #endif

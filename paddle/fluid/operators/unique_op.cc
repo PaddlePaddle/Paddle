@@ -22,15 +22,16 @@ class UniqueOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UniqueOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UniqueOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Index"),
-                   "Output(Index) of UniqueOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "unique");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "unique");
+    OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index", "unique");
 
     auto in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(in_dims.size() == 1, "Input(X) should be a vector.");
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 1,
+        platform::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
+                                          "But now the dims of Input(X) is %d.",
+                                          in_dims.size()));
 
     ctx->SetOutputDim("Out", {-1});
     ctx->SetOutputDim("Index", in_dims);

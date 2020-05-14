@@ -13,11 +13,17 @@
 # limitations under the License.
 
 # TODO: define learning rate decay  
-# __all__ = ['cosine_decay',
-#            'exponential_decay',
-#            'inverse_time_decay',
-#            'natural_exp_decay',
-#            'noam_decay',
-#            'piecewise_decay',
-#            'polynomial_decay',
-#            'linear_lr_warmup']
+from ...fluid.layers import cosine_decay  #DEFINE_ALIAS
+from ...fluid.layers import exponential_decay  #DEFINE_ALIAS
+from ...fluid.layers import inverse_time_decay  #DEFINE_ALIAS
+from ...fluid.layers import natural_exp_decay  #DEFINE_ALIAS
+from ...fluid.layers import noam_decay  #DEFINE_ALIAS
+from ...fluid.layers import piecewise_decay  #DEFINE_ALIAS
+from ...fluid.layers import polynomial_decay  #DEFINE_ALIAS
+from ...fluid.layers import linear_lr_warmup  #DEFINE_ALIAS
+
+__all__ = [
+    'cosine_decay', 'exponential_decay', 'inverse_time_decay',
+    'natural_exp_decay', 'noam_decay', 'piecewise_decay', 'polynomial_decay',
+    'linear_lr_warmup'
+]

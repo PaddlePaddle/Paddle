@@ -19,9 +19,9 @@ import textwrap
 import gast
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import get_name_ids
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfConditionVisitor
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IsControlFlowVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+from paddle.fluid.dygraph.dygraph_to_static.utils import IsControlFlowVisitor
 
 
 class TestGetNameIds(unittest.TestCase):
@@ -155,7 +155,18 @@ class TestIsControlFlowIf(unittest.TestCase):
         self.check_false_case("fluid.layers.sum(x).numpy() != None")
 
     def test_is_None4(self):
-        self.check_false_case("fluid.layers.sum(x) and 2>1")
+        node = gast.parse("fluid.layers.sum(x) and 2>1")
+        node_test = node.body[0].value
+
+        if_visitor = IfConditionVisitor(node_test)
+        self.assertTrue(if_visitor.is_control_flow())
+        # Transformation result:
+        # bool_tensor_0 = fluid.layers.cast(x=fluid.layers.sum(x), dtype='bool')
+        # bool_tensor_1 = fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool(2 > 1))
+        # logic_and_0 = fluid.layers.logical_and(x=bool_tensor_0, y=bool_tensor_1)
+
+        new_node, assign_nodes = if_visitor.transform()
+        self.assertTrue(len(assign_nodes) == 3)
 
     def test_if(self):
         node = gast.parse("x.numpy()[1] > 1")
@@ -253,34 +264,38 @@ class TestIsControlFlowIf(unittest.TestCase):
         self.assertTrue(len(assign_nodes) == 0)
 
     def test_paddle_api_with_andOr(self):
-        code = """
+        code_or = """
             def foo(x):
                 if 2 > 1 and fluid.layers.shape(x)[0] > 16 or x is not None :
                     x = x + 1
                 return x
         """
-        code = """
+
+        code_and = """
             def foo(x):
                 if 2 > 1 and fluid.layers.shape(x)[0] > 16 and x is not None :
                     x = x + 1
                 return x
         """
-        code = textwrap.dedent(code)
-        node = gast.parse(code)
-        static_analysis_visitor = StaticAnalysisVisitor(node)
-        test_node = node.body[0].body[0].test
-        if_visitor = IfConditionVisitor(test_node, static_analysis_visitor)
-        self.assertTrue(if_visitor.is_control_flow())
+        for code in [code_or, code_and]:
+            code = textwrap.dedent(code)
+            node = gast.parse(code)
+            static_analysis_visitor = StaticAnalysisVisitor(node)
+            test_node = node.body[0].body[0].test
+            if_visitor = IfConditionVisitor(test_node, static_analysis_visitor)
+            self.assertTrue(if_visitor.is_control_flow())
 
-        new_node, assign_nodes = if_visitor.transform()
-        # Tranformation result:
-        # bool_tensor_0 = fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool(2 > 1))
-        # bool_tensor_1 = fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool(x is not None))
-        # logic_and_0 = fluid.layers.logical_and(x=bool_tensor_0, y=fluid.layers.shape(x)[0] > 16)
-        # logic_and_1 = fluid.layers.logical_and(x=logic_and_0, y=bool_tensor_1)
+            new_node, assign_nodes = if_visitor.transform()
+            # Transformation result:
+            # bool_tensor_0 = fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool(2 > 1))
+            # bool_tensor_1 = fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool(x is not None))
+            # logic_and_0 = fluid.layers.logical_and(x=bool_tensor_0, y=fluid.layers.shape(x)[0] > 16)
 
-        self.assertTrue(isinstance(new_node, gast.Name))
-        self.assertTrue(len(assign_nodes) == 4)
+            # logic_and_1 = fluid.layers.logical_and(x=logic_and_0, y=bool_tensor_1)  for code_and
+            # logic_or_0= fluid.layers.logical_or(x=logic_and_0, y=bool_tensor_1)  for code_and
+
+            self.assertTrue(isinstance(new_node, gast.Name))
+            self.assertTrue(len(assign_nodes) == 4)
 
     def test_with_node_var_type_map(self):
         node = gast.parse("x > 1")

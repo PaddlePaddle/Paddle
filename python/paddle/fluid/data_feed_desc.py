@@ -20,6 +20,8 @@ __all__ = ['DataFeedDesc']
 
 class DataFeedDesc(object):
     """
+    :api_attr: Static Graph
+    
     Datafeed descriptor, describing input training data format. This class is
     currently only used for AsyncExecutor (See comments for class AsyncExecutor
     for a brief introduction)

@@ -17,29 +17,46 @@ from ..fluid.data_feeder import check_type
 from ..fluid.layers.layer_function_generator import templatedoc
 
 # TODO: define logic functions of a tensor  
+from ..fluid.layers import greater_equal  #DEFINE_ALIAS
+from ..fluid.layers import greater_than  #DEFINE_ALIAS
+from ..fluid.layers import is_empty  #DEFINE_ALIAS
+from ..fluid.layers import isfinite  #DEFINE_ALIAS
+from ..fluid.layers import less_equal  #DEFINE_ALIAS
+from ..fluid.layers import less_than  #DEFINE_ALIAS
+from ..fluid.layers import logical_and  #DEFINE_ALIAS
+from ..fluid.layers import logical_not  #DEFINE_ALIAS
+from ..fluid.layers import logical_or  #DEFINE_ALIAS
+from ..fluid.layers import logical_xor  #DEFINE_ALIAS
+from ..fluid.layers import not_equal  #DEFINE_ALIAS
+from ..fluid.layers import reduce_all  #DEFINE_ALIAS
+from ..fluid.layers import reduce_any  #DEFINE_ALIAS
+
 __all__ = [
     'equal',
-    #            'greater_equal',
-    #            'greater_than',
-    #            'is_empty',
-    #            'isfinite',
-    #            'less_equal',
-    #            'less_than',
-    #            'logical_and',
-    #            'logical_not',
-    #            'logical_or',
-    #            'logical_xor',
-    #            'not_equal',
-    #            'reduce_all',
-    #            'reduce_any',
+    'greater_equal',
+    'greater_than',
+    'is_empty',
+    'isfinite',
+    'less_equal',
+    'less_than',
+    'logical_and',
+    'logical_not',
+    'logical_or',
+    'logical_xor',
+    'not_equal',
+    'reduce_all',
+    'reduce_any',
     'allclose',
     'elementwise_equal',
-    #            'isnan'
+    #       'isnan'
 ]
 
 
 def equal(x, y, axis=-1, name=None):
     """
+	:alias_main: paddle.equal
+	:alias: paddle.equal,paddle.tensor.equal,paddle.tensor.logic.equal
+
     This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
 
     **NOTICE**: The output of this OP has no gradient, and this OP supports broadcasting by :attr:`axis`.
@@ -108,6 +125,9 @@ def equal(x, y, axis=-1, name=None):
 @templatedoc()
 def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     """
+	:alias_main: paddle.allclose
+	:alias: paddle.allclose,paddle.tensor.allclose,paddle.tensor.logic.allclose
+
     ${comment}
 
     Args:
@@ -190,6 +210,9 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
 def elementwise_equal(x, y, name=None):
     """
+	:alias_main: paddle.elementwise_equal
+	:alias: paddle.elementwise_equal,paddle.tensor.elementwise_equal,paddle.tensor.logic.elementwise_equal
+
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:

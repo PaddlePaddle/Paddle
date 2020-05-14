@@ -112,6 +112,10 @@ def _yield_flat_nest(nest):
 
 def flatten(nest):
     """
+	:alias_main: paddle.flatten
+	:alias: paddle.flatten,paddle.tensor.flatten,paddle.tensor.manipulation.flatten
+	:old_api: paddle.fluid.layers.flatten
+
     Traverse all entries in the nested structure and put them into an list.
     """
     if is_sequence(nest):

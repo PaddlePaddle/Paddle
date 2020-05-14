@@ -23,10 +23,8 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FillAnyLikeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FillAnyLikeOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fill_any_like");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fill_any_like");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -74,14 +72,12 @@ The output will have the same shape and dtype as the input.
 class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto out_var_name = ctx->Output("Out").front();
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
+        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
     if (var_data_type < 0) {
-      const auto &input_var_name = ctx->Input("X").front();
-      ctx->SetDataType(out_var_name, ctx->GetDataType(input_var_name));
+      ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
     } else {
-      ctx->SetDataType(out_var_name, var_data_type);
+      ctx->SetOutputDataType("Out", var_data_type);
     }
   }
 };

@@ -112,32 +112,37 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Logits",
+                   "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Logits",
+                   "SampleLogitsOp");
 
-    PADDLE_ENFORCE(ctx->HasOutput("Samples"),
-                   "Output(Samples) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Probabilities"),
-                   "Output(Probabilities) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SampledLogits"),
-                   "Output(SampledLogits) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SampledLabels"),
-                   "Output(SampledLabels) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LogitsDim"),
-                   "Output(LogitsDim) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LabelsDim"),
-                   "Output(LabelsDim) should be not null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Samples"), "Output", "Samples",
+                   "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Probabilities"), "Output", "Probabilities",
+                   "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SampledLogits"), "Output", "SampledLogits",
+                   "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SampledLabels"), "Output", "SampledLabels",
+                   "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasOutput("LogitsDim"), "Output", "LogitsDim",
+                   "SampleLogitsOp");
+    OP_INOUT_CHECK(ctx->HasOutput("LabelsDim"), "Output", "LabelsDim",
+                   "SampleLogitsOp");
 
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Labels");
 
-    PADDLE_ENFORCE_EQ(
-        logits_dims.size(), 2UL,
-        "The logits of softmax_with_cross_entropy should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "Input(Logits) of SampleLogitsOp should be 2D. "
+                          "But received shape = [%s] and dimension is %d.",
+                          logits_dims, logits_dims.size()));
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
-                      "The labels should be a 2-D tensor.");
+                      platform::errors::InvalidArgument(
+                          "Input(Labels) of SampleLogitsOp should be 2D. "
+                          "But received shape = [%s] and dimension is %d.",
+                          labels_dims, labels_dims.size()));
 
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
     int num_sampled_classes = labels_dims[1] + num_samples;
@@ -175,25 +180,33 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("LogitsDim"),
-                   "Input(LogitsDim) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LabelsDim"),
-                   "Input(LabelsDim) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Samples"),
-                   "Input(Samples) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("SampledLogits")),
-                   "Input(SampledLogits@Grad) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Output(Logits@Grad) should be not null.");
+    OP_INOUT_CHECK(ctx->HasInput("LogitsDim"), "Input", "LogitsDim",
+                   "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput("LabelsDim"), "Input", "LabelsDim",
+                   "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Samples"), "Input", "SamplesabelsDim",
+                   "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("SampledLogits")),
+                   "Input", "SampledLogits@GRAD", "SampleLogitsOpGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Logits")), "Output",
+                   "Logits@GRAD", "SampleLogitsOpGrad");
 
     auto logits_dims = ctx->GetInputDim("LogitsDim");
     logits_dims = framework::DDim(logits_dims.Get(), logits_dims.size() - 1);
     auto labels_dims = ctx->GetInputDim("LabelsDim");
     labels_dims = framework::DDim(labels_dims.Get(), labels_dims.size() - 1);
-    PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
-                      "The label should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
-                      "The logits should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(
+        logits_dims.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "Input(LogitsDim) of SampleLogitsOpGrad should be 2D. "
+            "But received shape = [%s] and dimension is %d.",
+            logits_dims, logits_dims.size()));
+    PADDLE_ENFORCE_EQ(
+        labels_dims.size(), 2UL,
+        platform::errors::InvalidArgument(
+            "Input(LabelsDim) of SampleLogitsOpGrad should be 2D. "
+            "But received shape = [%s] and dimension is %d.",
+            labels_dims, labels_dims.size()));
 
     ctx->SetOutputDim(framework::GradVarName("Logits"), logits_dims);
   }
