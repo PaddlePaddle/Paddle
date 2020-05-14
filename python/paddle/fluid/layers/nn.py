@@ -1114,7 +1114,7 @@ def chunk_eval(input,
             embedding = fluid.embedding(
                 input=sequence, size=[dict_size, 512])
             hidden = fluid.layers.fc(input=embedding, size=512)
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='label', shape=[None, 1], lod_level=1, dtype='int64')
             crf = fluid.layers.linear_chain_crf(
                 input=hidden, label=label, param_attr=fluid.ParamAttr(name="crfw"))

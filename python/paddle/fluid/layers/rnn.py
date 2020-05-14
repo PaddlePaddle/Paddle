@@ -838,9 +838,8 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            x(Variable): A tensor with shape `[batch_size, ...]`, representing
-                the log probabilities. Its data type should be float32, float64, 
-                int32, int64 or bool.
+            x(Variable): A tensor with shape `[batch_size, ...]`, The data type
+                should be float32, float64, int32, int64 or bool.
 
         Returns:
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
