@@ -80,7 +80,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
       auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
-      PADDLE_ENFORCE_NE(max_len_tensor, NULL,
+      PADDLE_ENFORCE_NE(max_len_tensor.empty(), true,
                         platform::errors::InvalidArgument(
                             "MaxLenTensor should not be NULL."
                             "But received MaxLEnTensor is NULL"));
