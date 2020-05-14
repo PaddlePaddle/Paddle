@@ -23,29 +23,33 @@ class AucOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Predict"),
-                   "Input of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input of Label should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Predict"), "Input", "Predict", "Auc");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Auc");
     auto predict_width = ctx->GetInputDim("Predict")[1];
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_LE(predict_width, 2,
-                        "Only support binary classification,"
-                        "prediction dims[1] should be 1 or 2");
+                        platform::errors::InvalidArgument(
+                            "Only support binary classification,"
+                            "prediction dims[1] should be 1 or 2"));
     }
     auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(predict_height, label_height,
-                        "Out and Label should have same height.");
+                        platform::errors::InvalidArgument(
+                            "Out and Label should have same height."));
     }
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
     int slide_steps = ctx->Attrs().Get<int>("slide_steps");
 
-    PADDLE_ENFORCE_GE(num_pred_buckets, 1, "num_thresholds must larger than 1");
-    PADDLE_ENFORCE_GE(slide_steps, 0, "slide_steps must be natural number");
+    PADDLE_ENFORCE_GE(
+        num_pred_buckets, 1,
+        platform::errors::InvalidArgument("num_thresholds must larger than 1"));
+    PADDLE_ENFORCE_GE(slide_steps, 0,
+                      platform::errors::InvalidArgument(
+                          "slide_steps must be natural number"));
 
     ctx->SetOutputDim("AUC", {1});
 
