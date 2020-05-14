@@ -13,31 +13,24 @@
 # limitations under the License.
 
 # TODO: import framework api under this directory 
-# __all__ = ['append_backward',
-#            'gradients',
-#            'Executor',
-#            'global_scope',
-#            'scope_guard',
-#            'BuildStrategy',
-#            'CompiledProgram',
-#            'default_main_program',
-#            'default_startup_program',
-#            'create_global_var',
-#            'create_parameter',
-#            'create_py_reader_by_data',
-#            'Print',
-#            'py_func',
-#            'ExecutionStrategy',
-#            'in_dygraph_mode',
-#            'name_scope',
-#            'ParallelExecutor',
-#            'ParamAttr',
-#            'Program',
-#            'program_guard',
-#            'Variable',
-#            'WeightNormParamAttr',
-#            'Model',
-#            'Sequential']
+__all__ = [
+    'append_backward', 'gradients', 'Executor', 'global_scope', 'scope_guard',
+    'BuildStrategy', 'CompiledProgram', 'default_main_program',
+    'default_startup_program', 'create_global_var', 'create_parameter', 'Print',
+    'py_func', 'ExecutionStrategy', 'name_scope', 'ParallelExecutor',
+    'ParamAttr', 'Program', 'program_guard', 'Variable', 'WeightNormParamAttr',
+    'CPUPlace', 'CUDAPlace', 'CUDAPinnedPlace'
+]
 
 from . import random
 from .random import manual_seed
+from ..fluid.executor import Executor, global_scope, scope_guard
+from ..fluid.backward import append_backward, gradients
+from ..fluid.compiler import BuildStrategy, CompiledProgram, ExecutionStrategy
+from ..fluid.framework import default_main_program, default_startup_program, name_scope, Program, program_guard, Variable
+from ..fluid.layers.control_flow import Print
+from ..fluid.layers.nn import py_func
+from ..fluid.parallel_executor import ParallelExecutor
+from ..fluid.param_attr import ParamAttr, WeightNormParamAttr
+from ..fluid.layers.tensor import create_global_var, create_parameter
+from ..fluid.core import CPUPlace, CUDAPlace, CUDAPinnedPlace
