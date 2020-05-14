@@ -574,6 +574,7 @@ class ProgramTranslator(object):
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
                 from paddle.fluid.dygraph import ProgramTranslator
 
                 class SimpleNet(fluid.dygraph.Layer):
