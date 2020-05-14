@@ -150,7 +150,7 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
                                      LoDTensor* id_tensor,
                                      LoDTensor* score_tensor) const {
   PADDLE_ENFORCE_NE(
-      step_ids.empty(), True,
+      step_ids.empty(), true,
       platform::errors::InvalidArgument("step num should be larger than 0."
                                         "But the input step_ids is empty."));
   PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
