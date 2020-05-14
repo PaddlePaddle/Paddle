@@ -1536,5 +1536,10 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
 #endif
 }
 
+void DummpyDataFeed::Init(
+    const paddle::framework::DataFeedDesc& data_feed_desc) {
+  finish_init_ = true;
+}
+
 }  // namespace framework
 }  // namespace paddle

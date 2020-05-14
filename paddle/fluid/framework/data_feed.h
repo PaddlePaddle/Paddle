@@ -674,5 +674,14 @@ class MultiSlotFileInstantDataFeed
 };
 #endif
 
+class DummpyDataFeed : public DataFeed {
+ public:
+  DummpyDataFeed() {}
+  virtual ~DummpyDataFeed() {}
+  virtual void Init(const DataFeedDesc& data_feed_desc);
+  virtual bool Start() { return true; }
+  virtual int Next() { return false; }
+};
+
 }  // namespace framework
 }  // namespace paddle
