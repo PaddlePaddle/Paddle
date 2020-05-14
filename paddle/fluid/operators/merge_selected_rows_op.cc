@@ -23,14 +23,8 @@ class MergeSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument(
-            "Input(X) of MergeSelectedRowsOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
-            "Output(Out) of MergeSelectedRowsOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "MergeSelectedRows");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MergeSelectedRows");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("X").front(),
         framework::proto::VarType::SELECTED_ROWS,
