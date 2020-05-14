@@ -719,7 +719,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                                     learning_rate = 1.0,
                                     decay_rate = 0.5,
                                     patience = 5,
-                                    verbos = true, 
+                                    verbose = True, 
                                     cooldown = 3)
             adam = fluid.optimizer.Adam(
                 learning_rate = reduce_lr,
@@ -755,6 +755,7 @@ class ReduceLROnPlateau(LearningRateDecay):
                  eps=1e-8,
                  dtype='float32'):
         super(ReduceLROnPlateau, self).__init__(dtype=dtype)
+        mode = mode.lower()
         if mode not in ['min', 'max']:
             raise ValueError('mode ' + mode + ' is unknown!')
         self.mode = mode
@@ -765,6 +766,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             )
         self.decay_rate = decay_rate
 
+        threshold_mode = threshold_mode.lower()
         if threshold_mode not in ['rel', 'abs']:
             raise ValueError('threshold mode ' + threshold_mode +
                              ' is unknown!')
