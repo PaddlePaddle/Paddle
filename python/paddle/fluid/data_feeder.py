@@ -211,6 +211,8 @@ class BatchedTensorProvider(object):
 
 class DataFeeder(object):
     """
+    :api_attr: Static Graph
+    
     DataFeeder converts the data that returned by a reader into a data
     structure that can feed into Executor. The reader is usually a 
     python generator that returns a list of mini-batch data entries. 

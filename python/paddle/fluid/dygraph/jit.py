@@ -203,6 +203,8 @@ def _trace(layer,
 
 class TracedLayer(object):
     """
+    :api_attr: imperative
+    
     TracedLayer is used to convert a forward dygraph model to a static
     graph model. This is mainly used to save the dygraph model for online
     inference using C++. Besides, users can also do inference in Python

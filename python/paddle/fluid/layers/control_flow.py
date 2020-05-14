@@ -222,6 +222,8 @@ def Print(input,
           print_tensor_lod=True,
           print_phase='both'):
     '''
+    :api_attr: Static Graph
+
     **Print operator**
 
     This creates a print op that will print when a tensor is accessed.
@@ -446,6 +448,8 @@ class StaticRNNMemoryLink(object):
 
 class StaticRNN(object):
     """
+    :api_attr: Static Graph
+
     StaticRNN class.
 
     The StaticRNN can process a batch of sequence data. The first dimension of inputs
@@ -923,6 +927,8 @@ class WhileGuard(BlockGuard):
 
 class While(object):
     """
+    :api_attr: Static Graph
+    
     while loop control flow. Repeat while body until cond is False.
 
     Note:
@@ -1061,6 +1067,11 @@ def assign_skip_lod_tensor_array(inputs, outputs):
 
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.while_loop
+	:alias: paddle.nn.while_loop,paddle.nn.control_flow.while_loop
+	:old_api: paddle.fluid.layers.while_loop
+
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
     Notice:
@@ -1529,6 +1540,10 @@ def create_array(dtype):
 @templatedoc()
 def less_than(x, y, force_cpu=None, cond=None):
     """
+    :alias_main: paddle.less_than
+	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
+	:old_api: paddle.fluid.layers.less_than
+
     ${comment}
 
     Args:
@@ -1594,6 +1609,10 @@ def less_than(x, y, force_cpu=None, cond=None):
 @templatedoc()
 def less_equal(x, y, cond=None):
     """
+    :alias_main: paddle.less_equal
+	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
+	:old_api: paddle.fluid.layers.less_equal
+
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
@@ -1642,6 +1661,10 @@ def less_equal(x, y, cond=None):
 @templatedoc()
 def greater_than(x, y, cond=None):
     """
+    :alias_main: paddle.greater_than
+	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
+	:old_api: paddle.fluid.layers.greater_than
+
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
@@ -1689,6 +1712,10 @@ def greater_than(x, y, cond=None):
 @templatedoc()
 def greater_equal(x, y, cond=None):
     """
+    :alias_main: paddle.greater_equal
+	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
+	:old_api: paddle.fluid.layers.greater_equal
+
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
@@ -1782,6 +1809,10 @@ def equal(x, y, cond=None):
 
 def not_equal(x, y, cond=None):
     """
+    :alias_main: paddle.not_equal
+	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
+	:old_api: paddle.fluid.layers.not_equal
+
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
@@ -2225,6 +2256,11 @@ def copy_var_to_parent_block(var, layer_helper):
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.cond
+	:alias: paddle.nn.cond,paddle.nn.control_flow.cond
+	:old_api: paddle.fluid.layers.cond
+    
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
     ``None`` if do nothing and this API will treat the callable simply returns
@@ -2410,6 +2446,11 @@ def _error_message(what, arg_name, op_name, right_value, error_value):
 
 def case(pred_fn_pairs, default=None, name=None):
     '''
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.case
+	:alias: paddle.nn.case,paddle.nn.control_flow.case
+	:old_api: paddle.fluid.layers.case
+
     This operator works like an if-elif-elif-else chain.
 
     Args:
@@ -2520,6 +2561,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
 class Switch(object):
     """
+    :api_attr: Static Graph
 
     This class is used to implement Switch branch control function. 
     Switch branch contains several case branches and one default branch. 
@@ -2677,6 +2719,8 @@ class IfElseBlockGuard(object):
 
 class IfElse(object):
     """
+    :api_attr: Static Graph
+
     This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
 
     Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
@@ -2853,6 +2897,8 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
+    :api_attr: Static Graph
+
     **Note: the input of this class should be LoDTensor which holds the
     information of variable-length sequences. If the input is fixed-length Tensor,
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **) for
@@ -3518,6 +3564,8 @@ class DynamicRNN(object):
 
 def switch_case(branch_index, branch_fns, default=None, name=None):
     '''
+    :api_attr: Static Graph
+
     This operator is like a C++ switch/case statement.
 
     Args:
@@ -3701,6 +3749,10 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 def is_empty(x, cond=None):
     """
+    :alias_main: paddle.is_empty
+	:alias: paddle.is_empty,paddle.tensor.is_empty,paddle.tensor.logic.is_empty
+	:old_api: paddle.fluid.layers.is_empty
+
     Test whether a Variable is empty.
 
     Args:

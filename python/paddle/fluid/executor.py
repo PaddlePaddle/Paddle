@@ -40,6 +40,8 @@ InferAnalysisConfig = core.AnalysisConfig
 
 def global_scope():
     """
+    :api_attr: Static Graph
+
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 
@@ -68,6 +70,8 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
+    :api_attr: Static Graph
+    
     This function switches scope through python `with` statement.
     Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
     similar to brackets in programming languages.
@@ -456,6 +460,8 @@ handler = FetchHandlerExample(var_dict=var_dict)
 
 class Executor(object):
     """
+    :api_attr: Static Graph
+
     An Executor in Python, supports single/multiple-GPU running,
     and single/multiple-CPU running.
 
