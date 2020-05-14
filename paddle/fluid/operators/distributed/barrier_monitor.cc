@@ -39,8 +39,10 @@ bool BarrierMonitor::IncreaseBarrier(const int worker_id,
   release_ = false;
 
   if (barrier == BATCH_BARRIER_MESSAGE) {
+    VLOG(4) << "BarrierMonitor send queue recv trainer: " << worker_id;
     send_barrier_queue->Push(worker_id);
   } else if (barrier == FETCH_BARRIER_MESSAGE) {
+    VLOG(4) << "BarrierMonitor recv queue recv trainer: " << worker_id;
     recv_barrier_queue->Push(worker_id);
   } else {
     PADDLE_THROW("unknown status");

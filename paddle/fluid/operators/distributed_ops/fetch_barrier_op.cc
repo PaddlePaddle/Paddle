@@ -36,15 +36,18 @@ class FetchBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
+    platform::CPUDeviceContext ctx;
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
     std::vector<distributed::VarHandlePtr> rets;
+
     for (auto& ep : eps) {
       VLOG(3) << "fetch barrier, ep: " << ep;
-      rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
+      rets.push_back(rpc_client->AsyncDistributeNotify(ep, ctx, scope,
+                                                       FETCH_BARRIER_MESSAGE));
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
