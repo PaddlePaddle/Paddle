@@ -22,16 +22,20 @@ class EyeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of EyeOP should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of EyeOP should not be null."));
     auto num_rows = ctx->Attrs().Get<int64_t>("num_rows");
-    PADDLE_ENFORCE(num_rows >= 0,
-                   "The value of Input(num_rows) should be non-negative int.");
+    PADDLE_ENFORCE_EQ(
+        num_rows >= 0, true,
+        platform::errors::InvalidArgument(
+            "The value of Input(num_rows) should be non-negative int."));
     auto num_columns = ctx->Attrs().Get<int64_t>("num_columns");
     if (num_columns == -1) num_columns = num_rows;
-    PADDLE_ENFORCE(
-        num_columns >= 0,
-        "The value of Input(num_columns) should be non-negative int.");
+    PADDLE_ENFORCE_EQ(
+        num_columns >= 0, true,
+        platform::errors::InvalidArgument(
+            "The value of Input(num_columns) should be non-negative int."));
     ctx->SetOutputDim("Out", {num_rows, num_columns});
   }
 
