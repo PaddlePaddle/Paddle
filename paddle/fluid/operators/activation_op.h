@@ -1221,6 +1221,61 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+template <typename T>
+struct MishFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    //            x                 x > threshold
+    // softplus = log(exp(x) + 1)   -threshold <= x <= threshold
+    //            exp(x)            x < -threshold
+    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    auto sp = x * (x > static_cast<T>(threshold)).template cast<T>() +
+              (temp + (((-temp).exp() + (x - temp).exp()).log())) *
+                  ((x <= static_cast<T>(threshold)) *
+                   (x >= static_cast<T>(-threshold)))
+                      .template cast<T>() +
+              x.exp() * (x < static_cast<T>(-threshold)).template cast<T>();
+
+    // mish = x * tanh(softplus(x))
+    out.device(d) = x * sp.tanh();
+  }
+};
+
+template <typename T>
+struct MishGradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out fake_out, dOut dout, dX dx) const {
+    auto temp = x.cwiseMax(static_cast<T>(0));  // temp = max(x, 0)
+    auto sp = x * (x > static_cast<T>(threshold)).template cast<T>() +
+              (temp + (((-temp).exp() + (x - temp).exp()).log())) *
+                  ((x <= static_cast<T>(threshold)) *
+                   (x >= static_cast<T>(-threshold)))
+                      .template cast<T>() +
+              x.exp() * (x < static_cast<T>(-threshold)).template cast<T>();
+    auto tsp = sp.tanh();
+
+    // grad = tanh(softplus(x)) + x * (tanh(softplus(x)))'
+    //      = tsp + x * (1 - tsp ^ 2) * softplus(x)'
+    //      = tsp + x * (1 - tsp ^ 2) * (1 - exp(-sp))
+    dx.device(d) = dout * (tsp +
+                           x * ((static_cast<T>(1) - tsp * tsp) *
+                                (static_cast<T>(1) - (-sp).exp())));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 /*
  * in arguments: x, out, ddx
  * out arguments: ddout, dout, dx
