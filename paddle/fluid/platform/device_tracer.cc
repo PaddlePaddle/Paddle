@@ -42,6 +42,7 @@ thread_local std::deque<int> block_id_stack;
 thread_local std::deque<Event *> annotation_stack;
 // stack to strore event sunch as pe and so on
 static std::deque<Event *> main_thread_annotation_stack{};
+static std::deque<std::string> main_thread_annotation_stack_name{};
 
 std::map<uint32_t, int32_t> system_thread_id_map;
 
@@ -640,28 +641,45 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-void SetCurAnnotation(Event *event) {
+std::string SetCurAnnotation(Event *event) {
+  std::string ret;
   if (!annotation_stack.empty() && event->role() != EventRole::kSpecial) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
   }
 
-  if (!main_thread_annotation_stack.empty()) {
-    event->set_name(main_thread_annotation_stack.back()->name() + "/" +
-                    event->name());
-  }
+  annotation_stack.push_back(event);
 
+  if (!main_thread_annotation_stack_name.empty() && !annotation_stack.empty() &&
+      main_thread_annotation_stack.back()->thread_id() !=
+          annotation_stack.back()->thread_id()) {
+    ret = main_thread_annotation_stack_name.back() + "/" + event->name();
+  } else {
+    ret = event->name();
+  }
   if (event->role() == EventRole::kSpecial) {
+    std::string name = event->name();
+    if (!main_thread_annotation_stack_name.empty()) {
+      name = main_thread_annotation_stack_name.back() + "/" + event->name();
+    }
+    main_thread_annotation_stack_name.push_back(name);
     main_thread_annotation_stack.push_back(event);
   }
 
-  annotation_stack.push_back(event);
+  return ret;
 }
 
 void ClearCurAnnotation() {
+  if (!main_thread_annotation_stack_name.empty() && !annotation_stack.empty() &&
+      main_thread_annotation_stack.back()->thread_id() !=
+          annotation_stack.back()->thread_id()) {
+    annotation_stack.back()->set_name(main_thread_annotation_stack_name.back() +
+                                      "/" + annotation_stack.back()->name());
+  }
   if (!main_thread_annotation_stack.empty() &&
-      annotation_stack.back()->name() ==
-          main_thread_annotation_stack.back()->name()) {
+      main_thread_annotation_stack.back()->name() ==
+          annotation_stack.back()->name()) {
+    main_thread_annotation_stack_name.pop_back();
     main_thread_annotation_stack.pop_back();
   }
   annotation_stack.pop_back();
