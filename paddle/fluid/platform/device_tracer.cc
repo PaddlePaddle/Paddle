@@ -40,6 +40,8 @@ namespace {
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
+// stack to strore event sunch as pe and so on
+static std::deque<Event *> main_thread_annotation_stack{};
 
 std::map<uint32_t, int32_t> system_thread_id_map;
 
@@ -639,14 +641,31 @@ DeviceTracer *GetDeviceTracer() {
 }
 
 void SetCurAnnotation(Event *event) {
-  if (!annotation_stack.empty()) {
+  if (!annotation_stack.empty() && event->role() != EventRole::kSpecial) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
   }
+
+  if (!main_thread_annotation_stack.empty()) {
+    event->set_name(main_thread_annotation_stack.back()->name() + "/" +
+                    event->name());
+  }
+
+  if (event->role() == EventRole::kSpecial) {
+    main_thread_annotation_stack.push_back(event);
+  }
+
   annotation_stack.push_back(event);
 }
 
-void ClearCurAnnotation() { annotation_stack.pop_back(); }
+void ClearCurAnnotation() {
+  if (!main_thread_annotation_stack.empty() &&
+      annotation_stack.back()->name() ==
+          main_thread_annotation_stack.back()->name()) {
+    main_thread_annotation_stack.pop_back();
+  }
+  annotation_stack.pop_back();
+}
 
 Event *CurAnnotation() {
   if (annotation_stack.empty()) return nullptr;
