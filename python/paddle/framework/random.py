@@ -20,6 +20,9 @@ __all__ = ['manual_seed']
 
 def manual_seed(seed):
     """
+	:alias_main: paddle.manual_seed
+	:alias: paddle.manual_seed,paddle.framework.random.manual_seed
+
     Set global manual seed for program
 
     Args:
