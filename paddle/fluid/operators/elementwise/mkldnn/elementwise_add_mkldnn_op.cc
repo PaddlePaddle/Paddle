@@ -42,45 +42,8 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     const auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
-    const auto src_x_tz = framework::vectorize(x->dims());
-    const std::string key =
-        platform::CreateKey(src_x_tz, ctx.OutputName("Out"));
-
-    platform::BinaryMKLDNNHandler<T> handler(dev_ctx, mkldnn_engine,
-                                             ctx.GetPlace(), key);
-
-    if (!handler.isCached()) {
-      PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
-      PADDLE_ENFORCE_NE(
-          x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor"));
-
-      PADDLE_ENFORCE_EQ(
-          y->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
-      PADDLE_ENFORCE_NE(
-          y->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for Y tensor"));
-
-      const auto src_y_tz = framework::vectorize<int64_t>(y->dims());
-      const auto dst_tz = framework::vectorize<int64_t>(z->dims());
-
-      // TODO(jczaja): Add function checking if data already exists
-      const auto src0_md = dnnl::memory::desc(
-          src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto src1_md = dnnl::memory::desc(
-          src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
-      const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
-                                       MKLDNNMemoryFormat::any);
-
-      // Currently MKL-DNN kernel supports only Z <- X + Y, shape(X) == shape(Y)
-      // TODO(jczaja): Binary primitive support broadcasting, so we can support
-      // this in kernel
-      handler.AcquireForwardPrimitiveDescriptor(dnnl::algorithm::binary_add,
-                                                src0_md, src1_md, dst_md);
-    }
+    platform::BinaryMKLDNNHandler<T> handler(
+        dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z, ctx.OutputName("Out"));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
