@@ -16,3 +16,5 @@ from . import hapi
 
 __all__ = []
 __all__ += hapi.__all__
+
+from ..fluid.contrib import reader
