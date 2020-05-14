@@ -107,7 +107,13 @@ class MKLDNNHandlerT {
                                             "@diff_src_mem_p");
   }
 
- protected:
+  bool isCached() {
+    const std::string key_pd = key_common_ + "@forward_pd";
+    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    return (fwd_pd_ != nullptr);
+  }
+
   template <typename... Args>
   void AcquireForwardPrimitiveDescriptor(Args&&... args) {
     // Forward PD has to be passed to Grad op that
@@ -131,6 +137,7 @@ class MKLDNNHandlerT {
     }
   }
 
+ protected:
   template <typename... Args>
   void AcquireBackwardPrimitiveDescriptor(Args&&... args) {
     const std::string key_fwd_pd = key_common_ + "@forward_pd";
@@ -355,23 +362,10 @@ class MKLDNNHandler {
 template <typename T>
 class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
-  BinaryMKLDNNHandler(const dnnl::algorithm algo,
-                      const std::vector<int64_t>& dims,
-                      const MKLDNNMemoryFormat src0_fmt,
-                      const MKLDNNMemoryFormat src1_fmt,
-                      const platform::MKLDNNDeviceContext& dev_ctx,
-                      platform::Place cpu_place, const std::string& uniq_name)
-      : platform::MKLDNNHandlerT<T, dnnl::binary>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
-    // TODO(jczaja): Add function checking if data already exists
-    auto src0_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src0_fmt);
-    auto src1_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src1_fmt);
-    auto dst_md =
-        memory::desc(dims, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
-
-    this->AcquireForwardPrimitiveDescriptor(algo, src0_md, src1_md, dst_md);
-  }
+  BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
+                      platform::Place cpu_place, const std::string& base_key)
+      : platform::MKLDNNHandlerT<T, dnnl::binary>(dev_ctx, engine, cpu_place,
+                                                  base_key) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {
