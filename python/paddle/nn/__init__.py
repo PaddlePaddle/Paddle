@@ -47,13 +47,6 @@ from .decode import beam_search_decode  #DEFINE_ALIAS
 # from .decode import ctc_greedy_decoder        #DEFINE_ALIAS
 # from .decode import dynamic_decode        #DEFINE_ALIAS
 from .decode import gather_tree  #DEFINE_ALIAS
-# from .initalizer import Bilinear        #DEFINE_ALIAS
-# from .initalizer import Constant        #DEFINE_ALIAS
-# from .initalizer import MSRA        #DEFINE_ALIAS
-from .initalizer import Normal  #DEFINE_ALIAS
-# from .initalizer import TruncatedNormal        #DEFINE_ALIAS
-from .initalizer import Uniform  #DEFINE_ALIAS
-# from .initalizer import Xavier        #DEFINE_ALIAS
 from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 # from .layer.activation import PReLU        #DEFINE_ALIAS
