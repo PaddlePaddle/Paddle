@@ -461,10 +461,6 @@ def sequence_first_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'float32', 'int64'],
-                             'sequence_first_step')
-    check_type(y, 'y', Variable, 'sequence_expand_as')
     return sequence_pool(input=input, pool_type="first")
 
 
