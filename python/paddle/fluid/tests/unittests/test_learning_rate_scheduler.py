@@ -368,18 +368,6 @@ def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,
 class TestReduceLROnPlateauDecay(unittest.TestCase):
     def test_dygraph_mode(self):
         with fluid.dygraph.guard():
-            # the decay rate must be less than 1.0
-            with self.assertRaises(ValueError):
-                fluid.dygraph.ReduceLROnPlateau(
-                    learning_rate=1.0, decay_rate=2.0)
-            # the mode must be "min" or "max"
-            with self.assertRaises(ValueError):
-                fluid.dygraph.ReduceLROnPlateau(learning_rate=1.0, mode="test")
-            # the threshold_mode must be "rel" or "abs"
-            with self.assertRaises(ValueError):
-                fluid.dygraph.ReduceLROnPlateau(
-                    learning_rate=1.0, threshold_mode="test")
-
             base_lr = 1.0
             patience = 3
             cooldown = 1
@@ -390,7 +378,6 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
             for m, n in zip(['min', 'max', 'min', 'max'],
                             ['rel', 'rel', 'abs', 'abs']):
                 kwargs = {
-                    'learning_rate': base_lr,
                     'decay_rate': decay_rate,
                     'threshold': threshold,
                     'verbose': True,
@@ -402,9 +389,9 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                 }
                 print("class=" + fluid.dygraph.ReduceLROnPlateau.__name__ +
                       " kwargs=" + str(kwargs))
-                lr = fluid.dygraph.ReduceLROnPlateau(**kwargs)
-                sgd = fluid.optimizer.SGD(learning_rate=lr,
+                sgd = fluid.optimizer.SGD(learning_rate=base_lr,
                                           parameter_list=linear.parameters())
+                lr = fluid.dygraph.ReduceLROnPlateau(optimizer=sgd, **kwargs)
 
                 best = float("-10000") if m == "max" else float("10000")
                 expected_lr = 1.0
@@ -428,7 +415,7 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                     # get expected lr from fluid
                     avg_loss = total_loss / 1
                     lr.step(avg_loss)
-                    actual_lr = lr().numpy()[0]
+                    actual_lr = sgd.current_step_lr()
 
                     # get expected lr form python
                     expected_lr = reduce_lr_on_plateau(decay_rate, threshold,
@@ -439,6 +426,17 @@ class TestReduceLROnPlateauDecay(unittest.TestCase):
                         actual_lr,
                         msg='Failed reduce lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
                         format(epoch_num, expected_lr, actual_lr))
+
+            # the decay rate must be less than 1.0
+            with self.assertRaises(ValueError):
+                fluid.dygraph.ReduceLROnPlateau(optimizer=sgd, decay_rate=2.0)
+            # the mode must be "min" or "max"
+            with self.assertRaises(ValueError):
+                fluid.dygraph.ReduceLROnPlateau(optimizer=sgd, mode="test")
+            # the threshold_mode must be "rel" or "abs"
+            with self.assertRaises(ValueError):
+                fluid.dygraph.ReduceLROnPlateau(
+                    optimizer=sgd, threshold_mode="test")
 
 
 if __name__ == '__main__':

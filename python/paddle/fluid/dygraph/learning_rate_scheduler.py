@@ -17,7 +17,7 @@ from __future__ import print_function
 import math
 
 from .. import unique_name
-from ..framework import Variable
+from ..framework import Variable, default_main_program
 from ..data_feeder import check_type
 
 __all__ = [
@@ -665,7 +665,7 @@ class LinearLrWarmup(LearningRateDecay):
             return base_lr
 
 
-class ReduceLROnPlateau(LearningRateDecay):
+class ReduceLROnPlateau(object):
     """
     Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate 
     by 2 to 10 times once model performance has no longer improvement.
@@ -678,8 +678,7 @@ class ReduceLROnPlateau(LearningRateDecay):
     In addition, After each reduction, it will wait a ``cooldown`` number of epochs before resuming normal operation.
 
     Args:
-        learning_rate (Variable|float|int): The initial learning rate. It can be set to python float or int number.
-            If the type is Variable, it should be 1-D Tensor with shape [1], the data type can be 'float32' or 'float64'.
+        optimizer (Optimizer): The optimizer that needs to update the learning rate.
         mode (str, optional): ``'min'`` or ``'max'`` can be selected. Normally, it is ``'min'`` , which means that the 
             learning rate will reduce when ``loss`` stops descending. Specially, if it's set to ``'max'`` ,  the learning 
             rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
@@ -715,15 +714,15 @@ class ReduceLROnPlateau(LearningRateDecay):
             linear = fluid.dygraph.Linear(10, 10)
             input = fluid.dygraph.to_variable(x)
 
-            reduce_lr = fluid.dygraph.ReduceLROnPlateau(
-                                    learning_rate = 1.0,
-                                    decay_rate = 0.5,
-                                    patience = 5,
-                                    verbos = true, 
-                                    cooldown = 3)
             adam = fluid.optimizer.Adam(
-                learning_rate = reduce_lr,
+                learning_rate = 0.1,
                 parameter_list = linear.parameters())
+            reduce_lr = fluid.dygraph.ReduceLROnPlateau(
+                        optimizer = adam,
+                        decay_rate = 0.5,
+                        patience = 5,
+                        verbose = True, 
+                        cooldown = 3)
 
             for epoch in range(10):
                 total_loss = 0
@@ -743,7 +742,7 @@ class ReduceLROnPlateau(LearningRateDecay):
     """
 
     def __init__(self,
-                 learning_rate,
+                 optimizer,
                  mode='min',
                  decay_rate=0.1,
                  patience=10,
@@ -752,9 +751,8 @@ class ReduceLROnPlateau(LearningRateDecay):
                  threshold_mode='rel',
                  cooldown=0,
                  min_lr=0,
-                 eps=1e-8,
-                 dtype='float32'):
-        super(ReduceLROnPlateau, self).__init__(dtype=dtype)
+                 eps=1e-8):
+        mode = mode.lower()
         if mode not in ['min', 'max']:
             raise ValueError('mode ' + mode + ' is unknown!')
         self.mode = mode
@@ -765,32 +763,24 @@ class ReduceLROnPlateau(LearningRateDecay):
             )
         self.decay_rate = decay_rate
 
+        threshold_mode = threshold_mode.lower()
         if threshold_mode not in ['rel', 'abs']:
             raise ValueError('threshold mode ' + threshold_mode +
                              ' is unknown!')
         self.threshold_mode = threshold_mode
-
-        check_type(learning_rate, 'learning_rate', (float, int, Variable),
-                   'ReduceLROnPlateau')
-        if isinstance(learning_rate, (float, int)):
-            learning_rate = self.create_lr_var(learning_rate)
-
-        self.learning_rate = learning_rate
+        self.optimizer = optimizer
         self.verbose = verbose
         self.patience = patience
         self.threshold = threshold
         self.threshold_mode = threshold_mode
         self.cooldown = cooldown
-        self.min_lr = self.create_lr_var(min_lr)
+        self.min_lr = min_lr
         self.eps = eps
 
         self.cooldown_counter = 0
         self.best_loss = None
         self.num_bad_epochs = 0
         self.epoch = 0
-
-    def __call__(self):
-        return self.learning_rate
 
     def step(self, loss):
         """
@@ -829,15 +819,25 @@ class ReduceLROnPlateau(LearningRateDecay):
                 from .. import layers
                 self.cooldown_counter = self.cooldown
                 self.num_bad_epochs = 0
-                new_lr = layers.elementwise_max(self.learning_rate *
-                                                self.decay_rate, self.min_lr)
-                if self.learning_rate - new_lr > self.eps:
+                old_lr = self.optimizer._learning_rate
+                if not isinstance(old_lr, float):
+                    raise TypeError(
+                        "base learning rate in optimizer must be float in ReduceLROnPlateau strategy."
+                    )
+                new_lr = max(old_lr * self.decay_rate, self.min_lr)
+                if old_lr - new_lr > self.eps:
                     if self.verbose:
                         print('Epoch {}: reducing learning rate from {} to {}.'.
-                              format(self.epoch,
-                                     self.learning_rate.numpy()[0],
-                                     new_lr.numpy()[0]))
-                    self.learning_rate = new_lr
+                              format(self.epoch, old_lr, new_lr))
+                    self.optimizer._learning_rate = new_lr
+                    self.optimizer._learning_rate_map[default_main_program(
+                    )] = layers.create_global_var(
+                        name=unique_name.generate("learning_rate"),
+                        shape=[1],
+                        value=float(new_lr),
+                        dtype='float32' if self.optimizer._dtype is None else
+                        self.optimizer._dtype,
+                        persistable=True)
 
     def _is_better(self, current, best):
         if self.mode == 'min' and self.threshold_mode == 'rel':
