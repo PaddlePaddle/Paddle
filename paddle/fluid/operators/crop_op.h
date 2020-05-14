@@ -34,12 +34,12 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     PADDLE_ENFORCE_EQ(ctx.Attr<std::vector<int>>("offsets").empty(), true,
                       platform::errors::InvalidArgument(
                           "Input 'Offsets' and attribute 'offsets' "
-                          "should not be used at the same time."));
+                          "should not be used at the same time for CropOp."));
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1,
                       platform::errors::InvalidArgument(
                           "The number of dimensions of input 'Offsets' for "
-                          "Op(crop) must be 1, but the value you give is: %d.",
+                          "CropOp must be 1, but the value received is %d.",
                           offsets_tensor->dims().size()));
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],
@@ -66,7 +66,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
                                           "input 'Offsets' must be equal to "
                                           "the number of dimensions (%d) "
                                           "of the input tensor.",
-                                          static_cast<int>(res.size()), rank));
+                                          res.size(), rank));
   }
   return res;
 }
@@ -108,14 +108,14 @@ class CropKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank, 1,
         platform::errors::InvalidArgument(
-            "The number of dimensions of the input 'x' for Op(crop) must be "
-            "greater than or equal to 1, but the received value is %d.",
+            "The number of dimensions of the Input(X) for CropOp must be "
+            "greater than or equal to 1, but the value received is %d.",
             rank));
     PADDLE_ENFORCE_LE(
         rank, 6,
         platform::errors::InvalidArgument(
-            "The number of dimensions of the input 'x' for Op(crop) must be "
-            "less than or equal to 6, but the received value is %d.",
+            "The number of dimensions of the Input(X) for CropOp must be "
+            "less than or equal to 6, but the value received is %d.",
             rank));
     switch (rank) {
       case 1:
@@ -170,14 +170,14 @@ class CropGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_GE(
         rank, 1, platform::errors::InvalidArgument(
                      "The number of dimensions of the input 'Out@GRAD' for "
-                     "Op(crop_grad) must be greater than or equal "
-                     "to 1, but the received value is %d.",
+                     "CropGrad must be greater than or equal "
+                     "to 1, but the value received is %d.",
                      rank));
     PADDLE_ENFORCE_LE(
         rank, 6, platform::errors::InvalidArgument(
                      "The number of dimensions of the input 'Out@GRAD' for "
-                     "Op(crop_grad) must be less than or equal "
-                     "to 6, but the received value is %d.",
+                     "CropGrad must be less than or equal "
+                     "to 6, but the value received is %d.",
                      rank));
     switch (rank) {
       case 1:

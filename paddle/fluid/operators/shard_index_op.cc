@@ -21,12 +21,8 @@ class ShardIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   platform::errors::InvalidArgument(
-                       "Input(X) of ShardIndexOp should not be null."));
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   platform::errors::InvalidArgument(
-                       "Output(Out) of ShardIndexOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ShardIndex");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ShardIndex");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
