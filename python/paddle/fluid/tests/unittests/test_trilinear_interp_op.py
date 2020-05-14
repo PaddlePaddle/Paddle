@@ -588,14 +588,11 @@ class TestTrilinearInterpAPI(unittest.TestCase):
             x, out_shape=[4, 4, 8], actual_shape=actual_size)
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
         out6 = interpolate(
-            x, scale=scale_tensor, resample='TRILINEAR', data_format="NCDHW")
+            x, scale_factor=scale_tensor, mode='trilinear', data_format="NCDHW")
         out7 = interpolate(
-            x, out_shape=[4, 4, 8], resample='TRILINEAR', data_format="NCDHW")
+            x, size=[4, 4, 8], mode='trilinear', data_format="NCDHW")
         out8 = interpolate(
-            x,
-            out_shape=shape_tensor,
-            resample='TRILINEAR',
-            data_format="NCDHW")
+            x, size=shape_tensor, mode='trilinear', data_format="NCDHW")
 
         x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")
