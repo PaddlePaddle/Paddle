@@ -14,15 +14,12 @@
 
 # TODO: define learning rate decay  
 
-from ...fluid.dygraph import CosineDecay  #DEFINE_ALIAS
-from ...fluid.dygraph import ExponentialDecay  #DEFINE_ALIAS
-from ...fluid.dygraph import InverseTimeDecay  #DEFINE_ALIAS
-from ...fluid.dygraph import NaturalExpDecay  #DEFINE_ALIAS
-from ...fluid.dygraph import NoamDecay  #DEFINE_ALIAS
-from ...fluid.dygraph import PiecewiseDecay  #DEFINE_ALIAS
-from ...fluid.dygraph import PolynomialDecay  #DEFINE_ALIAS
-
 __all__ = [
-    'CosineDecay', 'ExponentialDecay', 'InverseTimeDecay', 'NaturalExpDecay',
-    'NoamDecay', 'PiecewiseDecay', 'PolynomialDecay'
+    #       'CosineDecay',
+    #       'ExponentialDecay',
+    #       'InverseTimeDecay',
+    #       'NaturalExpDecay',
+    #       'NoamDecay',
+    #       'PiecewiseDecay',
+    #       'PolynomialDecay'
 ]

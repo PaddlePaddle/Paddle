@@ -14,8 +14,8 @@
 
 # TODO: define function of recurrent neural network  
 
-from ...fluid.layers import gru_unit  #DEFINE_ALIAS
-from ...fluid.layers import lstm  #DEFINE_ALIAS
-from ...fluid.layers import lstm_unit  #DEFINE_ALIAS
-
-__all__ = ['gru_unit', 'lstm', 'lstm_unit']
+__all__ = [
+    #       'gru_unit',
+    #       'lstm',
+    #       'lstm_unit'
+]
