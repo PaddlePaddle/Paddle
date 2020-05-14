@@ -77,9 +77,18 @@ class UpSample(layers.Layer):
 
               scale_factor = float(in_size/out_size)
 
+        Linear interpolation:
+            if:
+                align_corners = False , align_mode = 0
+                input : (N,C,W_in)
+                output: (N,C,W_out) where:
+                W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+            else:
+                input : (N,C,W_in)
+                output: (N,C,W_out) where:
+                W_out = W_{in} * scale_{factor}
 
         Nearest neighbor interpolation:
-
           if:
               align_corners = False
               input : (N,C,H_in,W_in)
@@ -92,13 +101,13 @@ class UpSample(layers.Layer):
               output: (N,C,H_out,W_out) where:
               H_out = round(H_{in} * scale_{factor})
               W_out = round(W_{in} * scale_{factor})
+        
         Bilinear interpolation:
           if:
               align_corners = False , align_mode = 0
 
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
           else:
@@ -109,18 +118,14 @@ class UpSample(layers.Layer):
               W_out = W_{in} * scale_{factor}
 
         Bicubic interpolation:
-
           if:
               align_corners = False
-
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
-
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
           else:
-
               input : (N,C,H_in,W_in)
               output: (N,C,H_out,W_out) where:
               H_out = H_{in} * scale_{factor}
@@ -129,15 +134,12 @@ class UpSample(layers.Layer):
         Trilinear interpolation:
           if:
               align_corners = False , align_mode = 0
-
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
-
               D_out = (D_{in}+0.5) * scale_{factor} - 0.5
               H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
           else:
-
               input : (N,C,D_in,H_in,W_in)
               output: (N,C,D_out,H_out,W_out) where:
               D_out = D_{in} * scale_{factor}
