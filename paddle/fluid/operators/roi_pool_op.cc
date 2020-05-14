@@ -38,7 +38,10 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     auto rois_dims = ctx->GetInputDim("ROIs");
     if (ctx->HasInput("RoisLod")) {
       auto rois_lod_dims = ctx->GetInputDim("RoisLod");
-      PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
+      PADDLE_ENFORCE_EQ(rois_lod_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The lod information tensor of ROIs should "
+                            "be one-dimensional"));
     }
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
