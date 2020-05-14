@@ -27,13 +27,8 @@ class CropTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of Op(crop_tensor) should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
-            "Output(Out) of Op(crop_tensor) should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CropTensor");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CropTensor");
     auto x_dim = ctx->GetInputDim("X");
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     auto offsets = ctx->Attrs().Get<std::vector<int>>("offsets");
@@ -44,8 +39,8 @@ class CropTensorOp : public framework::OperatorWithKernel {
           inputs_name.size(), 0,
           platform::errors::InvalidArgument(
               "The number of elements of the input 'ShapeTensor' for "
-              "Op(crop_tensor) must be greater than zero, but the value "
-              "you give is %d.",
+              "Op(crop_tensor) must be greater than zero, "
+              "but the value received is %d.",
               inputs_name.size()));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
       for (size_t i = 0; i < shape.size(); ++i) {
@@ -66,15 +61,15 @@ class CropTensorOp : public framework::OperatorWithKernel {
       auto shape_dim = ctx->GetInputDim("Shape");
       PADDLE_ENFORCE_EQ(shape_dim.size(), 1,
                         platform::errors::InvalidArgument(
-                            "The number of dimensions for input 'Shape' of "
-                            "Op(crop_tensor) must "
-                            "be 1, but the value you give is %d.",
+                            "The number of dimensions of the input 'Shape' for "
+                            "Op(crop_tensor) must be 1, "
+                            "but the value received is %d.",
                             shape_dim.size()));
       PADDLE_ENFORCE_EQ(shape_dim[0], x_dim.size(),
                         platform::errors::InvalidArgument(
-                            "The number of elements (%d) of input 'Shape' for "
-                            "Op(crop_tensor) must be equal to the number of "
-                            "dimensions (%d) of the input.",
+                            "The number of elements (%d) of the input 'Shape' "
+                            "for Op(crop_tensor) must be equal to the number of"
+                            " dimensions (%d) of the input.",
                             shape_dim[0], x_dim.size()));
       if (ctx->IsRuntime()) {
         // If true, set the shape of Output(Out) according to Input(Shape) in
@@ -253,14 +248,9 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument(
-            "Input(X) of Op(crop_tensor_grad) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) of Op(crop_tensor_grad) should not "
-                          "be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CropTensorGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "CropTensorGrad");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
