@@ -665,8 +665,7 @@ def _getitem_impl_(var, item):
                 'dtype': out.dtype,
                 'value': float(value),
                 'force_cpu': force_cpu
-            },
-            stop_gradient=True)
+            })
         out.stop_gradient = True
         return out
 
@@ -706,9 +705,9 @@ def _getitem_impl_(var, item):
             slice_start.append(slice_item)
             slice_step.append(1)
             if isinstance(slice_item, Variable):
-                temp_1 = var.block.create_var(dtype='int32')
+                temp_1 = var.block.create_var(dtype=slice_item.dtype)
                 fill_constant([1], 1, force_cpu=True, out=temp_1)
-                temp_end = target_block.create_var(dtype='int32')
+                temp_end = target_block.create_var(dtype=slice_item.dtype)
                 target_block.append_op(
                     type='elementwise_add',
                     inputs={'X': slice_item,

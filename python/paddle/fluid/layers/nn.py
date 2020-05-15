@@ -6083,19 +6083,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     helper = LayerHelper("reshape2", **locals())
 
-    def get_new_shape_tensor(list_shape):
-        new_shape_tensor = []
-        for dim in list_shape:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_shape_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
-
     def get_attr_shape(list_shape):
         unk_dim_idx = -1
         attrs_shape = []
@@ -6133,7 +6120,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 "but received %s." % len(shape))
         attrs["shape"] = get_attr_shape(shape)
         if utils._contain_var(shape):
-            inputs['ShapeTensor'] = get_new_shape_tensor(shape)
+            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
         elif isinstance(actual_shape, Variable):
             actual_shape.stop_gradient = True
             inputs["Shape"] = actual_shape
@@ -6258,19 +6245,6 @@ def unsqueeze(input, axes, name=None):
     inputs = {"X": input}
     attrs = {}
 
-    def _to_Variable_list(one_list):
-        Variable_list = []
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                ele.stop_gradient = True
-                Variable_list.append(ele)
-            else:
-                assert (isinstance(ele, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
-                Variable_list.append(temp_out)
-        return Variable_list
-
     if isinstance(axes, int):
         axes = [axes]
     if isinstance(axes, Variable):
@@ -6278,7 +6252,7 @@ def unsqueeze(input, axes, name=None):
         inputs["AxesTensor"] = axes
     elif isinstance(axes, (list, tuple)):
         if utils._contain_var(axes):
-            inputs["AxesTensorList"] = _to_Variable_list(axes)
+            inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
         else:
             attrs["axes"] = axes
 
@@ -10192,26 +10166,13 @@ def expand(x, expand_times, name=None):
                     "Each element given in expand_times must not be negative.")
         return attrs_expand_times
 
-    def get_new_expand_times_tensor(list_expand_times):
-        new_expand_times_tensor = []
-        for ele in list_expand_times:
-            if isinstance(ele, Variable):
-                ele.stop_gradient = True
-                new_expand_times_tensor.append(ele)
-            else:
-                assert (isinstance(ele, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
-                new_expand_times_tensor.append(temp_out)
-        return new_expand_times_tensor
-
     if isinstance(expand_times, Variable):
         expand_times.stop_gradient = True
         inputs['ExpandTimes'] = expand_times
     elif isinstance(expand_times, (list, tuple)):
         attrs['expand_times'] = get_attr_expand_times(expand_times)
         if utils._contain_var(expand_times):
-            inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+            inputs['expand_times_tensor'] = utils._convert_to_tensor_list(
                 expand_times)
 
     dtype = helper.input_dtype(input_param_name='x')
@@ -10784,19 +10745,6 @@ def slice(input, axes, starts, ends):
 
     helper = LayerHelper('slice', **locals())
 
-    def get_new_list_tensor(old_list):
-        new_list_tensor = []
-        for dim in old_list:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_list_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_list_tensor.append(temp_out)
-        return new_list_tensor
-
     inputs = {'Input': input}
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
@@ -10809,7 +10757,7 @@ def slice(input, axes, starts, ends):
     elif isinstance(starts, (list, tuple)):
         attrs['starts'] = []
         if utils._contain_var(starts):
-            inputs['StartsTensorList'] = get_new_list_tensor(starts)
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
             for i, dim in enumerate(starts):
                 if isinstance(dim, Variable):
                     attrs['starts'].append(-1)
@@ -10827,7 +10775,7 @@ def slice(input, axes, starts, ends):
     elif isinstance(ends, (list, tuple)):
         attrs['ends'] = []
         if utils._contain_var(ends):
-            inputs['EndsTensorList'] = get_new_list_tensor(ends)
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
             for i, dim in enumerate(ends):
                 if isinstance(dim, Variable):
                     attrs['ends'].append(-1)
