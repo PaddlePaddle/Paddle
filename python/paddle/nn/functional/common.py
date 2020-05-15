@@ -17,20 +17,31 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import Variable, fill_constant
 
 # TODO: define the common functions to build a neural network  
-# __all__ = ['dropout',
-#            'embedding',
-#            'fc',
-#            'label_smooth',
-#            'one_hot',
-#            'pad',
-#            'pad_constant_like',
-#            'pad2d',
-#            'unfold',
-#            'bilinear_tensor_product',
-#            'assign',
-#            'interpolate']
+from ...fluid.layers import dropout  #DEFINE_ALIAS
+from ...fluid.layers import label_smooth  #DEFINE_ALIAS
+from ...fluid import one_hot  #DEFINE_ALIAS
+from ...fluid.layers import pad  #DEFINE_ALIAS
+from ...fluid.layers import pad2d  #DEFINE_ALIAS
+from ...fluid.layers import unfold  #DEFINE_ALIAS
+from ...fluid.layers import assign  #DEFINE_ALIAS
 
-__all__ = ['interpolate']
+#from ...fluid.layers import fc  #DEFINE_ALIAS
+from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+
+__all__ = [
+    'dropout',
+    #       'embedding',
+    #       'fc',
+    'label_smooth',
+    'one_hot',
+    'pad',
+    'pad_constant_like',
+    'pad2d',
+    'unfold',
+    #       'bilinear_tensor_product',
+    'assign',
+    'interpolate'
+]
 
 
 def interpolate(input,
@@ -43,6 +54,9 @@ def interpolate(input,
                 align_mode=1,
                 data_format='NCHW'):
     """
+	:alias_main: paddle.nn.functional.interpolate
+	:alias: paddle.nn.functional.interpolate,paddle.nn.functional.common.interpolate
+
     This op resizes a batch of images.
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w)
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape
@@ -276,6 +290,7 @@ def interpolate(input,
 		# [2L, 3L, 12L, 12L]
     """
     resample_methods = {
+        'LINEAR': 'linear',
         'BILINEAR': 'bilinear',
         'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
@@ -283,9 +298,12 @@ def interpolate(input,
     }
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'BILINEAR', 'TRILINEAR', "
+            "The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR', 'TRILINEAR', "
             " 'BICUBIC' or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
+
+    if resample in ['LINEAR'] and len(input.shape) != 3:
+        raise ValueError("'LINEAR' only support 3-D tensor.")
 
     if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(input.shape) != 4:
         raise ValueError(
@@ -303,7 +321,11 @@ def interpolate(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+    if len(input.shape) == 3 and data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCHW` or `NHWC` supported for 3-D input.")
+    elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCHW` or `NHWC` supported for 4-D input.")
@@ -367,6 +389,15 @@ def interpolate(input,
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
 
+            if len(input.shape) == 3:
+                if len(out_shape) != 1:
+                    raise ValueError(
+                        "out_shape length should be 2 for input 3-D tensor")
+                if contain_var:
+                    attrs['out_w'] = size_list[0]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_w'] = out_shape[0]
             if len(input.shape) == 4:
                 if len(out_shape) != 2:
                     raise ValueError("out_shape length should be 2 for "

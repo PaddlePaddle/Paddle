@@ -218,6 +218,24 @@ class Blas {
   template <typename T>
   void VMERF(int n, const T* a, T* y, int64_t mode) const;
 
+  template <typename T>
+  void TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo, CBLAS_TRANSPOSE transA,
+            CBLAS_DIAG diag, int M, int N, T alpha, const T* A, int lda, T* B,
+            int ldb) const;
+
+#ifdef PADDLE_WITH_CUDA
+  template <typename T>
+  void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
+
+  template <typename T>
+  void BatchedGETRI(int n, const T** a, const int* ipiv, T** a_inv, int* info,
+                    int batch_size) const;
+
+  template <typename T>
+  void BatchedMatInv(int n, const T** a, T** a_inv, int* info,
+                     int batch_size) const;
+#endif
+
  private:
   const DeviceContext& context_;
 };
@@ -350,6 +368,28 @@ class BlasT : private Blas<DeviceContext> {
   void VMERF(ARGS... args) const {
     Base()->template VMERF<T>(args...);
   }
+
+  template <typename... ARGS>
+  void TRSM(ARGS... args) const {
+    Base()->template TRSM<T>(args...);
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  template <typename... ARGS>
+  void BatchedGETRF(ARGS... args) const {
+    Base()->template BatchedGETRF<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedGETRI(ARGS... args) const {
+    Base()->template BatchedGETRI<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedMatInv(ARGS... args) const {
+    Base()->template BatchedMatInv<T>(args...);
+  }
+#endif
 
  private:
   const Blas<DeviceContext>* Base() const {

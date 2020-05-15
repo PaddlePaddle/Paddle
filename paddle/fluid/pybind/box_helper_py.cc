@@ -73,7 +73,8 @@ void BindBoxWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("save_delta", &framework::BoxWrapper::SaveDelta,
            py::call_guard<py::gil_scoped_release>())
-      .def("initialize_gpu", &framework::BoxWrapper::InitializeGPU,
+      .def("initialize_gpu_and_load_model",
+           &framework::BoxWrapper::InitializeGPUAndLoadModel,
            py::call_guard<py::gil_scoped_release>())
       .def("init_metric", &framework::BoxWrapper::InitMetric,
            py::call_guard<py::gil_scoped_release>())

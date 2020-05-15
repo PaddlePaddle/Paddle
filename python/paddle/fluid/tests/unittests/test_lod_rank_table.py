@@ -17,7 +17,7 @@ from __future__ import print_function
 from paddle.fluid.layers import data
 from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid.executor import Executor
-import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard, core
 import numpy
 import unittest
 
@@ -39,6 +39,26 @@ class TestLoDRankTable(unittest.TestCase):
         var = scope.find_var(rank_table.name)
         table = var.get_lod_rank_table()
         self.assertEqual([(0, 5), (1, 1), (2, 1)], list(table.items()))
+
+
+class TestLoDRankTableError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x = numpy.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                rank_table = lod_rank_table(x=x, level=1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_list_Variable():
+                rank_table = lod_rank_table(x=[x], level=1)
+
+            self.assertRaises(TypeError, test_list_Variable)
+
+            x = data(name='x', shape=[10], dtype='float32', lod_level=1)
+            out = lod_rank_table(x=x, level=0)
+            out = lod_rank_table(x=[x], level=0)
 
 
 if __name__ == '__main__':

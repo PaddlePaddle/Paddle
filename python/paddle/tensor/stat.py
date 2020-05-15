@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # TODO: define statistical functions of a tensor  
-__all__ = [  #'mean', 
-    #'reduce_mean', 
-    'std',
-    'var'
-]
+from ..fluid.layers import mean  #DEFINE_ALIAS
+from ..fluid.layers import reduce_mean  #DEFINE_ALIAS
+
+__all__ = ['mean', 'reduce_mean', 'std', 'var']
+
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import in_dygraph_mode
@@ -28,6 +28,9 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 
 def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     """
+	:alias_main: paddle.var
+	:alias: paddle.var,paddle.tensor.var,paddle.tensor.stat.var
+
     Computes the variance of the input Variable's elements along the specified 
     axis.
 
@@ -104,6 +107,9 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
 
 def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     """
+	:alias_main: paddle.std
+	:alias: paddle.std,paddle.tensor.std,paddle.tensor.stat.std
+
     Computes the standard-deviation  of the input Variable's elements along the specified 
     axis.
 
@@ -151,7 +157,7 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
 
     tmp = var(input, axis=axis, keepdim=keepdim, unbiased=unbiased, name=name)
     tmp = layers.sqrt(tmp)
-    if out:
+    if out is not None:
         layers.assign(input=tmp, output=out)
         return out
     else:

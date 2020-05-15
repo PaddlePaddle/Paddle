@@ -69,19 +69,20 @@ class Pool2dOpConverter : public OpConverter {
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
 
-    bool global_pooling = boost::get<bool>(op_desc.GetAttr("global_pooling"));
+    bool global_pooling =
+        BOOST_GET_CONST(bool, op_desc.GetAttr("global_pooling"));
     std::string pool_type =
-        boost::get<std::string>(op_desc.GetAttr("pooling_type"));
+        BOOST_GET_CONST(std::string, op_desc.GetAttr("pooling_type"));
     std::vector<int> ksize =
-        boost::get<std::vector<int>>(op_desc.GetAttr("ksize"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("ksize"));
     std::vector<int> strides =
-        boost::get<std::vector<int>>(op_desc.GetAttr("strides"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
     std::vector<int> paddings =
-        boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
-    bool ceil_mode = boost::get<bool>(op_desc.GetAttr("ceil_mode"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+    bool ceil_mode = BOOST_GET_CONST(bool, op_desc.GetAttr("ceil_mode"));
     bool adaptive = false;
     if (op_desc.HasAttr("adaptive"))
-      adaptive = boost::get<bool>(op_desc.GetAttr("adaptive"));
+      adaptive = BOOST_GET_CONST(bool, op_desc.GetAttr("adaptive"));
 
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     plugin::PoolPlugin::PoolType plugin_pool_type =
@@ -107,7 +108,7 @@ class Pool2dOpConverter : public OpConverter {
     if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr("X_scale"));
-      float input_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      float input_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
 #endif
     }

@@ -75,11 +75,11 @@ void RunTransposeFlattenConcatFuse(ir::Graph *graph, int times) {
     Node *concat_op = subgraph.at(pattern.GetPDNode("concat"));
     Node *concat_out = subgraph.at(pattern.GetPDNode("concat_out"));
     std::vector<std::string> input_names;
-    std::vector<int> trans_axis = boost::get<std::vector<int>>(
-        nodes[kTransOffset]->Op()->GetAttr("axis"));
+    std::vector<int> trans_axis = BOOST_GET_CONST(
+        std::vector<int>, nodes[kTransOffset]->Op()->GetAttr("axis"));
     int flatten_axis =
-        boost::get<int>(nodes[kFlattenOffset]->Op()->GetAttr("axis"));
-    int concat_axis = boost::get<int>(concat_op->Op()->GetAttr("axis"));
+        BOOST_GET_CONST(int, nodes[kFlattenOffset]->Op()->GetAttr("axis"));
+    int concat_axis = BOOST_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
     std::string output_name = concat_out->Name();
 
     for (int i = 0; i < times; i++) {

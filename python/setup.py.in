@@ -139,16 +139,18 @@ packages=['paddle',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
-          'paddle.fluid',
-          'paddle.tensor',
+          'paddle.incubate',
+          'paddle.incubate.complex',
+          'paddle.incubate.complex.tensor',
           'paddle.framework',
+          'paddle.fluid',
           'paddle.fluid.dygraph',
-          'paddle.tensor',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.distributed',
           'paddle.fluid.layers',
+          'paddle.fluid.dataloader',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
           'paddle.fluid.contrib.quantize',
@@ -176,10 +178,23 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
+          'paddle.incubate.hapi',
+          'paddle.incubate.hapi.datasets',
+          'paddle.incubate.hapi.vision',
+          'paddle.incubate.hapi.vision.models',
+          'paddle.incubate.hapi.vision.transforms',
+          'paddle.incubate.hapi.text',
+          'paddle.incubate',
+          'paddle.io',
+          'paddle.optimizer',
           'paddle.nn',
           'paddle.nn.functional',
           'paddle.nn.layer',
-          'paddle.imperative']
+          'paddle.nn.initializer',
+          'paddle.metric',
+          'paddle.imperative',
+          'paddle.tensor',
+          ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -246,10 +261,6 @@ if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
     package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
-    # mklml has dependency to vs runtime library
-    if os.name == 'nt':
-        shutil.copy('${MKLML_SHARED_LIB_DEPS}', libs_path)
-        package_data['paddle.libs'] += ['msvcr120.dll']
 else:
     if os.name == 'nt':
         # copy the openblas.dll

@@ -242,7 +242,7 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
@@ -279,12 +279,18 @@ function check_style() {
     pre-commit install
     clang-format --version
 
+    commit_files=on
     for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
             git diff
-            exit 1
+            commit_files=off
         fi
     done 
+    
+    if [ $commit_files == 'off' ];then
+        echo "code format error"
+        exit 1
+    fi
     trap : 0
 }
 
@@ -781,6 +787,15 @@ set +x
                         multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
+                    if [[ "${#single_card_tests}" -gt 3000 ]];then
+                        if [[ "$single_card_tests_1" == "" ]]; then 
+                            single_card_tests_1="^$testcase$"
+                        else
+                            single_card_tests_1="$single_card_tests_1|^$testcase$"
+                        fi
+                        continue
+                    fi
+
                     if [[ "$single_card_tests" == "" ]]; then
                         single_card_tests="^$testcase$"
                     else
@@ -794,6 +809,7 @@ set +x
         done <<< "$test_cases";
 
         card_test "$single_card_tests" 1    # run cases with single GPU
+        card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then

@@ -566,7 +566,7 @@ class DeviceTracerImpl : public DeviceTracer {
         } else if (platform::is_gpu_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPlace);
           event->set_device_id(
-              boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
+              BOOST_GET_CONST(platform::CUDAPlace, r.place).GetDeviceId());
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else {

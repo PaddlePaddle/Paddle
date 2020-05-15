@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..fluid.framework import Variable, in_dygraph_mode
+from ..fluid.framework import Variable
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -23,18 +23,25 @@ from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
+from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
+from ..fluid.layers import diag  #DEFINE_ALIAS
+from ..fluid.layers import eye  #DEFINE_ALIAS
+from ..fluid.layers import fill_constant  #DEFINE_ALIAS
+
+from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+
 __all__ = [
-    #            'create_tensor',
-    #            'create_lod_tensor', 
-    #            'create_random_int_lodtensor',
-    #            'crop_tensor', 
-    #            'diag', 'eye', 
-    #            'fill_constant', 
-    #            'get_tensor_from_selected_rows', 
+    'create_tensor',
+    #       'create_lod_tensor',
+    #       'create_random_int_lodtensor',
+    'crop_tensor',
+    'diag',
+    'eye',
+    'fill_constant',
+    #       'get_tensor_from_selected_rows',
     'linspace',
     'ones',
     'ones_like',
-    #            'range', 
     'zeros',
     'zeros_like',
     'arange',
@@ -43,7 +50,7 @@ __all__ = [
     'full_like',
     'triu',
     'tril',
-    'meshgrid',
+    'meshgrid'
 ]
 
 
@@ -55,21 +62,31 @@ def full_like(input,
               stop_gradient=True,
               name=None):
     """
+	:alias_main: paddle.full_like
+	:alias: paddle.full_like,paddle.tensor.full_like,paddle.tensor.creation.full_like
+
     **full_like**
     This function creates a tensor filled with `fill_value` which has identical shape and dtype 
     with `input`.
+
     Args:
-        input(Variable): The input tensor which specifies shape and dtype.
-        fill_value: The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
-        out(Variable): The output tensor.
+        input(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        fill_value(bool|float|int): The value to fill the tensor with. Default value is 0. Note: this value shouldn't exceed the range of the output data type.
+        out(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of operation. If out is None, a new Varibale will be create to store the result. Default value is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The default value is None, which means the output data type is the same as input.
+        device (string, optional): Which device to run the operator. The :attr:`device` must be None, 'cpu', 'gpu'. If :attr:`device` is None, it will be the device that the user set in the paddle program. Default value is None.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable. Default value is True.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
-        out(Variable): The tensor variable storing the output.
+        out(Variable): The Tensor variable storing the output.
+    
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.fluid as fluid
           import numpy as np
-
           input = fluid.data(name='input', dtype='float32', shape=[2, 3])
           output = paddle.full_like(input, 2.0)
           exe = fluid.Executor(fluid.CPUPlace())
@@ -80,18 +97,24 @@ def full_like(input,
     """
     helper = LayerHelper("full_like", **locals())
 
+    var_dtype = None
     if dtype is None:
-        dtype = 'float32'
-
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+        var_dtype = input.dtype
+    else:
+        check_dtype(
+            dtype, 'dtype',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'full_like')
+        var_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
+
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [input]},
-        attrs={'value': fill_value},
+        attrs={'value': fill_value,
+               "dtype": var_dtype},
         outputs={'Out': [out]})
     out.stop_gradient = stop_gradient
 
@@ -100,6 +123,9 @@ def full_like(input,
 
 def linspace(start, stop, num, dtype, out=None, device=None, name=None):
     """
+	:alias_main: paddle.linspace
+	:alias: paddle.linspace,paddle.tensor.linspace,paddle.tensor.creation.linspace
+
     This OP return fixed number of evenly spaced values within a given interval.
     
     **NOTICE**: The output of this OP has no gradient.
@@ -186,6 +212,9 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
 
 def ones(shape, dtype=None, out=None, device=None):
     """
+	:alias_main: paddle.ones
+	:alias: paddle.ones,paddle.tensor.ones,paddle.tensor.creation.ones
+
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
     Args:
@@ -225,6 +254,9 @@ def ones(shape, dtype=None, out=None, device=None):
 
 def ones_like(input, dtype=None, device=None, name=None):
     """
+	:alias_main: paddle.ones_like
+	:alias: paddle.ones_like,paddle.tensor.ones_like,paddle.tensor.creation.ones_like
+
     This function creates a ones tensor which has identical shape and dtype 
     with `input`.
 
@@ -292,6 +324,9 @@ def ones_like(input, dtype=None, device=None, name=None):
 
 def zeros(shape, dtype, out=None, device=None):
     """
+	:alias_main: paddle.zeros
+	:alias: paddle.zeros,paddle.tensor.zeros,paddle.tensor.creation.zeros
+
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
@@ -331,6 +366,9 @@ def zeros(shape, dtype, out=None, device=None):
 
 def zeros_like(input, dtype=None, device=None, name=None):
     """
+	:alias_main: paddle.zeros_like
+	:alias: paddle.zeros_like,paddle.tensor.zeros_like,paddle.tensor.creation.zeros_like
+
     This function creates a zeros tensor which has identical shape and dtype 
     with `input`.
 
@@ -467,6 +505,9 @@ def full(shape,
          stop_gradient=True,
          name=None):
     """
+	:alias_main: paddle.full
+	:alias: paddle.full,paddle.tensor.full,paddle.tensor.creation.full
+
     This Op return a Tensor with the `fill_value` which size is same as `shape`
     
     Args:
@@ -544,6 +585,9 @@ def full(shape,
 
 def arange(start, end, step=1, dtype=None, name=None):
     """
+	:alias_main: paddle.arange
+	:alias: paddle.arange,paddle.tensor.arange,paddle.tensor.creation.arange
+
     Return evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop) (in other words,
@@ -648,6 +692,9 @@ def _tril_triu_op(helper):
 
 def tril(input, diagonal=0, name=None):
     """
+	:alias_main: paddle.tril
+	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
+
     This op returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`input`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
@@ -696,8 +743,6 @@ def tril(input, diagonal=0, name=None):
             #        [ 5,  6,  0,  0],
             #        [ 9, 10, 11,  0]])
 
-        .. code-block:: python
-
             # example 2, positive diagonal value
             tril = tensor.tril(x, diagonal=2)
             tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -705,8 +750,6 @@ def tril(input, diagonal=0, name=None):
             # array([[ 1,  2,  3,  0], 
             #        [ 5,  6,  7,  8],
             #        [ 9, 10, 11, 12]])
-
-        .. code-block:: python
 
             # example 3, negative diagonal value
             tril = tensor.tril(x, diagonal=-1)
@@ -716,13 +759,19 @@ def tril(input, diagonal=0, name=None):
             #        [ 5,  0,  0,  0],
             #        [ 9, 10,  0,  0]])
 
-   """
+    """
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'tril_triu')
+        return op(input, 'diagonal', diagonal, "lower", True)
 
     return _tril_triu_op(LayerHelper('tril', **locals()))
 
 
 def triu(input, diagonal=0, name=None):
     """
+	:alias_main: paddle.triu
+	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
+
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`input`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
@@ -771,8 +820,6 @@ def triu(input, diagonal=0, name=None):
             #        [ 0,  6,  7,  8],
             #        [ 0,  0, 11, 12]])
 
-        .. code-block:: python
-
             # example 2, positive diagonal value
             triu = tensor.triu(x, diagonal=2)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
@@ -780,8 +827,6 @@ def triu(input, diagonal=0, name=None):
             # array([[0, 0, 3, 4],
             #        [0, 0, 0, 8],
             #        [0, 0, 0, 0]])
-
-        .. code-block:: python
 
             # example 3, negative diagonal value
             triu = tensor.triu(x, diagonal=-1)
@@ -792,12 +837,18 @@ def triu(input, diagonal=0, name=None):
             #        [ 0, 10, 11, 12]])
 
     """
+    if in_dygraph_mode():
+        op = getattr(core.ops, 'tril_triu')
+        return op(input, 'diagonal', diagonal, "lower", False)
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
 def meshgrid(input, name=None):
     """
+	:alias_main: paddle.meshgrid
+	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
+
     This op takes a list of N tensors as input, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     

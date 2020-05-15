@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/fluid/platform/dynload/cusolver.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -85,7 +86,7 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const enum stream::Priority& priority = stream::Priority::kNormal);
+      const stream::Priority& priority = stream::Priority::kNormal);
 
   ~CUDAContext();
 
@@ -104,6 +105,10 @@ class CUDAContext {
   const cudaStream_t& RawStream() { return stream_->raw_stream(); }
 
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
+
+  const cusolverDnHandle_t& CusolverDnHandle() const {
+    return cusolver_dn_handle_;
+  }
 
   const std::unique_ptr<CublasHandleHolder>& CublasHandle() const {
     return cublas_handle_;
@@ -170,6 +175,13 @@ class CUDAContext {
     }
   }
 
+  void InitCuSolverContext() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnCreate(&cusolver_dn_handle_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnSetStream(cusolver_dn_handle_, RawStream()));
+  }
+
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
@@ -182,6 +194,13 @@ class CUDAContext {
     cublas_tensor_core_handle_.reset();
   }
 
+  void DestoryCuSolverContext() {
+    if (cusolver_dn_handle_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cusolverDnDestroy(cusolver_dn_handle_));
+    }
+  }
+
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
@@ -189,6 +208,7 @@ class CUDAContext {
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+  cusolverDnHandle_t cusolver_dn_handle_;
   DISABLE_COPY_AND_ASSIGN(CUDAContext);
 };
 
@@ -249,6 +269,8 @@ class CUDADeviceContext : public DeviceContext {
    *  sequential cudnn function calls. */
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
+  cusolverDnHandle_t cusolver_dn_handle() const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
@@ -274,11 +296,11 @@ class CUDADeviceContext : public DeviceContext {
     return context()->Stream()->WaitCallback();
   }
 
-  void ResetDefaultContext(const enum stream::Priority& priority) {
+  void ResetDefaultContext(const stream::Priority& priority) {
     default_ctx_.reset(new CUDAContext(place_, priority));
   }
 
-  void ResetThreadContext(const enum stream::Priority& priority) {
+  void ResetThreadContext(const stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
     thread_ctx_[this].reset(new CUDAContext(place_, priority));
   }
@@ -399,30 +421,66 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-// Following three maps are used to cache MKLDNN primitives.
-// There relations are:
-// - BlobMap = Map<cur_thread_id, ShapeBlob>
-// - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
-// - KeyBlob  = Map<blob_name, blob>
-// Where:
-using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
-using ShapeBlob = std::unordered_map<std::string, std::shared_ptr<KeyBlob>>;
-using BlobMap = std::unordered_map<int, std::shared_ptr<ShapeBlob>>;
 
-// default mkldnn session id
-constexpr size_t kMKLDNNSessionID_Default = 0;
-// mkldnn session id for cache clearing mode
-constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
+class MKLDNNDeviceContextThreadLocals {
+  // default mkldnn session id
 
-void set_cur_mkldnn_session_id(size_t);
-size_t get_cur_mkldnn_session_id(void);
-void set_cur_input_shape_str(std::string input_shape_str);
-void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
-void set_cur_paddle_data_layout(framework::DataLayout);
-framework::DataLayout get_cur_paddle_data_layout(void);
+  typedef MKLDNNDeviceContextThreadLocals self;
+  struct Body {
+    size_t cur_mkldnn_session_id;
+    // Current data input shape string.
+    // - For fixed-shape, it's a null string in default.
+    // - For dynamic-shape, it's user specific.
+    std::string cur_input_shape_str;
+    // the cache capacity of different input shapes for MKLDNN.
+    // Default 1 means fixed input shape, not dynamic shape.
+    int cur_input_shape_cache_capacity;
+    // Recently registered data_format. This is needed to
+    // know for converting MKL-DNN Tensor to non MKL-DNN
+    paddle::framework::DataLayout cur_paddle_data_layout;
+
+    Body();
+    void set_cur_mkldnn_session_id(size_t sid);
+    size_t get_cur_mkldnn_session_id(void);
+    void set_cur_input_shape_str(std::string input_shape_str);
+    void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
+    void set_cur_paddle_data_layout(framework::DataLayout dl);
+    framework::DataLayout get_cur_paddle_data_layout(void);
+  };
+  MKLDNNDeviceContextThreadLocals() = default;
+  MKLDNNDeviceContextThreadLocals(const MKLDNNDeviceContextThreadLocals& c) =
+      delete;
+
+ public:
+  // default mkldnn session id
+  static constexpr size_t kMKLDNNSessionID_Default = 0;
+  // mkldnn session id for cache clearing mode
+  static constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
+  static Body& fetch() {
+    thread_local Body b;
+    return b;
+  }
+};
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
+  template <class T>
+  using BlobPtr_t = std::shared_ptr<T>;
+  template <class P1, class P2>
+  using umap_value_smart_t = std::unordered_map<P1, BlobPtr_t<P2>>;
+  template <class T>
+  using umap_key_string_t = umap_value_smart_t<std::string, T>;
+
+  // Following three maps are used to cache MKLDNN primitives.
+  // There relations are:
+  // - BlobMap = Map<cur_thread_id, ShapeBlob>
+  // - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
+  // - KeyBlob  = Map<blob_name, blob>
+
+  using KeyBlob = umap_key_string_t<void>;
+  using ShapeBlob = umap_key_string_t<KeyBlob>;
+  using BlobMap = umap_value_smart_t<int, ShapeBlob>;
+
   explicit MKLDNNDeviceContext(CPUPlace place);
 
   /* \brief  Get the active engine */
@@ -439,6 +497,10 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;
+
+  static auto tls() -> decltype(MKLDNNDeviceContextThreadLocals::fetch()) {
+    return MKLDNNDeviceContextThreadLocals::fetch();
+  }
 
  private:
   mkldnn::engine engine_;

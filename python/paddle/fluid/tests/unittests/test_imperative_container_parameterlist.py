@@ -35,7 +35,7 @@ class MyLayer(fluid.Layer):
                 shape=[2, 2], dtype='float32')] * num_stacked_param)
 
     def paddle_imperative_ParameterList(self, num_stacked_param):
-        return paddle.imperative.ParameterList(
+        return paddle.nn.ParameterList(
             [fluid.layers.create_parameter(
                 shape=[2, 2], dtype='float32')] * num_stacked_param)
 

@@ -46,24 +46,25 @@ class FcOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     const int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
-            ? boost::get<int>(op_desc.GetAttr("x_num_col_dims"))
+            ? BOOST_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
             : (op_desc.HasAttr("in_num_col_dims")
-                   ? boost::get<int>(op_desc.GetAttr("in_num_col_dims"))
+                   ? BOOST_GET_CONST(int, op_desc.GetAttr("in_num_col_dims"))
                    : 1);
     const std::string activation_type =
         op_desc.HasAttr("activation_type")
-            ? boost::get<std::string>(op_desc.GetAttr("activation_type"))
+            ? BOOST_GET_CONST(std::string, op_desc.GetAttr("activation_type"))
             : "";
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
-    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr(i_name + "_scale"));
-      float in_scale = boost::get<float>(op_desc.GetAttr(i_name + "_scale"));
+      float in_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr(i_name + "_scale"));
       auto weight_scale =
-          boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
+          BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
                                               Y_t, true, weight_scale);
       engine_->SetTensorDynamicRange(X, in_scale);

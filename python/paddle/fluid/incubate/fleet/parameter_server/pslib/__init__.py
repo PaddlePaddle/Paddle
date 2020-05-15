@@ -567,6 +567,24 @@ class PSLib(Fleet):
                         model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
+    def confirm(self):
+        """
+        confirm all the updated params in current pass
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.confirm()
+        self._role_maker._barrier_worker()
+
+    def revert(self):
+        """
+        revert all the updated params in current pass
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.revert()
+        self._role_maker._barrier_worker()
+
     def load_model(self, model_dir=None, **kwargs):
         """
         load pslib model, there are at least 4 modes, these modes are the same

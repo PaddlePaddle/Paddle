@@ -13,4 +13,9 @@
 # limitations under the License.
 
 # TODO: define classes of recurrent neural network  
-# __all__ = ['RNNCell', 'GRUCell', 'LSTMCell']
+
+__all__ = [
+    #       'RNNCell',
+    #       'GRUCell',
+    #       'LSTMCell'
+]
