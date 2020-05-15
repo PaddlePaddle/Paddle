@@ -412,6 +412,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 
       this->AcquireForwardPrimitiveDescriptor(dnnl::algorithm::binary_add,
                                               src0_md, src1_md, dst_md);
+    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
