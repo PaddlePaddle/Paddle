@@ -35,9 +35,13 @@ class TestSequenceFirstStepOpError(unittest.TestCase):
 
             def test_input_dtype():
                 # the dtype of input must be int64
-                input_data = fluid.layers.data(
-                    name='x', shape=[4], dtype='float32')
-                fluid.layers.sequence_last_step(input_data)
+                type_data = fluid.layers.data(
+                    name='type_data',
+                    shape=[7, 1],
+                    append_batch_size=False,
+                    dtype='int64',
+                    lod_level=1)
+                fluid.layers.sequence_last_step(type_data)
 
             self.assertRaises(TypeError, test_input_dtype)
 
