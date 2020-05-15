@@ -116,9 +116,9 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_preids_Variable():
                 # the input pre_ids must be Variable
-                input_data = np.random.randint(1, 5, [5, 1]).astype("int64")
+                preids_data = np.random.randint(1, 5, [5, 1]).astype("int64")
                 fluid.layers.beam_search(
-                    pre_ids=input_data,
+                    pre_ids=preids_data,
                     pre_scores=pre_scores,
                     ids=topk_indices,
                     scores=accu_scores,
@@ -129,10 +129,11 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_prescores_Variable():
                 # the input pre_scores must be Variable
-                input_data = np.random.uniform(1, 5, [5, 1]).astype("float32")
+                prescores_data = np.random.uniform(1, 5,
+                                                   [5, 1]).astype("float32")
                 fluid.layers.beam_search(
                     pre_ids=pre_ids,
-                    pre_scores=input_data,
+                    pre_scores=prescores_data,
                     ids=topk_indices,
                     scores=accu_scores,
                     beam_size=4,
@@ -142,11 +143,11 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_ids_Variable():
                 # the input ids must be Variable or None
-                input_data = np.random.randint(1, 5, [5, 1]).astype("int64")
+                ids_data = np.random.randint(1, 5, [5, 1]).astype("int64")
                 fluid.layers.beam_search(
                     pre_ids=pre_ids,
                     pre_scores=pre_scores,
-                    ids=input_data,
+                    ids=ids_data,
                     scores=accu_scores,
                     beam_size=4,
                     end_id=1)
@@ -155,12 +156,12 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_scores_Variable():
                 # the input scores must be Variable
-                input_data = np.random.randint(1, 5, [5, 1]).astype("float32")
+                scores_data = np.random.uniform(1, 5, [5, 1]).astype("float32")
                 fluid.layers.beam_search(
                     pre_ids=pre_ids,
                     pre_scores=pre_scores,
                     ids=topk_indices,
-                    scores=input_data,
+                    scores=scores_data,
                     beam_size=4,
                     end_id=1)
 
@@ -168,10 +169,13 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_preids_dtype():
                 # the dtype of input pre_ids must be int64
-                input_data = fluid.layers.data(
-                    name='input_data', shape=[1], lod_level=2, dtype='float32')
+                preids_type_data = fluid.layers.data(
+                    name='preids_type_data',
+                    shape=[1],
+                    lod_level=2,
+                    dtype='float32')
                 fluid.layers.beam_search(
-                    pre_ids=input_data,
+                    pre_ids=preids_type_data,
                     pre_scores=pre_scores,
                     ids=topk_indices,
                     scores=accu_scores,
@@ -182,11 +186,14 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_prescores_dtype():
                 # the dtype of input pre_scores must be float32
-                input_data = fluid.layers.data(
-                    name='input_data', shape=[1], lod_level=2, dtype='int64')
+                prescores_type_data = fluid.layers.data(
+                    name='prescores_type_data',
+                    shape=[1],
+                    lod_level=2,
+                    dtype='int64')
                 fluid.layers.beam_search(
                     pre_ids=pre_ids,
-                    pre_scores=input_data,
+                    pre_scores=prescores_type_data,
                     ids=topk_indices,
                     scores=accu_scores,
                     beam_size=4,
