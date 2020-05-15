@@ -45,9 +45,11 @@ class DataNormOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DataNorm");
-    OP_INOUT_CHECK(ctx->HasInput("BatchSize"), "Input", "BatchSize", "DataNorm");
+    OP_INOUT_CHECK(ctx->HasInput("BatchSize"), "Input", "BatchSize",
+                                 "DataNorm");
     OP_INOUT_CHECK(ctx->HasInput("BatchSum"), "Input", "BatchSum", "DataNorm");
-    OP_INOUT_CHECK(ctx->HasInput("BatchSquareSum"), "Input", "BatchSquareSum", "DataNorm");
+    OP_INOUT_CHECK(ctx->HasInput("BatchSquareSum"), "Input", "BatchSquareSum",
+                                 "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Means"), "Output", "Means", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Scales"), "Output", "Scales", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "DataNorm");
@@ -76,24 +78,24 @@ class DataNormOp : public framework::OperatorWithKernel {
                                           : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize").size(), 1UL,
-                          platform::errors::InvalidArgument(
-                              "The input dim of BatchSize shouold be 1"));
+                      platform::errors::InvalidArgument(
+                          "The input dim of BatchSize shouold be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum").size(), 1UL,
-                          platform::errors::InvalidArgument(
-                              "The input dim of BatchSum shouold be 1"));
+                      platform::errors::InvalidArgument(
+                          "The input dim of BatchSum shouold be 1"));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum").size(), 1UL,
-                          platform::errors::InvalidArgument(
-                              "The input dim of BatchSquareSum shouold be 1"));
+                      platform::errors::InvalidArgument(
+                          "The input dim of BatchSquareSum shouold be 1"));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSize")[0], C,
-                            platform::errors::InvalidArgument(
-                                "The input dim[0] of BatchSize shouold be C"));
+                        platform::errors::InvalidArgument(
+                            "The input dim[0] of BatchSize shouold be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSum")[0], C,
-                            platform::errors::InvalidArgument(
-                                "The input dim[0] of BatchSum shouold be C"));
+                        platform::errors::InvalidArgument(
+                            "The input dim[0] of BatchSum shouold be C"));
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("BatchSquareSum")[0], C,
-                            platform::errors::InvalidArgument(
-                                "The input dim[0] of BatchSqureSum shouold be C"));
+                        platform::errors::InvalidArgument(
+                            "The input dim[0] of BatchSqureSum shouold be C"));
     }
 
     if (enable_scale_and_shift) {
@@ -200,8 +202,8 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1e-4)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
-                                platform::errors::InvalidArgument(
-                                    "'epsilon' should be between 0.0 and 0.001."));
+                            platform::errors::InvalidArgument(
+                                "'epsilon' should be between 0.0 and 0.001."));
         });
     AddAttr<int>("slot_dim",
                  "(int, default -1) Dimension of one slot if set, "
@@ -273,9 +275,8 @@ class DataNormKernel<platform::CPUDeviceContext, T>
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
+                                            "The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -418,12 +419,14 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     bool enable_scale_and_shift =
         ctx->Attrs().Get<bool>("enable_scale_and_shift");
     // check output
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSize")), "Output",
-                   framework::GradVarName("BatchSize"), "DataNormGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSize")),
+                   "Output", framework::GradVarName("BatchSize"),
+                   "DataNormGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSum")), "Output",
                    framework::GradVarName("BatchSum"), "DataNormGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSquareSum")), "Output",
-                   framework::GradVarName("BatchSquareSum"), "DataNormGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BatchSquareSum")),
+                   "Output", framework::GradVarName("BatchSquareSum"),
+                   "DataNormGrad");
 
     const auto x_dims = ctx->GetInputDim("X");
     const DataLayout data_layout = framework::StringToDataLayout(
@@ -508,9 +511,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2,
-                      platform::errors::InvalidArgument(
-                            "The Input dim size should be 2"));
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::InvalidArgument(
+                                            "The Input dim size should be 2"));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]

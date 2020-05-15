@@ -231,13 +231,15 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
               ids_data[i], N,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
-                  "expected >= 0 and < %ld, but got %ld. Please check input value.",
+                  "expected >= 0 and < %ld, but got %ld. Please check input "
+                  "value.",
                   N, ids_data[i]));
           PADDLE_ENFORCE_GE(
               ids_data[i], 0,
               platform::errors::InvalidArgument(
                   "Variable value (input) of OP(fluid.layers.embedding) "
-                  "expected >= 0 and < %ld, but got %ld. Please check input value.",
+                  "expected >= 0 and < %ld, but got %ld. Please check input"
+                  "value.",
                   N, ids_data[i]));
           for (int j = 0; j < D; ++j) {
             d_table_data[ids_data[i] * D + j] += d_output_data[i * D + j];

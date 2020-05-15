@@ -40,7 +40,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
             "ShapeError: The dimensions of the 'lookup table' must be 2. "
             "But received lookup table's dimensions = %d, "
             "lookup table's shape = [%s].",
-        table_dims.size(), table_dims));
+            table_dims.size(), table_dims));
     PADDLE_ENFORCE_EQ(
         ids_dims[ids_rank - 1], 1,
         platform::errors::InvalidArgument(

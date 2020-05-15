@@ -90,14 +90,14 @@ class MergeIdsOp : public framework::OperatorWithKernel {
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_ENFORCE_EQ(ids_dims[0].size(), 2,
-                        platform::errors::InvalidArgument(
-                            "the ids size must be 2, but received %d",
-                            ids_dims[0].size()));
-      PADDLE_ENFORCE_EQ(ids_dims[0][1], 1,
-                        platform::errors::InvalidArgument(
-                            "the ids dim must be 1, but received %d",
-                            ids_dims[0][1]));
+      PADDLE_ENFORCE_EQ(
+          ids_dims[0].size(), 2,
+          platform::errors::InvalidArgument(
+              "the ids size must be 2, but received %d", ids_dims[0].size()));
+      PADDLE_ENFORCE_EQ(
+          ids_dims[0][1], 1,
+          platform::errors::InvalidArgument(
+              "the ids dim must be 1, but received %d", ids_dims[0][1]));
     }
     auto x_var_type = ctx->GetInputsVarType("X");
     for (auto &var_type : x_var_type) {

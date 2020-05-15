@@ -32,8 +32,8 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
   while (idy < K) {
     int64_t id = ids[idy];
     PADDLE_ENFORCE_EQ(
-        id >= 0, true,
-        platform::errors::InvalidArgument(
+        id >= 0,
+        true, platform::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.embedding) "
             "expected >= 0 and < %ld, but got %ld. Please check input value.",
             N, id));
