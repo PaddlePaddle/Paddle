@@ -372,7 +372,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
             dev_ctx, engine, cpu_place,
             platform::CreateKey(framework::vectorize(x->dims()), uniq_name)) {
     // bradcasting combined with in-place may require longer key
-    auto rankdiff = dims0.size() - dims1.size();
+    auto rankdiff = x->dims().size() - y->dims().size();
     if (rankdiff > 0) {
       this->key_ += std::to_string(rankdiff);
       this->key_common_ += std::to_string(rankdiff);
