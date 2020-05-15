@@ -35,10 +35,17 @@ void GenerateExample(const std::vector<size_t>& level_0,
                      const std::vector<int>& data, LoDTensorArray* ids,
                      LoDTensorArray* scores) {
   PADDLE_ENFORCE_EQ(level_0.back(), level_1.size() - 1,
-                    "source level is used to describe candidate set");
+                    platform::errors::InvalidArgument(
+                        "source level is used to describe candidate set"
+                        ", so it's element should less than levle_1 length. "
+                        "And the value of source"
+                        "level is %d. ",
+                        level_1.size() - 1));
   PADDLE_ENFORCE_EQ(level_1.back(), data.size(),
-                    "the lowest level is used to describe data"
-                    ", so it's last element should be data length");
+                    platform::errors::InvalidArgument(
+                        "the lowest level is used to describe data"
+                        ", so it's last element should be data length %d. ",
+                        data.size()));
 
   CPUPlace place;
 

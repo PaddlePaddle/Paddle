@@ -541,7 +541,7 @@ def def_seq2seq_model(num_layers, hidden_size, dropout_prob, src_vocab_size,
     loss = layers.unsqueeze(loss, axes=[2])
     max_tar_seq_len = layers.shape(target)[1]
     tar_mask = layers.sequence_mask(
-        target_length, maxlen=max_tar_seq_len, dtype="float")
+        target_length, maxlen=max_tar_seq_len, dtype="float32")
     loss = loss * tar_mask
     loss = layers.reduce_mean(loss, dim=[0])
     loss = layers.reduce_sum(loss)
