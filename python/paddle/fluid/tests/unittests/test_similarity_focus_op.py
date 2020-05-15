@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestSimilarityFocusOp(OpTest):
@@ -211,6 +213,33 @@ class TestSimilarityFocusOp_axis3(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestSimilarityFocusOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            data = fluid.data(name='data', shape=[16, 3, 2, 2], dtype='float32')
+
+            def test_input_Variable():
+                input = np.random.rand(16, 3, 2, 2).astype("float32")
+                out = fluid.layers.similarity_focus(
+                    input=input, axis=1, indexes=[0])
+
+            self.assertRaises(TypeError, test_input_Variable)
+
+            def test_axis_Int():
+                axis = 1.0
+                out = fluid.layers.similarity_focus(
+                    input=data, axis=axis, indexes=[0])
+
+            self.assertRaises(TypeError, test_axis_Int)
+
+            def test_indexes_List():
+                indexes = 0
+                out = fluid.layers.similarity_focus(
+                    input=data, axis=1, indexes=indexes)
+
+            self.assertRaises(TypeError, test_indexes_List)
 
 
 if __name__ == "__main__":

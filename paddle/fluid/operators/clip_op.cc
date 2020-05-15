@@ -23,21 +23,9 @@ class ClipOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of ClipOp should not be null. Please check "
-                          "if it is created correctly."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Out) of ClipOp should not be null. Please "
-                          "check if it is created correctly."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "clip");
     auto x_dims = ctx->GetInputDim("X");
-    auto max = ctx->Attrs().Get<float>("max");
-    auto min = ctx->Attrs().Get<float>("min");
-    PADDLE_ENFORCE_LT(min, max, platform::errors::InvalidArgument(
-                                    "Max of ClipOp should be greater than min. "
-                                    "Received max is %f, received min is %f.",
-                                    max, min));
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -50,6 +38,14 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Tensor, the input of clip op, data type should be float32 or "
              "float64.");
+    AddInput("Min",
+             "Tensor, the lower bound, data type should be float32 "
+             "or float64.")
+        .AsDispensable();
+    AddInput("Max",
+             "Tensor, the upper bound, data type should be float32 "
+             "or float64.")
+        .AsDispensable();
     AddOutput(
         "Out",
         "Tensor, the clipped tensor, with the same shape and data type as "
@@ -75,14 +71,9 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) should not be null. Please "
-                                          "check if it is created correctly."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) should not be null. Please check if "
-                          "it is created correctly."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "clip_grad");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -99,6 +90,12 @@ class ClipGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("clip_grad");
     op->SetInput("X", this->Input("X"));
+    if (this->HasInput("Min")) {
+      op->SetInput("Min", this->Input("Min"));
+    }
+    if (this->HasInput("Max")) {
+      op->SetInput("Max", this->Input("Max"));
+    }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

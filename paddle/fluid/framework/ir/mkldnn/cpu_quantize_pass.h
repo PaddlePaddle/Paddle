@@ -74,6 +74,8 @@ class CPUQuantizePass : public FusePassBase {
                         bool is_unsigned,
                         std::string scale_attr_name = "") const;
 
+  bool AreScalesPresentForNodes(const Node* op_node,
+                                std::initializer_list<Node*> nodes) const;
   std::pair<bool, LoDTensor> GetScaleDataForNode(const Node* node) const;
   LoDTensor GetScaleTensorForNode(const Node* node) const;
   double GetScaleValueForNode(const Node* node,

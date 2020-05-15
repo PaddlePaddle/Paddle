@@ -108,24 +108,108 @@ class TestSumOp7(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestSumOp8(OpTest):
+class TestSumOpExclusive1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((5, 6, 4)).astype("float64")
+        a = np.random.random((4, 5, 65)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(
                 (np.zeros(
-                    (5, 6, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                    (4, 5, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
                 axis=2)
         }
 
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+
+class TestSumOpExclusive2(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 888)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.zeros(
+                    (1, 1, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOpExclusive3(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 888)).astype("float32")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.zeros(
+                    (4, 5, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOpExclusive4(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((1, 1, 3049)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.zeros(
+                    (1, 1, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOpExclusive5(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, "exclusive": True}
+        a = np.random.random((4, 5, 3096)).astype("float64")
+        self.inputs = {'X': a}
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.zeros(
+                    (4, 5, 1), dtype=np.float64), a[:, :, :-1].cumsum(axis=2)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestSumOpReverseExclusive(OpTest):
+    def setUp(self):
+        self.op_type = "cumsum"
+        self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
+        a = np.random.random((4, 5, 6)).astype("float64")
+        self.inputs = {'X': a}
+        a = np.flip(a, axis=2)
+        self.outputs = {
+            'Out': np.concatenate(
+                (np.flip(
+                    a[:, :, :-1].cumsum(axis=2), axis=2), np.zeros(
+                        (4, 5, 1), dtype=np.float64)),
+                axis=2)
+        }
+
+    def test_check_output(self):
+        self.check_output()
 
 
 class BadInputTest(unittest.TestCase):
@@ -133,7 +217,7 @@ class BadInputTest(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                data = [1, 2, 3]
+                data = [1, 2, 4]
                 result = fluid.layers.cumsum(data, axis=0)
 
             self.assertRaises(TypeError, test_bad_x)

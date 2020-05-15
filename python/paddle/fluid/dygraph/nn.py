@@ -696,6 +696,10 @@ class Conv3DTranspose(layers.Layer):
 
 class Pool2D(layers.Layer):
     """
+    :alias_main: paddle.nn.Pool2D
+	:alias: paddle.nn.Pool2D,paddle.nn.layer.Pool2D,paddle.nn.layer.common.Pool2D
+	:old_api: paddle.fluid.dygraph.Pool2D
+
     This interface is used to construct a callable object of the ``Pool2D`` class.
     For more details, refer to code examples.
     The pooling2d operation calculates the output based on the input, pool_type and pool_size, pool_stride,
@@ -867,6 +871,10 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
+    :alias_main: paddle.nn.Linear
+	:alias: paddle.nn.Linear,paddle.nn.layer.Linear,paddle.nn.layer.common.Linear
+	:old_api: paddle.fluid.dygraph.Linear
+    
     Fully-connected linear transformation layer:
 
     .. math::
@@ -936,8 +944,9 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            pre_bias = core.ops.matmul(input, self.weight, 'transpose_X', False,
-                                       'transpose_Y', False, "alpha", 1)
+            pre_bias = _varbase_creator(dtype=input.dtype)
+            core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
+                            'transpose_Y', False, "alpha", 1)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias, self.bias, axis=len(input.shape) - 1)
 
@@ -957,7 +966,7 @@ class Linear(layers.Layer):
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
-        if self.bias:
+        if self.bias is not None:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
@@ -1099,6 +1108,10 @@ class InstanceNorm(layers.Layer):
 
 class BatchNorm(layers.Layer):
     """
+    :alias_main: paddle.nn.BatchNorm
+	:alias: paddle.nn.BatchNorm,paddle.nn.layer.BatchNorm,paddle.nn.layer.norm.BatchNorm
+	:old_api: paddle.fluid.dygraph.BatchNorm
+
     This interface is used to construct a callable object of the ``BatchNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Batch Normalization Layer and can be used 
@@ -1275,12 +1288,12 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if in_dygraph_mode():
-            _is_test = not self.training and not self._trainable_statistics
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", _is_test, "data_layout", self._data_layout,
-                     "use_mkldnn", False, "fuse_with_relu",
+                     "is_test", not self.training, "data_layout",
+                     self._data_layout, "use_mkldnn", False, "fuse_with_relu",
                      self._fuse_with_relu, "use_global_stats",
-                     self._use_global_stats)
+                     self._use_global_stats, 'trainable_statistics',
+                     self._trainable_statistics)
             batch_norm_out, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
@@ -1297,7 +1310,8 @@ class BatchNorm(layers.Layer):
             "data_layout": self._data_layout,
             "use_mkldnn": False,
             "fuse_with_relu": self._fuse_with_relu,
-            "use_global_stats": self._use_global_stats
+            "use_global_stats": self._use_global_stats,
+            "trainable_statistics": self._trainable_statistics,
         }
 
         inputs = {
@@ -1441,6 +1455,10 @@ class Dropout(layers.Layer):
 
 class Embedding(layers.Layer):
     """
+    :alias_main: paddle.nn.Embedding
+	:alias: paddle.nn.Embedding,paddle.nn.layer.Embedding,paddle.nn.layer.common.Embedding
+	:old_api: paddle.fluid.dygraph.Embedding
+
     **Embedding Layer**
 
     This interface is used to construct a callable object of the ``Embedding`` class.
@@ -1597,6 +1615,10 @@ class Embedding(layers.Layer):
 
 class LayerNorm(layers.Layer):
     """
+    :alias_main: paddle.nn.LayerNorm
+	:alias: paddle.nn.LayerNorm,paddle.nn.layer.LayerNorm,paddle.nn.layer.norm.LayerNorm
+	:old_api: paddle.fluid.dygraph.LayerNorm
+
     This interface is used to construct a callable object of the ``LayerNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
@@ -2287,6 +2309,10 @@ class PRelu(layers.Layer):
 
 class BilinearTensorProduct(layers.Layer):
     """
+    :alias_main: paddle.nn.BilinearTensorProduct
+	:alias: paddle.nn.BilinearTensorProduct,paddle.nn.layer.BilinearTensorProduct,paddle.nn.layer.common.BilinearTensorProduct
+	:old_api: paddle.fluid.dygraph.BilinearTensorProduct
+
     **Add Bilinear Tensor Product Layer**
 
     This layer performs bilinear tensor product on two inputs.
@@ -2807,6 +2833,10 @@ class RowConv(layers.Layer):
 
 class GroupNorm(layers.Layer):
     """
+    :alias_main: paddle.nn.GroupNorm
+	:alias: paddle.nn.GroupNorm,paddle.nn.layer.GroupNorm,paddle.nn.layer.norm.GroupNorm
+	:old_api: paddle.fluid.dygraph.GroupNorm
+
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -2907,6 +2937,10 @@ class GroupNorm(layers.Layer):
 
 class SpectralNorm(layers.Layer):
     """
+    :alias_main: paddle.nn.SpectralNorm
+	:alias: paddle.nn.SpectralNorm,paddle.nn.layer.SpectralNorm,paddle.nn.layer.norm.SpectralNorm
+	:old_api: paddle.fluid.dygraph.SpectralNorm
+
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of

@@ -83,8 +83,6 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer.minimize(avg_loss)
 
-        # pu.program_to_code(main_program, skip_op_callstack=True)
-
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
 
@@ -136,7 +134,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
-                cost = while_net(inputs=img)
+                cost = while_net(img)
 
                 loss = fluid.layers.cross_entropy(cost, label)
                 avg_loss = fluid.layers.mean(loss)

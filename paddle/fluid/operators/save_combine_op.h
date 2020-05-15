@@ -38,6 +38,8 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto filename = ctx.Attr<std::string>("file_path");
     auto overwrite = ctx.Attr<bool>("overwrite");
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
+    auto save_to_memory = ctx.Attr<bool>("save_to_memory");
+    auto output = ctx.Output<std::string>("Y");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
@@ -47,12 +49,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           filename, overwrite));
     }
 
-    MkDirRecursively(DirName(filename).c_str());
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
-
+    std::ostringstream ss;
     auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
     PADDLE_ENFORCE_GT(inp_var_names.size(), 0UL,
@@ -91,12 +88,25 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         // copy LoD info to the new tensor
         out.set_lod(tensor.lod());
         framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(fout, out, dev_ctx);
+        framework::SerializeToStream(ss, out, dev_ctx);
       } else {
-        framework::SerializeToStream(fout, tensor, dev_ctx);
+        framework::SerializeToStream(ss, tensor, dev_ctx);
       }
     }
-    fout.close();
+    if (save_to_memory) {
+      PADDLE_ENFORCE_NE(output, nullptr,
+                        platform::errors::InvalidArgument(
+                            "Cannot find variable Y for save_combine_op"));
+      *output = ss.str();
+    } else {
+      MkDirRecursively(DirName(filename).c_str());
+      std::ofstream fout(filename, std::ios::binary);
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                        platform::errors::Unavailable(
+                            "Cannot open %s to save variables.", filename));
+      fout << ss.str();
+      fout.close();
+    }
   }
 };
 

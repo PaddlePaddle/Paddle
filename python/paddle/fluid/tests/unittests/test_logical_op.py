@@ -50,10 +50,8 @@ def create_test_class(op_type, callback, binary_op=True):
                     self.assertRaises(TypeError, op, x=x, y=y, out=1)
                     self.assertRaises(TypeError, op, x=x, y=a)
                     self.assertRaises(TypeError, op, x=a, y=y)
-                    self.assertRaises(TypeError, op, x=x, y=y, out=a)
                 else:
                     self.assertRaises(TypeError, op, x=x, out=1)
-                    self.assertRaises(TypeError, op, x=x, out=a)
                     self.assertRaises(TypeError, op, x=a)
 
     Cls.__name__ = op_type

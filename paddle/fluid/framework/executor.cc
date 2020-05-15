@@ -89,7 +89,8 @@ Executor::~Executor() {
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place_);
     dev_ctx->ResetBlobMap();
-    platform::set_cur_paddle_data_layout(paddle::framework::DataLayout::kNCHW);
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
   }
 #endif
 }
@@ -256,7 +257,7 @@ static bool has_feed_operators(
 // Return true if the block has fetch operators and holder of matching info.
 static bool has_fetch_operators(
     const BlockDesc& block,
-    const std::map<std::string, LoDTensor*>& fetch_targets,
+    const std::map<std::string, FetchType*>& fetch_targets,
     const std::string& fetch_holder_name) {
   size_t fetch_count = 0;
   for (auto* op : block.AllOps()) {
@@ -306,7 +307,7 @@ static bool has_fetch_operators(
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>* feed_targets,
-                   std::map<std::string, LoDTensor*>* fetch_targets,
+                   std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope, bool create_vars,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
@@ -452,15 +453,15 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            boost::get<platform::CUDAPlace>(place_), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       } else {
         gc.reset(new DefaultStreamGarbageCollector(
-            boost::get<platform::CUDAPlace>(place_), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       }
     } else if (platform::is_cpu_place(place_)) {
 #endif
-      gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place_),
-                                       max_memory_size));
+      gc.reset(new CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
@@ -504,7 +505,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
     std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
+    std::map<std::string, FetchType*>* fetch_targets, bool create_local_scope,
     bool create_vars, const std::string& feed_holder_name,
     const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
@@ -522,7 +523,7 @@ void Executor::RunPreparedContext(
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       std::string feed_target_name = op->Output("Out")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       SetFeedVariable(scope, *(*feed_targets)[feed_target_name],
                       feed_holder_name, idx);
     }
@@ -534,7 +535,7 @@ void Executor::RunPreparedContext(
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       *(*fetch_targets)[fetch_target_name] =
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }
