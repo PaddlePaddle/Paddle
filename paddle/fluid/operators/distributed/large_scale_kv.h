@@ -105,6 +105,35 @@ struct VALUE {
   std::unordered_map<std::string, int> places;
 };
 
+class ValueBlock {
+ public:
+  std::vector<std::vector<float>> Get(
+      const int64_t id, const std::vector<std::string> &value_names) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<std::vector<float>> values;
+
+    auto got = values_.find(id);
+    if (got == values_.end()) {
+      auto value = new VALUE(meta_.value_names);
+      value->set(Init());
+      values_[id] = value;
+    }
+    values = values_.at(id);
+
+    return values;
+  }
+
+  void Set(const int64_t &id, const std::vector<std::string> &value_names,
+           const std::vector<std::vector<float>> &values) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto value = values_.at(id);
+    value->set(value_names, values);
+  }
+
+  std::unordered_map<int64_t, VALUE *> values_;
+};
+
 class SparseVariable {
  public:
   explicit SparseVariable(const SparseMeta &meta) {
@@ -123,33 +152,18 @@ class SparseVariable {
   void Get(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            std::vector<std::vector<std::vector<float>>> *values) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    for (auto id : ids) {
-      auto got = values_.find(id);
-      if (got == values_.end()) {
-        auto value = new VALUE(meta_.value_names);
-        value->set(Init());
-        values_[id] = value;
-      }
-      auto value = values_.at(id);
-      values->push_back(value->get(value_names));
+    for (auto &id : ids) {
+      values->push_back(GetShard(id).Get(id, value_names));
     }
   }
 
   void Set(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            const std::vector<std::vector<std::vector<float>>> &values) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    for (int i = 0; i < static_cast<int>(ids.size()); i++) {
-      auto value = values_.at(ids[i]);
-      auto values_for_id = values[i];
-      value->set(value_names, values_for_id);
+    for (int i = 0; i < ids.size(); i++) {
+      GetShard(id).Set(ids[i], value_names, values[i]);
     }
   }
-
-  void Get(const framework::Tensor &ids,
-           const std::vector<std::string> value_names,
-           std::vector<framework::Tensor> *values) {}
 
   void Dims(std::vector<std::string> value_names, std::vector<int64_t> *dims) {
     for (auto &name : value_names) {
@@ -197,26 +211,28 @@ class SparseVariable {
       fouts.push_back(std::move(fout));
     }
 
-    for (auto value : values_) {
-      std::vector<std::vector<float>> vss = value.second->get(valuenames);
+    for (auto &block : shard_blocks_) {
+      for (auto value : block.values_) {
+        std::vector<std::vector<float>> vss = value.second->get(valuenames);
 
-      auto id = value.first;
+        auto id = value.first;
 
-      for (int i = 0; i < static_cast<int>(vss.size()); i++) {
-        auto &vs = vss[i];
+        for (int i = 0; i < static_cast<int>(vss.size()); i++) {
+          auto &vs = vss[i];
 
-        std::stringstream ss;
-        ss << id << "\t";
+          std::stringstream ss;
+          ss << id << "\t";
 
-        ss << vs.size() << "\t";
+          ss << vs.size() << "\t";
 
-        for (auto v : vs) {
-          ss << v << " ";
+          for (auto v : vs) {
+            ss << v << " ";
+          }
+
+          ss << "\n";
+
+          fouts[i]->write(ss.str().c_str(), sizeof(char) * ss.str().size());
         }
-
-        ss << "\n";
-
-        fouts[i]->write(ss.str().c_str(), sizeof(char) * ss.str().size());
       }
     }
 
@@ -225,7 +241,18 @@ class SparseVariable {
     }
   }
 
-  int64_t Size() { return static_cast<int64_t>(values_.size()); }
+  int64_t Size() {
+    int64_t cnt = 0;
+
+    for (auto &block : shard_blocks_) {
+      cnt += block.values_.size();
+    }
+    return cnt;
+  }
+
+  ValueBlock &GetShard(const int64_t id) {
+    return shard_blocks_[id & shard_mask_];
+  }
 
  private:
   std::vector<std::vector<float>> Init() {
@@ -242,10 +269,11 @@ class SparseVariable {
   }
 
   mutable std::mutex mutex_;
+
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims;
-  std::vector<int> initializers_;
-  std::unordered_map<int64_t, VALUE *> values_;
+  const size_t shard_mask_ = 127;
+  std::vector<ValueBlock> shard_blocks_ = std::vector<ValueBlock>(128);
 };
 
 class LargeScaleKV {
