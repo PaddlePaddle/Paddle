@@ -108,7 +108,7 @@ class TestSumOp7(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestSumOp8(OpTest):
+class TestSumOpExclusive1(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
@@ -125,7 +125,7 @@ class TestSumOp8(OpTest):
         self.check_output()
 
 
-class TestSumOp9(OpTest):
+class TestSumOpExclusive2(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
@@ -142,7 +142,7 @@ class TestSumOp9(OpTest):
         self.check_output()
 
 
-class TestSumOp10(OpTest):
+class TestSumOpExclusive3(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
@@ -159,7 +159,7 @@ class TestSumOp10(OpTest):
         self.check_output()
 
 
-class TestSumOp11(OpTest):
+class TestSumOpExclusive4(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
@@ -176,7 +176,7 @@ class TestSumOp11(OpTest):
         self.check_output()
 
 
-class TestSumOp12(OpTest):
+class TestSumOpExclusive5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
@@ -193,7 +193,7 @@ class TestSumOp12(OpTest):
         self.check_output()
 
 
-class TestSumOp13(OpTest):
+class TestSumOpReverseExclusive(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, 'reverse': True, "exclusive": True}
