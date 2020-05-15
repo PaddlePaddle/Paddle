@@ -109,7 +109,7 @@ function(copy_part_of_thrid_party TARGET DST)
     copy(${TARGET}
         SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)    
-            
+
     if (NOT PROTOBUF_FOUND OR WIN32)
         set(dst_dir "${DST}/third_party/install/protobuf")
         copy(${TARGET}
@@ -149,14 +149,22 @@ copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/*paddle_fluid.*)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.dll
+                        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.lib)
 else(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
 endif(WIN32)
 
-copy(inference_lib_dist
-        SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
-        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
+if(WIN32)
+        copy(inference_lib_dist
+                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
+                DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib
+                      ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
+else()
+        copy(inference_lib_dist
+                SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
+                DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
+endif()
 
 copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
@@ -184,10 +192,17 @@ add_custom_target(fluid_lib_dist ALL DEPENDS ${fluid_lib_deps})
 
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "inference")
-copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
-        )
+if(WIN32)
+        copy(fluid_lib_dist
+                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
+                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+                )
+else()
+        copy(fluid_lib_dist
+                SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
+                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} 
+                )
+endif()
 
 set(module "framework")
 set(framework_lib_deps framework_proto data_feed_proto trainer_desc_proto)

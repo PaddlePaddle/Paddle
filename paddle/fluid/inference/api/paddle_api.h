@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle_infer_declare.h"  // NOLINT
 
 /*! \namespace paddle
  */
@@ -86,7 +87,7 @@ enum PaddleDType {
 /// delete[] external_memory; // manage the memory lifetime outside.
 /// \endcode
 ///
-class PaddleBuf {
+class PD_INFER_DECL PaddleBuf {
  public:
   ///
   /// \brief PaddleBuf allocate memory internally, and manage it.
@@ -151,7 +152,7 @@ class PaddleBuf {
 ///
 /// \brief Basic input and output data structure for PaddlePredictor.
 ///
-struct PaddleTensor {
+struct PD_INFER_DECL PaddleTensor {
   PaddleTensor() = default;
   std::string name;  ///<  variable name.
   std::vector<int> shape;
@@ -170,7 +171,7 @@ enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
 /// AnalysisPredictor.
 /// It is obtained through PaddlePredictor::GetinputTensor()
 /// and PaddlePredictor::GetOutputTensor() interface.
-class ZeroCopyTensor {
+class PD_INFER_DECL ZeroCopyTensor {
  public:
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
@@ -247,7 +248,7 @@ class ZeroCopyTensor {
 
 /// \brief A Predictor for executing inference on a model.
 /// Base class for AnalysisPredictor and NativePaddlePredictor.
-class PaddlePredictor {
+class PD_INFER_DECL PaddlePredictor {
  public:
   struct Config;
   PaddlePredictor() = default;
@@ -339,7 +340,7 @@ class PaddlePredictor {
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 ///
-struct NativeConfig : public PaddlePredictor::Config {
+struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   /// GPU related fields.
   bool use_gpu{false};
   int device{0};
@@ -400,8 +401,8 @@ enum class PaddleEngineKind {
 template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
-int PaddleDtypeSize(PaddleDType dtype);
+PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
-std::string get_version();
+PD_INFER_DECL std::string get_version();
 
 }  // namespace paddle
