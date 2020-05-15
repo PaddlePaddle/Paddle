@@ -2241,7 +2241,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
+        dtype=core.VarDesc.VarType.INT64)
     inputs = {"Emission": [input], "Transition": transition, "Label": label}
     if length:
         inputs['Length'] = length
@@ -2487,12 +2487,12 @@ def chunk_eval(input,
             dict_size = 10000
             label_dict_len = 7
             sequence = fluid.data(
-                name='id', shape=[-1, 1], lod_level=1, dtype='int64')
+                name='id', shape=[None, 1], lod_level=1, dtype='int64')
             embedding = fluid.embedding(
                 input=sequence, size=[dict_size, 512])
             hidden = fluid.layers.fc(input=embedding, size=512)
-            label = fluid.layers.data(
-                name='label', shape=[1], lod_level=1, dtype='int32')
+            label = fluid.data(
+                name='label', shape=[None, 1], lod_level=1, dtype='int64')
             crf = fluid.layers.linear_chain_crf(
                 input=hidden, label=label, param_attr=fluid.ParamAttr(name="crfw"))
             crf_decode = fluid.layers.crf_decoding(
@@ -2501,9 +2501,12 @@ def chunk_eval(input,
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=int((label_dict_len - 1) / 2))
     """
     helper = LayerHelper("chunk_eval", **locals())
+
+    check_variable_and_dtype(input, 'input', ['int64'], 'chunk_eval')
+    check_variable_and_dtype(label, 'label', ['int64'], 'chunk_eval')
 
     # prepare output
     precision = helper.create_variable_for_type_inference(dtype="float32")
