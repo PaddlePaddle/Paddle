@@ -778,6 +778,8 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.
         """
+        check_type(x, 'x', (Variable),
+                   'BeamSearchDecoder.tile_beam_merge_with_batch')
         x = nn.unsqueeze(x, [1])  # [batch_size, 1, ...]
         expand_times = [1] * len(x.shape)
         expand_times[1] = beam_size
@@ -806,6 +808,7 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.     
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._split_batch_beams')
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
         return nn.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
 
@@ -822,6 +825,7 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
                 data type is same as `x`.     
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._merge_batch_beams')
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
         return nn.reshape(x, shape=[-1] + list(x.shape[2:]))
 
@@ -834,16 +838,14 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            probs(Variable): A tensor with shape `[batch_size, ...]`, representing
-                the log probabilities. Its data type should be float32 or float64.
-            finished(Variable): A tensor with shape `[batch_size, beam_size]`,
-                representing the finished status for all beams. Its data type
-                should be bool.
+            x(Variable): A tensor with shape `[batch_size, ...]`, The data type
+                should be float32, float64, int32, int64 or bool.
 
         Returns:
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
                 data type is same as `x`.
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._expand_to_beam_size')
         x = nn.unsqueeze(x, [1])
         expand_times = [1] * len(x.shape)
         expand_times[1] = self.beam_size
@@ -867,6 +869,9 @@ class BeamSearchDecoder(Decoder):
                 where unfinished beams stay unchanged and finished beams are \
                 replaced with a tensor with all probability on the EOS token.
         """
+        check_type(probs, 'probs', (Variable), 'BeamSearchDecoder._mask_probs')
+        check_type(finished, 'finished', (Variable),
+                   'BeamSearchDecoder._mask_probs')
         # TODO: use where_op
         finished = tensor.cast(finished, dtype=probs.dtype)
         probs = nn.elementwise_mul(
@@ -891,6 +896,10 @@ class BeamSearchDecoder(Decoder):
             Variable: A tensor with the same shape and data type as `x`, \
                 representing the gathered tensor.
         """
+        check_type(x, 'x', (Variable), 'BeamSearchDecoder._gather')
+        check_type(indices, 'indices', (Variable), 'BeamSearchDecoder._gather')
+        check_type(batch_size, 'batch_size', (Variable),
+                   'BeamSearchDecoder._gather')
         # TODO: compatibility of int32 and int64
         batch_size = tensor.cast(
             batch_size,
@@ -2615,6 +2624,14 @@ def dynamic_gru(input,
 
     assert in_dygraph_mode(
     ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'dynamic_gru')
+
+    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_gru')
+    if isinstance(h_0, Variable):
+        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
+                                 'dynamic_gru')
 
     helper = LayerHelper('gru', **locals())
     dtype = helper.input_dtype()
