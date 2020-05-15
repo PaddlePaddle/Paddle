@@ -31,22 +31,27 @@ from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
 from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
 from ...fluid.layers import teacher_student_sigmoid_loss  #DEFINE_ALIAS
 
+from ...fluid.layers import edit_distance  #DEFINE_ALIAS
+from ...fluid.layers import huber_loss  #DEFINE_ALIAS
+from ...fluid.layers import margin_rank_loss  #DEFINE_ALIAS
+from ...fluid.layers import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
+
 __all__ = [
     'bpr_loss',
     'center_loss',
     'cross_entropy',
     'dice_loss',
-    #       'edit_distance',
-    #       'huber_loss',
+    'edit_distance',
+    'huber_loss',
     'iou_similarity',
     'kldiv_loss',
     'log_loss',
-    #       'margin_rank_loss',
+    'margin_rank_loss',
     'mse_loss',
     #       'nce',
     'npair_loss',
     'rank_loss',
-    #       'sampled_softmax_with_cross_entropy',
+    'sampled_softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
     'sigmoid_focal_loss',
     'smooth_l1',
