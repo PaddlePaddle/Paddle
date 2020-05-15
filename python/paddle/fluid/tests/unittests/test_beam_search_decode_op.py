@@ -118,37 +118,37 @@ class TestBeamSearchDecodeOpError(unittest.TestCase):
 
             def test_id_Variable():
                 # the input pre_ids must be Variable
-                ids = np.random.randint(1, 5, [5, 1]).astype("int64")
+                test_ids = np.random.randint(1, 5, [5, 1]).astype("int64")
                 scores = fluid.layers.create_array(dtype='float32')
                 fluid.layers.beam_search_decode(
-                    ids, scores, beam_size=5, end_id=0)
+                    test_ids, scores, beam_size=5, end_id=0)
 
             self.assertRaises(TypeError, test_id_Variable)
 
             def test_score_Variable():
                 # the input pre_scores must be Variable
                 ids = fluid.layers.create_array(dtype='int64')
-                scores = np.random.randint(1, 5, [5, 1]).astype("float32")
+                test_scores = np.random.uniform(1, 5, [5, 1]).astype("float32")
                 fluid.layers.beam_search_decode(
-                    ids, scores, beam_size=5, end_id=0)
+                    ids, test_scores, beam_size=5, end_id=0)
 
             self.assertRaises(TypeError, test_score_Variable)
 
             def test_id_dtype():
                 # the dtype of input pre_ids must be int64
-                ids = fluid.layers.create_array(dtype='float32')
+                type_ids = fluid.layers.create_array(dtype='float32')
                 scores = fluid.layers.create_array(dtype='float32')
                 fluid.layers.beam_search_decode(
-                    ids, scores, beam_size=5, end_id=0)
+                    type_ids, scores, beam_size=5, end_id=0)
 
             self.assertRaises(TypeError, test_id_dtype)
 
             def test_score_dtype():
                 # the dtype of input pre_scores must be float32
                 ids = fluid.layers.create_array(dtype='int64')
-                scores = fluid.layers.create_array(dtype='int64')
+                type_scores = fluid.layers.create_array(dtype='int64')
                 fluid.layers.beam_search_decode(
-                    ids, scores, beam_size=5, end_id=0)
+                    ids, type_scores, beam_size=5, end_id=0)
 
             self.assertRaises(TypeError, test_score_dtype)
 
