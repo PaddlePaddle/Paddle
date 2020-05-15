@@ -26,7 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/dynload/cupti.h"
 #endif
 #include "paddle/fluid/platform/device_context.h"
@@ -102,16 +101,6 @@ void InitP2P(std::vector<int> devices) {
 #endif
 }
 
-void InitCUDADriver() {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
-  // Initialize the CUDA driver API.
-  // We must ensure it is called before any other function from the driver API.
-  if (platform::dynload::HasCUDADriver()) {
-    platform::dynload::cuInit(0);
-  }
-#endif
-}
-
 void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
@@ -135,7 +124,6 @@ void InitCupti() {
 }
 
 void InitDevices(bool init_p2p) {
-  InitCUDADriver();
   // CUPTI attribute should be set before any CUDA context is created (see CUPTI
   // documentation about CUpti_ActivityAttribute).
   InitCupti();
