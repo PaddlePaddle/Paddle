@@ -28,6 +28,7 @@
 #include <string>
 #include <vector>
 #include "paddle_infer_declare.h"  // NOLINT
+#include "gflags/gflags.h"  // NOLINT
 
 /*! \namespace paddle
  */
@@ -404,5 +405,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
+PD_INFER_DECL std::string SetCommandLineOption (const char* name, const char* value);
 
 }  // namespace paddle

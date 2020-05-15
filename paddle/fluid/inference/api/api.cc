@@ -119,4 +119,8 @@ std::string get_version() {
   return ss.str();
 }
 
+std::string SetCommandLineOption (const char* name, const char* value){  
+  return google::SetCommandLineOption(name,value);
+ }
+
 }  // namespace paddle
