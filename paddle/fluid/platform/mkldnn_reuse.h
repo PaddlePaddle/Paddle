@@ -371,18 +371,17 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
     auto rankdiff = dims0.size() - dims1.size();
     if (rankdiff > 0) {
       std::vector<int64_t> ones(rankdiff, 1);
-      std::vector<int64_t> dims1_ex(dims1); 
+      std::vector<int64_t> dims1_ex(dims1);
       dims1_ex.insert(dims1_ex.begin(), ones.begin(), ones.end());
       src1_md = src1_md.reshape(dims1_ex);
       this->key_ += std::to_string(rankdiff);  // TODO(jczaja): think about it
       this->key_common_ += std::to_string(rankdiff);
-    } 
+    }
 
     auto dst_md =
         memory::desc(dims0, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
     this->AcquireForwardPrimitiveDescriptor(algo, src0_md, src1_md, dst_md);
-
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
