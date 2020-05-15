@@ -14,10 +14,16 @@
 
 import logging
 import math
+import os
 import time
 import unittest
-
 import numpy as np
+# Note: Set True to eliminate randomness.
+#     1. For one operation, cuDNN has several algorithms,
+#        some algorithm results are non-deterministic, like convolution algorithms.
+#     2. It must be declared before the `import paddle` statement.
+#        Otherwise, it will not take effect.
+os.environ['FLAGS_cudnn_deterministic'] = 'True'
 
 import paddle
 import paddle.fluid as fluid
@@ -34,9 +40,8 @@ EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
 
-place = fluid.CPUPlace()
-# TODO(liym27): Diff exists between dygraph and static graph on CUDA place.
-# place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+    else fluid.CPUPlace()
 
 train_parameters = {
     "learning_strategy": {
