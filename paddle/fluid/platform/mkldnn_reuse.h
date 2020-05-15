@@ -399,7 +399,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
 
       const auto src0_md = dnnl::memory::desc(
           src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto src1_md = dnnl::memory::desc(
+      auto src1_md = dnnl::memory::desc(
           src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
       if (rankdiff > 0) {
         std::vector<int64_t> ones(rankdiff, 1);
