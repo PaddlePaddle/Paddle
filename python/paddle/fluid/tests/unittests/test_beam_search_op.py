@@ -146,8 +146,8 @@ class TestBeamSearchOpError(unittest.TestCase):
                 ids_data = np.random.randint(1, 5, [5, 1]).astype("int64")
                 fluid.layers.beam_search(
                     pre_ids=pre_ids,
-                    pre_scores=ids_data,
-                    ids=input_data,
+                    pre_scores=pre_scores,
+                    ids=ids_data,
                     scores=accu_scores,
                     beam_size=4,
                     end_id=1)
@@ -156,7 +156,7 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_scores_Variable():
                 # the input scores must be Variable
-                scores_data = np.random.randint(1, 5, [5, 1]).astype("float32")
+                scores_data = np.random.uniform(1, 5, [5, 1]).astype("float32")
                 fluid.layers.beam_search(
                     pre_ids=pre_ids,
                     pre_scores=pre_scores,
