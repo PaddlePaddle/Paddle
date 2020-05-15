@@ -10978,6 +10978,11 @@ def stack(x, axis=0):
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
+
+        for i in x:
+            check_variable_and_dtype(i, 'x', \
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'stack')
+
         helper.append_op(
             type='tensor_array_to_tensor',
             inputs={'X': x[0]},
@@ -13461,6 +13466,9 @@ def space_to_depth(x, blocksize, name=None):
 
     if not (isinstance(blocksize, int)):
         raise ValueError("blocksize must be a python Int")
+
+    check_variable_and_dtype(x, 'x', \
+        ['float16', 'float32', 'float64', 'int32', 'int64'], 'space_to_depth')
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
