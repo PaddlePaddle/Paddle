@@ -41,8 +41,6 @@ from paddle.compat import long_type
 
 import hashlib
 
-from paddle.fluid.transpiler.details import program_to_code
-
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
 
@@ -272,7 +270,7 @@ class LearningRateScheduler(object):
     """
     Wrapper for learning rate scheduling as described in the Transformer paper.
     LearningRateScheduler adapts the learning rate externally and the adapted
-    learning rate will be feeded into the main_program as input data.
+    learning rate will be fed into the main_program as input data.
     """
 
     def __init__(self,

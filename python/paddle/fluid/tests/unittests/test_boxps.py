@@ -76,6 +76,16 @@ class TestTranspile(unittest.TestCase):
             print(e)
 
 
+class TestRunCmd(unittest.TestCase):
+    """ TestCases for run_cmd"""
+
+    def test_run_cmd(self):
+        ret1 = int(core.run_cmd("ls; echo $?").strip().split('\n')[-1])
+        ret2 = int(core.run_cmd("ls; echo $?", -1, -1).strip().split('\n')[-1])
+        self.assertTrue(ret1 == 0)
+        self.assertTrue(ret2 == 0)
+
+
 class TestBoxPSPreload(unittest.TestCase):
     """  TestCases for BoxPS Preload """
 
@@ -150,7 +160,7 @@ class TestBoxPSPreload(unittest.TestCase):
             program=fluid.default_main_program(),
             dataset=datasets[0],
             print_period=1)
-        datasets[0].end_pass()
+        datasets[0].end_pass(True)
         datasets[1].wait_preload_done()
         datasets[1].begin_pass()
         exe.train_from_dataset(
@@ -158,7 +168,7 @@ class TestBoxPSPreload(unittest.TestCase):
             dataset=datasets[1],
             print_period=1,
             debug=True)
-        datasets[1].end_pass()
+        datasets[1].end_pass(False)
         for f in filelist:
             os.remove(f)
 

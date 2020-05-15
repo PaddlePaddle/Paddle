@@ -21,6 +21,7 @@
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cuda_resource_pool.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
@@ -64,9 +65,9 @@ class BufferedReader : public framework::DecoratedReader {
   std::vector<TensorVec> gpu_buffer_;
   size_t prev_pos_{-1UL};
 #ifdef PADDLE_WITH_CUDA
-  cudaStream_t stream_;
   cudaStream_t compute_stream_;
-  std::vector<cudaEvent_t> events_;
+  std::shared_ptr<platform::CudaStreamObject> stream_;
+  std::vector<std::shared_ptr<platform::CudaEventObject>> events_;
 #endif
 };
 

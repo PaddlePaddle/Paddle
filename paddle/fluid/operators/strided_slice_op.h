@@ -54,7 +54,9 @@ static void StridedSliceOutDims(
       continue;
     }
 
-    PADDLE_ENFORCE_NE(stride_index, 0, "stride must not to be zero");
+    PADDLE_ENFORCE_NE(stride_index, 0,
+                      platform::errors::InvalidArgument(
+                          "stride index in StridedSlice operator is 0."));
     int axis_size = in_dims[axes_index];
     if (axis_size < 0) {
       continue;
@@ -64,7 +66,9 @@ static void StridedSliceOutDims(
       start_index = start_index + axis_size;
     }
     if (end_index < 0) {
-      end_index = end_index + axis_size;
+      if (!(end_index == -1 && stride_index < 0)) {  // skip None stop condition
+        end_index = end_index + axis_size;
+      }
     }
 
     if (stride_index < 0) {
@@ -76,8 +80,9 @@ static void StridedSliceOutDims(
         ((stride_index < 0 && (start_index <= end_index)) ||
          (stride_index > 0 && (start_index >= end_index)));
     PADDLE_ENFORCE_EQ(zero_dim_condition, false,
-                      "starts and end must meet requirement in different "
-                      "stride conditiont");
+                      platform::errors::InvalidArgument(
+                          "The start index and end index are invalid for their "
+                          "corresponding stride."));
     int left = std::max(0, std::min(start_index, end_index));
     int right = std::min(axis_size, std::max(start_index, end_index));
     int step = std::abs(stride_index);
@@ -113,9 +118,11 @@ static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
     if (starts[axis_index] < 0) {
       starts[axis_index] = starts[axis_index] + axis_size;
     }
-
     if (ends[axis_index] < 0) {
-      ends[axis_index] = ends[axis_index] + axis_size;
+      if (!(ends[axis_index] == -1 &&
+            strides[axis_index] < 0)) {  // skip None stop condition
+        ends[axis_index] = ends[axis_index] + axis_size;
+      }
     }
     if (decrease_axis_affect) {
       if (strides[axis_index] < 0) {
@@ -245,8 +252,11 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     if (decrease_axis.size() > 0) {
       std::vector<int> new_out_shape;
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
-        PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                          "decrease dim should be 1");
+        PADDLE_ENFORCE_EQ(
+            out_dims[decrease_axis[i]], 1,
+            platform::errors::InvalidArgument(
+                "the size of decrease dimension should be 1, but received %d.",
+                out_dims[decrease_axis[i]]));
         out_dims_origin[decrease_axis[i]] = 0;
       }
 

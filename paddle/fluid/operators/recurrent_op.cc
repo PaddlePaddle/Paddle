@@ -197,7 +197,6 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
   auto &dev_ctx = *pool.Get(place);
 
   VLOG(3) << "Static RNN input sequence length = " << seq_len;
-  StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
   auto reverse = Attr<bool>(kReverse);
 
   framework::Executor executor(place);
@@ -208,6 +207,13 @@ void RecurrentOp::RunImpl(const framework::Scope &scope,
       *program, block->ID(), Attr<std::vector<std::string>>(
                                  kSkipEagerDeletionVars) /*skip_ref_cnt_vars*/);
 
+  static std::mutex mutex;
+  std::lock_guard<std::mutex> lock(mutex);
+  StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
+  // TODO(gfwm2013) Function CreateStepScopes would make segmentation fault in
+  // multithreading in eval process, so we use a mutex before function
+  // CreateStepScopes to make sure that the computing process is correct. This
+  // problem will fix in next pull request.
   for (size_t i = 0; i < seq_len; ++i) {
     size_t seq_offset = reverse ? seq_len - i - 1 : i;
     VLOG(3) << "Recurrent operate at the time step " << seq_offset;
@@ -612,8 +618,7 @@ class RecurrentGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  virtual std::unique_ptr<T> Apply() const {
-    auto *grad = new T();
+  void Apply(GradOpPtr<T> grad) const override {
     grad->SetType("recurrent_grad");
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
@@ -634,8 +639,6 @@ class RecurrentGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(RecurrentBase::kStepBlock, this->grad_block_[0]);
-
-    return std::unique_ptr<T>(grad);
   }
 };
 

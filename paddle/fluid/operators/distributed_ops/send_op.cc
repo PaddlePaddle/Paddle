@@ -83,7 +83,9 @@ class SendOp : public framework::OperatorBase {
       }
       for (size_t i = 0; i < rets.size(); i++) {
         VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+        PADDLE_ENFORCE_NE(
+            rets[i]->Wait(), 0U,
+            platform::errors::ExecutionTimeout("internal error in RPCClient"));
         VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
@@ -116,7 +118,7 @@ This operator will send variables to listen_and_serve op at the parameter server
     AddAttr<std::vector<std::string>>(
         "send_varnames",
         "(vector<string>) "
-        "the splited output varnames to send to pserver")
+        "the split output varnames to send to pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("num",
                  "(int, default 0)"

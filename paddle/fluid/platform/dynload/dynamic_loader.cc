@@ -30,12 +30,12 @@ DEFINE_string(cudnn_dir, "",
 
 DEFINE_string(cuda_dir, "",
               "Specify path for loading cuda library, such as libcublas, "
-              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
-              "dlopen will search cuda from LD_LIBRARY_PATH");
+              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(nccl_dir, "",
-              "Specify path for loading nccl library, such as libcublas, "
-              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
+              "Specify path for loading nccl library, such as libnccl.so. "
+              "For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
@@ -65,6 +65,8 @@ static PathNode s_py_site_pkg_path;
 static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
 static constexpr char* win_curand_lib = "curand64_" PADDLE_CUDA_BINVER ".dll";
 static constexpr char* win_cudnn_lib = "cudnn64_" PADDLE_CUDNN_BINVER ".dll";
+static constexpr char* win_cusolver_lib =
+    "cusolver64_" PADDLE_CUDA_BINVER ".dll";
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -221,6 +223,16 @@ void* GetCurandDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_curand_lib);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcurand.so");
+#endif
+}
+
+void* GetCusolverDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
 }
 

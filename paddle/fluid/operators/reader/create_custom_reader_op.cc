@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -115,7 +114,7 @@ class CustomReaderInferShape : public framework::InferShapeBase {
       res_lod_levels.push_back(sink_var->GetLoDLevel());
     }
     auto* out_reader =
-        boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
     out_reader->SetShapes(res_dims);
     out_reader->SetLoDLevels(res_lod_levels);
   }
@@ -128,10 +127,10 @@ class CustomReaderInferVarType : public framework::VarTypeInference {
     PADDLE_ENFORCE(ctx->HasVar(out_var_name));
     ctx->SetType(out_var_name, framework::proto::VarType::READER);
 
-    auto sink_var_names =
-        boost::get<std::vector<std::string>>(ctx->GetAttr("sink_var_names"));
+    auto sink_var_names = BOOST_GET_CONST(std::vector<std::string>,
+                                          ctx->GetAttr("sink_var_names"));
     const auto* sub_block =
-        boost::get<framework::BlockDesc*>(ctx->GetAttr("sub_block"));
+        BOOST_GET_CONST(framework::BlockDesc*, ctx->GetAttr("sub_block"));
     std::vector<framework::proto::VarType::Type> res_data_types;
     for (const std::string& var_name : sink_var_names) {
       framework::VarDesc* var = sub_block->FindVar(var_name);
@@ -171,8 +170,11 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
-    const auto& tensor = detail::Ref(exe_scope->FindVar(sink_var_names_[i]))
-                             .Get<framework::LoDTensor>();
+    auto* var = exe_scope->FindVar(sink_var_names_[i]);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                     "The variable %s is not in current scope.",
+                                     sink_var_names_[i]));
+    const auto& tensor = var->Get<framework::LoDTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);

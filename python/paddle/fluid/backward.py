@@ -24,6 +24,7 @@ from .. import compat as cpt
 from . import unique_name
 from . import log_helper
 import paddle.fluid
+from .data_feeder import check_type
 __all__ = [
     'append_backward',
     'gradients',
@@ -67,6 +68,11 @@ class ProgramStats(object):
                 if name in self.var_op_deps:
                     for idx in self.var_op_deps[name]["var_as_input_ops"]:
                         if idx >= end_op_idx:
+                            var_name.append(name)
+            for name in self.ops[i].desc.input_arg_names():
+                if name in self.var_op_deps:
+                    for idx in self.var_op_deps[name]["var_as_output_ops"]:
+                        if idx < begin_op_idx:
                             var_name.append(name)
         return var_name
 
@@ -273,10 +279,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
                     args)))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
+    if op_device_attr_name not in attrs:
+        attrs[op_device_attr_name] = ""
     for name, val in six.iteritems(attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
@@ -295,6 +304,8 @@ def _create_loss_op_desc_(loss):
             core.op_proto_and_checker_maker.kOpRoleAttrName():
             int(core.op_proto_and_checker_maker.OpRole.Backward) |
             int(core.op_proto_and_checker_maker.OpRole.Loss),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName():
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
         })
     return op_desc
 
@@ -695,7 +706,7 @@ def _append_backward_ops_with_checkpoints_(
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
-    # b. output of dropout op will be held in memory
+    # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
     vars_should_be_hold.extend(program_stat.get_input_nodes())
@@ -816,6 +827,19 @@ def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
     return sub_block.ops
 
 
+def _is_grad_op_(op):
+    op_maker = core.op_proto_and_checker_maker
+    backward = core.op_proto_and_checker_maker.OpRole.Backward
+    if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(backward):
+        return True
+    return False
+
+
+def _rename_grad_name_(name, grad_order):
+    return 'grad/' * grad_order + name
+
+
 def _append_backward_ops_(block,
                           ops,
                           target_block,
@@ -851,6 +875,8 @@ def _append_backward_ops_(block,
     grad_op_descs = []
     program = block.program
 
+    rename_var_map = {}
+
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
@@ -875,6 +901,40 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
+        # Set device for grad_op according to forward Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        if op.desc.has_attr(device_attr_name):
+            op_device = op.desc.attr(device_attr_name)
+            for op_desc in grad_op_desc:
+                op_desc._set_attr(device_attr_name, op_device)
+
+        # Rename internal gradient variables in multiple backward
+        # so that they have different names with previous backward.
+        # For example:
+        #  y = x * x, grad = fluid.gradients(fluid.gradients(y, x) + y * y, x)
+        # In second-time backward, gradient variable names of partial
+        # forward network (y * y) may be have same names with first-time
+        # fluid.gradients(y, x).
+        # So rename here before _addup_repetitive_outputs_.
+        if program._appending_grad_times > 1:
+            for op_desc in grad_op_desc:
+                if not _is_grad_op_(op):
+                    for name in op_desc.input_arg_names():
+                        if name in rename_var_map:
+                            op_desc._rename_input(name, rename_var_map[name])
+                for name in op_desc.output_arg_names():
+                    if "@GRAD" not in name:
+                        continue
+                    if block.desc.find_var(name.encode("ascii")):
+                        new_name = _rename_grad_name_(
+                            name, program._appending_grad_times)
+                        op_desc._rename_output(name, new_name)
+                        rename_var_map[name] = new_name
+
+                        if name in op_grad_to_var:
+                            op_grad_to_var[new_name] = op_grad_to_var[name]
+                            op_grad_to_var.pop(name)
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.
@@ -1136,6 +1196,8 @@ def append_backward(loss,
                     callbacks=None,
                     checkpoints=None):
     """
+    :api_attr: Static Graph
+
     This function appends backward part to main_program.
 
     A complete neural network training is made up of forward and backward
@@ -1230,7 +1292,8 @@ def append_backward(loss,
             p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
-    assert isinstance(loss, framework.Variable)
+    check_type(loss, 'loss', framework.Variable,
+               'fluid.backward.append_backward')
 
     if loss.op is None:
         # the loss is from a cloned program. Find loss op manually.
@@ -1241,7 +1304,8 @@ def append_backward(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
-        isinstance(callbacks, list)
+        check_type(callbacks, 'callbacks', list,
+                   'fluid.backward.append_backward')
 
     program = loss.block.program
     root_block = program.block(0)
@@ -1357,20 +1421,17 @@ def append_backward(loss,
     program._sync_with_cpp()
 
     if parameter_list is not None:
-        if not isinstance(parameter_list, (list, tuple, set)):
-            raise TypeError(
-                "The type of parameter_list argument must be list or tuple or set, but received %s."
-                % (type(parameter_list)))
+        check_type(parameter_list, 'parameter_list', (list, tuple, set),
+                   'fluid.backward.append_backward')
         parameters = []
         for i, param in enumerate(parameter_list):
+            check_type(param, 'parameter_list[%s]' % i, (framework.Variable,
+                                                         six.string_types),
+                       'fluid.backward.append_backward')
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)
             elif isinstance(param, six.string_types):
                 parameters.append(param)
-            else:
-                raise TypeError(
-                    "The type of parameter_list's member must be paddle.fluid.Variable or str, but received %s."
-                    % (type(param)))
     else:
         params = program.global_block().all_parameters()
         parameters = [param.name for param in params if param.trainable]
@@ -1665,6 +1726,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
+    :api_attr: Static Graph
+    
     Backpropagate the gradients of targets to inputs.
 
     Args:
@@ -1697,5 +1760,12 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = fluid.gradients([y], x)
             print(z)
     """
+    check_type(targets, 'targets', (framework.Variable, list),
+               'fluid.backward.gradients')
+    check_type(inputs, 'inputs', (framework.Variable, list),
+               'fluid.backward.gradients')
+    check_type(target_gradients, 'target_gradients', (
+        framework.Variable, list, type(None)), 'fluid.backward.gradients')
+
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

@@ -100,6 +100,41 @@ class TestConcatOp5(TestConcatOp):
         self.axis = -3
 
 
+class TestConcatOp6(TestConcatOp):
+    def setUp(self):
+        self.op_type = "concat"
+        self.dtype = self.get_dtype()
+        self.init_test_data()
+        self.lod = [[20, 80]]
+        self.out_lod = [[20, 80, 20, 80, 20, 80]]
+        self.inputs = {
+            'X': [('x0', (self.x0, self.lod)), ('x1', (self.x1, self.lod)),
+                  ('x2', (self.x2, self.lod))]
+        }
+        self.attrs = {'axis': self.axis}
+        if self.axis < 0:
+            self.actual_axis = self.axis + len(self.x0.shape)
+            self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+        else:
+            self.actual_axis = self.axis
+        out = np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
+        self.outputs = {'Out': (out, self.out_lod)}
+
+    def test_check_output(self):
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad(['x0'], 'Out', check_dygraph=False)
+        self.check_grad(['x1'], 'Out', check_dygraph=False)
+        self.check_grad(['x2'], 'Out', check_dygraph=False)
+
+    def init_test_data(self):
+        self.x0 = np.random.random([100]).astype(self.dtype)
+        self.x1 = np.random.random([100]).astype(self.dtype)
+        self.x2 = np.random.random([100]).astype(self.dtype)
+        self.axis = 0
+
+
 def create_test_AxisTensor(parent):
     class TestConcatAxisTensor(parent):
         def setUp(self):
@@ -134,6 +169,7 @@ create_test_AxisTensor(TestConcatOp2)
 create_test_AxisTensor(TestConcatOp3)
 create_test_AxisTensor(TestConcatOp4)
 create_test_AxisTensor(TestConcatOp5)
+create_test_AxisTensor(TestConcatOp6)
 
 #----------------Concat Fp16----------------
 
@@ -155,6 +191,7 @@ create_test_fp16(TestConcatOp2)
 create_test_fp16(TestConcatOp3)
 create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
+create_test_fp16(TestConcatOp6)
 
 
 class TestConcatOpError(unittest.TestCase):
@@ -209,6 +246,43 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
+
+
+class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
+    """
+    Test concat api when the input(x) is a LoDTensorArray.
+    """
+
+    def setUp(self):
+        self.axis = 1
+        self.iter_num = 3
+        self.input_shape = [2, 3]
+        self.x = np.random.random(self.input_shape).astype("float32")
+        self.place = fluid.CUDAPlace(0) \
+            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.set_program()
+
+    def set_program(self):
+        self.program = fluid.Program()
+        with fluid.program_guard(self.program):
+            input = fluid.layers.assign(self.x)
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+
+            self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
+
+    def test_case(self):
+        self.assertTrue(self.out_var.shape[self.axis] == -1)
+        exe = fluid.Executor(self.place)
+        res = exe.run(self.program, fetch_list=self.out_var)
+        self.assertTrue(
+            np.array_equal(
+                res[0],
+                np.concatenate(
+                    [self.x] * self.iter_num, axis=self.axis)))
 
 
 if __name__ == '__main__':

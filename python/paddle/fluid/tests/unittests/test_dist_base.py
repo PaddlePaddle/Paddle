@@ -334,10 +334,6 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
-        if args.use_dgc:
-            # fuse_all_reduce_ops require that gradients should not be sparse types
-            build_stra.fuse_all_reduce_ops = False
-
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,

@@ -69,6 +69,8 @@ class LearningRateDecay(object):
 
 class PiecewiseDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+    
     Piecewise decay scheduler.
 
     The algorithm can be described as the code below.
@@ -128,6 +130,8 @@ class PiecewiseDecay(LearningRateDecay):
 
 class NaturalExpDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies natural exponential decay to the initial learning rate.
     
     The algorithm can be described as following.
@@ -207,6 +211,8 @@ class NaturalExpDecay(LearningRateDecay):
 
 class ExponentialDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies exponential decay to the learning rate.
 
     The algorithm can be described as following.
@@ -287,6 +293,8 @@ class ExponentialDecay(LearningRateDecay):
 
 class InverseTimeDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies inverse time decay to the initial learning rate.
 
     The algorithm can be described as following.
@@ -363,6 +371,8 @@ class InverseTimeDecay(LearningRateDecay):
 
 class PolynomialDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies polynomial decay to the initial learning rate.
 
     The algorithm can be described as following.
@@ -455,6 +465,8 @@ class PolynomialDecay(LearningRateDecay):
 
 class CosineDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies cosine decay to the learning rate.
 
     The algorithm can be described as following.
@@ -511,13 +523,15 @@ class CosineDecay(LearningRateDecay):
 
 class NoamDecay(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Applies Noam decay to the initial learning rate. 
 
     The algorithm can be described as following.
 
     .. math::
 
-        decayed\_learning\_rate = d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
+        decayed\_learning\_rate = learning\_rate * d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
 
     Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_ 
 
@@ -531,6 +545,9 @@ class NoamDecay(LearningRateDecay):
             The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
+        learning_rate(Variable|float|int): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
+            float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:
         None.
@@ -550,8 +567,15 @@ class NoamDecay(LearningRateDecay):
                   parameter_list = emb.parameters())
     """
 
-    def __init__(self, d_model, warmup_steps, begin=1, step=1, dtype='float32'):
+    def __init__(self,
+                 d_model,
+                 warmup_steps,
+                 begin=1,
+                 step=1,
+                 dtype='float32',
+                 learning_rate=1.0):
         super(NoamDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
         self.d_model = d_model
         self.warmup_steps = warmup_steps
 
@@ -559,7 +583,8 @@ class NoamDecay(LearningRateDecay):
         from .. import layers
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
-        lr_value = (self.d_model**-0.5) * layers.elementwise_min(a, b)
+        lr_value = self.learning_rate * (self.d_model
+                                         **-0.5) * layers.elementwise_min(a, b)
         return lr_value
 
 

@@ -420,7 +420,7 @@ def get_inference_model(main_program, feeded_var_names, target_vars):
                                     build the inference model. If is set None,
                                     the default main program will be used.
                                     Default: None.
-        feeded_var_names(list[str]): Names of variables that need to be feeded data
+        feeded_var_names(list[str]): Names of variables that need to be fed data
                                      during inference.
         target_vars(list[Variable]): Variables from which we can get inference
                                      results.

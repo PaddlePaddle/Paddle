@@ -55,10 +55,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
       Node* mul1_out, Node* mul2_out, Node* eltadd0_b, Node* eltadd1_b,
       Node* eltadd2_b, Node* eltadd_qk_b, Node* reshape2,
       Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
-    auto scale_attr = boost::get<float>(scale->Op()->GetAttr("scale"));
-    // auto scale_bias = boost::get<float>(scale->Op()->GetAttr("bias"));
+    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
+    // auto scale_bias = BOOST_GET_CONST(float, scale->Op()->GetAttr("bias"));
     // bool after_scale =
-    //    boost::get<bool>(scale->Op()->GetAttr("bias_after_scale"));
+    //    BOOST_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
 
     // create multihead
     OpDesc multihead_op_desc;
@@ -78,7 +78,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
+        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
     ReplaceOutputVar(mul0, mul0_out, q_var_node);
     ReplaceOutputVar(mul1, mul1_out, k_var_node);
@@ -444,7 +444,7 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
       Node* mul1_out, Node* mul2_out, Node* mul0_w, Node* mul1_w, Node* mul2_w,
       Node* eltadd0_b, Node* eltadd1_b, Node* eltadd2_b, Node* eltadd_qk_b,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
-    auto scale_attr = boost::get<float>(scale->Op()->GetAttr("scale"));
+    auto scale_attr = BOOST_GET_CONST(float, scale->Op()->GetAttr("scale"));
 
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
@@ -524,7 +524,7 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
 
     auto reshape_desc = reshape2->Op();
     int head_number =
-        boost::get<std::vector<int>>(reshape_desc->GetAttr("shape")).at(2);
+        BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
     OpDesc multihead_op_desc;
     multihead_op_desc.SetType("multihead_matmul");

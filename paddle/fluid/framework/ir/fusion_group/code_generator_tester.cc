@@ -288,7 +288,7 @@ void TestMain(std::string func_name,
               std::string dtype) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
-  std::string code_str = code_generator.Generate(func_name, dtype, expressions);
+  std::string code_str = code_generator.Generate(func_name, expressions);
   VLOG(3) << code_str;
 
   LOG(INFO) << "dtype: " << dtype;
@@ -297,7 +297,7 @@ void TestMain(std::string func_name,
 }
 
 void TestMain(fusion_group::SubGraph* subgraph, std::vector<int> input_ids,
-              std::vector<int> output_ids) {
+              std::vector<int> output_ids, std::string dtype) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
@@ -307,26 +307,28 @@ void TestMain(fusion_group::SubGraph* subgraph, std::vector<int> input_ids,
   std::vector<fusion_group::OperationExpression> expressions =
       code_generator.ConvertToExpressions(subgraph);
 
-  LOG(INFO) << "dtype: " << subgraph->GetDataType();
   TestElementwiseMain(subgraph->GetFuncName(), code_str, expressions, input_ids,
-                      output_ids, subgraph->GetDataType());
+                      output_ids, dtype);
 }
 
 TEST(code_generator, elementwise) {
-  // t2 = t0 * t1
-  // t4 = t2 + t3
-  // t6 = t4 - t5
-  // t7 = relu(t6)
-  // t8 = sigmoid(t7)
-  fusion_group::OperationExpression exp1("elementwise_mul", {0, 1}, {2});
-  fusion_group::OperationExpression exp2("elementwise_add", {2, 3}, {4});
-  fusion_group::OperationExpression exp3("elementwise_sub", {4, 5}, {6});
-  fusion_group::OperationExpression exp4("relu", {6}, {7});
-  fusion_group::OperationExpression exp5("sigmoid", {7}, {8});
-  std::vector<fusion_group::OperationExpression> expressions = {
-      exp1, exp2, exp3, exp4, exp5};
-
   for (std::string dtype : {"float", "float16"}) {
+    // t2 = t0 * t1
+    // t4 = t2 + t3
+    // t6 = t4 - t5
+    // t7 = relu(t6)
+    // t8 = sigmoid(t7)
+    fusion_group::OperationExpression exp1("elementwise_mul", {0, 1}, {2},
+                                           dtype, dtype);
+    fusion_group::OperationExpression exp2("elementwise_add", {2, 3}, {4},
+                                           dtype, dtype);
+    fusion_group::OperationExpression exp3("elementwise_sub", {4, 5}, {6},
+                                           dtype, dtype);
+    fusion_group::OperationExpression exp4("relu", {6}, {7}, dtype, dtype);
+    fusion_group::OperationExpression exp5("sigmoid", {7}, {8}, dtype, dtype);
+    std::vector<fusion_group::OperationExpression> expressions = {
+        exp1, exp2, exp3, exp4, exp5};
+
     // Expressions:
     //  Op(elementwise_mul), inputs:{0,1}, outputs:{2}
     //  Op(elementwise_add), inputs:{2,3}, outputs:{4}
@@ -340,17 +342,18 @@ TEST(code_generator, elementwise) {
 }
 
 TEST(code_generator, elementwise_grad) {
-  // The var order: t0, t1, t2, t3, t0', t1', t2', t3'
-  // t2 = t0 * t1
-  // t3 = relu(t2)
-  // t2' = relu_grad(t2, t3, t3')
-  // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
-  fusion_group::OperationExpression exp1("relu_grad", {-1, 3, 7}, {6});
-  fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
-                                         {4, 5});
-  std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
-
   for (std::string dtype : {"float", "float16"}) {
+    // The var order: t0, t1, t2, t3, t0', t1', t2', t3'
+    // t2 = t0 * t1
+    // t3 = relu(t2)
+    // t2' = relu_grad(t2, t3, t3')
+    // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
+    fusion_group::OperationExpression exp1("relu_grad", {-1, 3, 7}, {6}, dtype,
+                                           dtype);
+    fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
+                                           {4, 5}, dtype, dtype);
+    std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
+
     // Expressions:
     //  Op(relu_grad), inputs:{2,3,7}, outputs:{6}
     //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
@@ -474,7 +477,7 @@ TEST(code_generator, subgraph) {
     //  Op(elementwise_add), inputs:{7,6}, outputs:{8}
     std::vector<int> input_ids = {0, 1, 2, 3};
     std::vector<int> output_ids = {4, 5, 6, 7, 8};
-    TestMain(&subgraph, input_ids, output_ids);
+    TestMain(&subgraph, input_ids, output_ids, dtype);
   }
 }
 
@@ -493,7 +496,7 @@ TEST(code_generator, subgraph_grad) {
     //  Op(tanh_grad), inputs:{9,4,13}, outputs:{14}
     std::vector<int> input_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     std::vector<int> output_ids = {10, 11, 12, 13, 14, 15, 16, 17};
-    TestMain(&subgraph, input_ids, output_ids);
+    TestMain(&subgraph, input_ids, output_ids, dtype);
   }
 }
 #endif

@@ -23,6 +23,9 @@ __all__ = ['one_hot', 'embedding']
 
 def one_hot(input, depth, allow_out_of_range=False):
     """
+    :alias_main: paddle.nn.functional.one_hot
+	:alias: paddle.nn.functional.one_hot,paddle.nn.functional.common.one_hot
+	:old_api: paddle.fluid.one_hot
 
     The operator converts each id in the input to an one-hot vector with a
     depth length. The value in the vector dimension corresponding to the id
@@ -98,6 +101,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4], dtype="int64")
             one_hot_label = fluid.one_hot(input=label, depth=4)
     """
+    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'one_hot_v2')
     helper = LayerHelper("one_hot_v2", **locals())
 
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
@@ -131,6 +135,7 @@ def embedding(input,
               param_attr=None,
               dtype='float32'):
     """
+    :api_attr: Static Graph
 
     The operator is used to lookup embeddings vector of ids provided by :attr:`input` . 
     It automatically constructs a 2D embedding matrix based on the

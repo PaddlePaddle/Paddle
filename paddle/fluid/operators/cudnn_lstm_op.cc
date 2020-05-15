@@ -119,7 +119,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.0);
     AddAttr<bool>("is_bidirec",
                   "is_bidirec"
-                  "if it is bidirection rnn"
+                  "if it is bidirectional rnn"
                   "The will affect the shape of the Out, last_h, and last_c")
         .SetDefault(false);
     AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(10);
@@ -203,8 +203,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("cudnn_lstm_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("InitH", this->Input("InitH"));
@@ -223,7 +222,6 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
     op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

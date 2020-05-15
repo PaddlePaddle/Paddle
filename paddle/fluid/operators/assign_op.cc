@@ -36,6 +36,13 @@ class AssignOp : public framework::OperatorWithKernel {
         if (type == framework::proto::VarType::LOD_TENSOR) {
           ctx->ShareLoD("X", /*->*/ "Out");
         }
+      } else if (type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+        if (ctx->IsRuntime()) {
+          // The runtime output shape is determined in kernel.
+          return;
+        } else {
+          ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+        }
       }
     }
   }
@@ -51,9 +58,27 @@ class AssignOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    const framework::Variable *var = ctx.InputVar("X");
+    if (var->IsType<framework::LoDTensorArray>()) {
+      auto t_arr = var->Get<framework::LoDTensorArray>();
+      // NOTE(liym27): Support an empty tensor array as Input.
+      // And set the kernel type is float.
+      if (t_arr.size() == 0) {
+        return framework::OpKernelType(framework::proto::VarType::FP32,
+                                       ctx.device_context());
+      }
+    }
+
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
+  }
+};
+
+class AssignInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
@@ -64,10 +89,10 @@ class AssignKernel {
     if (x == nullptr) {
       return;
     }
+    PADDLE_ENFORCE_EQ(
+        ctx.HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
-    PADDLE_ENFORCE(
-        out != nullptr,
-        "The Output(Out) should not be null if the Input(X) is set.");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
 
@@ -99,12 +124,10 @@ class AssignGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("assign");
     op->SetInput("X", this->OutputGrad("Out"));
     op->SetOutput("Out", this->InputGrad("X"));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -118,7 +141,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(assign, ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
-                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer);
+                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
+                  ops::AssignInferVarType);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, int, ops::AssignKernel,

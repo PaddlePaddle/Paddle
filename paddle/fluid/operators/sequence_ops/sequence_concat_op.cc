@@ -41,13 +41,21 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("X"),
-                   "Input(X) of Sequence Concat Op should not be null.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of Sequence Concat Op should not be null.");
+    PADDLE_ENFORCE_EQ(
+        context->HasInputs("X"), true,
+        platform::errors::NotFound("SequenceConcatOp Input(X) of Sequence "
+                                   "Concat Op should not be null."));
+    PADDLE_ENFORCE_EQ(
+        context->HasOutput("Out"), true,
+        platform::errors::NotFound("SequenceConcatOp Output(Out) of Sequence "
+                                   "Concat Op should not be null."));
 
     PADDLE_ENFORCE_GT(context->Inputs("X").size(), 1,
-                      "The number of input sequences is at least two.");
+                      platform::errors::InvalidArgument(
+                          "The number of SequenceConcatOp inputs should be "
+                          "greater than 1. But "
+                          "the number of inputs we received is %d",
+                          context->Inputs("X").size()));
     auto x_dims = context->GetInputsDim("X");
     int64_t batch_size = 0;
     int64_t feature_size = 0;
@@ -62,7 +70,12 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_EQ(
             feature_size, framework::product(x_dim) / x_dim[0],
-            "Inputs of sequence concat must have same feature size");
+            platform::errors::InvalidArgument(
+                "Each input of SequenceConcatOp inputs must have same feature "
+                "size, But "
+                "the feature size we received is %d, the feature size of 1st "
+                "input is %d",
+                feature_size, framework::product(x_dim) / x_dim[0]));
       }
     }
     if (batch_size < 0) {
@@ -83,14 +96,12 @@ class SeqConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_concat_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
@@ -112,8 +123,8 @@ class SeqConcatGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SeqConcatGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SeqConcatGradNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle

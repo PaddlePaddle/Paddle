@@ -31,10 +31,12 @@ namespace framework {
 namespace details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
-    ir::Node *node, Scope *scope, const platform::Place &place,
+    ir::Node *node, Scope *scope, size_t scope_idx,
+    const platform::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars, GarbageCollector *gc)
     : OpHandleBase(node),
       scope_(scope),
+      scope_idx_(scope_idx),
       place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {
@@ -44,7 +46,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
         platform::DeviceContextPool::Instance().Get(place));
     if (dynamic_cast<StreamGarbageCollector *>(gc_)) {
       platform::CUDADeviceGuard guard(
-          boost::get<platform::CUDAPlace>(place).device);
+          BOOST_GET_CONST(platform::CUDAPlace, place).device);
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
       PADDLE_ENFORCE_NOT_NULL(event_);
     }
@@ -60,7 +62,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
 EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 #ifdef PADDLE_WITH_CUDA
   if (event_) {
-    auto gpu_place = boost::get<platform::CUDAPlace>(dev_ctx_->GetPlace());
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx_->GetPlace());
     platform::CUDADeviceGuard guard(gpu_place.device);
     PADDLE_ENFORCE(cudaEventDestroy(event_));
   }
@@ -70,7 +72,7 @@ EagerDeletionOpHandle::~EagerDeletionOpHandle() {
 void EagerDeletionOpHandle::InitCUDA() {
 #ifdef PADDLE_WITH_CUDA
   int dev_id =
-      boost::get<platform::CUDAPlace>(dev_ctxes_.begin()->first).device;
+      BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
   events_[dev_id] = nullptr;
 #endif
 }

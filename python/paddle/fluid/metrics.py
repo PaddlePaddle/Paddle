@@ -261,7 +261,7 @@ class CompositeMetric(MetricBase):
 
         Returns:
             list: results of all added metrics. 
-            The shape and dtype of each result depend on the defination of its metric.
+            The shape and dtype of each result depend on the definition of its metric.
         """
         ans = []
         for m in self._metrics:

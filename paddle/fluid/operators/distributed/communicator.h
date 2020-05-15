@@ -183,6 +183,8 @@ class Communicator {
   virtual void Stop() = 0;
   virtual bool IsRunning() { return running_; }
 
+  virtual void Clean() {}
+
   virtual void Send(const std::vector<std::string>& var_names,
                     const std::vector<std::string>& var_tables,
                     const framework::Scope& scope) = 0;
@@ -308,6 +310,8 @@ class HalfAsyncCommunicator : public Communicator {
   ~HalfAsyncCommunicator();
   void Start() override;
   void Stop() override;
+
+  void Clean() override;
 
   void Send(const std::vector<std::string>& var_names,
             const std::vector<std::string>& var_tables,
