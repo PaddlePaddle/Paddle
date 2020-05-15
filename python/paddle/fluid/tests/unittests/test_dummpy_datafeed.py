@@ -35,8 +35,8 @@ class TestDataFeed(unittest.TestCase):
         self.run_dataset(False)
 
     def run_dataset(self, is_cpu):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32', lod_level=0)
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32', lod_level=0)
 
         fc = layers.fc(input=x,
                        name="fc",
