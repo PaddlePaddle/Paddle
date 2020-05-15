@@ -46,10 +46,10 @@ class DataNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "DataNorm");
     OP_INOUT_CHECK(ctx->HasInput("BatchSize"), "Input", "BatchSize",
-                                 "DataNorm");
+                   "DataNorm");
     OP_INOUT_CHECK(ctx->HasInput("BatchSum"), "Input", "BatchSum", "DataNorm");
     OP_INOUT_CHECK(ctx->HasInput("BatchSquareSum"), "Input", "BatchSquareSum",
-                                 "DataNorm");
+                   "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Means"), "Output", "Means", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Scales"), "Output", "Scales", "DataNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "DataNorm");
