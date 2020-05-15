@@ -657,7 +657,8 @@ class TestDistBase(unittest.TestCase):
             env_local = {
                 "CUDA_VISIBLE_DEVICES": gpus,
                 "PADDLE_TRAINERS_NUM": "1",
-                "PADDLE_TRAINER_ID": "0"
+                "PADDLE_TRAINER_ID": "0",
+                "NCCL_DEBUG": "INFO"
             }
         else:
             env_local = {'CPU_NUM': '1'}
@@ -811,6 +812,7 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
+                "NCCL_DEBUG": "INFO",
             })
         else:
             env.update({'CPU_NUM': '1'})
