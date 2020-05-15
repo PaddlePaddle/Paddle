@@ -97,18 +97,22 @@ void BarrierMonitor::Invalid() {
 
 void BarrierMonitor::Swap() {
   std::unique_lock<std::mutex> lck(mutex_);
-  ServerWeakup();
-  WaitServerWeakup();
 
   valid_ = true;
   release_ = true;
 
   if (barrier_type == BarrierType::kSendBarrier) {
+    ServerWeakup();
+    VLOG(4) << "barrier monitor server weak up sync to do";
+    WaitServerWeakup();
+    VLOG(4) << "barrier monitor server weak up sync done";
     barrier_type = BarrierType::kRecvBarrier;
     send_barrier_queue->Clear();
+    VLOG(4) << "barrier monitor server switch to recv barrier";
   } else {
     barrier_type = BarrierType::kSendBarrier;
     recv_barrier_queue->Clear();
+    VLOG(4) << "barrier monitor server switch to send barrier";
   }
 
   workder_cv_.notify_all();
