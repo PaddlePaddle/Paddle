@@ -91,9 +91,9 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
             input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
             eps);
 #else
-        PADDLE_THROW(
-            platform::errors::Fatal("use EmbEltwiseLayernormPluginDynamic "
-                                    "FP16, but GPU doesn't have FP16."));
+        plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
+            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
+            eps);
 #endif
       } else {
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
