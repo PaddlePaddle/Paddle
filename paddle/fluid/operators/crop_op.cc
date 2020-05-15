@@ -27,16 +27,18 @@ class CropOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CropOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CropOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Crop");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Crop");
     auto x_dim = ctx->GetInputDim("X");
     if (!ctx->HasInput("Y")) {
       auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
-          "Shape size should be equal to dimension size of input tensor.");
+          platform::errors::InvalidArgument(
+              "The number of elements (%d) of CropOp's "
+              "'shape' attribute should be equal to the number of dimensions "
+              "(%d) of the Input(X).",
+              shape.size(), x_dim.size()));
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
@@ -45,8 +47,10 @@ class CropOp : public framework::OperatorWithKernel {
     } else {
       auto y_dim = ctx->GetInputDim("Y");
       PADDLE_ENFORCE_EQ(framework::arity(x_dim), framework::arity(y_dim),
-                        "Tensor rank of both CropOp's "
-                        "inputs must be same.");
+                        platform::errors::InvalidArgument(
+                            "The number of dimensions (%d) of CropOp's input(X)"
+                            " must be equal to that (%d) of input(Y).",
+                            framework::arity(x_dim), framework::arity(y_dim)));
       ctx->SetOutputDim("Out", y_dim);
     }
   }
@@ -163,9 +167,9 @@ class CropOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CropGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "CropGrad");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
