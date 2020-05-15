@@ -368,9 +368,10 @@ class ProgramTranslator(object):
 
                 prog_trans = fluid.dygraph.ProgramTranslator()
 
-                x = np.ones([1, 2])
-                x_v = prog_trans.get_output(func, x)
-                print(x_v.numpy()) # [[0. 0.]]
+                with fluid.dygraph.guard():
+                    x = np.ones([1, 2])
+                    x_v = prog_trans.get_output(func, x)
+                    print(x_v.numpy()) # [[0. 0.]]
 
         """
         assert callable(
@@ -472,7 +473,7 @@ class ProgramTranslator(object):
                 x = np.ones([1, 2])
                 main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
                 print([i.name for i in inputs])
-                # ['x_0'] the feed input variable name representing x
+                # ['feed_0'] the feed input variable name representing x
                 print([o.name for o in outputs])
                 # ['_generated_var_4'] the fetch output variable name representing x_v        
 
@@ -573,6 +574,7 @@ class ProgramTranslator(object):
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
                 from paddle.fluid.dygraph import ProgramTranslator
 
                 class SimpleNet(fluid.dygraph.Layer):

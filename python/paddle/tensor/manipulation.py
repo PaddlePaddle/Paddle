@@ -36,33 +36,18 @@ from ..fluid.layers import transpose  #DEFINE_ALIAS
 from ..fluid.layers import unique  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
+from ..fluid.layers import gather_nd  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
+from ..fluid.layers import shard_index  #DEFINE_ALIAS
+from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
+
 __all__ = [
-    'cast',
-    'concat',
-    'expand',
-    'expand_as',
-    'flatten',
-    'gather',
-    #       'gather_nd',
-    'reshape',
-    'reverse',
-    'scatter',
-    #       'scatter_nd_add',
-    #       'scatter_nd',
-    #       'shard_index',
-    'slice',
-    'split',
-    'squeeze',
-    'stack',
-    'strided_slice',
-    'transpose',
-    'unique',
-    #       'unique_with_counts',
-    'unsqueeze',
-    'unstack',
-    'flip',
-    'unbind',
-    'roll'
+    'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
+    'reshape', 'reverse', 'scatter', 'scatter_nd_add', 'scatter_nd',
+    'shard_index', 'slice', 'split', 'squeeze', 'stack', 'strided_slice',
+    'transpose', 'unique', 'unique_with_counts', 'unsqueeze', 'unstack', 'flip',
+    'unbind', 'roll'
 ]
 
 
