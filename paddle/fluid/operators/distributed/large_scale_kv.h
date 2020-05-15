@@ -107,20 +107,21 @@ struct VALUE {
 
 class ValueBlock {
  public:
-  std::vector<std::vector<float>> Get(
-      const int64_t id, const std::vector<std::string> &value_names) {
+  bool Has(const int64_t id) {
     std::lock_guard<std::mutex> lock(mutex_);
-    std::vector<std::vector<float>> values;
 
     auto got = values_.find(id);
     if (got == values_.end()) {
-      auto value = new VALUE(meta_.value_names);
-      value->set(Init());
-      values_[id] = value;
+      return false;
+    } else {
+      return true;
     }
-    values = values_.at(id);
+  }
 
-    return values;
+  std::vector<std::vector<float>> Get(
+      const int64_t &id, const std::vector<std::string> &value_names) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return values_.at(id)->get(value_names);
   }
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
@@ -132,6 +133,9 @@ class ValueBlock {
   }
 
   std::unordered_map<int64_t, VALUE *> values_;
+
+ private:
+  mutable std::mutex mutex_;
 };
 
 class SparseVariable {
@@ -149,19 +153,41 @@ class SparseVariable {
     }
   }
 
+  std::vector<std::vector<float>> Init() {
+    auto rets = std::vector<std::vector<float>>();
+    rets.resize(meta_.value_names.size());
+
+    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
+      auto name = meta_.value_names[i];
+      auto dim = meta_.value_dims[i];
+      rets[i].resize(dim);
+      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.0));
+    }
+    return rets;
+  }
+
   void Get(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            std::vector<std::vector<std::vector<float>>> *values) {
     for (auto &id : ids) {
-      values->push_back(GetShard(id).Get(id, value_names));
+      std::vector<std::vector<float>> value;
+
+      auto &block = GetShard(id);
+      if (!block.Has(id)) {
+        auto value = new VALUE(meta_.value_names);
+        value->set(Init());
+        block.values_[id] = value;
+      }
+      auto id_values = block.Get(id, value_names);
+      values->push_back(id_values);
     }
   }
 
   void Set(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            const std::vector<std::vector<std::vector<float>>> &values) {
-    for (int i = 0; i < ids.size(); i++) {
-      GetShard(id).Set(ids[i], value_names, values[i]);
+    for (int i = 0; i < static_cast<int>(ids.size()); i++) {
+      GetShard(ids[i]).Set(ids[i], value_names, values[i]);
     }
   }
 
@@ -255,19 +281,6 @@ class SparseVariable {
   }
 
  private:
-  std::vector<std::vector<float>> Init() {
-    auto rets = std::vector<std::vector<float>>();
-    rets.resize(meta_.value_names.size());
-
-    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
-      auto name = meta_.value_names[i];
-      auto dim = meta_.value_dims[i];
-      rets[i].resize(dim);
-      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.0));
-    }
-    return rets;
-  }
-
   mutable std::mutex mutex_;
 
   SparseMeta meta_;
