@@ -68,14 +68,14 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ENFORCE_EQ(
-        id >= 0, true,
+    PADDLE_ENFORCE_GE(
+        id, 0UL,
         platform::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.embedding) "
             "expected >= 0 and < %ld, but got %ld. Please check input value.",
             N, id));
-    PADDLE_ENFORCE_EQ(
-        id < N, true,
+    PADDLE_ENFORCE_LT(
+        id, N,
         platform::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.embedding) "
             "expected >= 0 and < %ld, but got %ld. Please check input value.",
