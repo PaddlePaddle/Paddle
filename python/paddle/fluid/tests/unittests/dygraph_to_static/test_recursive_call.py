@@ -19,14 +19,17 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph import ProgramTranslator
+from paddle.fluid.dygraph import declarative
+
+program_translator = ProgramTranslator()
 
 SEED = 2020
 np.random.seed(SEED)
 
 
 # Use a decorator to test exception
-@dygraph_to_static_func
+@declarative
 def dyfunc_with_if(x_v):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -35,7 +38,7 @@ def dyfunc_with_if(x_v):
     return x_v
 
 
-@dygraph_to_static_func
+@declarative
 def nested_func(x_v):
     x_v = fluid.dygraph.to_variable(x_v)
 
@@ -57,17 +60,16 @@ class TestRecursiveCall1(unittest.TestCase):
         self.dyfunc = nested_func
 
     def get_dygraph_output(self):
+        program_translator.enable(False)
         with fluid.dygraph.guard():
             res = self.dyfunc(self.input).numpy()
             return res
 
     def get_static_output(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            static_out = self.dyfunc(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        program_translator.enable(True)
+        with fluid.dygraph.guard():
+            res = self.dyfunc(self.input).numpy()
+            return res
 
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
@@ -93,14 +95,14 @@ class MyConvLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
-    @dygraph_to_static_func
+    @declarative
     def forward(self, inputs):
         y = dyfunc_with_if(inputs)
         y = lambda_fun(y)
         y = self.dymethod(y)
         return y
 
-    @dygraph_to_static_func
+    @declarative
     def dymethod(self, x_v):
         x_v = fluid.layers.assign(x_v)
         return x_v
@@ -120,7 +122,7 @@ class MyLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.5)))
 
-    @dygraph_to_static_func
+    @declarative
     def forward(self, inputs):
         h = self.conv(inputs)
         out = self.fc(h)
@@ -134,7 +136,7 @@ class TestRecursiveCall2(unittest.TestCase):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
 
-    def get_dygraph_output(self):
+    def _run(self):
         with fluid.dygraph.guard():
             self.dygraph_func = self.Layer()
             fluid.default_startup_program.random_seed = SEED
@@ -144,21 +146,13 @@ class TestRecursiveCall2(unittest.TestCase):
 
             return res.numpy()
 
+    def get_dygraph_output(self):
+        program_translator.enable(False)
+        return self._run()
+
     def get_static_output(self):
-        startup_program = fluid.Program()
-        startup_program.random_seed = SEED
-        main_program = fluid.Program()
-        main_program.random_seed = SEED
-
-        with fluid.program_guard(main_program, startup_program):
-            self.dygraph_func = self.Layer()
-            data = fluid.layers.assign(self.input)
-            static_out = self.dygraph_func(data)
-
-        exe = fluid.Executor(self.place)
-        exe.run(startup_program)
-        static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res[0]
+        program_translator.enable(True)
+        return self._run()
 
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()

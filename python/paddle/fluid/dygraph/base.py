@@ -61,6 +61,26 @@ def program_desc_tracing_guard(enable):
 _functional_dygraph_context_manager = None
 
 
+@signature_safe_contextmanager
+def param_guard(parameters):
+    # Note: parameters is a reference of self._parameters
+    if not framework.in_dygraph_mode() and parameters:
+        origin_parameters = parameters.copy()
+        for name, var_base in parameters.items():
+            if isinstance(var_base, core.VarBase):
+                new_var = framework.Parameter(
+                    var_base.block,
+                    var_base.shape,
+                    var_base.dtype,
+                    var_base.type,
+                    name=var_base.name)
+                parameters[name] = new_var
+        yield
+        parameters.update(origin_parameters)
+    else:
+        yield
+
+
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
