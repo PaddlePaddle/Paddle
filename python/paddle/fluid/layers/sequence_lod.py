@@ -1291,14 +1291,11 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             mask = layers.sequence_mask(x=x)
 
     """
-    check_variable_and_dtype(x, 'x', [
-        'int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64',
-        'uint8', 'bool'
-    ], 'sequence_mask')
-    check_dtype(dtype, 'dtype', [
-        'int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64',
-        'uint8', 'bool'
-    ], 'sequence_mask')
+    check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32'],
+                             'sequence_mask')
+    check_dtype(dtype, 'dtype',
+                ['int32', 'int64', 'float32', 'float64', 'int8'],
+                'sequence_mask')
     helper = LayerHelper('sequence_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
 
