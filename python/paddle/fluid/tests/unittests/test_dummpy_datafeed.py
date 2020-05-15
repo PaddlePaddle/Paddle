@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -21,8 +22,6 @@ from paddle.fluid.layers.nn import _pull_box_sparse
 
 
 class TestDataFeed(unittest.TestCase):
-    """  TestBaseCase(Merge PV)   """
-
     def setUp(self):
         self.batch_size = 10
 
