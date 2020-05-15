@@ -60,10 +60,11 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
         pass
 
     def test_check_grad_ingore_x(self):
-        pass 
+        pass
 
     def test_check_grad_ingore_y(self):
         pass
+
 
 if __name__ == '__main__':
     unittest.main()
