@@ -97,8 +97,8 @@ class TestSequenceExpandAsOpError(unittest.TestCase):
             x2 = fluid.data(name='x2', shape=[None, 4], dtype="bool")
             self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x2)
 
-            # the input x must be Variable
-            x3 = fluid.data(name='x3', shape=[None, 4], dtype="bool")
+            # the input y must be Variable
+            x3 = fluid.data(name='x3', shape=[None, 4], dtype="float32")
             y = np.random.random((2, 4)).astype("float32")
             self.assertRaises(TypeError, fluid.layers.sequence_expand_as, x3, y)
 
