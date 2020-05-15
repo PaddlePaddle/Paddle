@@ -57,8 +57,6 @@ __all__ = [
 
 class RNNCell(object):
     """
-	:api_attr: Static Graph
-
     RNNCell is the base class for abstraction representing the calculations
     mapping the input and state to the output and new state. It is suitable to
     and mostly used in RNN.
@@ -223,8 +221,6 @@ class RNNCell(object):
 
 class GRUCell(RNNCell):
     """
-	:api_attr: Static Graph
-
     Gated Recurrent Unit cell. It is a wrapper for 
     `fluid.contrib.layers.rnn_impl.BasicGRUUnit` to make it adapt to RNNCell.
 
@@ -321,8 +317,6 @@ class GRUCell(RNNCell):
 
 class LSTMCell(RNNCell):
     """
-	:api_attr: Static Graph
-
     Long-Short Term Memory cell. It is a wrapper for 
     `fluid.contrib.layers.rnn_impl.BasicLSTMUnit` to make it adapt to RNNCell.
 
@@ -437,8 +431,6 @@ def rnn(cell,
         is_reverse=False,
         **kwargs):
     """
-	:api_attr: Static Graph
-
     rnn creates a recurrent neural network specified by RNNCell `cell`,
     which performs :code:`cell.call()` repeatedly until reaches to the maximum
     length of `inputs`.
@@ -583,8 +575,6 @@ def rnn(cell,
 
 class Decoder(object):
     """
-	:api_attr: Static Graph
-
     Decoder is the base class for any decoder instance used in `dynamic_decode`.
     It provides interface for output generation for one time step, which can be
     used to generate sequences. 
@@ -696,8 +686,6 @@ class Decoder(object):
 
 class BeamSearchDecoder(Decoder):
     """
-	:api_attr: Static Graph
-
     Decoder with beam search decoding strategy. It wraps a cell to get probabilities,
     and follows a beam search step to calculate scores and select candidate
     token ids for each decoding step.
@@ -1165,8 +1153,6 @@ def dynamic_decode(decoder,
                    return_length=False,
                    **kwargs):
     """
-	:api_attr: Static Graph
-
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
     decoding step reaches to :attr:`max_step_num`.
@@ -1989,8 +1975,6 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
-	:api_attr: Static Graph
-
     **Note**:
         1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
         2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
@@ -2089,21 +2073,7 @@ def dynamic_lstm(input,
     """
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstm."
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'dynamic_lstm')
-
-    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstm')
-    if isinstance(h_0, Variable):
-        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
-                                 'dynamic_lstm')
-
-    check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstm')
-    if isinstance(c_0, Variable):
-        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
-                                 'dynamic_lstm')
-
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
     helper = LayerHelper('lstm', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -2161,8 +2131,6 @@ def lstm(input,
          default_initializer=None,
          seed=-1):
     """
-	:api_attr: Static Graph
-
     **Note**:
         This OP only supports running on GPU devices.
 
@@ -2348,8 +2316,6 @@ def dynamic_lstmp(input,
                   cell_clip=None,
                   proj_clip=None):
     """
-	:api_attr: Static Graph
-
     **Note**:
         1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
@@ -2473,20 +2439,6 @@ def dynamic_lstmp(input,
     ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
     assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
-
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'dynamic_lstmp')
-
-    check_type(h_0, 'h_0', (Variable, type(None)), 'dynamic_lstmp')
-    if isinstance(h_0, Variable):
-        check_variable_and_dtype(h_0, 'h_0', ['float32', 'float64'],
-                                 'dynamic_lstmp')
-
-    check_type(c_0, 'c_0', (Variable, type(None)), 'dynamic_lstmp')
-    if isinstance(c_0, Variable):
-        check_variable_and_dtype(c_0, 'c_0', ['float32', 'float64'],
-                                 'dynamic_lstmp')
-
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -2559,8 +2511,6 @@ def dynamic_gru(input,
                 h_0=None,
                 origin_mode=False):
     """
-	:api_attr: Static Graph
-
     **Note: The input type of this must be LoDTensor. If the input type to be
     processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
 
@@ -2713,8 +2663,6 @@ def gru_unit(input,
              gate_activation='sigmoid',
              origin_mode=False):
     """
-	:api_attr: Static Graph
-
     Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
     one time step and it supports these two modes:
 
@@ -2871,10 +2819,6 @@ def beam_search(pre_ids,
                 name=None,
                 return_parent_idx=False):
     """
-	:alias_main: paddle.nn.beam_search
-	:alias: paddle.nn.beam_search,paddle.nn.decode.beam_search
-	:old_api: paddle.fluid.layers.beam_search
-
     Beam search is a classical algorithm for selecting candidate words in a
     machine translation task.
 
@@ -3022,10 +2966,6 @@ def beam_search(pre_ids,
 
 def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     """
-	:alias_main: paddle.nn.beam_search_decode
-	:alias: paddle.nn.beam_search_decode,paddle.nn.decode.beam_search_decode
-	:old_api: paddle.fluid.layers.beam_search_decode
-
     This operator is used after beam search has completed. It constructs the
     full predicted sequences for each sample by walking back along the search
     paths stored in lod of ``ids`` . The result sequences are stored in a
@@ -3108,8 +3048,6 @@ def lstm_unit(x_t,
               bias_attr=None,
               name=None):
     """
-	:api_attr: Static Graph
-
     Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
     one time step, whose implementation is based on calculations described in `RECURRENT
     NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_  .
