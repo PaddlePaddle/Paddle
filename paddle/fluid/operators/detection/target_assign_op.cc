@@ -44,7 +44,7 @@ class TargetAssignOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(neg_dims.size(), 2,
                         "The rank of Input(NegIndices) must be 2.");
       PADDLE_ENFORCE_EQ(neg_dims[1], 1,
-                        "The last dimenstion of Out(NegIndices) must be 1.");
+                        "The last dimension of Out(NegIndices) must be 1.");
     }
 
     auto n = mi_dims[0];

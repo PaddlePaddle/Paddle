@@ -15,7 +15,7 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_top_k_op import TestTopkOp, TestTopkOp3d, TestTopkOp2, TestTopkOp3, TestTopkOp4
+from test_top_k_op import TestTopkOp
 
 if __name__ == "__main__":
     unittest.main()

@@ -177,7 +177,8 @@ class TestDataset(unittest.TestCase):
         dataset.set_fea_eval(10000, True)
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
-
+        dataset.set_generate_unique_feasigns(True, 15)
+        dataset.generate_local_tables_unlock(0, 11, 1, 25, 15)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:
@@ -733,7 +734,7 @@ class TestDataset2(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             try:
-                fleet.init(exe)
+                fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
@@ -795,7 +796,7 @@ class TestDataset2(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             try:
-                fleet.init(exe)
+                fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
@@ -824,6 +825,10 @@ class TestDataset2(unittest.TestCase):
             dataset.set_pipe_command("cat")
             dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
+            try:
+                dataset.global_shuffle(fleet)
+            except:
+                print("warning: catch expected error")
             fleet._opt_info = None
             fleet._fleet_ptr = None
 

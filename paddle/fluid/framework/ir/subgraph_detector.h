@@ -65,7 +65,7 @@ class SubGraphFuser {
   using NodeInsideSubgraphTeller = SubgraphDetector::NodeInsideSubgraphTeller;
 
   SubGraphFuser(Graph *graph, const NodeInsideSubgraphTeller &teller,
-                int min_subgraph_size, std::string name = "anakin_engine")
+                int min_subgraph_size, std::string name = "tensorrt_engine")
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
         min_subgraph_size_{min_subgraph_size},

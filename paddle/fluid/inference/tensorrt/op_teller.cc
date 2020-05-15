@@ -26,9 +26,13 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
   }
 
-  bool operator()(const std::string& op_type,
-                  const framework::OpDesc& desc) override {
-    return teller_set.count(op_type);
+  bool operator()(const std::string& op_type, const framework::OpDesc& desc,
+                  bool use_no_calib_int8) override {
+    if (use_no_calib_int8) {
+      return int8_teller_set.count(op_type);
+    } else {
+      return teller_set.count(op_type);
+    }
   }
 
  private:
@@ -59,13 +63,22 @@ struct SimpleOpTypeSetTeller : public Teller {
       "layer_norm",
       "multihead_matmul",
   }};
+
+  // use this set for no calib int8.
+  std::unordered_set<std::string> int8_teller_set{
+      {"mul", "conv2d", "pool2d", "relu", "depthwise_conv2d", "softmax",
+       "batch_norm", "elementwise_add", "leaky_relu", "fc"}};
 };
 
-bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
+bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
+                    bool use_no_calib_int8) {
   // do not support the op which is labeled the `skip_quant`
-  if (desc.HasAttr("op_namescope") &&
-      boost::get<std::string>(desc.GetAttr("op_namescope")) == "/skip_quant_2/")
+  if ((desc.HasAttr("namescope") &&
+       boost::get<std::string>(desc.GetAttr("op_namescope")) ==
+           "/skip_quant_2/") ||
+      desc.HasAttr("skip_quant"))
     return false;
+
   for (auto& teller : tellers_) {
     if (op_type == "pool2d" || op_type == "conv2d" ||
         op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
@@ -73,7 +86,7 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
           boost::get<std::vector<int>>(desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
     }
-    if ((*teller)(op_type, desc)) return true;
+    if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
 }

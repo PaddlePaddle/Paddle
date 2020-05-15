@@ -22,7 +22,6 @@
 
 namespace paddle {
 extern const std::vector<std::string> kTRTSubgraphPasses;
-extern const std::vector<std::string> kAnakinSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
@@ -119,15 +118,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // Quantization related.
   CP_MEMBER(use_mkldnn_quantizer_);
   CP_MEMBER(mkldnn_quantizer_config_);
-
-  CP_MEMBER(use_anakin_);
-  CP_MEMBER(anakin_max_batchsize_);
-  CP_MEMBER(anakin_max_input_shape_);
-  CP_MEMBER(anakin_min_subgraph_size_);
-  CP_MEMBER(anakin_precision_mode_);
-  CP_MEMBER(anakin_auto_config_layout_);
-  CP_MEMBER(anakin_passes_filter_);
-  CP_MEMBER(anakin_ops_filter_);
 
   CP_MEMBER(use_lite_);
   CP_MEMBER(lite_precision_mode_);
@@ -338,25 +328,6 @@ void AnalysisConfig::Update() {
     pass_builder()->AppendAnalysisPass("memory_optimize_pass");
   }
 
-  if (use_anakin_) {
-    PADDLE_ENFORCE(!use_tensorrt_,
-                   "Anakin sub-graph and TensorRT sub-graph are not allowed to "
-                   "run at the same time!");
-    if (use_gpu_) {
-      LOG(INFO) << "Run Anakin GPU mode";
-    } else {
-      LOG(INFO) << "Run Anakin CPU mode";
-    }
-
-    pass_builder()->ClearPasses();
-    for (const auto &pass : kAnakinSubgraphPasses) {
-      if (std::find(anakin_passes_filter_.begin(), anakin_passes_filter_.end(),
-                    pass) == anakin_passes_filter_.end()) {
-        pass_builder()->AppendPass(pass);
-      }
-    }
-  }
-
   if (use_lite_) {
 #ifndef PADDLE_WITH_LITE
     LOG(WARNING) << "You tried to enable the lite subgraph "
@@ -413,10 +384,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << specify_input_name_;
   ss << cpu_math_library_num_threads_;
-  ss << use_anakin_;
-  ss << anakin_min_subgraph_size_;
 
   ss << use_lite_;
+
   return ss.str();
 }
 
@@ -487,22 +457,6 @@ void AnalysisConfig::EnableProfile() {
 
 void AnalysisConfig::DisableGlogInfo() {
   with_glog_info_ = false;
-  Update();
-}
-
-void AnalysisConfig::EnableAnakinEngine(
-    int max_batch_size, std::map<std::string, std::vector<int>> max_input_shape,
-    int min_subgraph_size, AnalysisConfig::Precision precision_mode,
-    bool auto_config_layout, std::vector<std::string> passes_filter,
-    std::vector<std::string> ops_filter) {
-  anakin_max_batchsize_ = max_batch_size;
-  anakin_max_input_shape_ = max_input_shape;
-  anakin_min_subgraph_size_ = min_subgraph_size;
-  anakin_passes_filter_ = passes_filter;
-  anakin_ops_filter_ = ops_filter;
-  use_anakin_ = true;
-  anakin_precision_mode_ = precision_mode;
-  anakin_auto_config_layout_ = auto_config_layout;
   Update();
 }
 

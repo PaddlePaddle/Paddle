@@ -210,7 +210,7 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
                                             attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
 
-  // test if it never transfered on GPU place
+  // test if it never transferred on GPU place
   PreparedOp prepared_op = PreparedOp::Prepare(
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
       &attr_map);

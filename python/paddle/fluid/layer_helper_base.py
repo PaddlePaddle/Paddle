@@ -285,7 +285,7 @@ class LayerHelperBase(object):
 
            Args:
                attr: [ParamAttr] should be the parameter attribute for this parameter
-               shape: shape of the paramter
+               shape: shape of the parameter
                dtype: data type of this parameter
                is_bias: if this is a bias parameter
                default_initializer: set the default initializer for this parameter

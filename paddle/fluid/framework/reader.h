@@ -53,10 +53,10 @@ class ReaderBase {
   // they are readers just before read op.
   std::unordered_set<ReaderBase*> GetEndPoints();
 
-  // Returns the shapes of the feeded variables
+  // Returns the shapes of the fed variables
   const std::vector<DDim>& Shapes() const { return shapes_; }
 
-  // Returns the dtypes of the feeded variables
+  // Returns the dtypes of the fed variables
   const std::vector<proto::VarType::Type>& VarTypes() const {
     return var_types_;
   }
@@ -80,13 +80,13 @@ class ReaderBase {
 
   mutable std::mutex mu_;
 
-  // The shapes of the feeded variables.
+  // The shapes of the fed variables.
   std::vector<DDim> shapes_;
 
-  // The dtypes of the feeded variables.
+  // The dtypes of the fed variables.
   std::vector<proto::VarType::Type> var_types_;
 
-  // Whether to check the shape and dtype of feeded variables.
+  // Whether to check the shape and dtype of fed variables.
   // For Backward compatibility, variables created by old API fluid.layers.data
   // doesn't check shape but fluid.data checks.
   std::vector<bool> need_check_feed_;

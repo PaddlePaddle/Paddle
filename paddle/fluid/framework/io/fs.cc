@@ -196,6 +196,13 @@ void localfs_mkdir(const std::string& path) {
   shell_execute(string::format_string("mkdir -p %s", path.c_str()));
 }
 
+void localfs_mv(const std::string& src, const std::string& dest) {
+  if (src == "" || dest == "") {
+    return;
+  }
+  shell_execute(string::format_string("mv %s %s", src.c_str(), dest.c_str()));
+}
+
 static size_t& hdfs_buffer_size_internal() {
   static size_t x = 0;
   return x;
@@ -312,6 +319,14 @@ void hdfs_mkdir(const std::string& path) {
 
   shell_execute(string::format_string("%s -mkdir %s; true",
                                       hdfs_command().c_str(), path.c_str()));
+}
+
+void hdfs_mv(const std::string& src, const std::string& dest) {
+  if (src == "" || dest == "") {
+    return;
+  }
+  shell_execute(string::format_string(
+      "%s -mv %s %s; true", hdfs_command().c_str(), src.c_str(), dest.c_str()));
 }
 
 int fs_select_internal(const std::string& path) {
@@ -452,5 +467,19 @@ void fs_mkdir(const std::string& path) {
       LOG(FATAL) << "Not supported";
   }
 }
+
+void fs_mv(const std::string& src, const std::string& dest) {
+  int s = fs_select_internal(src);
+  int d = fs_select_internal(dest);
+  CHECK_EQ(s, d);
+  switch (s) {
+    case 0:
+      return localfs_mv(src, dest);
+
+    case 1:
+      return hdfs_mv(src, dest);
+  }
+}
+
 }  // end namespace framework
 }  // end namespace paddle

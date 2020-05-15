@@ -40,7 +40,9 @@ class PSLib(Fleet):
         self._client2client_max_retry = 3
 
     def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+        if role_maker is None:
+            role_maker = MPISymetricRoleMaker()
+        super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
 
     def _set_client_communication_config(self, request_timeout_ms,
@@ -48,6 +50,9 @@ class PSLib(Fleet):
         self._client2client_request_timeout_ms = request_timeout_ms
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
+
+    def set_pull_local_thread_num(self, thread_num):
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
 
     def init_worker(self):
         """
@@ -75,9 +80,10 @@ class PSLib(Fleet):
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
+            # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
-                                        self._role_maker._get_rank())
+                                        self._role_maker.worker_index() * 2)
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -160,9 +166,16 @@ class PSLib(Fleet):
             else:
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
+            # server_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self._role_maker._get_rank())
-            self._local_ip = self._fleet_ptr.run_server()
+                                        self._role_maker.server_index() * 2)
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                self._local_ip = self._fleet_ptr.run_server()
+            else:
+                local_endpoint = self._role_maker.get_local_endpoint()
+                local_endpoint = local_endpoint.split(":")
+                self._local_ip = self._fleet_ptr.run_server(
+                    str(local_endpoint[0]), int(local_endpoint[1]))
 
             # barrier_all for init_server
             self._role_maker._barrier_all()
@@ -389,6 +402,23 @@ class PSLib(Fleet):
                                                        var_list, decay, emb_dim)
         self._role_maker._barrier_worker()
 
+    def clear_one_table(self, table_id):
+        """
+        clear_one_table() will be called by user. It will clear one table.
+
+        Args:
+            table_id(int): table id
+
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_one_table(0)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.clear_one_table(table_id)
+        self._role_maker._barrier_worker()
+
     def clear_model(self):
         """
         clear_model() will be called by user. It will clear sparse model.
@@ -435,7 +465,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -489,7 +519,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()
@@ -535,6 +565,88 @@ class PSLib(Fleet):
                     self._fleet_ptr.load_from_paddle_model(
                         scope, table_id, var_names, model_path,
                         model_proto_file, table_var_names, load_combine)
+        self._role_maker._barrier_worker()
+
+    def load_model(self, model_dir=None, **kwargs):
+        """
+        load pslib model, there are at least 4 modes, these modes are the same
+        in load one table/save model/save one table:
+        0: load checkpoint model
+        1: load delta model (delta means diff, it's usually for online predict)
+        2: load base model (base model filters some feasigns in checkpoint, it's
+           usually for online predict)
+        3: load batch model (do some statistic works in checkpoint, such as
+           calculate unseen days of each feasign)
+
+        Args:
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+
+        Examples:
+            .. code-block:: python
+
+              fleet.load_model("afs:/user/path/")
+
+        """
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_model(model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def save_model(self, model_dir=None, **kwargs):
+        """
+        save pslib model, the modes are same with load model.
+
+        Args:
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+
+        Examples:
+            .. code-block:: python
+
+              fleet.save_model("afs:/user/path/")
+
+        """
+        mode = kwargs.get("mode", 0)
+        prefix = kwargs.get("prefix", None)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model(model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def save_one_table(self, table_id, model_dir, **kwargs):
+        """
+        save pslib model's one table, the modes are same with load model.
+
+        Args:
+            table_id(int): table id
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+                          prefix(str): the parts to save can have prefix,
+                                       for example, part-prefix-000-00000
+
+        Examples:
+            .. code-block:: python
+
+              fleet.save_one_table("afs:/user/path/")
+
+        """
+        mode = kwargs.get("mode", 0)
+        prefix = kwargs.get("prefix", None)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            if prefix is not None:
+                self._fleet_ptr.save_model_one_table_with_prefix(
+                    table_id, model_dir, mode, prefix)
+            else:
+                self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
@@ -605,7 +717,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
 
@@ -632,8 +744,8 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
-        opt_info["mpi_size"] = fleet._role_maker._get_size()
+        opt_info["mpi_rank"] = fleet.worker_index()
+        opt_info["mpi_size"] = fleet.worker_num()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]

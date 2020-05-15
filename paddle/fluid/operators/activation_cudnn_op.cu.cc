@@ -171,10 +171,10 @@ class CudnnActivationGradKernel
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-#define FOR_EACH_CUDNN_OP_FUNCTOR(__macro)                  \
-  __macro(relu, CudnnReluFunctor, CudnnReluGradFunctor);    \
-  __macro(relu6, CudnnRelu6Functor, CudnnRelu6GradFunctor); \
-  __macro(sigmoid, CudnnTanhFunctor, CudnnTanhGradFunctor); \
+#define FOR_EACH_CUDNN_OP_FUNCTOR(__macro)                        \
+  __macro(relu, CudnnReluFunctor, CudnnReluGradFunctor);          \
+  __macro(relu6, CudnnRelu6Functor, CudnnRelu6GradFunctor);       \
+  __macro(sigmoid, CudnnSigmoidFunctor, CudnnSigmoidGradFunctor); \
   __macro(tanh, CudnnTanhFunctor, CudnnTanhGradFunctor)
 
 #define REGISTER_ACTIVATION_CUDNN_KERNEL(act_type, functor, grad_functor) \

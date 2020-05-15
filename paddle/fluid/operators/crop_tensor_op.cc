@@ -82,7 +82,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_EQ(int64_t(shape.size()), x_dim.size(),
                       "Attr(shape)'size of Op(crop_tensor) should be equal to "
-                      "dimention size of input tensor.");
+                      "dimension size of input tensor.");
     std::vector<int64_t> out_shape(shape.size(), -1);
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] > 0) {

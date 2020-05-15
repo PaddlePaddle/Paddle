@@ -292,7 +292,7 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusSuccess(CUBLAS_STATUS_SUCCESS));
   EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_NOT_INITIALIZED));
   EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_INVALID_VALUE));
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError));

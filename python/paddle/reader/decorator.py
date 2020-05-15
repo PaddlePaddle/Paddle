@@ -458,12 +458,12 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     """
     This API use python ``multiprocessing`` to read data from ``readers`` parallelly,
     and then ``multiprocess.Queue`` or ``multiprocess.Pipe`` is used to merge 
-    these data. A seperate process will be created for each reader in the 
+    these data. A separate process will be created for each reader in the 
     ``readers`` list, please guarantee every reader can work independently 
     to avoid conflicts in parallel environment.
     
 
-    ``Multiprocess.Queue`` require the rw access right to /dev/shm, and it's not suppported 
+    ``Multiprocess.Queue`` require the rw access right to /dev/shm, and it's not supported 
     in some platforms.
 
     Parameters:

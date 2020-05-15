@@ -61,7 +61,8 @@ class Communicator(object):
                 varnames = "&".join(vs["var_names"])
                 sections = "&".join([str(v) for v in vs["sections"]])
                 endpoints = "&".join(vs["epmap"])
-                is_sparse = "1" if vs["is_sparse"] else "0"
+                # record parameter sparse or dense
+                is_sparse = "1" if vs["is_sparse"] == ['True'] else "0"
 
                 push_var_names.append(k)
                 envs[k] = "#".join([varnames, sections, endpoints, is_sparse])
@@ -69,6 +70,10 @@ class Communicator(object):
             envs["geo_trainer_nums"] = str(kwargs["trainers"])
             envs["geo_need_push_nums"] = str(kwargs["push_nums"])
             envs["geo_send_varnames"] = '#'.join(push_var_names)
+
+        if mode == DistributedMode.SYNC:
+            envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
+            envs["trainer_id"] = str(kwargs["trainer_id"])
 
         mode_str = None
 

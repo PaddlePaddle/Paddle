@@ -118,7 +118,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
         "sequences before padding.");
     AddAttr<int>(
         "padded_length",
-        "The length of padded sequences. It can be setted to -1 or "
+        "The length of padded sequences. It can be set to -1 or "
         "any positive int. When it is -1, all sequences will be padded up to "
         "the length of the longest one among them; when it a certain positive "
         "value, it must be greater than the length of the longest original "

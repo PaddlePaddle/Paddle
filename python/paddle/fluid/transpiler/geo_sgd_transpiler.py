@@ -108,15 +108,15 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.sparse_var_list = []
         self.sparse_var_splited_list = []
 
-        # split and create vars, then put splited vars in dicts for later use.
-        # step 1. split and create vars, then put splited vars in dicts for later use.
+        # split and create vars, then put split vars in dicts for later use.
+        # step 1. split and create vars, then put split vars in dicts for later use.
         self._init_splited_vars()
 
         # step 3. create send recv var (param after optimize)
         send_vars = []
         ps_dispatcher.reset()
         param_var_mapping_items = list(six.iteritems(self.param_var_mapping))
-        # send_vars is the parameter which splited by communicator and send to pserver,not the origin parameter
+        # send_vars is the parameter which split by communicator and send to pserver,not the origin parameter
         for _, splited_vars in param_var_mapping_items:
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
@@ -292,7 +292,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                                       len(self.pserver_endpoints),
                                       self.config.min_block_size)
 
-        # step 3. Create splited param from split blocks
+        # step 3. Create split param from split blocks
         # origin_param_name -> [splited_param_vars]
         # Todo: update _create_vars_from_blocklist
         self.param_var_mapping = self._create_vars_from_blocklist(
@@ -308,7 +308,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             }) for ep in self.pserver_endpoints
         ]
 
-        # step 5. Create delta var of Geo-Sgd & record vars infomation
+        # step 5. Create delta var of Geo-Sgd & record vars information
         for origin_name, splited_vars in self.param_var_mapping.items():
             origin_var = self.origin_program.global_block().var(origin_name)
             self.vars_info[origin_name] = collections.OrderedDict()

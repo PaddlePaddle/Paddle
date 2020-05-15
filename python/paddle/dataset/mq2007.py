@@ -150,7 +150,7 @@ def gen_plain_txt(querylist):
   gen plain text in list for other usage
   Paramters:
   --------
-  querylist : querylist, one query match many docment pairs in list, see QueryList
+  querylist : querylist, one query match many document pairs in list, see QueryList
 
   return :
   ------
@@ -171,7 +171,7 @@ def gen_point(querylist):
   gen item in list for point-wise learning to rank algorithm
   Paramters:
   --------
-  querylist : querylist, one query match many docment pairs in list, see QueryList
+  querylist : querylist, one query match many document pairs in list, see QueryList
 
   return :
   ------
@@ -190,9 +190,9 @@ def gen_pair(querylist, partial_order="full"):
   gen pair for pair-wise learning to rank algorithm
   Paramters:
   --------
-  querylist : querylist, one query match many docment pairs in list, see QueryList
+  querylist : querylist, one query match many document pairs in list, see QueryList
   pairtial_order : "full" or "neighbour"
-    there is redudant in all possiable pair combinations, which can be simplifed
+    there is redundant in all possible pair combinations, which can be simplified
   gen pairs for neighbour items or the full partial order pairs
 
   return :
@@ -233,7 +233,7 @@ def gen_list(querylist):
   gen item in list for list-wise learning to rank algorithm
   Paramters:
   --------
-  querylist : querylist, one query match many docment pairs in list, see QueryList
+  querylist : querylist, one query match many document pairs in list, see QueryList
 
   return :
   ------
@@ -268,7 +268,7 @@ def query_filter(querylists):
 
 def load_from_text(filepath, shuffle=False, fill_missing=-1):
     """
-  parse data file into querys
+  parse data file into queries
   """
     prev_query_id = -1
     querylists = []

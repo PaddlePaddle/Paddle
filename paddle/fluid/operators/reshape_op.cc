@@ -155,10 +155,11 @@ class ReshapeOp : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_GT(
             shape[i], 0,
-            "ShapeError: Each dimension value of 'shape' in ReshapeOp must not "
-            "be negtive except one unknown dimension. "
-            "But received  shape = [%s], shape[%d] = %d.",
-            framework::make_ddim(shape), i, shape[i]);
+            platform::errors::InvalidArgument(
+                "Each dimension value of 'shape' in ReshapeOp must not "
+                "be negative except one unknown dimension. "
+                "But received  shape = [%s], shape[%d] = %d.",
+                framework::make_ddim(shape), i, shape[i]));
       }
 
       capacity *= (shape[i] ? shape[i] : in_dims[i]);
@@ -228,7 +229,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor<int32>, optional). Target shape of reshape operator. "
              "It has a higher priority than Attr(shape) but a lower priority "
              "than Input(ShapeTensor). The Attr(shape) still should be "
-             "set correctly to gurantee shape inference in compile time.")
+             "set correctly to guarantee shape inference in compile time.")
         .AsDispensable();
     AddInput(
         "ShapeTensor",
@@ -282,7 +283,7 @@ dimension value will be copied from Input(X) at runtime. Note that the index of
 [2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
 
 3. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
-Attr(shape) still should be set correctly to gurantee shape inference in
+Attr(shape) still should be set correctly to guarantee shape inference in
 compile-time.
 
 )DOC");

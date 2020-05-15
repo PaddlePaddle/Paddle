@@ -118,7 +118,7 @@ class TestBasicModel(TranspilerTest):
 
         trainer, trainer_startup = self.get_trainer()
 
-        # splited var blocks should be in startup program
+        # split var blocks should be in startup program
         self.assertTrue("fc_w.block0" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w.block1" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w" in trainer_startup.global_block().vars)

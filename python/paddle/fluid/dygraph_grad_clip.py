@@ -55,7 +55,7 @@ class GradClipByValue(GradClipBase):
     Args:
         max_value (float): The maximum value to clip by. 
         min (float, optional): The minimum value to clip by. if not set by user, \
-        will be set to -max_value(max_value MUST be postive) by framework. 
+        will be set to -max_value(max_value MUST be positive) by framework. 
 
     Examples:
         .. code-block:: python

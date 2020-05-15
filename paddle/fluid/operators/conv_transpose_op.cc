@@ -267,7 +267,7 @@ void Conv2DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully setted.")
+               "better hardward. This size should be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
@@ -368,7 +368,7 @@ void Conv3DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully setted.")
+               "better hardward. This size should be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution3D Transpose Operator.

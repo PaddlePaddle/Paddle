@@ -18,6 +18,7 @@ import os
 import collections
 from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase
 import pickle
+import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
@@ -88,7 +89,7 @@ def save_dygraph(state_dict, model_path):
         os.makedirs(dir_name)
 
     with open(file_name, 'wb') as f:
-        pickle.dump(model_dict, f)
+        pickle.dump(model_dict, f, protocol=2)
 
 
 @dygraph_only
@@ -130,7 +131,8 @@ def load_dygraph(model_path, keep_name_table=False):
             params_file_path))
 
     with open(params_file_path, 'rb') as f:
-        para_dict = pickle.load(f)
+        para_dict = pickle.load(f) if six.PY2 else pickle.load(
+            f, encoding='latin1')
 
     if not keep_name_table and "StructuredToParameterName@@" in para_dict:
         del para_dict["StructuredToParameterName@@"]
@@ -138,6 +140,7 @@ def load_dygraph(model_path, keep_name_table=False):
     opti_file_path = model_path + ".pdopt"
     if os.path.exists(opti_file_path):
         with open(opti_file_path, 'rb') as f:
-            opti_dict = pickle.load(f)
+            opti_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
 
     return para_dict, opti_dict

@@ -49,7 +49,7 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             test_process.start()
 
             set_child_signal_handler(id(self), test_process.pid)
-            time.sleep(1)
+            time.sleep(3)
         except core.EnforceNotMet as ex:
             self.assertIn("FatalError", cpt.get_exception_message(ex))
             exception = ex
@@ -67,7 +67,7 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             test_process.start()
 
             set_child_signal_handler(id(self), test_process.pid)
-            time.sleep(1)
+            time.sleep(3)
         except core.EnforceNotMet as ex:
             self.assertIn("FatalError", cpt.get_exception_message(ex))
             exception = ex

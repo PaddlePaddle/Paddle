@@ -39,7 +39,7 @@ def save_list(l, outfile):
 
 def exclude_pattern(f):
     """
-    Return whether f is in the exlucde pattern.
+    Return whether f is in the exclude pattern.
     Exclude the files that starts with . or ends with ~.
     """
     return f.startswith(".") or f.endswith("~")
@@ -81,7 +81,7 @@ def list_files(path):
 def get_label_set_from_dir(path):
     """
     Return a dictionary of the labels and label ids from a path.
-    Assume each direcotry in the path corresponds to a unique label.
+    Assume each directory in the path corresponds to a unique label.
     The keys of the dictionary is the label name.
     The values of the dictionary is the label id.
     """
@@ -198,7 +198,7 @@ class DataBatcher:
 
     def __init__(self, train_data, test_data, label_set):
         """
-        train_data, test_data: Each one is a dataset object repesenting
+        train_data, test_data: Each one is a dataset object representing
         training and testing data, respectively.
         label_set: a dictionary storing the mapping from label name to label id.
         """
@@ -256,7 +256,7 @@ class DataBatcher:
 class DatasetCreater(object):
     """
     A virtual class for creating datasets.
-    The derived clasas needs to implemnt the following methods:
+    The derived class needs to implement the following methods:
        - create_dataset()
        - create_meta_file()
     """
@@ -301,9 +301,9 @@ class DatasetCreater(object):
         Create a data set object from a path.
         It will use directory structure or a file list to determine dataset if
         self.from_list is True. Otherwise, it will uses a file list  to
-        determine the datset.
+        determine the dataset.
         path: the path of the dataset.
-        return a tuple of Dataset object, and a mapping from lable set
+        return a tuple of Dataset object, and a mapping from label set
         to label id.
         """
         if self.from_list:
@@ -314,9 +314,9 @@ class DatasetCreater(object):
     def create_dataset_from_list(self, path):
         """
         Create a data set object from a path.
-        It will uses a file list to determine the datset.
+        It will uses a file list to determine the dataset.
         path: the path of the dataset.
-        return a tuple of Dataset object, and a mapping from lable set
+        return a tuple of Dataset object, and a mapping from label set
         to label id
         """
         raise NotImplementedError
@@ -327,7 +327,7 @@ class DatasetCreater(object):
         It will use directory structure or a file list to determine dataset if
         self.from_list is True.
         path: the path of the dataset.
-        return a tuple of Dataset object, and a mapping from lable set
+        return a tuple of Dataset object, and a mapping from label set
         to label id
         """
         raise NotImplementedError

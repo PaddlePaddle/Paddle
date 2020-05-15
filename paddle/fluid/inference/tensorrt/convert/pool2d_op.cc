@@ -98,6 +98,14 @@ class Pool2dOpConverter : public OpConverter {
 
     nvinfer1::ILayer *layer = nullptr;
 
+    if (op_desc.HasAttr("enable_int8")) {
+#if IS_TRT_VERSION_GE(5000)
+      CHECK(op_desc.HasAttr("X_scale"));
+      float input_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      engine_->SetTensorDynamicRange(input1, input_scale);
+#endif
+    }
+
     if (global_pooling == true) {
       nv_ksize.d[0] = input_shape.d[input_dims - 2];
       nv_ksize.d[1] = input_shape.d[input_dims - 1];
@@ -159,14 +167,6 @@ class Pool2dOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
-
-    if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-      CHECK(op_desc.HasAttr("X_scale"));
-      float input_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
-      engine_->SetTensorDynamicRange(input1, input_scale);
-#endif
-    }
   }
 };
 

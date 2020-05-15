@@ -153,7 +153,7 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE_LT(static_cast<int>(axes.size()), 6,
                             "Invalid dimensions, dynamic dimensions should be "
                             "within [1, 6] dimensions (Eigen limit).");
-          // Validity Check: the range of unsqueeze aixs.
+          // Validity Check: the range of unsqueeze axis.
           for (int axis : axes) {
             PADDLE_ENFORCE_LT(axis, 6,
                               "Invalid dimensions, input axis should be"

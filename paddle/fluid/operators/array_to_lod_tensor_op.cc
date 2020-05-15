@@ -172,7 +172,7 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(std::vector<LodTensor>) A vector of tensors that is going to "
              "be casted to a big LoDTensor.");
     AddInput("RankTable",
-             "(LoDRankTable) RankTable provides the coarse lod infomation to "
+             "(LoDRankTable) RankTable provides the coarse lod information to "
              "build the output LoDTensor. See "
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");

@@ -561,7 +561,7 @@ class MultivariateNormalDiag(Distribution):
             a.entropy()
             # [2.033158] with shape: [1]
             b.entropy()
-            # [1.7777451] with shaoe: [1]
+            # [1.7777451] with shape: [1]
 
             a.kl_divergence(b)
             # [0.06542051] with shape: [1]

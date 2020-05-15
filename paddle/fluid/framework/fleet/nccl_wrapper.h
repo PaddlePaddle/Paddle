@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -41,7 +41,7 @@ class NCCLInfo {
   int local_rank_;
   int global_ranks_;
   int my_global_rank_;
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   ncclUniqueId nccl_id_;
   ncclComm_t comm_;
   cudaStream_t stream_;

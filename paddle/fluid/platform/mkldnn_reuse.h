@@ -1143,13 +1143,14 @@ static void SetDstMemoryQuantized(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
     std::vector<int64_t> dst_tz, const mkldnn::engine& engine,
     std::shared_ptr<mkldnn::memory::desc>& dst_md,  // NOLINT
-    std::shared_ptr<mkldnn::memory>& dst_memory) {  // NOLINT
+    std::shared_ptr<mkldnn::memory>& dst_memory,    // NOLINT
+    MKLDNNMemoryFormat output_format) {
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
   PADDLE_ENFORCE_LE(dst_dims, 5,
                     "Dst memory for quantization can not have dims > 5");
-  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, MKLDNNMemoryFormat::nhwc);
+  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md = platform::MKLDNNMemDesc(
       {dst_tz}, paddle::framework::ToMKLDNNDataType(

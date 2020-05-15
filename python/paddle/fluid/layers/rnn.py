@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import sys
 from functools import partial, reduce
 
 from . import nn
@@ -22,6 +23,8 @@ from . import control_flow
 from . import utils
 from . import sequence_lod
 from .utils import *
+from ..framework import default_main_program
+from ..data_feeder import convert_dtype
 from ..layer_helper import LayerHelper
 from ..framework import in_dygraph_mode
 from ..param_attr import ParamAttr
@@ -34,6 +37,11 @@ __all__ = [
     'BeamSearchDecoder',
     'rnn',
     'dynamic_decode',
+    'DecodeHelper',
+    'TrainingHelper',
+    'GreedyEmbeddingHelper',
+    'SampleEmbeddingHelper',
+    'BasicDecoder',
     'dynamic_lstm',
     'dynamic_lstmp',
     'dynamic_gru',
@@ -81,7 +89,8 @@ class RNNCell(object):
                            batch_ref,
                            shape=None,
                            dtype=None,
-                           init_value=0):
+                           init_value=0,
+                           batch_dim_idx=0):
         """
         Generate initialized states according to provided shape, data type and
         value.
@@ -90,16 +99,18 @@ class RNNCell(object):
             batch_ref: A (possibly nested structure of) tensor variable[s].
                 The first dimension of the tensor will be used as batch size to
                 initialize states.
-            shape: A (possiblely nested structure of) shape[s], where a shape is
+            shape: A (possibly nested structure of) shape[s], where a shape is
                 represented as a list/tuple of integer). -1(for batch size) will
                 beautomatically inserted if shape is not started with it. If None,
                 property `state_shape` will be used. The default value is None.
-            dtype: A (possiblely nested structure of) data type[s]. The structure
+            dtype: A (possibly nested structure of) data type[s]. The structure
                 must be same as that of `shape`, except when all tensors' in states
                 has the same data type, a single data type can be used. If None and
                 property `cell.state_shape` is not available, float32 will be used
                 as the data type. The default value is None.
             init_value: A float value used to initialize states.
+            batch_dim_idx: An integer indicating which dimension of the tensor in
+                inputs represents batch size.  The default value is 0.
         
         Returns:
             Variable: tensor variable[s] packed in the same structure provided \
@@ -109,10 +120,16 @@ class RNNCell(object):
         batch_ref = flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
+            if sys.version_info < (3, ):
+                integer_types = (
+                    int,
+                    long, )
+            else:
+                integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
             if (isinstance(seq, list) or isinstance(seq, tuple)):
-                if reduce(lambda flag, x: isinstance(x, int) and flag, seq,
-                          True):
+                if reduce(lambda flag, x: isinstance(x, integer_types) and flag,
+                          seq, True):
                     return False
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
@@ -145,34 +162,39 @@ class RNNCell(object):
                 input=batch_ref,
                 shape=shape.shape,
                 dtype=dtype,
-                value=init_value), states_shapes, states_dtypes)
+                value=init_value,
+                input_dim_idx=batch_dim_idx), states_shapes, states_dtypes)
         return init_states
 
     @property
     def state_shape(self):
         """
+        Abstract method (property).
         Used to initialize states.
-        A (possiblely nested structure of) shape[s], where a shape is represented
+        A (possibly nested structure of) shape[s], where a shape is represented
         as a list/tuple of integers (-1 for batch size would be automatically
         inserted into a shape if shape is not started with it). 
         Not necessary to be implemented if states are not initialized by
         `get_initial_states` or the `shape` argument is provided when using
         `get_initial_states`.
         """
-        raise NotImplementedError
+        raise NotImplementedError(
+            "Please add implementaion for `state_shape` in the used cell.")
 
     @property
     def state_dtype(self):
         """
+        Abstract method (property).
         Used to initialize states.
-        A (possiblely nested structure of) data types[s]. The structure must be
+        A (possibly nested structure of) data types[s]. The structure must be
         same as that of `shape`, except when all tensors' in states has the same
-        data type, a signle data type can be used.
+        data type, a single data type can be used.
         Not necessary to be implemented if states are not initialized
         by `get_initial_states` or the `dtype` argument is provided when using
         `get_initial_states`.
         """
-        raise NotImplementedError
+        raise NotImplementedError(
+            "Please add implementaion for `state_dtype` in the used cell.")
 
 
 class GRUCell(RNNCell):
@@ -334,7 +356,7 @@ class LSTMCell(RNNCell):
             inputs(Variable): A tensor with shape `[batch_size, input_size]`,
                 corresponding to :math:`x_t` in the formula. The data type
                 should be float32.
-            states(Variable): A list of containing two tensers, each shaped
+            states(Variable): A list of containing two tensors, each shaped
                 `[batch_size, hidden_size]`, corresponding to :math:`h_{t-1}, c_{t-1}`
                 in the formula. The data type should be float32.
 
@@ -369,7 +391,7 @@ def rnn(cell,
         **kwargs):
     """
     rnn creates a recurrent neural network specified by RNNCell `cell`,
-    which performs :code:`cell.call()` repeatedly until reachs to the maximum
+    which performs :code:`cell.call()` repeatedly until reaches to the maximum
     length of `inputs`.
 
     Parameters:
@@ -386,7 +408,7 @@ def rnn(cell,
         sequence_length(Variable, optional): A tensor with shape `[batch_size]`.
             It stores real length of each instance, thus enables users to extract
             the last valid state when past a batch element's sequence length for
-            correctness. If not provided, the padddings would be treated same as
+            correctness. If not provided, the paddings would be treated same as
             non-padding inputs. Default None.
         time_major(bool, optional): Indicate the data layout of Tensor included
             in `input` and `output` tensors. If `False`, the data layout would
@@ -437,7 +459,8 @@ def rnn(cell,
         return x
 
     if initial_states is None:
-        initial_states = cell.get_initial_states(batch_ref=inputs)
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
     initial_states = map_structure(_switch_grad, initial_states)
 
     if not time_major:
@@ -499,7 +522,7 @@ class Decoder(object):
 
     1. :code:`(initial_input, initial_state, finished) = initialize(inits)` ,
     which generates the input and state for the first decoding step, and gives the
-    inintial status telling whether each sequence in the batch is finished.
+    initial status telling whether each sequence in the batch is finished.
     It would be called once before the decoding iterations.
 
     2. :code:`(output, next_state, next_input, finished) = step(time, input, state)` ,
@@ -528,14 +551,14 @@ class Decoder(object):
             inits: Argument provided by the caller.
 
         Returns:
-            tuple: A tuple( :code:(initial_inputs, initial_states, finished)` ). \
+            tuple: A tuple( :code:`(initial_inputs, initial_states, finished)` ). \
                 `initial_inputs` and `initial_states` both are a (possibly nested \
                 structure of) tensor variable[s], and `finished` is a tensor with \
                 bool data type.
         """
         raise NotImplementedError
 
-    def step(self, time, inputs, states):
+    def step(self, time, inputs, states, **kwargs):
         """
         Called per step of decoding. 
 
@@ -544,6 +567,7 @@ class Decoder(object):
                 The data type is int64.
             inputs(Variable): A (possibly nested structure of) tensor variable[s].
             states(Variable): A (possibly nested structure of) tensor variable[s].
+            **kwargs: Additional keyword arguments, provided by the caller.
         
         Returns:
             tuple: A tuple( :code:(outputs, next_states, next_inputs, finished)` ). \
@@ -552,14 +576,6 @@ class Decoder(object):
                 data type must be same as the counterpart from input arguments. \
                 `outputs` is a (possibly nested structure of) tensor variable[s]. \
                 `finished` is a Tensor with bool data type.
-        """
-        raise NotImplementedError
-
-    @property
-    def output_dtype(self):
-        """
-        A (possiblely nested structure of) data type[s]. The structure must be
-        same as `outputs` returned by `decoder.step`.
         """
         raise NotImplementedError
 
@@ -574,7 +590,7 @@ class Decoder(object):
                 :math:`[time\_step, batch\_size, ...]` , which is done by the caller. 
             final_states(Variable): A (possibly nested structure of) tensor variable[s].
                 It is the `next_states` returned by `decoder.step` at last decoding step,
-                thus has the same structrue, shape and data type with states at any time
+                thus has the same structure, shape and data type with states at any time
                 step.
 
         Returns:
@@ -648,7 +664,7 @@ class BeamSearchDecoder(Decoder):
                 **Note that fluid.embedding should be used here rather than
                 fluid.layers.embedding, since shape of ids is [batch_size, beam_size].
                 when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
-                If not provided, the id to embedding transfomation must be built into
+                If not provided, the id to embedding transformation must be built into
                 `cell.call`. Default None.
             output_fn(optional): A callable to apply to the cell's output prior to
                 calculate scores and select candidate token ids. Default None.
@@ -671,7 +687,7 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            x(Variable): A tenosr with shape `[batch_size, ...]`. The data type
+            x(Variable): A tensor with shape `[batch_size, ...]`. The data type
                 should be float32, float64, int32, int64 or bool.
             beam_size(int): The beam width used in beam search.
 
@@ -700,7 +716,7 @@ class BeamSearchDecoder(Decoder):
         tensor with shape `[batch_size, beam_size, ...]`. 
 
         Parameters:
-            x(Variable): A tenosr with shape `[batch_size * beam_size, ...]`. The
+            x(Variable): A tensor with shape `[batch_size * beam_size, ...]`. The
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
@@ -716,7 +732,7 @@ class BeamSearchDecoder(Decoder):
         tensor with shape `[batch_size * beam_size, ...]`. 
 
         Parameters:
-            x(Variable): A tenosr with shape `[batch_size, beam_size, ...]`. The
+            x(Variable): A tensor with shape `[batch_size, beam_size, ...]`. The
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
@@ -796,12 +812,14 @@ class BeamSearchDecoder(Decoder):
         batch_size = tensor.cast(
             batch_size,
             indices.dtype) if batch_size.dtype != indices.dtype else batch_size
+        batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = nn.expand(
             nn.unsqueeze(
                 tensor.range(
                     0, batch_size, 1, dtype=indices.dtype), [1]),
             [1, self.beam_size])
         topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+        topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
     class OutputWrapper(
@@ -834,7 +852,7 @@ class BeamSearchDecoder(Decoder):
         Returns:
             tuple: A tuple( :code:`(initial_inputs, initial_states, finished)` ). \
                 `initial_inputs` is a tensor t filled by `start_token` with shape \
-                `[batch_size, beam_size, 1]` when `embedding_fn` is None, or the \
+                `[batch_size, beam_size]` when `embedding_fn` is None, or the \
                 returned value of `embedding_fn(t)` when `embedding_fn` is provided. \
                 `initial_states` is a nested structure(namedtuple including cell_states, \
                 log_probs, finished, lengths as fields) of tensor variables, where \
@@ -895,7 +913,7 @@ class BeamSearchDecoder(Decoder):
             beam_state(Variable): A structure of tensor variables.
                 It is same as the `initial_states` returned by `initialize()` for
                 the first decoding step and `beam_search_state` returned by
-                `initialize()` for the others.
+                `step()` for the others.
         
         Returns:
             tuple: A tuple( :code:`(beam_search_output, beam_search_state)` ). \
@@ -921,6 +939,7 @@ class BeamSearchDecoder(Decoder):
         # TODO: length penalty
         scores = log_probs
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
+        # TODO: add grad for topk then this beam search can be used to train
         topk_scores, topk_indices = nn.topk(input=scores, k=self.beam_size)
         beam_indices = nn.elementwise_floordiv(topk_indices,
                                                self.vocab_size_tensor)
@@ -993,6 +1012,7 @@ class BeamSearchDecoder(Decoder):
             beam_state=states)
         finished = beam_search_state.finished
         sample_ids = beam_search_output.predicted_ids
+        sample_ids.stop_gradient = True
         next_inputs = self.embedding_fn(
             sample_ids) if self.embedding_fn else sample_ids
 
@@ -1010,7 +1030,7 @@ class BeamSearchDecoder(Decoder):
                 `[time_step, batch_size, ...]`, which is done by the caller. 
             final_states(Variable): A structure(namedtuple) of tensor variables.
                 It is the `next_states` returned by `decoder.step` at last
-                decoding step, thus has the same structrue, shape and data type
+                decoding step, thus has the same structure, shape and data type
                 with states at any time step.
             sequence_lengths(Variable): An `int64` tensor shaped `[batch_size, beam_size]`.
                 It contains sequence lengths for each beam determined during
@@ -1027,25 +1047,19 @@ class BeamSearchDecoder(Decoder):
         # TODO: use FinalBeamSearchDecoderOutput as output
         return predicted_ids, final_states
 
-    @property
-    def output_dtype(self):
-        """
-        The nested structure of data types for beam search output. It is a namedtuple
-        including scores, predicted_ids, parent_ids as fields.
-        """
-        return self.OutputWrapper(
-            scores="float32", predicted_ids="int64", parent_ids="int64")
-
 
 def dynamic_decode(decoder,
                    inits=None,
                    max_step_num=None,
                    output_time_major=False,
+                   impute_finished=False,
+                   is_test=False,
+                   return_length=False,
                    **kwargs):
     """
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
-    decoding step reachs to :attr:`max_step_num`.
+    decoding step reaches to :attr:`max_step_num`.
 
     :code:`decoder.initialize()` would be called once before the decoding loop.
     If the `decoder` has implemented `finalize` method, :code:`decoder.finalize()`
@@ -1058,24 +1072,40 @@ def dynamic_decode(decoder,
         max_step_num(int, optional): The maximum number of steps. If not provided,
             decode until the decoder is fully done, or in other words, the returned
             Tensor by :code:`decoder.step()` indicating finished status contains
-            all True). Default `None`.
+            all True. Default `None`.
         output_time_major(bool, optional): Indicate the data layout of Tensor included
-            in the final outpus(the first returned value of this method). If
+            in the final outputs(the first returned value of this method). If
             attr:`False`, the data layout would be batch major with shape
             `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
             be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
+        impute_finished(bool, optional): If `True`, then states get copied through
+            for batch entries which are marked as finished, which differs with the
+            unfinished using the new states returned by :code:`decoder.step()` and
+            ensures that the final states have the correct values. Otherwise, states
+            wouldn't be copied through when finished. If the returned `final_states`
+            is needed, it should be set as True, which causes some slowdown.
+            Default `False`.
+        is_test(bool, optional): A flag indicating whether to use test mode. In
+            test mode, it is more memory saving. Default `False`.
+        return_length(bool, optional):  A flag indicating whether to return an
+            extra Tensor variable in the output tuple, which stores the actual
+            lengths of all decoded sequences. Default `False`.
         **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`. 
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states)` ) including the final \
-            outputs and states, both are Tensor or nested structure of Tensor. \
-            `final_outputs` has the same structure and data types as \
-            :code:`decoder.output_dtype` , and each Tenser in `final_outputs` \
+        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
+            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
+            The final outputs and states, both are Tensor or nested structure of Tensor. \
+            `final_outputs` has the same structure and data types as the :code:`outputs` \
+            returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
             is the stacked of all decoding steps' outputs, which might be revised \
-            by :code:`decoder.finalize` . `final_states` is the counterpart \
-            at last time step of initial states returned by :code:`decoder.initialize` , \
-            thus has the same structure with it and has tensors with same shapes \
-            and data types.
+            by :code:`decoder.finalize()` if the decoder has implemented `finalize`. \
+            `final_states` is the counterpart at last time step of initial states \
+            returned by :code:`decoder.initialize()` , thus has the same structure \
+            with it and has tensors with same shapes and data types. `sequence_lengths` \
+            is an `int64` tensor with the same shape as `finished` returned \
+            by :code:`decoder.initialize()` , and it stores the actual lengths of \
+            all decoded sequences.
             
 
     Examples:
@@ -1111,70 +1141,720 @@ def dynamic_decode(decoder,
     initial_inputs, initial_states, initial_finished = decoder.initialize(inits)
     global_inputs, global_states, global_finished = (
         initial_inputs, initial_states, initial_finished)
-
+    global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
+
     cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
     if max_step_num is not None:
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num)
-    while_op = control_flow.While(cond)
+    while_op = control_flow.While(cond, is_test=is_test)
 
-    inputs = map_structure(lambda x: x, initial_inputs)
-    states = map_structure(lambda x: x, initial_states)
-    outputs_arrays = map_structure(
-        lambda dtype: control_flow.create_array(dtype), decoder.output_dtype)
     sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
+    sequence_lengths.stop_gradient = True
+
+    if is_test:
+        # for test, reuse inputs and states variables to save memory
+        inputs = map_structure(lambda x: x, initial_inputs)
+        states = map_structure(lambda x: x, initial_states)
+    else:
+        # inputs and states of all steps must be saved for backward and training
+        inputs_arrays = map_structure(
+            lambda x: control_flow.array_write(x, step_idx), initial_inputs)
+        states_arrays = map_structure(
+            lambda x: control_flow.array_write(x, step_idx), initial_states)
 
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
+        state_dtype = state.dtype
+        if convert_dtype(state_dtype) in ["bool"]:
+            state = tensor.cast(state, dtype="float32")
+            new_state = tensor.cast(new_state, dtype="float32")
+        if step_mask.dtype != state.dtype:
+            step_mask = tensor.cast(step_mask, dtype=state.dtype)
+            # otherwise, renamed bool gradients of would be summed up leading
+            # to sum(bool) error.
+            step_mask.stop_gradient = True
         new_state = nn.elementwise_mul(
-            new_state, step_mask, axis=0) - nn.elementwise_mul(
-                state, (step_mask - 1), axis=0)
+            state, step_mask, axis=0) - nn.elementwise_mul(
+                new_state, (step_mask - 1), axis=0)
+        if convert_dtype(state_dtype) in ["bool"]:
+            new_state = tensor.cast(new_state, dtype=state_dtype)
         return new_state
 
     def _transpose_batch_time(x):
         return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
+    def _create_array_out_of_while(dtype):
+        current_block_idx = default_main_program().current_block_idx
+        default_main_program().current_block_idx = default_main_program(
+        ).current_block().parent_idx
+        tensor_array = control_flow.create_array(dtype)
+        default_main_program().current_block_idx = current_block_idx
+        return tensor_array
+
     # While
     with while_op.block():
+        if not is_test:
+            inputs = map_structure(
+                lambda array: control_flow.array_read(array, step_idx),
+                inputs_arrays)
+            states = map_structure(
+                lambda array: control_flow.array_read(array, step_idx),
+                states_arrays)
         (outputs, next_states, next_inputs,
          next_finished) = decoder.step(step_idx, inputs, states, **kwargs)
+        next_finished = control_flow.logical_or(next_finished, global_finished)
         next_sequence_lengths = nn.elementwise_add(
             sequence_lengths,
             tensor.cast(
                 control_flow.logical_not(global_finished),
                 sequence_lengths.dtype))
 
+        if impute_finished:  # rectify the states for the finished.
+            next_states = map_structure(
+                lambda x, y: _maybe_copy(x, y, global_finished),
+                states,
+                next_states, )
+
+        # create tensor array in global block after dtype[s] of outputs can be got
+        outputs_arrays = map_structure(
+            lambda x: _create_array_out_of_while(x.dtype), outputs)
+
         map_structure(
             lambda x, x_array: control_flow.array_write(
                 x, i=step_idx, array=x_array), outputs, outputs_arrays)
         control_flow.increment(x=step_idx, value=1.0, in_place=True)
-        map_structure(tensor.assign, next_inputs, global_inputs)
-        map_structure(tensor.assign, next_states, global_states)
+        if is_test:
+            map_structure(tensor.assign, next_inputs, global_inputs)
+            map_structure(tensor.assign, next_states, global_states)
+        else:
+            map_structure(
+                lambda x, x_array: control_flow.array_write(
+                    x, i=step_idx, array=x_array), next_inputs, inputs_arrays)
+            map_structure(
+                lambda x, x_array: control_flow.array_write(
+                    x, i=step_idx, array=x_array), next_states, states_arrays)
         tensor.assign(next_finished, global_finished)
         tensor.assign(next_sequence_lengths, sequence_lengths)
         if max_step_num is not None:
             control_flow.logical_and(
-                control_flow.logical_not(nn.reduce_all(next_finished)),
+                control_flow.logical_not(nn.reduce_all(global_finished)),
                 control_flow.less_equal(step_idx, max_step_num), cond)
         else:
-            control_flow.logical_not(nn.reduce_all(next_finished), cond)
+            control_flow.logical_not(nn.reduce_all(global_finished), cond)
 
     final_outputs = map_structure(
         lambda array: tensor.tensor_array_to_tensor(
             array, axis=0, use_stack=True)[0], outputs_arrays)
-    final_states = global_states
+    if is_test:
+        final_states = global_states
+    else:
+        final_states = map_structure(
+            lambda array: control_flow.array_read(array, step_idx),
+            states_arrays)
 
     try:
         final_outputs, final_states = decoder.finalize(
-            final_outputs, global_states, sequence_lengths)
+            final_outputs, final_states, sequence_lengths)
     except NotImplementedError:
         pass
 
     if not output_time_major:
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
 
-    return final_outputs, final_states
+    return (final_outputs, final_states,
+            sequence_lengths) if return_length else (final_outputs,
+                                                     final_states)
+
+
+class DecodeHelper(object):
+    """
+    DecodeHelper is the base class for any helper instance used in `BasicDecoder`.
+    It provides interface to implement sampling and produce inputs for the next
+    time step in dynamic decoding.
+    """
+
+    def initialize(self):
+        """
+        DecodeHelper initialization to produce inputs for the first decoding step
+        and give the initial status telling whether each sequence in the batch
+        is finished. It is the partial of the initialization of `BasicDecoder`.
+
+        Returns:
+            tuple: A tuple( :code:`(initial_inputs, initial_finished)` ). \
+                `initial_inputs` is a (possibly nested structure of) tensor \
+                variable[s], and the tensor's shape is `[batch_size, ...]`. \
+                `initial_finished` is a bool tensor with shape `[batch_size]`.
+        """
+        pass
+
+    def sample(self, time, outputs, states):
+        """
+        Perform sampling with some strategies according to `outputs`. It is the
+        partial of `BasicDecoder.step`.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the caller,
+                representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`.
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+
+        Returns:
+            Variable: An `int64` tensor representing the sampled ids.
+        """
+        pass
+
+    def next_inputs(self, time, outputs, states, sample_ids):
+        """
+        Produce the inputs and states for next time step and give status telling
+        whether each minibatch entry is finished. It is called after `sample` in
+        `BasicDecoder.step`. It is the partial of `BasicDecoder.step`.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the caller,
+                representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`.
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+            sample_ids(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `sample_ids` returned by `sample()`.
+
+        Returns:
+            tuple: A tuple( :code:`(finished, next_inputs, next_states)` ). \
+                `next_inputs` and `next_states` both are a (possibly nested \
+                structure of) tensor variable[s], and the structure, shape and \
+                data type of `next_states` must be same as the input argument \
+                `states`. `finished` is a bool tensor with shape `[batch_size]`.
+        """
+        pass
+
+
+class TrainingHelper(DecodeHelper):
+    """
+    TrainingHelper is a subclass of DecodeHelper. It is a decoding helper
+    slicing from the full sequence inputs as the inputs for corresponding
+    step. And it uses `argmax` to sample from the outputs of `cell.call()`.
+
+    Since the needs of sequence inputs, it is used mostly for teach-forcing MLE
+    (maximum likelihood) training, and the sampled would not be used.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            trg_emb = fluid.data(name="trg_emb",
+                                 shape=[None, None, 128],
+                                 dtype="float32")
+            trg_seq_length = fluid.data(name="trg_seq_length",
+                                        shape=[None],
+                                        dtype="int64")
+            helper = layers.TrainingHelper(trg_emb, trg_seq_length)
+            decoder_cell = layers.GRUCell(hidden_size=128)
+            decoder = layers.BasicDecoder(decoder_cell, helper)
+            outputs = layers.dynamic_decode(
+                decoder,
+                inits=decoder_cell.get_initial_states(trg_emb),
+                is_test=False)
+    """
+
+    def __init__(self, inputs, sequence_length, time_major=False):
+        """
+        Constructor of TrainingHelper.
+
+        Parameters:
+            inputs(Variable): A (possibly nested structure of) tensor variable[s]. 
+                The shape of tensor should be `[batch_size, sequence_length, ...]`
+                for `time_major == False` or `[sequence_length, batch_size, ...]`
+                for `time_major == True`. It represents the inputs to be sliced
+                from at every decoding step.
+            sequence_length(Variable): A tensor with shape `[batch_size]`.
+                It stores real length of each instance in `inputs`, by which we
+                can label the finished status of each instance at every decoding
+                step.
+            time_major(bool, optional): Indicate the data layout of Tensor included
+                in `inputs`. If `False`, the data layout would be batch major with
+                shape `[batch_size, sequence_length, ...]`.  If `True`, the data
+                layout would be time major with shape `[sequence_length, batch_size, ...]`.
+                Default: `False`.
+        """
+        self.inputs = inputs
+        self.sequence_length = sequence_length
+        self.time_major = time_major
+        # extend inputs to avoid to slice out of range in `next_inputs`
+        # may be easier and have better performance than condition_op
+        self.inputs_ = map_structure(
+            lambda x: nn.pad(x,
+                             paddings=([0, 1] + [0, 0] * (len(x.shape) - 1))
+                             if time_major else ([0, 0, 0, 1] + [0, 0] *
+                                                 (len(x.shape) - 2))),
+            self.inputs)
+
+    def initialize(self):
+        """
+        TrainingHelper initialization produces inputs for the first decoding
+        step by slicing at the first time step of full sequence inputs, and it
+        gives initial status telling whether each sequence in the batch is
+        finished. It is the partial of the initialization of `BasicDecoder`.
+
+        Returns:
+            tuple: A tuple( :code:`(initial_inputs, initial_finished)` ). \
+                `initial_inputs` is a (possibly nested structure of) tensor \
+                variable[s], and the tensor's shape is `[batch_size, ...]`. \
+                `initial_finished` is a bool tensor with shape `[batch_size]`.
+        """
+        init_finished = control_flow.equal(
+            self.sequence_length,
+            tensor.fill_constant(
+                shape=[1], dtype=self.sequence_length.dtype, value=0))
+        # TODO: support zero length
+        init_inputs = map_structure(
+            lambda x: x[0] if self.time_major else x[:, 0], self.inputs)
+        return init_inputs, init_finished
+
+    def sample(self, time, outputs, states):
+        """
+        Perform sampling by using `argmax` according to the `outputs`. Mostly
+        the sampled ids would not be used since the inputs for next decoding
+        step would be got by slicing.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the
+                caller, representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`. 
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+
+        Returns:
+            Variable: An `int64` tensor with shape `[batch_size]`, representing \
+                the sampled ids.
+        """
+        sample_ids = tensor.argmax(outputs, axis=-1)
+        return sample_ids
+
+    def next_inputs(self, time, outputs, states, sample_ids):
+        """
+        Generate inputs for the next decoding step by slicing at corresponding
+        step of the full sequence inputs. Simultaneously, produce the states
+        for next time step by directly using the input `states` and emit status
+        telling whether each minibatch entry reaches to the corresponding length.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the
+                caller, representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`.
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+            sample_ids(Variable): An `int64` tensor variable shaped `[batch_size]`.
+                It is same as `sample_ids` returned by `sample()`.
+
+        Returns:
+            tuple: A tuple( :code:`(finished, next_inputs, next_states)` ). \
+                `next_inputs` and `next_states` both are a (possibly nested \
+                structure of) tensor variable[s],  and the tensor's shape is \
+                `[batch_size, ...]`. `next_states` is identical to the input \
+                argument `states`. `finished` is a `bool` Tensor with \
+                shape `[batch_size]`.
+        """
+        # TODO: compatibility of int32 and int64
+        time = tensor.cast(
+            time,
+            "int32") if convert_dtype(time.dtype) not in ["int32"] else time
+        if self.sequence_length.dtype != time.dtype:
+            self.sequence_length = tensor.cast(self.sequence_length, time.dtype)
+        next_time = time + 1
+        finished = control_flow.less_equal(self.sequence_length, next_time)
+
+        def _slice(x):  # TODO: use Variable.__getitem__
+            axes = [0 if self.time_major else 1]
+            return nn.squeeze(
+                nn.slice(
+                    x, axes=axes, starts=[next_time], ends=[next_time + 1]),
+                axes=axes)
+
+        next_inputs = map_structure(_slice, self.inputs_)
+        return finished, next_inputs, states
+
+
+class GreedyEmbeddingHelper(DecodeHelper):
+    """
+    GreedyEmbeddingHelper is a subclass of DecodeHelper. It is a decoding helper
+    uses the argmax of the output (treated as logits) and passes the results
+    through an embedding layer to get inputs for the next decoding step.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            trg_emb = fluid.data(name="trg_emb",
+                                 shape=[None, None, 128],
+                                 dtype="float32")
+            
+            trg_embeder = lambda x: fluid.embedding(
+                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
+            output_layer = lambda x: layers.fc(x,
+                                            size=10000,
+                                            num_flatten_dims=len(x.shape) - 1,
+                                            param_attr=fluid.ParamAttr(name=
+                                                                    "output_w"),
+                                            bias_attr=False)
+            helper = layers.GreedyEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
+            decoder_cell = layers.GRUCell(hidden_size=128)
+            decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
+            outputs = layers.dynamic_decode(
+                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
+    """
+
+    def __init__(self, embedding_fn, start_tokens, end_token):
+        """
+        Constructor of GreedyEmbeddingHelper.
+
+        Parameters:
+            embedding_fn(callable): A functor to apply on the argmax results. 
+                Mostly it is an embedding layer to transform ids to embeddings.
+                **Note that fluid.embedding should be used here rather than
+                fluid.layers.embedding, since shape of ids is [batch_size].
+                when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
+            start_tokens(Variable):  A `int64` tensor shaped `[batch_size]`,
+                representing the start tokens.
+            end_token(int): The end token id.
+
+        Returns:
+            tuple: A tuple( :code:`(initial_inputs, initial_states, finished)` ). \
+                `initial_inputs` and `initial_states` both are a (possibly nested \
+                structure of) tensor variable[s], and `finished` is a tensor with \
+                bool data type.
+        """
+        self.embedding_fn = embedding_fn
+        self.start_tokens = start_tokens
+        self.end_token = tensor.fill_constant(
+            shape=[1], dtype="int64", value=end_token)
+
+    def initialize(self):
+        """
+        GreedyEmbeddingHelper initialization produces inputs for the first decoding
+        step by using `start_tokens` of the constructor, and gives initial
+        status telling whether each sequence in the batch is finished. 
+        It is the partial of the initialization of `BasicDecoder`.
+
+        Returns:
+            tuple: A tuple( :code:`(initial_inputs, initial_finished)` ). \
+                `initial_inputs` is same as `start_tokens` of the constructor. \
+                `initial_finished` is a `bool` tensor filled by False and has \
+                the same shape as `start_tokens`.
+        """
+        # TODO: remove the restriction of force_cpu
+        init_finished = tensor.fill_constant_batch_size_like(
+            input=self.start_tokens,
+            shape=[-1],
+            dtype="bool",
+            value=False,
+            force_cpu=True)
+        init_inputs = self.embedding_fn(self.start_tokens)
+        return init_inputs, init_finished
+
+    def sample(self, time, outputs, states):
+        """
+        Perform sampling by using `argmax` according to the `outputs`.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the
+                caller, representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`. 
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+
+        Returns:
+            Variable: An `int64` tensor with shape `[batch_size]`, representing \
+                the sampled ids.
+        """
+        sample_ids = tensor.argmax(outputs, axis=-1)
+        return sample_ids
+
+    def next_inputs(self, time, outputs, states, sample_ids):
+        """
+        Generate inputs for the next decoding step by applying `embedding_fn`
+        to `sample_ids`. Simultaneously, produce the states for next time step
+        by directly using the input `states` and emit status telling whether
+        each minibatch entry gets an `end_token` sample.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the
+                caller, representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`.
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+            sample_ids(Variable): An `int64` tensor variable shaped `[batch_size]`.
+                It is same as `sample_ids` returned by `sample()`.
+
+        Returns:
+            tuple: A tuple( :code:`(finished, next_inputs, next_states)` ). \
+                `next_inputs` and `next_states` both are a (possibly nested \
+                structure of) tensor variable[s],  and the tensor's shape is \
+                `[batch_size, ...]`. `next_states` is identical to the input \
+                argument `states`. `finished` is a `bool` Tensor with \
+                shape `[batch_size]`.
+        """
+        finished = control_flow.equal(sample_ids, self.end_token)
+        next_inputs = self.embedding_fn(sample_ids)
+        return finished, next_inputs, states
+
+
+class SampleEmbeddingHelper(GreedyEmbeddingHelper):
+    """
+    SampleEmbeddingHelper is a subclass of GreedyEmbeddingHelper. It is a decoding
+    helper uses sampling (from a distribution) instead of argmax of the output
+    (treated as logits) and passes the results through an embedding layer to get
+    inputs for the next decoding step.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            trg_emb = fluid.data(name="trg_emb",
+                                 shape=[None, None, 128],
+                                 dtype="float32")
+            
+            trg_embeder = lambda x: fluid.embedding(
+                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
+            output_layer = lambda x: layers.fc(x,
+                                            size=10000,
+                                            num_flatten_dims=len(x.shape) - 1,
+                                            param_attr=fluid.ParamAttr(name=
+                                                                    "output_w"),
+                                            bias_attr=False)
+            helper = layers.SampleEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
+            decoder_cell = layers.GRUCell(hidden_size=128)
+            decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
+            outputs = layers.dynamic_decode(
+                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
+    """
+
+    def __init__(self,
+                 embedding_fn,
+                 start_tokens,
+                 end_token,
+                 softmax_temperature=None,
+                 seed=None):
+        """
+        Constructor of SampleEmbeddingHelper.
+
+        Parameters:
+            embedding_fn(callable): A functor to apply on the argmax results. 
+                Mostly it is an embedding layer to transform ids to embeddings.
+                **Note that fluid.embedding should be used here rather than
+                fluid.layers.embedding, since shape of ids is [batch_size].
+                when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
+            start_tokens(Variable):  A `int64` tensor shaped `[batch_size]`,
+                representing the start tokens.
+            end_token(int): The end token id.
+            softmax_temperature(float, optional): the value to divide the logits
+                by before computing the softmax. Higher temperatures (above 1.0)
+                lead to more random, while lower temperatures push the sampling
+                distribution towards the argmax. It must be strictly greater than
+                0. Defaults to None, meaning using a temperature valued 1.0.
+            seed: (int, optional) The sampling seed. Defaults to None, meaning not
+                to use fixed seed.
+
+        Returns:
+            tuple: A tuple( :code:`(initial_inputs, initial_states, finished)` ). \
+                `initial_inputs` and `initial_states` both are a (possibly nested \
+                structure of) tensor variable[s], and `finished` is a tensor with \
+                bool data type.
+        """
+        super(SampleEmbeddingHelper, self).__init__(embedding_fn, start_tokens,
+                                                    end_token)
+        self.softmax_temperature = tensor.fill_constant(
+            shape=[1], dtype="float32", value=softmax_temperature
+        ) if softmax_temperature is not None else None
+        self.seed = seed
+
+    def sample(self, time, outputs, states):
+        """
+        Perform sampling from a categorical distribution, and the distribution
+        is computed by `softmax(outputs/softmax_temperature)`.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the
+                caller, representing the current time step number of decoding.
+            outputs(Variable): A tensor variable. Usually it's data type is float32
+                or float64, and it's shape is `[batch_size, vocabulary_size]`,
+                representing the predicted logits of current step. It is same as
+                `outputs` returned by `BasicDecoder.output_fn(BasicDecoder.cell.call())`. 
+            states(Variable): A (possibly nested structure of) tensor variable[s].
+                It is same as `new_states` returned by `BasicDecoder.cell.call()`.
+
+        Returns:
+            Variable: An `int64` tensor with shape `[batch_size]`, representing \
+                the sampled ids.
+        """
+        logits = (outputs / self.softmax_temperature
+                  ) if self.softmax_temperature is not None else outputs
+        probs = nn.softmax(logits)
+        # TODO: remove this stop_gradient. The stop_gradient of sample_ids can
+        # not pass to probs, since sampling_id op does not have corresponding
+        # grad op and thus can not pass.
+        probs.stop_gradient = True
+        sample_ids = nn.sampling_id(
+            probs, seed=self.seed, dtype=self.start_tokens.dtype)
+        return sample_ids
+
+
+class BasicDecoder(Decoder):
+    """
+    BasicDecoder is a subclass of Decoder and assembles a RNNCell and DecodeHelper
+    instance as members, where the DecodeHelper helps to implement customed
+    decoding strategies.. It performs one decoding step as following steps:
+
+    1. Perform `cell_outputs, cell_states = cell.call(inputs, states)`
+    to get outputs and new states from cell.
+
+    2. Perform `sample_ids = helper.sample(time, cell_outputs, cell_states)`
+    to sample ids as decoded results of the current time step.
+
+    3. Perform `finished, next_inputs, next_states = helper.next_inputs(time,
+    cell_outputs, cell_states, sample_ids)` to generate inputs, states and
+    finished status for the next decoding step.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            trg_emb = fluid.data(name="trg_emb",
+                                 shape=[None, None, 128],
+                                 dtype="float32")
+            
+            trg_embeder = lambda x: fluid.embedding(
+                x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
+            output_layer = lambda x: layers.fc(x,
+                                            size=10000,
+                                            num_flatten_dims=len(x.shape) - 1,
+                                            param_attr=fluid.ParamAttr(name=
+                                                                    "output_w"),
+                                            bias_attr=False)
+            helper = layers.SampleEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
+            decoder_cell = layers.GRUCell(hidden_size=128)
+            decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
+            outputs = layers.dynamic_decode(
+                decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
+    """
+
+    def __init__(self, cell, helper, output_fn=None):
+        """
+        Constructor of BasicDecoder.
+
+        Parameters:
+            cell(RNNCell): An instance of `RNNCell` or object with the same interface.
+            helper(DecodeHelper): An instance of `DecodeHelper`.
+            output_fn(optional): A callable to apply to the cell's output prior to
+                sampling. Default None.
+        """
+        self.cell = cell
+        self.helper = helper
+        self.output_fn = output_fn
+
+    def initialize(self, initial_cell_states):
+        """
+        BasicDecoder initialization includes helper initialization and cell
+        initialization, and cell initialization uses `initial_cell_states` as
+        the result directly.
+
+        Parameters:
+            initial_cell_states(Variable): A (possibly nested structure of)
+                tensor variable[s]. An argument provided by the caller `dynamic_decode`.
+
+        Returns:
+            tuple: A tuple( :code:(initial_inputs, initial_cell_states, finished)` ). \
+                `initial_inputs` and `initial_states` both are a (possibly nested \
+                structure of) tensor variable[s], and `finished` is a tensor with \
+                bool data type. `initial_inputs` and `finished` are the results \
+                of `helper.initialize()`, and `initial_cell_states` is same as \
+                the input argument counterpart.
+        """
+        (initial_inputs, initial_finished) = self.helper.initialize()
+        return initial_inputs, initial_cell_states, initial_finished
+
+    class OutputWrapper(
+            collections.namedtuple("OutputWrapper",
+                                   ("cell_outputs", "sample_ids"))):
+        """
+        The structure for the returned value `outputs` of `decoder.step`.
+        A namedtuple includes cell_outputs, sample_ids as fields.
+        """
+        pass
+
+    def step(self, time, inputs, states, **kwargs):
+        """
+        Perform one decoding step as following steps:
+
+        1. Perform `cell_outputs, cell_states = cell.call(inputs, states)`
+        to get outputs and new states from cell.
+
+        2. Perform `sample_ids = helper.sample(time, cell_outputs, cell_states)`
+        to sample ids as decoded results of the current time step.
+
+        3. Perform `finished, next_inputs, next_states = helper.next_inputs(time,
+        cell_outputs, cell_states, sample_ids)` to generate inputs, states and
+        finished status for the next decoding step.
+
+        Parameters:
+            time(Variable): An `int64` tensor with shape `[1]` provided by the caller,
+                representing the current time step number of decoding.
+            inputs(Variable): A tensor variable. It is same as `initial_inputs`
+                returned by `initialize()` for the first decoding step and
+                `next_inputs` returned by `step()` for the others.
+            states(Variable): A structure of tensor variables.
+                It is same as the `initial_cell_states` returned by `initialize()`
+                for the first decoding step and `next_states` returned by
+                `step()` for the others.
+            **kwargs: Additional keyword arguments, provided by the caller
+                `dynamic_decode`. 
+        
+        Returns:
+            tuple: A tuple( :code:`(outputs, next_states, next_inputs, finished)` ). \
+                `outputs` is a namedtuple(including cell_outputs, sample_ids, \
+                as fields) of tensor variables, where `cell_outputs` is the result \
+                fof `cell.call()` and `sample_ids` is the result of `helper.sample()`. \
+                `next_states` and `next_inputs` have the same structure, shape \
+                and data type as the input arguments `states` and `inputs` separately. \
+                `finished` is a `bool` tensor with shape `[batch_size]`.
+        """
+        cell_outputs, cell_states = self.cell(inputs, states, **kwargs)
+        if self.output_fn is not None:
+            cell_outputs = self.output_fn(cell_outputs)
+        sample_ids = self.helper.sample(
+            time=time, outputs=cell_outputs, states=cell_states)
+        sample_ids.stop_gradient = True
+        (finished, next_inputs, next_states) = self.helper.next_inputs(
+            time=time,
+            outputs=cell_outputs,
+            states=cell_states,
+            sample_ids=sample_ids)
+        outputs = self.OutputWrapper(cell_outputs, sample_ids)
+        return (outputs, next_states, next_inputs, finished)
 
 
 def dynamic_lstm(input,
@@ -1400,7 +2080,7 @@ def lstm(input,
         name (str, optional): A name for this layer. If set None, the layer
                          will be named automatically. Default: None.
         default_initializer(Initializer, optional): Where use initializer to initialize the Weight
-                         If set None, defaule initializer will be used. Default: None.
+                         If set None, default initializer will be used. Default: None.
         seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
 
 
@@ -1685,9 +2365,9 @@ def dynamic_lstmp(input,
         inputs['C0'] = c_0
 
     if cell_clip:
-        assert cell_clip >= 0, "cell_clip should not be negtive."
+        assert cell_clip >= 0, "cell_clip should not be negative."
     if proj_clip:
-        assert proj_clip >= 0, "proj_clip should not be negtive."
+        assert proj_clip >= 0, "proj_clip should not be negative."
 
     helper.append_op(
         type='lstmp',
@@ -1789,10 +2469,10 @@ def dynamic_gru(input,
             See usage for details in :ref:`api_fluid_ParamAttr` .
         is_reverse(bool, optional): Whether to compute in the reversed order of
             input sequences. Default False.
-        gate_activation(str, optional): The activation fuction corresponding to
+        gate_activation(str, optional): The activation function corresponding to
             :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "sigmoid".
-        candidate_activation(str, optional): The activation fuction corresponding to
+        candidate_activation(str, optional): The activation function corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
         h_0 (Variable, optional): A Tensor representing the initial hidden state.
@@ -1938,17 +2618,17 @@ def gru_unit(input,
         bias_attr (ParamAttr, optional): To specify the bias parameter property.
             Default: None, which means the default bias parameter property is used.
             See usage for details in :ref:`api_fluid_ParamAttr` .
-        activation(str, optional): The activation fuction corresponding to
+        activation(str, optional): The activation function corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
-        gate_activation(str, optional): The activation fuction corresponding to
+        gate_activation(str, optional): The activation function corresponding to
             :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "sigmoid".
 
     Returns:
         tuple: The tuple contains three Tensor variables with the same data type \
             as ``input`` . They represent the hidden state for next time step ( :math:`h_t` ), \
-            reseted previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
+            reset previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
             concatenation of :math:`h_t, r_t, \\tilde{h_t}` . And they have shape \
             :math:`[N, D]` , :math:`[N, D]` , :math:`[N, D \times 3]` separately. \
             Usually only the hidden state for next time step ( :math:`h_t` ) is used \
@@ -2036,7 +2716,7 @@ def beam_search(pre_ids,
     scores calculation to perform beam search for one time step. Specifically,
     after ``ids`` and ``scores`` have been produced, it selects the top-K
     ( `k` is ``beam_size`` ) candidate word ids of current step from ``ids``
-    according to the correspongding ``scores``. Additionally, ``pre_id`` and
+    according to the corresponding ``scores``. Additionally, ``pre_id`` and
     ``pre_scores`` are the output of `beam_search` at previous step, they
     are needed for special use to handle ended candidate translations.
 
@@ -2066,11 +2746,11 @@ def beam_search(pre_ids,
             `[batch_size * beam_size, K]`, where `K` supposed to be greater than
             ``beam_size`` and the first dimension size (decrease as samples reach
             to the end) should be same as that of ``pre_ids`` . The data type
-            should be int64. It can be None, which use indice in ``scores`` as
+            should be int64. It can be None, which use index in ``scores`` as
             ids.
         scores(Variable): A LodTensor variable containing the accumulated
             scores corresponding to ``ids`` . Both its shape and lod are same as
-            thoes of ``ids`` . The data type should be float32.
+            those of ``ids`` . The data type should be float32.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
         level(int): **It can be ignored and mustn't change currently.**
@@ -2085,7 +2765,7 @@ def beam_search(pre_ids,
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
         return_parent_idx(bool, optional): Whether to return an extra Tensor variable
-            in output, which stores the selected ids' parent indice in
+            in output, which stores the selected ids' parent index in
             ``pre_ids`` and can be used to update RNN's states by gather operator.
             Default False.
 
@@ -2094,7 +2774,7 @@ def beam_search(pre_ids,
             representing the selected ids and the corresponding accumulated scores of \
             current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
             and have data types int64 and float32. If ``return_parent_idx`` is True, \
-            an extra Tensor variable preserving the selected ids' parent indice \
+            an extra Tensor variable preserving the selected ids' parent index \
             is included, whose shape is `[batch_size * beam_size]` and data type \
             is int64.
 
@@ -2203,7 +2883,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
 
     Returns:
         tuple: The tuple contains two LodTensor variables. The two LodTensor, \
-            containing the full sequences of ids and the correspongding accumulated \
+            containing the full sequences of ids and the corresponding accumulated \
             scores, have the same shape flattened to 1D and have the same 2 level \
             lod. The lod can be used to get how many predicted sequences each sample \
             has and how many ids each predicted sequence has.

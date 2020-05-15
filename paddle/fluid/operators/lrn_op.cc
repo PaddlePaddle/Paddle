@@ -296,7 +296,7 @@ $$
 
 Function implementation:
 
-Inputs and outpus are in NCHW or NHWC format, while input.shape.ndims() equals 4.
+Inputs and outputs are in NCHW or NHWC format, while input.shape.ndims() equals 4.
 If NCHW, the dimensions 0 ~ 3 represent batch size, feature maps, rows,
 and columns, respectively.
 

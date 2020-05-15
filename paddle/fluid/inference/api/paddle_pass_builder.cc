@@ -92,19 +92,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "transpose_flatten_concat_fuse_pass",
 });
 
-// The following passes works for Anakin sub-graph engine.
-const std::vector<std::string> kAnakinSubgraphPasses({
-    "quant_conv2d_dequant_fuse_pass",               //
-    "simplify_anakin_priorbox_detection_out_pass",  //
-    "fillconstant_elementwisemul_fuse",             //
-    "fc_fuse_pass",                                 //
-    "conv_elementwise_add_fuse_pass",               //
-    "fc_gru_fuse_pass",                             //
-    "shuffle_channel_detect_pass",                  //
-    "anakin_subgraph_pass",                         //
-    "fc_gru_fuse_pass",                             //
-});
-
 const std::vector<std::string> kLiteSubgraphPasses({
 #ifdef PADDLE_WITH_LITE
     "lite_subgraph_pass",

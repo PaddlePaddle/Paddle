@@ -74,7 +74,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     else:
         # Avoid sorting possibly large arrays;
         # First partition to get top K unsorted
-        # and then sort just thoes
+        # and then sort just those
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]

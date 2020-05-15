@@ -86,7 +86,7 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Updates", "The updated value of scatter op");
     AddOutput("Out", "The output of scatter op");
     AddAttr<bool>("overwrite",
-                  "(bool, defalut: True) "
+                  "(bool, default: True) "
                   "The mode that updating the output when has same index,"
                   "If True, use the overwrite mode to update the output"
                   "of the same index, if False, use the accumulate mode to"

@@ -90,7 +90,7 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
     AddInput("AxisTensor",
-             "(Tensor) The axis which the input will be splited on. "
+             "(Tensor) The axis which the input will be split on. "
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1]")
         .AsDispensable();
@@ -131,7 +131,7 @@ Example:
         .SetDefault(0);
     AddAttr<int>("axis",
                  "(int, default 0) "
-                 "The axis which the input will be splited on.")
+                 "The axis which the input will be split on.")
         .SetDefault(0);
   }
 };

@@ -285,7 +285,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           interpolation.
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+          in both the 3rd dimension(in height direction) and the 4th dimension(in width 
           direction) on input tensor.
             
           Bilinear interpolation is an extension of linear interpolation for 
@@ -299,7 +299,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           H-direction and W-direction in this op) on a rectilinear 3D grid. 
           The linear interpolation is performed on three directions.
 
-          Align_corners and align_mode are optinal parameters,the calculation method 
+          Align_corners and align_mode are optional parameters,the calculation method 
           of interpolation can be selected by them.
           
           Example:

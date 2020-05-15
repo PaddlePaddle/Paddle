@@ -648,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with ouput var size",
+            "Op [%s]: Input var size should be equal with output var size",
             op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
@@ -981,7 +981,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
+    // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
   if (FLAGS_enable_unused_var_check) {
@@ -1234,7 +1234,7 @@ Scope* OperatorWithKernel::PrepareData(
 void OperatorWithKernel::ParseInputDataType(
     const ExecutionContext& ctx, const std::string& name,
     proto::VarType::Type* data_type) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
   const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
@@ -1247,6 +1247,13 @@ void OperatorWithKernel::ParseInputDataType(
         t = &var->Get<LoDTensor>();
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto t_arr = var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr.size(); j++) {
+          if (t_arr[j].IsInitialized()) {
+            t = &(t_arr[j]);
+          }
+        }
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
@@ -1257,7 +1264,7 @@ void OperatorWithKernel::ParseInputDataType(
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == dafault_data_type,
+            tmp == *data_type || *data_type == default_data_type,
             platform::errors::InvalidArgument(
                 "The DataType of %s Op's duplicable Variable %s must be "
                 "consistent. The current variable type is (%s), but the "

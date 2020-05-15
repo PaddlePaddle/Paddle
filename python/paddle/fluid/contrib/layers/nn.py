@@ -24,6 +24,10 @@ import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
+from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
+from paddle.fluid.data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
+from paddle.fluid.layers import slice, reshape
 
 __all__ = [
     'fused_elemwise_activation',
@@ -35,6 +39,9 @@ __all__ = [
     'multiclass_nms2',
     'search_pyramid_hash',
     'shuffle_batch',
+    'index_sample',
+    'tdm_child',
+    'tdm_sampler',
 ]
 
 
@@ -116,7 +123,7 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with 
     padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
@@ -133,9 +140,9 @@ def var_conv_2d(input,
                 output.dims = [174, 1]  # where 174 = 90 + 84
 
     Args:
-        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide height information.
-        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input (Variable): The input should be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row should be 1-level LodTensor to provide height information.
+        col (Variable): The col should be 1-level LodTensor to provide width information.
         input_channel (int): The number of input channel.
         output_channel (int): The number of output channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -325,9 +332,9 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
 
     Args:
         input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide the height information
+        row (Variable): The row should be 1-level LodTensor to provide the height information
                         of the input tensor data.
-        col (Variable): The col shoud be 1-level LodTensor to provide the width information
+        col (Variable): The col should be 1-level LodTensor to provide the width information
                         of the input tensor data.
         topks (list): A list of incremental value to average the topk feature.
         channel_num (int): The number of input channel.
@@ -555,7 +562,7 @@ def multiclass_nms2(bboxes,
                                  low confidence score. If not provided, 
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences aftern the filtering detections based
+                         the confidences after the filtering detections based
                          on score_threshold.
         nms_threshold (float): The threshold to be used in NMS. Default: 0.3
         nms_eta (float): The threshold to be used in NMS. Default: 1.0
@@ -808,3 +815,357 @@ def shuffle_batch(x, seed=None):
                  'SeedOut': seed},
         attrs=op_attrs)
     return out
+
+
+def index_sample(x, index):
+    """
+    **IndexSample Layer**
+    IndexSample OP returns the element of the specified location of X, 
+    and the location is specified by Index. 
+
+    .. code-block:: text
+
+    Given:
+                X = [[1, 2, 3, 4, 5],
+                     [6, 7, 8, 9, 10]]
+                Index = [[0, 1, 3],
+                         [0, 2, 4]]
+                Then:
+                Out = [[1, 2, 4],
+                       [6, 8, 10]]
+
+    Args:
+        x (Variable): The source input tensor with 2-D shape. Supported data type is 
+            int32, int64, float32, float64.
+        index (Variable): The index input tensor with 2-D shape, first dimension should be same with X. 
+            Data type is int32 or int64.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as index.
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+            # create x value
+            x_shape = (2, 5)
+            x_type = "float64"
+            x_np = np.random.random(x_shape).astype(x_type)
+            # create index value
+            index_shape = (2, 3)
+            index_type = "int32"
+            index_np = np.random.randint(low=0, 
+                                         high=x_shape[1],
+                                         size=index_shape).astype(index_type)
+            x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
+            index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
+            output = fluid.contrib.layers.index_sample(x=x, index=index)
+    """
+    helper = LayerHelper("index_sample", **locals())
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float32', 'float64', 'int32', 'int64'],
+                         'fluid.contrib.layers.index_sample')
+    check_type_and_dtype(index, 'index', Variable, ['int32', 'int64'],
+                         'fluid.contrib.layers.index_sample')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='index_sample',
+        inputs={'X': x,
+                'Index': index},
+        outputs={'Out': out})
+    return out
+
+
+def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
+    """
+    **Tdm Child**
+     According to the input node_id on the given tree, return the corresponding child node_id and 
+      whether child is a leaf node by leaf_mask value.
+
+    .. code-block:: text
+        Given:
+            tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
+            x = [[2], [3]]
+            node_nums = 7
+            child_nums = 2
+          we get:
+            child = [[5, 6],
+                     [0, 0]]
+            leaf_mask = [[1, 1],
+                         [0, 0]]
+
+    Args:
+        x(Variable): Variable contained the node_id information, dtype support int32/int64.
+        node_nums(int): Number of total nodes.
+        child_nums(int): Maximum number of child nodes per node.
+        param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
+            has shape(node_nums, 3 + child_nums), dtype support int32/int64. 
+            The dimension[1] of tdm-tree-info contains the following: 
+            1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
+            2. Layer_id(int, shape(1)), indicates which layer the node is on.
+            3. Parent_id(int, shape(1)), node's parent node.
+            4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
+            If the number of child nodes is insufficient, padding 0 until child nums equal to child_nums
+        dtype(str): The data type of output child and leaf_mask, support int32/int64.
+
+    Returns:
+        tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
+            If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
+
+    Examples:
+        .. code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        tree_info = [[0,0,0,1,2],
+                     [0,1,0,3,4],[0,1,0,5,6],
+                     [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+        tree_info_np = np.array(tree_info)
+        tree_info_np = np.reshape(tree_info_np, (7,5))
+        node_nums = 7
+        child_nums = 2
+        child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
+                                param_attr=fluid.ParamAttr(
+                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                                                            tree_info_np)))
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        xx = np.array([[2],[3]]).reshape((2,1)).astype("int32")
+        child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
+     """
+    helper = LayerHelper("tdm_child", **locals())
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_child')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    tree_info = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[node_nums, 3 + child_nums],
+        dtype=dtype,
+        default_initializer=Constant(0))
+    tree_info.stop_gradient = True
+
+    child = helper.create_variable_for_type_inference(dtype=dtype)
+    leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='tdm_child',
+        inputs={'X': x,
+                'TreeInfo': tree_info},
+        outputs={'Child': child,
+                 'LeafMask': leaf_mask},
+        attrs={'child_nums': child_nums,
+               'dtype': c_dtype},
+        stop_gradient=True)
+    return (child, leaf_mask)
+
+
+def tdm_sampler(x,
+                neg_samples_num_list,
+                layer_node_num_list,
+                leaf_node_num,
+                tree_travel_attr=None,
+                tree_layer_attr=None,
+                output_positive=True,
+                output_list=True,
+                seed=0,
+                tree_dtype='int32',
+                dtype='int32'):
+    """
+    **Tdm Sampler**
+    According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
+    .. code-block:: text
+
+        Given:
+            tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
+            travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path (exclude root node)
+            layer_list = [[1, 2], [3, 4, 5, 6]] # two layer (exclude root node)
+
+            x = [[0], [1], [2], [3]] # Corresponding to leaf node [[3], [4], [5], [6]]
+            neg_samples_num_list = [0, 0] # negative sample nums = 0
+            layer_node_num_list = [2, 4]
+            leaf_node_num = 4
+            output_list = False
+
+        we get:
+            out = [[1, 3], [1, 4], [2, 5], [2, 6]]
+            labels = [[1, 1], [1, 1], [1, 1], [1, 1]]
+            mask = [[1, 1], [1, 1], [1, 1], [1, 1]]
+
+    Args:
+        x (Variable): Variable contained the item_id(corresponding to leaf node) information, dtype support int32/int64.
+        neg_samples_num_list (list(int)): Number of negative samples per layer.
+        layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
+        leaf_node_num (int): Number of leaf nodes.
+        tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
+        tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (node_num, 1), dtype support int32/int64.
+        output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
+        output_list (bool): Whether to divide the output into layers and organize it into list format.
+        seed (int): The number of random seed.
+        tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks) 
+
+    Returns:
+        tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
+            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
+            and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
+            sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
+            If output_list = True, the result will organize into list format specified by layer information.
+            Output variable have same type with tdm-travel and tdm-layer parameter(tree_dtype).
+
+    Examples:
+        .. code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
+        layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
+
+        neg_samples_num_list = [0, 0] # negative sample nums = 0
+        layer_node_num_list = [2, 4] #two layer (exclude root node)
+        leaf_node_num = 4
+
+        travel_array = np.array(travel_list)
+        layer_array = np.array(layer_list_flat)
+
+        sample, label, mask = fluid.contrib.layers.tdm_sampler(
+            x,
+            neg_samples_num_list,
+            layer_node_num_list,
+            leaf_node_num,
+            tree_travel_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    travel_array)),
+            tree_layer_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    layer_array)),
+            output_positive=True,
+            output_list=True,
+            seed=0,
+            tree_dtype='int32')
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
+
+        exe.run(feed={"x":xx})
+
+    """
+    helper = LayerHelper("tdm_sampler", **locals())
+    check_dtype(tree_dtype, 'tree_dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if len(neg_samples_num_list) != len(layer_node_num_list):
+        raise ValueError(
+            "The shape of negative samples list must match the shape of layers. "
+            "But received len of neg_samples_num_list: {},"
+            "and len of layer_node_num_list: {}, please check your input.".
+            format(len(neg_samples_num_list), len(layer_node_num_list)))
+    assert leaf_node_num is not None, "leaf_node_num should not be None here."
+
+    layer_nums = 0
+    node_nums = 0
+    tree_layer_offset_lod = [0]
+    for layer_idx, layer_node_num in enumerate(layer_node_num_list):
+        layer_nums += 1
+        node_nums += layer_node_num
+        tree_layer_offset_lod.append(node_nums)
+        if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
+            raise ValueError(
+                "The number of negative samples must be less than the number of nodes "
+                "in the layer {}, But received negative nums {}, and num of node at layer {} "
+                "is {}, please check your input.".format(
+                    layer_idx, neg_samples_num_list[
+                        layer_idx], layer_idx, layer_node_num_list[layer_idx]))
+    assert leaf_node_num < node_nums, "leaf_node_num must be less than total node nums."
+
+    travel_shape = [leaf_node_num, layer_nums]
+    travel = helper.create_parameter(
+        attr=tree_travel_attr,
+        shape=travel_shape,
+        dtype=tree_dtype,
+        default_initializer=Constant(0))
+
+    layer_shape = [node_nums, 1]
+    layer = helper.create_parameter(
+        attr=tree_layer_attr,
+        shape=layer_shape,
+        dtype=tree_dtype,
+        default_initializer=Constant(0))
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out.stop_gradient = True
+
+    labels = helper.create_variable_for_type_inference(dtype=dtype)
+    labels.stop_gradient = True
+
+    mask = helper.create_variable_for_type_inference(dtype=dtype)
+    mask.stop_gradient = True
+
+    helper.append_op(
+        type='tdm_sampler',
+        inputs={"X": x,
+                "Travel": travel,
+                "Layer": layer},
+        outputs={'Out': out,
+                 'Labels': labels,
+                 'Mask': mask},
+        attrs={
+            'neg_samples_num_list': neg_samples_num_list,
+            'output_positive': output_positive,
+            'layer_offset_lod': tree_layer_offset_lod,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    if output_list:
+        output_list = []
+        labels_list = []
+        mask_list = []
+        start_offset = 0
+        positive_flag = 1
+        if not output_positive:
+            positive_flag = 0
+
+        for layer_sample_num in neg_samples_num_list:
+            end_offset = start_offset + \
+                layer_sample_num + positive_flag
+            layer_samples = slice(
+                out, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_labels = slice(
+                labels, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_mask = slice(
+                mask, axes=[1], starts=[start_offset], ends=[end_offset])
+
+            layer_samples = reshape(layer_samples,
+                                    [-1, layer_sample_num + positive_flag, 1])
+            layer_samples.stop_gradient = True
+
+            layer_labels = reshape(layer_labels,
+                                   [-1, layer_sample_num + positive_flag, 1])
+            layer_labels.stop_gradient = True
+
+            layer_mask = reshape(layer_mask,
+                                 [-1, layer_sample_num + positive_flag, 1])
+            layer_mask.stop_gradient = True
+
+            output_list.append(layer_samples)
+            labels_list.append(layer_labels)
+            mask_list.append(layer_mask)
+            start_offset = end_offset
+
+        out = output_list
+        labels = labels_list
+        mask = mask_list
+
+    return (out, labels, mask)

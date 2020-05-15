@@ -35,7 +35,8 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
     def check_dgc_momentum_optimizer(self,
                                      dims=[5, 10, 8],
                                      name="momentum",
-                                     regularization=None):
+                                     regularization=None,
+                                     use_recompute=False):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
@@ -44,7 +45,9 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             shape=[dims[0], dims[1]],
             lod_level=0,
             name="mul.x",
-            optimize_attr={'learning_rate': 1.1})
+            optimize_attr={'learning_rate': 1.1},
+            regularizer=None if regularization is not None else
+            regularizer.L2DecayRegularizer(2e-4))
         mul_y = block.create_var(
             dtype="float32",
             shape=[dims[1], dims[2]],
@@ -70,6 +73,13 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             local_grad_clip_norm=1.0,
             num_trainers=2,
             regularization=regularization)
+
+        if use_recompute:
+            dgc_momentum_optimizer = optimizer.RecomputeOptimizer(
+                dgc_momentum_optimizer)
+            dgc_momentum_optimizer.get_accumulators = dgc_momentum_optimizer._optimizer.get_accumulators
+            dgc_momentum_optimizer.get_velocity_str = dgc_momentum_optimizer._optimizer.get_velocity_str
+
         mean_out = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
@@ -102,8 +112,17 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
 
-        with open("test_dgc_optimizer_" + name + ".log", "w") as f:
-            program_to_code(program, fout=f)
+        # check dgc op regularization coeff
+        train_ops = program.global_block().ops
+        for op in train_ops:
+            if op.type == "dgc":
+                coeff = 2e-4 if regularization is None else 1e-4
+                self.assertAlmostEqual(op.attr('regular_coeff'), coeff)
+                print("dgc regular_coeff=" + str(coeff))
+
+        # for local test debug
+        #with open("test_dgc_optimizer_" + name + str(use_recompute) + ".log", "w") as f:
+        #    program_to_code(program, fout=f)
 
     def test_momentum_without_dgc(self):
         self.check_dgc_momentum_optimizer(
@@ -115,6 +134,18 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             dims=[16, 1024, 8],
             name="dgc_momentum",
             regularization=regularizer.L2Decay(1e-4))
+
+        # check param.regularizer in dgc
+        self.check_dgc_momentum_optimizer(
+            dims=[16, 1024, 8], name="dgc_momentum")
+
+    def test_momentum_with_dgc_recompute(self):
+        # 16 * 1024 = 16384, use dgc momentum
+        self.check_dgc_momentum_optimizer(
+            dims=[16, 1024, 8],
+            name="dgc_momentum",
+            regularization=regularizer.L2Decay(1e-4),
+            use_recompute=True)
 
 
 if __name__ == '__main__':
