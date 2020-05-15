@@ -49,5 +49,32 @@ class TestMKLDNNElementwiseAddOp3(TestMKLDNNElementwiseAddOp):
         self.out = np.add(self.x, self.y)
 
 
+class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.05, check_dygraph=False)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            max_relative_error=0.05,
+            check_dygraph=False)
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            max_relative_error=0.05,
+            check_dygraph=False)
+
+
 if __name__ == '__main__':
     unittest.main()
