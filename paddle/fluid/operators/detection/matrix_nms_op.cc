@@ -113,6 +113,9 @@ void NMSMatrix(const Tensor& bbox, const Tensor& scores,
   };
 
   int64_t num_pre = std::distance(perm.begin(), end);
+  if (num_pre <= 0) {
+    return;
+  }
   if (top_k > -1 && num_pre > top_k) {
     num_pre = top_k;
   }
@@ -191,6 +194,10 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
         all_classes.push_back(static_cast<T>(c));
       }
       num_det = all_indices.size();
+    }
+
+    if (num_det <= 0) {
+      return num_det;
     }
 
     if (keep_top_k > -1) {

@@ -259,6 +259,19 @@ class TestMatrixNMSError(unittest.TestCase):
                     score_threshold=score_threshold,
                     post_threshold=post_threshold)
 
+            def test_empty():
+                # when all score are lower than threshold
+                try:
+                    fluid.layers.matrix_nms(
+                        bboxes=boxes_data,
+                        scores=scores_data,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k,
+                        score_threshold=10.,
+                        post_threshold=post_threshold)
+                except Exception as e:
+                    self.fail(e)
+
             def test_coverage():
                 # cover correct workflow
                 try:
