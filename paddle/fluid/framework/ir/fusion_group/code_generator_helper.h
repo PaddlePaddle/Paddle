@@ -44,10 +44,11 @@ static inline std::string VarName(int index) {
 
 class OperationExpression {
  public:
-  explicit OperationExpression(std::string op_type, std::vector<int> input_ids,
-                               std::vector<int> output_ids,
-                               std::string rhs_type, std::string lhs_type,
-                               std::unordered_map<int, bool> intermediate_state)
+  explicit OperationExpression(
+      std::string op_type, const std::vector<int>& input_ids,
+      const std::vector<int>& output_ids, std::string rhs_type,
+      std::string lhs_type,
+      const std::unordered_map<int, bool>& intermediate_state = {})
       : op_type_(op_type),
         input_ids_(input_ids),
         output_ids_(output_ids),

@@ -35,6 +35,7 @@ __device__ inline double Sqrt(double x) { return sqrt(x); }
 
 )";
 
+// List some bulit-in functions of __half implemented in cuda_fp16.hpp
 static constexpr char predefined_cuda_functions_fp16[] = R"(
 #define __HALF_TO_US(var) *(reinterpret_cast<unsigned short *>(&(var)))
 #define __HALF_TO_CUS(var) *(reinterpret_cast<const unsigned short *>(&(var)))
@@ -193,12 +194,22 @@ __CUDA_FP16_DECL__ __half __hdiv(__half a, __half b) {
     return v;
 }
 
+__CUDA_FP16_DECL__ __half __hneg(const __half a)
+{
+    __half zero;
+    zero = __float2half(0.0);
+    return __hsub(zero, a);
+}
 
 /* Some basic arithmetic operations expected of a builtin */
 __device__ __forceinline__ __half operator+(const __half &lh, const __half &rh) { return __hadd(lh, rh); }
 __device__ __forceinline__ __half operator-(const __half &lh, const __half &rh) { return __hsub(lh, rh); }
 __device__ __forceinline__ __half operator*(const __half &lh, const __half &rh) { return __hmul(lh, rh); }
 __device__ __forceinline__ __half operator/(const __half &lh, const __half &rh) { return __hdiv(lh, rh); }
+
+/* Unary plus and inverse operators */
+__device__ __forceinline__ __half operator+(const __half &h) { return h; }
+__device__ __forceinline__ __half operator-(const __half &h) { return __hneg(h); }
 
 /* Some basic comparison operations to make it look like a builtin */
 __device__ __forceinline__ bool operator==(const __half &lh, const __half &rh) { return __heq(lh, rh); }
