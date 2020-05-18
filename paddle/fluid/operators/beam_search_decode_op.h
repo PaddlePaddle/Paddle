@@ -156,12 +156,12 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
   PADDLE_ENFORCE_NE(
       step_ids.empty(), true,
       platform::errors::InvalidArgument("Input(Ids) should not be empty."
-                                        "But the input step_ids is empty."));
+                                        "But the Input(Ids) is empty."));
   PADDLE_ENFORCE_EQ(
       step_ids.size(), step_scores.size(),
       platform::errors::InvalidArgument(
           "The size of Input(Ids) and Input(Scores) should be "
-          "the same. But the value of Input(Ids) and Input(Scores) "
+          "the same. But the size of Input(Ids) and Input(Scores) "
           "are not equal."));
   const size_t step_num = step_ids.size();
   const size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;

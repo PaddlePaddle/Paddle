@@ -131,8 +131,8 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GT(
         step_num, 0UL,
         platform::errors::InvalidArgument(
-            "beam search steps, which is the size of"
-            "Input(Ids) LoDTensorArray. beam search steps should should"
+            "beam search steps, which is the"
+            "size of Input(Ids) LoDTensorArray. beam search steps should "
             "be larger than 0, but received %d. ",
             step_num));
     const size_t source_num = ids->at(0).lod().at(0).size() - 1;
