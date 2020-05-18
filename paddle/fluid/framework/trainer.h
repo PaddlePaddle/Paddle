@@ -64,8 +64,8 @@ class TrainerBase {
   Dataset* dataset_ptr_;
 
   // For dump param or field
-  bool need_dump_field_;
-  bool need_dump_param_;
+  bool need_dump_field_ = false;
+  bool need_dump_param_ = false;
   std::string dump_fields_path_;
   std::string dump_converter_;
   std::vector<std::string> dump_param_;

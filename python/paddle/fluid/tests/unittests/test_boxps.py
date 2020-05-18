@@ -91,12 +91,14 @@ class TestBoxPSPreload(unittest.TestCase):
     """  TestCases for BoxPS Preload """
 
     def test_boxps_cpu(self):
-        self.run_boxps_preload(True)
+        self.run_boxps_preload(True, True)
+        self.run_boxps_preload(True, False)
 
     def test_boxps_gpu(self):
-        self.run_boxps_preload(False)
+        self.run_boxps_preload(False, True)
+        self.run_boxps_preload(False, False)
 
-    def run_boxps_preload(self, is_cpu=True):
+    def run_boxps_preload(self, is_cpu=True, random_with_lineid=False):
         program = fluid.Program()
         with fluid.program_guard(program):
             x = fluid.layers.data(
@@ -117,7 +119,7 @@ class TestBoxPSPreload(unittest.TestCase):
             ) if is_cpu or not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
-            batch_size = 2
+            batch_size = 100
 
             def binary_print(slot, fout):
                 fout.write(str(len(slot)) + " ")
@@ -159,12 +161,13 @@ class TestBoxPSPreload(unittest.TestCase):
                 sync_steps=-1)
             optimizer.minimize(loss)
 
-            program._pipeline_opt["dump_fields"] = ["fc.tmp_0", "fc.tmp_0@GRAD"]
+            program._pipeline_opt[
+                "dump_fields"] = ["fc.tmp_0", "fc.tmp_0@GRAD", "hehe"]
             program._pipeline_opt["dump_fields_path"] = "./dump_log/"
             program._pipeline_opt["dump_param"] = ["fc.w_0"]
             program._pipeline_opt["enable_random_dump"] = True
-            program._pipeline_opt["dump_interval"] = 1
-            program._pipeline_opt["random_with_lineid"] = False
+            program._pipeline_opt["dump_interval"] = 10
+            program._pipeline_opt["random_with_lineid"] = random_with_lineid
 
             exe.run(fluid.default_startup_program())
             datasets[0].load_into_memory()

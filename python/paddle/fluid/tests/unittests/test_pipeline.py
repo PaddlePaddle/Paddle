@@ -241,6 +241,8 @@ class TestPipeline(unittest.TestCase):
 
             for f in filelist:
                 os.remove(f)
+            if os.path.isdir("dump_log"):
+                shutil.rmtree("dump_log")
 
     def test_pipeline(self):
         self.single_section(True)

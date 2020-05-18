@@ -134,16 +134,11 @@ void DeviceWorker::DumpField(const Scope& scope, int dump_mode,
   size_t batch_size = device_reader_->GetCurBatchSize();
   auto& ins_id_vec = device_reader_->GetInsIdVec();
   auto& ins_content_vec = device_reader_->GetInsContentVec();
-  batch_size = ins_id_vec.size();
-  std::vector<std::string> ars(batch_size);
-
-  std::vector<bool> hit(batch_size, false);
-  if (dump_mode == 1) {
-    PADDLE_ENFORCE_EQ(batch_size, ins_id_vec.size(),
-                      platform::errors::PreconditionNotMet(
-                          "Must use logkey or insid when you want to dump with "
-                          "random insid hash"));
+  if (ins_id_vec.size() > 0) {
+    batch_size = ins_id_vec.size();
   }
+  std::vector<std::string> ars(batch_size);
+  std::vector<bool> hit(batch_size, false);
 
   std::default_random_engine engine(0);
   std::uniform_int_distribution<size_t> dist(0U, INT_MAX);

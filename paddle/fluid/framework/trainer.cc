@@ -22,23 +22,25 @@ void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
 
 void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
   dump_fields_path_ = desc.dump_fields_path();
-  dump_converter_ = desc.dump_converter();
-  need_dump_field_ = false;
-  if (desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
-    need_dump_field_ = true;
+  if (dump_fields_path_ == "") {
+    VLOG(2) << "dump_fields_path_ is empty";
+    return;
   }
-  if (need_dump_field_) {
-    auto& file_list = dataset_ptr_->GetFileList();
-    if (file_list.size() == 0) {
-      need_dump_field_ = false;
-    }
-  }
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
+  auto& file_list = dataset_ptr_->GetFileList();
+  if (file_list.size() == 0) {
+    VLOG(2) << "file_list is empty";
+    return;
   }
 
-  need_dump_param_ = false;
+  dump_converter_ = desc.dump_converter();
+  if (desc.dump_fields_size() != 0) {
+    need_dump_field_ = true;
+    dump_fields_.resize(desc.dump_fields_size());
+    for (int i = 0; i < desc.dump_fields_size(); ++i) {
+      dump_fields_[i] = desc.dump_fields(i);
+    }
+  }
+
   if (desc.dump_param_size() != 0) {
     need_dump_param_ = true;
     dump_param_.resize(desc.dump_param_size());
@@ -51,6 +53,7 @@ void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
 void TrainerBase::DumpWork(int tid) {
 #ifdef _LINUX
   int err_no = 0;
+  // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);
 
   std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);

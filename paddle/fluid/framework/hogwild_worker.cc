@@ -173,7 +173,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     timeline.Start();
   }
 
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
 

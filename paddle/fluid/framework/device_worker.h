@@ -172,7 +172,7 @@ class DeviceWorker {
   const std::vector<std::string>* dump_param_;
   const std::vector<std::string>* dump_fields_;
 
-  int dump_mode_;
+  int dump_mode_ = 0;
   int dump_interval_ = 10000;
   ChannelWriter<std::string> writer_;
 };

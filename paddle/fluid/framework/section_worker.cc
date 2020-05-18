@@ -416,7 +416,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     accum_num += batch_size;
     main_timer.Pause();
   }
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
   outer_timer.Pause();

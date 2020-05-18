@@ -889,7 +889,7 @@ void DownpourWorker::TrainFiles() {
     thread_scope_->DropKids();
     ++batch_cnt;
   }
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
   if (copy_table_config_.need_copy()) {
