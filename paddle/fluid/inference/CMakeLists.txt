@@ -86,6 +86,9 @@ cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
+if(WIN32)
+    target_link_libraries(paddle_fluid_shared gflags)
+endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)

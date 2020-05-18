@@ -390,6 +390,22 @@ struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
 template <typename ConfigT>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
+struct AnalysisConfig;
+struct NativeConfig;
+struct DemoConfig;
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<AnalysisConfig>(const AnalysisConfig& config);
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig>(const NativeConfig& config);
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<DemoConfig>(const DemoConfig& config);
+
 /// NOTE The following APIs are too trivial, we will discard it in the following
 /// versions.
 ///
@@ -402,9 +418,21 @@ enum class PaddleEngineKind {
 template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
+
+template <>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
+
 PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
+
+#ifdef _WIN32
 PD_INFER_DECL std::string SetCommandLineOption (const char* name, const char* value);
+PD_INFER_DECL void print_FLAGS();
+#endif
 
 }  // namespace paddle
