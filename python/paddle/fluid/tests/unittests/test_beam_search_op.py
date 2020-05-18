@@ -101,12 +101,11 @@ class BeamSearchOpTester(unittest.TestCase):
 class TestBeamSearchOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            pre_ids = fluid.layers.data(
+            pre_ids = fluid.data(
                 name='pre_id', shape=[1], lod_level=2, dtype='int64')
-            pre_scores = fluid.layers.data(
+            pre_scores = fluid.data(
                 name='pre_scores', shape=[1], lod_level=2, dtype='float32')
-            probs = fluid.layers.data(
-                name='probs', shape=[10000], dtype='float32')
+            probs = fluid.data(name='probs', shape=[10000], dtype='float32')
             topk_scores, topk_indices = fluid.layers.topk(probs, k=4)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
@@ -169,7 +168,7 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_preids_dtype():
                 # the dtype of input pre_ids must be int64
-                preids_type_data = fluid.layers.data(
+                preids_type_data = fluid.data(
                     name='preids_type_data',
                     shape=[1],
                     lod_level=2,
@@ -186,7 +185,7 @@ class TestBeamSearchOpError(unittest.TestCase):
 
             def test_prescores_dtype():
                 # the dtype of input pre_scores must be float32
-                prescores_type_data = fluid.layers.data(
+                prescores_type_data = fluid.data(
                     name='prescores_type_data',
                     shape=[1],
                     lod_level=2,
