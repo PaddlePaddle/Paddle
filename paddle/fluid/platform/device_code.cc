@@ -212,10 +212,11 @@ bool CUDADeviceCode::Compile(bool include_path) {
   std::string compute_flag =
       "--gpu-architecture=compute_" + std::to_string(compute_capability);
   std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
+  std::string include_option;
   if (include_path) {
     std::string cuda_include_path = FindCUDAIncludePath();
     if (!cuda_include_path.empty()) {
-      std::string include_option = "--include-path=" + cuda_include_path;
+      include_option = "--include-path=" + cuda_include_path;
       options.push_back(include_option.c_str());
     }
   }

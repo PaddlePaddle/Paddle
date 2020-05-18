@@ -176,7 +176,6 @@ void TestMainImpl(std::string func_name, std::string code_str,
   bool is_float16 = std::type_index(typeid(T)) ==
                     std::type_index(typeid(paddle::platform::float16));
 
-  paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
   device_code.Compile(is_float16);
