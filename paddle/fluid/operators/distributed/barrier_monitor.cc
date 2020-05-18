@@ -86,15 +86,6 @@ bool BarrierMonitor::IsReady() {
   }
 }
 
-void BarrierMonitor::Invalid() {
-  std::unique_lock<std::mutex> lck(mutex_);
-  valid_ = false;
-  release_ = true;
-  send_barrier_queue->Clear();
-  recv_barrier_queue->Clear();
-  workder_cv_.notify_all();
-}
-
 void BarrierMonitor::Swap(bool is_valid) {
   std::unique_lock<std::mutex> lck(mutex_);
 
