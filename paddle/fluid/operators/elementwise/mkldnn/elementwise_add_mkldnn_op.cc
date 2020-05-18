@@ -85,6 +85,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       in->set_format(out->format());
     };
 
+    //TODO(jczaja): Fix this
     auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
     if (dx) {
       blas.VCOPY(dout->numel(), dout->data<T>(),
