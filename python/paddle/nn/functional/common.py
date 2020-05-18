@@ -25,6 +25,9 @@ from ...fluid.layers import pad2d  #DEFINE_ALIAS
 from ...fluid.layers import unfold  #DEFINE_ALIAS
 from ...fluid.layers import assign  #DEFINE_ALIAS
 
+#from ...fluid.layers import fc  #DEFINE_ALIAS
+from ...fluid.layers import pad_constant_like  #DEFINE_ALIAS
+
 __all__ = [
     'dropout',
     #       'embedding',
@@ -32,7 +35,7 @@ __all__ = [
     'label_smooth',
     'one_hot',
     'pad',
-    #       'pad_constant_like',
+    'pad_constant_like',
     'pad2d',
     'unfold',
     #       'bilinear_tensor_product',
@@ -44,12 +47,15 @@ __all__ = [
 def interpolate(input,
                 size=None,
                 scale_factor=None,
-                mode='bilinear',
-                align_corners=True,
+                mode='nearest',
+                align_corners=False,
                 align_mode=1,
                 data_format='NCHW',
                 name=None):
     """
+	:alias_main: paddle.nn.functional.interpolate
+	:alias: paddle.nn.functional.interpolate,paddle.nn.functional.common.interpolate
+
     This op resizes a batch of images.
     The input must be a 3-D Tensor of the shape (num_batches, channels, in_w)
     or 4-D (num_batches, channels, in_h, in_w), or a 5-D Tensor of the shape
@@ -191,12 +197,12 @@ def interpolate(input,
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
              And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
-                       'bicubic' and 'trilinear' currently. Default: 'BILINEAR'
+        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+                       'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
-                               Default: True
+                               Default: False
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
                             for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.

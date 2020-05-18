@@ -169,11 +169,11 @@ class UpSample(layers.Layer):
              And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
-                       'bicubic' and 'trilinear' currently. Default: 'BILINEAR'
+                       'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
-                               Default: True
+                               Default: False
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
                             for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
@@ -222,8 +222,8 @@ class UpSample(layers.Layer):
     def __init__(self,
                  size=None,
                  scale_factor=None,
-                 mode='bilinear',
-                 align_corners=True,
+                 mode='nearest',
+                 align_corners=False,
                  align_mode=1,
                  data_format='NCHW'):
         super(UpSample, self).__init__()
