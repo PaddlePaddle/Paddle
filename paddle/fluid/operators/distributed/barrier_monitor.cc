@@ -58,22 +58,22 @@ void BarrierMonitor::Monitor() {
 
   while (running_) {
     int timer = 0;
-    VLOG(3) << "running timer: " << timer << " barrier: " << barrier_type
-            << " sendQ:" << send_barrier_queue->Size()
-            << " recvQ: " << recv_barrier_queue->Size();
 
-    while (timer < kMaxWaitMS) {
-      if (IsReady()) {
-        Swap();
-        break;
+    if (IsReady()) {
+      Swap(true);
+    } else {
+      VLOG(3) << "running timer: " << timer << " barrier: " << barrier_type
+              << " sendQ:" << send_barrier_queue->Size()
+              << " recvQ: " << recv_barrier_queue->Size();
+
+      timer++;
+      if (timer >= kMaxWaitMS) {
+        VLOG(1) << "time out of " << kMaxRetryTimes
+                << ", need barreir: " << barrier_type << " retry";
+        Swap(false);
       } else {
-        timer++;
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
-    }
-
-    if (timer >= kMaxWaitMS) {
-      Invalid();
     }
   }
 }
@@ -95,10 +95,10 @@ void BarrierMonitor::Invalid() {
   workder_cv_.notify_all();
 }
 
-void BarrierMonitor::Swap() {
+void BarrierMonitor::Swap(bool is_valid) {
   std::unique_lock<std::mutex> lck(mutex_);
 
-  valid_ = true;
+  valid_ = is_valid;
   release_ = true;
 
   if (barrier_type == BarrierType::kSendBarrier) {
