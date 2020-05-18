@@ -83,11 +83,15 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
     LoDTensor* score_tensor, bool reverse, bool sort_by_score) const {
   size_t src_num = sentence_vector_list.size();
 
-  PADDLE_ENFORCE_NE(src_num, 0,
-                    platform::errors::InvalidArgument("src_num has wrong value."
-                                                      "src_num should not be 0,"
-                                                      "But received %d.",
-                                                      src_num));
+  PADDLE_ENFORCE_NE(
+      src_num, 0,
+      platform::errors::InvalidArgument(
+          "src_num is the sequence number of the first decoding step"
+          ", indicating by Input(Ids)[0].lod[0].size."
+          "src_num has wrong value."
+          "src_num should not be 0,"
+          "But received %d.",
+          src_num));
 
   std::vector<size_t> source_level_lod = {0};
   std::vector<size_t> sentence_level_lod = {0};
@@ -151,13 +155,14 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
                                      LoDTensor* score_tensor) const {
   PADDLE_ENFORCE_NE(
       step_ids.empty(), true,
-      platform::errors::InvalidArgument("step num should be larger than 0."
+      platform::errors::InvalidArgument("Input(Ids) should not be empty."
                                         "But the input step_ids is empty."));
-  PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
-                    platform::errors::InvalidArgument(
-                        "step_ids and step_scores should be the same."
-                        "But the value of step_ids and step_scores "
-                        "are not equal."));
+  PADDLE_ENFORCE_EQ(
+      step_ids.size(), step_scores.size(),
+      platform::errors::InvalidArgument(
+          "The size of Input(Ids) and Input(Scores) should be "
+          "the same. But the value of Input(Ids) and Input(Scores) "
+          "are not equal."));
   const size_t step_num = step_ids.size();
   const size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
   std::vector<SentenceVector<T>> sentence_vector_list(
