@@ -165,12 +165,6 @@ class TestSequenceMaskOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            def test_input_dtype():
-                # the dtype of input must be int64
-                fluid.layers.sequence_mask(input_data, maxlen=4)
-
-            self.assertRaises(TypeError, test_input_dtype)
-
 
 if __name__ == '__main__':
     unittest.main()
