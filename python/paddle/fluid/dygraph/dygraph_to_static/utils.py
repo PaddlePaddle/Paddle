@@ -628,7 +628,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
 class NameNodeReplaceTransformer(gast.NodeTransformer):
     """
-    This class transform specfice gast.Name node to replace node
+    This class replaces specified gast.Name node by replace_node.
     """
 
     def __init__(self, root_node, target_name, replace_node):
@@ -644,9 +644,9 @@ class NameNodeReplaceTransformer(gast.NodeTransformer):
         return node
 
 
-class ForNodeParser(object):
+class ForNodeVisitor(object):
     """
-    This class parse python for statement, get transformed 3 statement components of for node
+    This class parses python for statement, get transformed 3 statement components of for node
     three key statements:
         1). init_stmts: list[node], prepare nodes of for loop, may not only one
         2). cond_stmt: node, condition node to judge whether continue loop
@@ -664,7 +664,7 @@ class ForNodeParser(object):
     def __init__(self, for_node):
         assert isinstance(
             for_node, gast.For
-        ), "Input node for the initialization of ForNodeParser is not gast.For node."
+        ), "Input node for the initialization of ForNodeVisitor is not gast.For node."
         # 1. original for node
         self.node = for_node
 
@@ -806,9 +806,7 @@ class ForNodeParser(object):
                     ],
                     value=self.iter_args[0])
         else:
-            # TODO: slice bug, only support int32 index
-            index_init_node = get_constant_variable_node(
-                self.iter_idx_name, 0, dtype='int32')
+            index_init_node = get_constant_variable_node(self.iter_idx_name, 0)
         return index_init_node
 
     def _build_var_shape_assign_node(self):

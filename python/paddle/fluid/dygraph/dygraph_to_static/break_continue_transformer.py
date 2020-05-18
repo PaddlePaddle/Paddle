@@ -19,7 +19,7 @@ import gast
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeParser
+from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = ['BreakContinueTransformer']
@@ -67,7 +67,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
             node, gast.For), "Input node is NOT gast.For in get_for_stmt_nodes"
 
         # 1. parse current gast.For node
-        current_for_node_parser = ForNodeParser(node)
+        current_for_node_parser = ForNodeVisitor(node)
         stmts_tuple = current_for_node_parser.parse()
         if stmts_tuple is None:
             return [node]
