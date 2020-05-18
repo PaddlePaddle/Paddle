@@ -31,7 +31,7 @@ class BeamSearchOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_NOT_NULL(scores,
                             platform::errors::NotFound(
-                                "Input(score) of BeamSearchOp is not found."));
+                                "Input(scores) of BeamSearchOp is not found."));
     PADDLE_ENFORCE_NOT_NULL(
         pre_ids, platform::errors::NotFound(
                      "Input(pre_ids) of BeamSearchOp is not found."));
