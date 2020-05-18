@@ -26,7 +26,7 @@ __global__ void KeDequantize(const T* in, const float* dict, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num) {
     if (in[idx] < 0) {
-      out[idx] = dict[in[idx] + 128];
+      out[idx] = -dict[in[idx] + 128];
     } else {
       out[idx] = dict[in[idx]];
     }
