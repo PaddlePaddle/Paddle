@@ -40,7 +40,7 @@ place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
 if fluid.is_compiled_with_cuda():
-    fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
+    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 train_parameters = {
     "learning_strategy": {
