@@ -92,6 +92,7 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
 ListenAndServOp::~ListenAndServOp() { Stop(); }
 
 void ListenAndServOp::Stop() {
+  distributed::BarrierMonitor::GetInstance()->Release();
   rpc_service_->ShutDown();
   server_thread_->join();
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
@@ -473,6 +474,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
     rpc_service_->WaitServerReady();
+    // Write to a file of server selected port for python use.
+    SavePort();
 
     barrier->WaitServerWeakup();
     std::this_thread::sleep_for(std::chrono::milliseconds(1200));
@@ -481,9 +484,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     barrier->ServerWeakup();
 
     CacheVarsType(inputs, recv_scope);
-
-    // Write to a file of server selected port for python use.
-    SavePort();
 
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);

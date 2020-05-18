@@ -126,6 +126,8 @@ void BarrierMonitor::Release() {
   barrier_type = BarrierType::kRecvBarrier;
   send_barrier_queue->Clear();
   recv_barrier_queue->Clear();
+  workder_cv_.notify_all();
+  server_cv_.notify_all();
 }
 
 bool BarrierMonitor::Wait() {
