@@ -44,8 +44,8 @@ __all__ = [
 def interpolate(input,
                 size=None,
                 scale_factor=None,
-                mode='bilinear',
-                align_corners=True,
+                mode='nearest',
+                align_corners=False,
                 align_mode=1,
                 data_format='NCHW',
                 name=None):
@@ -94,12 +94,9 @@ def interpolate(input,
     .. code-block:: text
 
         For scale_factor:
-
             if align_corners = True && out_size > 1 :
               scale_factor = (in_size-1.0)/(out_size-1.0)
-
             else:
-
               scale_factor = float(in_size/out_size)
 
 
@@ -192,21 +189,22 @@ def interpolate(input,
              And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
              Default: None.
         mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
-                       'bicubic' and 'trilinear' currently. Default: 'BILINEAR'
+                       'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
-                               Default: True
-        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
-                            for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
+                               Default: False
+        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the example above,
+                            it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from:'NCW', `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name(str, optional): The default value is None.
+                             Normally there is no need for user to set this property.
+                             For more information, please refer to :ref:`api_guide_Name`
     Returns:
         A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
