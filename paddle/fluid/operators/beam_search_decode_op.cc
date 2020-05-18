@@ -128,23 +128,31 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
     const size_t step_num = ids->size();
-    PADDLE_ENFORCE_GT(step_num, 0UL,
-                      platform::errors::InvalidArgument(
-                          "beam search steps should be larger than"
-                          "0, but received %d. ",
-                          step_num));
+    PADDLE_ENFORCE_GT(
+        step_num, 0UL,
+        platform::errors::InvalidArgument(
+            "beam search steps, which is the size of"
+            "Input(Ids) LoDTensorArray. beam search steps should should"
+            "be larger than 0, but received %d. ",
+            step_num));
     const size_t source_num = ids->at(0).lod().at(0).size() - 1;
-    PADDLE_ENFORCE_GT(source_num, 0UL, platform::errors::InvalidArgument(
-                                           "source_num should be larger than"
-                                           "0, but received %d. ",
-                                           source_num));
+    PADDLE_ENFORCE_GT(
+        source_num, 0UL,
+        platform::errors::InvalidArgument(
+            "source_num is the sequence number of the"
+            "first decoding step, indicating by Input(Ids)[0].lod[0].size. "
+            "The number of source_num should be larger than"
+            "0, but received %d. ",
+            source_num));
 
     for (size_t i = 0; i < step_num; ++i) {
       PADDLE_ENFORCE_EQ(
           ids->at(i).lod().size(), 2UL,
-          platform::errors::InvalidArgument("Level of LodTensor should be"
-                                            "2, but received %d. ",
-                                            ids->at(i).lod().size()));
+          platform::errors::InvalidArgument(
+              "For the i step in beam search steps,"
+              "the size of Input(Ids)[i].lod() should larger than 2,"
+              "but received %d. ",
+              ids->at(i).lod().size()));
     }
 
     size_t beam_size = ctx.Attr<int>("beam_size");
