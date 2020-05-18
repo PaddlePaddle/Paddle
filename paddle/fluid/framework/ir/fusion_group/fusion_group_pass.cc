@@ -30,6 +30,14 @@ namespace ir {
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("fusion_group_pass", graph);
   if (Get<bool>("use_gpu")) {
+    // TODO(liuyiqun): open this check.
+    // if (!platform::CUDADeviceCode::IsAvailable()) {
+    //   LOG(WARNING)
+    //       << "Disable fusion_group because CUDA Driver or NVRTC is not
+    //       avaiable.";
+    //   return 0;
+    // }
+
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     AddStatis(num_elementwise_groups);
@@ -61,7 +69,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
       subgraph.DetectIntermediateOutWithGraph(graph);
     }
     if (subgraph.IsValid(min_subgraph_size)) {
-      subgraph.SetFuncName("FusedElementwise" + std::to_string(index++));
+      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {
         InsertFusionGroupOp(graph, &subgraph);
         num_subgraphs++;
