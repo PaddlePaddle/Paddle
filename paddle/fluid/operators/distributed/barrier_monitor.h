@@ -158,7 +158,7 @@ class BarrierMonitor {
   static std::unique_ptr<BarrierMonitor> monitor_;
 
   int workers_;
-  bool working_ = false;
+  bool pending_ = false;
   bool running_ = false;
   bool valid_ = false;
   bool release_ = false;
