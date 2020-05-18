@@ -43,6 +43,7 @@ class GatherOp : public framework::OperatorWithKernel {
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
     ctx->SetOutputDim("Out", output_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
