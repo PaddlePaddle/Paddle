@@ -209,7 +209,10 @@ std::set<int> CodeGenerator::DistilIntermediateIds(
   for (size_t i = 0; i < expressions.size(); i++) {
     for (auto id : expressions[i].GetOutputIds()) {
       auto intermediate_state = expressions[i].GetIntermediateState();
-      if (intermediate_state[id]) intermediate_ids.insert(id);
+      if (intermediate_state.find(id) != intermediate_state.end() &&
+          intermediate_state[id]) {
+        intermediate_ids.insert(id);
+      }
     }
   }
   return intermediate_ids;
