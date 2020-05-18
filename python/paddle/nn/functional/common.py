@@ -214,7 +214,7 @@ def interpolate(input,
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
     Returns:
-        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_h, channels),
+        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
     Raises:
