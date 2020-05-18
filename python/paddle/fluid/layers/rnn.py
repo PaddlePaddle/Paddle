@@ -2996,7 +2996,7 @@ def beam_search(pre_ids,
     check_variable_and_dtype(pre_ids, 'pre_ids', ['int64'], 'beam_search')
     check_variable_and_dtype(pre_scores, 'pre_scores', ['float32', 'float64'],
                              'beam_search')
-    check_type(ids, 'ids', Variable, 'beam_search')
+    check_type(ids, 'ids', (Variable, type(None)), 'beam_search')
     check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
                              'beam_search')
     helper = LayerHelper('beam_search', **locals())
