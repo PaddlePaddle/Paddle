@@ -656,8 +656,10 @@ void AnalyzeEvent(
 
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
       Event analyze_event = (*analyze_events)[i][j];
-      SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
-               &event_items, &event_idx, main_thread_event_name);
+      if (!(analyze_event.role() == EventRole::kSpecial && !merge_thread)) {
+        SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
+                 &event_items, &event_idx, main_thread_event_name);
+      }
     }
 
     auto table_size = event_items.size();
