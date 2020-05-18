@@ -34,10 +34,10 @@ static void DataCopy(const framework::LoDTensor &src_item,
       // Convert to desired Paddle layout, apart from grads of filter
       // as params are not a subject to paddle's data_format
       framework::innerTransDataLayoutFromMKLDNN(
-          src_item.layout(),
-          fetch_var_name == framework::GradVarName("Filter")
-              ? framework::DataLayout::kNCHW
-              : paddle::platform::get_cur_paddle_data_layout(),
+          src_item.layout(), fetch_var_name == framework::GradVarName("Filter")
+                                 ? framework::DataLayout::kNCHW
+                                 : paddle::platform::MKLDNNDeviceContext::tls()
+                                       .get_cur_paddle_data_layout(),
           src_item, &out, platform::CPUPlace());
       TensorCopySync(out, platform::CPUPlace(), dst_item);
     } else {
@@ -107,14 +107,14 @@ class FetchOp : public framework::OperatorBase {
 
     if (fetch_var->IsType<framework::LoDTensor>()) {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
-      auto *dst_item = &(boost::get<framework::LoDTensor>(fetch_list->at(col)));
+      auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
       fetch_list->at(col) = tmp;
       auto &dst_item =
-          boost::get<framework::LoDTensorArray>(fetch_list->at(col));
+          BOOST_GET(framework::LoDTensorArray, fetch_list->at(col));
       for (size_t i = 0; i < src_item.size(); ++i) {
         DataCopy(src_item[i], fetch_var_name, &dst_item[i]);
       }

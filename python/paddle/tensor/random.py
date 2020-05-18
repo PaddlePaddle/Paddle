@@ -14,13 +14,6 @@
 
 # TODO: define random functions  
 
-# __all__ = ['gaussin', 
-#            'uniform', 
-#            'shuffle',
-#            'randn',
-#            'rand',
-#            'randint']
-
 import numpy as np
 
 from ..fluid import core
@@ -31,7 +24,17 @@ from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_t
 from ..fluid.layers import uniform_random, utils
 from ..fluid.layers.tensor import fill_constant
 
-__all__ = ['randperm', 'randn', 'randint', 'rand']
+from ..fluid.io import shuffle  #DEFINE_ALIAS
+
+__all__ = [
+    #       'gaussin',
+    #       'uniform',
+    'shuffle',
+    'randn',
+    'rand',
+    'randint',
+    'randperm'
+]
 
 
 def randint(low,
@@ -44,6 +47,9 @@ def randint(low,
             seed=0,
             name=None):
     """
+	:alias_main: paddle.randint
+	:alias: paddle.randint,paddle.tensor.randint,paddle.tensor.random.randint
+
     This function returns a Tensor filled with random integers from the "discrete uniform" distribution of the
     specified data type in the interval [low, high). If high is None (the default), then results are from [0, low).
 
@@ -82,8 +88,9 @@ def randint(low,
 
     Examples:
         .. code-block:: python
+
             import paddle
-            import paddle.tensor as tensor
+            import paddle.fluid as fluid
 
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
@@ -98,7 +105,7 @@ def randint(low,
             # example 3:
             # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = padddle.randint(low=-5, high=5, shape=var_shape, dtype="int32")
+            result_3 = paddle.randint(low=-5, high=5, shape=var_shape, dtype="int32")
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = paddle.randint(low=-5, high=5, shape=var_shape_int32, dtype="int64")
 
@@ -206,6 +213,9 @@ def randn(shape,
           stop_gradient=True,
           name=None):
     """
+	:alias_main: paddle.randn
+	:alias: paddle.randn,paddle.tensor.randn,paddle.tensor.random.randn
+
     This function returns a tensor filled with random numbers from a normal 
     distribution with mean 0 and variance 1 (also called the standard normal
     distribution).
@@ -314,6 +324,9 @@ def randperm(n,
              stop_gradient=True,
              seed=0):
     """
+	:alias_main: paddle.randperm
+	:alias: paddle.randperm,paddle.tensor.randperm,paddle.tensor.random.randperm
+
     ${comment}
 
     Args:
@@ -395,6 +408,9 @@ def randperm(n,
 
 def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
     """
+	:alias_main: paddle.rand
+	:alias: paddle.rand,paddle.tensor.rand,paddle.tensor.random.rand
+
     This OP initializes a variable with random values sampled from a
     uniform distribution in the range [0, 1).
 

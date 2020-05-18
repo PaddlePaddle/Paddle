@@ -36,9 +36,15 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     const int batch_size = static_cast<int>(input->dims()[0]);
     const int width = static_cast<int>(input->dims()[1]);
 
-    PADDLE_ENFORCE_GE(batch_size, 0,
-                      "batch_size(dims[0]) must be nonnegative.");
-    PADDLE_ENFORCE_GE(width, 0, "width(dims[1]) must be nonnegative.");
+    PADDLE_ENFORCE_GE(
+        batch_size, 0,
+        platform::errors::InvalidArgument(
+            "batch_size(dims[0]) must be nonnegative. but it is %d.",
+            batch_size));
+    PADDLE_ENFORCE_GE(
+        width, 0,
+        platform::errors::InvalidArgument(
+            "width(dims[1]) must be nonnegative. but it is %d.", width));
 
     std::vector<T> ins_vector;
     framework::TensorToVector(*input, context.device_context(), &ins_vector);

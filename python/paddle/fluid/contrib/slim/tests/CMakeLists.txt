@@ -57,7 +57,7 @@ endfunction()
 
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 25 
-function(inference_qat2_int8_image_classification_test target qat_model_dir fp32_model_dir dataset_path quantized_ops)
+function(inference_qat2_int8_image_classification_test target qat_model_dir fp32_model_dir dataset_path ops_to_quantize)
     py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/qat2_int8_image_classification_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
@@ -68,11 +68,11 @@ function(inference_qat2_int8_image_classification_test target qat_model_dir fp32
                  --batch_size 10
                  --batch_num 2
                  --acc_diff_threshold 0.1
-                 --quantized_ops ${quantized_ops})
+                 --ops_to_quantize ${ops_to_quantize})
 endfunction()
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20 
-function(inference_qat2_int8_nlp_test target qat_model_dir fp32_model_dir dataset_path labels_path quantized_ops)
+function(inference_qat2_int8_nlp_test target qat_model_dir fp32_model_dir dataset_path labels_path)
     py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/qat2_int8_nlp_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
@@ -83,8 +83,7 @@ function(inference_qat2_int8_nlp_test target qat_model_dir fp32_model_dir datase
 		 --labels ${labels_path}
                  --batch_size 10
                  --batch_num 2
-                 --acc_diff_threshold 0.1
-		 --quantized_ops ${quantized_ops})
+                 --acc_diff_threshold 0.1)
 endfunction()
 
 function(download_qat_data install_dir data_file)
@@ -99,12 +98,26 @@ function(download_qat_model install_dir data_file)
     endif()
 endfunction()
 
-function(save_qat_model_test target qat_model_dir fp32_model_save_path int8_model_save_path quantized_ops)
+function(save_qat_ic_model_test target qat_model_dir fp32_model_save_path int8_model_save_path ops_to_quantize)
     py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py
             ARGS --qat_model_path ${qat_model_dir}
 	         --fp32_model_save_path ${fp32_model_save_path}
 	         --int8_model_save_path ${int8_model_save_path}
-		 --quantized_ops ${quantized_ops})
+		 --ops_to_quantize ${ops_to_quantize})
+endfunction()
+
+function(save_qat_nlp_model_test target qat_model_dir fp32_model_save_path int8_model_save_path)
+    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py
+            ARGS --qat_model_path ${qat_model_dir}
+	         --fp32_model_save_path ${fp32_model_save_path}
+	         --int8_model_save_path ${int8_model_save_path})
+endfunction()
+
+function(convert_model2dot_test target model_path save_graph_dir save_graph_name)
+    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/convert_model2dot.py
+            ARGS --model_path ${model_path}
+	         --save_graph_dir ${save_graph_dir}
+	         --save_graph_name ${save_graph_name})
 endfunction()
 
 if(WIN32)
@@ -113,9 +126,6 @@ if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
     list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
 endif()
-
-# Disable unittest for random error temporary
-list(REMOVE_ITEM TEST_OPS test_quantization_scale_pass)
 
 if(LINUX AND WITH_MKLDNN)
 
@@ -213,7 +223,7 @@ if(LINUX AND WITH_MKLDNN)
 
 	### QATv2 for image classification
 
-	set(QAT2_IC_QUANTIZED_OPS "conv2d,pool2d")
+	set(QAT2_IC_OPS_TO_QUANTIZE "conv2d,pool2d")
 
 	# QAT2 ResNet50 with input/output scales in `fake_quantize_moving_average_abs_max` operators,
 	# with weight scales in `fake_dequantize_max_abs` operators
@@ -221,32 +231,30 @@ if(LINUX AND WITH_MKLDNN)
 	set(FP32_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
 	set(QAT2_RESNET50_MODEL_ARCHIVE "ResNet50_qat_perf.tar.gz")
 	download_qat_model(${QAT2_RESNET50_MODEL_DIR} ${QAT2_RESNET50_MODEL_ARCHIVE})
-	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
+	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_OPS_TO_QUANTIZE})
 
 	# QAT2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
 	# with weight scales in `fake_dequantize_max_abs` operators
 	set(QAT2_RESNET50_RANGE_MODEL_DIR "${QAT_INSTALL_DIR}/ResNet50_qat_range")
 	set(QAT2_RESNET50_RANGE_MODEL_ARCHIVE "ResNet50_qat_range.tar.gz")
 	download_qat_model(${QAT2_RESNET50_RANGE_MODEL_DIR} ${QAT2_RESNET50_RANGE_MODEL_ARCHIVE})
-	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_range_mkldnn ${QAT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
+	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_range_mkldnn ${QAT2_RESNET50_RANGE_MODEL_DIR}/ResNet50_qat_range ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_OPS_TO_QUANTIZE})
 
 	# QAT2 ResNet50 with input/output scales in `fake_quantize_range_abs_max` operators and the `out_threshold` attributes,
 	# with weight scales in `fake_channel_wise_dequantize_max_abs` operators
 	set(QAT2_RESNET50_CHANNELWISE_MODEL_DIR "${QAT_INSTALL_DIR}/ResNet50_qat_channelwise")
 	set(QAT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE "ResNet50_qat_channelwise.tar.gz")
 	download_qat_model(${QAT2_RESNET50_CHANNELWISE_MODEL_DIR} ${QAT2_RESNET50_CHANNELWISE_MODEL_ARCHIVE})
-	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_channelwise_mkldnn ${QAT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
+	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_channelwise_mkldnn ${QAT2_RESNET50_CHANNELWISE_MODEL_DIR}/ResNet50_qat_channelwise ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_OPS_TO_QUANTIZE})
 
 	# QAT2 MobileNetV1
         set(QAT2_MOBILENETV1_MODEL_DIR "${QAT_INSTALL_DIR}/MobileNet_qat_perf")
 	set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
 	set(QAT2_MOBILENETV1_MODEL_ARCHIVE "MobileNet_qat_perf.tar.gz")
 	download_qat_model(${QAT2_MOBILENETV1_MODEL_DIR} ${QAT2_MOBILENETV1_MODEL_ARCHIVE})
-	inference_qat2_int8_image_classification_test(test_qat2_int8_mobilenetv1_mkldnn ${QAT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf/float ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_QUANTIZED_OPS})
+	inference_qat2_int8_image_classification_test(test_qat2_int8_mobilenetv1_mkldnn ${QAT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf/float ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH} ${QAT2_IC_OPS_TO_QUANTIZE})
 	
 	### QATv2 for NLP
-
-	set(QAT2_NLP_QUANTIZED_OPS "fc,reshape2,transpose2,matmul")
 
 	set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
 	set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")
@@ -261,17 +269,21 @@ if(LINUX AND WITH_MKLDNN)
 	set(FP32_ERNIE_MODEL_ARCHIVE "ernie_fp32_model.tar.gz")
 	set(FP32_ERNIE_MODEL_DIR "${QAT_INSTALL_DIR}/Ernie_float")
 	download_qat_fp32_model(${FP32_ERNIE_MODEL_DIR} ${FP32_ERNIE_MODEL_ARCHIVE})
-	inference_qat2_int8_nlp_test(test_qat2_int8_ernie_mkldnn ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH} ${NLP_LABLES_PATH} ${QAT2_NLP_QUANTIZED_OPS})
+	inference_qat2_int8_nlp_test(test_qat2_int8_ernie_mkldnn ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${FP32_ERNIE_MODEL_DIR}/ernie_fp32_model ${NLP_DATA_PATH} ${NLP_LABLES_PATH})
 
 	### Save QAT2 FP32 model or QAT2 INT8 model
         
 	set(QAT2_INT8_RESNET50_SAVE_PATH "${QAT_INSTALL_DIR}/ResNet50_qat2_int8")
 	set(QAT2_FP32_RESNET50_SAVE_PATH "${QAT_INSTALL_DIR}/ResNet50_qat2_fp32")
-	save_qat_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_RESNET50_SAVE_PATH} ${QAT2_INT8_RESNET50_SAVE_PATH} ${QAT2_IC_QUANTIZED_OPS})
+	save_qat_ic_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_RESNET50_SAVE_PATH} ${QAT2_INT8_RESNET50_SAVE_PATH} ${QAT2_IC_OPS_TO_QUANTIZE})
 
 	set(QAT2_INT8_ERNIE_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_int8")
 	set(QAT2_FP32_ERNIE_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_fp32")
-	save_qat_model_test(save_qat2_model_ernie ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QAT2_FP32_ERNIE_SAVE_PATH} ${QAT2_INT8_ERNIE_SAVE_PATH} ${QAT2_NLP_QUANTIZED_OPS})
+	save_qat_nlp_model_test(save_qat2_model_ernie ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QAT2_FP32_ERNIE_SAVE_PATH} ${QAT2_INT8_ERNIE_SAVE_PATH})
+
+	# Convert QAT2 model to dot and pdf files 
+	set(QAT2_INT8_ERNIE_DOT_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_int8_dot_file")
+	convert_model2dot_test(convert_model2dot_ernie ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QAT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_qat2_int8")
 
 endif()
 

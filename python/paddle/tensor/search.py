@@ -18,14 +18,20 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid import core, layers
 
 # TODO: define searching & indexing functions of a tensor  
+from ..fluid.layers import argmin  #DEFINE_ALIAS
+from ..fluid.layers import argsort  #DEFINE_ALIAS
+from ..fluid.layers import has_inf  #DEFINE_ALIAS
+from ..fluid.layers import has_nan  #DEFINE_ALIAS
+from ..fluid.layers import topk  #DEFINE_ALIAS
+
 __all__ = [
     'argmax',
-    #            'argmin',
-    #            'argsort',
-    #            'has_inf',
-    #            'has_nan',
-    #            'masked_select',
-    #            'topk',
+    'argmin',
+    'argsort',
+    'has_inf',
+    'has_nan',
+    #       'masked_select',
+    'topk',
     'where',
     'index_select',
     'nonzero',
@@ -38,6 +44,9 @@ from paddle.common_ops_import import *
 
 def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
     """
+	:alias_main: paddle.argmax
+	:alias: paddle.argmax,paddle.tensor.argmax,paddle.tensor.search.argmax
+
     This OP computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
@@ -128,11 +137,14 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
 
 def index_select(input, index, dim=0):
     """
+	:alias_main: paddle.index_select
+	:alias: paddle.index_select,paddle.tensor.index_select,paddle.tensor.search.index_select
+
     Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
     the entries in `index` which is a Tensor. The returned tensor has the same number 
     of dimensions as the original `input` tensor. The dim-th dimension has the same 
     size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
-        
+
     Args:
         input (Variable): The input tensor variable.
         index (Variable): The 1-D tensor containing the indices to index.
@@ -140,7 +152,7 @@ def index_select(input, index, dim=0):
 
     Returns:
         Variable: A Tensor with same data type as `input`.
-        
+
     Examples:
         .. code-block:: python
             import paddle
@@ -189,6 +201,9 @@ def index_select(input, index, dim=0):
 
 def nonzero(input, as_tuple=False):
     """
+	:alias_main: paddle.nonzero
+	:alias: paddle.nonzero,paddle.tensor.nonzero,paddle.tensor.search.nonzero
+
     Return a tensor containing the indices of all non-zero elements of the `input` 
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
     in `input`, each containing the indices (in that dimension) of all non-zero elements 
@@ -196,7 +211,7 @@ def nonzero(input, as_tuple=False):
     as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
     number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
-        
+
     Args:
         inputs (Variable): The input tensor variable.
         as_tuple (bool): Return type, Tensor or tuple of Tensor.
@@ -273,6 +288,9 @@ def nonzero(input, as_tuple=False):
 
 def sort(input, axis=-1, descending=False, out=None, name=None):
     """
+	:alias_main: paddle.sort
+	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
+
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
     :attr:`input`.
@@ -362,16 +380,19 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
 
 def where(condition, x, y, name=None):
     """
+	:alias_main: paddle.where
+	:alias: paddle.where,paddle.tensor.where,paddle.tensor.search.where
+
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
- 
+
       out_i =
       \\begin{cases}
       x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
       y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
       \\end{cases}
-  
+
 
     Args:
         condition(Variable): The condition to choose x or y.
@@ -437,6 +458,9 @@ def where(condition, x, y, name=None):
 
 def index_sample(x, index):
     """
+	:alias_main: paddle.index_sample
+	:alias: paddle.index_sample,paddle.tensor.index_sample,paddle.tensor.search.index_sample
+
     **IndexSample Layer**
 
     IndexSample OP returns the element of the specified location of X, 
@@ -475,21 +499,48 @@ def index_sample(x, index):
             import paddle.fluid as fluid
             import numpy as np
 
-            # create x value
-            x_shape = (2, 5)
-            x_type = "float64"
-            x_np = np.random.random(x_shape).astype(x_type)
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
 
-            # create index value
-            index_shape = (2, 3)
-            index_type = "int32"
-            index_np = np.random.randint(low=0, 
-                                         high=x_shape[1],
-                                         size=index_shape).astype(index_type)
+            data_index = np.array([[0, 1, 2],
+                                    [1, 2, 3],
+                                    [0, 0, 0]]).astype('int32')
 
-            x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
-            index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
-            output = paddle.index_sample(x=x, index=index)
+            target_data = np.array([[100, 200, 300, 400],
+                                    [500, 600, 700, 800],
+                                    [900, 1000, 1100, 1200]]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                target = fluid.dygraph.to_variable(target_data)
+
+                out_z1 = paddle.index_sample(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3.]
+                # [6. 7. 8.]
+                # [9. 9. 9.]]
+
+                # Use the index of the maximum value by topk op
+                # get the value of the element of the corresponding index in other tensors
+                top_value, top_index = fluid.layers.topk(x, k=2)
+                out_z2 = paddle.index_sample(target, top_index)
+                print(top_value.numpy())
+                #[[ 4.  3.]
+                # [ 8.  7.]
+                # [12. 11.]]
+
+                print(top_index.numpy())
+                #[[3 2]
+                # [3 2]
+                # [3 2]]
+
+                print(out_z2.numpy())
+                #[[ 400  300]
+                # [ 800  700]
+                # [1200 1100]]
+
 
     """
     helper = LayerHelper("index_sample", **locals())

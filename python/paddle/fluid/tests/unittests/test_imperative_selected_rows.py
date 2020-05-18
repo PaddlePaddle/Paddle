@@ -24,7 +24,7 @@ import paddle.fluid.core as core
 import paddle
 
 
-class SimpleNet(paddle.imperative.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
         super(SimpleNet, self).__init__()
         self.emb = fluid.dygraph.Embedding(

@@ -66,13 +66,20 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
 
     // Validity Check: rank range.
     PADDLE_ENFORCE_LE(output_size, 6,
-                      "The output tensor's rank should be less than 6.");
+                      platform::errors::InvalidArgument(
+                          "The output "
+                          "tensor's rank should be less than 6."));
 
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
-      PADDLE_ENFORCE_GE(cur, 0);
-      PADDLE_ENFORCE_LE(cur, cur_output_size);
+      PADDLE_ENFORCE_GE(cur, 0, platform::errors::InvalidArgument(
+                                    "The insert dimension value should "
+                                    "not be less than 0"));
+      PADDLE_ENFORCE_LE(cur, cur_output_size,
+                        platform::errors::InvalidArgument(
+                            "The insert dimension value shoule not be larger "
+                            "than the dimension size of input tensor"));
       // Move old axis, and insert new axis
       for (int i = cur_output_size; i >= cur; --i) {
         if (output_shape[i] == 1) {
