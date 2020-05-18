@@ -61,8 +61,7 @@ def batch(reader, batch_size, drop_last=False):
                 yield b
                 b = []
         if drop_last == False and len(b) != 0:
-            if not drop_last:
-                yield b
+            yield b
 
     # Batch size check
     batch_size = int(batch_size)
