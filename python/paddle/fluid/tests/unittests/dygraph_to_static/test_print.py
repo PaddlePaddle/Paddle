@@ -185,34 +185,19 @@ class TestPrintVariable(TestPrintBase):
         self.get_static_output()
 
 
-class TestPrintNdArray(TestPrintBase):
+class TestPrintNdArray(TestPrintVariable):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_ndarray
 
-    def test_transform_static_error(self):
-        with self.assertRaises(TypeError):
-            self.get_dygraph_output()
-            self.get_static_output()
 
-
-class TestPrintWithFormat(TestPrintBase):
+class TestPrintWithFormat(TestPrintVariable):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_with_format
 
-    def test_transform_static_error(self):
-        with self.assertRaises(NotImplementedError):
-            self.get_dygraph_output()
-            self.get_static_output()
 
-
-class TestPrintWithFormat2(TestPrintBase):
+class TestPrintWithFormat2(TestPrintVariable):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_with_format2
-
-    def test_transform_static_error(self):
-        with self.assertRaises(NotImplementedError):
-            self.get_dygraph_output()
-            self.get_static_output()
 
 
 class TestPrintWithIfElse(TestPrintVariable):
@@ -225,14 +210,9 @@ class TestPrintMultipleVar(TestPrintVariable):
         self.dygraph_func = dyfunc_print_multi_vars
 
 
-class TestPrintContinueVar(TestPrintBase):
+class TestPrintContinueVar(TestPrintVariable):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_continue_vars
-
-    def test_transform_static_error(self):
-        with self.assertRaises(AssertionError):
-            self.get_dygraph_output()
-            self.get_static_output()
 
 
 if __name__ == '__main__':
