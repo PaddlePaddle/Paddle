@@ -19,14 +19,14 @@ import numpy as np
 import os
 import six
 
-from paddle import fluid
-from paddle.fluid.dygraph import layers
-from paddle.fluid import core
-from paddle.fluid import framework
-from paddle.fluid import backward
+from . import layers
+from .. import core
+from .. import framework
+from .. import backward
 
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle import compat as cpt
+from ..layers import nn
+from .base import switch_to_static_graph
+from ... import compat as cpt
 
 # DESIGN IDEA: Add an special operator, execute static program inside operator.
 #
@@ -371,10 +371,10 @@ class StaticModelRunner(layers.Layer):
     def _append_scale_to_output(self, program):
         # 1. append scale & save var
         scale_output_vars = []
-        with fluid.program_guard(program):
+        with framework.program_guard(program):
             for i, out in enumerate(self._output_descs):
                 var = program.global_block().var(out.name())
-                var = fluid.layers.scale(
+                var = nn.scale(
                     var, 1., name="static_model_runner/scale_{}".format(i))
                 scale_output_vars.append(var)
         # 2. update output names & descs
