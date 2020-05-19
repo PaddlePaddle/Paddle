@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
@@ -274,6 +275,45 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
     FindMovingAverageAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, *in_accum, *in_state, cur_scale_data, moving_rate, out_state,
         out_accum, out_scale);
+  }
+};
+
+template <typename T>
+class FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor {
+ public:
+  explicit FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor(const T scale)
+      : scale_(scale) {}
+  HOSTDEVICE T operator()(const T& x, const T& y) const {
+    return (y >= -scale_ && y <= scale_) ? x : 0;
+  }
+
+ private:
+  T scale_;
+};
+
+template <typename DeviceContext, typename T>
+class FakeQuantOrWithDequantMovingAverageAbsMaxGradKernel
+    : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::LoDTensor>("X");
+    auto* out_scale = context.Input<framework::LoDTensor>("OutScale");
+    auto* d_out =
+        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* d_x =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+
+    if (d_x != nullptr) {
+      const T* d_out_data = d_out->data<T>();
+      const T* x_data = x->data<T>();
+      auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
+      auto scale = *(out_scale->data<T>());
+
+      platform::Transform<DeviceContext> trans;
+      trans(context.template device_context<DeviceContext>(), d_out_data,
+            d_out_data + d_out->numel(), x_data, d_x_data,
+            FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor<T>(scale));
+    }
   }
 };
 

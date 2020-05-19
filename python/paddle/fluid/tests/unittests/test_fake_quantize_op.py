@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 
 
@@ -233,6 +233,7 @@ class TestMovingOpBase(OpTest):
         self.check_output()
 
 
+@skip_check_grad_ci(reason="The gradient of this op is faked.")
 class TestFakeQuantDequantMovingOp(TestMovingOpBase):
     def init_type(self):
         self.op_type = "fake_quantize_dequantize_moving_average_abs_max"
