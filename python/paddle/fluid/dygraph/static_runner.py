@@ -360,10 +360,9 @@ class StaticModelRunner(layers.Layer):
         # NOTE: reverse feed vars
         self._input_names.reverse()
 
-        # Step 4. add scale for multiple outputs case
-        if len(self._output_names) > 1:
-            tmp_program = self._build_program_by_desc(program_desc)
-            self._append_scale_to_output(tmp_program)
+        # Step 4. add scale for outputs
+        tmp_program = self._build_program_by_desc(program_desc)
+        self._append_scale_to_output(tmp_program)
 
         return program_desc
 
