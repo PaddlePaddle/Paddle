@@ -8297,7 +8297,12 @@ def image_resize(input,
         'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
-
+        
+        'BICUBIC' : Bicubic interpolation
+    
+    Linear interpolation is the method of using a line connecting two known quantities 
+    to determine the value of an unknown quantity between the two known quantities.
+    
     Nearest neighbor interpolation is to perform nearest neighbor interpolation
     in both the 3rd dimension(in height direction) and the 4th dimension(in width
     direction) on input tensor.
@@ -8312,6 +8317,11 @@ def image_resize(input,
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
+    
+    Bicubic interpolation is an extension of cubic interpolation for interpolating
+    data points on a two-dimensional regular grid. The interpolated surface is
+    smoother than corresponding surfaces obtained by bilinear interpolation or
+    nearest-neighbor interpolation.
 
     Align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
@@ -8389,27 +8399,45 @@ def image_resize(input,
               output: (N,C,D_out,H_out,W_out) where:
 
               D_out = D_{in} * scale_{factor}
+       
+        Trilinear interpolation:
+          if:
+              align_corners = False , align_mode = 0
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
+        
 
+    For details of linear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Linear_interpolation.
+    
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-
+    
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-
+    
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-
-
+    
+    For details of bicubic interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bicubic_interpolation
 
     Parameters:
-        input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+        input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        out_shape(list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
-             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If
-             a list, each element can be an integer or a Tensor Variable of shape: [1].
+        out_shape (list|tuple|Variable|None): Output shape of image resize
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set.
@@ -8417,7 +8445,7 @@ def image_resize(input,
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR'
+        resample(str): The resample method. It supports 'LINEAR', 'BICUBIC', 'BILINEAR', 'TRILINEAR'
                        and 'NEAREST' currently. Default: 'BILINEAR'
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -8436,25 +8464,27 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
-                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
-                            src_idx = scale*dst_index.
+        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the fomula in the 
+                            the example code above, it can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , 
+                            can be \'1\' for src_idx = scale*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
+        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
-                    'TRILINEAR' or 'NEAREST' currently.
-        ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
+        ValueError: The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR',
+                    'TRILINEAR', 'BICUBIC' or 'NEAREST' currently.
+        ValueError: 'LINEAR' only support 3-D tensor.
+        ValueError: 'BICUBIC', 'BILINEAR' and 'NEAREST' only support 4-D tensor.
         ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 2 for input 4-D tensor.
@@ -8462,7 +8492,7 @@ def image_resize(input,
         ValueError: scale should be greater than zero.
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -8552,7 +8582,11 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
+    if len(input.shape) == 3 and data_format not in ['NCW', 'NWC']:
+        raise ValueError(
+            "Got wrong value for param `data_format`: " + data_format +
+            " received but only `NCW` or `NWC` supported for 3-D input.")
+    elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
             " received but only `NCHW` or `NHWC` supported for 4-D input.")
@@ -8564,9 +8598,9 @@ def image_resize(input,
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if data_format == 'NCHW' or data_format == 'NCDHW':
+    if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
-    if data_format == 'NHWC' or data_format == 'NDHWC':
+    if data_format == 'NHWC' or data_format == 'NDHWC' or data_format == 'NWC':
         data_layout = 'NHWC'
 
     inputs = {"X": input}
@@ -8670,6 +8704,133 @@ def image_resize(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
+
+@templatedoc(op_type="linear_interp")
+def resize_linear(input,
+                  out_shape=None,
+                  scale=None,
+                  name=None,
+                  actual_shape=None,
+                  align_corners=True,
+                  align_mode=1,
+                  data_format='NCW'):
+    """
+    This op resizes the input by performing linear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
+    in priority order.
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in 
+    the future and only use :attr:`out_shape` instead.
+
+    Align_corners and align_mode are optional parameters,the calculation 
+    method of interpolation can be selected by them.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+          
+            if align_corners = True && out_size > 1 :
+
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+
+        Linear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
+              
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
+              W_out = W_{in} * scale_{factor}
+
+    Parameters:
+        input(Variable): 3-D Tensor(NCW), its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize linear
+            layer, the shape is (out_w,). Default: None. If a list, each 
+            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             Default: None.
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occurred in graph constructing stage.
+                                Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCW"`, `"NWC"`.
+            The default is `"NCW"`. When it is `"NCW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_width]`.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  
+            For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+	Variable: 3-D tensor(NCW or NWC).
+    
+    Examples:
+        .. code-block:: python
+	
+	    #declarative mode
+	    import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[None,3,100])
+
+	    output = fluid.layers.resize_linear(input=input,out_shape=[50,])
+
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+ 
+	    input_data = np.random.rand(1,3,100).astype("float32")
+
+	    output_data = exe.run(fluid.default_main_program(),
+                feed={"input":input_data},
+                fetch_list=[output],
+                return_numpy=True)
+ 
+	    print(output_data[0].shape)
+
+	    # (1, 3, 50)
+
+	    #imperative mode
+	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		output = fluid.layers.resize_linear(input=input, out_shape=[50,])
+    		print(output.shape)
+
+		# [1L, 3L, 50L]
+
+    """
+
+    return image_resize(input, out_shape, scale, name, 'LINEAR', actual_shape,
+                        align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="bilinear_interp")
