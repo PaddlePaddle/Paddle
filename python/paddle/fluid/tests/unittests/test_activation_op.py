@@ -1118,41 +1118,6 @@ class TestSwishOpError(unittest.TestCase):
             fluid.layers.swish(x_fp16)
 
 
-class TestMish(TestActivation):
-    def setUp(self):
-        self.op_type = "mish"
-        self.init_dtype()
-
-        X = np.random.uniform(-1., 11., [12, 10]).astype(self.dtype)
-
-        threshold = 10.
-        softplus = X * (X > threshold) + np.exp(X) * (X < -threshold) \
-                 + np.log(np.exp(X) + 1) * (X >= -threshold) * (X <= threshold)
-        out = X * np.tanh(softplus)
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
-        self.attrs = {'threshold': threshold}
-        self.outputs = {'Out': out}
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(['X'], 'Out', max_relative_error=1e-7)
-
-
-# class TestMishOpError(unittest.TestCase):
-#     def test_errors(self):
-#         with program_guard(Program()):
-#             # The input type must be Variable.
-#             self.assertRaises(TypeError, fluid.layers.mish, 1)
-#             # The input dtype must be float16, float32, float64.
-#             x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
-#             self.assertRaises(TypeError, fluid.layers.mish, x_int32)
-#             # support the input dtype is float16
-#             x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
-#             fluid.layers.mish(x_fp16)
-
-
 #------------------ Test Error Activation----------------------
 def create_test_error_class(op_type):
     class TestOpErrors(unittest.TestCase):
@@ -1270,8 +1235,6 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish)
-
-# create_test_act_fp16_class(TestMish)
 
 
 class TestNNReluAPI(unittest.TestCase):

@@ -628,36 +628,6 @@ It is recommended to use the defaults for this activation.
   }
 };
 
-class MishOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Mish operator");
-    AddOutput("Out", "Output of Mish operator");
-    AddAttr<float>(
-        "threshold",
-        "Constant threshold of softplus in Mish operator. Approximate value "
-        "of softplus will be used if absolute value of input is greater than "
-        ":attr:`threshold`")
-        .SetDefault(20.f);
-    AddComment(R"DOC(
-Mish Activation Operator.
-
-..  math::
-    softplus = \begin{cases}
-            x, \text{if } x > \text{threshold} \\
-            e^{x}, \text{if } x < -\text{threshold} \\
-            \ln(1 + e^{x}),  \text{otherwise}
-          \end{cases}
-
-    out = x * \tanh(softplus)
-
-)DOC");
-  }
-};
-
-UNUSED constexpr char MishDoc[] = R"DOC(
-)DOC";
-
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
@@ -1212,36 +1182,4 @@ REGISTER_OP_CPU_KERNEL(
                               ops::AbsGradFunctor<int>>,
     ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
                               ops::AbsGradFunctor<int64_t>>);
-/* ========================================================================== */
-
-/* ==========================   mish register  ============================ */
-REGISTER_OPERATOR(
-    mish, ops::ActivationOp, ops::MishOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::MishGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::MishGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::MishGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer, void>::type);
-REGISTER_OPERATOR(mish_grad, ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInference);
-
-REGISTER_OP_CPU_KERNEL(mish,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::MishFunctor<float>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::MishFunctor<double>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::MishFunctor<int>>,
-                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
-                                             ops::MishFunctor<int64_t>>);
-REGISTER_OP_CPU_KERNEL(
-    mish_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                                         ops::MishGradFunctor<float>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::MishGradFunctor<double>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::MishGradFunctor<int>>,
-    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
-                              ops::MishGradFunctor<int64_t>>);
 /* ========================================================================== */

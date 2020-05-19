@@ -160,7 +160,7 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::ExpGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
-/* ==========================   abs register  ============================ */
+/* ==========================   exp register  ============================ */
 
 REGISTER_OP_CUDA_KERNEL(
     abs, ops::ActivationKernel<plat::CUDADeviceContext, ops::AbsFunctor<float>>,
@@ -180,27 +180,4 @@ REGISTER_OP_CUDA_KERNEL(
                               ops::AbsGradFunctor<int64_t>>,
     ops::ActivationGradKernel<plat::CUDADeviceContext,
                               ops::AbsGradFunctor<plat::float16>>);
-/* ========================================================================== */
-
-/* ==========================   mish register  ============================ */
-
-REGISTER_OP_CUDA_KERNEL(
-    mish,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::MishFunctor<float>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::MishFunctor<double>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::MishFunctor<int>>,
-    ops::ActivationKernel<plat::CUDADeviceContext, ops::MishFunctor<int64_t>>,
-    ops::ActivationKernel<plat::CUDADeviceContext,
-                          ops::MishFunctor<plat::float16>>);
-REGISTER_OP_CUDA_KERNEL(
-    mish_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,
-                                         ops::MishGradFunctor<float>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::MishGradFunctor<double>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::MishGradFunctor<int>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::MishGradFunctor<int64_t>>,
-    ops::ActivationGradKernel<plat::CUDADeviceContext,
-                              ops::MishGradFunctor<plat::float16>>);
 /* ========================================================================== */
