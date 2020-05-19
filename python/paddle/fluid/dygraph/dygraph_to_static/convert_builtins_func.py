@@ -20,18 +20,17 @@ from paddle.fluid import unique_name
 
 
 def converted_len(var):
-    print("invoke variable.__len__ in math_op_path:")
-    # return variable from length ops based on var.type
+    # return variable(length) from shape ops based on var.type
     if isinstance(var, framework.Variable):
         block = current_block(var)
         out = create_new_var(block, 'int32', name='shape')
-        if var.type == core.VarDesc.VarType.LOD_TENSOR:
+        if var.type in [
+                core.VarDesc.VarType.LOD_TENSOR,
+                core.VarDesc.VarType.SELECTED_ROWS
+        ]:
             # Note: Length of var may be known ahead of time in dygraph,
-            # but it probably represents batch size which is variant.
+            # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
-            block.append_op(
-                type='shape', inputs={'Input': var}, outputs={'Out': out})
-        elif var.type == core.VarDesc.VarType.SELECTED_ROWS:
             block.append_op(
                 type='shape', inputs={'Input': var}, outputs={'Out': out})
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
@@ -45,8 +44,7 @@ def converted_len(var):
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
                 % type(var))
         # return shape[0] as length.
-        len_var = out[0]
-        return len_var
+        return out[0]
     else:
         return builtin_len(var)
 

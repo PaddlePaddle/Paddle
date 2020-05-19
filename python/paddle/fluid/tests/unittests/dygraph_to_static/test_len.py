@@ -75,6 +75,8 @@ class TestLenWithTensorArray(TestLen):
         self.func = len_with_lod_tensor_array
 
 
+# Note: Variable(SelectedRows) is not exposed directly in dygraph.
+# The unittest is used to test coverage by fake transformed code.
 def len_with_selected_rows(place):
     block = fluid.default_main_program().global_block()
     # create selected_rows variable
@@ -83,9 +85,11 @@ def len_with_selected_rows(place):
         dtype="float32",
         persistable=True,
         type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+    # y is Variable(SelectedRows)
     y = fluid.layers.merge_selected_rows(var)
     y_len = convert_call(len)(y)
 
+    # z is inner tensor with shape [4, 2]
     z = fluid.layers.get_tensor_from_selected_rows(y)
     z_len = convert_call(len)(z)
 
@@ -101,8 +105,7 @@ def len_with_selected_rows(place):
     x_tensor.set(np_array, place)
 
     exe = fluid.Executor(place=place)
-    result = exe.run(fluid.default_main_program(),
-                     fetch_list=[y, y_len, z, z_len])
+    result = exe.run(fluid.default_main_program(), fetch_list=[y_len, z_len])
     return result
 
 
@@ -112,12 +115,9 @@ class TestLenWithSelectedRows(unittest.TestCase):
         ) else fluid.CPUPlace()
 
     def test_len(self):
-        selected_rows_var, selected_rows_var_len, var_tensor, var_tensor_len = len_with_selected_rows(
+        selected_rows_var_len, var_tensor_len = len_with_selected_rows(
             self.place)
-        print(selected_rows_var)
-        print(selected_rows_var_len)
-        print(var_tensor)
-        print(var_tensor_len)
+        self.assertEqual(selected_rows_var_len, var_tensor_len)
 
 
 if __name__ == '__main__':

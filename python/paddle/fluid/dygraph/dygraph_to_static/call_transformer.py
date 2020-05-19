@@ -36,10 +36,8 @@ class CallTransformer(gast.NodeTransformer):
         assert isinstance(node, gast.Call)
         func_str = ast_to_source_code(node.func).strip()
         try:
-            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin, is_builtin_len
-            is_builtin_func = eval("is_builtin({})".format(func_str))
-            is_len_func = eval("is_builtin_len({})".format(func_str))
-            return not is_len_func and is_builtin_func
+            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin_call
+            return eval("is_builtin_call({})".format(func_str))
         except Exception:
             return False
 

@@ -36,6 +36,14 @@ program_translator = ProgramTranslator()
 to_static_func = program_translator.get_func
 
 
+def is_builtin_call(func):
+    """
+    Determines whether a function needs to be transformed by `convert_call`.
+    Wrappers the complex logic to avoid repeated calls by python `eval`.
+    """
+    return not is_builtin_len(func) and is_builtin(func)
+
+
 def is_builtin(func):
     if isinstance(func, types.BuiltinFunctionType):
         return True
