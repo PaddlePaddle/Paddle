@@ -285,6 +285,7 @@ fi
 
 pip install PyGithub 
 wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+echo "" >> block.txt
 echo "chalsliu" >> block.txt
 cat block.txt
 python ${PADDLE_ROOT}/tools/check_ut.py
