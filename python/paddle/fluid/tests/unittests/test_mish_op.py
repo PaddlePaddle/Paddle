@@ -40,15 +40,17 @@ class TestMishOpError(unittest.TestCase):
 class MishTest(OpTest):
     def setUp(self):
         self.init_input_shape()
+        self.init_input_range()
         self.op_type = "mish"
 
         # mish op contain calculation like: tanh, exp, log, while tanh
         # may have diff on CPUPlace(see test_activation_op.py::TestTanh)
         # set dtype as float32 here.
-        x_np = np.random.uniform(-11, 11, self.x_shape).astype('float32')
+        x_np = np.random.uniform(self.x_range[0], self.x_range[1],
+                                 self.x_shape).astype('float32')
         self.inputs = {'X': x_np}
 
-        self.threshold = 10.
+        self.threshold = 5.
         softplus = x_np * (x_np > self.threshold) + np.exp(x_np) * \
                     (x_np < -self.threshold) + np.log(np.exp(x_np) + 1.) * \
                     (x_np >= -self.threshold) * (x_np <= self.threshold)
@@ -60,11 +62,24 @@ class MishTest(OpTest):
     def init_input_shape(self):
         self.x_shape = (10, 12)
 
+    def init_input_range(self):
+        self.x_range = [-1, 1]
+
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
+
+
+class MishTestUpperThresh(MishTest):
+    def init_input_range(self):
+        self.x_range = [6, 7]
+
+
+class MishTestLowerThresh(MishTest):
+    def init_input_range(self):
+        self.x_range = [-7, -6]
 
 
 if __name__ == "__main__":
