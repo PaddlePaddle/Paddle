@@ -36,8 +36,9 @@ static pybind11::bytes SerializeMessage(
     T &self) {  // NOLINT due to pybind11 convention.
   // Check IsInitialized in Python
   std::string retv;
-  PADDLE_ENFORCE(self.Proto()->SerializePartialToString(&retv),
-                 "Cannot serialize message");
+  PADDLE_ENFORCE_EQ(self.Proto()->SerializePartialToString(&retv), true,
+                    platform::errors::InvalidArgument(
+                        "Failed to serialize input Desc to string."));
   return retv;
 }
 
@@ -66,9 +67,10 @@ void BindProgramDesc(pybind11::module *m) {
       .def("parse_from_string",
            [](pd::ProgramDesc &program_desc, const std::string &data) {
              pd::proto::ProgramDesc *desc = program_desc.Proto();
-             PADDLE_ENFORCE(desc->ParseFromString(data),
-                            "Fail to parse ProgramDesc from string. This could "
-                            "be a bug of Paddle.");
+             PADDLE_ENFORCE_EQ(
+                 desc->ParseFromString(data), true,
+                 platform::errors::InvalidArgument(
+                     "Failed to parse ProgramDesc from binary string."));
            })
       .def("_set_version",
            [](pd::ProgramDesc &self, int64_t version) {
@@ -256,7 +258,9 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", [](pd::OpDesc &self) { return self.Block(); },
-           pybind11::return_value_policy::reference);
+           pybind11::return_value_policy::reference)
+      .def("inputs", &pd::OpDesc::Inputs)
+      .def("outputs", &pd::OpDesc::Outputs);
 }
 
 }  // namespace pybind

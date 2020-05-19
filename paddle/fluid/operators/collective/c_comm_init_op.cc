@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
 #include <stdint.h>
@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -46,7 +46,7 @@ class CCommInitOp : public framework::OperatorBase {
 
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(var);
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
     int nranks = Attr<int>("nranks");
@@ -54,8 +54,8 @@ class CCommInitOp : public framework::OperatorBase {
     int rid = Attr<int>("ring_id");
 
     platform::NCCLCommContext::Instance().CreateNCCLComm(
-        nccl_id, nranks, rank_id, boost::get<platform::CUDAPlace>(place).device,
-        rid);
+        nccl_id, nranks, rank_id,
+        BOOST_GET_CONST(platform::CUDAPlace, place).device, rid);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif

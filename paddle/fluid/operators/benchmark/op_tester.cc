@@ -424,19 +424,19 @@ std::string OpTester::DebugString() {
     switch (attr_type) {
       case framework::proto::AttrType::BOOLEAN: {
         ss << GenSpaces(count) << "type: BOOLEAN\n";
-        ss << GenSpaces(count) << "b: " << boost::get<bool>(attr) << "\n";
+        ss << GenSpaces(count) << "b: " << BOOST_GET_CONST(bool, attr) << "\n";
       } break;
       case framework::proto::AttrType::INT: {
         ss << GenSpaces(count) << "type: INT\n";
-        ss << GenSpaces(count) << "i: " << boost::get<int>(attr) << "\n";
+        ss << GenSpaces(count) << "i: " << BOOST_GET_CONST(int, attr) << "\n";
       } break;
       case framework::proto::AttrType::FLOAT: {
         ss << GenSpaces(count) << "type: FLOAT\n";
-        ss << GenSpaces(count) << "f: " << boost::get<float>(attr) << "\n";
+        ss << GenSpaces(count) << "f: " << BOOST_GET_CONST(float, attr) << "\n";
       } break;
       case framework::proto::AttrType::STRING: {
         ss << GenSpaces(count) << "type: STRING\n";
-        ss << GenSpaces(count) << "s: \"" << boost::get<std::string>(attr)
+        ss << GenSpaces(count) << "s: \"" << BOOST_GET_CONST(std::string, attr)
            << "\"\n";
       } break;
       case framework::proto::AttrType::BOOLEANS: {
@@ -461,7 +461,8 @@ std::string OpTester::DebugString() {
       } break;
       case framework::proto::AttrType::LONG: {
         ss << GenSpaces(count) << "type: LONG\n";
-        ss << GenSpaces(count) << "l: " << boost::get<int64_t>(attr) << "\n";
+        ss << GenSpaces(count) << "l: " << BOOST_GET_CONST(int64_t, attr)
+           << "\n";
       } break;
       case framework::proto::AttrType::LONGS: {
         ss << GenSpaces(count) << "type: LONGS\n";

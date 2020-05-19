@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-
+from paddle.fluid.framework import program_guard, Program
 from op_test import OpTest
+import unittest
+import paddle.fluid as fluid
 
 
 def collect_node_patch(og, max_depth):
@@ -54,7 +56,7 @@ class TestTreeConvOp(OpTest):
         self.fea_size = 3
         self.output_size = 1
         self.max_depth = 2
-        self.batch_size = 1
+        self.batch_size = 2
         self.num_filters = 1
         adj_array = [
             1, 2, 1, 3, 1, 4, 1, 5, 2, 6, 2, 7, 2, 8, 4, 9, 4, 10, 5, 11, 6, 12,
@@ -118,3 +120,45 @@ class TestTreeConvOp(OpTest):
             ],
             axis=0)
         return vec
+
+
+class TestTreeConv_OpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            nodes_vector_1 = np.random.random((10, 5)).astype("float32")
+            edge_set_1 = fluid.layers.data(
+                name='edge_set_1', shape=[10, 2], dtype='float32')
+            # the nodes_vector of tree_conv must be Variable.
+            self.assertRaises(TypeError, fluid.contrib.layers.tree_conv,
+                              nodes_vector_1, edge_set_1, 3)
+
+            nodes_vector_2 = fluid.layers.data(
+                name='vectors2', shape=[10, 5], dtype='float32')
+            edge_set_2 = np.random.random((10, 2)).astype("float32")
+            # the edge_set of tree_conv must be Variable.
+            self.assertRaises(TypeError, fluid.contrib.layers.tree_conv,
+                              nodes_vector_2, edge_set_2, 3)
+
+
+class TestDygraphTreeConv_OpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            TreeConv = fluid.dygraph.nn.TreeConv(
+                feature_size=5, output_size=6, num_filters=1, max_depth=2)
+            nodes_vector_1 = np.random.random((10, 5)).astype("float32")
+            edge_set_1 = fluid.layers.data(
+                name='edge_set_1', shape=[10, 2], dtype='float32')
+            # the nodes_vector of TreeConv must be Variable.
+            self.assertRaises(TypeError, TreeConv, nodes_vector_1, edge_set_1,
+                              3)
+
+            nodes_vector_2 = fluid.layers.data(
+                name='vectors2', shape=[10, 5], dtype='float32')
+            edge_set_2 = np.random.random((10, 2)).astype("float32")
+            # the edge_set of TreeConv must be Variable.
+            self.assertRaises(TypeError, TreeConv, nodes_vector_2, edge_set_2,
+                              3)
+
+
+if __name__ == "__main__":
+    unittest.main()

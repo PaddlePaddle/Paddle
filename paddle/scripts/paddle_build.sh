@@ -136,6 +136,20 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
                 pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp27-cp27m-gcc82" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs4/lib:}
+                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs2/lib/libpython2.7.so"
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp27-cp27mu-gcc82" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs2/lib:}
+                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs4/lib/libpython2.7.so"
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp35-cp35m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
@@ -184,7 +198,6 @@ function cmake_base() {
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
-        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
@@ -198,11 +211,11 @@ function cmake_base() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF}
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DWITH_LITE=${WITH_LITE:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -216,7 +229,6 @@ EOF
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
-        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
@@ -230,11 +242,11 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-        -DWITH_HIGH_LEVEL_API_TEST=${WITH_HIGH_LEVEL_API_TEST:-OFF} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag}
+        -DWITH_GRPC=${grpc_flag} \
+        -DWITH_LITE=${WITH_LITE:-OFF}
 
 }
 
@@ -258,20 +270,27 @@ function check_style() {
     	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
     fi
 
-    pip install cpplint
+
+    pip install cpplint pylint pytest astroid isort
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
 
-    export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
 
-    if ! pre-commit run -a ; then
-        git diff
+    commit_files=on
+    for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
+        if ! pre-commit run --files $file_name ; then
+            git diff
+            commit_files=off
+        fi
+    done 
+    
+    if [ $commit_files == 'off' ];then
+        echo "code format error"
         exit 1
     fi
-
     trap : 0
 }
 
@@ -282,7 +301,7 @@ function check_style() {
 function build_base() {
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
-          parallel_number=$(expr `nproc` - 4)
+          parallel_number=$(expr `nproc` - 8)
       else
           parallel_number=`nproc`
       fi
@@ -411,6 +430,7 @@ function run_mac_test() {
     ========================================
 EOF
         #remove proxy here to fix dist error on mac
+        my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
         # make install should also be test when unittest
@@ -442,6 +462,9 @@ EOF
 
         ctest --output-on-failure -j $2
         paddle version
+        # Recovery proxy to avoid failure in later steps
+        export http_proxy=$my_proxy
+        export https_proxy=$my_proxy
     fi
 }
 
@@ -459,18 +482,20 @@ function fetch_upstream_develop_if_not_exist() {
     if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then 
         git fetch upstream # develop is not fetched
     fi
-}  
+}
 
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
-    cur_branch=`git branch | grep \* | cut -d ' ' -f2` 
+    cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
-    generate_api_spec "$1" "DEV"
+
     git checkout $cur_branch
+    generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr
-    ENABLE_MAKE_CLEAN="OFF"
+    ENABLE_MAKE_CLEAN="ON"
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
 }
 
 function generate_api_spec() {
@@ -486,7 +511,7 @@ function generate_api_spec() {
     source .${spec_kind}_env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
@@ -503,38 +528,44 @@ function generate_api_spec() {
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
     fi   
+    
+    python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+        ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
-    # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
-    if [ "$spec_kind" == "PR" ]; then
-        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
-            ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-    fi
     deactivate
 }
 
 function check_approvals_of_unittest() {
+    if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
+        return 0
+    fi
     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
-    approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
     check_times=$1
-    if [ $1 == 1 ]; then
-        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "TRUE" ]; then
-            echo "==================================="
-            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
-            echo "==================================="
-            exit 0
+    if [ $check_times == 1 ]; then
+        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+        if [ "${approval_line}" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
+            set +x
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "TRUE" ]; then
+                echo "==================================="
+                echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+                echo "==================================="
+                exit 0
+            fi
         fi
-    elif [ $1 == 2 ]; then
+    elif [ $check_times == 2 ]; then
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
         if [ "$unittest_spec_diff" != "" ]; then
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
+            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244`
+            set +x
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25 or luotao1) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
@@ -542,18 +573,20 @@ function check_approvals_of_unittest() {
             fi
         fi
     fi
+    set -x
 }
 
 function check_change_of_unittest() {
-    set +x
     generate_unittest_spec "PR"
     fetch_upstream_develop_if_not_exist
-    git fetch upstream
     git reset --hard upstream/$BRANCH
     cmake_gen $1
     generate_unittest_spec "DEV"
     check_approvals_of_unittest 2
-    set +x
+}
+
+function check_sequence_op_unittest(){
+    /bin/bash ${PADDLE_ROOT}/tools/check_sequence_op.sh
 }
 
 function generate_unittest_spec() {
@@ -584,6 +617,11 @@ function assert_api_spec_approvals() {
     if [ "$?" != 0 ];then
        exit 1
     fi
+}
+
+
+function check_coverage() {
+    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
 }
 
 
@@ -749,6 +787,15 @@ set +x
                         multiple_card_tests="$multiple_card_tests|^$testcase$"
                     fi
                 else
+                    if [[ "${#single_card_tests}" -gt 3000 ]];then
+                        if [[ "$single_card_tests_1" == "" ]]; then 
+                            single_card_tests_1="^$testcase$"
+                        else
+                            single_card_tests_1="$single_card_tests_1|^$testcase$"
+                        fi
+                        continue
+                    fi
+
                     if [[ "$single_card_tests" == "" ]]; then
                         single_card_tests="^$testcase$"
                     else
@@ -762,6 +809,7 @@ set +x
         done <<< "$test_cases";
 
         card_test "$single_card_tests" 1    # run cases with single GPU
+        card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then
@@ -1102,11 +1150,13 @@ function main() {
         build ${parallel_number}
         ;;
       build_and_check)
+        check_style
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
+        check_sequence_op_unittest
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
         example
-        generate_api_spec ${PYTHON_ABI:-""} "PR" 
         assert_api_spec_approvals
         ;;
       build)
@@ -1152,11 +1202,18 @@ function main() {
         check_style
         ;;
       cicheck)
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        enable_unused_var_check
+        parallel_test
+        ;;
+      cicheck_coverage)
         check_approvals_of_unittest 1
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)
@@ -1186,7 +1243,6 @@ function main() {
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py35)
-        check_approvals_of_unittest 1
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}

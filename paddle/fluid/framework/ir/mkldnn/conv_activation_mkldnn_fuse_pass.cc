@@ -58,8 +58,13 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
     // MKLDNN ops use alpha and beta as activation parameters but paddle ops are
     // not generalized
     if (activation_type() == "relu6") {
+      desc->SetAttr(
+          "fuse_alpha",
+          BOOST_GET_CONST(float, activation->Op()->GetAttr("threshold")));
+    } else if (activation_type() == "swish") {
+      // paddle uses beta but mkldnn uses alpha for swish
       desc->SetAttr("fuse_alpha",
-                    boost::get<float>(activation->Op()->GetAttr("threshold")));
+                    activation->Op()->GetAttrIfExists<float>("beta"));
     } else {
       desc->SetAttr("fuse_alpha",
                     activation->Op()->GetAttrIfExists<float>("alpha"));
@@ -95,3 +100,6 @@ REGISTER_PASS(conv_leaky_relu_mkldnn_fuse_pass,
 
 REGISTER_PASS(conv_relu6_mkldnn_fuse_pass,
               paddle::framework::ir::Conv2DReLU6FusePass);
+
+REGISTER_PASS(conv_swish_mkldnn_fuse_pass,
+              paddle::framework::ir::Conv2DSwishFusePass);

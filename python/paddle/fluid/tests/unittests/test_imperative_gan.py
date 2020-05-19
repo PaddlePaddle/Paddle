@@ -22,33 +22,35 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid import Conv2D, Pool2D, FC
+from paddle.fluid import Conv2D, Pool2D, Linear
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
 
 
 class Discriminator(fluid.Layer):
-    def __init__(self, name_scope):
-        super(Discriminator, self).__init__(name_scope)
-        self._fc1 = FC(self.full_name(), size=32, act='elu')
-        self._fc2 = FC(self.full_name(), size=1)
-
-    def forward(self, inputs):
-        x = self._fc1(inputs)
-        return self._fc2(x)
-
-
-class Generator(fluid.Layer):
-    def __init__(self, name_scope):
-        super(Generator, self).__init__(name_scope)
-        self._fc1 = FC(self.full_name(), size=64, act='elu')
-        self._fc2 = FC(self.full_name(), size=64, act='elu')
-        self._fc3 = FC(self.full_name(), size=1)
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self._fc1 = Linear(1, 32, act='elu')
+        self._fc2 = Linear(32, 1)
 
     def forward(self, inputs):
         x = self._fc1(inputs)
         x = self._fc2(x)
-        return self._fc3(x)
+        return x
+
+
+class Generator(fluid.Layer):
+    def __init__(self):
+        super(Generator, self).__init__()
+        self._fc1 = Linear(2, 64, act='elu')
+        self._fc2 = Linear(64, 64, act='elu')
+        self._fc3 = Linear(64, 1)
+
+    def forward(self, inputs):
+        x = self._fc1(inputs)
+        x = self._fc2(x)
+        x = self._fc3(x)
+        return x
 
 
 class TestDygraphGAN(unittest.TestCase):
@@ -65,8 +67,8 @@ class TestDygraphGAN(unittest.TestCase):
         scope = fluid.core.Scope()
         with new_program_scope(
                 main=discriminate_p, startup=startup, scope=scope):
-            discriminator = Discriminator("d")
-            generator = Generator("g")
+            discriminator = Discriminator()
+            generator = Generator()
 
             img = fluid.layers.data(
                 name="img", shape=[2, 1], append_batch_size=False)
@@ -93,8 +95,8 @@ class TestDygraphGAN(unittest.TestCase):
             sgd.minimize(d_loss)
 
         with new_program_scope(main=generate_p, startup=startup, scope=scope):
-            discriminator = Discriminator("d")
-            generator = Generator("g")
+            discriminator = Discriminator()
+            generator = Generator()
 
             noise = fluid.layers.data(
                 name="noise", shape=[2, 2], append_batch_size=False)
@@ -134,9 +136,12 @@ class TestDygraphGAN(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            discriminator = Discriminator("d")
-            generator = Generator("g")
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            discriminator = Discriminator()
+            generator = Generator()
+            sgd = SGDOptimizer(
+                learning_rate=1e-3,
+                parameter_list=(
+                    discriminator.parameters() + generator.parameters()))
 
             d_real = discriminator(to_variable(np.ones([2, 1], np.float32)))
             d_loss_real = fluid.layers.reduce_mean(
@@ -177,9 +182,12 @@ class TestDygraphGAN(unittest.TestCase):
 
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
-            discriminator2 = Discriminator("d")
-            generator2 = Generator("g")
-            sgd2 = SGDOptimizer(learning_rate=1e-3)
+            discriminator2 = Discriminator()
+            generator2 = Generator()
+            sgd2 = SGDOptimizer(
+                learning_rate=1e-3,
+                parameter_list=(
+                    discriminator2.parameters() + generator2.parameters()))
 
             d_real2 = discriminator2(to_variable(np.ones([2, 1], np.float32)))
             d_loss_real2 = fluid.layers.reduce_mean(

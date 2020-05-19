@@ -27,7 +27,7 @@ def monkey_patch_varbase():
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -39,17 +39,17 @@ def monkey_patch_varbase():
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
-                data = np.ones([3, 32, 32], dtype='float32')
+                data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    fc = fluid.dygraph.FC("fc", 4)
+                    linear = fluid.dygraph.Linear(1024, 4)
                     t = to_variable(data)
-                    fc(t)  # call with default weight
+                    linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
-                    fc.weight.set_value(custom_weight)  # change existing weight
-                    out = fc(t)  # call with different weight
+                    linear.weight.set_value(custom_weight)  # change existing weight
+                    out = linear(t)  # call with different weight
 
         """
         assert isinstance(value, (np.ndarray, core.VarBase)), \
@@ -76,7 +76,7 @@ def monkey_patch_varbase():
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -116,13 +116,13 @@ def monkey_patch_varbase():
             self._run_backward(backward_strategy, framework._dygraph_tracer())
         else:
             raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+                "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 
@@ -151,11 +151,8 @@ def monkey_patch_varbase():
 
         """
         if self._grad_ivar() is None:
-            raise ValueError(
-                "%s has no grad, Please set Variable.stop_gradient=False, or "
-                "check if this is the first and only variable need grad, if so, please set its pre-Variable's "
-                "stop_gradient=False, to make sure it has gradient " %
-                self.name)
+            return None
+
         new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
         if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
             return (np.array(new_ivar.value().get_selected_rows().get_tensor()),
@@ -201,19 +198,24 @@ def monkey_patch_varbase():
             # TODO(panyx0718): add more dygraph debug info.
             tensor = self.value().get_tensor()
             if tensor._is_initialized():
-                return 'name %s, dtype: %s shape: %s %s' % (
-                    self.name, self.dtype, self.shape, str(tensor))
+                return 'Variable: %s\n%s' % (self.name, str(tensor))
             else:
-                return 'name %s, shape: %s, not inited' % (self.name,
-                                                           self.shape)
+                return 'Variable: %s, not initialized' % (self.name)
 
-    def __getitem__(self, item):
-        return _getitem_impl_(self, item)
+    def __nonzero__(self):
+        numel = np.prod(self.shape)
+        assert numel == 1, "When Variable is used as the condition of if/while , Variable can only contain one element."
+        tensor = self.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        return bool(np.all(tensor.__array__() > 0))
 
-    for method_name, method in (("set_value", set_value), ("block", block),
-                                ("backward", backward), ("gradient", gradient),
-                                ("__str__", __str__), ("to_string", to_string),
-                                ("__getitem__", __getitem__)):
+    def __bool__(self):
+        return self.__nonzero__()
+
+    for method_name, method in (
+        ("__bool__", __bool__), ("__nonzero__", __nonzero__),
+        ("set_value", set_value), ("block", block), ("backward", backward),
+        ("gradient", gradient), ("__str__", __str__), ("to_string", to_string)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

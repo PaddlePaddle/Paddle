@@ -169,17 +169,25 @@ class LRNOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LRNOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LRNOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("MidOut"),
-                   "MidOut(Out) of LRNOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LRN");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LRN");
+    OP_INOUT_CHECK(ctx->HasOutput("MidOut"), "Output", "MidOut", "LRN");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
+    PADDLE_ENFORCE_EQ(x_dim.size(), 4, platform::errors::InvalidArgument(
+                                           "Input(input) rank should be 4, "
+                                           "but received input rank (%d) != 4",
+                                           x_dim.size()));
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE(n > 0 && n % 2 == 1, "n should be positive odd value");
+    PADDLE_ENFORCE_GT(n, 0UL, platform::errors::InvalidArgument(
+                                  "Argument(n) should be positive, "
+                                  "but received n(%d) not greater than 0",
+                                  n));
+    PADDLE_ENFORCE_EQ(n % 2, 1UL, platform::errors::InvalidArgument(
+                                      "Argument(n) should be odd value, "
+                                      "but received n(%d) is not an odd value",
+                                      n));
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -296,7 +304,7 @@ $$
 
 Function implementation:
 
-Inputs and outpus are in NCHW or NHWC format, while input.shape.ndims() equals 4.
+Inputs and outputs are in NCHW or NHWC format, while input.shape.ndims() equals 4.
 If NCHW, the dimensions 0 ~ 3 represent batch size, feature maps, rows,
 and columns, respectively.
 
@@ -317,10 +325,10 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("MidOut"), "Input(MidOut) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LRNGrad");
+    OP_INOUT_CHECK(ctx->HasInput("MidOut"), "Input", "MidOu", "LRNGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "LRNGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -334,12 +342,6 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      // TODO(jczaja): Add support for NHWC
-      const std::string data_format = ctx.Attr<std::string>("data_format");
-      PADDLE_ENFORCE_NE(
-          data_format, "NHWC",
-          platform::errors::Unimplemented(
-              "LRN MKLDNN grad does not support NHWC data format yet"));
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -348,14 +350,35 @@ class LRNOpGrad : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
         layout_, library_);
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for lrn
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 template <typename T>
 class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Out", this->Output("Out"));
@@ -363,7 +386,6 @@ class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op);
   }
 };
 

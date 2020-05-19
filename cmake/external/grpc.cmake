@@ -44,13 +44,12 @@ ExternalProject_Add(
     # 3. keep only zlib, cares, protobuf, boringssl under "third_party",
     #    checkout and clean other dirs under third_party
     # 4. remove .git, and package the directory.
-    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x.tar.gz"
-    URL_MD5  "1f268a2aff6759839dccd256adcc91cf"
+    URL          http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x_paddle.tar.gz
+    URL_MD5      f5442d137ddccee252e194b1bc90f98c
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    PATCH_COMMAND cp ${PADDLE_SOURCE_DIR}/patches/grpc/grpc_library.h ${GRPC_SOURCES_DIR}/src/extern_grpc/include/grpcpp/impl/codegen/grpc_library.h && cp ${PADDLE_SOURCE_DIR}/patches/grpc/completion_queue.h ${GRPC_SOURCES_DIR}/src/extern_grpc/include/grpcpp/impl/codegen/completion_queue.h
     # NOTE(yuyang18):
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.

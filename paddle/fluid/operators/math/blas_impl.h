@@ -152,6 +152,11 @@ struct CBlas<float> {
     platform::dynload::mkl_scsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    platform::dynload::cblas_strsm(args...);
+  }
 };
 
 template <>
@@ -273,6 +278,11 @@ struct CBlas<double> {
     platform::dynload::mkl_dcsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    platform::dynload::cblas_dtrsm(args...);
+  }
 };
 
 #else
@@ -298,6 +308,11 @@ struct CBlas<float> {
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
   }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    cblas_strsm(args...);
+  }
 };
 
 template <>
@@ -320,6 +335,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_dgemv(args...);
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    cblas_dtrsm(args...);
   }
 };
 #endif
@@ -777,11 +797,11 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
  * When user calls this API, the multiplication of two big matrixes is split
  * into multiplication of several (head_number_) small matrixes. e.g. if Mat A
  * is [3, 24] and Mat B is [24, 4], when multiple A and B with head_number as
- * 4, Mat A will be splitted as 4 matrix of [3, 6] and Mat B will be
- * (horizontally) splitted as 4 matrix of [6, 4]. The result of final matrix
+ * 4, Mat A will be split as 4 matrix of [3, 6] and Mat B will be
+ * (horizontally) split as 4 matrix of [6, 4]. The result of final matrix
  * will be 4 matrix of [3, 4], i.e. [3, 16].
  * Another example is A is [3, 8], B is [2, 16], head_number is 4. In this
- * case, A will be splitted as [3, 2], B will be (vertically) splitted as
+ * case, A will be split as [3, 2], B will be (vertically) split as
  * [2, 4]. The final result will be 4 matrix of 4 matrix of [3,4], i.e. [3, 16]
  */
 template <typename DeviceContext>
@@ -898,6 +918,17 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
                   ldb, beta, c, ldc);
 }
 #endif
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                            CBLAS_TRANSPOSE transA,
+                                            CBLAS_DIAG diag, int M, int N,
+                                            T alpha, const T *A, int lda, T *B,
+                                            int ldb) const {
+  CBlas<T>::TRSM(CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda,
+                 B, ldb);
+}
 
 }  // namespace math
 }  // namespace operators

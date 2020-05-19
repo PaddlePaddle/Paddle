@@ -61,7 +61,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
     rpc_server_->Complete();
   } else {
     // Async
-    if (!sync_mode_) {
+    if (distributed_mode_ != DistributedMode::kSync) {
       VLOG(3) << "async process var: " << varname;
       if (varname == BATCH_BARRIER_MESSAGE) {
         PADDLE_THROW(
@@ -82,7 +82,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
         scope->Rename(varname, run_varname);
       }
 
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(run_varname)) {
+      if (distributed_mode_ == DistributedMode::kGeo &&
+          AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(run_varname)) {
         auto& grad_slr =
             scope->FindVar(run_varname)->Get<framework::SelectedRows>();
         AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
@@ -116,7 +117,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
           << " out_var_name: " << out_var_name << " trainer_id: " << trainer_id
           << " table_name: " << table_name;
 
-  if (sync_mode_) {
+  if (distributed_mode_ == DistributedMode::kSync) {
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(3) << "sync: recv fetch barrier message";
       rpc_server_->IncreaseBatchBarrier(kRequestGet);
@@ -140,10 +141,13 @@ bool RequestGetHandler::Handle(const std::string& varname,
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
       VLOG(1) << "Table name empty? " << table_name.empty();
-      VLOG(1) << "AsyncSparseParamUpdateRecorder " << varname << " exist "
-              << AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(
-                     varname);
-      if (AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
+      if (distributed_mode_ == DistributedMode::kGeo) {
+        VLOG(1) << "AsyncSparseParamUpdateRecorder " << varname << " exist "
+                << AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(
+                       varname);
+      }
+      if (distributed_mode_ == DistributedMode::kGeo &&
+          AsyncSparseParamUpdateRecorder::GetInstance()->HasParam(varname) &&
           !table_name.empty()) {
         std::vector<int64_t> updated_rows;
         AsyncSparseParamUpdateRecorder::GetInstance()->GetAndClear(

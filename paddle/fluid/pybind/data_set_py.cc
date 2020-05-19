@@ -197,6 +197,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_download_cmd", &framework::Dataset::SetDownloadCmd,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc,
            py::call_guard<py::gil_scoped_release>())
       .def("get_filelist", &framework::Dataset::GetFileList,
@@ -209,6 +211,8 @@ void BindDataset(py::module *m) {
            &framework::Dataset::GetFleetSendBatchSize,
            py::call_guard<py::gil_scoped_release>())
       .def("get_hdfs_config", &framework::Dataset::GetHdfsConfig,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_download_cmd", &framework::Dataset::GetDownloadCmd,
            py::call_guard<py::gil_scoped_release>())
       .def("get_data_feed_desc", &framework::Dataset::GetDataFeedDesc,
            py::call_guard<py::gil_scoped_release>())
@@ -235,6 +239,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("get_memory_data_size", &framework::Dataset::GetMemoryDataSize,
            py::call_guard<py::gil_scoped_release>())
+      .def("get_pv_data_size", &framework::Dataset::GetPvDataSize,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize,
            py::call_guard<py::gil_scoped_release>())
       .def("set_queue_num", &framework::Dataset::SetChannelNum,
@@ -243,9 +249,28 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_parse_content", &framework::Dataset::SetParseContent,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_parse_logkey", &framework::Dataset::SetParseLogKey,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_merge_by_sid", &framework::Dataset::SetMergeBySid,
+           py::call_guard<py::gil_scoped_release>())
+      .def("preprocess_instance", &framework::Dataset::PreprocessInstance,
+           py::call_guard<py::gil_scoped_release>())
+      .def("postprocess_instance", &framework::Dataset::PostprocessInstance,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_current_phase", &framework::Dataset::SetCurrentPhase,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_enable_pv_merge", &framework::Dataset::SetEnablePvMerge,
+           py::call_guard<py::gil_scoped_release>())
+
       .def("set_merge_by_lineid", &framework::Dataset::SetMergeByInsId,
            py::call_guard<py::gil_scoped_release>())
       .def("merge_by_lineid", &framework::Dataset::MergeByInsId,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_generate_unique_feasigns",
+           &framework::Dataset::SetGenerateUniqueFeasign,
+           py::call_guard<py::gil_scoped_release>())
+      .def("generate_local_tables_unlock",
+           &framework::Dataset::GenerateLocalTablesUnlock,
            py::call_guard<py::gil_scoped_release>())
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())

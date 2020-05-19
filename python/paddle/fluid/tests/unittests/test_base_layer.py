@@ -19,8 +19,8 @@ import paddle.fluid as fluid
 
 
 class L1(fluid.Layer):
-    def __init__(self, prefix):
-        super(L1, self).__init__(prefix)
+    def __init__(self):
+        super(L1, self).__init__()
         self._param_attr = fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.1))
         self.w1 = self.create_parameter(
@@ -33,20 +33,20 @@ class L1(fluid.Layer):
 
 
 class L2(fluid.Layer):
-    def __init__(self, prefix):
-        super(L2, self).__init__(prefix)
-        self.layer1 = L1(self.full_name())
-        self.layer2 = L1(self.full_name())
+    def __init__(self):
+        super(L2, self).__init__()
+        self.layer1 = L1()
+        self.layer2 = L1()
 
     def forward(self):
         return self.layer1() + self.layer2()
 
 
 class L3(fluid.Layer):
-    def __init__(self, prefix):
-        super(L3, self).__init__(prefix)
-        self.layer1 = L2(self.full_name())
-        self.layer2 = L2(self.full_name())
+    def __init__(self):
+        super(L3, self).__init__()
+        self.layer1 = L2()
+        self.layer2 = L2()
 
     def forward(self):
         return self.layer1() + self.layer2()
@@ -55,23 +55,33 @@ class L3(fluid.Layer):
 class TestBaseLayer(unittest.TestCase):
     def test_one_level(self):
         with fluid.dygraph.guard():
-            l = L1('test_one_level')
+            l = L1()
             ret = l()
-            self.assertEqual(l.w1.name, "test_one_level/L1_0.w_0")
-            self.assertEqual(l.w2.name, "test_one_level/L1_0.w_1")
+            expected_names = ['l1.w1', 'l1.w2']
+            idx = 0
+            for name, _ in l.named_parameters(prefix='l1'):
+                self.assertEqual(name, expected_names[idx])
+                idx += 1
             self.assertTrue(np.allclose(ret.numpy(), 0.2 * np.ones([2, 2])))
 
     def test_three_level(self):
         with fluid.dygraph.guard():
-            l = L3('test_three_level')
-            names = [p.name for p in l.parameters()]
+            l = L3()
+            expected_names = [
+                'l3.layer1.layer1.w1',
+                'l3.layer1.layer1.w2',
+                'l3.layer1.layer2.w1',
+                'l3.layer1.layer2.w2',
+                'l3.layer2.layer1.w1',
+                'l3.layer2.layer1.w2',
+                'l3.layer2.layer2.w1',
+                'l3.layer2.layer2.w2',
+            ]
+            idx = 0
+            for name, _ in l.named_parameters(prefix='l3'):
+                self.assertEqual(name, expected_names[idx])
+                idx += 1
             ret = l()
-            self.assertEqual(names[0], "test_three_level/L3_0/L2_0/L1_0.w_0")
-            self.assertEqual(names[1], "test_three_level/L3_0/L2_0/L1_0.w_1")
-            self.assertEqual(names[2], "test_three_level/L3_0/L2_0/L1_1.w_0")
-            self.assertEqual(names[3], "test_three_level/L3_0/L2_0/L1_1.w_1")
-            self.assertEqual(names[4], "test_three_level/L3_0/L2_1/L1_0.w_0")
-            self.assertEqual(names[5], "test_three_level/L3_0/L2_1/L1_0.w_1")
             self.assertTrue(np.allclose(ret.numpy(), 0.8 * np.ones([2, 2])))
 
 

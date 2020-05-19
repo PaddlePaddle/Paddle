@@ -24,33 +24,30 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential('model1',
-                                              fluid.FC('fc1', 1),
-                                              fluid.FC('fc2', 2))
+            model1 = fluid.dygraph.Sequential(
+                fluid.Linear(10, 1), fluid.Linear(1, 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
-            self.assertTrue('fc1' in model1[0]._full_name)
-            model1[1] = fluid.FC('fc2_new', 3)
+            model1[1] = fluid.Linear(1, 3)
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 3])
-            self.assertTrue('fc2_new' in name
-                            for name in [p.name for p in model1.parameters()])
             loss1 = fluid.layers.reduce_mean(res1)
             loss1.backward()
 
-            model2 = fluid.dygraph.Sequential(
-                'model2', ('l1', fluid.FC('l1', 1)), ('l2', fluid.FC('l2', 3)))
+            l1 = fluid.Linear(10, 1)
+            l2 = fluid.Linear(1, 3)
+            model2 = fluid.dygraph.Sequential(('l1', l1), ('l2', l2))
             self.assertEqual(len(model2), 2)
             res2 = model2(data)
-            self.assertTrue('l1' in model2.l1.full_name())
+            self.assertTrue(l1 is model2.l1)
             self.assertListEqual(res2.shape, res1.shape)
             self.assertEqual(len(model1.parameters()), len(model2.parameters()))
             del model2['l2']
             self.assertEqual(len(model2), 1)
             res2 = model2(data)
             self.assertListEqual(res2.shape, [5, 1])
-            model2.add_sublayer('l3', fluid.FC('l3', 3))
-            model2.add_sublayer('l4', fluid.FC('l4', 4))
+            model2.add_sublayer('l3', fluid.Linear(1, 3))
+            model2.add_sublayer('l4', fluid.Linear(3, 4))
             self.assertEqual(len(model2), 3)
             res2 = model2(data)
             self.assertListEqual(res2.shape, [5, 4])

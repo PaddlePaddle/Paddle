@@ -39,13 +39,6 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
     auto fused_adam_node =
         FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
-    auto fused_scale1 =
-        FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
-                     adam_ops, graph);
-    auto fused_scale2 =
-        FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
-                     adam_ops, graph);
-    RemoveCycleDepsBetweenOpNodes(graph, fused_scale1, fused_scale2);
     return fused_adam_node;
   }
 
@@ -96,29 +89,35 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = boost::get<int>(
+    int op_role = BOOST_GET_CONST(
+        int,
         adam_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float beta1 = boost::get<float>(adam_ops[0]->Op()->GetAttr("beta1"));
-    float beta2 = boost::get<float>(adam_ops[0]->Op()->GetAttr("beta2"));
-    float epsilon = boost::get<float>(adam_ops[0]->Op()->GetAttr("epsilon"));
-    bool lazy_mode = boost::get<bool>(adam_ops[0]->Op()->GetAttr("lazy_mode"));
-    int64_t min_row_size_to_use_multithread = boost::get<int64_t>(
-        adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
+    float beta1 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta1"));
+    float beta2 = BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("beta2"));
+    float epsilon =
+        BOOST_GET_CONST(float, adam_ops[0]->Op()->GetAttr("epsilon"));
+    bool lazy_mode =
+        BOOST_GET_CONST(bool, adam_ops[0]->Op()->GetAttr("lazy_mode"));
+    int64_t min_row_size_to_use_multithread = BOOST_GET_CONST(
+        int64_t, adam_ops[0]->Op()->GetAttr("min_row_size_to_use_multithread"));
     for (auto &adam_op : adam_ops) {
-      PADDLE_ENFORCE_EQ(beta1,
-                        boost::get<float>(adam_op->Op()->GetAttr("beta1")));
-      PADDLE_ENFORCE_EQ(beta2,
-                        boost::get<float>(adam_op->Op()->GetAttr("beta2")));
-      PADDLE_ENFORCE_EQ(epsilon,
-                        boost::get<float>(adam_op->Op()->GetAttr("epsilon")));
-      PADDLE_ENFORCE_EQ(lazy_mode,
-                        boost::get<bool>(adam_op->Op()->GetAttr("lazy_mode")));
-      PADDLE_ENFORCE_EQ(min_row_size_to_use_multithread,
-                        boost::get<int64_t>(adam_op->Op()->GetAttr(
-                            "min_row_size_to_use_multithread")));
-      PADDLE_ENFORCE_EQ(op_role,
-                        boost::get<int>(adam_op->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())));
+      PADDLE_ENFORCE_EQ(
+          beta1, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta1")));
+      PADDLE_ENFORCE_EQ(
+          beta2, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("beta2")));
+      PADDLE_ENFORCE_EQ(
+          epsilon, BOOST_GET_CONST(float, adam_op->Op()->GetAttr("epsilon")));
+      PADDLE_ENFORCE_EQ(
+          lazy_mode,
+          BOOST_GET_CONST(bool, adam_op->Op()->GetAttr("lazy_mode")));
+      PADDLE_ENFORCE_EQ(
+          min_row_size_to_use_multithread,
+          BOOST_GET_CONST(int64_t, adam_op->Op()->GetAttr(
+                                       "min_row_size_to_use_multithread")));
+      PADDLE_ENFORCE_EQ(
+          op_role,
+          BOOST_GET_CONST(int, adam_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
@@ -139,6 +138,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     adam_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
     adam_desc.SetOutput("Moment1Out", {fused_vars_name.at("Moment1")});
     adam_desc.SetOutput("Moment2Out", {fused_vars_name.at("Moment2")});
+    adam_desc.SetOutput("Beta1PowOut", {fused_vars_name.at("Beta1Pow")});
+    adam_desc.SetOutput("Beta2PowOut", {fused_vars_name.at("Beta2Pow")});
     adam_desc.SetAttr("beta1", beta1);
     adam_desc.SetAttr("beta2", beta2);
     adam_desc.SetAttr("epsilon", epsilon);
@@ -183,23 +184,25 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     VLOG(6) << "The number of scale op is " << scale_ops.size() << ".";
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = boost::get<int>(
+    int op_role = BOOST_GET_CONST(
+        int,
         scale_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float scale = boost::get<float>(scale_ops[0]->Op()->GetAttr("scale"));
-    float bias = boost::get<float>(scale_ops[0]->Op()->GetAttr("bias"));
+    float scale = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("scale"));
+    float bias = BOOST_GET_CONST(float, scale_ops[0]->Op()->GetAttr("bias"));
     bool bias_after_scale =
-        boost::get<bool>(scale_ops[0]->Op()->GetAttr("bias_after_scale"));
+        BOOST_GET_CONST(bool, scale_ops[0]->Op()->GetAttr("bias_after_scale"));
     for (auto &scale_op : scale_ops) {
-      PADDLE_ENFORCE_EQ(scale,
-                        boost::get<float>(scale_op->Op()->GetAttr("scale")));
-      PADDLE_ENFORCE_EQ(bias,
-                        boost::get<float>(scale_op->Op()->GetAttr("bias")));
+      PADDLE_ENFORCE_EQ(
+          scale, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("scale")));
+      PADDLE_ENFORCE_EQ(
+          bias, BOOST_GET_CONST(float, scale_op->Op()->GetAttr("bias")));
       PADDLE_ENFORCE_EQ(
           bias_after_scale,
-          boost::get<bool>(scale_op->Op()->GetAttr("bias_after_scale")));
-      PADDLE_ENFORCE_EQ(op_role,
-                        boost::get<int>(scale_op->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())));
+          BOOST_GET_CONST(bool, scale_op->Op()->GetAttr("bias_after_scale")));
+      PADDLE_ENFORCE_EQ(
+          op_role,
+          BOOST_GET_CONST(int, scale_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have

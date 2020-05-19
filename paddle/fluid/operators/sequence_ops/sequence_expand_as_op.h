@@ -19,7 +19,6 @@ limitations under the License. */
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -46,13 +45,13 @@ struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
       const platform::CPUDeviceContext &context, const framework::LoDTensor &x,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *out) {
-    int64_t hight = x.dims()[0];
-    int64_t width = framework::product(x.dims()) / hight;
+    int64_t height = x.dims()[0];
+    int64_t width = framework::product(x.dims()) / height;
 
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(context.GetPlace());
 
-    for (int h_id = 0; h_id < hight; ++h_id) {
+    for (int h_id = 0; h_id < height; ++h_id) {
       size_t span = ref_lod[h_id + 1] - ref_lod[h_id];
       if (span == 0) continue;
       const T *src = in_data + h_id * width;
@@ -75,13 +74,25 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     auto *y = context.Input<framework::LoDTensor>("Y");
     auto *out = context.Output<framework::LoDTensor>("Out");
 
-    PADDLE_ENFORCE_EQ(y->lod().empty(), false,
-                      "Input(Y) Tensor of SequenceExpandAsOp does not contain "
-                      "LoD information.");
+    PADDLE_ENFORCE_EQ(
+        y->lod().empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(Y) of SequenceExpandAsOp has wrong LoD information. "
+            "Expected Y's lod is not empty, but received empty lod."));
 
     auto &y_lod = y->lod();
-    PADDLE_ENFORCE_EQ(y_lod.size(), 1, "LoD of Y should be 1.");
-    PADDLE_ENFORCE_GT(y_lod[0].size(), 1, ".");
+    PADDLE_ENFORCE_EQ(y_lod.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) of SequenceExpandAsOp has wrong LoD "
+                          "information. Expected Y's lod level = 1, but "
+                          "received  lod level = %d.",
+                          y_lod.size()));
+    PADDLE_ENFORCE_GT(y_lod[0].size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) of SequenceExpandAsOp has wrong LoD "
+                          "information. Expected the size of Y's lod[0] > 1, "
+                          "but received lod[0].size = %d.",
+                          y_lod[0].size()));
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -109,13 +120,13 @@ struct SequenceExpandAsGradFunctor<platform::CPUDeviceContext, T> {
       const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *dx) {
-    int64_t hight = dx->dims()[0];
-    int64_t width = framework::product(dx->dims()) / hight;
+    int64_t height = dx->dims()[0];
+    int64_t width = framework::product(dx->dims()) / height;
 
     const T *dout_data = dout.data<T>();
     T *dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    for (int64_t h_id = 0; h_id < hight; ++h_id) {
+    for (int64_t h_id = 0; h_id < height; ++h_id) {
       T *dst = dx_data + h_id * width;
       size_t span = ref_lod[h_id + 1] - ref_lod[h_id];
       for (int64_t w_id = 0; w_id < width; ++w_id) {

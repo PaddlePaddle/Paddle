@@ -27,10 +27,13 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+using framework::DataLayout;
+using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = mkldnn::memory;
 
-template <typename T, typename TForward, typename TBackward>
+template <typename T, typename TForward,
+          typename TBackward = mkldnn_dummy_primitive>
 class MKLDNNHandlerT {
  public:
   MKLDNNHandlerT(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
@@ -41,8 +44,8 @@ class MKLDNNHandlerT {
         key_common_(base_key),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
-    if (platform::get_cur_mkldnn_session_id() !=
-        platform::kMKLDNNSessionID_Default) {
+    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
@@ -107,6 +110,13 @@ class MKLDNNHandlerT {
   }
 
  protected:
+  bool isCached() {
+    const std::string key_pd = key_common_ + "@forward_pd";
+    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    return (fwd_pd_ != nullptr);
+  }
+
   template <typename... Args>
   void AcquireForwardPrimitiveDescriptor(Args&&... args) {
     // Forward PD has to be passed to Grad op that
@@ -176,8 +186,8 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    if (platform::get_cur_mkldnn_session_id() !=
-        platform::kMKLDNNSessionID_Default) {
+    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
@@ -351,6 +361,68 @@ class MKLDNNHandler {
   std::string key_common_;
 };
 
+template <typename T>
+class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+ public:
+  BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+                      const mkldnn::engine engine, platform::Place cpu_place,
+                      const Tensor* x, const Tensor* y, Tensor* z,
+                      const std::string uniq_name)
+      : platform::MKLDNNHandlerT<T, dnnl::binary>(
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(framework::vectorize(x->dims()), uniq_name)) {
+    // bradcasting combined with in-place may require longer key
+    auto rankdiff = x->dims().size() - y->dims().size();
+    if (rankdiff > 0) {
+      this->key_ += std::to_string(rankdiff);
+      this->key_common_ += std::to_string(rankdiff);
+    }
+
+    if (!this->isCached()) {
+      PADDLE_ENFORCE_EQ(
+          x->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+      PADDLE_ENFORCE_NE(
+          x->format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for X tensor"));
+
+      PADDLE_ENFORCE_EQ(
+          y->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
+      PADDLE_ENFORCE_NE(
+          y->format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for Y tensor"));
+
+      const auto src_x_tz = framework::vectorize(x->dims());
+      const auto src_y_tz = framework::vectorize(y->dims());
+      const auto dst_tz = framework::vectorize(z->dims());
+
+      const auto src0_md = dnnl::memory::desc(
+          src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      auto src1_md = dnnl::memory::desc(
+          src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
+      if (rankdiff > 0) {
+        std::vector<int64_t> ones(rankdiff, 1);
+        std::vector<int64_t> dims1_ex(src_y_tz);
+        dims1_ex.insert(dims1_ex.begin(), ones.begin(), ones.end());
+        src1_md = src1_md.reshape(dims1_ex);
+      }
+      const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                                       MKLDNNMemoryFormat::any);
+
+      this->AcquireForwardPrimitiveDescriptor(dnnl::algorithm::binary_add,
+                                              src0_md, src1_md, dst_md);
+    }
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
+      const framework::Tensor* input) {
+    const T* input_data = input->data<T>();
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+  }
+};
+
 class SumMKLDNNHandler : public MKLDNNHandler {
  public:
   SumMKLDNNHandler(const platform::MKLDNNDeviceContext& dev_ctx,
@@ -411,7 +483,7 @@ class ActivationMKLDNNHandler
  public:
   ActivationMKLDNNHandler(const std::vector<int64_t>& dims,
                           mkldnn::algorithm algorithm, float alpha, float beta,
-                          const MKLDNNMemoryFormat fmt, bool is_test,
+                          const MKLDNNMemoryFormat fmt,
                           const platform::MKLDNNDeviceContext& dev_ctx,
                           platform::Place cpu_place,
                           const std::string& unique_name)
@@ -419,13 +491,11 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
+            platform::CreateKey(dims, "a", algorithm, unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
-    this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
-        algorithm, md, alpha, beta);
+    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
+                                            algorithm, md, alpha, beta);
   }
 
   ActivationMKLDNNHandler(const std::vector<int64_t>& dims,
@@ -439,7 +509,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
+            platform::CreateKey(dims, "a", algorithm, unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
@@ -978,12 +1048,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
-    }
-
-    if (fuse_activation == "relu6") {
+    } else if (fuse_activation == "relu6") {
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
+                                     fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "swish") {
+      constexpr float scale = 1.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
@@ -1143,13 +1215,14 @@ static void SetDstMemoryQuantized(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
     std::vector<int64_t> dst_tz, const mkldnn::engine& engine,
     std::shared_ptr<mkldnn::memory::desc>& dst_md,  // NOLINT
-    std::shared_ptr<mkldnn::memory>& dst_memory) {  // NOLINT
+    std::shared_ptr<mkldnn::memory>& dst_memory,    // NOLINT
+    MKLDNNMemoryFormat output_format) {
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
   PADDLE_ENFORCE_LE(dst_dims, 5,
                     "Dst memory for quantization can not have dims > 5");
-  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, MKLDNNMemoryFormat::nhwc);
+  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md = platform::MKLDNNMemDesc(
       {dst_tz}, paddle::framework::ToMKLDNNDataType(

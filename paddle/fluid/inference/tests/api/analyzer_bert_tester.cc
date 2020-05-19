@@ -145,18 +145,17 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
   return true;
 }
 
-void SetConfig(AnalysisConfig *config) { config->SetModel(FLAGS_infer_model); }
+void SetConfig(AnalysisConfig *config) {
+  config->SetModel(FLAGS_infer_model);
+  config->DisableFCPadding();
+}
 
-void profile(bool use_mkldnn = false, bool use_ngraph = false) {
+void profile(bool use_mkldnn = false) {
   AnalysisConfig config;
   SetConfig(&config);
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
-  }
-
-  if (use_ngraph) {
-    config.EnableNgraph();
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -168,11 +167,7 @@ void profile(bool use_mkldnn = false, bool use_ngraph = false) {
 
 TEST(Analyzer_bert, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_bert, profile_mkldnn) { profile(true, false); }
-#endif
-
-#ifdef PADDLE_WITH_NGRAPH
-TEST(Analyzer_bert, profile_ngraph) { profile(false, true); }
+TEST(Analyzer_bert, profile_mkldnn) { profile(true); }
 #endif
 
 // Check the fuse status
@@ -187,15 +182,11 @@ TEST(Analyzer_bert, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false, bool use_ngraph = false) {
+void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
-  }
-
-  if (use_ngraph) {
-    cfg.EnableNgraph();
   }
 
   std::vector<std::vector<PaddleTensor>> inputs;
@@ -206,15 +197,7 @@ void compare(bool use_mkldnn = false, bool use_ngraph = false) {
 
 TEST(Analyzer_bert, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_bert, compare_mkldnn) {
-  compare(true, false /* use_mkldnn, no use_ngraph */);
-}
-#endif
-
-#ifdef PADDLE_WITH_NGRAPH
-TEST(Analyzer_bert, compare_ngraph) {
-  compare(false, true /* no use_mkldnn, use_ngraph */);
-}
+TEST(Analyzer_bert, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
 // Compare Deterministic result

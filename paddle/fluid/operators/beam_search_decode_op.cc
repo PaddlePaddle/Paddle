@@ -123,7 +123,7 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     auto& dev_ctx = *pool.Get(dev_place);
 
     framework::RuntimeContext run_ctx(Inputs(), Outputs(), scope);
-    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx, nullptr);
+    framework::ExecutionContext ctx(*this, scope, dev_ctx, run_ctx);
 
     const LoDTensorArray* ids = ctx.Input<LoDTensorArray>("Ids");
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
@@ -191,25 +191,23 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
     PADDLE_ENFORCE(context->HasInput("Ids"),
-                   "BeamSearchDecodeOp must has input Ids");
+                   "BeamSearchDecodeOp must have input Ids");
     PADDLE_ENFORCE(context->HasInput("Scores"),
-                   "BeamSearchDecodeOp must has input Scores");
+                   "BeamSearchDecodeOp must have input Scores");
     PADDLE_ENFORCE(context->HasOutput("SentenceIds"),
-                   "BeamSearchDecodeOp must has output SentenceIds");
+                   "BeamSearchDecodeOp must have output SentenceIds");
     PADDLE_ENFORCE(context->HasOutput("SentenceScores"),
-                   "BeamSearchDecodeOp must has output SentenceScores");
+                   "BeamSearchDecodeOp must have output SentenceScores");
   }
 };
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    for (auto& o : ctx->Output("SentenceIds")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
-    }
-    for (auto& o : ctx->Output("SentenceScores")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_TENSOR);
-    }
+    ctx->SetOutputType("SentenceIds", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType("SentenceScores", framework::proto::VarType::LOD_TENSOR,
+                       framework::ALL_ELEMENTS);
   }
 };
 

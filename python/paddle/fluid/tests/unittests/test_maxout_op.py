@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 import paddle.fluid.core as core
 from op_test import OpTest
 
@@ -34,14 +35,13 @@ class TestMaxOutOp(OpTest):
     def setUp(self):
         self.op_type = "maxout"
         self.init_test_case()
-        input = np.random.random(self.shape).astype("float32")
-        output = self.MaxOut_forward_naive(input, self.groups,
-                                           self.axis).astype("float32")
+        input = np.random.random(self.shape)
+        output = self.MaxOut_forward_naive(input, self.groups, self.axis)
 
         self.inputs = {'X': input}
         self.attrs = {'groups': self.groups, 'axis': self.axis}
 
-        self.outputs = {'Out': output.astype('float32')}
+        self.outputs = {'Out': output}
 
     def test_check_output(self):
         self.check_output()
@@ -95,6 +95,19 @@ class TestMaxOutOpAxisAPI(unittest.TestCase):
             out = fluid.layers.maxout(input, groups=2, axis=2)
 
         self.assertRaises(ValueError, _attr_axis)
+
+
+class TestMaxOutOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.maxout, 1, 2)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.maxout, x_int32, 2)
+            # support the input dtype is float32
+            x_fp32 = fluid.data(name='x_fp32', shape=[12, 10], dtype='float32')
+            fluid.layers.maxout(x_fp32, 2)
 
 
 if __name__ == '__main__':

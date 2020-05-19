@@ -30,35 +30,35 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
 
 class PreparedOp {
  public:
-  static PreparedOp Prepare(const NameVarBaseMap& ins,
-                            const NameVarBaseMap& outs,
-                            const framework::OperatorWithKernel& op,
-                            platform::Place place,
-                            const framework::AttributeMap* attrs);
-
-  inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx_; }
-
-  void Run(const NameVarBaseMap* in, const NameVarBaseMap* out,
-           const framework::AttributeMap* attrs);
-
-  static void PrepareData(const platform::Place& place,
-                          const NameVarBaseMap& ins,
-                          const framework::OperatorWithKernel& op,
-                          const framework::OpKernelType& expected_kernel_key);
-
- private:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             framework::OperatorWithKernel::OpKernelFunc func,
-             platform::DeviceContext* dev_ctx,
-             std::vector<framework::KernelConfig>* kernel_configs);
+             const framework::OperatorWithKernel::OpKernelFunc& func,
+             platform::DeviceContext* dev_ctx);
+
+  static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
+                            const NameVarMap<VarBase>& outs,
+                            const framework::OperatorWithKernel& op,
+                            const platform::Place& place,
+                            const framework::AttributeMap& attrs);
+
+  static PreparedOp Prepare(const NameVarMap<VariableWrapper>& ins,
+                            const NameVarMap<VariableWrapper>& outs,
+                            const framework::OperatorWithKernel& op,
+                            const platform::Place& place,
+                            const framework::AttributeMap& attrs);
+
+  void Run(const NameVarMap<VarBase>& in, const NameVarMap<VarBase>& out,
+           const framework::AttributeMap& attrs);
+
+  void Run(const NameVarMap<VariableWrapper>& ins,
+           const NameVarMap<VariableWrapper>& outs,
+           const framework::AttributeMap& attrs);
 
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
-  std::vector<framework::KernelConfig>* kernel_configs_;
 };
 
 }  // namespace imperative

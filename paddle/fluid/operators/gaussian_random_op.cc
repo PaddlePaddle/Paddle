@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <random>
 #include "paddle/fluid/framework/op_registry.h"
-
+#include "paddle/fluid/operators/fill_constant_op.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -22,8 +22,37 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
 template <typename T>
 class CPUGaussianRandomKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    float mean = context.Attr<float>("mean");
+    float std = context.Attr<float>("std");
+    auto* tensor = context.Output<framework::Tensor>("Out");
+
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
+    std::minstd_rand engine;
+    if (seed == 0) {
+      seed = std::random_device()();
+    }
+    engine.seed(seed);
+    std::normal_distribution<T> dist(mean, std);
+
+    const std::string op_type = "gaussian_random";
+    auto shape = GetShape(context, op_type);
+    tensor->Resize(shape);
+    int64_t size = tensor->numel();
+    T* data = tensor->mutable_data<T>(context.GetPlace());
+
+    for (int64_t i = 0; i < size; ++i) {
+      data[i] = dist(engine);
+    }
+  }
+};
+
+template <typename T>
+class CPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
@@ -50,16 +79,34 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GaussianRandomOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GaussianRandom");
+
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
     }
-    PADDLE_ENFORCE(shape.size() > 0UL,
-                   "shape can be one int or array. shape must be set.");
+    if (shape.empty() && ctx->HasInput("ShapeTensor")) {
+      auto shape_dims = ctx->GetInputDim("ShapeTensor");
+      int num_ele = 1;
+      for (int i = 0; i < shape_dims.size(); ++i) {
+        num_ele *= shape_dims[i];
+      }
+      auto vec_dims = std::vector<int>(num_ele, -1);
+      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
+
+      return;
+    }
+    if (!(ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList"))) {
+      PADDLE_ENFORCE_GT(
+          shape.size(), 0UL,
+          platform::errors::InvalidArgument(
+              "Attribute(shape) of GaussianRandomOp must be set "
+              "and shape.size() > 0, but reveived shape.size() is %d",
+              shape.size()));
+    }
+
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 
@@ -81,6 +128,16 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.device_context(), layout, library);
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -90,7 +147,18 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) "
-                                  "The dimension of random tensor.");
+                                  "The dimension of random tensor.")
+        .SetDefault({});
+    AddInput("ShapeTensor",
+             "(Tensor<int>), optional). The shape of the output."
+             "It has a higher priority than Attr(shape).")
+        .AsDispensable();
+    AddInput("ShapeTensorList",
+             "(vector<Tensor<int>>, optional). The shape of the output. "
+             "It has a higher priority than Attr(shape)."
+             "The shape of the element in vector must be [1].")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<float>("mean",
                    "(float, default 0.0) "
                    "mean of random tensor.")
@@ -131,5 +199,5 @@ REGISTER_OP_WITHOUT_GRADIENT(gaussian_random, ops::GaussianRandomOp,
 REGISTER_OP_CPU_KERNEL(gaussian_random, ops::CPUGaussianRandomKernel<float>,
                        ops::CPUGaussianRandomKernel<double>);
 REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
-                       ops::CPUGaussianRandomKernel<float>,
-                       ops::CPUGaussianRandomKernel<double>);
+                       ops::CPUGaussianRandomBatchSizeLikeKernel<float>,
+                       ops::CPUGaussianRandomBatchSizeLikeKernel<double>);

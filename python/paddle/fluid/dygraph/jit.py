@@ -12,15 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['TracedLayer']
+from __future__ import print_function
 
-from .base import program_desc_tracing_guard, switch_to_static_graph
-from .layers import Layer
+__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
+
+import logging
 from paddle.fluid import core
-from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
-from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
-import paddle.fluid.io as fluid_io
+from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.executor import Executor, scope_guard
+from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.wrapped_decorator import wrap_decorator
+
+logger = logging.getLogger("fluid")
 
 
 def create_program_from_desc(program_desc):
@@ -46,6 +52,122 @@ def extract_vars(inputs):
     return result_list
 
 
+def _dygraph_to_static_func_(dygraph_func):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @dygraph_to_static_func only converts imperative dygraph APIs into
+    declarative net-building APIs, which means it doesn't return immediate
+    digital result as imperative mode. Users should handle Program and Executor
+    by themselves.
+
+    Note:
+    This decorator is NOT our recommended way to transform imperative function
+    to declarative function. We will remove this decorator after we finalize
+    cleaning up code.
+
+    Args:
+        dygraph_func (callable): callable imperative function.
+
+    Returns:
+        Callable: converting imperative dygraph APIs into declarative
+        net-building APIs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import dygraph_to_static_func
+
+          @dygraph_to_static_func
+          def func(x):
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+
+               return x_v
+
+          x = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='float64')
+
+          x_v = func(x)
+          exe = fluid.Executor(fluid.CPUPlace())
+          out = exe.run(fetch_list=[x_v])
+          print(out[0])
+          # [[1. 1. 1.]
+          #  [1. 1. 1.]
+          #  [1. 1. 1.]]
+
+    """
+
+    # TODO: remove this decorator after we finalize training API
+    def __impl__(*args, **kwargs):
+        program_translator = ProgramTranslator()
+        if in_dygraph_mode() or not program_translator.enable_declarative:
+            logger.info(
+                "The decorator 'dygraph_to_static_func' doesn't work in "
+                "dygraph mode or set ProgramTranslator.enable to False. "
+                "We will just return dygraph output.")
+            return dygraph_func(*args, **kwargs)
+        static_func = program_translator.get_func(dygraph_func)
+        return static_func(*args, **kwargs)
+
+    return __impl__
+
+
+dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
+
+
+def _declarative_(dygraph_func):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @declarative handles the Program and Executor of static mode and returns
+    the result as a dygraph VarBase.
+
+    Args:
+        dygraph_func (callable): callable imperative function.
+
+    Returns:
+        VarBase: containing the numerical result.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          from paddle.fluid.dygraph.jit import declarative
+
+
+          @declarative
+          def func(x):
+              x = fluid.dygraph.to_variable(x)
+              if fluid.layers.mean(x) < 0:
+                  x_v = x - 1
+              else:
+                  x_v = x + 1
+              return x_v
+
+          x = np.ones([1, 2])
+          x_v = func(x)
+          print(x_v.numpy()) # [[2. 2.]]
+
+    """
+
+    def __impl__(*args, **kwargs):
+        program_translator = ProgramTranslator()
+        if not program_translator.enable_declarative:
+            logger.info(
+                "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
+                "We will just return dygraph output.")
+            return dygraph_func(*args, **kwargs)
+        return program_translator.get_output(dygraph_func, *args, **kwargs)
+
+    return __impl__
+
+
+declarative = wrap_decorator(_declarative_)
+
+
 @dygraph_only
 def _trace(layer,
            inputs,
@@ -69,25 +191,31 @@ def _trace(layer,
             outputs = original_outputs
         out_vars = [var for var in outputs]
 
-        program_desc, feed_names, fetch_names = tracer.create_program_desc(
+        program_desc, feed_names, fetch_names, parameters = tracer.create_program_desc(
             var_list, feed_prefix, out_vars, fetch_prefix, tmp_prefix)
         tracer.reset()
 
     with _dygraph_guard(None):
         program = create_program_from_desc(program_desc)
 
-    return original_outputs, program, feed_names, fetch_names
+    return original_outputs, program, feed_names, fetch_names, parameters
 
 
 class TracedLayer(object):
     """
-    TracedLayer is a callable object which is converted from dygraph model. 
-    Inside TracedLayer, the dygraph model is converted into a static graph
-    model, and it would run the static graph model using 
-    :code:`Executor` and :code:`CompiledProgram` . The static graph model 
-    would share parameters with the dygraph model. 
+    :api_attr: imperative
     
-    All TracedLayer objects should not be created by constructor and should 
+    TracedLayer is used to convert a forward dygraph model to a static
+    graph model. This is mainly used to save the dygraph model for online
+    inference using C++. Besides, users can also do inference in Python
+    using the converted static graph model, which usually has better
+    performance than the original dygraph model.
+
+    TracedLayer would run the static graph model using :code:`Executor`
+    and :code:`CompiledProgram` . The static graph model would share
+    parameters with the dygraph model.
+
+    All TracedLayer objects should not be created by constructor and should
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
@@ -99,6 +227,7 @@ class TracedLayer(object):
         self._program = program
         self._feed_names = feed_names
         self._fetch_names = fetch_names
+        self._params = parameters
 
         self._place = _current_expected_place()
 
@@ -128,45 +257,51 @@ class TracedLayer(object):
     @dygraph_only
     def trace(layer, inputs):
         """
-        This method is the only allowed method to create TracedLayer object. 
+        This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
 
         Args:
-            layer (paddle.fluid.dygraph.Layer): the layer object to be traced.
-            inputs (list(Variable)): the input variables of the layer object. 
+            layer (dygraph.Layer): the layer object to be traced.
+            inputs (list(Variable)): the input variables of the layer object.
 
         Returns:
-            A tuple of 2 items, whose the first item is the output of 
+            tuple: A tuple of 2 items, whose the first item is the output of
             :code:`layer(*inputs)` , and the second item is the created
-            TracedLayer object. 
-            
-        Examples:
+            TracedLayer object.
 
+        Examples:
             .. code-block:: python:
 
                 import paddle.fluid as fluid
-                from paddle.fluid.dygraph import FC, to_variable, TracedLayer
-                import paddle.fluid.dygraph.jit as jit
+                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
                 import numpy as np
 
                 class ExampleLayer(fluid.dygraph.Layer):
-                    def __init__(self, name_scope):
-                        super(ExampleLayer, self).__init__(name_scope)
-                        self._fc = FC(self.full_name(), 10)
+                    def __init__(self):
+                        super(ExampleLayer, self).__init__()
+                        self._fc = Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
                 with fluid.dygraph.guard():
-                    layer = ExampleLayer("example_layer")
+                    layer = ExampleLayer()
                     in_np = np.random.random([2, 3]).astype('float32')
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
-                    out_static_graph = static_layer([in_var]) 
+
+                    # run the static graph model using Executor inside
+                    out_static_graph = static_layer([in_var])
+
+                    print(len(out_static_graph)) # 1
+                    print(out_static_graph[0].shape) # (2, 10)
+
+                    # save the static graph model for inference
+                    static_layer.save_inference_model(dirname='./saved_infer_model')
         """
-        outs, prog, feed, fetch = _trace(layer, inputs)
-        traced = TracedLayer(prog, layer.parameters(), feed, fetch)
+        outs, prog, feed, fetch, parameters = _trace(layer, inputs)
+        traced = TracedLayer(prog, parameters, feed, fetch)
         return outs, traced
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):
@@ -174,7 +309,7 @@ class TracedLayer(object):
         Set the strategies when running static graph model.
 
         Args:
-            build_strategy (BuildStrategy, optional): build strategy of 
+            build_strategy (BuildStrategy, optional): build strategy of
                 :code:`CompiledProgram` inside TracedLayer. Default None.
             exec_strategy (ExecutionStrategy, optional): execution strategy of
                 :code:`CompiledProgram` inside TracedLayer. Default None.
@@ -183,24 +318,22 @@ class TracedLayer(object):
             None
 
         Examples:
-
             .. code-block:: python:
 
                 import paddle.fluid as fluid
-                from paddle.fluid.dygraph import FC, to_variable, TracedLayer
-                import paddle.fluid.dygraph.jit as jit
+                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
                 import numpy as np
 
                 class ExampleLayer(fluid.dygraph.Layer):
-                    def __init__(self, name_scope):
-                        super(ExampleLayer, self).__init__(name_scope)
-                        self._fc = FC(self.full_name(), 10) 
+                    def __init__(self):
+                        super(ExampleLayer, self).__init__()
+                        self._fc = Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
                 with fluid.dygraph.guard():
-                    layer = ExampleLayer("example_layer")
+                    layer = ExampleLayer()
                     in_np = np.random.random([2, 3]).astype('float32')
                     in_var = to_variable(in_np)
 
@@ -257,13 +390,13 @@ class TracedLayer(object):
     @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
-        Save the TracedLayer to an model for inference. The saved
-        inference model can be loaded by C++ inference APIs. 
+        Save the TracedLayer to a model for inference. The saved
+        inference model can be loaded by C++ inference APIs.
 
         Args:
-            dirname (str): the directory to save the inference model.  
+            dirname (str): the directory to save the inference model.
             feed (list[int], optional): the input variable indices of the saved
-                inference model. If None, all input variables of the 
+                inference model. If None, all input variables of the
                 TracedLayer object would be the inputs of the saved inference
                 model. Default None.
             fetch (list[int], optional): the output variable indices of the
@@ -272,35 +405,41 @@ class TracedLayer(object):
                 model. Default None.
 
         Returns:
-            The fetch variables' name list
-        
-        Return Type: 
-            list(str)
+            None
 
         Examples:
-
             .. code-block:: python:
 
                 import paddle.fluid as fluid
-                from paddle.fluid.dygraph import FC, to_variable, TracedLayer
-                import paddle.fluid.dygraph.jit as jit
+                from paddle.fluid.dygraph import Linear, to_variable, TracedLayer
                 import numpy as np
 
                 class ExampleLayer(fluid.dygraph.Layer):
-                    def __init__(self, name_scope):
-                        super(ExampleLayer, self).__init__(name_scope)
-                        self._fc = FC(self.full_name(), 10) 
+                    def __init__(self):
+                        super(ExampleLayer, self).__init__()
+                        self._fc = Linear(3, 10)
 
                     def forward(self, input):
                         return self._fc(input)
 
+                save_dirname = './saved_infer_model'
+                in_np = np.random.random([2, 3]).astype('float32')
+
                 with fluid.dygraph.guard():
-                    layer = ExampleLayer("example_layer")
-                    in_np = np.random.random([2, 3]).astype('float32')
+                    layer = ExampleLayer()
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
-                    static_layer.save_inference_model('./saved_infer_model')
+                    static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
+
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
+                                                    exe)
+
+                fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
+                print(fetch.shape) # (2, 10)
         """
+        from paddle.fluid.io import save_inference_model
 
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:
@@ -317,7 +456,7 @@ class TracedLayer(object):
                 assert target_var is not None, "{} cannot be found".format(name)
                 target_vars.append(target_var)
 
-            return fluid_io.save_inference_model(
+            save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
                 target_vars=target_vars,

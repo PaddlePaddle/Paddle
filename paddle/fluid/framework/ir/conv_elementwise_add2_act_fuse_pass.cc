@@ -33,7 +33,7 @@ namespace ir {
   GET_IR_NODE(act_op);                 \
   GET_IR_NODE(act_out);
 
-// Inherient the basic infomation from `base_desc`, and modify some fields.
+// Inherient the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc, const std::string& bias,
     const std::string& bias1, const std::string& activation,
@@ -71,6 +71,17 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string bias1_name = elementwise_add_in_y_1->Name();
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
+
+    auto elementwise_add_out_shape = elementwise_add_out->Var()->GetShape();
+    auto add_in_y_1_shape = elementwise_add_in_y_1->Var()->GetShape();
+
+    if (elementwise_add_out_shape != add_in_y_1_shape) {
+      VLOG(3)
+          << "The inputs X and Y's shapes of elementwise_add op are different.";
+      VLOG(3) << "conv_elementwise_add2_act_fuse_pass doesn't support this "
+                 "pattern. Fusion will not apply.";
+      return;
+    }
 
     auto new_op_proto = PrepareOpDesc(base_op_desc, bias_name, bias1_name,
                                       act_op_type, act_op_out);

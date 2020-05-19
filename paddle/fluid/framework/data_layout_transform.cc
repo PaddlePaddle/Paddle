@@ -124,9 +124,10 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
-  innerTransDataLayoutFromMKLDNN(in_layout,
-                                 paddle::platform::get_cur_paddle_data_layout(),
-                                 in, out, place);
+  innerTransDataLayoutFromMKLDNN(
+      in_layout,
+      paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout(),
+      in, out, place);
 }
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
@@ -185,10 +186,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   }
   // For exepected NHWC data format we need to reshape the Output tensor
   // As MKL-DNN description was in NCHW and paddle is expecting NHWC
-  if (out_layout == DataLayout::kNHWC) {
-    std::rotate(out_tz.begin() + 1, out_tz.begin() + 2, out_tz.end());
-    out->Resize(framework::make_ddim(out_tz));
-  }
+  platform::MatchShapeToLayout(out, in_layout, out_layout);
+
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(MKLDNNMemoryFormat::undef);

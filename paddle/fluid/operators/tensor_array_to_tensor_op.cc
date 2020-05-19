@@ -96,7 +96,10 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
         *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
 
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
+                                "Input tensorarray size should > 0,"
+                                "but the received is %d",
+                                n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -213,9 +216,9 @@ class LoDTensorArray2TensorGradInferVarType
     : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &out_var : ctx->Output(framework::GradVarName("X"))) {
-      ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR_ARRAY);
-    }
+    ctx->SetOutputType(framework::GradVarName("X"),
+                       framework::proto::VarType::LOD_TENSOR_ARRAY,
+                       framework::ALL_ELEMENTS);
   }
 };
 
@@ -232,7 +235,10 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, platform::errors::InvalidArgument(
+                                "Input tensorarray size should > 0, "
+                                "but the received is: %d. ",
+                                n));
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -250,14 +256,13 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto use_stack = Attr<bool>("use_stack");
 
-    auto grad_op =
-        use_stack
-            ? framework::OpRegistry::CreateOp(
-                  "stack_grad", {{"X", names}, {"Y@GRAD", {dout_name}}},
-                  {{"X@GRAD", grad_names}}, attrs)
-            : framework::OpRegistry::CreateOp(
-                  "concat_grad", {{"X", names}, {"Out@GRAD", {dout_name}}},
-                  {{"X@GRAD", grad_names}}, attrs);
+    auto grad_op = use_stack ? framework::OpRegistry::CreateOp(
+                                   "stack_grad", {{"Y@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs)
+                             : framework::OpRegistry::CreateOp(
+                                   "concat_grad",
+                                   {{"X", names}, {"Out@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs);
 
     grad_op->Run(scope, place);
 
@@ -279,14 +284,12 @@ class TensorArrayToTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("tensor_array_to_tensor_grad");
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return op;
   }
 };
 

@@ -14,7 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/platform/device_context.h"
 #ifdef PADDLE_WITH_CUDA
@@ -28,8 +31,11 @@ namespace platform {
 class DeviceCode {
  public:
   virtual ~DeviceCode() {}
-  virtual void Compile() = 0;
+  virtual bool Compile(bool include_path = false) = 0;
   virtual void Launch(const size_t n, std::vector<void*>* args) const = 0;
+
+  Place GetPlace() const { return place_; }
+  std::string GetName() const { return name_; }
 
  protected:
   Place place_;
@@ -42,7 +48,7 @@ class CUDADeviceCode : public DeviceCode {
  public:
   explicit CUDADeviceCode(const Place& place, const std::string& name,
                           const std::string& kernel);
-  void Compile() override;
+  bool Compile(bool include_path = false) override;
   void Launch(const size_t n, std::vector<void*>* args) const override;
 
   void SetNumThreads(int num_threads) { num_threads_ = num_threads; }
@@ -50,7 +56,15 @@ class CUDADeviceCode : public DeviceCode {
     workload_per_thread_ = workload_per_thread;
   }
 
+  static void CheckAvailableStatus();
+  static bool IsAvailable() { return available_; }
+
  private:
+  bool CheckNVRTCResult(nvrtcResult result, std::string function);
+
+  static bool available_;
+
+  bool is_compiled_{false};
   int max_threads_{0};
   int num_threads_{1024};
   int workload_per_thread_{1};
@@ -59,6 +73,47 @@ class CUDADeviceCode : public DeviceCode {
   CUfunction function_;
 };
 #endif
+
+class DeviceCodePool {
+ public:
+  using DeviceCodeMap =
+      std::unordered_map<std::string, std::unique_ptr<DeviceCode>>;
+
+  explicit DeviceCodePool(const std::vector<platform::Place>& places);
+
+  static DeviceCodePool& Instance() {
+    PADDLE_ENFORCE_NOT_NULL(
+        pool,
+        errors::NotFound("Need to create DeviceCodePool first, by calling "
+                         "DeviceCodePool::Init(places)!"));
+    return *pool;
+  }
+
+  static DeviceCodePool& Init(const std::vector<platform::Place>& places) {
+    if (pool == nullptr) {
+      pool = new DeviceCodePool(places);
+    }
+    return *pool;
+  }
+
+  void Set(std::unique_ptr<DeviceCode>&& code);
+
+  platform::DeviceCode* Get(const platform::Place& place,
+                            const std::string& name);
+
+  size_t size(const platform::Place& place) const {
+    auto iter = device_codes_.find(place);
+    if (iter == device_codes_.end()) {
+      return 0;
+    }
+    return iter->second.size();
+  }
+
+ private:
+  static DeviceCodePool* pool;
+  std::map<Place, DeviceCodeMap> device_codes_;
+  DISABLE_COPY_AND_ASSIGN(DeviceCodePool);
+};
 
 }  // namespace platform
 }  // namespace paddle

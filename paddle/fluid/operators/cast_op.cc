@@ -44,14 +44,12 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto grad = new T();
+  void Apply(GradOpPtr<T> grad) const override {
     grad->SetType("cast");
     grad->SetInput("X", this->OutputGrad("Out"));
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    return std::unique_ptr<T>(grad);
   }
 };
 
@@ -61,12 +59,8 @@ class CastOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
-        platform::errors::NotFound("The input(X) of cast op must be set"));
-    PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
-        platform::errors::NotFound("The output of cast op must be set"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "cast");
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }

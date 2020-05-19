@@ -52,8 +52,8 @@ class SplitIdsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("Ids"), "SplitIdsOp must has input Ids.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"), "SplitIdsOp must has output Out.");
+    PADDLE_ENFORCE(ctx->HasInputs("Ids"), "SplitIdsOp must have input Ids.");
+    PADDLE_ENFORCE(ctx->HasOutputs("Out"), "SplitIdsOp must have output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
@@ -73,10 +73,8 @@ class SplitIdsOp : public framework::OperatorWithKernel {
 class SplitIdsOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto input_type = ctx->GetType(ctx->Input("Ids")[0]);
-    for (auto &out_var : ctx->Output("Out")) {
-      ctx->SetType(out_var, input_type);
-    }
+    auto input_type = ctx->GetInputType("Ids");
+    ctx->SetOutputType("Out", input_type, framework::ALL_ELEMENTS);
   }
 };
 

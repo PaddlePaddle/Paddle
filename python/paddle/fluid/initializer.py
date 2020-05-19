@@ -15,62 +15,19 @@
 from __future__ import print_function
 
 from . import framework
+from . import core
+from .framework import in_dygraph_mode
 import numpy as np
-from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
+from .data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
-    'MSRA', 'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
-    'UniformInitializer', 'NormalInitializer', 'TruncatedNormalInitializer',
-    'XavierInitializer', 'BilinearInitializer', 'MSRAInitializer',
-    'NumpyArrayInitializer'
+    'MSRA', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
+    'TruncatedNormalInitializer', 'XavierInitializer', 'BilinearInitializer',
+    'MSRAInitializer', 'NumpyArrayInitializer'
 ]
-
-_force_init_on_cpu_ = False
-
-
-def force_init_on_cpu():
-    """
-    The flag of whether force to init variables on CPU.
-
-    Returns:
-        bool: the state if we should force init on CPU.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            if fluid.initializer.force_init_on_cpu():
-                step = fluid.layers.create_global_var(
-                    shape=[2,3], value=1.0, dtype='float32')
-
-    """
-    return _force_init_on_cpu_
-
-
-@signature_safe_contextmanager
-def init_on_cpu():
-    """
-    Force the variable to be inited on CPU.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            with fluid.initializer.init_on_cpu():
-                step = fluid.layers.create_global_var(
-                    shape=[2,3], value=1.0, dtype='float32')
-
-    """
-    global _force_init_on_cpu_
-
-    pre_state = force_init_on_cpu()
-    _force_init_on_cpu_ = True
-    yield
-    _force_init_on_cpu_ = pre_state
 
 
 class Initializer(object):
@@ -184,7 +141,7 @@ class ConstantInitializer(Initializer):
                 "shape": var.shape,
                 "dtype": int(out_dtype),
                 "value": float(self._value),
-                'force_cpu': self._force_cpu or force_init_on_cpu()
+                'force_cpu': self._force_cpu
             },
             stop_gradient=True)
 
@@ -259,8 +216,10 @@ class UniformInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+                                 "uniform_random")
+
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -346,8 +305,10 @@ class NormalInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+
+        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+                                 "guassian_random")
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -537,8 +498,10 @@ class XavierInitializer(Initializer):
         Returns:
             the initialization op
         """
-        assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
+        check_variable_and_dtype(var, "Out", ["float16", "float32", "float64"],
+                                 "xavier_init")
+
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in and fan_out are passed, use them
@@ -742,6 +705,7 @@ class BilinearInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import math
             factor = 2
             C = 2
             B = 8
@@ -779,7 +743,7 @@ class BilinearInitializer(Initializer):
         super(BilinearInitializer, self).__init__()
 
     def __call__(self, var, block):
-        """Add biliear initialization ops for a variable
+        """Add bilinear initialization ops for a variable
 
         Args:
             var (Variable): Variable that needs to be initialized.

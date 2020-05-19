@@ -40,9 +40,13 @@ class SelectInputOp : public framework::OperatorBase {
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &x_names = Inputs("X");
-    PADDLE_ENFORCE_LT(output_branch, x_names.size(),
-                      "Selected branch number is greater than actual branch "
-                      "num in SelectInputOp");
+    PADDLE_ENFORCE_LT(
+        output_branch, x_names.size(),
+        platform::errors::InvalidArgument(
+            "Input 'Mask' in SelectInputOp is invalid. "
+            "'Mask' must be less than the size of input vector 'X'. "
+            "But received Mask = %d, X's size = %d.",
+            output_branch, x_names.size()));
 
     const framework::Variable *selected_x =
         scope.FindVar(x_names[output_branch]);
@@ -67,7 +71,7 @@ class SelectInputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     // Because this op is blocking whole control flow. I am implementing MVP
     // (minimal viable product) here.
     AddComment(R"DOC(
-Merge branches of LoDTensor into a single Output with a mask interger
+Merge branches of LoDTensor into a single Output with a mask integer
 specifying the output branchi.
 )DOC");
   }
@@ -91,15 +95,13 @@ class SelectInputGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("select_output");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("Mask", this->Input("Mask"));
     grad_op->SetOutput("Out",
                        this->InputGrad("X", /* drop_empty_grad */ false));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

@@ -25,10 +25,8 @@ class MeanOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MeanOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MeanOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "mean");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "mean");
     ctx->SetOutputDim("Out", {1});
   }
 };
@@ -47,9 +45,10 @@ Mean Operator calculates the mean of all elements in X.
 
 class MeanOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -76,17 +75,15 @@ class MeanGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("mean_grad");
     grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(MeanGradNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(MeanGradNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

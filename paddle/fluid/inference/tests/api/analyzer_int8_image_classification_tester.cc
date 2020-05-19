@@ -75,8 +75,10 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   PADDLE_ENFORCE_LE(static_cast<size_t>(num_images), all_test_data_size,
                     platform::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
-                        "smaller than the test data size. But received warmup "
-                        "size is %d and test data size is %d",
+                        "lower or equal to the test data size. But received"
+                        "warmup size is %d and test data size is %d. Please "
+                        "use --warmup_batch_size parameter to set smaller "
+                        "warmup batch size.",
                         num_images, all_test_data_size));
 
   PaddleTensor images;
@@ -156,15 +158,18 @@ TEST(Analyzer_int8_image_classification, quantization) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
-  // prepare warmup batch from input data read earlier
-  // warmup batch size can be different than batch size
-  std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
-      GetWarmupData(input_slots_all);
+  if (FLAGS_enable_int8) {
+    // prepare warmup batch from input data read earlier
+    // warmup batch size can be different than batch size
+    std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
+        GetWarmupData(input_slots_all);
 
-  // configure quantizer
-  q_cfg.EnableMkldnnQuantizer();
-  q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
-  q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);
+    // configure quantizer
+    q_cfg.EnableMkldnnQuantizer();
+    q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
+    q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
+        FLAGS_warmup_batch_size);
+  }
 
   CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all);
 }

@@ -93,15 +93,14 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
                       "number of 'shapes'(%d).",
                       need_check_feed.size(), shapes.size());
     framework::VarDesc* reader =
-        boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
     reader->SetLoDLevels(lod_levels);
   }
 }
 
 void FileReaderInferVarType::operator()(
     framework::InferVarTypeContext* ctx) const {
-  std::string reader_name = ctx->Output("Out")[0];
-  ctx->SetType(reader_name, framework::proto::VarType::READER);
+  ctx->SetOutputType("Out", framework::proto::VarType::READER);
 }
 
 void DecoratedReaderInferShape::operator()(
@@ -116,19 +115,17 @@ void DecoratedReaderInferShape::operator()(
                  "The output decorated reader should not be null.");
   ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));
 
-  framework::VarDesc* in_reader = boost::get<framework::VarDesc*>(
-      ctx->GetInputVarPtrs("UnderlyingReader")[0]);
+  framework::VarDesc* in_reader = BOOST_GET(
+      framework::VarDesc*, ctx->GetInputVarPtrs("UnderlyingReader")[0]);
   framework::VarDesc* out_reader =
-      boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      BOOST_GET(framework::VarDesc*, ctx->GetOutputVarPtrs("Out")[0]);
   out_reader->SetLoDLevels(in_reader->GetLoDLevels());
 }
 
 void DecoratedReaderInferVarType::operator()(
     framework::InferVarTypeContext* ctx) const {
-  const std::string& in_reader_name = ctx->Input("UnderlyingReader")[0];
-  const std::string& out_reader_name = ctx->Output("Out")[0];
-  ctx->SetType(out_reader_name, framework::proto::VarType::READER);
-  ctx->SetDataTypes(out_reader_name, ctx->GetDataTypes(in_reader_name));
+  ctx->SetOutputType("Out", framework::proto::VarType::READER);
+  ctx->SetOutputDataTypes("Out", ctx->GetInputDataTypes("UnderlyingReader"));
 }
 
 void DecoratedReaderMakerBase::Make() {

@@ -377,7 +377,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 5, 4, 4]
         self.out_h = 3
         self.out_w = 3
         self.scale = 0.

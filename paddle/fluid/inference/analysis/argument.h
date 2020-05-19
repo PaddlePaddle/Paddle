@@ -59,7 +59,7 @@ struct Argument {
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
-  using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
+  using input_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
   // If we set the model using config.SetModelBuffer,
@@ -173,7 +173,18 @@ struct Argument {
 
   // Passed from config.
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
+  DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+
+  // Usually use for trt dynamic shape.
+  // TRT will select the best kernel according to opt shape
+  // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
+  // run fp16.
+  DECL_ARGUMENT_FIELD(min_input_shape, MinInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(max_input_shape, MaxInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(optim_input_shape, OptimInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(disable_trt_plugin_fp16, CloseTrtPluginFp16, bool);
+
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
@@ -184,18 +195,11 @@ struct Argument {
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
 
-  DECL_ARGUMENT_FIELD(anakin_max_input_shape, AnakinMaxInputShape,
-                      anakin_max_shape_t);
-  DECL_ARGUMENT_FIELD(anakin_max_batch_size, AnakinMaxBatchSize, int);
-  DECL_ARGUMENT_FIELD(anakin_min_subgraph_size, AnakinMinSubgraphSize, int);
-  DECL_ARGUMENT_FIELD(anakin_precision_mode, AnakinPrecisionMode,
+  DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode,
                       AnalysisConfig::Precision);
-  DECL_ARGUMENT_FIELD(anakin_auto_config_layout, AnakinAutoConfigLayout, bool);
-  DECL_ARGUMENT_FIELD(use_anakin, UseAnakin, bool);
-  DECL_ARGUMENT_FIELD(anakin_passes_filter, AnakinPassesFilter,
-                      std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(anakin_ops_filter, AnakinOpsFilter,
-                      std::vector<std::string>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

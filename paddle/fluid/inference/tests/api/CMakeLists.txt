@@ -47,10 +47,15 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
-             --warmup_batch_size=100
+             --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
+endfunction()
+
+function(inference_analysis_api_int8_test_run_custom_warmup_batch_size TARGET_NAME test_binary model_dir data_path warmup_batch_size)
+    set(WARMUP_BATCH_SIZE ${warmup_batch_size})
+    inference_analysis_api_int8_test_run(${TARGET_NAME} ${test_binary} ${model_dir} ${data_path})
 endfunction()
 
 function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
@@ -86,6 +91,13 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
+endfunction()
+
+function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
+	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
+	        ARGS --data_dir=${data_dir}
+		     --output_file=${output_file}
+		     --local)
 endfunction()
 
 if(NOT APPLE AND WITH_MKLML)
@@ -183,6 +195,15 @@ if (NOT EXISTS ${OCR_INSTALL_DIR})
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
+# densebox
+set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
+download_data(${DENSEBOX_INSTALL_DIR} "densebox.tar.gz")
+inference_analysis_test(test_analyzer_detect SRCS analyzer_detect_tester.cc 
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+  ARGS --infer_model=${DENSEBOX_INSTALL_DIR}/model --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt 
+       --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
+set_property(TEST test_analyzer_detect PROPERTY ENVIRONMENT GLOG_vmodule=analysis_predictor=2)
+
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
 if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
@@ -221,15 +242,18 @@ if(WITH_MKLDNN)
 
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
 
-  ### Image classification tests
-  set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
-  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
-  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
+  ## Image classification models
 
-  # download dataset if necessary
-  download_int8_data(${INT8_DATA_DIR} "imagenet_val_100_tail.tar.gz")
+  # ImageNet small dataset
+  # May be already downloaded for INT8 QAT unit tests
+  set(IMAGENET_DATA_ARCHIVE "imagenet_val_100_tail.tar.gz")
+  set(IMAGENET_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/imagenet")
+  set(IMAGENET_DATA_PATH "${IMAGENET_DATA_DIR}/data.bin")
+  download_int8_data(${IMAGENET_DATA_DIR} ${IMAGENET_DATA_ARCHIVE})
 
   # build test binary to be used in subsequent tests
+  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
+  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
   inference_analysis_api_test_build(${INT8_IMG_CLASS_TEST_APP} ${INT8_IMG_CLASS_TEST_APP_SRC})
 
   # resnet50 int8
@@ -268,7 +292,7 @@ if(WITH_MKLDNN)
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
@@ -278,8 +302,6 @@ if(WITH_MKLDNN)
   # download dataset if necessary
   download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
 
-  # download small demo set of pascalvoc for testing local userdata preprocessing
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -291,19 +313,39 @@ if(WITH_MKLDNN)
 
   ### optimized FP32 vs. QAT INT8 tests
   
-  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/qat")
   set(QAT_IMG_CLASS_TEST_APP "test_analyzer_qat_image_classification")
   set(QAT_IMG_CLASS_TEST_APP_SRC "analyzer_qat_image_classification_tester.cc")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
 
-  # ResNet50 FP32 vs. QAT INT8
-  set(QAT2_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf")
-  download_qat_data(${QAT2_RESNET50_MODEL_DIR} "ResNet50_qat_perf.tar.gz")
-  set(QAT2_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf_int8")
-  download_qat_data(${QAT2_INT8_RESNET50_MODEL_DIR} "ResNet50_qat_perf_int8.tar.gz")
-  inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_INT8_RESNET50_MODEL_DIR}/ResNet50_qat_perf_int8 ${IMAGENET_DATA_PATH})
+  # MobileNet FP32 vs. QAT INT8
+  # The FP32 model should already be downloaded for slim QAT unit tests
+  set(QAT2_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
+  set(QAT2_INT8_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf_int8")
+  download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
+  inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
+
+  ### Other tests
+ 
+  # MKLDNN quantizer config
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP "test_mkldnn_quantizer_config")
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
+  inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
+  inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
+
+  # preprocess data2bin imagenet
+    download_int8_data(${INT8_DATA_DIR} "imagenet_small.tar.gz")
+    set(IMAGENET_SMALL_DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
+    set(IMAGENET_SMALL_OUTPUT_FILE "imagenet_small.bin")
+    preprocess_data2bin_test_run(preprocess_local_imagenet "full_ILSVRC2012_val_preprocess.py" ${IMAGENET_SMALL_DATA_DIR} ${IMAGENET_SMALL_OUTPUT_FILE})
+    
+  # preprocess data2bin pascalvoc
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
+  set(PASCALVOC_SMALL_DATA_DIR "${INT8_DATA_DIR}/pascalvoc_small")
+  set(PASCALVOC_SMALL_OUTPUT_FILE "pascalvoc_small.bin")
+  preprocess_data2bin_test_run(preprocess_local_pascalvoc "full_pascalvoc_test_preprocess.py" ${PASCALVOC_SMALL_DATA_DIR} ${PASCALVOC_SMALL_OUTPUT_FILE})
 
 endif()
 
@@ -320,6 +362,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(TEST_SPLIT_CONVERTER_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_split_op_converter_test")
     if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL})
         inference_download_and_uncompress(${TEST_SPLIT_CONVERTER_MODEL} ${INFERENCE_URL}/tensorrt_test "split_converter.tgz")
+    endif()
+    set(TEST_INSTANCE_NORM_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_instance_norm_test")
+    if (NOT EXISTS ${TEST_INSTANCE_NORM_MODEL})
+        inference_download_and_uncompress(${TEST_INSTANCE_NORM_MODEL} ${INFERENCE_URL}/tensorrt_test "instance_norm.tgz")
     endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
@@ -339,10 +385,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_split_converter_test SRCS trt_split_converter_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
+    inference_analysis_test(trt_instance_norm_test SRCS trt_instance_norm_converter_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-
+     
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
     if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
@@ -350,7 +399,39 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
+
+    set(TEST_TRT_DYNAMIC_MODEL2 "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2})
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL2} ${INFERENCE_URL}/tensorrt_test "complex_model_dynamic2.tar.gz")
+    endif()
+
+    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/conv_bn_swish_split_gelu")
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "conv_bn_swish_split_gelu.tar.gz")
+    endif()
+    inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR})
+
+    set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4.tar.gz")
+    endif()
+
+    inference_analysis_test(test_trt_dynamic_shape_ernie SRCS trt_dynamic_shape_ernie_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 endif()
+
+set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
+download_data(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
+
+inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
+inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
 
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
@@ -365,3 +446,7 @@ if(WITH_MKLDNN)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
  endif()
+
+inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+        ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)

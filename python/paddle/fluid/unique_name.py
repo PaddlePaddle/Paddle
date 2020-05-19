@@ -51,6 +51,33 @@ class UniqueNameGenerator(object):
         return self.prefix + "_".join([key, str(tmp)])
 
 
+class DygraphParameterNameChecker(object):
+    """
+    Check whether the name of parameter is used.
+    """
+
+    def __init__(self):
+        self._name_set = set()
+
+    def __call__(self, name):
+        '''
+        Check whether the name is used. If not used, insert into the _name_set.
+
+        Args:
+            name(str): The name of parameter to check.
+
+        Returns(bool): If the name is in name_set,  return True; Otherwise, return False.
+
+        '''
+        if name in self._name_set:
+            return True
+        else:
+            self._name_set.add(name)
+            return False
+
+
+dygraph_parameter_name_checker = DygraphParameterNameChecker()
+
 generator = UniqueNameGenerator()
 
 
@@ -92,16 +119,19 @@ def generate(key):
 # would save model in static graph mode, and load it in dygraph
 # mode. Therefore, we keep the variable name of Parameter currently.
 # 
-# Please fix me if a better method is found.        
+# Please fix me if a better method is found.    
+# 
+# NOTE(zhiqiu): use c++ unique_name_generator in dygraph mode, 
+# in order to keep name consistency.
 def generate_with_ignorable_key(key):
-    from .framework import in_dygraph_mode
+    from .framework import in_dygraph_mode, _dygraph_tracer
     if in_dygraph_mode():
-        key = "tmp"
+        return _dygraph_tracer()._generate_unique_name()
 
     return generator(key)
 
 
-def switch(new_generator=None):
+def switch(new_generator=None, new_para_name_checker=None):
     """
     Switch the namespace of in current context to a new namespace. Though
     :code:`switch()` and :code:`guard()` can both change namespace, 
@@ -112,9 +142,13 @@ def switch(new_generator=None):
         new_generator(UniqueNameGenerator, optional): A new UniqueNameGenerator, not
             required normally. Default is None, which means switch to a new anonymous
             namespace.
+        new_para_name_checker(DygraphParameterNameChecker, optional): A new DygraphParameterNameChecker,
+            not required normally. Default is None, which means  switch to a new parameter name 
+            checker.
 
     Returns: 
         UniqueNameGenerator: The previous UniqueNameGenerator.
+        DygraphParameterNameChecker: The previous DygraphParameterNameChecker
 
     Examples: 
 
@@ -125,22 +159,29 @@ def switch(new_generator=None):
             name2 = fluid.unique_name.generate('fc')
             print(name1, name2) # fc_0, fc_1
 
-            pre_generator = fluid.unique_name.switch() # switch to a new anonymous namespace.
+            pre_generator, pre_dygraph_name_checker = fluid.unique_name.switch() # switch to a new anonymous namespace.
             name2 = fluid.unique_name.generate('fc')
             print(name2) # fc_0
 
-            fluid.unique_name.switch(pre_generator) # switch back to pre_generator.
+            fluid.unique_name.switch(pre_generator, pre_dygraph_name_checker) # switch back to pre_generator.
             name3 = fluid.unique_name.generate('fc')
             print(name3) # fc_2, since pre_generator has generated fc_0, fc_1.
 
     """
     global generator
-    old = generator
+    old_generator = generator
+    global dygraph_parameter_name_checker
+    old_para_name_checker = dygraph_parameter_name_checker
     if new_generator is None:
         generator = UniqueNameGenerator()
     else:
         generator = new_generator
-    return old
+
+    if new_para_name_checker is None:
+        dygraph_parameter_name_checker = DygraphParameterNameChecker()
+    else:
+        dygraph_parameter_name_checker = new_para_name_checker
+    return old_generator, old_para_name_checker
 
 
 @signature_safe_contextmanager
@@ -180,6 +221,9 @@ def guard(new_generator=None):
         new_generator = UniqueNameGenerator(new_generator)
     elif isinstance(new_generator, six.binary_type):
         new_generator = UniqueNameGenerator(new_generator.decode())
-    old = switch(new_generator)
-    yield
-    switch(old)
+
+    old_generator, old_para_name_checker = switch(new_generator)
+    try:
+        yield
+    finally:
+        switch(old_generator, old_para_name_checker)

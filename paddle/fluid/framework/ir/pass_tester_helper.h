@@ -33,8 +33,9 @@ struct Layers {
   const ProgramDesc& main_program() { return program_; }
 
   VarDesc* data(std::string name, std::vector<int64_t> shape = {},
-                bool is_persistable = false) {
-    return lod_tensor(name, shape, is_persistable);
+                bool is_persistable = false,
+                proto::VarType::Type data_type = proto::VarType::FP32) {
+    return lod_tensor(name, shape, is_persistable, data_type);
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
@@ -120,6 +121,62 @@ struct Layers {
     return out;
   }
 
+  void lstm(VarDesc* input, VarDesc* w, VarDesc* bias, VarDesc* cell,
+            VarDesc* batch_gate, VarDesc* hidden, VarDesc* batch_cell_pre_act,
+            VarDesc* h0 = nullptr, VarDesc* c0 = nullptr,
+            bool use_peepholes = true, bool is_reverse = false,
+            std::string gate_activation = "sigmoid",
+            std::string cell_activation = "tanh",
+            std::string candidate_activation = "tanh") {
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("lstm");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Weight", {w->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    if (h0) {
+      op->SetInput("H0", {h0->Name()});
+    }
+    if (c0) {
+      op->SetInput("C0", {c0->Name()});
+    }
+    op->SetOutput("Hidden", {hidden->Name()});
+    op->SetOutput("Cell", {cell->Name()});
+    op->SetOutput("BatchGate", {batch_gate->Name()});
+    op->SetOutput("BatchCellPreAct", {batch_cell_pre_act->Name()});
+    op->SetAttr("use_peepholes", use_peepholes);
+    op->SetAttr("is_reverse", is_reverse);
+    op->SetAttr("gate_activation", gate_activation);
+    op->SetAttr("cell_activation", cell_activation);
+    op->SetAttr("candidate_activation", candidate_activation);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+  }
+
+  void gru(VarDesc* input, VarDesc* w, VarDesc* bias, VarDesc* batch_gate,
+           VarDesc* batch_reset_hidden_prev, VarDesc* batch_hidden,
+           VarDesc* hidden, VarDesc* h0 = nullptr, bool origin_mode = false,
+           bool is_reverse = false, std::string activation = "tanh",
+           std::string gate_activation = "sigmoid") {
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("gru");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Weight", {w->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    if (h0) {
+      op->SetInput("H0", {h0->Name()});
+    }
+    op->SetOutput("BatchGate", {batch_gate->Name()});
+    op->SetOutput("BatchResetHiddenPrev", {batch_reset_hidden_prev->Name()});
+    op->SetOutput("BatchHidden", {batch_hidden->Name()});
+    op->SetOutput("Hidden", {hidden->Name()});
+    op->SetAttr("origin_mode", origin_mode);
+    op->SetAttr("is_reverse", is_reverse);
+    op->SetAttr("activation", activation);
+    op->SetAttr("gate_activation", gate_activation);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+  }
+
   VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
                int x_num_col_dims = 1) {
     AttributeMap attrs;
@@ -201,23 +258,33 @@ struct Layers {
     return out;
   }
 
-  VarDesc* transpose2(VarDesc* x, std::vector<int> axis) {
+  VarDesc* transpose2(VarDesc* x, std::vector<int> axis,
+                      bool with_xshape = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("transpose2");
     op->SetInput("X", {x->Name()});
     op->SetAttr("axis", axis);
     op->SetOutput("Out", {out->Name()});
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
     return out;
   }
 
-  VarDesc* reshape2(VarDesc* x, std::vector<int> shape) {
+  VarDesc* reshape2(VarDesc* x, std::vector<int> shape,
+                    bool with_xshape = false) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
     op->SetType("reshape2");
     op->SetInput("X", {x->Name()});
     op->SetAttr("shape", shape);
     op->SetOutput("Out", {out->Name()});
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
     return out;
   }
 
@@ -270,9 +337,29 @@ struct Layers {
     return outs;
   }
 
-  void backward() {
+  VarDesc* embedding(VarDesc* x, VarDesc* weights) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("lookup_table");
+    op->SetInput("Ids", {x->Name()});
+    op->SetInput("W", {weights->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  void backward(std::vector<VarDesc*> targets) {
+    // This function is designed to simulate the structure of training program,
+    //  but is constructed differently as the actual program.
     BlockDesc* block = program_.MutableBlock(0);
     std::vector<OpDesc*> forward_ops = block->AllOps();
+    for (auto* var : targets) {
+      OpDesc* none_op = block->AppendOp();
+      none_op->SetType("none");
+      none_op->SetInput("X", {var->Name()});
+      VarDesc* grad_var =
+          lod_tensor(GradVarName(var->Name()), var->GetShape(), false);
+      none_op->SetOutput("Out", {grad_var->Name()});
+    }
     for (int i = forward_ops.size() - 1; i >= 0; --i) {
       OpDesc* op = forward_ops[i];
       OpDesc* grad_op = block->AppendOp();
@@ -313,9 +400,11 @@ struct Layers {
 
  private:
   VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
-                      bool is_persistable = false) {
+                      bool is_persistable = false,
+                      proto::VarType::Type data_type = proto::VarType::FP32) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetDataType(data_type);
     var->SetShape(shape);
     var->SetPersistable(is_persistable);
     return var;
@@ -405,7 +494,7 @@ static std::string DebugString(OpDesc* op) {
   return os.str();
 }
 
-static std::string DebugString(Node* node) {
+static std::string DebugString(const Node* node) {
   std::ostringstream os;
   if (node->IsOp() && node->Op()) {
     OpDesc* op = node->Op();
@@ -428,8 +517,21 @@ static std::string DebugString(Node* node) {
       is_first = false;
     }
     os << "}.";
-  } else if (node->IsVar() && node->Var()) {
-    os << "Node(" << node->Name() << "), inputs:{";
+  } else {
+    os << "Node(" << node->Name();
+    if (node->IsVar() && node->Var()) {
+      os << "{";
+      bool is_first = true;
+      for (auto dim : node->Var()->GetShape()) {
+        if (!is_first) {
+          os << "x";
+        }
+        os << dim;
+        is_first = false;
+      }
+      os << "}";
+    }
+    os << "), inputs:{";
     bool is_first = true;
     for (auto* in : node->inputs) {
       if (!is_first) {
@@ -461,7 +563,7 @@ static std::string DebugString(const std::vector<Node*>& nodes) {
   for (auto* node : nodes) {
     if (node->IsOp() && node->Op()) {
       os << "  ";
-    } else if (node->IsVar() && node->Var()) {
+    } else if ((node->IsVar() && node->Var()) || node->IsCtrlVar()) {
       os << "    ";
     }
     os << DebugString(node) << "\n";
@@ -477,10 +579,25 @@ static std::string DebugString(const std::unordered_set<Node*>& nodes) {
   return DebugString(vec);
 }
 
-static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+static std::string DebugString(Graph* graph) {
   std::ostringstream os;
   os << "Graph: {\n" << DebugString(graph->Nodes()) << "}\n";
   return os.str();
+}
+
+static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+  return DebugString(graph.get());
+}
+
+static std::vector<ir::Node*> GetOpNodes(const std::unique_ptr<Graph>& graph,
+                                         std::string op_type) {
+  std::vector<ir::Node*> rc;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp() && node->Op() && node->Op()->Type() == op_type) {
+      rc.push_back(node);
+    }
+  }
+  return rc;
 }
 
 static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,

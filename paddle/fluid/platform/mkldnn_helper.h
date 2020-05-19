@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <mkldnn.h>
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
@@ -70,6 +70,41 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
   auto desc = tf_desc<Type>(args...);
   return tf_pd<Type>(desc, e, p);
 }
+
+inline void MatchShapeToLayout(framework::Tensor* tensor_in,
+                               framework::DataLayout from,
+                               framework::DataLayout to) {
+  // In these data layouts, channel dimension is either on 2nd position: nChw or
+  // at last nhwC, so for dim==2 these layouts are the same and nothing should
+  // be done. Similarly for dim==1 when you have just one possible combination.
+  if (tensor_in->dims().size() < 3) {
+    return;
+  }
+
+  switch (from) {
+    case framework::DataLayout::kMKLDNN:
+      if (to == framework::DataLayout::kNHWC) {
+        auto dims = framework::vectorize<int>(tensor_in->dims());
+        std::rotate(dims.begin() + 1, dims.begin() + 2, dims.end());
+        tensor_in->Resize(framework::make_ddim(dims));
+      }
+      break;
+    case framework::DataLayout::kNHWC:
+      if (to == framework::DataLayout::kMKLDNN) {
+        auto dims = framework::vectorize<int>(tensor_in->dims());
+        std::rotate(dims.begin() + 1, dims.end() - 1, dims.end());
+        tensor_in->Resize(framework::make_ddim(dims));
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+struct mkldnn_dummy_primitive {
+  struct primitive_desc {};
+  struct desc {};
+};
 
 inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
                                           mkldnn::memory::data_type data_type,

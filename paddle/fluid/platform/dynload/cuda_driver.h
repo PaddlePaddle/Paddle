@@ -25,6 +25,7 @@ namespace dynload {
 
 extern std::once_flag cuda_dso_flag;
 extern void* cuda_dso_handle;
+extern bool HasCUDADriver();
 
 #ifdef PADDLE_USE_DSO
 
@@ -59,6 +60,8 @@ extern void* cuda_dso_handle;
  * include all needed cuda driver functions
  **/
 #define CUDA_ROUTINE_EACH(__macro)                      \
+  __macro(cuInit);                                      \
+  __macro(cuDriverGetVersion);                          \
   __macro(cuGetErrorString);                            \
   __macro(cuModuleLoadData);                            \
   __macro(cuModuleGetFunction);                         \
@@ -67,7 +70,7 @@ extern void* cuda_dso_handle;
   __macro(cuLaunchKernel);                              \
   __macro(cuCtxCreate);                                 \
   __macro(cuCtxGetCurrent);                             \
-  __macro(cuDeviceGet);                                 \
+  __macro(cuDeviceGetCount);                            \
   __macro(cuDevicePrimaryCtxGetState)
 
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);

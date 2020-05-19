@@ -21,9 +21,10 @@ from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
 import numpy as np
 import paddle.fluid.core as core
+import paddle
 
 
-class SimpleNet(fluid.Layer):
+class SimpleNet(paddle.nn.Layer):
     def __init__(self, vocab_size, hidden_size, dtype):
         super(SimpleNet, self).__init__()
         self.emb = fluid.dygraph.Embedding(
@@ -46,42 +47,33 @@ class TestSimpleNet(unittest.TestCase):
         for place in places:
             for dtype in ["float32", "float64"]:
                 for sort_sum_gradient in [True, False]:
-                    with fluid.dygraph.guard(place):
-                        backward_strategy = fluid.dygraph.BackwardStrategy()
+                    with paddle.imperative.guard(place):
+                        backward_strategy = paddle.imperative.BackwardStrategy()
                         backward_strategy.sort_sum_gradient = sort_sum_gradient
-                        adam = SGDOptimizer(learning_rate=0.001)
-                        # grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
+                        # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                         input_word = np.array([[1, 2], [2, 1]]).astype('int64')
-                        input = to_variable(input_word)
+                        input = paddle.imperative.to_variable(input_word)
 
                         simplenet = SimpleNet(20, 32, dtype)
+                        adam = SGDOptimizer(
+                            learning_rate=0.001,
+                            parameter_list=simplenet.parameters(
+                            ))  # grad_clip=grad_clip
                         input_emb, emb = simplenet(input)
 
-                        try:
-                            emb._w.gradient()
-                        except ValueError as e:
-                            pass
-                        try:
-                            input_emb.gradient()
-                        except ValueError as e:
-                            pass
+                        self.assertTrue(emb.weight.gradient() is None)
+                        self.assertTrue(input_emb.gradient() is None)
 
                         input_emb.backward(backward_strategy)
-                        adam.minimize(input_emb)  # grad_clip=grad_clip
-                        emb._w.gradient()
+                        adam.minimize(input_emb)
+                        self.assertTrue(emb.weight.gradient() is not None)
 
                         emb.clear_gradients()
-                        try:
-                            emb._w.gradient()
-                        except ValueError as e:
-                            pass
+                        self.assertTrue(emb.weight.gradient() is None)
 
                         input_emb.clear_gradient()
-                        try:
-                            input_emb.gradient()
-                        except ValueError as e:
-                            pass
+                        self.assertTrue(input_emb.gradient() is not None)
 
     def test_selectedrows_gradient2(self):
         places = [fluid.CPUPlace()]
@@ -93,40 +85,30 @@ class TestSimpleNet(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     backward_strategy = fluid.dygraph.BackwardStrategy()
                     backward_strategy.sort_sum_gradient = sort_sum_gradient
-                    adam = SGDOptimizer(learning_rate=0.001)
-                    grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
-                        5.0)
+                    grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = to_variable(input_word)
 
                     simplenet = SimpleNet(20, 32, "float32")
+                    adam = SGDOptimizer(
+                        learning_rate=0.001,
+                        parameter_list=simplenet.parameters(),
+                        grad_clip=grad_clip)
                     input_emb, emb = simplenet(input)
 
-                    try:
-                        emb._w.gradient()
-                    except ValueError as e:
-                        pass
-                    try:
-                        input_emb.gradient()
-                    except ValueError as e:
-                        pass
+                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertTrue(input_emb.gradient() is None)
 
                     input_emb.backward(backward_strategy)
-                    adam.minimize(input_emb, grad_clip=grad_clip)
-                    emb._w.gradient()
+                    adam.minimize(input_emb)
+                    self.assertTrue(emb.weight.gradient() is not None)
 
                     emb.clear_gradients()
-                    try:
-                        emb._w.gradient()
-                    except ValueError as e:
-                        pass
+                    self.assertTrue(emb.weight.gradient() is None)
 
                     input_emb.clear_gradient()
-                    try:
-                        input_emb.gradient()
-                    except ValueError as e:
-                        pass
+                    self.assertTrue(input_emb.gradient() is not None)
 
 
 if __name__ == '__main__':

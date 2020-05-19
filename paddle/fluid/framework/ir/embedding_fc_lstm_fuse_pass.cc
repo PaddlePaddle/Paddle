@@ -127,35 +127,24 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         embedding_data, k, weightx_data, n, beta, embeddings_data, n);
     op_desc.SetInput("Embeddings", {embeddings});
 
-    // Create temp variables.
-    const std::string BatchedInput = patterns::UniqueKey("BatchedInput");
-    const std::string BatchedCellPreAct =
-        patterns::UniqueKey("BatchedCellPreAct");
-    const std::string BatchedGate = patterns::UniqueKey("BatchedGate");
-
-    scope->Var(BatchedInput)->GetMutable<framework::LoDTensor>();
-    scope->Var(BatchedCellPreAct)->GetMutable<framework::LoDTensor>();
-    scope->Var(BatchedGate)->GetMutable<framework::LoDTensor>();
-
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetOutput("Cell", {cell->Name()});
     op_desc.SetOutput("XX", {xx->Name()});
-    op_desc.SetOutput("BatchedGate", {BatchedGate});
-    op_desc.SetOutput("BatchCellPreAct", {BatchedCellPreAct});
-    op_desc.SetOutput("BatchedInput", {BatchedInput});
     op_desc.SetAttr("is_reverse", lstm->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm->Op()->GetAttr("use_peepholes"));
     // TODO(TJ): get from attr
     op_desc.SetAttr("use_seq", true);
 
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto& scope = graph->Get<Scope>(kParamScopeAttr);
+// Create temp variables.
 #define OP_SET_OUT(x)                            \
   const std::string x = patterns::UniqueKey(#x); \
-  op_desc.SetOutput(#x, {x});                    \
-  scope.Var(x)->GetMutable<LoDTensor>()
+  op_desc.SetOutput(#x, {x});
+
+    OP_SET_OUT(BatchedGate);
+    OP_SET_OUT(BatchCellPreAct);
+    OP_SET_OUT(BatchedInput);
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);
@@ -163,11 +152,28 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef OP_SET_OUT
 
     auto* op = graph->CreateOpNode(&op_desc);
+
     IR_NODE_LINK_TO(input, op);
     IR_NODE_LINK_TO(weight_x, op);
     IR_NODE_LINK_TO(weight_h, op);
     IR_NODE_LINK_TO(bias, op);
     IR_NODE_LINK_TO(op, hidden);
+
+#define IR_NODE(x)                                 \
+  VarDesc key_##x(x);                              \
+  key_##x.SetPersistable(false);                   \
+  auto* node_##x = graph->CreateVarNode(&key_##x); \
+  IR_NODE_LINK_TO(op, node_##x);
+
+    IR_NODE(BatchedGate);
+    IR_NODE(BatchCellPreAct);
+    IR_NODE(BatchedInput);
+    IR_NODE(BatchedCell);
+    IR_NODE(BatchedHidden);
+    IR_NODE(ReorderedH0);
+    IR_NODE(ReorderedC0);
+#undef IR_NODE
+
     return op;
   };
 
@@ -186,9 +192,10 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
 
     // TODO(jczaja): Add support for is_sparse / is_distributed
-    auto is_sparse = boost::get<bool>(lookup_table->Op()->GetAttr("is_sparse"));
+    auto is_sparse =
+        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
     auto is_distributed =
-        boost::get<bool>(lookup_table->Op()->GetAttr("is_distributed"));
+        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
 
     if (is_sparse == true || is_distributed == true) {
       return;

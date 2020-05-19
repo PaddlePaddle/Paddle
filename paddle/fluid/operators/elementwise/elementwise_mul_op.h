@@ -71,7 +71,9 @@ void default_elementwise_mul(const framework::ExecutionContext& ctx,
                              const framework::Tensor* x,
                              const framework::Tensor* y, framework::Tensor* z) {
   int axis = ctx.Attr<int>("axis");
-  if (x->numel() >= y->numel()) {
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
     ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           MulFunctor<T>(), z);
   } else {
@@ -92,15 +94,19 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto x_var = ctx.InputVar("X");
-    PADDLE_ENFORCE(x_var != nullptr,
-                   "Cannot get input Variable X, variable name = %s",
-                   ctx.InputName("X"));
+    PADDLE_ENFORCE_EQ(x_var != nullptr, true,
+                      platform::errors::InvalidArgument(
+                          "Cannot get input Variable X, Variable name = %s.",
+                          ctx.InputName("X")));
     auto* y = ctx.Input<framework::LoDTensor>("Y");
 
     framework::Tensor x, *z;
     if (x_var->IsType<framework::SelectedRows>()) {
-      PADDLE_ENFORCE(y->dims().size() == 1 && y->dims()[0] == 1,
-                     "For elementwise_op, if X is Sparse, Y must be scalar.");
+      PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1, true,
+                        platform::errors::InvalidArgument(
+                            "For elementwise_op, if X is Sparse, Y must be "
+                            "scalar. But reveived the size of Y = %s.",
+                            y->dims().size()));
       auto& x_sele = x_var->Get<framework::SelectedRows>();
       auto out_sele = ctx.Output<framework::SelectedRows>("Out");
       x = x_sele.value();
@@ -113,12 +119,15 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
       x = x_var->Get<framework::LoDTensor>();
       z = ctx.Output<framework::LoDTensor>("Out");
     } else {
-      PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
-                   framework::ToTypeName(x_var->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "X's type[%s] is not supported by elementwise_op. X's type should be "
+          "LoDTensor or SelectedRows.",
+          framework::ToTypeName(x_var->Type())));
     }
 
     z->mutable_data<T>(ctx.GetPlace());
-    if (x.numel() == y->numel()) {
+    auto dims_equal = x.dims() == y->dims();
+    if (dims_equal) {
       SameDimsElemwiseMul<DeviceContext, T> same_dims_mul;
       same_dims_mul(ctx, &x, y, z);
     } else {

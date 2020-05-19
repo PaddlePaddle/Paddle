@@ -25,6 +25,7 @@ namespace dynload {
 
 extern std::once_flag nvrtc_dso_flag;
 extern void* nvrtc_dso_handle;
+extern bool HasNVRTC();
 
 #ifdef PADDLE_USE_DSO
 
@@ -59,6 +60,7 @@ extern void* nvrtc_dso_handle;
  * include all needed nvrtc functions
  **/
 #define NVRTC_ROUTINE_EACH(__macro) \
+  __macro(nvrtcVersion);            \
   __macro(nvrtcGetErrorString);     \
   __macro(nvrtcCompileProgram);     \
   __macro(nvrtcCreateProgram);      \

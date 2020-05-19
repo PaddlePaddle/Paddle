@@ -46,7 +46,11 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     // split rows index into output sparse vars
     for (size_t i = 0; i < x_rows.size(); ++i) {
       auto& id = x_rows[i];
-      PADDLE_ENFORCE_LT(id, height);
+      PADDLE_ENFORCE_LT(id, height,
+                        platform::errors::OutOfRange(
+                            "Each row_id in x.rows must be less than x.height. "
+                            "But received x.rows[%d] = %d, x.height = %d",
+                            i, id, height));
       int out_idx = GetSectionIndex(id, abs_sections);
       outs_rows_idx[out_idx].push_back(id);
       outs_dense_idx[out_idx].push_back(i);
@@ -63,7 +67,12 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
       if (rows_idx.size() > 0) {
         for (auto idx : rows_idx) {
           auto id_offset = idx - abs_sections[i];
-          PADDLE_ENFORCE_LT(id_offset, height_sections[i]);
+          PADDLE_ENFORCE_LT(
+              id_offset, height_sections[i],
+              platform::errors::OutOfRange("Each row_id in out.rows must be "
+                                           "less than out.height. But recived "
+                                           "out.rows = [%d], out.height = [%d]",
+                                           id_offset, height_sections[i]));
           outs[i]->mutable_rows()->push_back(id_offset);
         }
         auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
@@ -80,13 +89,17 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
                          src + outs_dense_idx[i][j] * row_numel,
                          sizeof(T) * row_numel, stream);
 #else
-            PADDLE_THROW("Paddle is not compiled with GPU");
+            PADDLE_THROW(platform::errors::Unavailable(
+                "Paddle is not compiled with CUDA. Cannot visit cuda device"));
 #endif
           }
         }
       }
       PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
-                        "rows should has the same size with tensor dim 0");
+                        platform::errors::InvalidArgument(
+                            "rows should has the same size with tensor dim 0. "
+                            "But received rows = %d, tensor's dim[0] = %d.",
+                            rows_idx.size(), outs[i]->rows().size()));
     }
   }
 };

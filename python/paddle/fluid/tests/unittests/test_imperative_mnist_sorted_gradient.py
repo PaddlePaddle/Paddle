@@ -39,8 +39,9 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
 
-            mnist2 = MNIST("mnist")
-            sgd2 = SGDOptimizer(learning_rate=1e-3)
+            mnist2 = MNIST()
+            sgd2 = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=mnist2.parameters())
             train_reader2 = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
@@ -85,7 +86,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MNIST("mnist")
+            mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)

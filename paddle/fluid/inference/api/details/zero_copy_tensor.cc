@@ -133,12 +133,13 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
   } else {
 #ifdef PADDLE_WITH_CUDA
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto gpu_place = boost::get<platform::CUDAPlace>(t_place);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, t_place);
     auto *dev_ctx =
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
-    cudaDeviceSynchronize();
+
+    cudaStreamSynchronize(dev_ctx->stream());
 #else
     PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif

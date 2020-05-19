@@ -48,11 +48,7 @@ if(WIN32)
   SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
   SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
-  # Specify the program to use when building static libraries
-  SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
-  SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> lib <TARGET> <LINK_FLAGS> <OBJECTS>")
-
-  # set defination for the dll export
+  # set definition for the dll export
   if (NOT MSVC)
     message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
   endif(NOT MSVC)
@@ -62,6 +58,10 @@ if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
 endif()
 
+if(WITH_GLOO)
+    add_definitions(-DPADDLE_WITH_GLOO)
+endif()
+
 if(WITH_BOX_PS)
     add_definitions(-DPADDLE_WITH_BOX_PS)
 endif()
@@ -69,6 +69,10 @@ endif()
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)
+    # The compiler fully support const expressions since c++14,
+    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
+    # use following definition to set EIGEN_HAS_CONSTEXPR=0 to avoid compilation error in c++11
+    add_definitions(-DEIGEN_MAX_CPP_VER=11)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
@@ -108,16 +112,6 @@ if(WITH_GPU)
             endif()
         endif()
         include_directories(${TENSORRT_INCLUDE_DIR})
-    endif()
-    if(ANAKIN_FOUND)
-        if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
-            message(WARNING "Anakin needs CUDA >= 8.0 to compile. Force ANAKIN_FOUND = OFF")
-            set(ANAKIN_FOUND OFF CACHE STRING "Anakin is valid only when CUDA >= 8.0." FORCE)
-        endif()
-        if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-            message(WARNING "Anakin needs CUDNN >= 7.0 to compile. Force ANAKIN_FOUND = OFF")
-            set(ANAKIN_FOUND OFF CACHE STRING "Anakin is valid only when CUDNN >= 7.0." FORCE)
-        endif()
     endif()
 elseif(WITH_AMD_GPU)
     add_definitions(-DPADDLE_WITH_HIP)

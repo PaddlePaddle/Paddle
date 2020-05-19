@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -24,11 +26,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void Prune(const proto::ProgramDesc& input,
-           const std::set<std::string>& feed_var_names,
-           proto::ProgramDesc* output);
+std::map<int, int> Prune(const proto::ProgramDesc& input,
+                         const std::set<std::string>& feed_var_names,
+                         proto::ProgramDesc* output);
 
-std::unique_ptr<framework::ProgramDesc> PruneBackward(
+std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     const framework::ProgramDesc& origin);
 
 }  // namespace framework

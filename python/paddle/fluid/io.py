@@ -20,6 +20,7 @@ import warnings
 import six
 import logging
 import pickle
+import contextlib
 from functools import reduce
 
 import numpy as np
@@ -31,11 +32,15 @@ from paddle.fluid import layers
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
-    program_guard
+    program_guard, dygraph_not_support
+from .wrapped_decorator import signature_safe_contextmanager
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
+from . import unique_name
 from .reader import *
+from . import dataloader
+from .dataloader import *
 from . import core
 from .. import compat as cpt
 
@@ -55,6 +60,8 @@ __all__ = [
     'load',
     'load_program_state',
     'set_program_state',
+    'get_program_parameter',
+    'get_program_persistable_vars',
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -108,10 +115,60 @@ def is_persistable(var):
 
 
 def is_belong_to_optimizer(var):
-    if not isinstance(var, Parameter):
+    if not (isinstance(var, Parameter) or var.desc.need_check_feed()):
         return is_persistable(var)
 
     return False
+
+
+@dygraph_not_support
+def get_program_parameter(program):
+    """
+    :api_attr: Static Graph
+
+    Get all the parameters from Program.
+
+    Args:
+        var(Program): The Program to get parameters
+
+    Returns:
+        list: The list contains all parameters in the program
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            data = fluid.data(name="img", shape=[64, 784])
+            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            list_para  = fluid.io.get_program_parameter(  fluid.default_main_program() )
+    """
+    return list(filter(is_parameter, program.list_vars()))
+
+
+@dygraph_not_support
+def get_program_persistable_vars(program):
+    """
+    :api_attr: Static Graph
+
+    Get all the persistable vars from Program.
+
+    Args:
+        var(Program): The Program to get persistable vars
+
+    Returns:
+        list: The list contains all persistable vars in the program
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            data = fluid.data(name="img", shape=[64, 784])
+            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
+    """
+    return list(filter(is_persistable, program.list_vars()))
 
 
 def _clone_var_in_block_(block, var):
@@ -133,20 +190,36 @@ def _clone_var_in_block_(block, var):
             persistable=True)
 
 
+@signature_safe_contextmanager
+def _load_program_scope(main=None, startup=None, scope=None):
+    prog = main if main else paddle.fluid.Program()
+    startup_prog = startup if startup else paddle.fluid.Program()
+    scope = scope if scope else paddle.fluid.core.Scope()
+    with paddle.fluid.scope_guard(scope):
+        with paddle.fluid.program_guard(prog, startup_prog):
+            with paddle.fluid.unique_name.guard():
+                yield
+
+
 def _get_valid_program(main_program):
     if main_program is None:
         main_program = default_main_program()
     elif isinstance(main_program, CompiledProgram):
         main_program = main_program._program
         if main_program is None:
-            raise TypeError("program should be as Program type or None")
+            raise TypeError(
+                "The type of input main_program is invalid, expected tyep is Program, but received None"
+            )
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended.")
     if not isinstance(main_program, Program):
-        raise TypeError("program should be as Program type or None")
+        raise TypeError(
+            "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+            % type(main_program))
     return main_program
 
 
+@dygraph_not_support
 def save_vars(executor,
               dirname,
               main_program=None,
@@ -154,6 +227,8 @@ def save_vars(executor,
               predicate=None,
               filename=None):
     """
+    :api_attr: Static Graph
+
     This API saves specific variables in the `Program` to files.
 
     There are two ways to specify the variables to be saved: set variables in 
@@ -161,13 +236,14 @@ def save_vars(executor,
     variables that make `predicate(variable) == True`. The first way has a higher priority.
 
     The `dirname` is used to specify the folder where to save variables.
-    If you prefer to save variables in separate files in the `dirname` floder,
+    If you prefer to save variables in separate files in the `dirname` folder,
     do not set `filename`. If you prefer to save all variables in a single file,
     use `filename` to specify it.
 
     Args:
         executor(Executor): The executor to run for saving variables.
-        dirname(str): The folder where to save variables.
+        dirname(str, optional): The folder where to save variables.
+                            When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose variables will be saved.
                                     If it is None, the default main program will
                                     be used automatically.
@@ -182,7 +258,8 @@ def save_vars(executor,
                                  Default: None
 
     Returns:
-        None
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
 
     Raises:
         TypeError: If `main_program` is not an instance of Program nor None.
@@ -219,17 +296,21 @@ def save_vars(executor,
             fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
             # all variables whose names contain "fc " are saved.
     """
-    save_dirname = os.path.normpath(dirname)
+    save_to_memory = False
+    if dirname is None and filename is None:
+        save_to_memory = True
+
     main_program = _get_valid_program(main_program)
 
     if vars is None:
-        save_vars(
+        return save_vars(
             executor,
             main_program=main_program,
-            dirname=save_dirname,
+            dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
+        params_var_name = unique_name.generate("saved_params")
         # give warning when there is no var in model
         if len(list(vars)) == 0:
             warnings.warn(
@@ -246,37 +327,52 @@ def save_vars(executor,
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
-            if filename is None:
-                save_file_path = os.path.join(save_dirname, new_var.name)
-                save_file_path = os.path.normpath(save_file_path)
+            if filename is None and save_to_memory is False:
+                save_file_path = os.path.join(
+                    os.path.normpath(dirname), new_var.name)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': save_file_path})
+                    attrs={'file_path': os.path.normpath(save_file_path)})
             else:
                 save_var_map[new_var.name] = new_var
 
-        if filename is not None:
+        if filename is not None or save_to_memory:
             save_var_list = []
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
+            save_path = str()
+            if save_to_memory is False:
+                save_path = os.path.join(os.path.normpath(dirname), filename)
+
+            saved_params = save_block.create_var(
+                type=core.VarDesc.VarType.RAW, name=params_var_name)
+            saved_params.desc.set_persistable(True)
             save_block.append_op(
                 type='save_combine',
                 inputs={'X': save_var_list},
-                outputs={},
-                attrs={'file_path': os.path.join(save_dirname, filename)})
+                outputs={'Y': saved_params},
+                attrs={
+                    'file_path': save_path,
+                    'save_to_memory': save_to_memory
+                })
 
         #NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
         executor.run(save_program)
+        if save_to_memory:
+            return global_scope().find_var(params_var_name).get_bytes()
 
 
+@dygraph_not_support
 def save_params(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+
     This operator saves all parameters from the :code:`main_program` to
     the folder :code:`dirname` or file :code:`filename`. You can refer to 
     :ref:`api_guide_model_save_reader_en` for more details.
@@ -300,7 +396,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Args:
         executor(Executor): The executor to run for saving parameters, You can 
                             refer to :ref:`api_guide_executor_en`.
-        dirname(str): The saving directory path.
+        dirname(str, optional): The saving directory path.
+                            When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose parameters will be
                                          saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more 
@@ -313,7 +410,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
                                  Default: None
 
     Returns:
-        None
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
 
     Examples:
         .. code-block:: python
@@ -335,7 +433,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
             # The parameters weights and bias of the fc layer in the network are going to 
             # be saved in different files in the path "./my_paddle_model" 
     """
-    save_vars(
+    return save_vars(
         executor,
         dirname=dirname,
         main_program=main_program,
@@ -377,7 +475,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
     def __save_remote_params(executor, dirname, remote_params_map):
         """
-        recive params on pserver through rpc.
+        receive params on pserver through rpc.
         if the params are be sliced, will concat them to one, then save it.
         """
         if not remote_params_map:
@@ -495,8 +593,11 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 main_program._endpoints)
 
 
+@dygraph_not_support
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+
     This operator saves all persistable variables from :code:`main_program` to 
     the folder :code:`dirname` or file :code:`filename`. You can refer to 
     :ref:`api_guide_model_save_reader_en` for more details. And then
@@ -512,7 +613,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         executor(Executor): The executor to run for saving persistable variables.
                             You can refer to :ref:`api_guide_executor_en` for 
                             more details.
-        dirname(str): The saving directory path.
+        dirname(str, optional): The saving directory path.
+                            When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose persistbale variables will
                                          be saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more details.
@@ -524,7 +626,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                                  Default: None.
 
     Returns:
-        None
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
 
     Examples:
         .. code-block:: python
@@ -548,10 +651,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
-        _save_distributed_persistables(
+        return _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
     else:
-        save_vars(
+        return save_vars(
             executor,
             dirname=dirname,
             main_program=main_program,
@@ -560,6 +663,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             filename=filename)
 
 
+@dygraph_not_support
 def load_vars(executor,
               dirname,
               main_program=None,
@@ -567,6 +671,8 @@ def load_vars(executor,
               predicate=None,
               filename=None):
     """
+    :api_attr: Static Graph
+
     This API loads variables from files by executor.
 
     There are two ways to specify the variables to be loaded: the first way, set
@@ -641,17 +747,23 @@ def load_vars(executor,
             # And all the variables are supposed to be saved in separate files.
 
     """
-    load_dirname = os.path.normpath(dirname)
+    vars_from_memory = False
+    if dirname is not None:
+        dirname = os.path.normpath(dirname)
+    else:
+        vars_from_memory = True
 
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
         if not isinstance(main_program, Program):
-            raise TypeError("program's type should be Program")
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+                % type(main_program))
 
         load_vars(
             executor,
-            dirname=load_dirname,
+            dirname=dirname,
             main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
@@ -663,7 +775,9 @@ def load_vars(executor,
             main_program = default_main_program()
 
         if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
+            raise TypeError(
+                "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+                % type(main_program))
 
         # save origin param shape
         orig_para_shape = {}
@@ -678,13 +792,15 @@ def load_vars(executor,
                 ))
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
+                if dirname is None:
+                    raise ValueError(
+                        "The directory path and params cannot be None at the same time."
+                    )
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={
-                        'file_path': os.path.join(load_dirname, new_var.name)
-                    })
+                    attrs={'file_path': os.path.join(dirname, new_var.name)})
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -693,11 +809,17 @@ def load_vars(executor,
             for name in sorted(load_var_map.keys()):
                 load_var_list.append(load_var_map[name])
 
+            if vars_from_memory is False:
+                filename = os.path.join(dirname, filename)
+
             load_block.append_op(
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(load_dirname, filename)})
+                attrs={
+                    'file_path': filename,
+                    'model_from_memory': vars_from_memory
+                })
         executor.run(load_prog)
 
         # check var shape
@@ -707,17 +829,20 @@ def load_vars(executor,
             var_temp = paddle.fluid.global_scope().find_var(each_var.name)
             assert var_temp != None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
-            assert each_var.name in orig_para_shape, earch_var.name + "MUST in var list"
+            assert each_var.name in orig_para_shape, each_var.name + "MUST in var list"
             orig_shape = orig_para_shape.get(each_var.name)
             if new_shape != orig_shape:
                 raise RuntimeError(
-                    "Shape not matching: the Program requires a parameter with a shape of ({}), "
+                    "Variable's shape does not match, the Program requires a parameter with the shape of ({}), "
                     "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".
                     format(orig_shape, each_var.name, new_shape))
 
 
+@dygraph_not_support
 def load_params(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+
     This API filters out all parameters from the give ``main_program``
     and then tries to load these parameters from the directory ``dirname`` or
     the file ``filename``.
@@ -773,11 +898,14 @@ def load_params(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
+@dygraph_not_support
 def load_persistables(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+    
     This API filters out all variables with ``persistable==True`` from the
     given ``main_program`` and then tries to load these variables from the
-    directory ``dirnameme`` or the file ``filename``.
+    directory ``dirname`` or the file ``filename``.
 
     Use the ``dirname`` to specify the directory where persistable variables
     (refer to :ref:`api_guide_model_save_reader_en`) were saved. If variables
@@ -788,7 +916,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         executor(Executor): The executor used for loading persistable variables.
                             See :ref:`api_guide_executor_en` for more details about it.
         dirname(str): The directory path.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                     be loaded. If it is None, the ``default_main_program``
                                     will be used automatically. See :ref:`api_guide_Program_en`
                                     for more about ``Program``.
@@ -961,6 +1089,7 @@ def append_fetch_ops(inference_program,
             attrs={'col': i})
 
 
+@dygraph_not_support
 def save_inference_model(dirname,
                          feeded_var_names,
                          target_vars,
@@ -971,6 +1100,8 @@ def save_inference_model(dirname,
                          export_for_deployment=True,
                          program_only=False):
     """
+    :api_attr: Static Graph
+
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .
     If you just want to save parameters of your trained model, please use the
@@ -985,21 +1116,21 @@ def save_inference_model(dirname,
 
     Args:
         dirname(str): The directory path to save the inference model.
-        feeded_var_names(list[str]): list of string. Names of variables that need to be feeded
+        feeded_var_names(list[str]): list of string. Names of variables that need to be fed
                                      data during inference.
         target_vars(list[Variable]): list of Variable. Variables from which we can get 
                                      inference results.
         executor(Executor): The executor that saves the inference model. You can refer 
                             to :ref:`api_guide_executor_en` for more details.
         main_program(Program, optional): The original program, which will be pruned to
-                                         build the inference model. If is setted None,
+                                         build the inference model. If is set None,
                                          the global default :code:`_main_program_` will be used.
                                          Default: None.
         model_filename(str, optional): The name of file to save the inference program
-                                       itself. If is setted None, a default filename
+                                       itself. If is set None, a default filename
                                        :code:`__model__` will be used.
         params_filename(str, optional): The name of file to save all related parameters.
-                                        If it is setted None, parameters will be saved
+                                        If it is set None, parameters will be saved
                                         in separate files .
         export_for_deployment(bool): If True, programs are modified to only support
                                      direct inference deployment. Otherwise,
@@ -1028,7 +1159,7 @@ def save_inference_model(dirname,
 
             path = "./infer_model"
 
-            # User defined network, here a softmax regresssion example
+            # User defined network, here a softmax regession example
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
@@ -1077,6 +1208,9 @@ def save_inference_model(dirname,
     # remind user to set auc_states to zeros if the program contains auc op 
     all_ops = main_program.global_block().ops
     for op in all_ops:
+        # clear device of Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op._set_attr(device_attr_name, "")
         if op.type == 'auc':
             warnings.warn(
                 "please ensure that you have set the auc states to zeros before saving inference model"
@@ -1165,31 +1299,37 @@ def save_inference_model(dirname,
     return target_var_name_list
 
 
+@dygraph_not_support
 def load_inference_model(dirname,
                          executor,
                          model_filename=None,
                          params_filename=None,
                          pserver_endpoints=None):
     """
+    :api_attr: Static Graph
+
     Load the inference model from a given directory. By this API, you can get the model
     structure(Inference Program) and model parameters. If you just want to load
     parameters of the pre-trained model, please use the :ref:`api_fluid_io_load_params` API.
     You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
-        dirname(str): The given directory path.
+        dirname(str): One of the following:
+          - The given directory path.
+          - Set to None when reading the model from memory.
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
-        model_filename(str, optional): The name of file to load the inference program.
-                                  If it is None, the default filename
-                                  ``__model__`` will be used.
-                                  Default: ``None``.
-        params_filename(str, optional): The name of file to load all parameters.
-                                   It is only used for the case that all
-                                   parameters were saved in a single binary
-                                   file. If parameters were saved in separate
-                                   files, set it as ``None``.
-                                   Default: ``None``.
+        model_filename(str, optional): One of the following:
+          - The name of file to load the inference program.
+          - If it is None, the default filename ``__model__`` will be used.
+          - When ``dirname`` is ``None``, it must be set to a string containing model.
+          Default: ``None``.
+        params_filename(str, optional): It is only used for the case that all
+            parameters were saved in a single binary file. One of the following:
+          - The name of file to load all parameters.  
+          - When ``dirname`` is ``None``, it must be set to a string containing all the parameters.
+          - If parameters were saved in separate files, set it as ``None``.
+            Default: ``None``.
 
         pserver_endpoints(list, optional): It is only needed by the distributed inference.
                                     If using a distributed look up table during the training,
@@ -1257,21 +1397,32 @@ def load_inference_model(dirname,
             # fetch_targets, we can use an executor to run the inference
             # program for getting the inference result.
     """
-    load_dirname = os.path.normpath(dirname)
-    if not os.path.isdir(load_dirname):
-        raise ValueError("There is no directory named '%s'", dirname)
+    load_from_memory = False
+    if dirname is not None:
+        load_dirname = os.path.normpath(dirname)
+        if not os.path.isdir(load_dirname):
+            raise ValueError("There is no directory named '%s'" % dirname)
 
-    if model_filename is not None:
-        model_filename = os.path.basename(model_filename)
+        if model_filename is None:
+            model_filename = '__model__'
+
+        model_filename = os.path.join(load_dirname,
+                                      os.path.basename(model_filename))
+
+        if params_filename is not None:
+            params_filename = os.path.basename(params_filename)
+
+        with open(model_filename, "rb") as f:
+            program_desc_str = f.read()
     else:
-        model_filename = "__model__"
-    model_filename = os.path.join(load_dirname, model_filename)
-
-    if params_filename is not None:
-        params_filename = os.path.basename(params_filename)
-
-    with open(model_filename, "rb") as f:
-        program_desc_str = f.read()
+        load_from_memory = True
+        if params_filename is None:
+            raise ValueError(
+                "The path of params cannot be None when the directory path is None."
+            )
+        load_dirname = dirname
+        program_desc_str = model_filename
+        params_filename = params_filename
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
@@ -1324,7 +1475,7 @@ def get_parameter_value(para, executor):
             p = fluid.io.get_parameter_value(param, exe)
 
     """
-    assert is_parameter(para)
+    assert is_parameter(para), "The input variable is not parameter."
 
     get_program = Program()
     block = get_program.global_block()
@@ -1350,7 +1501,7 @@ def get_parameter_value_by_name(name, executor, program=None):
     Raises:
         TypeError: If given `name` is not an instance of basestring.
         TypeError: If the parameter with the given name doesn't exist.
-        AssertionError: If there is a varibale named `name` in the
+        AssertionError: If there is a variable named `name` in the
                         given program but it is not a Parameter.
 
     Examples:
@@ -1443,8 +1594,14 @@ def _load_persistable_nodes(executor, dirname, graph):
     load_vars(executor=executor, dirname=dirname, vars=var_list)
 
 
+@dygraph_not_support
 def save(program, model_path):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.save
+	:alias: paddle.save,paddle.tensor.save,paddle.tensor.io.save
+	:old_api: paddle.fluid.save
+
     This function save parameters, optimizer information and network description to  model_path.
 
     The parameters contains all the trainable Variable, will save to a file with suffix ".pdparams".
@@ -1470,7 +1627,11 @@ def save(program, model_path):
 
     base_name = os.path.basename(model_path)
     assert base_name != "", \
-        "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+        "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+
+    dir_name = os.path.dirname(model_path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
 
     def get_tensor(var):
         t = global_scope().find_var(var.name).get_tensor()
@@ -1479,14 +1640,14 @@ def save(program, model_path):
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
     with open(model_path + ".pdparams", 'wb') as f:
-        pickle.dump(param_dict, f)
+        pickle.dump(param_dict, f, protocol=2)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
 
     opt_dict = {p.name: get_tensor(p) for p in optimizer_var_list}
     with open(model_path + ".pdopt", 'wb') as f:
-        pickle.dump(opt_dict, f)
+        pickle.dump(opt_dict, f, protocol=2)
 
     main_program = program.clone()
     program.desc.flush()
@@ -1497,16 +1658,29 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-def load(program, model_path, executor=None):
+@dygraph_not_support
+def load(program, model_path, executor=None, var_list=None):
     """
-    This function filter out parameters and optimizer information from program, and then get corresponding value from file.
+    :api_attr: Static Graph
+	:alias_main: paddle.load
+	:alias: paddle.load,paddle.tensor.load,paddle.tensor.io.load
+	:old_api: paddle.fluid.io.load
+
+    This function get parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.
+
+    This function can also load model file saved with [ save_params, save_persistables, save_vars ]. 
+    var_list can not be None  when load single model file 
+    ( filename is not None When save_params, save_persistables or save_vars is called ).
 
     Args: 
         program(Program): The program will be loaded
         model_path(str): The file prefix store the program
         executor(Executor, optional): The executor used for initialize the parameter 
                                       When startup program is not run.
+        var_list(list, optional): The variable list to load single model file saved with 
+                                  [ save_params, save_persistables, save_vars ]. 
+                                  Default: None
 
     Returns:
         None
@@ -1525,9 +1699,85 @@ def load(program, model_path, executor=None):
 
     assert executor is None or isinstance(executor, Executor)
 
-    parameter_file_name = model_path + ".pdparams"
-    assert os.path.exists(parameter_file_name), \
-        "Parameter file [{}] not exits".format(parameter_file_name)
+    model_prefix = model_path
+    if model_prefix.endswith(".pdparams"):
+        model_prefix = model_prefix[:-9]
+    elif model_prefix.endswith(".pdopt"):
+        model_prefix = model_prefix[:-6]
+    elif model_prefix.endswith(".pdmodel"):
+        model_prefix = model_prefix[:-8]
+
+    parameter_file_name = model_prefix + ".pdparams"
+
+    if not os.path.exists(parameter_file_name):
+        # model file save by fluid.save not found, try to load model file saved with
+        # [save_vars, save_params, save_persistables]
+        _logger.warning(
+            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
+            format(parameter_file_name))
+        if executor is None:
+            raise ValueError(
+                "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
+            )
+        if os.path.isdir(model_path):
+            binary_file_set = set()
+            for root, dirs, files in os.walk(model_path, topdown=False):
+                for f in files:
+                    binary_file_set.add(
+                        os.path.join(root, f).replace("\\", "/"))
+            program_var_list = list(program.list_vars())
+            loaded_var_list = []
+            for var in program_var_list:
+                var_path = os.path.join(model_path, var.name).replace("\\", "/")
+                if var_path in binary_file_set:
+                    loaded_var_list.append(var)
+                    binary_file_set.remove(var_path)
+            if len(binary_file_set) > 0:
+                unused_var_list = " ".join(list(binary_file_set))
+                _logger.warning("variable file [ %s ] not used" %
+                                (" ".join(list(binary_file_set))))
+            try:
+                load_vars(
+                    executor=executor, dirname=model_path, vars=loaded_var_list)
+            except RuntimeError as e:
+                _logger.error(e)
+                raise e
+            except:
+                raise RuntimeError(
+                    "Failed to load model file, please make sure model file is saved with the "
+                    "following APIs: save_params, save_persistables, save_vars")
+
+            return
+        elif os.path.isfile(model_path):
+            if var_list == None:
+                raise ValueError(
+                    "var_list is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
+                )
+            program_var_list = program.list_vars()
+            program_var_name_set = set([var.name for var in program_var_list])
+
+            # check all the variable inlcuded in program
+            for var in var_list:
+                if var.name not in program_var_name_set:
+                    raise LookupError(
+                        "loaded var [{}] is not in program variable list")
+
+            dir_name, file_name = os.path.split(model_path)
+            try:
+                load_vars(
+                    executor=executor,
+                    dirname=dir_name,
+                    vars=var_list,
+                    filename=file_name)
+            except RuntimeError as e:
+                _logger.error(e)
+                raise e
+            except:
+                raise RuntimeError( "Failed to load model file , please make sure model file is saved with the " \
+                                    "the following APIs: [ save_params, save_persistables, save_vars ]. " \
+                                    "When these API called, filename CANNOT be None")
+
+            return
 
     def set_var(var, ndarray):
         t = global_scope().find_var(var.name).get_tensor()
@@ -1550,7 +1800,8 @@ def load(program, model_path, executor=None):
                                                    global_scope(),
                                                    executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
-        load_dict = pickle.load(f)
+        load_dict = pickle.load(f) if six.PY2 else pickle.load(
+            f, encoding='latin1')
     for v in parameter_list:
         assert v.name in load_dict, \
             "Can not find [{}] in model file [{}]".format(
@@ -1561,7 +1812,7 @@ def load(program, model_path, executor=None):
         filter(is_belong_to_optimizer, program.list_vars()))
 
     if len(optimizer_var_list) > 0:
-        opt_file_name = model_path + ".pdopt"
+        opt_file_name = model_prefix + ".pdopt"
         assert os.path.exists(opt_file_name), \
             "Optimizer file [{}] not exits".format(opt_file_name)
 
@@ -1570,7 +1821,8 @@ def load(program, model_path, executor=None):
                 optimizer_var_list, global_scope(), executor._default_executor)
 
         with open(opt_file_name, 'rb') as f:
-            load_dict = pickle.load(f)
+            load_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
         for v in optimizer_var_list:
             assert v.name in load_dict, \
                 "Can not find [{}] in model file [{}]".format(
@@ -1578,12 +1830,20 @@ def load(program, model_path, executor=None):
             set_var(v, load_dict[v.name])
 
 
-def load_program_state(model_path):
+@dygraph_not_support
+def load_program_state(model_path, var_list=None):
     """
+    :api_attr: Static Graph
+
     Load program state from local file
     
     Args:
         model_path(str): The file prefix store the program
+        var_list(list, optional): The variable list to load saved with 
+                                  [ save_params, save_persistables, save_vars ]. 
+                                  Default: None.
+                                  The var_list is only used to get name, 
+                                  will not be modified.
     Returns:
         state_dict(dict): the dict store Parameter and optimizer information
 
@@ -1603,28 +1863,111 @@ def load_program_state(model_path):
             fluid.save( prog, "./temp")
             program_state = fluid.load_program_state( "./temp")
             
-            fluid.set_program_state( prog, program_state)
-
     """
-    parameter_file_name = model_path + ".pdparams"
+    model_prefix = model_path
+    if model_prefix.endswith(".pdparams"):
+        model_prefix = model_prefix[:-9]
+    elif model_prefix.endswith(".pdopt"):
+        model_prefix = model_prefix[:-6]
+    elif model_prefix.endswith(".pdmodel"):
+        model_prefix = model_prefix[:-8]
+
+    parameter_file_name = model_prefix + ".pdparams"
+    if not os.path.exists(parameter_file_name):
+        # model file saved with fluid.save is not found, try to load model file saved with
+        # [save_vars, save_params, save_persistables]
+        _logger.warning(
+            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
+            format(parameter_file_name))
+
+        var_name_list = []
+        if var_list is None and os.path.isfile(model_path):
+            raise ValueError(
+                "var_list can not be None when model_path is a file type")
+
+        for root, dirs, files in os.walk(model_path, topdown=False):
+            for f in files:
+                file_path = os.path.join(root, f)
+                var_temp_name = os.path.relpath(file_path, model_path)
+                var_temp_name = var_temp_name.replace("\\", "/")
+                var_name_list.append(var_temp_name)
+
+        with _load_program_scope():
+            load_prog = Program()
+            load_block = load_prog.global_block()
+
+            def clone_var_to_block(block, var):
+                if not isinstance(var, Variable):
+                    raise TypeError("value in var_list must be variable")
+                return block.create_var(
+                    name=var.name,
+                    shape=var.shape,
+                    dtype=var.dtype,
+                    type=var.type,
+                    lod_level=var.lod_level
+                    if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR else
+                    None,
+                    persistable=True)
+
+            loaded_var_list = []
+
+            if var_list is not None:
+                for var in var_list:
+                    loaded_var_list.append(clone_var_to_block(load_block, var))
+            else:
+                for var_name in var_name_list:
+                    loaded_var_list.append(
+                        load_block.create_var(
+                            name=var_name, persistable=True))
+
+            place = paddle.fluid.CPUPlace()
+            exe = paddle.fluid.Executor(place)
+
+            try:
+                if os.path.isfile(model_path):
+                    dir_name, file_name = os.path.split(model_path)
+                else:
+                    dir_name = model_path
+                    file_name = None
+                load_vars(
+                    executor=exe,
+                    dirname=dir_name,
+                    vars=loaded_var_list,
+                    filename=file_name)
+            except:
+                raise RuntimeError(
+                    "Failed to load model file , please make sure model file is saved with the "
+                    "following APIs: save_params, save_persistables, save_vars")
+            res_dict = {}
+            for var in loaded_var_list:
+                res_dict[var.name] = np.asarray(paddle.fluid.global_scope(
+                ).find_var(var.name).get_tensor())
+
+            return res_dict
+
     assert os.path.exists(parameter_file_name), \
         "Parameter file [{}] not exits".format(parameter_file_name)
 
     with open(parameter_file_name, 'rb') as f:
-        para_dict = pickle.load(f)
+        para_dict = pickle.load(f) if six.PY2 else pickle.load(
+            f, encoding='latin1')
 
-    opt_file_name = model_path + ".pdopt"
+    opt_file_name = model_prefix + ".pdopt"
     if os.path.exists(opt_file_name):
         with open(opt_file_name, 'rb') as f:
-            opti_dict = pickle.load(f)
+            opti_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
 
         para_dict.update(opti_dict)
 
     return para_dict
 
 
+@dygraph_not_support
 def set_program_state(program, state_dict):
     """
+    :api_attr: Static Graph
+
     Set program parameter from state_dict
 
     An exception will throw if shape or dtype of the parameters is not match. 
@@ -1653,6 +1996,8 @@ def set_program_state(program, state_dict):
             fluid.save( prog, "./temp")
             program_state = fluid.load_program_state( "./temp")
 
+            fluid.set_program_state( prog, program_state)
+
     """
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
@@ -1666,11 +2011,11 @@ def set_program_state(program, state_dict):
             orig_para_np = np.array(var_temp.get_tensor())
             new_para_np = state_dict[para.name]
             assert orig_para_np.shape == new_para_np.shape, \
-                "Shape not matching: the Program requires a parameter with a shape of ({}), " \
+                "Parameter's shape does not match, the Program requires a parameter with the shape of ({}), " \
                 "while the loaded parameter (namely [ {} ]) has a shape of  ({})." \
                     .format(orig_para_np.shape, para.name, new_para_np.shape)
             assert orig_para_np.dtype == new_para_np.dtype, \
-                "Dtype not matching: the Program requires a parameter with a dtype of ({}), " \
+                "Parameter's data type does not match, the Program requires a parameter with a dtype of ({}), " \
                 "while the loaded parameter (namely [ {} ]) has a dtype of  ({})." \
                     .format(orig_para_np.dtype, para.name, new_para_np.dtype)
 

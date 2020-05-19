@@ -57,6 +57,7 @@ class TestRecurrentFeed(unittest.TestCase):
                 sum_out_value = sum_out.numpy()
                 sum_out.backward()
                 dyout = out.gradient()
+                original_in1.stop_gradient = True
                 rt.clear_gradients()
 
         with new_program_scope():

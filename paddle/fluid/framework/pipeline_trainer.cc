@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -168,6 +168,11 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   SectionWorker::cpu_id_.store(pipeline_config_.start_cpu_core_id());
   scope_queues_.resize(section_num_);
   pipeline_scopes_.resize(pipeline_num_);
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      persistable_vars_.push_back(var->Name());
+    }
+  }
 
   VLOG(3) << "Init ScopeQueues and create all scopes";
   for (int i = 0; i < section_num_; ++i) {
@@ -266,7 +271,7 @@ void PipelineTrainer::Finalize() {
   for (auto& th : section_threads_) {
     th.join();
   }
-  for (const auto& var : *param_need_sync_) {
+  for (const auto& var : persistable_vars_) {
     auto* root_tensor = root_scope_->Var(var)->GetMutable<LoDTensor>();
     // TODO(hutuxian): Add a final all-reduce?
     const auto& thread_tensor =

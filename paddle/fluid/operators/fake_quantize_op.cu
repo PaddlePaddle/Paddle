@@ -120,11 +120,12 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
   int tid = threadIdx.x;
 
   T s = scale[0];
+  T inv_s = inverse(s);
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
-    v = bin_cnt / s * v;
+    v = bin_cnt * inv_s * v;
     out[i] = round(v);
   }
 }
@@ -139,9 +140,10 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
   T s = scale[0];
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
+    T inv_s = inverse(s);
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
-    v = bin_cnt / s * v;
+    v = bin_cnt * inv_s * v;
     out[i] = round(v) * s / bin_cnt;
   }
 }
@@ -198,11 +200,13 @@ __global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
   T* out_c = out + blockIdx.x * channel_size;
 
   T s = scale[blockIdx.x];
+  T inv_s = inverse(s);
+
   for (int i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
-    v = bin_cnt / s * v;
+    v = bin_cnt * inv_s * v;
     out_c[i] = round(v);
   }
 }
@@ -258,7 +262,7 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& last_scale,
                   const framework::Tensor& iter, const int window_size,
                   framework::Tensor* scales_arr, framework::Tensor* out_scale) {
-    const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
 
     T* scale_arr = scales_arr->mutable_data<T>(gpu_place);
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
@@ -295,7 +299,7 @@ struct FindMovingAverageAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& in_state, const T* cur_scale,
                   const float rate, framework::Tensor* out_state,
                   framework::Tensor* out_accum, framework::Tensor* out_scale) {
-    const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
 
     T accum;
     T state;

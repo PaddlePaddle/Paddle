@@ -15,7 +15,8 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_pool2d_op import *
+import numpy as np
+from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5, avg_pool2D_forward_naive
 
 
 def create_test_mkldnn_use_ceil_class(parent):
@@ -25,6 +26,9 @@ def create_test_mkldnn_use_ceil_class(parent):
 
         def init_ceil_mode(self):
             self.ceil_mode = True
+
+        def init_data_type(self):
+            self.dtype = np.float32
 
     cls_name = "{0}_{1}".format(parent.__name__, "MKLDNNCeilModeCast")
     TestMKLDNNPool2DUseCeilCase.__name__ = cls_name
@@ -40,6 +44,9 @@ def create_test_mkldnn_class(parent):
     class TestMKLDNNCase(parent):
         def init_kernel_type(self):
             self.use_mkldnn = True
+
+        def init_data_type(self):
+            self.dtype = np.float32
 
     cls_name = "{0}_{1}".format(parent.__name__, "MKLDNNOp")
     TestMKLDNNCase.__name__ = cls_name
@@ -77,6 +84,9 @@ class TestAsymPad(TestPool2D_Op):
 
     def init_global_pool(self):
         self.global_pool = False
+
+    def init_data_type(self):
+        self.dtype = np.float32
 
 
 class TestAsymPadCase1(TestAsymPad):
@@ -147,11 +157,6 @@ class TestAsymPadValidNHWC(TestAsymPadValid):
 
     def init_shape(self):
         self.shape = [2, 7, 7, 3]
-
-    #TODO(jczaja): Add Grad NHWC support
-    def test_check_grad(self):
-        with self.assertRaises(fluid.core_avx.EnforceNotMet):
-            super(TestAsymPadValidNHWC, self).test_check_grad()
 
 
 if __name__ == '__main__':

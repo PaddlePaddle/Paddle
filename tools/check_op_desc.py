@@ -65,7 +65,7 @@ def diff_vars(origin_vars, new_vars):
         var_deleted_error_massage.append(var_name)
 
     for var_name in vars_name_only_in_new:
-        if not new_vars.get(var_name).get(DUPLICABLE):
+        if not new_vars.get(var_name).get(DISPENSABLE):
             error, var_error = True, True
             var_added_error_massage.append(var_name)
 

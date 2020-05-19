@@ -70,18 +70,27 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must be CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must be CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
 
     auto *x = ctx.Input<Tensor>("X");
     auto &x_dims = x->dims();
-    PADDLE_ENFORCE_GE(
-        x_dims.size(), 2,
-        "the dimension of input X must greater than or equal to 2");
-    PADDLE_ENFORCE_LE(
-        x_dims.size(), 5,
-        "the dimension of input X must smaller than or equal to 5");
+    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the size of X's dimensions must greater than "
+                          "or equal to 2. But received: "
+                          "the size of X's dimensions is [%d]",
+                          x_dims.size()));
+    PADDLE_ENFORCE_LE(x_dims.size(), 5,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the size of X's dimensions must smaller than"
+                          "or equal to 5. But received: "
+                          "the size of X's dimensions is [%d]",
+                          x_dims.size()));
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, DataLayout::kNCHW, &N, &C, &H, &W, &D);
     int NxC = N * C;
@@ -94,8 +103,9 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t in_param_desc_;
 
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
@@ -113,11 +123,12 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
-        in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDeriveBNTensorDescriptor(
+            in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -152,19 +163,22 @@ class InstanceNormKernel<platform::CUDADeviceContext, T>
     functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
     functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationForwardTraining(
-        handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
-        CudnnDataType<T>::kZero(), data_desc_, x_tmp.template data<T>(),
-        data_desc_, y->template mutable_data<T>(ctx.GetPlace()), in_param_desc_,
-        scale_tmp.template data<BatchNormParamType<T>>(),
-        bias_tmp.template data<BatchNormParamType<T>>(), 0, nullptr, nullptr,
-        epsilon, saved_mean->template mutable_data<BatchNormParamType<T>>(
-                     ctx.GetPlace()),
-        saved_variance->template mutable_data<BatchNormParamType<T>>(
-            ctx.GetPlace())));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnBatchNormalizationForwardTraining(
+            handle, CUDNN_BATCHNORM_SPATIAL, CudnnDataType<T>::kOne(),
+            CudnnDataType<T>::kZero(), data_desc_, x_tmp.template data<T>(),
+            data_desc_, y->template mutable_data<T>(ctx.GetPlace()),
+            in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
+            bias_tmp.template data<BatchNormParamType<T>>(), 0, nullptr,
+            nullptr, epsilon,
+            saved_mean->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace()),
+            saved_variance->template mutable_data<BatchNormParamType<T>>(
+                ctx.GetPlace())));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
   }
 };
@@ -226,8 +240,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *x = ctx.Input<Tensor>("X");
@@ -252,8 +267,22 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
     }
-    PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL);
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C);
+    PADDLE_ENFORCE_EQ(
+        scale->dims().size(), 1UL,
+        platform::errors::InvalidArgument(
+            "The `shape` in InstanceNormOp is invalid: "
+            "the size of scale's dimensions must be equal to 1. But "
+            "received: the size of scale's dimensions"
+            "is [%d]",
+            scale->dims().size()));
+    PADDLE_ENFORCE_EQ(scale->dims()[0], C,
+                      platform::errors::InvalidArgument(
+                          "The `shape` in InstanceNormOp is invalid: "
+                          "the first dimension of scale must be equal to "
+                          "Channels([%d]). But received: "
+                          "the first dimension of scale is [%d],"
+                          "the dimensions of scale is [%s], ",
+                          C, scale->dims()[0], scale->dims()));
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -291,8 +320,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t in_param_desc_;
 
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&in_param_desc_));
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -301,11 +331,12 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         data_desc_, CudnnDataType<T>::type,
         x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()));
-    CUDNN_ENFORCE(platform::dynload::cudnnDeriveBNTensorDescriptor(
-        in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDeriveBNTensorDescriptor(
+            in_param_desc_, data_desc_, CUDNN_BATCHNORM_SPATIAL));
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
@@ -314,18 +345,19 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     const auto *saved_var_data =
         saved_var->template data<BatchNormParamType<T>>();
     if (d_scale && d_bias) {
-      CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackward(
-          dev_ctx.cudnn_handle(), CUDNN_BATCHNORM_SPATIAL,
-          CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-          CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
-          x_tmp.template data<T>(), data_desc_, d_y_tmp.template data<T>(),
-          data_desc_, d_x->template mutable_data<T>(ctx.GetPlace()),
-          in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
-          d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
-              ctx.GetPlace()),
-          epsilon, saved_mean_data, saved_var_data));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnBatchNormalizationBackward(
+              dev_ctx.cudnn_handle(), CUDNN_BATCHNORM_SPATIAL,
+              CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
+              CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(), data_desc_,
+              x_tmp.template data<T>(), data_desc_, d_y_tmp.template data<T>(),
+              data_desc_, d_x->template mutable_data<T>(ctx.GetPlace()),
+              in_param_desc_, scale_tmp.template data<BatchNormParamType<T>>(),
+              d_scale_tmp.template mutable_data<BatchNormParamType<T>>(
+                  ctx.GetPlace()),
+              d_bias_tmp.template mutable_data<BatchNormParamType<T>>(
+                  ctx.GetPlace()),
+              epsilon, saved_mean_data, saved_var_data));
     } else {
       if (d_x) {
         GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
@@ -342,8 +374,9 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
           d_bias_tmp.data<T>(), d_bias->data<T>(), N, C);
     }
 
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(in_param_desc_));
   }
 };

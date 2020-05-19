@@ -26,7 +26,7 @@
 
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/place.h"
@@ -57,7 +57,7 @@ class ParallelContext {
   platform::Place place_;
 };
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 class NCCLParallelContext : ParallelContext {
  public:
   explicit NCCLParallelContext(const ParallelStrategy& strategy,

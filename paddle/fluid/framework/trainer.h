@@ -68,10 +68,13 @@ class MultiTrainer : public TrainerBase {
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
   virtual void InitTrainerEnv(const ProgramDesc& main_program,
                               const platform::Place& place);
-  virtual void InitOtherEnv(const ProgramDesc& main_program) {}
+  virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
+  virtual void FinalizeDumpEnv();
+  virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
+  virtual void DumpWork(int tid);
 
  protected:
   int thread_num_;
@@ -79,6 +82,17 @@ class MultiTrainer : public TrainerBase {
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
   std::vector<std::string> need_merge_var_names_;
+
+  bool need_dump_field_;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
+
+  std::vector<std::thread> dump_thread_;
+  int dump_thread_num_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
@@ -86,6 +100,8 @@ class DistMultiTrainer : public MultiTrainer {
   DistMultiTrainer() {}
   virtual ~DistMultiTrainer() {}
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void InitTrainerEnv(const ProgramDesc& main_program,
+                              const platform::Place& place);
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
@@ -98,19 +114,9 @@ class DistMultiTrainer : public MultiTrainer {
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::vector<std::thread> dump_thread_;
-  int dump_thread_num_;
-  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
-
-  bool need_dump_field_;
-  std::string dump_fields_path_;
-  std::string dump_converter_;
-  int mpi_rank_;
-  int mpi_size_;
-  int dump_file_num_;
 };
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}
@@ -153,6 +159,7 @@ class PipelineTrainer : public TrainerBase {
   // The parameters that should be syncronized between different cards using
   // nccl all-reduce
   std::shared_ptr<std::vector<std::string>> param_need_sync_;
+  std::vector<std::string> persistable_vars_;
   std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
   std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
 

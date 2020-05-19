@@ -151,7 +151,8 @@ def shuffle(reader, buf_size):
 def chain(*readers):
     """
     Use the input data readers to create a chained data reader. The new created reader
-    chains the outputs of input readers together as its output.
+    chains the outputs of input readers together as its output, and it do not change
+    the format of the outputs.
 
     **Note**:
         ``paddle.reader.chain`` is the alias of ``paddle.fluid.io.chain``, and
@@ -162,7 +163,7 @@ def chain(*readers):
     [10, 10, 10],
     [20, 20, 20].
     The chained reader will output:
-    [[0, 0, 0], [10, 10, 10], [20, 20, 20]].
+    [0, 0, 0], [10, 10, 10], [20, 20, 20].
 
     Args:
         readers(list): input data readers.
@@ -457,12 +458,12 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     """
     This API use python ``multiprocessing`` to read data from ``readers`` parallelly,
     and then ``multiprocess.Queue`` or ``multiprocess.Pipe`` is used to merge 
-    these data. A seperate process will be created for each reader in the 
+    these data. A separate process will be created for each reader in the 
     ``readers`` list, please guarantee every reader can work independently 
     to avoid conflicts in parallel environment.
     
 
-    ``Multiprocess.Queue`` require the rw access right to /dev/shm, and it's not suppported 
+    ``Multiprocess.Queue`` require the rw access right to /dev/shm, and it's not supported 
     in some platforms.
 
     Parameters:

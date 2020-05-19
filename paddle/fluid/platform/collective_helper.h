@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include <map>
 #include <memory>
 #include <string>
@@ -71,6 +71,11 @@ class NCCLCommContext {
 
   void CreateAllNCCLComms(const std::vector<int>& dev_ids, int ring_id = 0);
 
+  // a latter comm with the same dev_id and the same ring_id
+  // will override the former
+  NCCLComm* AssignNCCLComm(ncclComm_t comm, int nranks, int rank, int dev_id,
+                           int ring_id = 0);
+
   // retrieve a communicator by the ring id in multiprocessing mode
   NCCLComm* Get(int ring_id) const {
     PADDLE_ENFORCE_GT(comm_map_.count(ring_id), 0,
@@ -96,7 +101,7 @@ class NCCLCommContext {
 
   // retrieve a communicator by the ring id and place
   NCCLComm* Get(int ring_id, Place place) const {
-    return Get(ring_id, boost::get<CUDAPlace>(place).device);
+    return Get(ring_id, BOOST_GET_CONST(CUDAPlace, place).device);
   }
 
  private:

@@ -26,7 +26,6 @@ template <typename T>
 static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
-  auto hidden_size = ctx.Attr<int>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // BoxPS only supports float now
@@ -41,33 +40,49 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
     all_values[i] = output;
   }
+#ifdef PADDLE_WITH_BOX_PS
+  auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
                       hidden_size);
+#endif
 }
 
 template <typename T>
 static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
-  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
+  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
   auto d_output =
       ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
-  auto hidden_size = ctx.Attr<int>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   std::vector<const float *> all_grad_values(slot_size);
   std::vector<int64_t> slot_lengths(slot_size);
+  int batch_size = -1;
   for (size_t i = 0; i < slot_size; i++) {
     const auto *slot = inputs[i];
     const uint64_t *single_slot_keys =
         reinterpret_cast<const uint64_t *>(slot->data<int64_t>());
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
+    int cur_batch_size =
+        slot->lod().size() ? slot->lod()[0].size() - 1 : slot->dims()[0];
+    if (batch_size == -1) {
+      batch_size = cur_batch_size;
+    } else {
+      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+                        platform::errors::PreconditionNotMet(
+                            "The batch size of all input slots should be same, "
+                            "please cheack"));
+    }
     const float *grad_value = d_output[i]->data<float>();
     all_grad_values[i] = grad_value;
   }
+#ifdef PADDLE_WITH_BOX_PS
+  auto hidden_size = ctx.Attr<int>("size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
-                          slot_lengths, hidden_size);
+                          slot_lengths, hidden_size, batch_size);
+#endif
 }
 
 using LoDTensor = framework::LoDTensor;

@@ -22,10 +22,8 @@ class CTCAlignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input of CTCAlignOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                      "Output of CTCAlignOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "ctc_align");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "ctc_align");
 
     auto input_dims = ctx->GetInputDim("Input");
 
@@ -63,7 +61,7 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
               "sequence in Output.")
         .AsDispensable();
     AddAttr<int>("blank",
-                 "(int, default: 0), the blank label setted in Connectionist "
+                 "(int, default: 0), the blank label set in Connectionist "
                  "Temporal Classification (CTC) op.")
         .SetDefault(0);
     AddAttr<bool>("merge_repeated",

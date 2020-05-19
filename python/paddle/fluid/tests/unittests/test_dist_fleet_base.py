@@ -37,6 +37,9 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+
+__all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
 RUN_STEP = 5
 LEARNING_RATE = 0.01
@@ -50,64 +53,97 @@ class FleetDistRunnerBase(object):
         do training : exe run program
     """
 
-    def run_pserver(self, args):
-        if args.role.upper() != "PSERVER":
-            raise ValueError("args role must be PSERVER")
+    def build_role(self, args):
+        if args.role.upper() == "PSERVER":
+            role = role_maker.UserDefinedRoleMaker(
+                current_id=args.current_id,
+                role=role_maker.Role.SERVER,
+                worker_num=args.trainers,
+                server_endpoints=args.endpoints.split(","))
+        else:
+            role = role_maker.UserDefinedRoleMaker(
+                current_id=args.current_id,
+                role=role_maker.Role.WORKER,
+                worker_num=args.trainers,
+                server_endpoints=args.endpoints.split(","))
+        return role
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.SERVER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
+    def build_strategy(self, args):
+        self.strategy = None
+        if args.mode == "async":
+            self.strategy = StrategyFactory.create_async_strategy()
+        elif args.mode == "sync":
+            self.strategy = StrategyFactory.create_sync_strategy()
+        elif args.mode == "half_async":
+            self.strategy = StrategyFactory.create_half_async_strategy()
+        elif args.mode == "geo":
+            self.strategy = StrategyFactory.create_geo_strategy(
+                args.geo_sgd_need_push_nums)
+        self.dump_param = os.getenv("dump_param", "").split(",")
+        self.dump_fields = os.getenv("dump_fields", "").split(",")
+        self.dump_fields_path = os.getenv("dump_fields_path", "")
+        debug = int(os.getenv("Debug", "0"))
+        if debug:
+            self.strategy.set_debug_opt({
+                "dump_param": self.dump_param,
+                "dump_fields": self.dump_fields,
+                "dump_fields_path": self.dump_fields_path
+            })
 
-        fleet.init(role)
+        return self.strategy
 
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = args.sync_mode
-        strategy.geo_sgd_mode = args.geo_sgd_mode
-        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
-
-        avg_cost = self.net()
+    def build_optimizer(self, avg_cost, strategy):
+        use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
+        if use_grad_clip:
+            # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
+            if use_grad_clip == 1:
+                fluid.clip.set_gradient_clip(
+                    clip=fluid.clip.GradientClipByValue(2.0))
+            elif use_grad_clip == 2:
+                fluid.clip.set_gradient_clip(
+                    clip=fluid.clip.GradientClipByNorm(2.0))
+            elif use_grad_clip == 3:
+                fluid.clip.set_gradient_clip(
+                    clip=fluid.clip.GradientClipByGlobalNorm(2.0))
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
+
+    def run_pserver(self, args):
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net(args)
+        self.build_optimizer(avg_cost, strategy)
 
         fleet.init_server()
         fleet.run_server()
 
-    def run_trainer(self, args):
-        if args.role.upper() != "TRAINER":
-            raise ValueError("args role must be TRAINER")
+    def run_dataset_trainer(self, args):
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net(args)
+        self.build_optimizer(avg_cost, strategy)
+        out = self.do_dataset_training(fleet)
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.WORKER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
+    def run_pyreader_trainer(self, args):
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net(args)
+        self.build_optimizer(avg_cost, strategy)
+        out = self.do_pyreader_training(fleet)
 
-        fleet.init(role)
-
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = args.sync_mode
-        strategy.geo_sgd_mode = args.geo_sgd_mode
-        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
-
-        avg_cost = self.net()
-
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
-        out = self.do_training(fleet)
-
-    def net(self, batch_size=4, lr=0.01):
+    def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
-    def do_training(self, fleet):
+    def do_dataset_training(self, fleet):
         raise NotImplementedError(
-            "do_training should be implemented by child classes.")
+            "do_dataset_training should be implemented by child classes.")
+
+    def do_pyreader_training(self, fleet):
+        raise NotImplementedError(
+            "do_pyreader_training should be implemented by child classes.")
 
 
 class TestFleetBase(unittest.TestCase):
@@ -120,7 +156,8 @@ class TestFleetBase(unittest.TestCase):
         raise NotImplementedError("tests should have _setup_config implemented")
 
     def setUp(self):
-        self._sync_mode = True
+        self._mode = "sync"
+        self._reader = "pyreader"
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
@@ -139,8 +176,8 @@ class TestFleetBase(unittest.TestCase):
                 self._find_free_port(), self._find_free_port())
 
         self._python_interp = sys.executable
-        self._geo_sgd = False
         self._geo_sgd_need_push_nums = 5
+        self._grad_clip_mode = 0
         self._setup_config()
 
     def _find_free_port(self):
@@ -194,7 +231,7 @@ class TestFleetBase(unittest.TestCase):
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
 
     def _run_cluster(self, model, envs):
-        env = {'CPU_NUM': '1'}
+        env = {'GRAD_CLIP': str(self._grad_clip_mode)}
         env.update(envs)
 
         python_path = self._python_interp
@@ -203,21 +240,13 @@ class TestFleetBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
-            python_path, model, self._ps_endpoints, self._trainers)
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
+            python_path, model, self._ps_endpoints, self._trainers, self._mode,
+            self._geo_sgd_need_push_nums, self._reader)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}".format(
-            python_path, model, self._ps_endpoints, self._trainers)
-
-        if self._sync_mode:
-            tr_cmd += " --sync_mode"
-            ps_cmd += " --sync_mode"
-
-        if self._geo_sgd:
-            tr_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
-                self._geo_sgd, self._geo_sgd_need_push_nums)
-            ps_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
-                self._geo_sgd, self._geo_sgd_need_push_nums)
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
+            python_path, model, self._ps_endpoints, self._trainers, self._mode,
+            self._geo_sgd_need_push_nums, self._reader)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -246,29 +275,6 @@ class TestFleetBase(unittest.TestCase):
 
         ps0.terminate()
         ps1.terminate()
-        '''
-        with open("/tmp/tr0_out.log", "wb+") as wn:
-            wn.write(tr0_out)
-        with open("/tmp/tr1_out.log", "wb+") as wn:
-            wn.write(tr1_out)
-        # print server log
-        '''
-
-        # print server log
-        '''
-        with open("/tmp/ps0_err.log", "r") as fn:
-            sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "r") as fn:
-            sys.stderr.write("ps1 stderr: %s\n" % fn.read())
-        '''
-
-        # print log
-        '''
-        with open("/tmp/tr0_err.log", "r") as fn:
-            sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        with open("/tmp/tr1_err.log", "r") as fn:
-            sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
-        '''
 
         return 0, 0
 
@@ -301,15 +307,17 @@ def runtime_main(test_class):
     parser.add_argument('--endpoints', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
-    parser.add_argument('--sync_mode', action='store_true')
-    parser.add_argument(
-        '--geo_sgd_mode', type=bool, required=False, default=False)
+    parser.add_argument('--mode', type=str, required=False, default='geo')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+    parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
     if args.role == "pserver":
         model.run_pserver(args)
     else:
-        model.run_trainer(args)
+        if args.reader == "dataset":
+            model.run_dataset_trainer(args)
+        else:
+            model.run_pyreader_trainer(args)

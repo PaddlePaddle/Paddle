@@ -76,10 +76,15 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
-      "conv_bn_fuse_pass",                         //
-      "fc_fuse_pass",                              //
-      "tensorrt_subgraph_pass",                    //
-      "conv_bn_fuse_pass",                         //
+      // "fc_fuse_pass",                                 //
+      "simplify_with_basic_ops_pass",           //
+      "embedding_eltwise_layernorm_fuse_pass",  //
+      "multihead_matmul_fuse_pass_v2",          //
+      "skip_layernorm_fuse_pass",               //
+      "conv_bn_fuse_pass",                      //
+      "fc_fuse_pass",                           //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
       "conv_elementwise_add_act_fuse_pass",   //
@@ -89,17 +94,10 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "transpose_flatten_concat_fuse_pass",
 });
 
-// The following passes works for Anakin sub-graph engine.
-const std::vector<std::string> kAnakinSubgraphPasses({
-    "quant_conv2d_dequant_fuse_pass",               //
-    "simplify_anakin_priorbox_detection_out_pass",  //
-    "fillconstant_elementwisemul_fuse",             //
-    "fc_fuse_pass",                                 //
-    "conv_elementwise_add_fuse_pass",               //
-    "fc_gru_fuse_pass",                             //
-    "shuffle_channel_detect_pass",                  //
-    "anakin_subgraph_pass",                         //
-    "fc_gru_fuse_pass",                             //
+const std::vector<std::string> kLiteSubgraphPasses({
+#ifdef PADDLE_WITH_LITE
+    "lite_subgraph_pass",
+#endif
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
@@ -111,16 +109,17 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
         "conv_eltwiseadd_bn_fuse_pass",              //
-        "multihead_matmul_fuse_pass",
-        "fc_fuse_pass",                        //
-        "fc_elementwise_layernorm_fuse_pass",  //
+        "embedding_eltwise_layernorm_fuse_pass",     //
+        "multihead_matmul_fuse_pass_v2",             //
+        "fc_fuse_pass",                              //
+        "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
-        "transpose_flatten_concat_fuse_pass",
+        "transpose_flatten_concat_fuse_pass",   //
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"
@@ -142,10 +141,6 @@ void GpuPassStrategy::EnableMKLDNN() {
 
 void GpuPassStrategy::EnableMkldnnQuantizer() {
   LOG(ERROR) << "GPU not support MKL-DNN quantization";
-}
-
-void GpuPassStrategy::EnableNgraph() {
-  LOG(ERROR) << "GPU not support Ngraph yet";
 }
 
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
@@ -196,11 +191,17 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",
              "conv_concat_relu_mkldnn_fuse_pass",
-             "conv_relu_mkldnn_fuse_pass",        //
-             "conv_leaky_relu_mkldnn_fuse_pass",  //
-             "conv_relu6_mkldnn_fuse_pass",       //
+             "conv_relu_mkldnn_fuse_pass",                 //
+             "conv_leaky_relu_mkldnn_fuse_pass",           //
+             "conv_relu6_mkldnn_fuse_pass",                //
+             "conv_swish_mkldnn_fuse_pass",                //
+             "scale_matmul_fuse_pass",                     //
+             "reshape_transpose_matmul_mkldnn_fuse_pass",  //
+             "matmul_transpose_reshape_fuse_pass",         //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass"
+             // "fc_mkldnn_pass",
+             "mkldnn_inplace_pass",  // This pass should be activated after
+                                     // fuses
          })) {
       passes_.push_back(pass);
     }
@@ -222,14 +223,4 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 #endif
 }
 
-void CpuPassStrategy::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  if (!use_ngraph_) {
-    passes_.insert(passes_.begin(), "ngraph_subgraph_pass");
-  }
-  use_ngraph_ = true;
-#else
-  use_ngraph_ = false;
-#endif
-}
 }  // namespace paddle

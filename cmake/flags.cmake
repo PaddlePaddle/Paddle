@@ -207,11 +207,6 @@ if(LINUX)
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
 
-if(UNIX AND NOT APPLE)
-  # except apple from nix*Os family
-  set(LINUX TRUE)
-endif(UNIX AND NOT APPLE)
-
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
