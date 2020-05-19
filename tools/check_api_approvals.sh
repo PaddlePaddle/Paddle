@@ -286,11 +286,14 @@ fi
 pip install PyGithub 
 wget https://paddle-ci.gz.bcebos.com/blk/block.txt
 echo "chalsliu" >> block.txt
+cat block.txt
 HASUTFIXED=`python check_ut.py | grep "has UT to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
-    echo_line="${$HASUTFIXED} You must have one RD (22165420 or 38231817) approval.\n"
-    check_approval 1 38231817 52485244
+    echo_line="${HASUTFIXED} You must have one RD (kolinwei or zhouwei25) approval.\n"
+    echo $echo_line
+    check_approval 1 22165420 52485244
 fi
+echo "checked ut"
 
 if [ -n "${echo_list}" ];then
   echo "****************"
