@@ -300,7 +300,6 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
         continue;
       }
     }
-
     return h;
   }
 }
@@ -379,33 +378,15 @@ VarHandlePtr GRPCClient::AsyncGetMonomerBarrier(const std::string& ep,
   if (UNLIKELY(platform::IsProfileEnabled())) {
     h->Wait();
   }
-
   return h;
 }
 
 VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
                                            int64_t time_out) {
-  const auto ch = GetChannel(ep);
-
-  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  const std::string method = kSendCompleteRPC;
-  VarHandlePtr h(new VarHandle(ep, method, COMPLETE_MESSAGE, nullptr, nullptr));
-  s->Prepare(h, time_out);
-
-  sendrecv::VariableMessage req;
-  req.set_trainer_id(trainer_id_);
-  req.set_varname(COMPLETE_MESSAGE);
-
-  platform::RecordRPCEvent record_event(method);
-
-  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
-
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
-  }
-
+  platform::CPUDeviceContext ctx;
+  auto* scope = new framework::Scope();
+  auto h = AsyncDistributeNotify(ep, ctx, *scope, COMPLETE_MESSAGE);
+  delete scope;
   return h;
 }
 
@@ -458,7 +439,8 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
     ::grpc::ByteBuffer buf;
 
     if (var_name_val == BATCH_BARRIER_MESSAGE ||
-        var_name_val == FETCH_BARRIER_MESSAGE) {
+        var_name_val == FETCH_BARRIER_MESSAGE ||
+        var_name_val == COMPLETE_MESSAGE) {
       // prepare input
       sendrecv::VariableMessage req;
       req.set_varname(var_name_val);

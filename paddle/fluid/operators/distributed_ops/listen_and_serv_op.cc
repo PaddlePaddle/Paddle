@@ -471,7 +471,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
-  auto *barrier = distributed::BarrierMonitor::Init(fan_in);
+  distributed::BarrierMonitor::Init(fan_in);
 
   if (distributed_mode == distributed::DistributedMode::kSync) {
     // start the server listening after all member initialized.
@@ -480,12 +480,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     rpc_service_->WaitServerReady();
     // Write to a file of server selected port for python use.
     SavePort();
-
-    barrier->WaitServerWeakup();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
-    VLOG(3) << "all trainers sync params from server done";
-
-    barrier->ServerWeakup();
 
     CacheVarsType(inputs, recv_scope);
 
@@ -509,8 +503,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       distributed::HeartBeatMonitor::Init(fan_in, pserver_id == 0, pieces[0]);
     }
 
-    auto *barrier = distributed::BarrierMonitor::Init(fan_in);
-
     // start the server listening after all member initialized.
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
@@ -518,11 +510,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
     // Write to a file of server selected port for python use.
     SavePort();
-
-    barrier->WaitServerWeakup();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
-    VLOG(3) << "all trainers sync params from server done";
-    barrier->ServerWeakup();
 
     RunAsyncLoop(&executor, program, &recv_scope);
   }
