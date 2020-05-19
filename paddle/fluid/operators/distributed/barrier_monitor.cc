@@ -49,6 +49,12 @@ bool BarrierMonitor::IncreaseBarrier(const int worker_id,
   return Wait();
 }
 
+void BarrierMonitor::DecreaseWorker() {
+  std::unique_lock<std::mutex> lck(mutex_);
+  workers_--;
+  VLOG(1) << "decrement worker num to " << workers_;
+}
+
 void BarrierMonitor::Monitor() {
   while (!IsReady() && running_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));

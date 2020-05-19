@@ -129,6 +129,7 @@ class BarrierMonitor {
   static BarrierMonitor *GetInstance() { return monitor_.get(); }
 
   bool IncreaseBarrier(const int worker_id, const std::string &barrier);
+  void DecreaseWorker();
 
   void Monitor();
 
@@ -141,6 +142,7 @@ class BarrierMonitor {
   bool Wait();
 
   void WaitServerWeakup();
+
   void ServerWeakup();
 
  private:
