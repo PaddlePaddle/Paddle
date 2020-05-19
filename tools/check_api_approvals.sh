@@ -283,6 +283,14 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 32832641 6836917
 fi
 
+pip install PyGithub 
+wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has UT to be fixed" || true`
+if [ "${HASUTFIXED}" != "" ]; then
+    echo_line="${HASUTFIXED} You must have one RD (kolinwei or zhouwei25) approval.\n"
+    check_approval 1 22165420 52485244
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
