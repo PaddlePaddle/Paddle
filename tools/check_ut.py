@@ -30,7 +30,7 @@ class PRChecker(object):
     def check(self):
         """ check pr """
         filename = 'block.txt'
-        pr_id = os.getenv('AGILE_PULL_ID')
+        pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('No PR ID')
             exit(0)
