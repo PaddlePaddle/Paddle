@@ -12,19 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
+# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#http:  // www.apache.org/licenses/LICENSE-2.0
+# http:  // www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http:  // www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
@@ -132,11 +146,11 @@ class FleetTranspiler(Fleet):
             kwargs["trainer_id"] = self._role_maker.worker_id()
             return kwargs
 
-#if MPISymetricRoleMaker is defined
-#we suppose a user wants to submit job on mpi cluster
+        # if MPISymetricRoleMaker is defined
+        # we suppose a user wants to submit job on mpi cluster
 
         if isinstance(self._role_maker, MPISymetricRoleMaker):
-            #check whether server has been initialized
+            # check whether server has been initialized
             wait_server_ready(self.server_endpoints(to_string=False))
 
         trainer_config = self._strategy.get_trainer_runtime_config()
@@ -187,16 +201,16 @@ class FleetTranspiler(Fleet):
         else:
             raise Exception(
                 "You should run DistributedOptimizer.minimize() first")
-#barrier_all for init_server, wait for server starts
+        # barrier_all for init_server, wait for server starts
         self._role_maker._barrier_all()
         self.all_ips_ = self._role_maker._all_gather(self._local_ip)
-        #worker_id * 2 is for compatible with older versions of pslib
+        # worker_id * 2 is for compatible with older versions of pslib
         self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                     self._role_maker._get_size(),
                                     self._role_maker.worker_id() * 2)
-        #barrier_all for init_worker
+        # barrier_all for init_worker
         self._role_maker._barrier_all()
-        #prepare for client to client communication
+        # prepare for client to client communication
         info = self._fleet_ptr.get_clients_info()
         all_info = self._role_maker._worker_gather(info[0])
         self._fleet_ptr.gather_clients(all_info)
@@ -205,7 +219,7 @@ class FleetTranspiler(Fleet):
             self._client2client_connect_timeout_ms,
             self._client2client_max_retry)
         self._fleet_ptr.create_client2client_connection()
-        #barrier for init model
+        # barrier for init model
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             tables = []
@@ -235,7 +249,7 @@ class FleetTranspiler(Fleet):
                     self._fleet_ptr.init_model(scope,
                                                int(table.table_id),
                                                var_name_list)
-#barrier for init model done
+                    # barrier for init model done
         self._role_maker._barrier_worker()
 
     def init_worker(self):
@@ -321,7 +335,7 @@ class FleetTranspiler(Fleet):
                 else:
                     raise Exception(
                         "You should run DistributedOptimizer.minimize() first")
-#server_id * 2 is for compatible with older versions of pslib
+                # server_id * 2 is for compatible with older versions of pslib
                 self._fleet_ptr.init_server(self._dist_desc_str,
                                             self._role_maker.server_id() * 2)
                 if isinstance(self._role_maker, MPISymetricRoleMaker):
@@ -332,13 +346,13 @@ class FleetTranspiler(Fleet):
                     self._local_ip = self._fleet_ptr.run_server(
                         str(local_endpoint[0]), int(local_endpoint[1]))
 
-#barrier_all for init_server
+                # barrier_all for init_server
                 self._role_maker._barrier_all()
                 self.all_ips_ = self._role_maker._all_gather(self._local_ip)
 
                 self._fleet_ptr.gather_servers(self.all_ips_,
                                                self._role_maker._get_size())
-                #barrier_all for init_worker, wait all workers start
+                # barrier_all for init_worker, wait all workers start
                 self._role_maker._barrier_all()
             else:
                 raise Exception(
@@ -362,7 +376,7 @@ class FleetTranspiler(Fleet):
             self._executor.close()
         else:
             self._role_maker._barrier_worker()
-            #all worker should be finalize first
+            # all worker should be finalize first
             if self._role_maker.is_worker():
                 self._fleet_ptr.finalize_worker()
             self._role_maker._barrier_worker()
@@ -413,7 +427,7 @@ class FleetTranspiler(Fleet):
                         _strategy = AsyncStrategy()
                 else:
                     _strategy = HalfAsyncStrategy()
-                    #for half_async compatibility
+                    # for half_async compatibility
                     strategy.half_async = True
                     strategy.runtime_split_send_recv = True
             self._strategy.set_program_config(strategy)
@@ -606,7 +620,7 @@ if you would like to save all variables in a
 
         if self._role_maker.is_first_worker():
             cache_threshold = self._fleet_ptr.get_cache_threshold(table_id)
-#check cache threshold right or not
+        # check cache threshold right or not
         self._role_maker._barrier_worker()
 
         if self._role_maker.is_first_worker():
@@ -769,12 +783,12 @@ if you would like to save all variables in a
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            #get fs config from fleet_desc
+            # get fs config from fleet_desc
             fs_name = self._opt_info["fleet_desc"].fs_client_param.uri
             fs_ugi = self._opt_info["fleet_desc"].fs_client_param.user + "," + \
                      self._opt_info["fleet_desc"].fs_client_param.passwd
             hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
-            #download model_path if it's hdfs/afs
+            # download model_path if it's hdfs/afs
             if model_path.startswith("hdfs:") or model_path.startswith("afs:"):
                 dest = "./model_for_load_table_%s" % table_id
                 cmd = hadoop_bin + " fs -D fs.default.name=" + fs_name + \
@@ -784,7 +798,7 @@ if you would like to save all variables in a
                 if ret != 0:
                     raise RuntimeError("download model failed")
                 model_path = dest
-#download model_proto_file if it's hdfs/afs
+            # download model_proto_file if it's hdfs/afs
             if model_proto_file.startswith("hdfs:") or \
                     model_proto_file.startswith("afs:"):
                 dest = "./model_proto_file_for_load_table_%s" % table_id
@@ -813,7 +827,7 @@ if you would like to save all variables in a
         self._role_maker._barrier_worker()
 
 
-#fleet is a global instance for parameter server.
+# fleet is a global instance for parameter server.
 fleet = FleetTranspiler()
 
 
@@ -873,12 +887,12 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = fleet._origin_main_program.clone()
         _startup = fleet._origin_startup_program.clone()
 
-        #for main program
+        # for main program
         _main = worker.delete_optimizer_pass(_main, compiled_config)
         _main = worker.distributed_ops_pass(_main, compiled_config)
         _main = worker.append_send_ops_pass(_main, compiled_config)
 
-        #for startup program
+        # for startup program
         _startup = worker.fake_init_ops_pass(_startup, compiled_config)
         _startup = worker.init_from_server_pass(_startup, compiled_config)
         _startup = worker.delet_extra_optimizes_pass(_startup, compiled_config)
