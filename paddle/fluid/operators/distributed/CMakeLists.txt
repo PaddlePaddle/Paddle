@@ -13,7 +13,7 @@ cc_library(async_sparse_param_update_recorder SRCS async_sparse_param_update_rec
 cc_test(async_sparse_param_update_recorder_test SRCS async_sparse_param_update_recorder_test.cc DEPS async_sparse_param_update_recorder)
 
 cc_library(heart_beat_monitor SRCS heart_beat_monitor.cc DEPS enforce simple_threadpool)
-cc_library(barrier_monitor SRCS barrier_monitor.cc DEPS enforce simple_threadpool)
+cc_library(barrier_monitor SRCS barrier_monitor.cc DEPS enforce simple_threadpool trainer_desc_proto)
 cc_test(heart_beat_monitor_test SRCS heart_beat_monitor_test.cc DEPS heart_beat_monitor)
 
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files

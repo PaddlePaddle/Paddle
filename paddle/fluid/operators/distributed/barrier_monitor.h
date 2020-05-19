@@ -131,7 +131,7 @@ class BarrierMonitor {
   bool IncreaseBarrier(const int worker_id, const std::string &barrier);
   void DecreaseWorker();
 
-  const int GetWorkerNum() { return workers_; }
+  int GetWorkerNum() { return workers_; }
 
   void Monitor();
 
