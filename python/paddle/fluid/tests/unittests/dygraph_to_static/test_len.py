@@ -18,8 +18,8 @@ import unittest
 
 import numpy as np
 import paddle.fluid as fluid
-from jit import declarative
-from dygraph_to_static import convert_call
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.dygraph_to_static import convert_call
 
 SEED = 2020
 np.random.seed(SEED)
