@@ -119,10 +119,7 @@ class BarrierMonitor {
         new std::thread(std::bind(&BarrierMonitor::Monitor, this)));
   }
 
-  ~BarrierMonitor() {
-    running_ = false;
-    if (monitor_thread_) monitor_thread_->join();
-  }
+  ~BarrierMonitor() { Stop(); }
 
   static BarrierMonitor *Init(int workers) {
     std::call_once(init_flag_, &BarrierMonitor::InitImpl, workers);
@@ -137,7 +134,7 @@ class BarrierMonitor {
 
   void Swap(bool is_valid);
 
-  void Release();
+  void Stop();
 
   bool IsReady();
 

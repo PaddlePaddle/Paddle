@@ -92,7 +92,12 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
 ListenAndServOp::~ListenAndServOp() { Stop(); }
 
 void ListenAndServOp::Stop() {
-  distributed::BarrierMonitor::GetInstance()->Release();
+  auto *barrier = distributed::BarrierMonitor::GetInstance();
+
+  if (barrier != nullptr) {
+    barrier->Stop();
+  }
+
   rpc_service_->ShutDown();
   server_thread_->join();
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
@@ -147,7 +152,7 @@ void ListenAndServOp::RunSyncLoop(
 
     if (rpc_service_->IsExit()) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      barrier->Release();
+      barrier->Stop();
       break;
     }
 
@@ -466,11 +471,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
+  auto *barrier = distributed::BarrierMonitor::Init(fan_in);
+
   if (distributed_mode == distributed::DistributedMode::kSync) {
     // start the server listening after all member initialized.
-
-    auto *barrier = distributed::BarrierMonitor::Init(fan_in);
-
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
     rpc_service_->WaitServerReady();
@@ -505,6 +509,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       distributed::HeartBeatMonitor::Init(fan_in, pserver_id == 0, pieces[0]);
     }
 
+    auto *barrier = distributed::BarrierMonitor::Init(fan_in);
+
     // start the server listening after all member initialized.
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
@@ -512,6 +518,11 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
     // Write to a file of server selected port for python use.
     SavePort();
+
+    barrier->WaitServerWeakup();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    VLOG(3) << "all trainers sync params from server done";
+    barrier->ServerWeakup();
 
     RunAsyncLoop(&executor, program, &recv_scope);
   }

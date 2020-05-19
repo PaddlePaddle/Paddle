@@ -108,7 +108,7 @@ void BarrierMonitor::Swap(bool is_valid) {
   workder_cv_.notify_all();
 }
 
-void BarrierMonitor::Release() {
+void BarrierMonitor::Stop() {
   std::unique_lock<std::mutex> lck(mutex_);
 
   valid_ = true;
@@ -120,6 +120,8 @@ void BarrierMonitor::Release() {
   recv_barrier_queue->Clear();
   workder_cv_.notify_all();
   server_cv_.notify_all();
+
+  if (monitor_thread_) monitor_thread_->join();
 }
 
 bool BarrierMonitor::Wait() {
