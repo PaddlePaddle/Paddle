@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeParser
+from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
@@ -374,7 +374,7 @@ class LoopTransformer(gast.NodeTransformer):
         #   2). cond_stmt: node, condition node to judge whether continue loop
         #   3). body_stmts: list[node], updated loop body, sometimes we should change
         #       the original statement in body, not just append new statement
-        current_for_node_parser = ForNodeParser(node)
+        current_for_node_parser = ForNodeVisitor(node)
         stmts_tuple = current_for_node_parser.parse()
         if stmts_tuple is None:
             return [node]
