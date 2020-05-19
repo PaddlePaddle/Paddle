@@ -30,9 +30,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(is_float_type, true,
                       platform::errors::PreconditionNotMet(
                           "MKLDNN LRN must use float data."));
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "MKLDNN LRN kernel must use CPUPlace."));
+    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "LRN");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
@@ -99,7 +97,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(is_float_type, true,
                       platform::errors::PreconditionNotMet(
                           "MKLDNN LRN GradOpKernl must use float data."));
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "LRN");
+    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "LRNGrad");
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
         platform::errors::PreconditionNotMet(

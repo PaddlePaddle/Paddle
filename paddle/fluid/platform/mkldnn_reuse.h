@@ -1146,10 +1146,11 @@ static std::shared_ptr<mkldnn::memory> SetDstMemory(
     const std::shared_ptr<ConvMKLDNNHandler>& handler,
     std::vector<mkldnn::primitive>* pipeline) {
   const T* residual_param_data = residual_param->data<T>();
-  PADDLE_ENFORCE_NOT_NULL(residual_param_data,
-                          platform::errors::PreconditionNotMet(
-                              "You must provide residual data if you want "
-                              "MKLDNN conv+elementwise_add fusion"));
+  PADDLE_ENFORCE_NOT_NULL(
+      residual_param_data,
+      platform::errors::PreconditionNotMet("Residual parameter is required for "
+                                           "the MKLDNN conv+elementwise_add "
+                                           "fusion, but now it is missing"));
   std::shared_ptr<mkldnn::memory> user_residual_memory_p =
       handler->AcquireResidualDataMemory(user_residual_md,
                                          to_void_cast<T>(residual_param_data));
