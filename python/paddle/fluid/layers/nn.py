@@ -14193,10 +14193,11 @@ def mish(x, threshold=20, name=None):
     Args:
         x (Variable): Input feature, multi-dimensional Tensor. The data type
                       should be float16, float32 or float64.
-        threshold (float): threshold for softplus in Mish operator.
+        threshold (float|None): threshold for softplus in Mish operator.
                 Approximate value of softplus will be used if absolute value
                 of input is greater than :attr:`threshold` if :attr:`threshold`
-                is set. Default 20.
+                is set as positive value, None or negative value for not using
+                approximate value. Default 20.
         name (str, optional): The default value is None. Normally there is no
                 need for user to set this property. For more information, please
                 refer to :ref:`api_guide_Name`
@@ -14236,7 +14237,7 @@ def mish(x, threshold=20, name=None):
         type='mish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold})
+        attrs={'threshold': threshold or -1})
     return out
 
 
