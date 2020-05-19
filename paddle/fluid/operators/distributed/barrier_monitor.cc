@@ -128,6 +128,7 @@ void BarrierMonitor::Stop() {
   server_cv_.notify_all();
 
   if (monitor_thread_) monitor_thread_->join();
+  monitor_thread_ = nullptr;
 }
 
 bool BarrierMonitor::Wait() {
