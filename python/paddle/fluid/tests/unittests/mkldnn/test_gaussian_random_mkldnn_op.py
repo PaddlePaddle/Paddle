@@ -27,16 +27,14 @@ class TestMKLDNNGaussianRandomOpSeed10(TestGaussianRandomOp):
 class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
+        self.use_mkldnn = True
         self.attrs = {
-            "shape": [1000, 784],
-            "mean": .0,
-            "std": 1.,
-            "seed": 0,
+            "shape": [123, 92],
+            "mean": 1.0,
+            "std": 2.0,
+            "seed": 10,
             "use_mkldnn": self.use_mkldnn
         }
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
 
 
 if __name__ == '__main__':

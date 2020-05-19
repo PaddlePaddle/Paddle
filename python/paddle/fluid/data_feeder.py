@@ -76,7 +76,8 @@ def check_variable_and_dtype(input,
                              expected_dtype,
                              op_name,
                              extra_message=''):
-    check_type(input, input_name, Variable, op_name, extra_message)
+    check_type(input, input_name, (Variable, core.VarBase), op_name,
+               extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -210,6 +211,8 @@ class BatchedTensorProvider(object):
 
 class DataFeeder(object):
     """
+    :api_attr: Static Graph
+    
     DataFeeder converts the data that returned by a reader into a data
     structure that can feed into Executor. The reader is usually a 
     python generator that returns a list of mini-batch data entries. 

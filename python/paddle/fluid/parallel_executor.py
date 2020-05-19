@@ -28,6 +28,8 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
+	:api_attr: Static Graph
+
     The ParallelExecutor is an upgraded version of :code:`fluid.Executor` that supports multi-node model
     training and testing based on the data-parallel mode. In data-parallel mode,
     ParallelExecutor will broadcast the parameters from Node0 to other nodes during

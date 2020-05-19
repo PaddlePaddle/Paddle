@@ -54,19 +54,20 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "SplitSelectedRowsOp must have input X.");
-    PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "SplitSelectedRowsOp must have output Out.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "SplitSelectedRowsOp must have input X."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "SplitSelectedRowsOp must have output Out."));
   }
 };
 
 class SplitSelectedRowsOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &out_var : ctx->Output("Out")) {
-      ctx->SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
-    }
+    ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS,
+                       framework::ALL_ELEMENTS);
   }
 };
 

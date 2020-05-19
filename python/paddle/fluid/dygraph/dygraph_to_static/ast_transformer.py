@@ -14,8 +14,6 @@
 
 from __future__ import print_function
 
-import astor
-import copy
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
@@ -24,29 +22,23 @@ import gast
 import inspect
 import textwrap
 
-from paddle.fluid import unique_name
-
+from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
+from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicApiTransformer
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
+from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
-from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
-DECORATOR_NAMES = [
-    'dygraph_to_static_code', 'dygraph_to_static_program',
-    'dygraph_to_static_func', 'dygraph_to_static_output'
-]
+DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 
 
 class DygraphToStaticAst(gast.NodeTransformer):
@@ -60,7 +52,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.static_analysis_visitor = StaticAnalysisVisitor(root)
         self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
         )
-
         self.decorate_func_name = None
         self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
@@ -90,6 +81,15 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).transform()
 
+        # Transform python assert statement
+        AssertTransformer(node_wrapper).transform()
+
+        # Transform all python print statement
+        PrintTransformer(node_wrapper).transform()
+
+        # Transform call recursively
+        CallTransformer(node_wrapper).transform()
+
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
             self.decorate_func_name = node.name
@@ -99,9 +99,24 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.generic_visit(node)
         # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
-            decorator_list = [
-                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
-            ]
+            decorator_list = []
+            for d in node.decorator_list:
+                if isinstance(d, gast.Name) and d.id not in DECORATOR_NAMES:
+                    raise NotImplementedError(
+                        "ProgramTranslator hasn't implemented multiple decorators. Please remove "
+                        + d.id + " in " + self.decorate_func_name)
+                if isinstance(d, gast.Attribute):
+                    full_attribute_name = get_attribute_full_name(d)
+                    has_translate_decorator = False
+                    for deco in DECORATOR_NAMES:
+                        if deco in full_attribute_name:
+                            has_translate_decorator = True
+                            break
+                    if not has_translate_decorator:
+                        raise NotImplementedError(
+                            "ProgramTranslator hasn't implemented multiple decorators. Please remove "
+                            + full_attribute_name + " in " +
+                            self.decorate_func_name)
             node.decorator_list = decorator_list
         return node
 
@@ -126,6 +141,9 @@ def convert_to_static(dyfunc):
     Converts dygraph function into static function.
     """
     # Get AST from dygraph function
+    # Note: In Python2, it will raise OSError when inspect function
+    # with decorator directly and dyfunc.__wrapped__ holds the actual function.
+    dyfunc = getattr(dyfunc, '__wrapped__', dyfunc)
     raw_code = inspect.getsource(dyfunc)
     code = textwrap.dedent(raw_code)
     root = gast.parse(code)

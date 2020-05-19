@@ -44,6 +44,8 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 #define BUF_SIZE 1024 * 1024
 
+extern void comlog_set_log_level(int log_level);
+extern int com_logstatus();
 namespace paddle {
 namespace framework {
 
@@ -167,9 +169,11 @@ class AfsManager {
     _afshandler = new afs::AfsFileSystem(fs_name.c_str(), user.c_str(),
                                          pwd.c_str(), conf_path.c_str());
     VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
-    int ret = _afshandler->Init(true, true);
+    int ret = _afshandler->Init(true, (com_logstatus() == 0));
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "Called AFSAPI Init Interface Failed."));
+    // Too high level will hurt the performance
+    comlog_set_log_level(4);
     ret = _afshandler->Connect();
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "Called AFSAPI Connect Interface Failed"));
@@ -334,6 +338,7 @@ class BoxWrapper {
   void EndFeedPass(boxps::PSAgentBase* agent) const;
   void BeginPass() const;
   void EndPass(bool need_save_delta) const;
+  void SetTestMode(bool is_test) const;
   void PullSparse(const paddle::platform::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -359,8 +364,10 @@ class BoxWrapper {
                 uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
                 int total_len);
   boxps::PSAgentBase* GetAgent() { return p_agent_; }
-  void InitializeGPU(const char* conf_file, const std::vector<int>& slot_vector,
-                     const std::vector<std::string>& slot_omit_in_feedpass) {
+  void InitializeGPUAndLoadModel(
+      const char* conf_file, const std::vector<int>& slot_vector,
+      const std::vector<std::string>& slot_omit_in_feedpass,
+      const std::string& model_path) {
     if (nullptr != s_instance_) {
       VLOG(3) << "Begin InitializeGPU";
       std::vector<cudaStream_t*> stream_list;
@@ -375,7 +382,8 @@ class BoxWrapper {
       }
       VLOG(2) << "Begin call InitializeGPU in BoxPS";
       // the second parameter is useless
-      s_instance_->boxps_ptr_->InitializeGPU(conf_file, -1, stream_list);
+      s_instance_->boxps_ptr_->InitializeGPUAndLoadModel(
+          conf_file, -1, stream_list, slot_vector, model_path);
       p_agent_ = boxps::PSAgentBase::GetIns(feedpass_thread_num_);
       p_agent_->Init();
       for (const auto& slot_name : slot_omit_in_feedpass) {
@@ -396,10 +404,27 @@ class BoxWrapper {
   }
 
   const std::string SaveBase(const char* batch_model_path,
-                             const char* xbox_model_path) {
+                             const char* xbox_model_path,
+                             const std::string& date) {
     VLOG(3) << "Begin SaveBase";
+    PADDLE_ENFORCE_EQ(
+        date.length(), 8,
+        platform::errors::PreconditionNotMet(
+            "date[%s] is invalid, correct example is 20190817", date.c_str()));
+    int year = std::stoi(date.substr(0, 4));
+    int month = std::stoi(date.substr(4, 2));
+    int day = std::stoi(date.substr(6, 2));
+
+    struct std::tm b;
+    b.tm_year = year - 1900;
+    b.tm_mon = month - 1;
+    b.tm_mday = day;
+    b.tm_min = b.tm_hour = b.tm_sec = 0;
+    std::time_t seconds_from_1970 = std::mktime(&b);
+
     std::string ret_str;
-    int ret = boxps_ptr_->SaveBase(batch_model_path, xbox_model_path, ret_str);
+    int ret = boxps_ptr_->SaveBase(batch_model_path, xbox_model_path, ret_str,
+                                   seconds_from_1970 / 86400);
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "SaveBase failed in BoxPS."));
     return ret_str;

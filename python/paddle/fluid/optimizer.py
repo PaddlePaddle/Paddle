@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import logging
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -67,27 +68,31 @@ class Optimizer(object):
                  grad_clip=None,
                  name=None):
         self._parameter_list = parameter_list
+        self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
                     "learning rate should be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
-            if name is not None:
-                self._name = unique_name.generate(name)
-            else:
-                self._name = unique_name.generate(self.__class__.__name__)
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
+            if regularization is not None:
+                for param in self._parameter_list:
+                    if param.regularizer is not None:
+                        logging.info(
+                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
+                            % regularization.__str__())
+                        break
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
                     "learning rate should be float or Variable, got %s here" %
                     type(learning_rate))
-            self._name = name
 
         if grad_clip is not None:
             if not isinstance(grad_clip, GradientClipBase):
@@ -1065,6 +1070,8 @@ class MomentumOptimizer(Optimizer):
 
 class DGCMomentumOptimizer(Optimizer):
     """
+	:api_attr: Static Graph
+
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
     DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
@@ -2989,6 +2996,8 @@ Lamb = LambOptimizer
 
 class ModelAverage(Optimizer):
     """
+	:api_attr: Static Graph
+
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed
     ``average_window_rate`` argument. The averaged ``Parameter`` are used in the prediction,
@@ -3296,6 +3305,8 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage(object):
     """
+	:api_attr: Static Graph
+
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
     will be
@@ -3544,6 +3555,8 @@ class ExponentialMovingAverage(object):
 
 class PipelineOptimizer(object):
     """
+	:api_attr: Static Graph
+
     Pipeline Optimizer
 
     Train with pipeline mode. The program will be split by cut_list. 
@@ -3844,6 +3857,8 @@ class PipelineOptimizer(object):
 
 class RecomputeOptimizer(Optimizer):
     """
+	:api_attr: Static Graph
+
     Recompute Optimizer Wrapper
 
     Normally, a training step contains three sub-steps: first, run forward
@@ -3916,6 +3931,8 @@ class RecomputeOptimizer(Optimizer):
 
     def load(self, stat_dict):
         """
+	:api_attr: Static Graph
+
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
@@ -4132,6 +4149,8 @@ class RecomputeOptimizer(Optimizer):
 
 class LookaheadOptimizer(object):
     """
+	:api_attr: Static Graph
+
     This implements the Lookahead optimizer of the
     paper : https://arxiv.org/abs/1907.08610.
 

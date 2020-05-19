@@ -271,13 +271,13 @@ void ReduceOpHandle::RunImpl() {
           out_var_handle->place(), pre_in.type());
 
       auto out_p = out_var_handle->place();
-      int root_id = boost::get<platform::CUDAPlace>(out_p).device;
+      int root_id = BOOST_GET_CONST(platform::CUDAPlace, out_p).device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
+        int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());
