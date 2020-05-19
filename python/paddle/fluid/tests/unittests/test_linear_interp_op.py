@@ -211,7 +211,7 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
         self.outputs = {'Out': output_np}
 
 
-class TestLinearInterpAPI(unittest.TestCase):
+class TestResizeLinearAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[1, 3, 64], dtype="float32")
 
@@ -241,15 +241,22 @@ class TestLinearInterpAPI(unittest.TestCase):
             scale_factor=scale_tensor,
             mode='linear',
             align_mode=1,
-            align_corners=False)
+            align_corners=False,
+            data_format='NCW')
         out7 = interpolate(
-            x, size=[128, ], mode='linear', align_mode=1, align_corners=False)
+            x,
+            size=[128, ],
+            mode='linear',
+            align_mode=1,
+            align_corners=False,
+            data_format='NCW')
         out8 = interpolate(
             x,
             size=shape_tensor,
             mode='linear',
             align_mode=1,
-            align_corners=False)
+            align_corners=False,
+            data_format='NCW')
 
         x_data = np.random.random((1, 3, 64)).astype("float32")
         dim_data = np.array([128]).astype("int32")
@@ -287,7 +294,11 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
         # dygraph 
         x_data = np.random.random((1, 3, 128)).astype("float32")
         us_1 = paddle.nn.UpSample(
-            size=[64, ], mode='linear', align_mode=1, align_corners=False)
+            size=[64, ],
+            mode='linear',
+            align_mode=1,
+            align_corners=False,
+            data_format='NCW')
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
             interp = us_1(x)
@@ -298,7 +309,7 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             self.assertTrue(np.allclose(interp.numpy(), expect))
 
 
-class TestLinearInterpOpUint8(OpTest):
+class TestResizeLinearOpUint8(OpTest):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
