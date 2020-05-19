@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
@@ -177,6 +178,9 @@ TEST(COMPLETE, CPU) {
   g_req_handler.reset(
       new distributed::RequestSendHandler(distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
+
+  auto* barrier = distributed::BarrierMonitor::Init(2);
+
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
   PADDLE_ENFORCE(client != nullptr);
@@ -187,8 +191,9 @@ TEST(COMPLETE, CPU) {
   client->AsyncSendComplete(ep);
   client->Wait();
 
-  EXPECT_EQ(g_rpc_service->GetClientNum(), 1);
+  EXPECT_EQ(barrier->GetWorkerNum(), 1);
 
+  barrier->Stop();
   g_rpc_service->ShutDown();
   server_thread.join();
   g_rpc_service.reset(nullptr);
