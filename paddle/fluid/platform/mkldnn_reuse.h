@@ -120,6 +120,10 @@ class MKLDNNHandlerT {
     return (dev_ctx_.GetBlob(key_p) != nullptr);
   }
 
+  // If your primitive descriptor requires attributes, pass them as a
+  // first argument and paramters to descriptor constructor in the following
+  // arguments. Otherwise, all arguments will be forwarded to descriptor
+  // constructor, including the first one.
   template <typename Arg, typename... Args>
   void AcquireForwardPrimitiveDescriptor(Arg&& first_arg, Args&&... args) {
     // Forward PD has to be passed to Grad op that
@@ -142,17 +146,23 @@ class MKLDNNHandlerT {
     }
   }
 
-  template <typename... Args>
-  void CreateForwardPrimitiveDescriptor(const dnnl::primitive_attr& attrs,
-                                        Args&&... args) {
+  // Using sfinae to specialise variadic function. Workaround for not having
+  // if constexpr in C++ 11.
+  template <class First, class... Args>
+  typename std::enable_if<std::is_same<typename std::decay<First>::type,
+                                       dnnl::primitive_attr>::value>::type
+  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
     auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
     fwd_pd_ = std::make_shared<typename TForward::primitive_desc>(
-        fwd_desc, attrs, engine_);
+        fwd_desc, first, engine_);
   }
 
-  template <typename... Args>
-  void CreateForwardPrimitiveDescriptor(Args&&... args) {
-    auto fwd_desc = typename TForward::desc(std::forward<Args>(args)...);
+  template <class First, class... Args>
+  typename std::enable_if<!std::is_same<typename std::decay<First>::type,
+                                        dnnl::primitive_attr>::value>::type
+  CreateForwardPrimitiveDescriptor(First&& first, Args&&... args) {
+    auto fwd_desc = typename TForward::desc(std::forward<First>(first),
+                                            std::forward<Args>(args)...);
     fwd_pd_ =
         std::make_shared<typename TForward::primitive_desc>(fwd_desc, engine_);
   }
@@ -429,11 +439,13 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
 
-      float scale_0 = scale_x / scale_z;
-      float scale_1 = scale_y / scale_z;
+      float scale_0 = scale_z / scale_x;
+      float scale_1 = scale_z / scale_y;
       dnnl::primitive_attr attributes;
-      attributes.set_scales(/* input_x_id = */ 0, /* mask = */ 0, {scale_0});
-      attributes.set_scales(/* input_y_id = */ 1, /* mask = */ 0, {scale_1});
+      attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
+                            {scale_0});
+      attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
+                            {scale_1});
 
       this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                               dst_md);
