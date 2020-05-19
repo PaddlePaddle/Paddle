@@ -147,7 +147,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         scale_tz.size(), 1,
         platform::errors::InvalidArgument(
-            "Dims of scale tensor must be 1, but received scale's suze is %d",
+            "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
     const unsigned int C = scale_tz[0];
 
@@ -255,7 +255,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         scale_tz.size(), 1,
         platform::errors::InvalidArgument(
-            "Dims of scale tensor must be 1, but received scale's suze is %d",
+            "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
 
     const unsigned int C = scale_tz[0];
