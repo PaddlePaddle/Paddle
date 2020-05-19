@@ -64,9 +64,7 @@ class TestLen(unittest.TestCase):
 
     def test_len(self):
         dygraph_res = self._run(to_static=False)
-        print(dygraph_res)
         static_res = self._run(to_static=True)
-        print(static_res)
         self.assertTrue(np.allclose(dygraph_res, static_res))
 
 
