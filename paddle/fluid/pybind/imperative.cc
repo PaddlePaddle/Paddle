@@ -222,6 +222,57 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
   return result;
 }
 
+#if PY_VERSION_HEX < 0x03000000
+// NOTE(zhiqiu): Revised version of PySlice_GetIndices. From:
+// https://github.com/python/cpython/blob/8d21aa21f2cbc6d50aab3f420bb23be1d081dac4/Objects/sliceobject.c#L103
+static int PySlice_GetIndices_Long(PySliceObject *r, Py_ssize_t length,
+                                   Py_ssize_t *start, Py_ssize_t *stop,
+                                   Py_ssize_t *step) {
+  /* XXX support long ints */
+  if (r->step == Py_None) {
+    *step = 1;
+  } else {
+    if (PyLong_Check(r->step)) {
+      *step = PyLong_AsSsize_t(r->step);
+    } else if (PyInt_Check(r->step)) {
+      *step = PyInt_AsSsize_t(r->step);
+    } else {
+      return -1;
+    }
+  }
+  if (r->start == Py_None) {
+    *start = *step < 0 ? length - 1 : 0;
+  } else {
+    if (PyLong_Check(r->start)) {
+      *start = PyLong_AsSsize_t(r->start);
+    } else if (PyInt_Check(r->start)) {
+      *start = PyInt_AsSsize_t(r->start);
+    } else {
+      return -1;
+    }
+    *start = PyInt_AsSsize_t(r->start);
+    if (*start < 0) *start += length;
+  }
+  if (r->stop == Py_None) {
+    *stop = *step < 0 ? -1 : length;
+  } else {
+    if (PyLong_Check(r->stop)) {
+      *stop = PyLong_AsSsize_t(r->stop);
+    } else if (PyInt_Check(r->stop)) {
+      *stop = PyInt_AsSsize_t(r->stop);
+    } else {
+      return -1;
+    }
+    *stop = PyInt_AsSsize_t(r->stop);
+    if (*stop < 0) *stop += length;
+  }
+  if (*stop > length) return -1;
+  if (*start >= length) return -1;
+  if (*step == 0) return -1;
+  return 0;
+}
+#endif
+
 static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
                                std::vector<int> *slice_axes,
                                std::vector<int> *slice_starts,
@@ -255,7 +306,7 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
     infer_flags->push_back(1);
     int dim_len = shape[dim];
     if (PyNumber_Check(slice_item)) {
-      // integer
+      // integer, PyLong_AsLong supports both int and long
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;
       start = start < 0 ? start + dim_len : start;
@@ -281,8 +332,18 @@ static void ParseIndexingSlice(framework::LoDTensor *tensor, PyObject *_index,
 #if PY_VERSION_HEX >= 0x03020000
       PySlice_GetIndices(slice_item, dim_len, &start, &end, &step);
 #else
-      PySlice_GetIndices(reinterpret_cast<PySliceObject *>(slice_item), dim_len,
-                         &start, &end, &step);
+      // NOTE(zhiqiu): PySlice_GetIndices return wrong result when
+      // slice_item contains long int, such as arr[:180L].
+      // NOT sure why this happens !!!
+      // So, I make a revised version of PySlice_GetIndices, named to
+      // PySlice_GetIndices_Long.
+      PySliceObject *p = reinterpret_cast<PySliceObject *>(slice_item);
+      if (PyLong_Check(p->start) || PyLong_Check(p->stop) ||
+          PyLong_Check(p->step)) {
+        PySlice_GetIndices_Long(p, dim_len, &start, &end, &step);
+      } else {
+        PySlice_GetIndices(p, dim_len, &start, &end, &step);
+      }
 #endif
       // :: or : or 0:dim_len:1
       if (start == 0 && end == dim_len && step == 1) continue;
@@ -493,7 +554,6 @@ void BindImperative(py::module *m_ptr) {
              ParseIndexingSlice(tensor, _index.ptr(), &slice_axes,
                                 &slice_starts, &slice_ends, &slice_strides,
                                 &decrease_axis, &infer_flags);
-
              // release gil and do tracing
              py::gil_scoped_release release;
              const auto &tracer = imperative::GetCurrentTracer();
@@ -633,7 +693,8 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self,
               const imperative::detail::BackwardStrategy &bckst,
               const imperative::Tracer &tracer) {
-             // TODO(jiabin): when we impl more backward execution we can select
+             // TODO(jiabin): when we impl more backward execution we can
+             // select
              // them
              auto *engine = tracer.GetEngine();
              engine->Init(&self, bckst);
