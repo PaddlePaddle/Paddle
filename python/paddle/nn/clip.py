@@ -18,6 +18,8 @@ from ..fluid.clip import GradientClipByNorm  #DEFINE_ALIAS
 from ..fluid.clip import GradientClipByValue  #DEFINE_ALIAS
 from ..fluid.layers import clip  #DEFINE_ALIAS
 
+from ..fluid.layers import clip_by_norm  #DEFINE_ALIAS
+
 __all__ = [
     #       'ErrorClipByValue',
     'GradientClipByGlobalNorm',
@@ -25,5 +27,5 @@ __all__ = [
     'GradientClipByValue',
     #       'set_gradient_clip',
     'clip',
-    #       'clip_by_norm'
+    'clip_by_norm'
 ]

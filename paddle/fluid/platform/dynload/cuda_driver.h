@@ -60,6 +60,8 @@ extern bool HasCUDADriver();
  * include all needed cuda driver functions
  **/
 #define CUDA_ROUTINE_EACH(__macro)                      \
+  __macro(cuInit);                                      \
+  __macro(cuDriverGetVersion);                          \
   __macro(cuGetErrorString);                            \
   __macro(cuModuleLoadData);                            \
   __macro(cuModuleGetFunction);                         \
@@ -68,7 +70,7 @@ extern bool HasCUDADriver();
   __macro(cuLaunchKernel);                              \
   __macro(cuCtxCreate);                                 \
   __macro(cuCtxGetCurrent);                             \
-  __macro(cuDeviceGet);                                 \
+  __macro(cuDeviceGetCount);                            \
   __macro(cuDevicePrimaryCtxGetState)
 
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);

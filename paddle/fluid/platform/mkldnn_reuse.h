@@ -27,6 +27,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+using framework::DataLayout;
+using framework::Tensor;
 using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = mkldnn::memory;
 
@@ -42,8 +44,8 @@ class MKLDNNHandlerT {
         key_common_(base_key),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
-    if (platform::get_cur_mkldnn_session_id() !=
-        platform::kMKLDNNSessionID_Default) {
+    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
@@ -108,6 +110,13 @@ class MKLDNNHandlerT {
   }
 
  protected:
+  bool isCached() {
+    const std::string key_pd = key_common_ + "@forward_pd";
+    fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
+        dev_ctx_.GetBlob(key_pd));
+    return (fwd_pd_ != nullptr);
+  }
+
   template <typename... Args>
   void AcquireForwardPrimitiveDescriptor(Args&&... args) {
     // Forward PD has to be passed to Grad op that
@@ -177,8 +186,8 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    if (platform::get_cur_mkldnn_session_id() !=
-        platform::kMKLDNNSessionID_Default) {
+    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() !=
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
@@ -355,29 +364,62 @@ class MKLDNNHandler {
 template <typename T>
 class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
-  BinaryMKLDNNHandler(const dnnl::algorithm algo,
-                      const std::vector<int64_t>& dims,
-                      const MKLDNNMemoryFormat src0_fmt,
-                      const MKLDNNMemoryFormat src1_fmt,
-                      const platform::MKLDNNDeviceContext& dev_ctx,
-                      platform::Place cpu_place, const std::string& uniq_name)
+  BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
+                      const mkldnn::engine engine, platform::Place cpu_place,
+                      const Tensor* x, const Tensor* y, Tensor* z,
+                      const std::string uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, uniq_name)) {
-    // TODO(jczaja): Add function checking if data already exists
-    auto src0_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src0_fmt);
-    auto src1_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src1_fmt);
-    auto dst_md =
-        memory::desc(dims, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+            dev_ctx, engine, cpu_place,
+            platform::CreateKey(framework::vectorize(x->dims()), uniq_name)) {
+    // bradcasting combined with in-place may require longer key
+    auto rankdiff = x->dims().size() - y->dims().size();
+    if (rankdiff > 0) {
+      this->key_ += std::to_string(rankdiff);
+      this->key_common_ += std::to_string(rankdiff);
+    }
 
-    this->AcquireForwardPrimitiveDescriptor(algo, src0_md, src1_md, dst_md);
+    if (!this->isCached()) {
+      PADDLE_ENFORCE_EQ(
+          x->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+      PADDLE_ENFORCE_NE(
+          x->format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for X tensor"));
+
+      PADDLE_ENFORCE_EQ(
+          y->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
+      PADDLE_ENFORCE_NE(
+          y->format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for Y tensor"));
+
+      const auto src_x_tz = framework::vectorize(x->dims());
+      const auto src_y_tz = framework::vectorize(y->dims());
+      const auto dst_tz = framework::vectorize(z->dims());
+
+      const auto src0_md = dnnl::memory::desc(
+          src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+      auto src1_md = dnnl::memory::desc(
+          src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
+      if (rankdiff > 0) {
+        std::vector<int64_t> ones(rankdiff, 1);
+        std::vector<int64_t> dims1_ex(src_y_tz);
+        dims1_ex.insert(dims1_ex.begin(), ones.begin(), ones.end());
+        src1_md = src1_md.reshape(dims1_ex);
+      }
+      const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
+                                       MKLDNNMemoryFormat::any);
+
+      this->AcquireForwardPrimitiveDescriptor(dnnl::algorithm::binary_add,
+                                              src0_md, src1_md, dst_md);
+    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
       const framework::Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+        this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
   }
 };
 

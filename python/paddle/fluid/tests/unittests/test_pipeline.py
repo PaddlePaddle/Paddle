@@ -147,7 +147,7 @@ class TestPipeline(unittest.TestCase):
         for f in filelist:
             os.remove(f)
 
-    def test_pipeline_single_section(self):
+    def single_section(self, random_dump):
         program = fluid.Program()
         with fluid.program_guard(program):
             x = fluid.layers.data(
@@ -179,11 +179,20 @@ class TestPipeline(unittest.TestCase):
             optimizer = fluid.optimizer.PipelineOptimizer(
                 optimizer,
                 cut_list=[],
+                #place_list=[fluid.CPUPlace()],
                 place_list=[fluid.CUDAPlace(0)],
                 concurrency_list=[1],
                 queue_size=1,
                 sync_steps=-1)
             optimizer.minimize(loss)
+
+            program._pipeline_opt["dump_fields"] = ["fc.tmp_0", "fc.tmp_0@GRAD"]
+            program._pipeline_opt["dump_fields_path"] = "./dump_log/"
+            program._pipeline_opt["dump_param"] = ["embx"]
+            program._pipeline_opt["enable_random_dump"] = random_dump
+            program._pipeline_opt["dump_interval"] = 10
+            program._pipeline_opt["random_with_lineid"] = False
+            #print(program._pipeline_opt)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -225,13 +234,19 @@ class TestPipeline(unittest.TestCase):
                     fluid.default_main_program(),
                     dataset,
                     thread=1,
-                    debug=False,
+                    debug=True,
                     fetch_list=[],
                     fetch_info=[],
                     print_period=1)
 
             for f in filelist:
                 os.remove(f)
+            if os.path.isdir("dump_log"):
+                shutil.rmtree("dump_log")
+
+    def test_pipeline(self):
+        self.single_section(True)
+        self.single_section(False)
 
 
 if __name__ == '__main__':
