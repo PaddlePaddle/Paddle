@@ -287,7 +287,7 @@ pip install PyGithub
 wget https://paddle-ci.gz.bcebos.com/blk/block.txt
 echo "chalsliu" >> block.txt
 cat block.txt
-HASUTFIXED=`python check_ut.py | grep "has UT to be fixed" || true`
+HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has UT to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
     echo_line="${HASUTFIXED} You must have one RD (kolinwei or zhouwei25) approval.\n"
     echo $echo_line
