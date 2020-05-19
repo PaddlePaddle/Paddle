@@ -285,6 +285,7 @@ fi
 
 pip install PyGithub 
 wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+echo "chalsliu" >> block.txt
 HASUTFIXED=`python check_ut.py | grep "has UT to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
     echo_line="${$HASUTFIXED} You must have one RD (22165420 or 38231817) approval.\n"
