@@ -382,7 +382,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestGetNoBarrier,
                             request_get_no_barrier_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
-                            request_notify_handler_.get(), rpc_send_thread_num);
+                            request_notify_handler_.get(), fan_in * 2);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
