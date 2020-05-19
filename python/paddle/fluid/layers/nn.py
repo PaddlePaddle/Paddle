@@ -14165,30 +14165,25 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
 def mish(x, threshold=20, name=None):
     """
     This operator implements the mish activation function.
-    For more details please refer to: `Mish: A Self Regularized Non-Monotonic
-    Neural Activation Function https://arxiv.org/abs/1908.08681`_
+    Refer to `Mish: A Self Regularized Non-Monotonic Neural
+    Activation Function <https://arxiv.org/abs/1908.08681>`_
 
-    The formula is as follows if :attr:`threshold` is :code:`None`:
 
-    .. math::
-
-        out = x * \tanh(\ln(1 + e^{x}))
-
-    The formula is as follows if :attr:`threshold` is set:
+    The formula is as follows if :attr:`threshold` is :code:`None` or negative:
 
     .. math::
 
-	softplus = \begin{cases}
-		x, \text{if } x > \text{threshold} \\
-		e^{x}, \text{if } x < -\text{threshold} \\
-		\ln(1 + e^{x}),  \text{otherwise}
-	      \end{cases}
+        out = x * \\tanh(\\ln(1 + e^{x}))
 
-        out = x * \tanh(softplus)
+    The formula is as follows if :attr:`threshold` is set as positive value:
 
-    In the above equation:
+    .. math::
 
-    :attr:`threshold` should be positive
+	out = \\begin{cases}
+		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+	      \\end{cases}
 
     Args:
         x (Variable): Input feature, multi-dimensional Tensor. The data type
@@ -14226,7 +14221,7 @@ def mish(x, threshold=20, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
     """
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mish')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
     check_type(threshold, 'threshold', (float, int), 'mish')
     assert threshold > 0, "threshold of mish should be greater than 0, " \
                           "but got {}".format(threshold)
