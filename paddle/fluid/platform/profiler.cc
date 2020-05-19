@@ -85,7 +85,7 @@ RecordEvent::~RecordEvent() {
                           BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_);
+  PopEvent(name_, role_);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -186,8 +186,8 @@ Event *PushEvent(const std::string &name, const EventRole role) {
   return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role);
 }
 
-void PopEvent(const std::string &name) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
+void PopEvent(const std::string &name, const EventRole role) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role);
 }
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
