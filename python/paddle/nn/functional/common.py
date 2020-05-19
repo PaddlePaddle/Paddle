@@ -99,7 +99,6 @@ def interpolate(input,
             else:
               scale_factor = float(in_size/out_size)
 
-
         Linear interpolation:
             if:
                 align_corners = False , align_mode = 0
@@ -198,7 +197,7 @@ def interpolate(input,
                             it can be \'0\' for src_idx = scale_factor*(dst_indx+0.5)-0.5 , can be \'1\' for
                             src_idx = scale_factor*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from:'NCW', `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`,  `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
@@ -276,6 +275,7 @@ def interpolate(input,
     		print(output.shape)
 		# [2L, 3L, 12L, 12L]
     """
+    data_format = data_format.upper()
     resample = mode.upper()
     resample_type = mode.lower()
     resample_methods = [
@@ -287,17 +287,17 @@ def interpolate(input,
     ]
     if resample not in resample_methods:
         raise ValueError(
-            "The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR', 'TRILINEAR', "
-            " 'BICUBIC' or 'NEAREST' currently.")
+            "The 'resample' of image_resize can only be 'linaer', 'bilinear', 'trilinear', "
+            " 'bicubic' or 'nearest' currently.")
 
     if resample in ['LINEAR'] and len(input.shape) != 3:
-        raise ValueError("'LINEAR' only support 3-D tensor.")
+        raise ValueError("'linear' only support 3-D tensor.")
 
     if resample in ['BILINEAR', 'NEAREST', 'BICUBIC'] and len(input.shape) != 4:
         raise ValueError(
-            "'BILINEAR', 'BICUBIC' and 'NEAREST' only support 4-D tensor.")
+            "'bilinear', 'bicubic' and 'nearest' only support 4-D tensor.")
     if resample == 'TRILINEAR' and len(input.shape) != 5:
-        raise ValueError("'TRILINEAR'only support 5-D tensor.")
+        raise ValueError("'trilinear'only support 5-D tensor.")
 
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
@@ -311,10 +311,10 @@ def interpolate(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 3 and data_format not in ['NCHW', 'NHWC']:
+    if len(input.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
-            " received but only `NCHW` or `NHWC` supported for 3-D input.")
+            " received but only `NCW` or `NWC` supported for 3-D input.")
     elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
@@ -327,9 +327,9 @@ def interpolate(input,
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if data_format == 'NCHW' or data_format == 'NCDHW':
+    if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
-    if data_format == 'NHWC' or data_format == 'NDHWC':
+    if data_format == 'NHWC' or data_format == 'NDHWC' or data_format == 'NWC':
         data_layout = 'NHWC'
 
     inputs = {"X": input}
