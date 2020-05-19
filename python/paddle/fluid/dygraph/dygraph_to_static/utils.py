@@ -927,3 +927,83 @@ class ForNodeVisitor(object):
         if self.is_for_enumerate_iter():
             return self.target.elts[0].id
         return None
+
+
+class SplitAssignTransformer(gast.NodeTransformer):
+    """
+    This class transforms sequence assignments and multi-target assignments to normal assignments.
+    """
+
+    def __init__(self, ast_node):
+        assert isinstance(ast_node, gast.AST)
+        self.ast_root = ast_node
+
+    def transform(self):
+        self.visit(self.ast_root)
+
+    def visit_Assign(self, node):
+        target_nodes = node.targets
+        if len(target_nodes) == 1:
+            node = self._parse_sequence_assign(node)
+        else:
+            node = self._parse_mul_target_assign(node)
+        return node
+
+    def _parse_sequence_assign(self, node):
+        """
+        a, b = c, d
+        ->
+        a = c
+        b = d
+        """
+        assert isinstance(node, gast.Assign)
+        new_nodes = []
+
+        target_nodes = node.targets
+        value_node = node.value
+        if not isinstance(target_nodes[0], (gast.List, gast.Tuple)):
+            return node
+        if not isinstance(value_node, (gast.List, gast.Tuple)):
+            return node
+
+        targets = node.targets[0].elts
+        values = node.value.elts
+        if len(targets) != len(values):
+            return node
+
+        for target, value in zip(targets, values):
+            assign_node = gast.Assign(targets=[target], value=value)
+            new_nodes.append(assign_node)
+
+        return new_nodes
+
+    def _parse_mul_target_assign(self, node):
+        """
+         Example 1:
+         a = b = c
+         ->
+         b = c
+         a = b
+
+         Example 2:
+         a, b = c, d = x
+         ->
+         c,d = x
+         a = c
+         b = d
+         """
+        assert isinstance(node, gast.Assign)
+
+        target_nodes = node.targets
+        value_node = node.value
+        new_nodes = []
+        for target in reversed(target_nodes):
+            assign_node = gast.Assign(targets=[target], value=value_node)
+            parsed_node = self.visit_Assign(assign_node)
+            if not isinstance(parsed_node, list):
+                parsed_node = [parsed_node]
+
+            new_nodes.extend(parsed_node)
+            value_node = target
+
+        return new_nodes
