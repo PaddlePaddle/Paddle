@@ -27,10 +27,10 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     const bool is_float_type = std::is_same<T, float>::value;
-    PADDLE_ENFORCE_EQ(is_float_type, true,
-                      platform::errors::PreconditionNotMet(
-                          "MKLDNN LRN must use float data."));
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "LRN");
+    PADDLE_ENFORCE_EQ(
+        is_float_type, true,
+        platform::errors::PreconditionNotMet("DNNL LRN must use float data."));
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL LRN");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
@@ -96,8 +96,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const bool is_float_type = std::is_same<T, float>::value;
     PADDLE_ENFORCE_EQ(is_float_type, true,
                       platform::errors::PreconditionNotMet(
-                          "MKLDNN LRN GradOpKernl must use float data."));
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "LRNGrad");
+                          "DNNL LRN GradOpKernl must use float data."));
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL LRNGrad");
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
         platform::errors::PreconditionNotMet(

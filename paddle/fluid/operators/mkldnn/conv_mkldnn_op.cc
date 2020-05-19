@@ -94,7 +94,7 @@ template <typename T, typename K>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Conv");
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL Conv");
     bool is_INT8 =
         std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
     if (!is_INT8) {
@@ -727,7 +727,7 @@ template <typename T>
 class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Conv");
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL ConvGrad");
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();

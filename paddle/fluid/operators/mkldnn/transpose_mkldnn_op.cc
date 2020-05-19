@@ -28,7 +28,7 @@ template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Transpose");
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL Transpose");
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -72,7 +72,7 @@ template <typename T>
 class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "TransposeGrad");
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL TransposeGrad");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));

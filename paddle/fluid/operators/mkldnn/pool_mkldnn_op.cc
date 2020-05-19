@@ -33,7 +33,7 @@ template <typename T>
 class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Pool");
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL Pool");
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
 
@@ -116,7 +116,7 @@ template <typename T>
 class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "PoolGrad");
+    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL PoolGrad");
 
     const Tensor* in_x = ctx.Input<Tensor>("X");
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));

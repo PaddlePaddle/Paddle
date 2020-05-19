@@ -62,7 +62,7 @@ class MKLDNNActivationGradKernel
 template <typename T>
 void eltwise_forward(const framework::ExecutionContext &ctx,
                      mkldnn::algorithm algorithm) {
-  OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Activation");
+  GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL eletwise_forward");
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
   const auto *x = ctx.Input<Tensor>("X");
