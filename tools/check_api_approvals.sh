@@ -283,6 +283,14 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 32832641 6836917
 fi
 
+pip install PyGithub 
+wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+HASUTFIXED=`python check_ut.py | grep "has UT to be fixed" || true`
+if [ "${HASUTFIXED}" != "" ]; then
+    echo_line="${$HASUTFIXED} You must have one RD (22165420 or 38231817) approval.\n"
+    check_approval 1 38231817 52485244
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
