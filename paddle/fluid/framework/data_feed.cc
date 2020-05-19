@@ -881,6 +881,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       uint32_t rank;
       GetMsgFromLogKey(log_key, &search_id, &cmatch, &rank);
 
+      instance->ins_id_ = log_key;
       instance->search_id = search_id;
       instance->cmatch = cmatch;
       instance->rank = rank;
