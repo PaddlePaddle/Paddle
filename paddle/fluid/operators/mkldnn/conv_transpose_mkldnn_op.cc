@@ -29,9 +29,7 @@ template <typename T>
 class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "The DNNL kernel must use CPUPlace."));
+    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "ConvTranspose");
 
     const bool is_test = ctx.Attr<bool>("is_test");
     PADDLE_ENFORCE_EQ(is_test, true, platform::errors::PreconditionNotMet(

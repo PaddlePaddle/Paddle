@@ -333,9 +333,7 @@ template <typename XT, typename YT>
 class MulMKLDNNKernel : public framework::OpKernel<XT> {
  public:
   void Compute(const ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "The DNNL kernel must use CPUPlace."));
+    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Mul");
 
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto &mkldnn_engine = dev_ctx.GetEngine();

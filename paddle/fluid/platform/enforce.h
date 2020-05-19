@@ -440,6 +440,38 @@ struct EnforceNotMet : public std::exception {
   } while (0)
 
 /*
+ * Summary: This macro is used to check whether the op is on specific Place.
+ * Checking CPUPlace and GPUPlace process is the same, so abstract this macro.
+ *
+ * Parameters:
+ *     __CTX_GETPLACE: (platform::Place), ctx.GetPlace()
+ *     __EXPECTED_PLACE: (string), CPU or GPU
+ *     __OP_TYPE: (string), the op type
+ *
+ * Examples:
+ *    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU");
+ *    OP_GET_PLACE_CHECK(ctx.GetPlace(), "GPU");
+*/
+#define OP_GET_PLACE_CHECK(__CTX_GETPLACE, __EXPECTED_PLACE, __OP_TYPE) \
+  do {                                                                  \
+    std::string str1("CPU");                                            \
+    std::string str2("GPU");                                            \
+    if (str1.compare(__EXPECTED_PLACE) == 0) {                          \
+      PADDLE_ENFORCE_EQ(platform::is_cpu_place(__CTX_GETPLACE), true,   \
+                        paddle::platform::errors::PreconditionNotMet(   \
+                            "This operator %s must use "                \
+                            "CPUPlace",                                 \
+                            __OP_TYPE));                                \
+    } else if (str2.compare(__EXPECTED_PLACE) == 0) {                   \
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(__CTX_GETPLACE), true,   \
+                        paddle::platform::errors::PreconditionNotMet(   \
+                            "This operator %s must use "                \
+                            "GPUPlace",                                 \
+                            __OP_TYPE));                                \
+    }                                                                   \
+  } while (0)
+
+/*
  * Summary: This BOOST_GET(_**) series macros are used to call boost::get
  *   safely. boost::get is not a completely safe api, although it will not
  *   go wrong in most cases, but in extreme cases, it may fail and directly

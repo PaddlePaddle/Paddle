@@ -76,9 +76,7 @@ template <typename T>
 class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "The DNNL kernel must use CPUPlace."));
+    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "Softmax");
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
@@ -124,9 +122,7 @@ template <typename T>
 class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      platform::errors::PreconditionNotMet(
-                          "The DNNL kernel must use CPUPlace."));
+    OP_GET_PLACE_CHECK(ctx.GetPlace(), "CPU", "SoftmaxGrad");
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const Tensor* output = ctx.Input<Tensor>("Out");

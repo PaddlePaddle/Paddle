@@ -685,9 +685,8 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
-    PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(ctx.GetPlace()), true,
-        platform::errors::PreconditionNotMet("It must use CPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      "It must use CPUPlace.");
     const Tensor* X = ctx.Input<Tensor>("Input");
     const Tensor* dY = ctx.Input<Tensor>("DOutput");
     const Tensor* ddX = ctx.Input<Tensor>("DDInput");
