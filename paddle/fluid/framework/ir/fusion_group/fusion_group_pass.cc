@@ -82,7 +82,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 bool FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
-  VLOG(3) << code_str;
+  VLOG(4) << code_str;
 
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
