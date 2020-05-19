@@ -158,14 +158,13 @@ class BarrierMonitor {
   static std::unique_ptr<BarrierMonitor> monitor_;
 
   int workers_;
-  bool pending_ = false;
   bool running_ = false;
   bool valid_ = false;
   bool release_ = false;
 
   std::condition_variable workder_cv_;
 
-  bool server_done = false;
+  bool stop_ = false;
   std::condition_variable server_cv_;
   std::mutex server_mutex_;
   std::mutex mutex_;

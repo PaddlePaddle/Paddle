@@ -35,7 +35,6 @@ namespace operators {
 namespace distributed {
 bool BarrierMonitor::IncreaseBarrier(const int worker_id,
                                      const std::string &barrier) {
-  pending_ = false;
   release_ = false;
 
   if (barrier == BATCH_BARRIER_MESSAGE) {
@@ -51,9 +50,9 @@ bool BarrierMonitor::IncreaseBarrier(const int worker_id,
 }
 
 void BarrierMonitor::Monitor() {
-  while (pending_) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
-    VLOG(4) << "Barrier not working currently";
+  while (!IsReady() && running_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    VLOG(3) << "sync at first time, wait all trainer ready";
   }
 
   while (running_) {
@@ -114,7 +113,6 @@ void BarrierMonitor::Release() {
 
   valid_ = true;
   release_ = true;
-  pending_ = false;
   running_ = false;
 
   barrier_type = BarrierType::kRecvBarrier;
@@ -134,6 +132,7 @@ void BarrierMonitor::WaitServerWeakup() {
   std::unique_lock<std::mutex> lk(server_mutex_);
   server_cv_.wait(lk);
 }
+
 void BarrierMonitor::ServerWeakup() {
   std::unique_lock<std::mutex> lk(server_mutex_);
   server_cv_.notify_all();
