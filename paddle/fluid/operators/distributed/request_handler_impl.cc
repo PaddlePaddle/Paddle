@@ -272,7 +272,7 @@ bool RequestNotifyHandler::Handle(const std::string &varname,
     return true;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "unkown varname with RequestNotifyHandler"));
+        "unkown varname %s with RequestNotifyHandler", varname));
   }
   return true;
 }
