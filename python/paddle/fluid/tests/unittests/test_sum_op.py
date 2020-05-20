@@ -298,6 +298,20 @@ class TestRaiseSumsError(unittest.TestCase):
         self.assertRaises(TypeError, test_out_dtype)
 
 
+class TestSumOpError(unittest.TestCase):
+    def test_errors(self):
+        def test_empty_list_input():
+            with fluid.dygraph.guard():
+                fluid.core.ops.sum([])
+
+        def test_list_of_none_input():
+            with fluid.dygraph.guard():
+                fluid.core.ops.sum([None])
+
+        self.assertRaises(Exception, test_empty_list_input)
+        self.assertRaises(Exception, test_list_of_none_input)
+
+
 create_test_sum_fp16_class(TestSelectedRowsSumOp)
 create_test_sum_fp16_class(TestLoDTensorAndSelectedRowsOp)
 

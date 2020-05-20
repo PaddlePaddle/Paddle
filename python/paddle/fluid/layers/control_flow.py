@@ -26,7 +26,7 @@ import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -34,8 +34,8 @@ __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case',
-    'while_loop'
+    'reorder_lod_tensor_by_rank', 'Print', 'Assert', 'is_empty', 'case',
+    'switch_case', 'while_loop'
 ]
 
 
@@ -222,6 +222,8 @@ def Print(input,
           print_tensor_lod=True,
           print_phase='both'):
     '''
+    :api_attr: Static Graph
+
     **Print operator**
 
     This creates a print op that will print when a tensor is accessed.
@@ -300,6 +302,78 @@ def Print(input,
     return output
 
 
+def Assert(cond, data=None, summarize=20, name=None):
+    '''
+    This API creates an op that asserts the given condition is true. If the
+    condition is false, prints the tensors in data. ``summarize`` specifies the
+    number of the elements in the tensors to print.
+
+    Args:
+        cond (Variable): The boolean condition tensor whose numel should be 1.
+        data (list|tuple, optional): list or tuple of tensors to print when
+            condition is not true. If it's ``None``, no tensor will be printed.
+            The default value is ``None``.
+        summarize (int, optional): Number of elements in the tensor to be
+            printed. If its value is -1, then all elements in the tensor will
+            be printed. The default value is 20.
+        name (str, optional): The default value is ``None`` . Normally users
+            don't have to set this parameter. For more information, please
+            refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Operator: the created operation.
+
+    Raises:
+        TypeError: If ``cond`` is not boolean Variable.
+        TypeError: If ``data`` is not a list or tuple or ``None``.
+        TypeError: If ``summarize`` is not int.
+        TypeError: If ``name`` is not a string or ``None`` .
+        fluid.core.EnforceNotMet: If the condition is False in running time.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
+            condition = layers.reduce_max(x) < 1.0 # False
+            layers.Assert(condition, [x], 10, "example_assert_layer")
+
+            exe = fluid.Executor()
+            try:
+                exe.run(fluid.default_main_program())
+                # Print x and throws paddle.fluid.core.EnforceNotMet exception
+                # Example printed message for x:
+                #
+                # Variable: fill_constant_0.tmp_0
+                #   - lod: {}
+                #   - place: CPUPlace()
+                #   - shape: [2, 3]
+                #   - layout: NCHW
+                #   - dtype: float
+                #   - data: [2 2 2 2 2 2]
+            except fluid.core.EnforceNotMet as e:
+                print("Assert Exception Example")
+
+    '''
+    check_variable_and_dtype(cond, "cond", ["bool"], "fluid.layers.Assert")
+    check_type(data, "data", (list, tuple, type(None)), "fluid.layers.Assert")
+    check_type(summarize, "summarize", int, "fluid.layers.Assert")
+    check_type(name, "name", (str, type(None)), "fluid.layers.Assert")
+
+    layer_name = name if name else ('assert_' + cond.name)
+    helper = LayerHelper(layer_name, **locals())
+
+    op = helper.append_op(
+        type="assert",
+        inputs={"Cond": cond,
+                "Data": [] if data is None else list(data)},
+        attrs={"summarize": summarize})
+
+    return op
+
+
 class BlockGuard(object):
     """
     BlockGuard class.
@@ -374,6 +448,8 @@ class StaticRNNMemoryLink(object):
 
 class StaticRNN(object):
     """
+    :api_attr: Static Graph
+
     StaticRNN class.
 
     The StaticRNN can process a batch of sequence data. The first dimension of inputs
@@ -849,8 +925,53 @@ class WhileGuard(BlockGuard):
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
+def get_inputs_outputs_in_block(current_block, inner_inputs, inner_outputs,
+                                helper):
+    """
+    Find inputs and outputs in current control flow block.
+    :param current_block: Current control flow block.
+    :param inner_inputs: Input var name of ops in current block.
+    :param inner_outputs: Output var name of ops in current block.
+    :return: inner_inputs, inner_outputs
+    """
+
+    # Step1: update inner_inputs and inner_outputs
+    # NOTE: Here assumes that all variables are input or output of Ops,
+    # but some variables are created without appendding a real op.
+    # For example, in `arr = create_array(dtype)`, `arr` is not a output of a op.
+    for op in current_block.ops:
+        assert isinstance(op, Operator)
+        for iname in op.input_names:
+            for in_var_name in op.input(iname):
+                if in_var_name not in inner_outputs:
+                    inner_inputs.add(in_var_name)
+
+        for oname in op.output_names:
+            for out_var_name in op.output(oname):
+                inner_outputs.add(out_var_name)
+
+    # Step2: Remove LOD_TENSOR_ARRAY created in current control flow block.
+    remove_inner_inputs = set()
+    parent_block = helper.main_program.block(current_block.parent_idx)
+
+    for in_var_name in inner_inputs:
+        parent_block_var = parent_block._find_var_recursive(in_var_name)
+        current_block_var = None
+        if current_block.has_var(in_var_name):
+            current_block_var = current_block.var(in_var_name)
+        if not parent_block_var and current_block_var and \
+                current_block_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            remove_inner_inputs.add(in_var_name)
+
+    inner_inputs = inner_inputs - remove_inner_inputs
+
+    return inner_inputs, inner_outputs
+
+
 class While(object):
     """
+    :api_attr: Static Graph
+    
     while loop control flow. Repeat while body until cond is False.
 
     Note:
@@ -945,15 +1066,8 @@ class While(object):
 
         inner_outputs = {self.cond_var.name}
         x_name_list = set()
-        for op in while_block.ops:
-            for iname in op.input_names:
-                for in_var_name in op.input(iname):
-                    if in_var_name not in inner_outputs:
-                        x_name_list.add(in_var_name)
-
-            for oname in op.output_names:
-                for out_var_name in op.output(oname):
-                    inner_outputs.add(out_var_name)
+        x_name_list, inner_outputs = get_inputs_outputs_in_block(
+            while_block, x_name_list, inner_outputs, self.helper)
 
         out_vars = []
         for inner_out_name in inner_outputs:
@@ -979,8 +1093,27 @@ class While(object):
                    "is_test": self.is_test})
 
 
+def assign_skip_lod_tensor_array(input, output):
+    """
+    Assign input to output, but skip the process of copying LoDTensorArray unless it's created in while_block.
+    """
+    if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        main_program = input.block.program
+        parent_block = main_program.block(main_program.current_block()
+                                          .parent_idx)
+        if parent_block and not parent_block._find_var_recursive(input.name):
+            assign(input, output)
+    else:
+        assign(input, output)
+
+
 def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.while_loop
+	:alias: paddle.nn.while_loop,paddle.nn.control_flow.while_loop
+	:old_api: paddle.fluid.layers.while_loop
+
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
     Notice:
@@ -1066,7 +1199,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            loop_vars = output_vars
+            map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1090,7 +1223,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                              "(length and structure) as loop_vars: {0}".format(
                                  e))
         now_cond = cond(*output_vars)
-        map_structure(assign, output_vars, loop_vars)
+        map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
 
@@ -1449,6 +1582,10 @@ def create_array(dtype):
 @templatedoc()
 def less_than(x, y, force_cpu=None, cond=None):
     """
+    :alias_main: paddle.less_than
+	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
+	:old_api: paddle.fluid.layers.less_than
+
     ${comment}
 
     Args:
@@ -1514,6 +1651,10 @@ def less_than(x, y, force_cpu=None, cond=None):
 @templatedoc()
 def less_equal(x, y, cond=None):
     """
+    :alias_main: paddle.less_equal
+	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
+	:old_api: paddle.fluid.layers.less_equal
+
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
@@ -1562,6 +1703,10 @@ def less_equal(x, y, cond=None):
 @templatedoc()
 def greater_than(x, y, cond=None):
     """
+    :alias_main: paddle.greater_than
+	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
+	:old_api: paddle.fluid.layers.greater_than
+
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
@@ -1609,6 +1754,10 @@ def greater_than(x, y, cond=None):
 @templatedoc()
 def greater_equal(x, y, cond=None):
     """
+    :alias_main: paddle.greater_equal
+	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
+	:old_api: paddle.fluid.layers.greater_equal
+
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
@@ -1702,6 +1851,10 @@ def equal(x, y, cond=None):
 
 def not_equal(x, y, cond=None):
     """
+    :alias_main: paddle.not_equal
+	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
+	:old_api: paddle.fluid.layers.not_equal
+
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
@@ -2000,18 +2153,8 @@ class ConditionalBlock(object):
 
         intermediate = set()
         params = set()
-
-        for each_op in inside_block.ops:
-            assert isinstance(each_op, Operator)
-            for iname in each_op.input_names:
-                for in_var_name in each_op.input(iname):
-                    if in_var_name not in intermediate:
-                        params.add(in_var_name)
-
-            for oname in each_op.output_names:
-                for out_var_name in each_op.output(oname):
-                    intermediate.add(out_var_name)
-        input_set = set([ipt.name for ipt in self.inputs])
+        params, intermediate = get_inputs_outputs_in_block(
+            inside_block, params, intermediate, helper=self.helper)
 
         # Todo(liym27) Here assume that all params are in recursive parent block
         # but when minimize() called in control flow, some params may be in
@@ -2142,6 +2285,11 @@ def copy_var_to_parent_block(var, layer_helper):
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.cond
+	:alias: paddle.nn.cond,paddle.nn.control_flow.cond
+	:old_api: paddle.fluid.layers.cond
+    
     This API returns ``true_fn()`` if the predicate ``pred`` is true else
     ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
     ``None`` if do nothing and this API will treat the callable simply returns
@@ -2327,6 +2475,11 @@ def _error_message(what, arg_name, op_name, right_value, error_value):
 
 def case(pred_fn_pairs, default=None, name=None):
     '''
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.case
+	:alias: paddle.nn.case,paddle.nn.control_flow.case
+	:old_api: paddle.fluid.layers.case
+
     This operator works like an if-elif-elif-else chain.
 
     Args:
@@ -2437,6 +2590,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
 class Switch(object):
     """
+    :api_attr: Static Graph
 
     This class is used to implement Switch branch control function. 
     Switch branch contains several case branches and one default branch. 
@@ -2594,6 +2748,8 @@ class IfElseBlockGuard(object):
 
 class IfElse(object):
     """
+    :api_attr: Static Graph
+
     This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
 
     Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
@@ -2770,6 +2926,8 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
+    :api_attr: Static Graph
+
     **Note: the input of this class should be LoDTensor which holds the
     information of variable-length sequences. If the input is fixed-length Tensor,
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **) for
@@ -3435,6 +3593,8 @@ class DynamicRNN(object):
 
 def switch_case(branch_index, branch_fns, default=None, name=None):
     '''
+    :api_attr: Static Graph
+
     This operator is like a C++ switch/case statement.
 
     Args:
@@ -3618,6 +3778,10 @@ def reorder_lod_tensor_by_rank(x, rank_table):
 
 def is_empty(x, cond=None):
     """
+    :alias_main: paddle.is_empty
+	:alias: paddle.is_empty,paddle.tensor.is_empty,paddle.tensor.logic.is_empty
+	:old_api: paddle.fluid.layers.is_empty
+
     Test whether a Variable is empty.
 
     Args:
@@ -3642,15 +3806,15 @@ def is_empty(x, cond=None):
           # fluid.layers.is_empty(x=input, cond=res)
 
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'is_empty')
+    check_type(cond, 'cond', (Variable, type(None)), 'is_empty')
     helper = LayerHelper("is_empty", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
-    elif not isinstance(cond, Variable):
-        raise TypeError("cond takes a variable")
-    elif cond.dtype != 'bool':
-        raise TypeError("The data type of cond must be bool")
-
+    else:
+        check_dtype(cond.dtype, 'cond', ['bool'], 'is_empty')
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
     return cond

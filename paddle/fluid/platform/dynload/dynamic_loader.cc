@@ -164,10 +164,10 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
   }
   auto error_msg =
       "Failed to find dynamic library: %s ( %s ) \n Please specify "
-      "its path correctly using following ways: \n Method. set "
+      "its path correctly using following ways: \n   set "
       "environment variable LD_LIBRARY_PATH on Linux or "
-      "DYLD_LIBRARY_PATH on Mac OS. \n For instance, issue command: "
-      "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
+      "DYLD_LIBRARY_PATH on Mac OS. \n   For instance, issue command: "
+      "export LD_LIBRARY_PATH=... \n   Note: After Mac OS 10.11, "
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
 #if !defined(_WIN32)
@@ -230,10 +230,7 @@ void* GetCusolverDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  // TODO(guosheng): Fix cusolver support on windows.
-  // return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
-  PADDLE_THROW(platform::errors::Unavailable(
-      "Cusolver loader cannot support Windows temporarily."));
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
@@ -241,17 +238,17 @@ void* GetCusolverDsoHandle() {
 
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
 }
 
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
 }
 

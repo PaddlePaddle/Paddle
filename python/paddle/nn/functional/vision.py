@@ -42,6 +42,14 @@ from ...fluid.layers import space_to_depth  #DEFINE_ALIAS
 from ...fluid.layers import yolo_box  #DEFINE_ALIAS
 from ...fluid.layers import yolov3_loss  #DEFINE_ALIAS
 
+from ...fluid.layers import fsp_matrix  #DEFINE_ALIAS
+from ...fluid.layers import image_resize_short  #DEFINE_ALIAS
+from ...fluid.layers import pixel_shuffle  #DEFINE_ALIAS
+from ...fluid.layers import retinanet_detection_output  #DEFINE_ALIAS
+from ...fluid.layers import retinanet_target_assign  #DEFINE_ALIAS
+from ...fluid.layers import roi_perspective_transform  #DEFINE_ALIAS
+from ...fluid.layers import shuffle_channel  #DEFINE_ALIAS
+
 __all__ = [
     'affine_channel',
     'affine_grid',
@@ -56,27 +64,27 @@ __all__ = [
     'density_prior_box',
     'detection_output',
     'distribute_fpn_proposals',
-    #       'fsp_matrix',
+    'fsp_matrix',
     'generate_mask_labels',
     'generate_proposal_labels',
     'generate_proposals',
     'grid_sampler',
     'image_resize',
-    #       'image_resize_short',
+    'image_resize_short',
     #       'multi_box_head',
-    #       'pixel_shuffle',
+    'pixel_shuffle',
     'prior_box',
     'prroi_pool',
     'psroi_pool',
     'resize_bilinear',
     'resize_nearest',
     'resize_trilinear',
-    #       'retinanet_detection_output',
-    #       'retinanet_target_assign',
+    'retinanet_detection_output',
+    'retinanet_target_assign',
     'roi_align',
-    #       'roi_perspective_transform',
+    'roi_perspective_transform',
     'roi_pool',
-    #       'shuffle_channel',
+    'shuffle_channel',
     'space_to_depth',
     'yolo_box',
     'yolov3_loss'

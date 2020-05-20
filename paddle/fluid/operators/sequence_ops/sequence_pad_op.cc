@@ -62,7 +62,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       // run time
       framework::Variable* x_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       const auto& x_lod = x_var->Get<LoDTensor>().lod();
       PADDLE_ENFORCE_EQ(x_lod.empty(), false,
                         platform::errors::NotFound(

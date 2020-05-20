@@ -99,6 +99,9 @@ def conv2d(input,
            data_format="NCHW",
            name=None):
     """
+	:alias_main: paddle.nn.functional.conv2d
+	:alias: paddle.nn.functional.conv2d,paddle.nn.functional.conv.conv2d
+
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCHW or NHWC format, where N is batch size, C is the number of
@@ -333,6 +336,9 @@ def conv2d_transpose(input,
                      data_format='NCHW',
                      name=None):
     """
+	:alias_main: paddle.nn.functional.conv2d_transpose
+	:alias: paddle.nn.functional.conv2d_transpose,paddle.nn.functional.conv.conv2d_transpose
+
     The convolution2D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCHW or NHWC format. Where N is batch size, C is the number of channels,
@@ -572,6 +578,9 @@ def conv3d(input,
            data_format="NCDHW",
            name=None):
     """
+	:alias_main: paddle.nn.functional.conv3d
+	:alias: paddle.nn.functional.conv3d,paddle.nn.functional.conv.conv3d
+
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are in NCDHW or NDHWC format. Where N is batch size C is the number of
@@ -786,6 +795,9 @@ def conv3d_transpose(input,
                      data_format='NCDHW',
                      name=None):
     """
+	:alias_main: paddle.nn.functional.conv3d_transpose
+	:alias: paddle.nn.functional.conv3d_transpose,paddle.nn.functional.conv.conv3d_transpose
+
     The convolution3D transpose layer calculates the output based on the input,
     filter, and dilations, strides, paddings. Input(Input) and output(Output)
     are in NCDHW or NDHWC format. Where N is batch size, C is the number of channels,

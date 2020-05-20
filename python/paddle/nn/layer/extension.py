@@ -20,6 +20,9 @@ from .. import functional as F
 
 class RowConv(layers.Layer):
     """
+	:alias_main: paddle.nn.RowConv
+	:alias: paddle.nn.RowConv,paddle.nn.layer.RowConv,paddle.nn.layer.extension.RowConv
+
     **Row-convolution operator**
 
     The row convolution is called lookahead convolution.  This operator was 

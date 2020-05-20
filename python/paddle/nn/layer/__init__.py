@@ -37,7 +37,7 @@ from .common import BilinearTensorProduct  #DEFINE_ALIAS
 from .common import Pool2D  #DEFINE_ALIAS
 from .common import Embedding  #DEFINE_ALIAS
 from .common import Linear  #DEFINE_ALIAS
-# from .common import UpSample        #DEFINE_ALIAS
+from .common import UpSample  #DEFINE_ALIAS
 from .conv import Conv2D  #DEFINE_ALIAS
 from .conv import Conv2DTranspose  #DEFINE_ALIAS
 from .conv import Conv3D  #DEFINE_ALIAS

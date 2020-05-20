@@ -143,7 +143,7 @@ struct PDNode {
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {
       return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
-             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+             BOOST_GET_CONST(T, x->Op()->GetAttr(attr_name)) == attr;
     });
     return this;
   }
@@ -929,33 +929,18 @@ struct RequantOp : public PatternBase {
   PATTERN_DECL_NODE(requant_out);
 };
 
-// Conv + Dequant
+// Op + Dequant
 // named nodes:
-// conv_op, conv_out
+// any_op, dequant_in
 // dequant_op, dequant_out
-struct ConvDequant : public PatternBase {
-  ConvDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_dequant") {}
+struct OpDequant : public PatternBase {
+  OpDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "op_dequant") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-
-  PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(dequant_out);
-};
-
-// Fc + Dequant
-struct FcDequant : public PatternBase {
-  FcDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fc_dequant") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(fc_op);
-  PATTERN_DECL_NODE(fc_out);
-
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(dequant_in);
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
 };
@@ -972,20 +957,6 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
-};
-
-// Matmul + Dequantize
-struct MatmulDequant : public PatternBase {
-  MatmulDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "matmul_dequant") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(matmul_op);
-  PATTERN_DECL_NODE(matmul_out);
-
-  PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(dequant_out);
 };
 
 // Scale + Matmul

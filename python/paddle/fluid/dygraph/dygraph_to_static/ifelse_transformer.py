@@ -22,7 +22,6 @@ from collections import defaultdict
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 import gast
-import six
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import compare_with_none
@@ -34,6 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import IsControlFlowVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -101,8 +101,18 @@ class IfElseTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if need_transform:
             pred_node, new_assign_nodes = if_condition_visitor.transform()
+
+            if len(new_assign_nodes) > 0:
+                pred_node = merge_multi_assign_nodes(new_assign_nodes)
+
             new_node = create_cond_node(None, pred_node, node.body, node.orelse,
                                         True)
+            # Note: A blank line will be added separately if transform gast.Expr
+            # into source code. Using gast.Expr.value instead to avoid syntax error
+            # in python.
+            if isinstance(new_node, gast.Expr):
+                new_node = new_node.value
+
             return new_node
         else:
             return node
@@ -145,16 +155,78 @@ class IfElseTransformer(gast.NodeTransformer):
         return self.new_func_nodes
 
 
+def merge_multi_assign_nodes(assign_nodes):
+    """
+     Merges multiple separate assign statements into a single node.
+    """
+    if not isinstance(assign_nodes, (list, tuple)):
+        assign_nodes = [assign_nodes]
+
+    return MergeAssignTransformer().transform(assign_nodes)
+
+
+class MergeAssignTransformer(gast.NodeTransformer):
+    """
+    Merges multiple separate assign statements into a single node.
+    Because it cannot be determined the insertion location of new nodes for `IfExpr`,
+    so replaces original node with merges conditional node.
+
+    Note: This is a very low level api and only used for IfExpr transformation
+          in control flow.
+
+    For example:
+        IfExpr:
+            y = x+1 if mean or x > 0 else x-1
+
+        assign nodes:
+            bool_tensor_1 = fluid.layers.cast(x=mean, dtype='bool')
+            logic_or_0 = fluid.layers.logical_or(x=bool_tensor_1, y=x > 0)
+
+        merged node:
+            fluid.layers.logical_or(x=fluid.layers.cast(x=mean, dtype='bool'), y=x > 0)
+    """
+
+    def __init__(self):
+        self._name_to_nodes_value = {}
+
+    def transform(self, nodes):
+        value = None
+        for node in nodes:
+            assert isinstance(node, gast.Assign)
+            # Note: targets of created assign node in control flow `if`
+            # only contains one element.
+            assert isinstance(node.targets[0], gast.Name)
+            target_name = node.targets[0].id
+            value = self.visit(node.value)
+            self._name_to_nodes_value[target_name] = value
+
+        return value
+
+    def visit_Name(self, node):
+        if node.id in self._name_to_nodes_value:
+            node = self._name_to_nodes_value[node.id]
+        return node
+
+
 class NodeTestTransformer(gast.NodeTransformer):
-    def __init__(self, ast_node, compare_nodes_with_tensor=None):
+    def __init__(self,
+                 ast_node,
+                 compare_nodes_with_tensor=None,
+                 node_to_wrapper_map=None):
         if compare_nodes_with_tensor is None:
             compare_nodes_with_tensor = set()
         self.ast_root = ast_node
         self._compare_nodes_with_tensor = compare_nodes_with_tensor
+        if node_to_wrapper_map is None:
+            node_to_wrapper_map = {}
+        self.node_to_wrapper_map = node_to_wrapper_map
         self._new_assign_nodes = []
 
     def transform(self):
-        return self.visit(self.ast_root)
+        node = self.ast_root
+        if not is_candidate_node(node):
+            return self._create_cast_node(node)
+        return self.visit(node)
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
@@ -183,8 +255,11 @@ class NodeTestTransformer(gast.NodeTransformer):
     def visit_BoolOp(self, node):
         for i, child in enumerate(node.values):
             if not is_candidate_node(child):
-                node.values[i] = self._create_bool_node(child)
-                continue
+                node_wrapper = self.node_to_wrapper_map.get(child, None)
+                if node_wrapper and node_wrapper.node_var_type & NodeVarType.TENSOR_TYPES:
+                    node.values[i] = self._create_cast_node(child)
+                else:
+                    node.values[i] = self._create_bool_node(child)
         self.generic_visit(node)
         new_node = self._create_logic_node(node)
         return new_node
@@ -196,10 +271,19 @@ class NodeTestTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         return node
 
+    def _create_cast_node(self, node):
+        template = "fluid.layers.cast(x={}, dtype='bool')"
+
+        return self._create_node_with_api_template(node, template)
+
     def _create_bool_node(self, node):
+        template = "fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool({}))"
+
+        return self._create_node_with_api_template(node, template)
+
+    def _create_node_with_api_template(self, node, template):
         node_code = ast_to_source_code(node)
-        new_node_str = "fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool({}))".format(
-            node_code)
+        new_node_str = template.format(node_code)
         # gast.parse return Module(body=[expr(value=...)])
         new_node = gast.parse(new_node_str).body[0].value
         bool_tensor_name = unique_name.generate(PLAIN_TENSOR_PREFIX)
@@ -259,7 +343,8 @@ class IfConditionVisitor(object):
         self.static_analysis_visitor = static_analysis_visitor
         self.visitor = IsControlFlowVisitor(node, static_analysis_visitor,
                                             node_var_type_map)
-        self.transformer = NodeTestTransformer(node)
+        self.transformer = NodeTestTransformer(
+            node, node_to_wrapper_map=self.visitor.node_to_wrapper_map)
         self.compare_nodes_with_tensor = set()
         self._is_control_flow_if = False
 

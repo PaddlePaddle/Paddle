@@ -109,10 +109,9 @@ The code snipped shows how the `Qat2Int8MkldnnPass` can be applied to a model gr
 
 ## 5. Accuracy and Performance benchmark
 
-This section contain QAT2 MKL-DNN accuracy and performance benchmark results measured on two servers:
+This section contain QAT2 MKL-DNN accuracy and performance benchmark results measured on the following server:
 
 * Intel(R) Xeon(R) Gold 6271 (with AVX512 VNNI support),
-* Intel(R) Xeon(R) Gold 6148.
 
 Performance benchmarks were run with the following environment settings:
 
@@ -144,17 +143,6 @@ Performance benchmarks were run with the following environment settings:
 |    VGG16     |       72.08%       |         71.73%         |  -0.35%   |       90.63%       |         89.71%         |  -0.92%   |
 |    VGG19     |       72.57%       |         72.12%         |  -0.45%   |       90.84%       |         90.15%         |  -0.69%   |
 
->**Intel(R) Xeon(R) Gold 6148**
-
-|    Model     | FP32 Top1 Accuracy | INT8 QAT Top1 Accuracy | Top1 Diff | FP32 Top5 Accuracy | INT8 QAT Top5 Accuracy | Top5 Diff |
-| :----------: | :----------------: | :--------------------: | :-------: | :----------------: | :--------------------: | :-------: |
-| MobileNet-V1 |       70.78%       |         70.85%         |   0.07%   |       89.69%       |         89.41%         |  -0.28%   |
-| MobileNet-V2 |       71.90%       |         72.08%         |   0.18%   |       90.56%       |         90.66%         |  +0.10%   |
-|  ResNet101   |       77.50%       |         77.51%         |   0.01%   |       93.58%       |         93.50%         |  -0.08%   |
-|   ResNet50   |       76.63%       |         76.55%         |  -0.08%   |       93.10%       |         92.96%         |  -0.14%   |
-|    VGG16     |       72.08%       |         71.72%         |  -0.36%   |       90.63%       |         89.75%         |  -0.88%   |
-|    VGG19     |       72.57%       |         72.08%         |  -0.49%   |       90.84%       |         90.11%         |  -0.73%   |
-
 #### Performance
 
 Image classification models performance was measured using a single thread. The setting is included in the benchmark reproduction commands below.
@@ -164,23 +152,12 @@ Image classification models performance was measured using a single thread. The 
 
 |    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32)  |
 | :----------: | :-------------: | :-----------------: | :---------------:  |
-| MobileNet-V1 |      77.00      |       210.76        |      2.74          |
-| MobileNet-V2 |      88.43      |       182.47        |      2.06          |
-|  ResNet101   |      7.20       |        25.88        |      3.60          |
-|   ResNet50   |      13.26      |        47.44        |      3.58          |
-|    VGG16     |      3.48       |        10.11        |      2.90          |
-|    VGG19     |      2.83       |        8.77         |      3.10          |
-
->**Intel(R) Xeon(R) Gold 6148**
-
-|    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32) |
-| :----------: | :-------------: | :-----------------: | :---------------: |
-| MobileNet-V1 |      75.23      |       103.63        |      1.38         |
-| MobileNet-V2 |      86.65      |       128.14        |      1.48         |
-|  ResNet101   |      6.61       |       10.79         |      1.63         |
-|   ResNet50   |      12.42      |       19.65         |      1.58         |
-|    VGG16     |      3.31       |        4.74         |      1.43         |
-|    VGG19     |      2.68       |        3.91         |      1.46         |
+| MobileNet-V1 |      74.05      |       196.98        |      2.66          |
+| MobileNet-V2 |      88.60      |       187.67        |      2.12          |
+|  ResNet101   |      7.20       |       26.43         |      3.67          |
+|   ResNet50   |      13.23      |       47.44         |      3.59          |
+|    VGG16     |      3.47       |       10.20         |      2.94          |
+|    VGG19     |      2.83       |       8.67          |      3.06          |
 
 Notes:
 
@@ -194,13 +171,8 @@ Notes:
 
 |     Model    |  FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
 |:------------:|:----------------------:|:----------------------:|:---------:|
-|   Ernie      |      80.20%            |        79.88%        |  -0.32%  |
+|   Ernie      |      80.20%            |        79.44%        |  -0.76%  |
 
->**Intel(R) Xeon(R) Gold 6148**
-
-| Model | FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
-| :---: | :-----------: | :---------------: | :-----------: |
-| Ernie |    80.20%     |      79.64%       |    -0.56%     |
 
 #### Performance
 
@@ -209,16 +181,9 @@ Notes:
 
 |  Model  |     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Ratio (FP32/INT8) |
 |:------------:|:----------------------:|:-------------------:|:---------:|:---------:|
-| Ernie | 1 thread     |       236.72        |     83.70    |   2.82x   |
-| Ernie | 20 threads   |       27.40         |     15.01    |   1.83x   |
+| Ernie | 1 thread     |       237.21        |     79.26    |   2.99x    |
+| Ernie | 20 threads   |       22.08         |     12.57    |   1.76x    |
 
-
->**Intel(R) Xeon(R) Gold 6148**
-
-| Model |  Threads   | FP32 Latency (ms) | QAT INT8 Latency (ms) | Ratio (FP32/INT8) |
-| :---: | :--------: | :---------------: | :-------------------: | :---------------: |
-| Ernie |  1 thread  |    248.42         |       169.30           |       1.46       |
-| Ernie | 20 threads |    28.92          |       20.83            |       1.39       |
 
 ## 6. How to reproduce the results
 
@@ -270,15 +235,17 @@ You can use the `qat2_int8_image_classification_comparison.py` script to reprodu
 
 * `--qat_model` - a path to a QAT model that will be transformed into INT8 model.
 * `--fp32_model` - a path to an FP32 model whose accuracy will be measured and compared to the accuracy of the INT8 model.
-* `--quantized_ops` - a comma-separated list of names of operators to be quantized. When deciding which operators to put on the list, the following have to be considered:
-  * Only operators which support quantization will be taken into account.
-  * All the quantizable operators from the list, which are present in the model, must have quantization scales provided in the model. Otherwise, the quantization procedure will fail with a message saying which variable is missing a quantization scale.
-  * Sometimes it may be suboptimal to quantize all quantizable operators in the model (cf. *Notes* in the **Gathering scales** section above). To find the optimal configuration for this option, user can run benchmark a few times with different lists of quantized operators present in the model and compare the results. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
 * `--infer_data` - a path to the validation dataset.
+
+The following option is also accepted:
+* `--ops_to_quantize` - a comma-separated list of operator types to quantize. If the option is not used, an attempt to quantize all quantizable operators will be made, and in that case only quantizable operators which have quantization scales provided in the QAT model will be quantized. When deciding which operators to put on the list, the following have to be considered:
+  * Only operators which support quantization will be taken into account.
+  * All the quantizable operators from the list, which are present in the model, must have quantization scales provided in the model. Otherwise, quantization of the operator will be skipped with a message saying which variable is missing a quantization scale.
+  * Sometimes it may be suboptimal to quantize all quantizable operators in the model (cf. *Notes* in the **Gathering scales** section above). To find the optimal configuration for this option, user can run benchmark a few times with different lists of quantized operators present in the model and compare the results. For Image Classification models mentioned above the list usually comprises of `conv2d` and `pool2d` operators.
 
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat2_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOADED/QAT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --quantized_ops="conv2d,pool2d"
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat2_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOADED/QAT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --ops_to_quantize="conv2d,pool2d"
 ```
 
 > Notes: Due to a large amount of images in the `int8_full_val.bin` dataset (50 000), the accuracy benchmark may last long. To accelerate accuracy measuring, it is recommended to set `OMP_NUM_THREADS` to the maximum number of physical cores available on the server.
@@ -287,11 +254,11 @@ OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim
 
 To reproduce the performance results, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
 
-1. Transform the QAT model into INT8 model by applying the `Qat2Int8MkldnnPass` pass and save the result. You can use the script `save_qat_model.py` for this purpose. It also requires the option `--quantized_ops`  with a list of operators to be quantized.
+1. Transform the QAT model into INT8 model by applying the `Qat2Int8MkldnnPass` pass and save the result. You can use the script `save_qat_model.py` for this purpose. It also accepts the option `--ops_to_quantize` with a list of operators to quantize.
 
    ```bash
    cd /PATH/TO/PADDLE/build
-   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOADED/QAT/MODEL --int8_model_save_path=/PATH/TO/SAVE/QAT/INT8/MODEL --quantized_ops="conv2d,pool2d"
+   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOADED/QAT/MODEL --int8_model_save_path=/PATH/TO/SAVE/QAT/INT8/MODEL --ops_to_quantize="conv2d,pool2d"
    ```
 
 2. Run the C-API test for performance benchmark.

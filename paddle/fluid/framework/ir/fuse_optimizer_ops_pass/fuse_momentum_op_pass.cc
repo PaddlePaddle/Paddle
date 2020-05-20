@@ -41,21 +41,23 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
 
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
-    int op_role = boost::get<int>(momentum_ops[0]->Op()->GetAttr(
-        OpProtoAndCheckerMaker::OpRoleAttrName()));
-    float mu = boost::get<float>(momentum_ops[0]->Op()->GetAttr("mu"));
+    int op_role =
+        BOOST_GET_CONST(int, momentum_ops[0]->Op()->GetAttr(
+                                 OpProtoAndCheckerMaker::OpRoleAttrName()));
+    float mu = BOOST_GET_CONST(float, momentum_ops[0]->Op()->GetAttr("mu"));
     bool use_nesterov =
-        boost::get<bool>(momentum_ops[0]->Op()->GetAttr("use_nesterov"));
+        BOOST_GET_CONST(bool, momentum_ops[0]->Op()->GetAttr("use_nesterov"));
 
     for (auto &momentum_op : momentum_ops) {
-      PADDLE_ENFORCE_EQ(mu,
-                        boost::get<float>(momentum_op->Op()->GetAttr("mu")));
+      PADDLE_ENFORCE_EQ(
+          mu, BOOST_GET_CONST(float, momentum_op->Op()->GetAttr("mu")));
       PADDLE_ENFORCE_EQ(
           use_nesterov,
-          boost::get<bool>(momentum_op->Op()->GetAttr("use_nesterov")));
-      PADDLE_ENFORCE_EQ(op_role,
-                        boost::get<int>(momentum_op->Op()->GetAttr(
-                            OpProtoAndCheckerMaker::OpRoleAttrName())));
+          BOOST_GET_CONST(bool, momentum_op->Op()->GetAttr("use_nesterov")));
+      PADDLE_ENFORCE_EQ(
+          op_role,
+          BOOST_GET_CONST(int, momentum_op->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())));
     }
 
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
