@@ -167,7 +167,7 @@ class CompileTimeStrategy(object):
             sections = []
 
             for slice in slices:
-                if self.is_sync_mode() and self.get_trainers() >= 1:
+                if self.is_sync_mode() and self.get_trainers() > 1:
                     if is_grad:
                         names.append("{}.trainer_{}".format(slice.name,
                                                             self.get_role_id()))
