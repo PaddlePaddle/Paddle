@@ -16,14 +16,18 @@ from __future__ import print_function
 
 from paddle.fluid import framework
 from paddle.fluid import core
-from paddle.fluid import unique_name
+from paddle.fluid import layers
 
 
-def converted_len(var):
-    # return variable(length) from shape ops based on var.type
+def convert_len(var):
+    """
+    return variable(length) from shape ops based on var.type
+
+    Note: In addition to some ast transformations,
+          there are also some block-related operations in `len`
+          transformation, such as append `shape_op` in var.block.
+    """
     if isinstance(var, framework.Variable):
-        block = current_block(var)
-        out = create_new_var(block, 'int32', name='shape')
         if var.type in [
                 core.VarDesc.VarType.LOD_TENSOR,
                 core.VarDesc.VarType.SELECTED_ROWS
@@ -31,32 +35,12 @@ def converted_len(var):
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
-            block.append_op(
-                type='shape', inputs={'Input': var}, outputs={'Out': out})
+            return layers.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            block.append_op(
-                type='lod_array_length',
-                inputs={'X': [var]},
-                outputs={'Out': [out]})
-            return out
+            return layers.array_length(var)
         else:
             raise TypeError(
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
                 % type(var))
-        # return shape[0] as length.
-        return out[0]
     else:
-        return builtin_len(var)
-
-
-def builtin_len(x):
-    return len(x)
-
-
-def current_block(var):
-    return var.block.program.current_block()
-
-
-def create_new_var(block, dtype, name):
-    tmp_name = unique_name.generate(name)
-    return block.create_var(name=tmp_name, dtype=dtype)
+        return len(var)
