@@ -47,7 +47,7 @@ __all__ = [
 def interpolate(input,
                 size=None,
                 scale_factor=None,
-                mode='nearst',
+                mode='nearest',
                 align_corners=False,
                 align_mode=1,
                 data_format='NCHW',
@@ -198,8 +198,8 @@ def interpolate(input,
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
              And :attr:`out_shape` has a higher priority than :attr:`scale_factor`.
              Default: None.
-        mode (str): The resample method. It supports 'linear', 'nearst', 'bilinear',
-                       'bicubic' and 'trilinear' currently. Default: 'nearst'
+        mode (str): The resample method. It supports 'linear', 'nearest', 'bilinear',
+                       'bicubic' and 'trilinear' currently. Default: 'nearest'
         align_corners(bool) :  An optional bool, If True, the centers of the 4 corner pixels of the
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
