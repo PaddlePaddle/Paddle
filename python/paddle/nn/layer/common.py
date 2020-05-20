@@ -51,6 +51,11 @@ class UpSample(layers.Layer):
     W-direction in this op) on a rectilinear 2D grid. The key idea is
     to perform linear interpolation first in one direction, and then
     again in the other direction.
+    
+    Bicubic interpolation is an extension of cubic interpolation for interpolating
+    data points on a two-dimensional regular grid. The interpolated surface is
+    smoother than corresponding surfaces obtained by bilinear interpolation or
+    nearest-neighbor interpolation.
 
     Trilinear interpolation is an extension of linear interpolation for
     interpolating functions of three variables (e.g. D-direction,
@@ -58,11 +63,6 @@ class UpSample(layers.Layer):
     The linear interpolation is performed on three directions.
     Align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
-
-    Bicubic interpolation is an extension of cubic interpolation for interpolating
-    data points on a two-dimensional regular grid. The interpolated surface is
-    smoother than corresponding surfaces obtained by bilinear interpolation or
-    nearest-neighbor interpolation.
 
     Example:
 
@@ -145,21 +145,26 @@ class UpSample(layers.Layer):
 
     https://en.wikipedia.org/wiki/Linear_interpolation.
     For details of linear interpolation, please refer to Wikipedia:
+    
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
+    
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-    For details of trilinear interpolation, please refer to Wikipedia:
-    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+    
     For details of bicubic interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bicubic_interpolation
+    
+    For details of trilinear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Trilinear_interpolation.
+    
     Parameters:
         input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         size (list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
-             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If
-             a list, each element can be an integer or a Tensor Variable of shape: [1].
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale_factor (float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale_factor` must be set.
