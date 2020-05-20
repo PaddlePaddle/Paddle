@@ -137,8 +137,6 @@ random value and set the value into the table for the next looking up.
 )DOC");
   }
 };
-}  // namespace operators
-}  // namespace paddle
 
 template <typename DeviceContext, typename T>
 class DistributedLookupTableKernel : public framework::OpKernel<T> {
@@ -161,6 +159,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         height_sections, context, context.scope());
   }
 };
+
+}  // namespace operators
+}  // namespace paddle
 
 namespace ops = paddle::operators;
 
