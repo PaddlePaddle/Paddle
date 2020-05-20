@@ -39,9 +39,15 @@ class ReduceSumKernel : public framework::OpKernel<T> {
 
     std::vector<int> reduce_dims;
     if (reduce_all) {
+      VLOG(10) << " reduce_all=true"
+               << " dim=" << paddle::framework::make_ddim(dims)
+               << " keep_dim=" << keep_dim << " op=reduce_op";
       reduce_dims.resize(input->dims().size());
       for (int i = 0; i < reduce_dims.size(); ++i) reduce_dims[i] = i;
     } else {
+      VLOG(10) << " reduce_all=false"
+               << " dim=" << paddle::framework::make_ddim(dims)
+               << " keep_dim=" << keep_dim << " op=reduce_op";
       for (auto e : dims) {
         reduce_dims.push_back(e >= 0 ? e : e + input->dims().size());
       }

@@ -190,6 +190,9 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     if (!input1) input1 = input2;
 
     if (reduce_all) {
+      VLOG(10) << " reduce_all=true"
+               << " dim=" << paddle::framework::make_ddim(dims)
+               << " op=reduce_grad_op";
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::From(*input1);
       auto x_reduce_grad = EigenVector<T>::From(*input2);
@@ -202,6 +205,9 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
               broadcast_dim[0]);
     } else {
+      VLOG(10) << " reduce_all=false"
+               << " dim=" << paddle::framework::make_ddim(dims)
+               << " op=reduce_grad_op";
       int rank = input0->dims().size();
       switch (rank) {
         case 1:
