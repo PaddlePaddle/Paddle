@@ -419,6 +419,6 @@ TEST(BOOST_GET_SAFELY, FAIL) {
 TEST(BOOST_GET, SUCCESS) {
   paddle::framework::Attribute attr;
   attr = true;
-  bool rlt = boost_get<bool>(attr);
+  bool rlt = boost::get<bool>(attr);
   EXPECT_EQ(rlt, true);
 }
