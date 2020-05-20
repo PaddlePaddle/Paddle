@@ -946,7 +946,7 @@ class SplitAssignTransformer(gast.NodeTransformer):
         if len(target_nodes) == 1:
             node = self._parse_sequence_assign(node)
         else:
-            node = self._parse_mul_target_assign(node)
+            node = self._parse_multi_target_assign(node)
         return node
 
     def _parse_sequence_assign(self, node):
@@ -957,7 +957,6 @@ class SplitAssignTransformer(gast.NodeTransformer):
         b = d
         """
         assert isinstance(node, gast.Assign)
-        new_nodes = []
 
         target_nodes = node.targets
         value_node = node.value
@@ -971,13 +970,14 @@ class SplitAssignTransformer(gast.NodeTransformer):
         if len(targets) != len(values):
             return node
 
+        new_nodes = []
         for target, value in zip(targets, values):
             assign_node = gast.Assign(targets=[target], value=value)
             new_nodes.append(assign_node)
 
         return new_nodes
 
-    def _parse_mul_target_assign(self, node):
+    def _parse_multi_target_assign(self, node):
         """
          Example 1:
          a = b = c
@@ -999,6 +999,8 @@ class SplitAssignTransformer(gast.NodeTransformer):
         new_nodes = []
         for target in reversed(target_nodes):
             assign_node = gast.Assign(targets=[target], value=value_node)
+            # NOTE: Because assign_node can be sequence assign statement like `a,b = c,d`,
+            # it's necessary to visit this new assign_node
             parsed_node = self.visit_Assign(assign_node)
             if not isinstance(parsed_node, list):
                 parsed_node = [parsed_node]
