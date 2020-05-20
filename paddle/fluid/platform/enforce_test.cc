@@ -415,10 +415,3 @@ TEST(BOOST_GET_SAFELY, FAIL) {
   }
   EXPECT_TRUE(caught_exception);
 }
-
-TEST(BOOST_GET, SUCCESS) {
-  paddle::framework::Attribute attr;
-  attr = true;
-  bool rlt = boost::get<bool>(attr);
-  EXPECT_EQ(rlt, true);
-}
