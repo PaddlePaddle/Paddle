@@ -23,9 +23,9 @@ def convert_len(var):
     """
     return variable(length) from shape ops based on var.type
 
-    Note: In addition to some ast transformations,
-          there are also some block-related operations in `len`
-          transformation, such as append `shape_op` in var.block.
+    Note: In addition to some ast transformations, some block-related
+          operations are added in `len` transformation, such as appending
+          `shape_op` in var.block.
     """
     if isinstance(var, framework.Variable):
         if var.type in [
