@@ -89,13 +89,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     for (const std::string &arg :
          std::vector<std::string>({"pre_ids", "scores"})) {
-      PADDLE_ENFORCE(ctx->HasInput(arg), "BeamSearch need input argument '%s'",
-                     arg);
+      OP_INOUT_CHECK(ctx->HasInput(arg), "Input", arg, "BeamSeach");
     }
     for (const std::string &arg :
          std::vector<std::string>({"selected_ids", "selected_scores"})) {
-      PADDLE_ENFORCE(ctx->HasOutput(arg),
-                     "BeamSearch need output argument '%s'", arg);
+      OP_INOUT_CHECK(ctx->HasOutput(arg), "Output", arg, "BeamSeach");
     }
   }
 

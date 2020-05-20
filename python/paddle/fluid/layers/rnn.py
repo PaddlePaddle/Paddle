@@ -2993,6 +2993,12 @@ def beam_search(pre_ids,
                 beam_size=beam_size,
                 end_id=end_id)
     """
+    check_variable_and_dtype(pre_ids, 'pre_ids', ['int64'], 'beam_search')
+    check_variable_and_dtype(pre_scores, 'pre_scores', ['float32', 'float64'],
+                             'beam_search')
+    check_type(ids, 'ids', (Variable, type(None)), 'beam_search')
+    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
+                             'beam_search')
     helper = LayerHelper('beam_search', **locals())
     score_type = pre_scores.dtype
     id_type = pre_ids.dtype
@@ -3090,6 +3096,9 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
             finished_ids, finished_scores = fluid.layers.beam_search_decode(
                 ids, scores, beam_size=5, end_id=0)
     """
+    check_variable_and_dtype(ids, 'ids', ['int64'], 'beam_search_encode')
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'beam_search_encode')
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
     sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
