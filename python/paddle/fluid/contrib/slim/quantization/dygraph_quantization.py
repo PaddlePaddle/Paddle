@@ -20,6 +20,7 @@ from ....dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from ....dygraph.base import to_variable
 from .... import core
 from .... import framework
+from .... import unique_name
 from ....param_attr import ParamAttr
 from ....framework import _varbase_creator
 from ....initializer import Constant
@@ -34,13 +35,15 @@ _quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
 
 class FakeQuant(layers.Layer):
     def __init__(self,
+                 name=None,
                  moving_rate=0.9,
                  quant_bits=8,
-                 name=None,
-                 dtype='float32'):
+                 dtype='float32',
+                 is_test=False):
         super(FakeQuant, self).__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
+        self._is_test = is_test
         scale_attr = ParamAttr(name="{}.quant_dequant.scale".format(name)
                                if name else None)
         self.scale = self.create_parameter(
@@ -50,6 +53,27 @@ class FakeQuant(layers.Layer):
             is_bias=False,
             default_initializer=Constant(0.001))
 
+        if not self._is_test:
+            state_attr = ParamAttr(
+                name=unique_name.generate('quant_dequant.state'))
+            self.state = self.create_parameter(
+                shape=[1],
+                attr=state_attr,
+                dtype=dtype,
+                is_bias=False,
+                default_initializer=Constant(1))
+            accum_attr = ParamAttr(
+                name=unique_name.generate('quant_dequant.accum'))
+            self.accum = self.create_parameter(
+                shape=[1],
+                attr=accum_attr,
+                dtype=dtype,
+                is_bias=False,
+                default_initializer=Constant(1))
+        else:
+            self.state = None
+            self.accum = None
+
     def forward(self, input):
         quant_out = _varbase_creator(
             type=input.type,
@@ -58,21 +82,33 @@ class FakeQuant(layers.Layer):
             dtype=input.dtype,
             persistable=False)
 
+        attrs = ('moving_rate', self._moving_rate, 'bit_length',
+                 self._quant_bits, 'is_test', self._is_test)
 
-def _add_fake_quant(layer, input):
-    quant_inputs = []
-    for layer_in in input:
-        data_type = 'float64' if layer_in.dtype(
-        ) == core.VarDesc.VarType.FP64 else 'float32'
-        pass
+        out, out_scale, _, _ = core.ops.fake_quantize_dequantize_moving_average_abs_max(
+            input, self.scale, self.accum, self.state, quant_out, self.scale,
+            self.state, self.accum, *attrs)
+        return out, out_scale
 
 
 def transform_qat(model,
                   weight_bits=8,
                   activation_bits=8,
-                  window_size=10000,
                   moving_rate=0.9,
                   quantizable_layer_type=['Conv2D', 'Linear']):
+    def _add_fake_quant(layer, input):
+        quant_inputs = []
+        for layer_in in input:
+            quant_bits = weight_bits if layer_in.persistable else activation_bits
+            dtype = 'float64' if layer_in.dtype == core.VarDesc.VarType.FP64 else 'float32'
+            is_test = layer.training
+            fake_quant = FakeQuant(layer_in.name, moving_rate, quant_bits,
+                                   dtype, is_test)
+            quant_input, _ = fake_quant(layer_in)
+            quant_inputs.append(quant_input)
+
+        return tuple(quant_inputs)
+
     quant_layers = tuple(_quant_layers_map[layer]
                          if layer in _quant_layers_map else layer
                          for layer in quantizable_layer_type)
