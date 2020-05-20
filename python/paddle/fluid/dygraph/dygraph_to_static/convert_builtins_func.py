@@ -16,7 +16,8 @@ from __future__ import print_function
 
 from paddle.fluid import framework
 from paddle.fluid import core
-from paddle.fluid import layers
+from paddle.fluid.layers import nn
+from paddle.fluid.layers import control_flow
 
 
 def convert_len(var):
@@ -35,9 +36,9 @@ def convert_len(var):
             # Note: Length of var may be known ahead of time in dygraph,
             # but it probably represents batch size which can be variant.
             # so we return a variable dynamically inferred from var.shape.
-            return layers.shape(var)[0]
+            return nn.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-            return layers.array_length(var)
+            return control_flow.array_length(var)
         else:
             raise TypeError(
                 'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
