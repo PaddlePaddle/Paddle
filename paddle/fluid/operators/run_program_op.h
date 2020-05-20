@@ -139,6 +139,12 @@ static void ShareVarsFromScope(const std::vector<Variable *> &vars,
     // NOTE: Here skip not found var is dangerous, if a bug is caused here,
     // the result is grad calculation error, which will be very hidden!
     auto *var = scope->FindVar(var_names[i]);
+    if (!var) {
+      VLOG(2) << "The output variable " << var_names[i]
+              << " is not in "
+                 "RunProgram(Grad)Op(StaticModelRunner)'s internal scope.";
+      continue;
+    }
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("The output variable %s is not in "
                                         "RunProgram(Grad)Op(StaticModelRunner)'"
