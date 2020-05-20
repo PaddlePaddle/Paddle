@@ -16,11 +16,5 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
-                  ops::DistributedLookupTableOpMaker);
-
-REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
-                       ops::DistributedLookupTableKernel<float>);
-
 REGISTER_OP_CUDA_KERNEL(distributed_lookup_table,
                         ops::DistributedLookupTableKernel<float>);

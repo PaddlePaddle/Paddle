@@ -161,3 +161,11 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
         height_sections, context, context.scope());
   }
 };
+
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
+                  ops::DistributedLookupTableOpMaker);
+
+REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
+                       ops::DistributedLookupTableKernel<float>);
