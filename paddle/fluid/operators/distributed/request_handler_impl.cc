@@ -65,7 +65,6 @@ bool RequestSendHandler::Handle(const std::string &varname,
 
   if (string::Contains(var_name_piece, part_piece)) {
     auto varname_splits = paddle::string::Split(varname, '@');
-    PADDLE_ENFORCE_EQ(varname_splits.size(), 3);
     run_varname = varname_splits[0];
     scope->Rename(varname, run_varname);
   }
@@ -141,7 +140,10 @@ bool RequestGetHandler::Handle(const std::string &varname,
           out_dims, origin_tensor.place());
       auto width = dims[1];
       for (size_t i = 0; i < updated_rows.size(); ++i) {
-        PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
+        PADDLE_ENFORCE_LT(updated_rows[i], dims[0],
+                          platform::errors::OutOfRange(
+                              "expected >= 0 and < %ld, but got %ld.", dims[0],
+                              updated_rows[i]));
         memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
                sizeof(float) * width);
       }
@@ -173,7 +175,8 @@ bool RequestGetNoBarrierHandler::Handle(const std::string &varname,
     *outvar = scope_->FindVar(var_name_piece.ToString());
     return true;
   } else {
-    PADDLE_THROW("GetNoBarrier must contain %s", WITHOUT_BARRIER_MESSAGE);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "GetNoBarrier must contain %s", WITHOUT_BARRIER_MESSAGE));
   }
   return true;
 }
@@ -209,9 +212,10 @@ bool RequestCheckpointHandler::Handle(const std::string &varname,
                                       const int trainer_id,
                                       const std::string &out_var_name,
                                       const std::string &table_name) {
-  PADDLE_ENFORCE(
-      checkpoint_notify_id != -1,
-      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
+  PADDLE_ENFORCE_NE(
+      checkpoint_notify_id, -1,
+      platform::errors::Unavailable(
+          "when checkpoint_notify_id = -1, there should be no RPC invoke."));
 
   // TODO(tangwei12): find out why scope will be error.
   auto *lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
@@ -252,7 +256,8 @@ bool RequestNotifyHandler::Handle(const std::string &varname,
       VLOG(3) << "LearningRate Decay Counter Update";
       PADDLE_ENFORCE_NE(
           lr_decay_block_id, -1,
-          "when lr_decay_block_id = -1, there should be no RPC invoke.");
+          platform::errors::InvalidArgument(
+              "when lr_decay_block_id = -1, there should be no RPC invoke."));
       auto *origin_var = scope_->FindVar(varname);
       auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
       auto *send_var = scope->FindVar(varname);
@@ -266,7 +271,8 @@ bool RequestNotifyHandler::Handle(const std::string &varname,
     }
     return true;
   } else {
-    PADDLE_THROW("unkown varname with RequestNotifyHandler");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "unkown varname with RequestNotifyHandler"));
   }
   return true;
 }

@@ -44,7 +44,7 @@ bool BarrierMonitor::IncreaseBarrier(const int worker_id,
     VLOG(4) << "BarrierMonitor recv queue recv trainer: " << worker_id;
     recv_barrier_queue->Push(worker_id);
   } else {
-    PADDLE_THROW("unknown status");
+    PADDLE_THROW(platform::errors::Unavailable("unknown status"));
   }
   return Wait();
 }

@@ -46,14 +46,15 @@ template <typename T>
 class BlockingQueueForBarrier {
  public:
   explicit BlockingQueueForBarrier(size_t capacity) : capacity_(capacity) {
-    PADDLE_ENFORCE_GT(capacity_, 0, "The capacity must be greater than 0.");
+    PADDLE_ENFORCE_GT(capacity_, 0,
+                      platform::errors::InvalidArgument(
+                          "The capacity must be greater than 0."));
   }
 
   bool Push(const T &elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       workder_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.push_back(elem);
     }
     workder_cv_.notify_one();
@@ -64,7 +65,6 @@ class BlockingQueueForBarrier {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       workder_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
-      PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.emplace_back(std::move(elem));
     }
     workder_cv_.notify_one();
@@ -106,7 +106,8 @@ class BlockingQueueForBarrier {
 class BarrierMonitor {
  public:
   explicit BarrierMonitor(int workers) : workers_(workers) {
-    PADDLE_ENFORCE_GT(workers, 0, "trainers must have one or more");
+    PADDLE_ENFORCE_GT(workers, 0, platform::errors::InvalidArgument(
+                                      "trainers must have one or more"));
 
     barrier_type = BarrierType::kRecvBarrier;
     send_barrier_queue =
