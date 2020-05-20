@@ -21,9 +21,9 @@ HOSTDEVICE T CalcSoftplus(T x, float threshold) {
   if (threshold > 0 && x > threshold) {
     return x;
   } else if (threshold > 0 && x < -threshold) {
-    return expf(x);
+    return exp(x);
   } else {
-    return log1pf(expf(x));
+    return log1p(exp(x));
   }
 }
 

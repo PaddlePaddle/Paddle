@@ -40,7 +40,7 @@ __global__ void KeMishBw(const T* in, const T* dout, T* din, const int numel,
     T x = in[tid];
     T sp = CalcSoftplus<T>(x, threshold);
     T tsp = tanh(sp);
-    T grad_sp = -expm1f(-sp);
+    T grad_sp = -expm1(-sp);
     T grad_tsp = (static_cast<T>(1) - tsp * tsp) * grad_sp;
     din[tid] = dout[tid] * (x * grad_tsp + tsp);
   }
