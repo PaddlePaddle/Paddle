@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
