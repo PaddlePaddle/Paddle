@@ -11018,8 +11018,26 @@ def shape(input):
 
     Get the shape of the input.
 
+    .. code-block:: text
+
+        Case1:
+            Given N-D Tensor:
+                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+            Then:
+                input.shape = [2, 4]
+
+        Case2:
+            Given SelectedRows:
+                input.rows = [0, 4, 19]
+                input.height = 20
+                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
+            Then:
+                input.shape = [3, 2]
+
     Args:
-        input (Variable): The input N-D Tensor. Datatype can be float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type float32, float64, int32, int64.
+                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
         Variable (Tensor): The shape of the input variable.
