@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed_ops/distributed_lookup_table_op.cc"
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(distributed_lookup_table,
-                        ops::DistributedLookupTableKernel<float>);
+REGISTER_OP_CUDA_KERNEL(
+    distributed_lookup_table,
+    ops::DistributedLookupTableKernel<plat::CUDADeviceContext, float>);

@@ -169,4 +169,5 @@ REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
 REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
-                       ops::DistributedLookupTableKernel<float>);
+                       ops::DistributedLookupTableKernel<
+                           paddle::platform::CPUDeviceContext, float>);
