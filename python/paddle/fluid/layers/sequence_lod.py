@@ -18,6 +18,7 @@ from .layer_function_generator import templatedoc
 from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..core import VarDesc
 
 __all__ = [
     'sequence_conv',
@@ -963,7 +964,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
                              'fluid.layers.sequence_pad')
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
-    length = helper.create_variable_for_type_inference(dtype)
+    length = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
 
     pad_value.stop_gradient = True
     length.stop_gradient = True
