@@ -19,37 +19,17 @@ import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
-from paddle.fluid.framework import core, default_main_program, Variable
+from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
-from paddle.fluid.layers import assign, cast, fill_constant, slice
+from paddle.fluid.layers import assign, fill_constant, slice
 from paddle.fluid.layers.control_flow import cond, while_loop, less_than, increment
-
-__all__ = ['convert_list_pop']
-
-
-def create_array_in_parent_blcok(null_array):
-    # TODO(liym27): Create a null tensor_array with the same name in parent block to avoid a bug in control flow,
-    #  because in `null_array = create_array("float32")`, `null_array` is not a output of a real OP.
-    #  See class ConditionalBlock for details.
-    prog = default_main_program()
-    parent_idx = prog.current_block().parent_idx
-    while parent_idx != -1:
-        parent_block = prog.block(parent_idx)
-        parent_block.create_var(
-            name=null_array.name,
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-            dtype="float32")
-        parent_idx = parent_block.parent_idx
 
 
 # TODO(liym27): A better way to slice tensor array.
 #  Maybe support start == end for slice op.
 def slice_tensor_array(array, start, end):
-    end = cast(end, "int32")
-
     def true_fn():
         null_array = create_array("float32")
-        create_array_in_parent_blcok(null_array)
         return null_array
 
     def false_fn(array, start, end):
@@ -312,7 +292,7 @@ class ListTransformer(gast.NodeTransformer):
         else:
             idx_str = "None"
 
-        new_call_str = "fluid.dygraph.dygraph_to_static.convert_list_pop({}, {})".format(
+        new_call_str = "fluid.dygraph.dygraph_to_static.list_transformer.convert_list_pop({}, {})".format(
             target_str, idx_str)
         new_call_node = gast.parse(new_call_str).body[0].value
         return new_call_node

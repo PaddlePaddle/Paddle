@@ -36,38 +36,26 @@ from ..fluid.layers import transpose  #DEFINE_ALIAS
 from ..fluid.layers import unique  #DEFINE_ALIAS
 from ..fluid.layers import unstack  #DEFINE_ALIAS
 
+from ..fluid.layers import gather_nd  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd_add  #DEFINE_ALIAS
+from ..fluid.layers import scatter_nd  #DEFINE_ALIAS
+from ..fluid.layers import shard_index  #DEFINE_ALIAS
+from ..fluid.layers import unique_with_counts  #DEFINE_ALIAS
+
 __all__ = [
-    'cast',
-    'concat',
-    'expand',
-    'expand_as',
-    'flatten',
-    'gather',
-    #       'gather_nd',
-    'reshape',
-    'reverse',
-    'scatter',
-    #       'scatter_nd_add',
-    #       'scatter_nd',
-    #       'shard_index',
-    'slice',
-    'split',
-    'squeeze',
-    'stack',
-    'strided_slice',
-    'transpose',
-    'unique',
-    #       'unique_with_counts',
-    'unsqueeze',
-    'unstack',
-    'flip',
-    'unbind',
-    'roll'
+    'cast', 'concat', 'expand', 'expand_as', 'flatten', 'gather', 'gather_nd',
+    'reshape', 'reverse', 'scatter', 'scatter_nd_add', 'scatter_nd',
+    'shard_index', 'slice', 'split', 'squeeze', 'stack', 'strided_slice',
+    'transpose', 'unique', 'unique_with_counts', 'unsqueeze', 'unstack', 'flip',
+    'unbind', 'roll'
 ]
 
 
 def flip(input, dims, name=None):
     """
+	:alias_main: paddle.flip
+	:alias: paddle.flip,paddle.tensor.flip,paddle.tensor.manipulation.flip
+
 
     Reverse the order of a n-D tensor along given axis in dims.
 
@@ -118,6 +106,9 @@ def flip(input, dims, name=None):
 
 def roll(input, shifts, dims=None):
     """
+	:alias_main: paddle.roll
+	:alias: paddle.roll,paddle.tensor.roll,paddle.tensor.manipulation.roll
+
     Roll the `input` tensor along the given dimension(s). Elements that are shifted beyond 
     the last position are re-introduced at the first position. If a dimension is not specified, 
     the tensor will be flattened before rolling and then restored to the original shape.
@@ -189,6 +180,9 @@ def roll(input, shifts, dims=None):
 
 def stack(x, axis=0, out=None, name=None):
     """
+	:alias_main: paddle.stack
+	:alias: paddle.stack,paddle.tensor.stack,paddle.tensor.manipulation.stack
+
 
     This OP stacks all the inputs :code:`x` along axis.
 
@@ -299,6 +293,9 @@ def stack(x, axis=0, out=None, name=None):
 
 def split(input, num_or_sections, dim=-1, name=None):
     """
+	:alias_main: paddle.split
+	:alias: paddle.split,paddle.tensor.split,paddle.tensor.manipulation.split
+
     Split the input tensor into multiple sub-Tensors.
     Args:
         input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
@@ -435,6 +432,9 @@ def split(input, num_or_sections, dim=-1, name=None):
 
 def squeeze(input, axes, out=None, name=None):
     """
+	:alias_main: paddle.squeeze
+	:alias: paddle.squeeze,paddle.tensor.squeeze,paddle.tensor.manipulation.squeeze
+
     This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
     remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
     to one will be deleted.
@@ -511,6 +511,9 @@ def squeeze(input, axes, out=None, name=None):
 
 def unsqueeze(input, axes, out=None, name=None):
     """
+	:alias_main: paddle.unsqueeze
+	:alias: paddle.unsqueeze,paddle.tensor.unsqueeze,paddle.tensor.manipulation.unsqueeze
+
     Insert single-dimensional entries to the shape of a Tensor. Takes one
     required argument axes, a list of dimensions that will be inserted.
     Dimension indices in axes are as seen in the output tensor.
@@ -591,6 +594,9 @@ def unsqueeze(input, axes, out=None, name=None):
 
 def gather(input, index, overwrite=True):
     """
+	:alias_main: paddle.gather
+	:alias: paddle.gather,paddle.tensor.gather,paddle.tensor.manipulation.gather
+
     **Gather Layer**
 
     Output is obtained by gathering entries of the outer-most dimension
@@ -662,6 +668,9 @@ def gather(input, index, overwrite=True):
 
 def unbind(input, axis=0):
     """
+	:alias_main: paddle.tensor.unbind
+	:alias: paddle.tensor.unbind,paddle.tensor.manipulation.unbind
+
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
     Args:
         input (Variable): The input variable which is an N-D Tensor, data type being float32, float64, int32 or int64.

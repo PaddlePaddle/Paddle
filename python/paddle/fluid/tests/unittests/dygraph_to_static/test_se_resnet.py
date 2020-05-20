@@ -16,14 +16,14 @@ import logging
 import math
 import time
 import unittest
-
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph import ProgramTranslator
 
 SEED = 2020
 np.random.seed(SEED)
@@ -33,9 +33,14 @@ EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
 
-place = fluid.CPUPlace()
-# TODO(liym27): Diff exists between dygraph and static graph on CUDA place.
-# place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+    else fluid.CPUPlace()
+
+# Note: Set True to eliminate randomness.
+#     1. For one operation, cuDNN has several algorithms,
+#        some algorithm results are non-deterministic, like convolution algorithms.
+if fluid.is_compiled_with_cuda():
+    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
 train_parameters = {
     "learning_strategy": {
@@ -286,7 +291,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
-    @dygraph_to_static_func
+    @declarative
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -314,7 +319,10 @@ class SeResNeXt(fluid.dygraph.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
-def train_dygraph(train_reader):
+def train(train_reader, to_static):
+    program_translator = ProgramTranslator()
+    program_translator.enable(to_static)
+
     np.random.seed(SEED)
 
     with fluid.dygraph.guard(place):
@@ -374,75 +382,6 @@ def train_dygraph(train_reader):
         )
 
 
-def train_static(train_reader):
-    np.random.seed(SEED)
-    exe = fluid.Executor(place)
-
-    main_prog = fluid.Program()
-    startup_prog = fluid.Program()
-    with fluid.program_guard(main_prog, startup_prog):
-        with fluid.unique_name.guard():
-            main_prog.random_seed = SEED
-            startup_prog.random_seed = SEED
-            img = fluid.data(
-                name="img", shape=[None, 3, 224, 224], dtype="float32")
-            label = fluid.data(name="label", shape=[None, 1], dtype="int64")
-            label.stop_gradient = True
-
-            se_resnext = SeResNeXt()
-            pred, avg_loss_, acc_top1_, acc_top5_ = se_resnext(img, label)
-
-            optimizer = optimizer_setting(train_parameters,
-                                          se_resnext.parameters())
-            optimizer.minimize(avg_loss_)
-
-    exe.run(startup_prog)
-
-    for epoch_id in range(EPOCH_NUM):
-        total_loss = 0.0
-        total_acc1 = 0.0
-        total_acc5 = 0.0
-        total_sample = 0
-        step_idx = 0
-        speed_list = []
-        for step_id, data in enumerate(train_reader()):
-            dy_x_data = np.array([x[0].reshape(3, 224, 224)
-                                  for x in data]).astype('float32')
-            y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                BATCH_SIZE, 1)
-
-            pred_, avg_loss, acc_top1, acc_top5 = exe.run(
-                main_prog,
-                feed={"img": dy_x_data,
-                      "label": y_data},
-                fetch_list=[pred, avg_loss_, acc_top1_, acc_top5_])
-
-            total_loss += avg_loss
-            total_acc1 += acc_top1
-            total_acc5 += acc_top5
-            total_sample += 1
-
-            if step_id % PRINT_STEP == 0:
-                if step_id == 0:
-                    logging.info( "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f" % \
-                            ( epoch_id, step_id, total_loss / total_sample, \
-                              total_acc1 / total_sample, total_acc5 / total_sample))
-                    avg_batch_time = time.time()
-                else:
-                    speed = PRINT_STEP / (time.time() - avg_batch_time)
-                    speed_list.append(speed)
-                    logging.info( "epoch %d | step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, speed %.3f steps/s" % \
-                           ( epoch_id, step_id, total_loss / total_sample, \
-                             total_acc1 / total_sample, total_acc5 / total_sample, speed))
-                    avg_batch_time = time.time()
-
-            step_idx += 1
-            if step_idx == STEP_NUM:
-                break
-
-        return pred_, avg_loss, acc_top1, acc_top5
-
-
 class TestSeResnet(unittest.TestCase):
     def setUp(self):
         self.train_reader = paddle.batch(
@@ -452,8 +391,10 @@ class TestSeResnet(unittest.TestCase):
             drop_last=True)
 
     def test_check_result(self):
-        pred_1, loss_1, acc1_1, acc5_1 = train_static(self.train_reader)
-        pred_2, loss_2, acc1_2, acc5_2 = train_dygraph(self.train_reader)
+        pred_1, loss_1, acc1_1, acc5_1 = train(
+            self.train_reader, to_static=False)
+        pred_2, loss_2, acc1_2, acc5_2 = train(
+            self.train_reader, to_static=True)
 
         self.assertTrue(
             np.allclose(pred_1, pred_2),

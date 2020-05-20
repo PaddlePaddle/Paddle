@@ -173,7 +173,7 @@ void FCElementwiseLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     }
 
     int begin_norm_axis =
-        boost::get<int>(layer_norm->Op()->GetAttr("begin_norm_axis"));
+        BOOST_GET_CONST(int, layer_norm->Op()->GetAttr("begin_norm_axis"));
     auto layer_norm_x_dims = fc_out->Var()->GetShape();
     auto layer_norm_x_mat_dims = framework::flatten_to_2d(
         framework::make_ddim(layer_norm_x_dims), begin_norm_axis);

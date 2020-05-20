@@ -95,10 +95,16 @@ class UnpoolOp : public framework::OperatorWithKernel {
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     PADDLE_ENFORCE_EQ(in_x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
-                          "Unpooling Intput(X) must be of 4-dimensional, but "
-                          "received Input(X)'s dimension is %d.",
+                          "Unpool Intput(X) must be of 4-dimensional, but "
+                          "received Input(X)'s dimensions is %d.",
                           in_x_dims.size()));
-    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims);
+    PADDLE_ENFORCE_EQ(in_x_dims, in_y_dims,
+                      platform::errors::InvalidArgument(
+                          "The dimensions of Input(X) must equal to be"
+                          "the dimensions of Input(Indices), but received"
+                          "dimensions of Input(X) is [%d], received dimensions"
+                          "of Input(Indices) is [%d]",
+                          in_x_dims, in_y_dims));
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     for (size_t i = 0; i < ksize.size(); ++i) {

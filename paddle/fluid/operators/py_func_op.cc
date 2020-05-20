@@ -133,10 +133,10 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
                                           has_in, has_out));
 
     PADDLE_ENFORCE_GE(
-        boost::get<int>(ctx->GetAttr(kForwardPythonCallableId)), 0,
+        BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)), 0,
         platform::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
-            boost::get<int>(ctx->GetAttr(kForwardPythonCallableId))));
+            BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
 
     if (!has_out) return;
 
@@ -227,7 +227,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto &fwd_attrs = Attrs();
     // no backward op when backward_id is less than 0
-    if (boost::get<int>(fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
+    if (BOOST_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
       return {};
     }
 
@@ -247,8 +247,8 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
 
     // For memory reused, some inputs/output in forward part may be not needed
     // in backward part. Skipping these vars helps to save memory
-    auto &backward_skip_var_list = boost::get<std::vector<std::string>>(
-        fwd_attrs.at(kPyFuncBackwardSkipVars));
+    auto &backward_skip_var_list = BOOST_GET_CONST(
+        std::vector<std::string>, fwd_attrs.at(kPyFuncBackwardSkipVars));
     std::unordered_set<std::string> backward_skip_var_set(
         backward_skip_var_list.begin(), backward_skip_var_list.end());
     std::vector<std::string> bwd_ins;

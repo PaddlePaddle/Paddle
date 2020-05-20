@@ -24,17 +24,27 @@ class ExpandAsOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasInput("target_tensor"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true);
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ExpandAs");
+    OP_INOUT_CHECK(ctx->HasInput("target_tensor"), "Input", "target_tensor",
+                   "ExpandAs");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ExpandAs");
     auto x_dims = ctx->GetInputDim("X");
     auto target_tensor_dims = ctx->GetInputDim("target_tensor");
-    PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()),
-                      target_tensor_dims.size(),
-                      "The rank of input(target_tensor) must be equal "
-                      "to the rank of Input(X).");
-    PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "The rank of Input(X) must not be greater than 6.");
+    PADDLE_ENFORCE_EQ(
+        static_cast<size_t>(x_dims.size()), target_tensor_dims.size(),
+        platform::errors::InvalidArgument(
+            "The rank of Input(target_tensor) must be equal "
+            "to the rank of Input(X). But received Input(X): input "
+            "rank %u, input shape [%s]; received Input(target_tensor): "
+            "input rank %u, input shape [%s].",
+            x_dims.size(), x_dims, target_tensor_dims.size(),
+            target_tensor_dims));
+    PADDLE_ENFORCE_LE(
+        x_dims.size(), 6,
+        platform::errors::InvalidArgument(
+            "The rank of Input(X) must not be greater than 6. But "
+            "received: input rank %u, input shape [%s].",
+            x_dims.size(), x_dims));
     std::vector<int64_t> out_shape(x_dims.size());
     ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
   }

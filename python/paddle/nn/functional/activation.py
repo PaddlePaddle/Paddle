@@ -78,6 +78,9 @@ def hsigmoid(input,
              path_code=None,
              is_sparse=False):
     """
+	:alias_main: paddle.nn.functional.hsigmoid
+	:alias: paddle.nn.functional.hsigmoid,paddle.nn.functional.activation.hsigmoid
+
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -191,6 +194,9 @@ def hsigmoid(input,
 
 def relu(input, inplace=False, name=None):
     """
+	:alias_main: paddle.nn.functional.relu
+	:alias: paddle.nn.functional.relu,paddle.nn.functional.activation.relu
+
     ReLU Activation.
 
     .. math:
@@ -240,6 +246,9 @@ def relu(input, inplace=False, name=None):
 
 def sigmoid(input, inplace=False, name=None):
     """
+	:alias_main: paddle.nn.functional.sigmoid
+	:alias: paddle.nn.functional.sigmoid,paddle.nn.functional.activation.sigmoid
+
     Sigmoid Activation.
 
     .. math:
@@ -298,6 +307,9 @@ def sigmoid(input, inplace=False, name=None):
 
 def log_softmax(input, axis=None, dtype=None, name=None):
     """
+	:alias_main: paddle.nn.functional.log_softmax
+	:alias: paddle.nn.functional.log_softmax,paddle.nn.functional.activation.log_softmax
+
     This operator implements the log_softmax layer. The calculation process is as follows:
 
     .. math::

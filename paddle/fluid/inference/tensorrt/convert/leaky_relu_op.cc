@@ -42,7 +42,7 @@ class LeakyReluOpConverter : public OpConverter {
                           "outputs. Expected 1, but received %d",
                           output_num));
     // Get attrs
-    float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
+    float alpha = BOOST_GET_CONST(float, op_desc.GetAttr("alpha"));
     nvinfer1::ILayer* output_layer = nullptr;
 
 #if IS_TRT_VERSION_GE(5100)
@@ -51,10 +51,10 @@ class LeakyReluOpConverter : public OpConverter {
     layer->setAlpha(alpha);
     output_layer = layer;
 
-    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
     if (enable_int8) {
       CHECK(op_desc.HasAttr("X_scale"));
-      float in_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("X_scale"));
       engine_->SetTensorDynamicRange(input, in_scale);
     }
 #else

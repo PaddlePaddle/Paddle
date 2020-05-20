@@ -24,6 +24,11 @@ __all__ = ['data']
 
 def data(name, shape, dtype='float32', lod_level=0):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.data
+	:alias: paddle.nn.data,paddle.nn.input.data
+	:old_api: paddle.fluid.data
+
     **Data Layer**
 
     This function creates a variable on the global block. The global variable

@@ -161,7 +161,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #ifndef PADDLE_WITH_CUDA
       PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      auto dev_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
       platform::SetDeviceId(dev_id);
 #endif
     }
@@ -1155,8 +1155,8 @@ Scope* OperatorWithKernel::PrepareData(
         if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
             (var->IsType<LoDTensor>() == true) &&
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
-            (paddle::platform::get_cur_paddle_data_layout() ==
-             DataLayout::kNHWC)) {
+            (paddle::platform::MKLDNNDeviceContext::tls()
+                 .get_cur_paddle_data_layout() == DataLayout::kNHWC)) {
           // Mixed execution : MKL-DNN and GPU is not supported!
           if (!new_scope) {
             new_scope = &scope.NewScope();

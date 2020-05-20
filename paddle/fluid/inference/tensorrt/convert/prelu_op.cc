@@ -45,7 +45,7 @@ class PReluOpConverter : public OpConverter {
                           "Expected 1, received %d.",
                           output_num));
     // Get attrs
-    std::string mode = boost::get<std::string>(op_desc.GetAttr("mode"));
+    std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
     //
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
     PADDLE_ENFORCE_NOT_NULL(

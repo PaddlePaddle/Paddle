@@ -23,7 +23,7 @@ from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
-from .base import program_desc_tracing_guard
+from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 import copy
@@ -58,7 +58,12 @@ class HookRemoveHelper(object):
 
 
 class Layer(core.Layer):
-    """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
+    """
+    :alias_main: paddle.nn.Layer
+	:alias: paddle.nn.Layer
+	:old_api: paddle.fluid.dygraph.layers.Layer
+
+    Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
         name_scope (str, optional): prefix name used by the layer to name parameters.
@@ -457,7 +462,8 @@ class Layer(core.Layer):
                         self._parameters.values())
             self._built = True
 
-        outputs = self.forward(*inputs, **kwargs)
+        with param_guard(self._parameters):
+            outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
             hook_result = forward_post_hook(self, inputs, outputs)
