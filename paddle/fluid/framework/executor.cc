@@ -81,8 +81,7 @@ Executor::Executor(const platform::Place& place) : place_(place) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
-  // Clear mkl-dnn cache, unless explicitly
-  // (as set in constructor) marked not to do so
+  // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   if (platform::is_cpu_place(place_)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
