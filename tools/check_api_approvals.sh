@@ -111,8 +111,8 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 10721757 5442383
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
-          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
-          check_approval 1 6888866 32832641 6836917
+          echo_line="You must have one RD (zhiqiu (Recommend) , phlrain or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
+          check_approval 1 6888866 43953930 6836917
       elif [ "${API_FILE}" == "paddle/fluid/pybind/op_function_generator.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) , phlrain) approval for the changes of paddle/fluid/pybind/op_function_generator.cc, which manages the logic of automatic generating op functions for dygraph. \n"
           check_approval 1 6888866 43953930
@@ -144,16 +144,16 @@ for API_FILE in ${API_FILES[*]}; do
         echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi or Heeenrrry) approval for the api whitelist for the tools/wlist.json.\n"
         check_approval 1 31623103 2870059 27208573 28379894
       else
-          echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
-          check_approval 1 3048612 46782768 12538138 6836917 32832641
+          echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,phlrain) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
+          check_approval 1 3048612 46782768 12538138 6836917 43953930
       fi
   fi
 done
 
 HAS_CONST_CAST=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "const_cast" || true`
 if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for the usage (either add or delete) of const_cast.\n"
-    check_approval 1 3048612 46782768 12538138 6836917 32832641
+    echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,phlrain) approval for the usage (either add or delete) of const_cast.\n"
+    check_approval 1 3048612 46782768 12538138 6836917 43953930
 fi
 
 HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "boost::get" || true`
@@ -240,8 +240,8 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     done
     if [ "${ERROR_LINES}" != "" ]; then
         ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
-        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), sneaxiy or luotao1 or lanxianghit) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
-        check_approval 1 6836917 32832641 47554610 7913861
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), phlrain or luotao1 or lanxianghit) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
+        check_approval 1 6836917 43953930 47554610 7913861
     fi
 fi
 
@@ -279,8 +279,8 @@ DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_gr
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
 ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}` 
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
-  echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
-  check_approval 1 32832641 6836917
+  echo_line="You must have one RD (zhiqiu (Recommend), phlrain, or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
+  check_approval 1 6888866 43953930 6836917
 fi
 
 if [ -n "${echo_list}" ];then
