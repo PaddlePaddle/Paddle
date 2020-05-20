@@ -46,7 +46,7 @@ def main():
                             file=sys.stderr)
 
     if some_test_failed:
-        exit(1)
+        exit(11)
 
 
 if __name__ == '__main__':
