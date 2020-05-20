@@ -35,8 +35,8 @@ class TestDataFeed(unittest.TestCase):
 
     def test_dummpydatafeed_shuffle(self):
         self.set_data_config()
-        self.assertRaises(NotImplementedError, self.dataset.local_shuffle())
         self.assertRaises(NotImplementedError, self.dataset.global_shuffle())
+        self.assertRaises(NotImplementedError, self.dataset.local_shuffle())
 
     def run_dataset(self, is_cpu):
         x = fluid.layers.data(name='x', shape=[1], dtype='float32', lod_level=0)
