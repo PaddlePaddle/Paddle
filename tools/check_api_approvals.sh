@@ -284,7 +284,7 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
 fi
 
 # For getting PR related data
-pip install PyGithub 
+pip install PyGithub
 wget https://paddle-ci.gz.bcebos.com/blk/block.txt
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has UT to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
