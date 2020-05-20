@@ -37,6 +37,7 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
     auto* output_d = output->data<T>();
 
     VLOG(10) << " reduce_all=true"
+             << " input_shape=[" << input0->dims() << "]"
              << " dim=" << paddle::framework::make_ddim(dims)
              << " op=reduce_grad_op";
     // handle reduce_all
