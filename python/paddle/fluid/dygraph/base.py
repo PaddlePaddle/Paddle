@@ -538,8 +538,8 @@ def to_variable(value, name=None, zero_copy=None):
     numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
-            or ComplexVariable object that needs to be converted, it can be 
+        value(ndarray|Variable|Tensor|ComplexVariable): The numpy\.ndarray, Variable 
+            Tensor or ComplexVariable object that needs to be converted, it can be 
             multi-dimension, and the data type is one of numpy\.{float16, 
             float32, float64, int16, int32, int64, uint8, uint16, complex64, 
             complex128}.
@@ -611,6 +611,8 @@ def to_variable(value, name=None, zero_copy=None):
     elif isinstance(value, (core.VarBase, framework.Variable,
                             framework.ComplexVariable)):
         return value
+    elif isinstance(value, (core.Tensor, core.LoDTensor)):
+        return core.VarBase(value)
     else:
         raise TypeError(
             "The type of input value is invalid, expected type is 'ndarray', "
