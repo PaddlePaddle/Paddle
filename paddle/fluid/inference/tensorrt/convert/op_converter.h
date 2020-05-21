@@ -98,6 +98,18 @@ class OpConverter {
     }
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
+
+    bool enable_int8 = op_desc.HasAttr("enable_int8");
+    bool has_out_scale = op_desc.HasAttr("out_threshold");
+    if (enable_int8 && has_out_scale) {
+      float out_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      auto output_name = op_desc.Output("Output").front();
+      auto* output_itensor = engine->GetITensor(output_name);
+      engine->SetTensorDynamicRange(output_itensor, out_scale);
+      VLOG(1) << "Set out scale for tensor " << output_name << ".";
+    }
+
     it->SetEngine(engine);
     (*it)(op, scope, test_mode);
   }

@@ -119,27 +119,49 @@ void TensorRTEngine::FreezeNetwork() {
 
       for (auto &t : all_t) {
         if (!quant_dynamic_range_.count(t)) {
-          VLOG(3) << "We are in trt int8 mode(not calibration), scale not set"
+          VLOG(1) << "We are in trt int8 mode(not calibration), scale not set"
                   << " for tensor " << t->getName()
                   << ", this might be ok when trt does not need this range";
         }
       }
-      std::unordered_set<std::string> all_out_t_name;
-      for (int i = 0; i < network()->getNbOutputs(); i++) {
-        auto *temp = network()->getOutput(i);
-        temp->setDynamicRange(-1, 1);
-        all_out_t_name.insert(temp->getName());
-      }
 
-      for (int i = 0; i < network()->getNbLayers(); i++) {
-        auto layer = network()->getLayer(i);
+      auto is_layer_int8 = [&](nvinfer1::ILayer *layer) -> bool {
+        for (int j = 0; j < layer->getNbInputs(); j++) {
+          auto *temp_in = layer->getInput(j);
+          if (!temp_in->dynamicRangeIsSet()) {
+            VLOG(1) << "Layer(Name: " << layer->getName()
+                    << ", Type: " << layer->getType()
+                    << ") is set to float32 because its input("
+                    << temp_in->getName() << ") doesn't have dynamic range.";
+            return false;
+          }
+        }
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
-          if (std::find(all_out_t_name.begin(), all_out_t_name.end(),
-                        temp_out->getName()) != all_out_t_name.end()) {
-            layer->setPrecision(nvinfer1::DataType::kFLOAT);
-            layer->setOutputType(j, nvinfer1::DataType::kFLOAT);
+          if (temp_out->isNetworkOutput()) {
+            VLOG(1) << "Layer(Name: " << layer->getName()
+                    << ", Type: " << layer->getType()
+                    << ") is set to float32 because its output("
+                    << temp_out->getName() << ") is the output of the network.";
+            return false;
           }
+          if (!temp_out->dynamicRangeIsSet()) {
+            VLOG(1) << "Layer(Name: " << layer->getName()
+                    << ", Type: " << layer->getType()
+                    << ") is set to float32 because its output("
+                    << temp_out->getName() << ") doesn't have dynamic range.";
+            return false;
+          }
+        }
+        return true;
+      };
+      // If a layer's output is the network's output, or not all of its inputs
+      // and outputs have scales,
+      // this layer's precision and output type are set to float32.
+      for (int i = 0; i < network()->getNbLayers(); i++) {
+        auto layer = network()->getLayer(i);
+        if (!is_layer_int8(layer)) {
+          layer->setPrecision(nvinfer1::DataType::kFLOAT);
         }
       }
 #endif
