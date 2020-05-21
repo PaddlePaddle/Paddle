@@ -99,19 +99,33 @@ class OpConverter {
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
 
-    bool enable_int8 = op_desc.HasAttr("enable_int8");
-    bool has_out_scale = op_desc.HasAttr("out_threshold");
-    if (enable_int8 && has_out_scale) {
-      float out_scale =
-          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
-      auto output_name = op_desc.Output("Output").front();
-      auto* output_itensor = engine->GetITensor(output_name);
-      engine->SetTensorDynamicRange(output_itensor, out_scale);
-      VLOG(1) << "Set out scale for tensor " << output_name << ".";
-    }
-
     it->SetEngine(engine);
     (*it)(op, scope, test_mode);
+
+    bool has_out_scale = op_desc.HasAttr("out_threshold");
+    if (has_out_scale) {
+      float out_scale =
+          BOOST_GET_CONST(float, op_desc.GetAttr("out_threshold"));
+      std::string output_name = "";
+      if (op_desc.HasOutput("Output")) {
+        output_name = op_desc.Output("Output").front();
+      } else if (op_desc.HasOutput("Out")) {
+        output_name = op_desc.Output("Out").front();
+      } else if (op_desc.HasOutput("Y")) {
+        output_name = op_desc.Output("Y").front();
+      } else {
+        PADDLE_THROW(
+            platform::errors::NotFound("Op %s has out threshold but doesn't "
+                                       "have an output named \"Output\", "
+                                       "\"Out\" or \"Y\".",
+                                       op_desc.Type()));
+      }
+
+      auto* output_itensor = engine->GetITensor(output_name);
+      engine->SetTensorDynamicRange(output_itensor, out_scale);
+      VLOG(1) << "Set out scale for tensor " << output_name << ": "
+              << out_scale;
+    }
   }
 
   // Convert a fluid block to tensorrt network, NOTE it just convert operators,

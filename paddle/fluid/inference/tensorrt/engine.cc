@@ -119,7 +119,7 @@ void TensorRTEngine::FreezeNetwork() {
 
       for (auto &t : all_t) {
         if (!quant_dynamic_range_.count(t)) {
-          VLOG(1) << "We are in trt int8 mode(not calibration), scale not set"
+          VLOG(3) << "We are in trt int8 mode(not calibration), scale not set"
                   << " for tensor " << t->getName()
                   << ", this might be ok when trt does not need this range";
         }
@@ -129,9 +129,8 @@ void TensorRTEngine::FreezeNetwork() {
         for (int j = 0; j < layer->getNbInputs(); j++) {
           auto *temp_in = layer->getInput(j);
           if (!temp_in->dynamicRangeIsSet()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ", Type: " << layer->getType()
-                    << ") is set to float32 because its input("
+            VLOG(3) << "Layer(Name: " << layer->getName()
+                    << ") will be set to float32 because its input("
                     << temp_in->getName() << ") doesn't have dynamic range.";
             return false;
           }
@@ -139,16 +138,15 @@ void TensorRTEngine::FreezeNetwork() {
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
           if (temp_out->isNetworkOutput()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ", Type: " << layer->getType()
-                    << ") is set to float32 because its output("
+            temp_out->setDynamicRange(-1, 1);
+            VLOG(3) << "Layer(Name: " << layer->getName()
+                    << ") will be set to float32 because its output("
                     << temp_out->getName() << ") is the output of the network.";
             return false;
           }
           if (!temp_out->dynamicRangeIsSet()) {
-            VLOG(1) << "Layer(Name: " << layer->getName()
-                    << ", Type: " << layer->getType()
-                    << ") is set to float32 because its output("
+            VLOG(3) << "Layer(Name: " << layer->getName()
+                    << ") will be set to float32 because its output("
                     << temp_out->getName() << ") doesn't have dynamic range.";
             return false;
           }
@@ -157,7 +155,7 @@ void TensorRTEngine::FreezeNetwork() {
       };
       // If a layer's output is the network's output, or not all of its inputs
       // and outputs have scales,
-      // this layer's precision and output type are set to float32.
+      // this layer's precision is set to float32.
       for (int i = 0; i < network()->getNbLayers(); i++) {
         auto layer = network()->getLayer(i);
         if (!is_layer_int8(layer)) {
