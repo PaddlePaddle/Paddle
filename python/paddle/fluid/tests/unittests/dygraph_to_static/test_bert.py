@@ -23,8 +23,13 @@ from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
 
 program_translator = ProgramTranslator()
-place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
-)
+
+# TODO(liym27): Diff exists between dygraph and static graph on CUDA place.
+#  If only one test of `train_dygraph` and `train_static` is run, the results are stable and the same.
+#  If the two tests are run, the results of the latter test are random.
+# place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+place = fluid.CPUPlace()
+
 SEED = 2020
 STEP_NUM = 10
 PRINT_STEP = 2
