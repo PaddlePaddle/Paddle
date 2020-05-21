@@ -118,10 +118,39 @@ class ValueBlock {
     }
   }
 
+  std::vector<std::vector<float>> Init(
+      const std::vector<std::string> &origin_names,
+      const std::vector<std::string> &origin_dims) {
+    auto rets = std::vector<std::vector<float>>();
+    rets.resize(meta_.value_names.size());
+
+    for (int i = 0; i < static_cast<int>(origin_names.size()); i++) {
+      auto name = origin_names[i];
+      auto dim = origin_dims[i];
+      rets[i].resize(dim);
+      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.0));
+    }
+    return rets;
+  }
+
   std::vector<std::vector<float>> Get(
       const int64_t &id, const std::vector<std::string> &value_names) {
     std::lock_guard<std::mutex> lock(mutex_);
     return values_.at(id)->get(value_names);
+  }
+
+  std::vector<std::vector<float>> Get(
+      const int64_t &id, const std::vector<std::string> &value_names,
+      const std::vector<std::string> &origin_names,
+      const std::vector<std::string> &origin_dims) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    if (!Has(id)) {
+      auto value = new VALUE(origin_names);
+      value->set(Init(origin_names, origin_dims));
+      block.values_[id] = value;
+    }
+    return Get(id, value_names);
   }
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
@@ -153,17 +182,16 @@ class SparseVariable {
     }
   }
 
-  std::vector<std::vector<float>> Init() {
-    auto rets = std::vector<std::vector<float>>();
-    rets.resize(meta_.value_names.size());
-
-    for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
-      auto name = meta_.value_names[i];
-      auto dim = meta_.value_dims[i];
-      rets[i].resize(dim);
-      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.0));
+  void GetAndInit(const std::vector<int64_t> &ids,
+                  const std::vector<std::string> &value_names,
+                  std::vector<std::vector<std::vector<float>>> *values) {
+    for (auto &id : ids) {
+      std::vector<std::vector<float>> value;
+      auto &block = GetShard(id);
+      auto id_values =
+          block.Get(id, value_names, meta_.value_names, meta_.value_dims);
+      values->push_back(id_values);
     }
-    return rets;
   }
 
   void Get(const std::vector<int64_t> &ids,
