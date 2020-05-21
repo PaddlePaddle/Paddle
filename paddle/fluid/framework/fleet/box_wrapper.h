@@ -900,6 +900,7 @@ class BoxHelper {
     new_input_channel->Close();
     dynamic_cast<MultiSlotDataset*>(dataset_)->SetInputChannel(
         new_input_channel);
+    dynamic_cast<MultiSlotDataset*>(dataset_)->PreprocessInstance();
 #endif
   }
 #ifdef PADDLE_WITH_BOX_PS
