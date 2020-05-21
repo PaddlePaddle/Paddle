@@ -49,7 +49,9 @@ template <typename T>
 class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL Sum");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL Sum must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
     auto in_vars = ctx.MultiInputVar("X");

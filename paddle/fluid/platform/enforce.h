@@ -440,26 +440,6 @@ struct EnforceNotMet : public std::exception {
   } while (0)
 
 /*
- * Summary: This macro is used to check whether the op is on CPUPlace
- * it is used in many places, so abstract this macro.
- *
- * Parameters:
- *     __CTX_GETPLACE: (platform::Place), ctx.GetPlace()
- *     __OP_TYPE: (string), the op type
- *
- * Examples:
- *    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "Mul");
-*/
-#define GET_PLACE_CPU_CHECK(__CTX_GETPLACE, __OP_TYPE)              \
-  do {                                                              \
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(__CTX_GETPLACE), true, \
-                      paddle::platform::errors::PreconditionNotMet( \
-                          "This operator %s must run "              \
-                          "CPUPlace",                               \
-                          __OP_TYPE));                              \
-  } while (0)
-
-/*
  * Summary: This BOOST_GET(_**) series macros are used to call boost::get
  *   safely. boost::get is not a completely safe api, although it will not
  *   go wrong in most cases, but in extreme cases, it may fail and directly

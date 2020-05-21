@@ -30,8 +30,9 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         is_float_type, true,
         platform::errors::PreconditionNotMet("DNNL LRN must use float data."));
-    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL LRN");
-
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL LRN must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
     auto x = ctx.Input<Tensor>("X");
@@ -97,7 +98,9 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(is_float_type, true,
                       platform::errors::PreconditionNotMet(
                           "DNNL LRN GradOpKernl must use float data."));
-    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL LRNGrad");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL LRNGrad must use CPUPlace"));
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
         platform::errors::PreconditionNotMet(

@@ -29,15 +29,14 @@ template <typename T>
 class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-
-    GET_PLACE_CPU_CHECK(ctx.GetPlace(), "DNNL ConvTranspose");
-
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL ConvTranspose must use CPUPlace"));
     const bool is_test = ctx.Attr<bool>("is_test");
     PADDLE_ENFORCE_EQ(is_test, true,
                       platform::errors::InvalidArgument(
                           "ConvTransposeMKLDNN works only for inference. "
                           "Set is_test = True. but got is_test=False ."));
-
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
