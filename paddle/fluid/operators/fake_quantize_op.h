@@ -281,14 +281,14 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
 template <typename T>
 class FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor {
  public:
-  explicit FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor(const T scale)
+  explicit FakeQuantOrWithDequantMovingAverageAbsMaxGradFunctor(const T* scale)
       : scale_(scale) {}
   HOSTDEVICE T operator()(const T& x, const T& y) const {
-    return (y >= -scale_ && y <= scale_) ? x : 0;
+    return (y >= -(*scale_) && y <= *scale_) ? x : 0;
   }
 
  private:
-  T scale_;
+  const T* scale_;
 };
 
 template <typename DeviceContext, typename T>
@@ -307,7 +307,7 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradKernel
       const T* d_out_data = d_out->data<T>();
       const T* x_data = x->data<T>();
       auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
-      auto scale = *(out_scale->data<T>());
+      const T* scale = out_scale->data<T>();
 
       platform::Transform<DeviceContext> trans;
       trans(context.template device_context<DeviceContext>(), d_out_data,

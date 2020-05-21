@@ -101,7 +101,7 @@ def transform_qat(model,
         for layer_in in input:
             quant_bits = weight_bits if layer_in.persistable else activation_bits
             dtype = 'float64' if layer_in.dtype == core.VarDesc.VarType.FP64 else 'float32'
-            is_test = layer.training
+            is_test = not layer.training
             fake_quant = FakeQuant(layer_in.name, moving_rate, quant_bits,
                                    dtype, is_test)
             quant_input, _ = fake_quant(layer_in)

@@ -115,7 +115,7 @@ class TestDygraphQAT(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
 
-            epoch_num = 5
+            epoch_num = 2
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
                     dy_x_data = np.array(
