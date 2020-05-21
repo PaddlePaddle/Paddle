@@ -34,7 +34,6 @@ namespace inference {
 
 void Init(const std::vector<std::string> argv) {
   framework::InitGflags(argv);
-  std::cout<<FLAGS_math_num_threads<<"====================";
   platform::SetNumThreads(FLAGS_math_num_threads);
   // init devices
   std::vector<int> devices;

@@ -430,9 +430,8 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
 PD_INFER_DECL std::string get_version();
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
 PD_INFER_DECL std::string SetCommandLineOption (const char* name, const char* value);
-PD_INFER_DECL void print_FLAGS();
 #endif
 
 }  // namespace paddle

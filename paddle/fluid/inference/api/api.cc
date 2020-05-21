@@ -20,11 +20,6 @@
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_string(devices_2, "silingtong", "The devices to be used which is joined by comma.");
-DEFINE_bool(init_p2p_2, false, "Whether to init p2p.");
-DEFINE_int32(math_num_threads_2, 1,
-             "Number of threads used to run math functions.");
-
 namespace paddle {
 
 int PaddleDtypeSize(PaddleDType dtype) {
@@ -124,18 +119,12 @@ std::string get_version() {
   return ss.str();
 }
 
-#ifdef _WIN32
-DECLARE_int32(paddle_num_threads);
+#if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
+
 std::string SetCommandLineOption (const char* name, const char* value){  
   return google::SetCommandLineOption(name,value);
 }
 
-void print_FLAGS(){
-
-   std::cout<<"devices---->"<<FLAGS_devices_2<<std::endl;
-    std::cout<<"init_p2p---->"<<FLAGS_init_p2p_2<<std::endl;
-     std::cout<<"math_num_threads---->"<<FLAGS_math_num_threads_2<<std::endl;
-}
 #endif
 
 

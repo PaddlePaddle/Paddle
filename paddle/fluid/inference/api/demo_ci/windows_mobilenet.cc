@@ -31,12 +31,6 @@ namespace demo {
 
 void RunAnalysis() {
   // 1. create AnalysisConfig
-  print_FLAGS();
-  SetCommandLineOption("devices_2", "SILINGTONG");
-  SetCommandLineOption("init_p2p_2", "ffff");
-  SetCommandLineOption("math_num_threads_2", "10086");
-  print_FLAGS();
-  SetCommandLineOption("paddle_num_threads","2");
   AnalysisConfig config;
   if (FLAGS_modeldir.empty()) {
     LOG(INFO) << "Usage: path\\mobilenet --modeldir=path/to/your/model";

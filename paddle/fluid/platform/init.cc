@@ -159,9 +159,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
 
-std::cout<<FLAGS_paddle_num_threads<<"FLAGS_paddle_num_threads=================";
 #ifndef PADDLE_WITH_MKLDNN
-  std::cout<<FLAGS_paddle_num_threads<<"FLAGS_paddle_num_threads=================";
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 
