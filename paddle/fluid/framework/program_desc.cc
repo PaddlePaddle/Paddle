@@ -28,6 +28,15 @@ BlockDesc *ProgramDesc::AppendBlock(const BlockDesc &parent) {
   return blocks_.back().get();
 }
 
+// Add block, ops and vars to program
+BlockDesc *ProgramDesc::AppendBlockOpVar(const BlockDesc &parent) {
+  auto *b = desc_.add_blocks();
+  b->set_parent_idx(parent.ID());
+  b->set_idx(desc_.blocks_size() - 1);
+  blocks_.emplace_back(new BlockDesc(parent, b, this));
+  return blocks_.back().get();
+}
+
 void ProgramDesc::Flush() {
   for (auto &block : blocks_) {
     block->Flush();
@@ -63,6 +72,29 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
   }
+
+  SetBlockAttrs(o);
+}
+
+ProgramDesc::ProgramDesc(const ProgramDesc &o, bool is_set_block_attrs) {
+  desc_ = o.desc_;
+  for (int i = 0; i < desc_.blocks_size(); ++i) {
+    auto *block = desc_.mutable_blocks(i);
+    blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
+  }
+
+  if (is_set_block_attrs) {
+    SetBlockAttrs(o);
+  }
+}
+
+ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
+  desc_ = desc;
+  InitFromProto();
+}
+
+// Set block attrs based on the origin program desc
+void ProgramDesc::SetBlockAttrs(const ProgramDesc &o) {
   for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
     auto all_ops = blocks_[block_id]->AllOps();
     for (size_t op_id = 0; op_id < all_ops.size(); ++op_id) {
@@ -70,10 +102,14 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
 
       for (const std::string &attr_name : op->AttrNames()) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
+          VLOG(4) << "set block attrs. block_id:" << block_id
+                  << ",op:" << op->Type() << ",attr_name:" << attr_name;
           int sub_block_id =
               o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
           op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
         } else if (op->GetAttrType(attr_name) == proto::AttrType::BLOCKS) {
+          VLOG(4) << "set blocks attrs. block_id:" << block_id
+                  << ",op:" << op->Type() << ",attr_name:" << attr_name;
           std::vector<int> sub_block_ids =
               o.Block(block_id).Op(op_id)->GetBlocksAttrIds(attr_name);
           std::vector<BlockDesc *> block_descs;
@@ -85,11 +121,6 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
       }
     }
   }
-}
-
-ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
-  desc_ = desc;
-  InitFromProto();
 }
 
 void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {

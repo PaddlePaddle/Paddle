@@ -3546,6 +3546,17 @@ class IrGraph(object):
         program = Program._construct_from_desc(desc)
         return program
 
+    def to_program_with_desc(self, org_desc):
+        """
+        Convert the graph to the main block in Program. 
+        """
+        convert_pass = core.get_pass('graph_to_program_pass')
+        updated_desc = org_desc
+        convert_pass.set_not_owned('program', updated_desc)
+        convert_pass.apply(self.graph)
+        updated_program = Program._construct_from_desc(updated_desc)
+        return updated_program
+
     def _find_node_by_name(self, nodes, node_name):
         """
         Find a node in the giving nodes set by the name.
