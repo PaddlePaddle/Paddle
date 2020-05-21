@@ -120,9 +120,9 @@ class ValueBlock {
 
   std::vector<std::vector<float>> Init(
       const std::vector<std::string> &origin_names,
-      const std::vector<std::string> &origin_dims) {
+      const std::vector<int> &origin_dims) {
     auto rets = std::vector<std::vector<float>>();
-    rets.resize(meta_.value_names.size());
+    rets.resize(origin_names.size());
 
     for (int i = 0; i < static_cast<int>(origin_names.size()); i++) {
       auto name = origin_names[i];
@@ -142,13 +142,13 @@ class ValueBlock {
   std::vector<std::vector<float>> Get(
       const int64_t &id, const std::vector<std::string> &value_names,
       const std::vector<std::string> &origin_names,
-      const std::vector<std::string> &origin_dims) {
+      const std::vector<int> &origin_dims) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!Has(id)) {
       auto value = new VALUE(origin_names);
       value->set(Init(origin_names, origin_dims));
-      block.values_[id] = value;
+      values_[id] = value;
     }
     return Get(id, value_names);
   }
@@ -199,13 +199,7 @@ class SparseVariable {
            std::vector<std::vector<std::vector<float>>> *values) {
     for (auto &id : ids) {
       std::vector<std::vector<float>> value;
-
       auto &block = GetShard(id);
-      if (!block.Has(id)) {
-        auto value = new VALUE(meta_.value_names);
-        value->set(Init());
-        block.values_[id] = value;
-      }
       auto id_values = block.Get(id, value_names);
       values->push_back(id_values);
     }
