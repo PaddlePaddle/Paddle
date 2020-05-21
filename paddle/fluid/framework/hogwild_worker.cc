@@ -73,6 +73,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 
   for (auto &var : block.AllVars()) {
     if (var->Persistable()) {
+      all_param_.push_back(var->Name());
       auto *ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&

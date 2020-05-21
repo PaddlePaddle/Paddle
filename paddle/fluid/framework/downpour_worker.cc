@@ -647,7 +647,29 @@ void DownpourWorker::TrainFilesWithProfiler() {
       if (!need_skip) {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
-        op->Run(*thread_scope_, place_);
+       // op->Run(*thread_scope_, place_);
+        try {
+          op->Run(*thread_scope_, place_);
+        } catch (paddle::platform::EnforceNotMet& err) {
+          bool parse_ins_id = device_reader_->parse_ins_id_;
+          if (parse_ins_id) {
+            std::ostringstream os;
+            for (auto& param : all_param_) {
+              os.str("");
+              Variable* var = thread_scope_->FindVar(param);
+              if (var == nullptr) {
+                continue;
+              }
+              LoDTensor* tensor = var->GetMutable<LoDTensor>();
+              int64_t len = tensor->numel();
+              os << "(" << cur_batch << "," << param << ")"
+                << PrintLodTensor(tensor, 0, len);
+              writer_ << os.str();
+            }
+          }
+          writer_.Flush();
+          exit(1);
+        } 
         VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
         timeline.Pause();
         op_total_time[run_op_idx++] += timeline.ElapsedSec();

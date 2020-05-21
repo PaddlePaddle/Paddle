@@ -200,6 +200,7 @@ class HogwildWorker : public CPUWorkerBase {
   bool need_dump_param_;
   bool need_dump_field_;
   std::vector<std::string> dump_param_;
+  std::vector<std::string> all_param_;
   std::vector<std::string> dump_fields_;
   ChannelWriter<std::string> writer_;
 };
