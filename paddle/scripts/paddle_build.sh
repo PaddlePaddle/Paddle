@@ -1152,8 +1152,11 @@ function main() {
       build_and_check)
         check_style
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         example
