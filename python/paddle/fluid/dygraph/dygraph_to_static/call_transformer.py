@@ -40,12 +40,15 @@ class CallTransformer(gast.NodeTransformer):
           2. It's a python builtin function not include `len`
         """
         assert isinstance(node, gast.Call)
+        if is_paddle_api(node):
+            return True
+
         func_str = ast_to_source_code(node.func).strip()
         try:
             from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin_len, is_builtin
             is_builtin = eval("is_builtin({})".format(func_str))
             is_builtin_len = eval("is_builtin_len({})".format(func_str))
-            return is_paddle_api(node) or (is_builtin and not is_builtin_len)
+            return is_builtin and not is_builtin_len
         except Exception:
             return False
 
