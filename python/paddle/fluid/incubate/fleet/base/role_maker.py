@@ -985,6 +985,13 @@ class HeterRoleMaker(GeneralRoleMaker):
         if self.is_xpu():
             self._node_type_comm.barrier()
 
+    def xpu_num(self):
+        """
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return len(_xpu_endpoints)
+
 
 
 class UserDefinedRoleMaker(RoleMakerBase):

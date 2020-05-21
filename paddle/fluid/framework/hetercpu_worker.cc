@@ -116,6 +116,7 @@ void HeterCpuWorker::JumpContext(std::shared_ptr<HeterTask> task) {
 
 void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
+  mpi_rank_ = desc.mpi_rank();
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -775,7 +776,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       else if (task->state_ == XPU) {
         timeline.Start();
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this);
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
         task->Update();
         JumpContext(task);
         timeline.Pause();
@@ -1042,7 +1043,7 @@ void HeterCpuWorker::TrainFiles() {
       }
       else if (task->state_ == XPU) {
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this);
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
         task->Update();
         JumpContext(task);
         break;

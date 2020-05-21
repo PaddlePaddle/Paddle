@@ -67,11 +67,13 @@ class HeterWrapper {
 
   void StartXpuService(const std::string& ip, uint32_t port);
   
-  void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker);
+  void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank);
+  
+  void CallRemoteXpuSync(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker);
   
   void StopXpuService();
   
-  void EndPass(Scope* scope);
+  void EndPass(Scope* scope, int num);
   
   void SerializeToReq(const std::string& varname, Scope* scope, VariableMessage* req_var);
 

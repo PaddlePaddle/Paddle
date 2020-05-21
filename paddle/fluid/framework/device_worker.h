@@ -612,6 +612,7 @@ class HeterCpuWorker : public HogwildWorker {
   void CopyDenseVars();
 
  private:
+  int mpi_rank_;
   int worker_num_;
   int xpu_begin_op_index_;
   int xpu_end_op_index_;
