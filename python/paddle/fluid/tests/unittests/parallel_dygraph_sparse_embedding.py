@@ -14,18 +14,12 @@
 
 from __future__ import print_function
 
-import os
-import contextlib
-import unittest
 import numpy as np
-import six
-import pickle
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, to_variable, Layer, guard
-from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
+from paddle.fluid.dygraph.nn import Embedding
+from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 

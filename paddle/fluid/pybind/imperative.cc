@@ -682,10 +682,9 @@ void BindImperative(py::module *m_ptr) {
 #ifdef PADDLE_WITH_NCCL
                imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
-               PADDLE_THROW(
-                   platform::errors::Unimplemented(platform::errors::Fatal(
-                       "Imperative allreduce is not supported when paddle is "
-                       "not compiled with NCCL.")));
+               PADDLE_THROW(platform::errors::Unimplemented(
+                   "Imperative allreduce is not supported when paddle is "
+                   "not compiled with NCCL."));
 #endif
              }
            },
