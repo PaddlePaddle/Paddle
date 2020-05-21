@@ -114,7 +114,9 @@ class MKLDNNHandlerT {
     const std::string key_pd = key_common_ + "@forward_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
-    return (fwd_pd_ != nullptr);
+
+    const std::string key_p = key_ + "@forward_p";
+    return (dev_ctx_.GetBlob(key_p) != nullptr);
   }
 
   template <typename... Args>
@@ -367,7 +369,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
   BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
-                      const std::string uniq_name)
+                      const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(framework::vectorize(x->dims()), uniq_name)) {
