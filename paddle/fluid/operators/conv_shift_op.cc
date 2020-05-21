@@ -38,24 +38,24 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "Input(X)'s dimensions of ConvShiftOp should be 2."
+            "Input(X)'s dimensions of ConvShiftOp should be 2. "
             "But received X's shape = [%s] and the dimension is %d.",
             x_dims, x_dims.size()));
     PADDLE_ENFORCE_EQ(
         y_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "Input(Y)'s dimensions of ConvShiftOp should be 2.",
-            "But received Y's shape = [%s] and the dimension is %d.", y_dims,
-            y_dims.size()));
+            "Input(Y)'s dimensions of ConvShiftOp should be 2. "
+            "But received Y's shape = [%s] and the dimension is %d.",
+            y_dims, y_dims.size()));
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
       PADDLE_ENFORCE_EQ(
           x_dims[0], y_dims[0],
           platform::errors::InvalidArgument(
-              "The first dimension of Input(X) and Input(Y) of ConvShiftOp ",
-              "should be equal.",
-              "But received X's shape = [%s], Y's shape = [%s],",
-              "and the first dimensions are %d and %d respectively.", x_dims,
-              y_dims, x_dims[0], y_dims[0]));
+              "The first dimension of Input(X) and Input(Y) of ConvShiftOp "
+              "should be equal. "
+              "But received X's shape = [%s], Y's shape = [%s], "
+              "and the first dimensions are %d and %d respectively.",
+              x_dims, y_dims, x_dims[0], y_dims[0]));
     if (ctx->IsRuntime() || y_dims[1] > 0)
       PADDLE_ENFORCE_EQ(
           y_dims[1] % 2, 1,
@@ -68,11 +68,10 @@ class ConvShiftOp : public framework::OperatorWithKernel {
           y_dims[1], x_dims[1],
           platform::errors::InvalidArgument(
               "The second dimension of Input(Y) of ConvShiftOp should be less "
-              "than or "
-              "equal to the 2nd dimension of Input(X)."
-              "But received X's shape = [%s], Y's shape = [%s],",
-              "and the second dimensions are %d and %d respectively.", x_dims,
-              y_dims, x_dims[1], y_dims[1]));
+              "than or equal to the 2nd dimension of Input(X)."
+              "But received X's shape = [%s], Y's shape = [%s], "
+              "and the second dimensions are %d and %d respectively.",
+              x_dims, y_dims, x_dims[1], y_dims[1]));
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }

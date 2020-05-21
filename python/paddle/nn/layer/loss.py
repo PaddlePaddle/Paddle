@@ -28,6 +28,9 @@ __all__ = [
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.CrossEntropyLoss
+	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
+
     This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
     and ``NLLLoss`` together.
 
@@ -143,6 +146,9 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
 
 class MSELoss(fluid.dygraph.layers.Layer):
     """
+	:alias_main: paddle.nn.MSELoss
+	:alias: paddle.nn.MSELoss,paddle.nn.layer.MSELoss,paddle.nn.layer.loss.MSELoss
+
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -244,6 +250,9 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
 class L1Loss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.L1Loss
+	:alias: paddle.nn.L1Loss,paddle.nn.layer.L1Loss,paddle.nn.layer.loss.L1Loss
+
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of input predictions and target 
     labels as follows.
@@ -331,6 +340,9 @@ class L1Loss(fluid.dygraph.Layer):
 
 class BCELoss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.BCELoss
+	:alias: paddle.nn.BCELoss,paddle.nn.layer.BCELoss,paddle.nn.layer.loss.BCELoss
+
     This interface is used to construct a callable object of the ``BCELoss`` class.
     The BCELoss layer measures the binary_cross_entropy loss between input predictions 
     and target labels. The binary_cross_entropy loss can be described as:
@@ -456,6 +468,9 @@ class BCELoss(fluid.dygraph.Layer):
 
 class NLLLoss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.NLLLoss
+	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
+
     This op accepts input and target label and returns negative log likelihood 
     cross error. It is useful to train a classification problem with C classes.
      

@@ -102,7 +102,10 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            if func in func.__globals__.values():
+            global_funcs = set([
+                fn for fn in func.__globals__.values() if inspect.isfunction(fn)
+            ])
+            if func in global_funcs:
                 converted_call = to_static_func(func)
                 func_self = getattr(func, '__self__', None)
         except AttributeError:

@@ -111,6 +111,10 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
+    :alias_main: paddle.enable_dygraph
+	:alias: paddle.enable_dygraph,paddle.enable_imperative.enable_dygraph
+	:old_api: paddle.fluid.dygraph.base.enable_dygraph
+
     This function enables dynamic graph mode.
 
     Parameters:
@@ -141,6 +145,10 @@ def enable_dygraph(place=None):
 
 def disable_dygraph():
     """
+    :alias_main: paddle.disable_dygraph
+	:alias: paddle.disable_dygraph,paddle.disable_imperative.disable_dygraph
+	:old_api: paddle.fluid.dygraph.base.disable_dygraph
+
     This function disables dynamic graph mode.
 
     return:
@@ -178,6 +186,8 @@ def _switch_tracer_mode_guard_(is_train=True):
 
 def no_grad(func=None):
     """
+    :api_attr: imperative
+
     Create a context which disables dygraph gradient calculation.
     In this mode, the result of every computation will have `stop_gradient=True`.
 
@@ -236,6 +246,8 @@ def no_grad(func=None):
 @signature_safe_contextmanager
 def guard(place=None):
     """
+    :api_attr: imperative
+
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
@@ -520,12 +532,14 @@ def grad(outputs,
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None):
     """
+    :api_attr: imperative
+
     The API will create a ``Variable`` or ``ComplexVariable`` object from 
     numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
-            or ComplexVariable object that needs to be converted, it can be 
+        value(ndarray|Variable|Tensor|ComplexVariable): The numpy\.ndarray, Variable 
+            Tensor or ComplexVariable object that needs to be converted, it can be 
             multi-dimension, and the data type is one of numpy\.{float16, 
             float32, float64, int16, int32, int64, uint8, uint16, complex64, 
             complex128}.
@@ -597,6 +611,8 @@ def to_variable(value, name=None, zero_copy=None):
     elif isinstance(value, (core.VarBase, framework.Variable,
                             framework.ComplexVariable)):
         return value
+    elif isinstance(value, (core.Tensor, core.LoDTensor)):
+        return core.VarBase(value)
     else:
         raise TypeError(
             "The type of input value is invalid, expected type is 'ndarray', "

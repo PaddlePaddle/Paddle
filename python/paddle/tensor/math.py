@@ -58,6 +58,10 @@ from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
 
+from ..fluid.layers import increment    #DEFINE_ALIAS
+from ..fluid.layers import multiplex    #DEFINE_ALIAS
+from ..fluid.layers import sums    #DEFINE_ALIAS
+
 __all__ = [
         'abs',
         'acos',
@@ -77,10 +81,10 @@ __all__ = [
         'elementwise_sub',
         'exp',
         'floor',
-#       'increment',
+        'increment',
         'log',
         'mul',
-#       'multiplex',
+        'multiplex',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -96,7 +100,7 @@ __all__ = [
         'square',
         'stanh',
         'sum',
-#       'sums',
+        'sums',
         'tanh',
         'elementwise_sum',
         'max',
@@ -115,6 +119,7 @@ __all__ = [
         'trace',
         'kron'
 ]
+
 
 # yapf: enable.
 
@@ -186,6 +191,9 @@ Examples:
 @templatedoc()
 def pow(input, exponent, out=None, name=None):
     """
+	:alias_main: paddle.pow
+	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
+
     This is Pow Activation Operator.
 
     :math:`out = input^{exponent}`
@@ -254,6 +262,9 @@ def pow(input, exponent, out=None, name=None):
 
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
     """
+	:alias_main: paddle.mul
+	:alias: paddle.mul,paddle.tensor.mul,paddle.tensor.math.mul
+
     Mul Operator.
     This operator is used to perform matrix multiplication for input $x$ and $y$.
     The equation is:
@@ -400,6 +411,9 @@ def _elementwise_op(helper):
 
 def add(x, y, alpha=1, out=None, name=None):
     """
+	:alias_main: paddle.add
+	:alias: paddle.add,paddle.tensor.add,paddle.tensor.math.add
+
 Examples:
 
     .. code-block:: python
@@ -542,6 +556,9 @@ Examples:
 
 def div(x, y, out=None, name=None):
     """
+	:alias_main: paddle.div
+	:alias: paddle.div,paddle.tensor.div,paddle.tensor.math.div
+
 Examples:
 
     .. code-block:: python
@@ -692,6 +709,9 @@ for func in [
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
+	:alias_main: paddle.sum
+	:alias: paddle.sum,paddle.tensor.sum,paddle.tensor.math.sum
+
     Computes the sum of tensor elements over the given dimension.
 
     Args:
@@ -794,6 +814,9 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
 @templatedoc(op_type="sum")
 def elementwise_sum(inputs, name=None):
     """
+	:alias_main: paddle.elementwise_sum
+	:alias: paddle.elementwise_sum,paddle.tensor.elementwise_sum,paddle.tensor.math.elementwise_sum
+
     ${comment}
     
     Case 1:
@@ -889,6 +912,9 @@ def elementwise_sum(inputs, name=None):
 
 def mm(input, mat2, out=None, name=None):
     """
+	:alias_main: paddle.mm
+	:alias: paddle.mm,paddle.tensor.mm,paddle.tensor.math.mm
+
     Applies matrix multiplication to two tensors.
 
     Currently, the input tensors' rank can be any, but when the rank of any
@@ -991,6 +1017,9 @@ def mm(input, mat2, out=None, name=None):
 
 def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     """
+	:alias_main: paddle.addmm
+	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
+
     **addmm**
 
     This operator is used to perform matrix multiplication for input $x$ and $y$.
@@ -1057,6 +1086,9 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
 def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
     """
+	:alias_main: paddle.logsumexp
+	:alias: paddle.logsumexp,paddle.tensor.logsumexp,paddle.tensor.math.logsumexp
+
     This operator calculates the log of the sum of exponentials of the input Tensor.
 
     .. math::
@@ -1125,6 +1157,9 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
 
 def inverse(input, out=None, name=None):
     """
+	:alias_main: paddle.inverse
+	:alias: paddle.inverse,paddle.tensor.inverse,paddle.tensor.math.inverse
+
     Takes the inverse of the square matrix. A square matrix is a matrix with
     the same number of rows and columns. The input can be a square matrix
     (2-D Tensor) or batches of square matrices.
@@ -1197,6 +1232,9 @@ def inverse(input, out=None, name=None):
 
 def max(input, dim=None, keep_dim=False, out=None, name=None):
     """
+	:alias_main: paddle.max
+	:alias: paddle.max,paddle.tensor.max,paddle.tensor.math.max
+
     Computes the maximum of tensor elements over the given dimension.
 
     Args:
@@ -1274,6 +1312,9 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
 
 def min(input, dim=None, keep_dim=False, out=None, name=None):
     """
+	:alias_main: paddle.min
+	:alias: paddle.min,paddle.tensor.min,paddle.tensor.math.min
+
     Computes the minimum of tensor elements over the given dimension.
 
     Args:
@@ -1350,6 +1391,9 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
 
 def log1p(x, out=None, name=None):
     """
+	:alias_main: paddle.log1p
+	:alias: paddle.log1p,paddle.tensor.log1p,paddle.tensor.math.log1p
+
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
@@ -1393,6 +1437,9 @@ def log1p(x, out=None, name=None):
 
 def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
     """
+	:alias_main: paddle.addcmul
+	:alias: paddle.addcmul,paddle.tensor.addcmul,paddle.tensor.math.addcmul
+
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
     tensor1, tensor2 should be broadcastable.
@@ -1439,6 +1486,9 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
 
 def clamp(input, min=None, max=None, output=None, name=None):
     """
+	:alias_main: paddle.clamp
+	:alias: paddle.clamp,paddle.tensor.clamp,paddle.tensor.math.clamp
+
     **clampe layer**
 
     This operator clamps all elements in input into the range [ min, max ] and return
@@ -1524,6 +1574,9 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
 def trace(input, offset=0, dim1=0, dim2=1, out=None, name=None):
     """
+	:alias_main: paddle.trace
+	:alias: paddle.trace,paddle.tensor.trace,paddle.tensor.math.trace
+
     This OP computes the sum along diagonals of the input tensor.
     
     If ``input`` is 2D, returns the sum of diagonal. 
@@ -1617,7 +1670,11 @@ def trace(input, offset=0, dim1=0, dim2=1, out=None, name=None):
 
 @templatedoc(op_type="kron")
 def kron(x, y, out=None, name=None):
-    """${comment}
+    """
+	:alias_main: paddle.kron
+	:alias: paddle.kron,paddle.tensor.kron,paddle.tensor.math.kron
+
+${comment}
 
     Args:
         x (Variable): the fist operand of kron op, data type: float16, float32, 
