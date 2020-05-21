@@ -52,7 +52,8 @@ class SoftmaxMKLDNNHandler
     if (!this->isCached()) {
       PADDLE_ENFORCE_EQ(
           input->dims(), output->dims(),
-          "The shape of softmax's input and output must be identical.");
+          platform::errors::InvalidArgument(
+              "The shape of input and output tensor must be identical."));
 
       auto softmax_tz = framework::vectorize(input->dims());
       auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
