@@ -25,6 +25,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/imperative/all_reduce.h"
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
@@ -670,6 +671,25 @@ void BindImperative(py::module *m_ptr) {
              return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
+      .def("_is_sparse",
+           [](imperative::VarBase &self) {
+             return self.Var().IsType<framework::SelectedRows>();
+           })
+      .def("_allreduce",
+           [](imperative::VarBase &self,
+              const imperative::ParallelStrategy &strategy) {
+             if (strategy.nranks_ > 1) {
+#ifdef PADDLE_WITH_NCCL
+               imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
+#else
+               PADDLE_THROW(
+                   platform::errors::Unimplemented(platform::errors::Fatal(
+                       "Imperative allreduce is not supported when paddle is "
+                       "not compiled with NCCL.")));
+#endif
+             }
+           },
+           py::call_guard<py::gil_scoped_release>())
       .def("_copy_to",
            [](const imperative::VarBase &self, const platform::CPUPlace &place,
               bool blocking) { return self.NewVarBase(place, blocking); },

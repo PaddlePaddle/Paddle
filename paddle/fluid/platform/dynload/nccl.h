@@ -62,6 +62,7 @@ extern void* nccl_dso_handle;
   __macro(ncclCommUserRank);            \
   __macro(ncclAllReduce);               \
   __macro(ncclBcast);                   \
+  __macro(ncclBroadcast);               \
   __macro(ncclAllGather);               \
   __macro(ncclGroupStart);              \
   __macro(ncclGroupEnd);                \
