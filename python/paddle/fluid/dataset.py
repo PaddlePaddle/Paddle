@@ -221,6 +221,9 @@ class DatasetBase(object):
         self.dataset.set_filelist(filelist)
         self.filelist = filelist
 
+    def set_input_type(self, input_type):
+        self.proto_desc.input_type = input_type
+
     def set_use_var(self, var_list):
         """
         Set Variables which you will use.
@@ -725,6 +728,8 @@ class InMemoryDataset(DatasetBase):
 
     def release_memory(self):
         """
+        :api_attr: Static Graph
+        
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:

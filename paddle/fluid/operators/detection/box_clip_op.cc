@@ -36,20 +36,19 @@ class BoxClipOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           input_box_dims[input_box_size - 1], 4,
           platform::errors::InvalidArgument(
-              "The last dimension "
-              "of Input must be 4. But received last dimension = %d",
+              "The last dimension of Input(Input) in BoxClipOp must be 4. "
+              "But received last dimension = %d",
               input_box_dims[input_box_size - 1]));
       PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                         platform::errors::InvalidArgument(
-                            "The rank of "
-                            "Input(Input) in BoxClipOp must be 2. But received "
-                            "rank = %d",
+                            "The rank of Input(Input) in BoxClipOp must be 2."
+                            " But received rank = %d",
                             im_info_dims.size()));
       PADDLE_ENFORCE_EQ(
           im_info_dims[1], 3,
           platform::errors::InvalidArgument(
-              "The last dimension "
-              "of ImInfo must be 3. But received last dimension = %d",
+              "The last dimension of Input(ImInfo) of BoxClipOp must be 3. "
+              "But received last dimension = %d",
               im_info_dims[1]));
     }
     ctx->ShareDim("Input", /*->*/ "Output");

@@ -30,6 +30,14 @@ namespace ir {
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("fusion_group_pass", graph);
   if (Get<bool>("use_gpu")) {
+    // TODO(liuyiqun): open this check.
+    // if (!platform::CUDADeviceCode::IsAvailable()) {
+    //   LOG(WARNING)
+    //       << "Disable fusion_group because CUDA Driver or NVRTC is not
+    //       avaiable.";
+    //   return 0;
+    // }
+
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     AddStatis(num_elementwise_groups);
@@ -61,7 +69,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
       subgraph.DetectIntermediateOutWithGraph(graph);
     }
     if (subgraph.IsValid(min_subgraph_size)) {
-      subgraph.SetFuncName("FusedElementwise" + std::to_string(index++));
+      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {
         InsertFusionGroupOp(graph, &subgraph);
         num_subgraphs++;
@@ -74,7 +82,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 bool FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
-  VLOG(3) << code_str;
+  VLOG(4) << code_str;
 
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
@@ -94,7 +102,7 @@ static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
   for (auto* n : subgraph->Nodes()) {
     if (n && n->IsOp() && n->Op()) {
       if (n->Op()->HasAttr(attr_name)) {
-        op_roles.insert(boost::get<int>(n->Op()->GetAttr(attr_name)));
+        op_roles.insert(BOOST_GET_CONST(int, n->Op()->GetAttr(attr_name)));
       }
     }
   }

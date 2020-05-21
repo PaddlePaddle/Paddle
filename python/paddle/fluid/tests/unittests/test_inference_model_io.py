@@ -142,7 +142,7 @@ class TestSaveInferenceModel(unittest.TestCase):
         # fake program without feed/fetch
         with program_guard(program, init_program):
             x = layers.data(name='x', shape=[2], dtype='float32')
-            y = layers.data(name='y', shape=[1], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='int32')
             predict = fluid.layers.fc(input=x, size=2, act='softmax')
             acc = fluid.layers.accuracy(input=predict, label=y)
             auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
@@ -190,6 +190,14 @@ class TestInstance(unittest.TestCase):
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+
+
+class TestLoadInferenceModelError(unittest.TestCase):
+    def test_load_model_not_exist(self):
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        self.assertRaises(ValueError, load_inference_model,
+                          './test_not_exist_dir', exe)
 
 
 if __name__ == '__main__':

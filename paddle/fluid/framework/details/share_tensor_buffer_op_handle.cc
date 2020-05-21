@@ -66,7 +66,7 @@ void ShareTensorBufferOpHandle::AddReuseVarPair(
 void ShareTensorBufferOpHandle::InitCUDA() {
 #ifdef PADDLE_WITH_CUDA
   int dev_id =
-      boost::get<platform::CUDAPlace>(dev_ctxes_.begin()->first).device;
+      BOOST_GET_CONST(platform::CUDAPlace, dev_ctxes_.begin()->first).device;
   events_[dev_id] = nullptr;
 #endif
 }

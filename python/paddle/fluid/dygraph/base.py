@@ -19,6 +19,7 @@ import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
+from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 import objgraph
@@ -51,12 +52,34 @@ def program_desc_tracing_guard(enable):
     if tracer:
         original_val = tracer._enable_program_desc_tracing
         tracer._enable_program_desc_tracing = enable
-    yield
-    if tracer:
-        tracer._enable_program_desc_tracing = original_val
+    try:
+        yield
+    finally:
+        if tracer:
+            tracer._enable_program_desc_tracing = original_val
 
 
 _functional_dygraph_context_manager = None
+
+
+@signature_safe_contextmanager
+def param_guard(parameters):
+    # Note: parameters is a reference of self._parameters
+    if not framework.in_dygraph_mode() and parameters:
+        origin_parameters = parameters.copy()
+        for name, var_base in parameters.items():
+            if isinstance(var_base, core.VarBase):
+                new_var = framework.Parameter(
+                    var_base.block,
+                    var_base.shape,
+                    var_base.dtype,
+                    var_base.type,
+                    name=var_base.name)
+                parameters[name] = new_var
+        yield
+        parameters.update(origin_parameters)
+    else:
+        yield
 
 
 def enabled():
@@ -88,6 +111,10 @@ def enabled():
 
 def enable_dygraph(place=None):
     """
+    :alias_main: paddle.enable_dygraph
+	:alias: paddle.enable_dygraph,paddle.enable_imperative.enable_dygraph
+	:old_api: paddle.fluid.dygraph.base.enable_dygraph
+
     This function enables dynamic graph mode.
 
     Parameters:
@@ -112,9 +139,16 @@ def enable_dygraph(place=None):
         _functional_dygraph_context_manager = guard(place=place)
         _functional_dygraph_context_manager.__enter__()
 
+        # call disable_dygraph when Python exit
+        CleanupFuncRegistrar.register(disable_dygraph)
+
 
 def disable_dygraph():
     """
+    :alias_main: paddle.disable_dygraph
+	:alias: paddle.disable_dygraph,paddle.disable_imperative.disable_dygraph
+	:old_api: paddle.fluid.dygraph.base.disable_dygraph
+
     This function disables dynamic graph mode.
 
     return:
@@ -136,20 +170,24 @@ def disable_dygraph():
         _functional_dygraph_context_manager = None
 
 
-@contextlib.contextmanager
+@signature_safe_contextmanager
 def _switch_tracer_mode_guard_(is_train=True):
     tracer = framework._dygraph_tracer()
     if tracer:
         mode = tracer._train_mode
         tracer._train_mode = is_train
-        yield
-        tracer._train_mode = mode
+        try:
+            yield
+        finally:
+            tracer._train_mode = mode
     else:
         yield
 
 
 def no_grad(func=None):
     """
+    :api_attr: imperative
+
     Create a context which disables dygraph gradient calculation.
     In this mode, the result of every computation will have `stop_gradient=True`.
 
@@ -208,6 +246,8 @@ def no_grad(func=None):
 @signature_safe_contextmanager
 def guard(place=None):
     """
+    :api_attr: imperative
+
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
     Parameters:
@@ -492,12 +532,14 @@ def grad(outputs,
 @framework.dygraph_only
 def to_variable(value, name=None, zero_copy=None):
     """
+    :api_attr: imperative
+
     The API will create a ``Variable`` or ``ComplexVariable`` object from 
     numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|ComplexVariable): The numpy\.ndarray, Variable 
-            or ComplexVariable object that needs to be converted, it can be 
+        value(ndarray|Variable|Tensor|ComplexVariable): The numpy\.ndarray, Variable 
+            Tensor or ComplexVariable object that needs to be converted, it can be 
             multi-dimension, and the data type is one of numpy\.{float16, 
             float32, float64, int16, int32, int64, uint8, uint16, complex64, 
             complex128}.
@@ -569,6 +611,8 @@ def to_variable(value, name=None, zero_copy=None):
     elif isinstance(value, (core.VarBase, framework.Variable,
                             framework.ComplexVariable)):
         return value
+    elif isinstance(value, (core.Tensor, core.LoDTensor)):
+        return core.VarBase(value)
     else:
         raise TypeError(
             "The type of input value is invalid, expected type is 'ndarray', "

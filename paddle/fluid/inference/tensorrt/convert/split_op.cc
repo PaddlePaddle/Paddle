@@ -38,7 +38,7 @@ class SplitOpConverter : public OpConverter {
                           "Invalid input X's size of split TRT converter. "
                           "Expected 1, received %d.",
                           input_num));
-    int axis = boost::get<int>(op_desc.GetAttr("axis"));
+    int axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
     // split on batch is not supported in TensorRT
     PADDLE_ENFORCE_NE(
         axis, 0,
@@ -46,10 +46,10 @@ class SplitOpConverter : public OpConverter {
             "Invalid split axis. Split on batch is not supported in TensorRT"));
 
     std::vector<int> output_lengths =
-        boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
+        BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("sections"));
     int num = 0;
     if (op_desc.HasAttr("num")) {
-      num = boost::get<int>(op_desc.GetAttr("num"));
+      num = BOOST_GET_CONST(int, op_desc.GetAttr("num"));
     }
 
     if (engine_->with_dynamic_shape()) {

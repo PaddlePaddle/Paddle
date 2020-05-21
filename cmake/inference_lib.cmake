@@ -61,9 +61,9 @@ function(copy_part_of_thrid_party TARGET DST)
         if(WIN32)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
-                    ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                    ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
                     DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-                    ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                    ${dst_dir}/lib ${dst_dir})
         else()
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
@@ -276,11 +276,12 @@ function(version version_file)
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
-                "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
+                "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
     endif()
+    file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)
         file(APPEND ${version_file}
-                "WITH_TENSORRT: ${TENSORRT_FOUND}\n")
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n" "TensorRT version: v${TENSORRT_MAJOR_VERSION}\n")
     endif()
     
 endfunction()

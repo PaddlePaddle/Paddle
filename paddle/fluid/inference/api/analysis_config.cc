@@ -149,6 +149,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(serialized_info_cache_);
 
+  CP_MEMBER(thread_local_stream_);
+
   if (use_gpu_) {
     pass_builder_.reset(new GpuPassStrategy(
         *static_cast<GpuPassStrategy *>(other.pass_builder())));
@@ -389,6 +391,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << use_lite_;
 
+  ss << thread_local_stream_;
+
   return ss.str();
 }
 
@@ -479,5 +483,7 @@ void AnalysisConfig::PartiallyRelease() {
   params_file_.clear();
   params_file_.shrink_to_fit();
 }
+
+void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
 }  // namespace paddle

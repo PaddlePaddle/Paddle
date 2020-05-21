@@ -14,12 +14,13 @@
 """
 math functions
 """
-
 from __future__ import print_function
 
 from paddle.common_ops_import import *
 from ..fluid import layers
-from ..fluid.framework import core, _varbase_creator
+from ..fluid.framework import core, _varbase_creator, in_dygraph_mode, Variable
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 import sys
 
@@ -57,6 +58,10 @@ from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
 
+from ..fluid.layers import increment    #DEFINE_ALIAS
+from ..fluid.layers import multiplex    #DEFINE_ALIAS
+from ..fluid.layers import sums    #DEFINE_ALIAS
+
 __all__ = [
         'abs',
         'acos',
@@ -76,10 +81,10 @@ __all__ = [
         'elementwise_sub',
         'exp',
         'floor',
-#       'increment',
+        'increment',
         'log',
         'mul',
-#       'multiplex',
+        'multiplex',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -95,7 +100,7 @@ __all__ = [
         'square',
         'stanh',
         'sum',
-#       'sums',
+        'sums',
         'tanh',
         'elementwise_sum',
         'max',
@@ -105,14 +110,16 @@ __all__ = [
         'add',
         'atan',
         'logsumexp',
-#       'inverse',
+        'inverse',
         'log1p',
         'erf',
         'addcmul',
         'addmm',
         'clamp',
+        'trace',
         'kron'
 ]
+
 
 # yapf: enable.
 
@@ -184,6 +191,9 @@ Examples:
 @templatedoc()
 def pow(input, exponent, out=None, name=None):
     """
+	:alias_main: paddle.pow
+	:alias: paddle.pow,paddle.tensor.pow,paddle.tensor.math.pow
+
     This is Pow Activation Operator.
 
     :math:`out = input^{exponent}`
@@ -252,6 +262,9 @@ def pow(input, exponent, out=None, name=None):
 
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
     """
+	:alias_main: paddle.mul
+	:alias: paddle.mul,paddle.tensor.mul,paddle.tensor.math.mul
+
     Mul Operator.
     This operator is used to perform matrix multiplication for input $x$ and $y$.
     The equation is:
@@ -398,6 +411,9 @@ def _elementwise_op(helper):
 
 def add(x, y, alpha=1, out=None, name=None):
     """
+	:alias_main: paddle.add
+	:alias: paddle.add,paddle.tensor.add,paddle.tensor.math.add
+
 Examples:
 
     .. code-block:: python
@@ -540,6 +556,9 @@ Examples:
 
 def div(x, y, out=None, name=None):
     """
+	:alias_main: paddle.div
+	:alias: paddle.div,paddle.tensor.div,paddle.tensor.math.div
+
 Examples:
 
     .. code-block:: python
@@ -690,6 +709,9 @@ for func in [
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
+	:alias_main: paddle.sum
+	:alias: paddle.sum,paddle.tensor.sum,paddle.tensor.math.sum
+
     Computes the sum of tensor elements over the given dimension.
 
     Args:
@@ -792,6 +814,9 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
 @templatedoc(op_type="sum")
 def elementwise_sum(inputs, name=None):
     """
+	:alias_main: paddle.elementwise_sum
+	:alias: paddle.elementwise_sum,paddle.tensor.elementwise_sum,paddle.tensor.math.elementwise_sum
+
     ${comment}
     
     Case 1:
@@ -887,6 +912,9 @@ def elementwise_sum(inputs, name=None):
 
 def mm(input, mat2, out=None, name=None):
     """
+	:alias_main: paddle.mm
+	:alias: paddle.mm,paddle.tensor.mm,paddle.tensor.math.mm
+
     Applies matrix multiplication to two tensors.
 
     Currently, the input tensors' rank can be any, but when the rank of any
@@ -986,8 +1014,12 @@ def mm(input, mat2, out=None, name=None):
                                'Y': mat2}, outputs={'Out': out})
     return out
 
+
 def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     """
+	:alias_main: paddle.addmm
+	:alias: paddle.addmm,paddle.tensor.addmm,paddle.tensor.math.addmm
+
     **addmm**
 
     This operator is used to perform matrix multiplication for input $x$ and $y$.
@@ -1054,6 +1086,9 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
 
 def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
     """
+	:alias_main: paddle.logsumexp
+	:alias: paddle.logsumexp,paddle.tensor.logsumexp,paddle.tensor.math.logsumexp
+
     This operator calculates the log of the sum of exponentials of the input Tensor.
 
     .. math::
@@ -1120,8 +1155,86 @@ def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
     return layers.log(sum_out, name)
 
 
+def inverse(input, out=None, name=None):
+    """
+	:alias_main: paddle.inverse
+	:alias: paddle.inverse,paddle.tensor.inverse,paddle.tensor.math.inverse
+
+    Takes the inverse of the square matrix. A square matrix is a matrix with
+    the same number of rows and columns. The input can be a square matrix
+    (2-D Tensor) or batches of square matrices.
+
+    Args:
+        input (Variable): The input Variable which holds a Tensor. The last two
+            dimensions should be equal. When the number of dimensions is
+            greater than 2, it is treated as batches of square matrix. The data
+            type can be float32 and float64.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            If out is None, a new Varibale will be create to store the result.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information,
+            please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: A Tensor holds the inverse of input. The shape and data type
+            is the same as input.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
+
+            # example for static graph
+            input = fluid.data("input", shape=[2, 2], dtype="float32")
+            out = paddle.inverse(input)
+        
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(feed={"input": mat_np },
+                              fetch_list=[out.name])
+            print(results[0]) # [[0.5, 0], [0, 0.5]]
+
+            # example for dynamic graph
+            with fluid.dygraph.guard():
+                mat = fluid.dygraph.to_variable(mat_np)
+                inv = paddle.inverse(mat)
+                print(inv) # [[0.5, 0], [0, 0.5]]
+    """
+    if in_dygraph_mode():
+        return core.ops.inverse(input)
+
+    def _check_input(input):
+        check_variable_and_dtype(input, 'input',
+                                 ['float32', 'float64'], 'inverse')
+        if len(input.shape) < 2:
+            raise ValueError(
+                "The input of inverse is expected to be a Tensor whose number "
+                "of dimensions is no less than 2. But reviced: %d, "
+                "input's shape: %s." % (len(input.shape), input.shape))
+
+        if out is not None:
+            check_variable_and_dtype(out, 'out', input.dtype, 'inverse')
+
+    _check_input(input)
+
+    helper = LayerHelper('inverse', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='inverse', inputs={'Input': [input] }, outputs={'Output': [out]})
+    return out
+
+
 def max(input, dim=None, keep_dim=False, out=None, name=None):
     """
+	:alias_main: paddle.max
+	:alias: paddle.max,paddle.tensor.max,paddle.tensor.math.max
+
     Computes the maximum of tensor elements over the given dimension.
 
     Args:
@@ -1199,6 +1312,9 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
 
 def min(input, dim=None, keep_dim=False, out=None, name=None):
     """
+	:alias_main: paddle.min
+	:alias: paddle.min,paddle.tensor.min,paddle.tensor.math.min
+
     Computes the minimum of tensor elements over the given dimension.
 
     Args:
@@ -1275,6 +1391,9 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
 
 def log1p(x, out=None, name=None):
     """
+	:alias_main: paddle.log1p
+	:alias: paddle.log1p,paddle.tensor.log1p,paddle.tensor.math.log1p
+
     Calculates the natural log of the given input tensor, element-wise.
     .. math::
         Out = \\ln(x+1)
@@ -1318,6 +1437,9 @@ def log1p(x, out=None, name=None):
 
 def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
     """
+	:alias_main: paddle.addcmul
+	:alias: paddle.addcmul,paddle.tensor.addcmul,paddle.tensor.math.addcmul
+
     Calculate the element-wise multiplication of tensor1 and tensor2,
     then multiply the result by value, and add it to input. The shape of input,
     tensor1, tensor2 should be broadcastable.
@@ -1364,6 +1486,9 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
 
 def clamp(input, min=None, max=None, output=None, name=None):
     """
+	:alias_main: paddle.clamp
+	:alias: paddle.clamp,paddle.tensor.clamp,paddle.tensor.math.clamp
+
     **clampe layer**
 
     This operator clamps all elements in input into the range [ min, max ] and return
@@ -1447,9 +1572,109 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
     return output
 
+def trace(input, offset=0, dim1=0, dim2=1, out=None, name=None):
+    """
+	:alias_main: paddle.trace
+	:alias: paddle.trace,paddle.tensor.trace,paddle.tensor.math.trace
+
+    This OP computes the sum along diagonals of the input tensor.
+    
+    If ``input`` is 2D, returns the sum of diagonal. 
+
+    If ``input`` has larger dimensions, then returns an tensor of diagonals sum, diagonals be taken from
+    the 2D planes specified by dim1 and dim2. By default, the 2D planes formed by the first and second dimensions 
+    of the input tensor.
+
+    The argument ``offset`` determines where diagonals are taken from input tensor:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+    
+    Args:
+        input(Variable): The input tensor. Must be at least 2-dimensional. The input data type should be float32, float64, int32, int64.
+        offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
+        dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
+        dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+        name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
+
+    Returns:
+        Variable: the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid.dygraph as dg
+            import numpy as np
+            
+            case1 = np.random.randn(2, 3).astype('float32')
+            case2 = np.random.randn(3, 10, 10).astype('float32')
+            case3 = np.random.randn(3, 10, 5, 10).astype('float32')
+            
+            with dg.guard():
+                case1 = dg.to_variable(case1)
+                case2 = dg.to_variable(case2)
+                case3 = dg.to_variable(case3)
+                data1 = paddle.trace(case1) # data1.shape = [1]
+                data2 = paddle.trace(case2, offset=1, dim1=1, dim2=2) # data2.shape = [3]
+                data3 = paddle.trace(case3, offset=-3, dim1=1, dim2=-1) # data2.shape = [3, 5]
+    """
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+
+    def __check_input(input, offset, dim1, dim2):
+        check_dtype(input.dtype, 'Input',
+                    ['int32', 'int64', 'float16', 'float32', 'float64'],
+                    'trace')
+
+        input_shape = list(input.shape)
+        assert len(input_shape) >= 2,                     \
+                "The input must be at least 2-dimensional, "   \
+                "But received Input's dimensional: %s.\n" %  \
+                len(input_shape)
+
+        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1
+        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2
+
+        assert dim1_ < len(input_shape),     \
+            "The argument dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
+            % (-(len(input_shape)), len(input_shape) - 1, dim1)
+
+        assert dim2_ < len(input_shape),   \
+            "The argument dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
+            % (-(len(input_shape)), len(input_shape) - 1, dim2)
+
+
+        assert  dim1_ != dim2_,   \
+               "dim1 and dim2 cannot be the same dimension." \
+                "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2)
+
+    if not in_dygraph_mode():
+        __check_input(input, offset, dim1, dim2)
+    helper = LayerHelper('trace', **locals())
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        check_variable_and_dtype(out, 'out', ['float16', 'float32', 'float64', 'int32', 'int64'], 'trace')
+
+    helper.append_op(
+        type='trace',
+        inputs={'Input': [input]},
+        attrs={'offset': offset,
+               'dim1': dim1,
+               'dim2': dim2},
+        outputs={'Out': [out]})
+    return out
+
 @templatedoc(op_type="kron")
 def kron(x, y, out=None, name=None):
-    """${comment}
+    """
+	:alias_main: paddle.kron
+	:alias: paddle.kron,paddle.tensor.kron,paddle.tensor.math.kron
+
+${comment}
 
     Args:
         x (Variable): the fist operand of kron op, data type: float16, float32, 

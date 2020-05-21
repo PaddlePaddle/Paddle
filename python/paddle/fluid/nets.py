@@ -15,6 +15,7 @@
 from __future__ import print_function
 import six
 from . import layers
+from .data_feeder import check_variable_and_dtype, convert_dtype
 
 __all__ = [
     "simple_img_conv_pool",
@@ -42,6 +43,8 @@ def simple_img_conv_pool(input,
                          act=None,
                          use_cudnn=True):
     """
+	:api_attr: Static Graph
+
     The simple_img_conv_pool api is composed of :ref:`api_fluid_layers_conv2d` and :ref:`api_fluid_layers_pool2d` .
 
     Args:
@@ -148,6 +151,8 @@ def img_conv_group(input,
                    pool_type="max",
                    use_cudnn=True):
     """
+	:api_attr: Static Graph
+
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
     and Pool2d. According to the input arguments, img_conv_group will do serials of
     computation for Input using Convolution2d, BatchNorm, DropOut, and pass the last
@@ -256,6 +261,8 @@ def sequence_conv_pool(input,
                        pool_type="max",
                        bias_attr=None):
     """
+	:api_attr: Static Graph
+
     **This api takes input as an LoDTensor. If input is a Tensor, please use** 
     :ref:`api_fluid_nets_simple_img_conv_pool` **instead**
 
@@ -304,6 +311,8 @@ def sequence_conv_pool(input,
                                                      act="tanh",
                                                      pool_type="sqrt")
     """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
     conv_out = layers.sequence_conv(
         input=input,
         num_filters=num_filters,
@@ -318,6 +327,8 @@ def sequence_conv_pool(input,
 
 def glu(input, dim=-1):
     """
+	:api_attr: Static Graph
+
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
     :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` . 
     Specifically, GLU will plit the input into two equal-sized parts,
@@ -350,7 +361,8 @@ def glu(input, dim=-1):
             # shape of output: [-1, 3, 3, 9]
             output = fluid.nets.glu(input=data, dim=1)
     """
-
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             "glu")
     a, b = layers.split(input, num_or_sections=2, dim=dim)
     act_b = layers.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
@@ -363,6 +375,8 @@ def scaled_dot_product_attention(queries,
                                  num_heads=1,
                                  dropout_rate=0.):
     """
+	:api_attr: Static Graph
+
     This interface Multi-Head Attention using scaled dot product.
     Attention mechanism can be seen as mapping a query and a set of key-value
     pairs to an output. Multi-Head Attention performs attention using multi-head
@@ -410,9 +424,10 @@ def scaled_dot_product_attention(queries,
             Multi-Head Attention.
 
     Raises:
+        TypeError: The dtype of inputs keys, values and queries should be the same.
         ValueError: Inputs queries, keys and values should all be 3-D tensors.
         ValueError: The hidden size of queries and keys should be the same.
-        ValueError: The max sequence length in query batch and in key batch should be the same.
+        ValueError: The max sequence length in value batch and in key batch should be the same.
         ValueError: he hidden size of keys must be divisible by the number of attention heads.
         ValueError: he hidden size of values must be divisible by the number of attention heads.
 
@@ -427,17 +442,38 @@ def scaled_dot_product_attention(queries,
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """
+    check_variable_and_dtype(queries, 'queries', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+    check_variable_and_dtype(keys, 'keys', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+    check_variable_and_dtype(values, 'values', ['float32', 'float64'],
+                             "scaled_dot_product_attention")
+
+    if not (queries.dtype == keys.dtype == values.dtype):
+        raise TypeError(
+            "The dtype of keys, values and queries should be the same."
+            "But received queries.dtype = %s, "
+            " keys.dtype = %s, values.dtype) = %s." %
+            (convert_dtype(queries.dtype), convert_dtype(keys.dtype),
+             convert_dtype(values.dtype)))
+
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs queries, keys and values should all be 3-D tensors.")
+            "Inputs queries, keys and values should all be 3-D tensors."
+            "But received len(queries.shape) = %d, "
+            "len(keys.shape) = %d, len(values.shape) = %d." %
+            (len(queries.shape), len(keys.shape), len(values.shape)))
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
-            "The hidden size of queries and keys should be the same.")
+            "The hidden size of queries and keys should be the same."
+            "But received queries' hidden size = %d and keys' hidden size = %d."
+            % (queries.shape[-1], keys.shape[-1]))
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
-            "The max sequence length in query batch and in key batch "
-            "should be the same.")
+            "The max sequence length in value batch and in key batch "
+            "should be the same. But received max sequence length in value batch "
+            "= %d, in key batch = %d." % (values.shape[-2], keys.shape[-2]))
     if keys.shape[-1] % num_heads != 0:
         raise ValueError("The hidden size of keys (%d) must be divisible "
                          "by the number of attention heads (%d)." %
