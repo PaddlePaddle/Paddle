@@ -111,12 +111,10 @@ void BarrierMonitor::Swap(bool is_valid) {
     VLOG(4) << "barrier monitor server switch to send barrier";
   }
 
-  worker_cv_.notify_all();
+  workder_cv_.notify_all();
 }
 
 void BarrierMonitor::Stop() {
-  std::unique_lock<std::mutex> lck(mutex_);
-
   valid_ = true;
   release_ = true;
   running_ = false;
@@ -125,8 +123,8 @@ void BarrierMonitor::Stop() {
   send_barrier_queue->Clear();
   recv_barrier_queue->Clear();
 
-  ServerWeakup();
-  WorkerWeakup();
+  workder_cv_.notify_all();
+  server_cv_.notify_all();
 
   if (monitor_thread_) monitor_thread_->join();
   monitor_thread_ = nullptr;
@@ -134,7 +132,7 @@ void BarrierMonitor::Stop() {
 
 bool BarrierMonitor::Wait() {
   std::unique_lock<std::mutex> lk(mutex_);
-  worker_cv_.wait(lk, [this] { return (release_); });
+  workder_cv_.wait(lk, [this] { return (release_); });
   return valid_;
 }
 
@@ -143,15 +141,7 @@ void BarrierMonitor::WaitServerWeakup() {
   server_cv_.wait(lk);
 }
 
-void BarrierMonitor::ServerWeakup() {
-  std::unique_lock<std::mutex> lk(server_mutex_);
-  server_cv_.notify_all();
-}
-
-void BarrierMonitor::WorkerWeakup() {
-  std::unique_lock<std::mutex> lk(mutex_);
-  worker_cv_.notify_all();
-}
+void BarrierMonitor::ServerWeakup() { server_cv_.notify_all(); }
 
 std::once_flag BarrierMonitor::init_flag_;
 std::unique_ptr<BarrierMonitor> BarrierMonitor::monitor_(nullptr);

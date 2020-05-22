@@ -120,8 +120,6 @@ class BarrierMonitor {
         new std::thread(std::bind(&BarrierMonitor::Monitor, this)));
   }
 
-  ~BarrierMonitor() { Stop(); }
-
   static BarrierMonitor *Init(int workers) {
     std::call_once(init_flag_, &BarrierMonitor::InitImpl, workers);
     return GetInstance();
@@ -130,6 +128,7 @@ class BarrierMonitor {
   static BarrierMonitor *GetInstance() { return monitor_.get(); }
 
   bool IncreaseBarrier(const int worker_id, const std::string &barrier);
+
   void DecreaseWorker();
 
   int GetWorkerNum() { return workers_; }

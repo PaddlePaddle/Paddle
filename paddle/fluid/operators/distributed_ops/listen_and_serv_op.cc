@@ -39,6 +39,8 @@ DEFINE_int32(rpc_prefetch_thread_num, 12, "number of threads for rpc prefetch");
 namespace paddle {
 namespace operators {
 
+volatile sig_atomic_t gSignalStatus;
+
 void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
@@ -92,12 +94,6 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
 ListenAndServOp::~ListenAndServOp() { Stop(); }
 
 void ListenAndServOp::Stop() {
-  auto *barrier = distributed::BarrierMonitor::GetInstance();
-
-  if (barrier != nullptr) {
-    barrier->Stop();
-  }
-
   rpc_service_->ShutDown();
   server_thread_->join();
   auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
@@ -147,12 +143,10 @@ void ListenAndServOp::RunSyncLoop(
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    VLOG(3) << "wait kSendBarrier to receive Grad from trainers";
     barrier->WaitServerWeakup();
 
-    if (rpc_service_->IsExit()) {
+    if (gSignalStatus != 0) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      barrier->Stop();
       break;
     }
 
@@ -280,7 +274,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
-    if (rpc_service_->IsExit()) {
+    if (gSignalStatus != 0) {
       VLOG(4) << "get exit!rpc_processor break!";
       break;
     }
@@ -434,6 +428,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       prefetch_var_name_to_prepared_ctx;
+
   for (size_t i = 0; i < prefetch_block_id_list.size(); ++i) {
     auto block_id = prefetch_block_id_list[i];
     auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
@@ -442,8 +437,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   // parse attr of kSparseGradToParam  sparse_grad_name -> param_name
   std::unordered_map<std::string, std::string> sparse_grad_name_to_param_name;
+
   auto sparse_grad_name_to_param_name_str =
       Attr<std::vector<std::string>>(kSparseGradToParam);
+
   for (const auto &sparse_grad_name_and_param_name :
        sparse_grad_name_to_param_name_str) {
     std::vector<std::string> pieces;
@@ -569,9 +566,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 void SignalHandler::StopAndExit(int signal_num) {
   // Do not use VLOG here for the device for printing maybe already released.
   // exit will release interal allocated resoureces.
-  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-  remove(file_path.c_str());
-  exit(0);
+  distributed::BarrierMonitor::GetInstance()->Stop();
+  gSignalStatus = signal_num;
 }
 
 }  // namespace operators
