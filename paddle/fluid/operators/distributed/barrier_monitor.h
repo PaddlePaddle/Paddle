@@ -54,29 +54,29 @@ class BlockingQueueForBarrier {
   bool Push(const T &elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      workder_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      worker_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
       queue_.push_back(elem);
     }
-    workder_cv_.notify_one();
+    worker_cv_.notify_one();
     return true;
   }
 
   bool Push(T &&elem) {
     {
       std::unique_lock<std::mutex> lock(mutex_);
-      workder_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
+      worker_cv_.wait(lock, [&] { return queue_.size() < capacity_; });
       queue_.emplace_back(std::move(elem));
     }
-    workder_cv_.notify_one();
+    worker_cv_.notify_one();
     return true;
   }
 
   T Pop() {
     std::unique_lock<std::mutex> lock(mutex_);
-    workder_cv_.wait(lock, [=] { return !queue_.empty(); });
+    worker_cv_.wait(lock, [=] { return !queue_.empty(); });
     T rc(std::move(queue_.front()));
     queue_.pop_front();
-    workder_cv_.notify_one();
+    worker_cv_.notify_one();
     return rc;
   }
 
@@ -100,7 +100,7 @@ class BlockingQueueForBarrier {
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
-  std::condition_variable workder_cv_;
+  std::condition_variable worker_cv_;
 };
 
 class BarrierMonitor {
@@ -148,6 +148,8 @@ class BarrierMonitor {
 
   void ServerWeakup();
 
+  void WorkerWeakup();
+
  private:
   // Init is called by GetInstance.
   static void InitImpl(int workers) {
@@ -164,12 +166,12 @@ class BarrierMonitor {
   bool valid_ = false;
   bool release_ = false;
 
-  std::condition_variable workder_cv_;
-
-  bool stop_ = false;
+  std::condition_variable worker_cv_;
   std::condition_variable server_cv_;
+
   std::mutex server_mutex_;
   std::mutex mutex_;
+
   BarrierType barrier_type;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
   std::shared_ptr<BlockingQueueForBarrier<int>> send_barrier_queue;
