@@ -67,6 +67,7 @@ class Dataset {
   virtual void SetParseContent(bool parse_content) = 0;
   virtual void SetParseLogKey(bool parse_logkey) = 0;
   virtual void SetEnablePvMerge(bool enable_pv_merge) = 0;
+  virtual bool EnablePvMerge() = 0;
   virtual void SetMergeBySid(bool is_merge) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
@@ -199,6 +200,7 @@ class DatasetImpl : public Dataset {
     return data_feed_desc_;
   }
   virtual int GetChannelNum() { return channel_num_; }
+  virtual bool EnablePvMerge() { return enable_pv_merge_; }
   virtual std::vector<paddle::framework::DataFeed*> GetReaders();
   virtual void CreateChannel();
   virtual void RegisterClientToClientMsgHandler();

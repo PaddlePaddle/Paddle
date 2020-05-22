@@ -773,41 +773,38 @@ class BoxWrapper {
 
   // Auc Runner
  public:
-  void CheckAucRunnerInitDone(paddle::framework::Dataset* dataset) {
-    if (init_done_) {
-      return;
-    }
-    const auto& data_feed_desc = dataset->GetDataFeedDesc();
-    const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
-    for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
-      std::string cur_slot = multi_slot_desc.slots(i).name();
-      if (slot_info_.find(cur_slot) != slot_info_.end()) {
-        slot_index_to_replace_.insert(i);
+  void InitializeAucRunner(std::vector<std::vector<std::string>> slot_eval,
+                           int thread_num, int pool_size,
+                           std::vector<std::string> slot_list) {
+    mode_ = 1;
+    runner_group_ = static_cast<int>(slot_eval.size());
+    pass_flag_ = runner_group_ - 1;
+    auc_runner_thread_num_ = thread_num;
+    pass_done_semi_ = paddle::framework::MakeChannel<int>();
+    pass_done_semi_->Put(1);  // Note: At most 1 pipeline in AucRunner
+    random_ins_pool_list.resize(thread_num);
+
+    std::unordered_set<std::string> slot_set;
+    for (size_t i = 0; i < slot_eval.size(); ++i) {
+      for (const auto& slot : slot_eval[i]) {
+        slot_set.insert(slot);
       }
     }
-    VLOG(0) << "Slots that need to be evaluated:";
-    for (auto e : slot_index_to_replace_) {
-      VLOG(0) << multi_slot_desc.slots(e).name();
+    for (size_t i = 0; i < slot_list.size(); ++i) {
+      if (slot_set.find(slot_list[i]) != slot_set.end()) {
+        slot_index_to_replace_.insert(static_cast<int16_t>(i));
+      }
     }
     for (int i = 0; i < auc_runner_thread_num_; ++i) {
       random_ins_pool_list[i].SetSlotIndexToReplace(slot_index_to_replace_);
     }
-    init_done_ = true;
-  }
-  void InitializeAucRunner(std::vector<std::vector<std::string>> slot_info,
-                           int thread_num, int pool_size) {
-    mode_ = 1;
-    runner_group_ = static_cast<int>(slot_info.size());
-    pass_flag_ = runner_group_ - 1;
-    auc_runner_thread_num_ = thread_num;
-    for (size_t i = 0; i < slot_info.size(); ++i) {
-      for (const auto& slot : slot_info[i]) {
-        slot_info_.insert(slot);
-      }
-    }
-    random_ins_pool_list.resize(thread_num);
     VLOG(0) << "AucRunner configuration: thread number[" << thread_num
-            << "], pool size[" << pool_size << "]";
+            << "], pool size[" << pool_size << "], runner_group["
+            << runner_group_ << "]";
+    VLOG(0) << "Slots that need to be evaluated:";
+    for (auto e : slot_index_to_replace_) {
+      VLOG(0) << e << ": " << slot_list[e];
+    }
   }
   void GetRandomReplace(const std::vector<Record>& pass_data);
   void AddReplaceFeasign(boxps::PSAgentBase* p_agent, int feed_pass_thread_num);
@@ -821,7 +818,7 @@ class BoxWrapper {
   int auc_runner_thread_num_ = 1;
   int runner_group_ = 0;
   bool init_done_ = false;
-  std::unordered_set<std::string> slot_info_;
+  paddle::framework::Channel<int> pass_done_semi_;
   std::unordered_set<uint16_t> slot_index_to_replace_;
   std::vector<RecordCandidateList> random_ins_pool_list;
   std::vector<size_t> replace_idx_;
@@ -880,7 +877,6 @@ class BoxHelper {
                       platform::errors::PreconditionNotMet(
                           "Should call InitForAucRunner first."));
     box_ptr->FlipPassFlag();
-    box_ptr->CheckAucRunnerInitDone(dataset_);
 
     std::unordered_set<uint16_t> index_slots;
     dataset_->PreprocessChannel(slots_to_replace, index_slots);
@@ -900,7 +896,9 @@ class BoxHelper {
     new_input_channel->Close();
     dynamic_cast<MultiSlotDataset*>(dataset_)->SetInputChannel(
         new_input_channel);
-    dynamic_cast<MultiSlotDataset*>(dataset_)->PreprocessInstance();
+    if (dataset_->EnablePvMerge()) {
+      dataset_->PreprocessInstance();
+    }
 #endif
   }
 #ifdef PADDLE_WITH_BOX_PS

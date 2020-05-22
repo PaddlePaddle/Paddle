@@ -280,6 +280,7 @@ void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {
   for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
     threads[tid].join();
   }
+  pass_done_semi_->Put(1);
 }
 
 void BoxWrapper::GetRandomData(
@@ -331,6 +332,8 @@ void BoxWrapper::GetRandomData(
 
 void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
                                    int feed_pass_thread_num) {
+  int semi;
+  pass_done_semi_->Get(semi);
   std::vector<std::thread> threads;
   for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
     threads.push_back(std::thread([this, tid, p_agent, feed_pass_thread_num]() {
