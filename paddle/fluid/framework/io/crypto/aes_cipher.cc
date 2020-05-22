@@ -65,7 +65,7 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
     iv_ = CipherUtils::GenKey(iv_size_);
     m_cipher.get()->SetKeyWithIV(
         key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))));
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
@@ -74,7 +74,7 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
   if (need_iv) {
-    ciphertext = iv_ + ciphertext;
+    ciphertext = iv_.append(ciphertext);
   }
 
   return ciphertext;
@@ -95,7 +95,7 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
     ciphertext_beg = iv_size_ / 8;
     m_cipher.get()->SetKeyWithIV(
         key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))));
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
@@ -120,7 +120,7 @@ std::string AESCipher::AuthenticatedEncryptInternal(
     iv_ = CipherUtils::GenKey(iv_size_);
     m_cipher.get()->SetKeyWithIV(
         key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))));
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }
@@ -129,7 +129,7 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
   if (need_iv) {
-    ciphertext = iv_ + ciphertext;
+    ciphertext = iv_.append(ciphertext);
   }
 
   return ciphertext;
@@ -150,7 +150,7 @@ std::string AESCipher::AuthenticatedDecryptInternal(
     ciphertext_beg = iv_size_ / 8;
     m_cipher.get()->SetKeyWithIV(
         key_char, key.size(),
-        reinterpret_cast<const unsigned char*>(&(iv_.at(0))));
+        reinterpret_cast<const unsigned char*>(&(iv_.at(0))), iv_.size());
   } else {
     m_cipher.get()->SetKey(key_char, key.size());
   }

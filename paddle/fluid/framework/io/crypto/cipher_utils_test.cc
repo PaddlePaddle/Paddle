@@ -70,7 +70,7 @@ TEST(CipherUtils, gen_key) {
   EXPECT_NE(key, key1);
   std::string key2 = CipherUtils::ReadKeyFromFile(filename);
   EXPECT_EQ(key1, key2);
-  EXPECT_EQ(key.size(), 256 / 8);
+  EXPECT_EQ(static_cast<int>(key.size()), 32);
 }
 
 }  // namespace framework

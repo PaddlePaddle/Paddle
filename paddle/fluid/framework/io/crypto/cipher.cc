@@ -48,10 +48,10 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
     ret->Init(cipher_name, iv_size, tag_size);
     return ret;
   } else {
-    PADDLE_THROW(
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Invalid cipher name is specied. "
         "Please check you have specified valid cipher"
-        " name in CryptoProperties.");
+        " name in CryptoProperties."));
   }
   return nullptr;
 }

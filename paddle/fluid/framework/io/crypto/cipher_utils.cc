@@ -111,7 +111,7 @@ bool CipherUtils::GetValue<bool>(
   return true;
 }
 
-const int CipherUtils::AES_DEFAULT_IV_SIZE = 96;
+const int CipherUtils::AES_DEFAULT_IV_SIZE = 128;
 const int CipherUtils::AES_DEFAULT_TAG_SIZE = 128;
 }  // namespace framework
 }  // namespace paddle

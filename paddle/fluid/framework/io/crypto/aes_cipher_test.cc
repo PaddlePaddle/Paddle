@@ -45,6 +45,7 @@ TEST_F(AESTest, security_string) {
       {"AES_CTR_NoPadding", "AES_CBC_PKCSPadding", "AES_ECB_PKCSPadding",
        "AES_GCM_NoPadding"});
   const std::string plaintext("hello world.");
+  bool is_throw = false;
   for (auto& i : name_list) {
     AESTest::GenConfigFile(i);
     try {
@@ -54,8 +55,10 @@ TEST_F(AESTest, security_string) {
       std::string plaintext1 = cipher->Decrypt(ciphertext, AESTest::key);
       EXPECT_EQ(plaintext, plaintext1);
     } catch (CryptoPP::Exception& e) {
+      is_throw = true;
       LOG(ERROR) << e.what();
     }
+    EXPECT_FALSE(is_throw);
   }
 }
 
@@ -64,6 +67,7 @@ TEST_F(AESTest, security_vector) {
       {"AES_CTR_NoPadding", "AES_CBC_PKCSPadding", "AES_ECB_PKCSPadding",
        "AES_GCM_NoPadding"});
   std::vector<int> input{1, 2, 3, 4};
+  bool is_throw = false;
   for (auto& i : name_list) {
     AESTest::GenConfigFile(i);
     try {
@@ -79,8 +83,10 @@ TEST_F(AESTest, security_vector) {
         EXPECT_EQ(i, output);
       }
     } catch (CryptoPP::Exception& e) {
+      is_throw = true;
       LOG(ERROR) << e.what();
     }
+    EXPECT_FALSE(is_throw);
   }
 }
 
@@ -90,6 +96,7 @@ TEST_F(AESTest, encrypt_to_file) {
        "AES_GCM_NoPadding"});
   const std::string plaintext("hello world.");
   std::string filename("aes_test.ciphertext");
+  bool is_throw = false;
   for (auto& i : name_list) {
     AESTest::GenConfigFile(i);
     try {
@@ -98,8 +105,10 @@ TEST_F(AESTest, encrypt_to_file) {
       std::string plaintext1 = cipher->DecryptFromFile(AESTest::key, filename);
       EXPECT_EQ(plaintext, plaintext1);
     } catch (CryptoPP::Exception& e) {
+      is_throw = true;
       LOG(ERROR) << e.what();
     }
+    EXPECT_FALSE(is_throw);
   }
 }
 
