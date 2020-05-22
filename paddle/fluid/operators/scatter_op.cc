@@ -51,6 +51,7 @@ class ScatterOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Updates and Ids should have same batch-size."));
     ctx->SetOutputDim("Out", ref_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

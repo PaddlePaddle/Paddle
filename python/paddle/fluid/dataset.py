@@ -728,6 +728,8 @@ class InMemoryDataset(DatasetBase):
 
     def release_memory(self):
         """
+        :api_attr: Static Graph
+        
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
