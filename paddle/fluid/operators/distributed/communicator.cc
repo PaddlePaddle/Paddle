@@ -295,7 +295,7 @@ void AsyncCommunicator::Start() {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     VLOG(1) << "start send thread and recv thread";
-    waiting_ = false;
+    waiting_ = true;
     running_ = true;
     BarrierTriggerReset(max_merge_var_num_);
     // start send and recv thread

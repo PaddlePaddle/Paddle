@@ -108,8 +108,6 @@ struct VALUE {
 class ValueBlock {
  public:
   bool Has(const int64_t id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     auto got = values_.find(id);
     if (got == values_.end()) {
       return false;
@@ -128,7 +126,7 @@ class ValueBlock {
       auto name = origin_names[i];
       auto dim = origin_dims[i];
       rets[i].resize(dim);
-      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.0));
+      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.5));
     }
     return rets;
   }
@@ -136,6 +134,7 @@ class ValueBlock {
   std::vector<std::vector<float>> Get(
       const int64_t &id, const std::vector<std::string> &value_names) {
     std::lock_guard<std::mutex> lock(mutex_);
+
     return values_.at(id)->get(value_names);
   }
 
@@ -150,7 +149,7 @@ class ValueBlock {
       value->set(Init(origin_names, origin_dims));
       values_[id] = value;
     }
-    return Get(id, value_names);
+    return values_.at(id)->get(value_names);
   }
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
