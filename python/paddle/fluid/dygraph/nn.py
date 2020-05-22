@@ -807,6 +807,8 @@ class Pool2D(layers.Layer):
                  ceil_mode=False,
                  exclusive=True,
                  data_format="NCHW"):
+        data_format = data_format.upper()  # supprt NHWC, nhwc, etc.
+        pool_type = pool_type.lower()  # supprt max, Max, etc.
         if pool_type not in ["max", "avg"]:
             raise ValueError(
                 "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
