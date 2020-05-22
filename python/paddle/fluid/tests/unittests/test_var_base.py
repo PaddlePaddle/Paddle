@@ -50,7 +50,7 @@ class TestVarBase(unittest.TestCase):
     def test_tensor_to_variable(self):
         with fluid.dygraph.guard():
             t = fluid.Tensor()
-            t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+            t.set(np.random.random((1024, 1024)), fluid.CPUPlace())
             var = fluid.dygraph.to_variable(t)
             self.assertTrue(np.array_equal(t, var.numpy()))
 
