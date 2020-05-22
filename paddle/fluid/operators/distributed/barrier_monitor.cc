@@ -111,7 +111,7 @@ void BarrierMonitor::Swap(bool is_valid) {
     VLOG(4) << "barrier monitor server switch to send barrier";
   }
 
-  workder_cv_.notify_all();
+  worker_cv_.notify_all();
 }
 
 void BarrierMonitor::Stop() {
@@ -123,7 +123,7 @@ void BarrierMonitor::Stop() {
   send_barrier_queue->Clear();
   recv_barrier_queue->Clear();
 
-  workder_cv_.notify_all();
+  worker_cv_.notify_all();
   server_cv_.notify_all();
 
   if (monitor_thread_) monitor_thread_->join();
@@ -132,7 +132,7 @@ void BarrierMonitor::Stop() {
 
 bool BarrierMonitor::Wait() {
   std::unique_lock<std::mutex> lk(mutex_);
-  workder_cv_.wait(lk, [this] { return (release_); });
+  worker_cv_.wait(lk, [this] { return (release_); });
   return valid_;
 }
 

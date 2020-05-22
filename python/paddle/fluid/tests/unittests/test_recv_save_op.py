@@ -57,7 +57,7 @@ def run_pserver(pserver_id):
                     "optimize_blocks": [optimize_block],
                     "endpoint": '127.0.0.1:0',
                     "Fanin": 1,
-                    "distributed_mode": DistributedMode.ASYNC,
+                    "distributed_mode": DistributedMode.SYNC,
                     "grad_to_block_id": []
                 })
 
