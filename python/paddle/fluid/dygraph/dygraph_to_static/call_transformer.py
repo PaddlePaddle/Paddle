@@ -32,7 +32,7 @@ class CallTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
 
-    def _in_convert_call_whitelist(self, node):
+    def _no_need_convert_call(self, node):
         """
         Determines whether a function needs to be transformed by `convert_call`.
         It doesn't need to be transformed when a function satisfies the following conditions:
@@ -58,7 +58,7 @@ class CallTransformer(gast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
 
-        if self._in_convert_call_whitelist(node):
+        if self._no_need_convert_call(node):
             return node
 
         func_str = ast_to_source_code(node.func).strip()
