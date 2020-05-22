@@ -113,7 +113,7 @@ void FileReaderInferVarType::operator()(
 void DecoratedReaderInferShape::operator()(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_NE(
-      !ctx->IsRuntime(), true,
+      ctx->IsRuntime(), true,
       platform::errors::PreconditionNotMet(
           "'DecoratedReaderInferShape' should only be invoked during "
           "compile time."));
