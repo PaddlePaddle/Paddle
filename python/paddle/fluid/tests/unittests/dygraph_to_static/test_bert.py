@@ -17,6 +17,7 @@ import unittest
 
 import numpy as np
 import paddle.fluid as fluid
+from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 
 from bert_dygraph_model import PretrainModelLayer
@@ -24,11 +25,8 @@ from bert_utils import get_bert_config, get_feed_data_reader
 
 program_translator = ProgramTranslator()
 
-# TODO(liym27): Diff exists between dygraph and static graph on CUDA place.
-#  If only one test of `train_dygraph` and `train_static` is run, the results are stable and the same.
-#  If the two tests are run, the results of the latter test are random.
-# place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-place = fluid.CPUPlace()
+place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
+)
 
 SEED = 2020
 STEP_NUM = 10
@@ -40,19 +38,16 @@ def train(bert_config, data_reader):
         fluid.default_main_program().random_seed = SEED
         fluid.default_startup_program().random_seed = SEED
 
-        data_loader = fluid.io.DataLoader.from_generator(
-            capacity=50, iterable=True)
-        data_loader.set_batch_generator(
-            data_reader.data_generator(), places=place)
-
         bert = PretrainModelLayer(
             config=bert_config, weight_sharing=False, use_fp16=False)
 
         optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
         step_idx = 0
         speed_list = []
-        for input_data in data_loader():
+        for input_data in data_reader.data_generator():
+            input_data = [to_variable(ele) for ele in input_data]
             src_ids, pos_ids, sent_ids, input_mask, mask_label, mask_pos, labels = input_data
+
             next_sent_acc, mask_lm_loss, total_loss = bert(
                 src_ids=src_ids,
                 position_ids=pos_ids,
