@@ -59,9 +59,9 @@ function init() {
 }
 
 function cmake_base() {
-    # build script will not fail if *.deb does not exist
+    # Build script will not fail if *.deb does not exist
     rm *.deb 2>/dev/null || true
-    # delete previous built whl packages
+    # Delete previous built whl packages
     rm -rf python/dist 2>/dev/null || true
 
     # Support build for all python versions, currently
