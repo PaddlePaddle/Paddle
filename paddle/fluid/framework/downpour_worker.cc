@@ -771,7 +771,43 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
-        op->Run(*thread_scope_, place_);
+        try {
+          op->Run(*thread_scope_, place_);
+        } catch (std::exception& e) {
+          fprintf(stderr, "error message: %s\n", e.what());
+          auto& ins_id_vec = device_reader_->GetInsIdVec();
+          std::string s = "";
+          for (auto& ins_id : ins_id_vec) {
+            if (s != "") s += ",";
+            s += ins_id;
+          }
+          fprintf(stderr, "ins_ids_vec: %s\n", s.c_str());
+          s = "";
+          for (auto& param : all_param_) {
+            Variable* var = thread_scope_->FindVar(param);
+            if (var == nullptr) {
+              continue;
+            }
+            Tensor* tensor;
+            int64_t len;
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
+              len = tensor->numel();
+            } else if (var->IsType<SelectedRows>()) {
+              auto selected_rows = var->GetMutable<SelectedRows>();
+              tensor = selected_rows->mutable_value();
+              len = tensor->numel();
+            }
+            if (!tensor->IsInitialized()) {
+              continue;
+            }
+            s += param + ":" + std::to_string(len) + ":";
+            s += PrintLodTensor(tensor, 0, len);
+            fprintf(stderr, "%s\n", s.c_str());
+            s = "";
+          }
+          throw e;
+        }
       }
     }
 
