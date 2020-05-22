@@ -177,7 +177,6 @@ class FleetTranspiler(Fleet):
                 trainer_config.mode, kwargs,
                 trainer_config.get_communicator_flags())
             self._communicator.init_with_ctx(send_ctx, recv_ctx)
-
         else:
             self._communicator = Communicator(
                 trainer_config.mode, kwargs,

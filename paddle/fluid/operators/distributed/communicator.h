@@ -253,6 +253,7 @@ class Communicator {
 
  protected:
   bool running_ = false;
+  bool waiting_ = true;
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
   std::unordered_map<std::string, std::string> envs;

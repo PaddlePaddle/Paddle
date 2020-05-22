@@ -198,7 +198,13 @@ void AsyncCommunicator::SendByCommunicator() {
 }
 
 void AsyncCommunicator::MainThread() {
-  VLOG(3) << "SendThread start!";
+  VLOG(3) << "MainThread start and wait";
+
+  while (waiting_) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    VLOG(3) << "wait for running";
+  }
+
   while (running_) {
     MetCondition();
     SendByCommunicator();
@@ -289,6 +295,7 @@ void AsyncCommunicator::Start() {
     VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     VLOG(1) << "start send thread and recv thread";
+    waiting_ = false;
     running_ = true;
     BarrierTriggerReset(max_merge_var_num_);
     // start send and recv thread
@@ -324,6 +331,8 @@ void AsyncCommunicator::Stop() {
 void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const std::vector<std::string> &var_tables,
                              const framework::Scope &scope) {
+  waiting_ = false;
+
   PADDLE_ENFORCE_GE(
       var_names.size(), 1,
       platform::errors::InvalidArgument("var_names.size() >= 1 is permitted"));
