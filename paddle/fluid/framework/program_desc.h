@@ -36,8 +36,13 @@ class ProgramDesc {
   ProgramDesc(const ProgramDesc &o);
 
   explicit ProgramDesc(const std::string &binary_str);
+  ProgramDesc(const ProgramDesc &o, bool is_set_block_attrs);
 
   BlockDesc *AppendBlock(const BlockDesc &parent);
+
+  BlockDesc *AppendBlockOpVar(const BlockDesc &parent);
+
+  void SetBlockAttrs(const ProgramDesc &o);
 
   BlockDesc *MutableBlock(size_t idx) {
     if (idx == static_cast<size_t>(kNoneBlockIndex)) {

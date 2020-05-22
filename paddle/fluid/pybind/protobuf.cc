@@ -55,7 +55,15 @@ void BindProgramDesc(pybind11::module *m) {
              std::string str(binary_str);
              new (&self) pd::ProgramDesc(str);
            })
+      .def("__init__",
+           [](pd::ProgramDesc &self, const pd::ProgramDesc &other,
+              bool is_set_block_attrs) {
+             new (&self) pd::ProgramDesc(other, is_set_block_attrs);
+           })
+      .def("set_block_attrs", &pd::ProgramDesc::SetBlockAttrs)
       .def("append_block", &pd::ProgramDesc::AppendBlock,
+           pybind11::return_value_policy::reference)
+      .def("append_block_op_var", &pd::ProgramDesc::AppendBlockOpVar,
            pybind11::return_value_policy::reference)
       .def("block", &pd::ProgramDesc::MutableBlock,
            pybind11::return_value_policy::reference)

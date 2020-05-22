@@ -643,7 +643,8 @@ class Executor(object):
                 var = global_block.var(feed_target_name)
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place, var.dtype)
-                check_feed_shape_type(var, cur_feed)
+                # Skip check feed shape for lod tensor
+                # check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:

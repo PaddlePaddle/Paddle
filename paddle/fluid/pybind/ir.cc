@@ -57,6 +57,7 @@ void BindGraph(py::module *m) {
       "The graph is a Directed Acyclic Single Static Assignment Graph, see "
       "`paddle::ir::Graph` for details.")
       .def(py::init<const ProgramDesc &>())
+      .def(py::init<const ProgramDesc &, size_t>())
       .def("clone", &Graph::Clone)
       .def("has", &Graph::Has)
       .def("get_bool", &Graph::Get<bool>)

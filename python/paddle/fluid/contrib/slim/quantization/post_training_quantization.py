@@ -325,6 +325,19 @@ class PostTrainingQuantization(object):
         Returns:
             None
         '''
+        '''
+        # for one block
+        io.save_inference_model(
+            dirname=save_model_path,
+            model_filename=model_filename,
+            params_filename=params_filename,
+            feeded_var_names=self._feed_list,
+            target_vars=[self._program.global_block().var('beam_search_decode_0.tmp_0'),
+                self._program.global_block().var('beam_search_decode_0.tmp_1')],
+            executor=self._executor,
+            main_program=self._program)
+        '''
+
         io.save_inference_model(
             dirname=save_model_path,
             model_filename=model_filename,
@@ -538,63 +551,112 @@ class PostTrainingQuantization(object):
         Besides, save all kl threshold to the scale var node.
         '''
         _logger.info("Update the program ...")
-        graph = IrGraph(core.Graph(self._program.desc), for_test=True)
 
-        # use QuantizationTransformPass to insert fake_quant/fake_dequantize op
-        major_quantizable_op_types = []
-        for op_type in QuantizationTransformPass._supported_quantizable_op_type:
-            if op_type in self._quantizable_op_type:
-                major_quantizable_op_types.append(op_type)
-        transform_pass = QuantizationTransformPass(
-            scope=self._scope,
-            place=self._place,
-            weight_bits=self._weight_bits,
-            activation_bits=self._activation_bits,
-            activation_quantize_type=self._activation_quantize_type,
-            weight_quantize_type=self._weight_quantize_type,
-            quantizable_op_type=major_quantizable_op_types)
-        transform_pass.apply(graph)
+        def _apply_pass(graph):
+            # use QuantizationTransformPass to insert fake_quant/fake_dequantize op
+            print("start QuantizationTransformPass")
+            major_quantizable_op_types = []
+            for op_type in QuantizationTransformPass._supported_quantizable_op_type:
+                if op_type in self._quantizable_op_type:
+                    major_quantizable_op_types.append(op_type)
+            transform_pass = QuantizationTransformPass(
+                scope=self._scope,
+                place=self._place,
+                weight_bits=self._weight_bits,
+                activation_bits=self._activation_bits,
+                activation_quantize_type=self._activation_quantize_type,
+                weight_quantize_type=self._weight_quantize_type,
+                quantizable_op_type=major_quantizable_op_types)
+            transform_pass.apply(graph)
 
-        # use AddQuantDequantPass to insert fake_quant_dequant op
-        minor_quantizable_op_types = []
-        for op_type in AddQuantDequantPass._supported_quantizable_op_type:
-            if op_type in self._quantizable_op_type:
-                minor_quantizable_op_types.append(op_type)
-        add_quant_dequant_pass = AddQuantDequantPass(
-            scope=self._scope,
-            place=self._place,
-            quantizable_op_type=minor_quantizable_op_types)
-        add_quant_dequant_pass.apply(graph)
+            # use AddQuantDequantPass to insert fake_quant_dequant op
+            print("start AddQuantDequantPass")
+            minor_quantizable_op_types = []
+            for op_type in AddQuantDequantPass._supported_quantizable_op_type:
+                if op_type in self._quantizable_op_type:
+                    minor_quantizable_op_types.append(op_type)
+            add_quant_dequant_pass = AddQuantDequantPass(
+                scope=self._scope,
+                place=self._place,
+                quantizable_op_type=minor_quantizable_op_types)
+            add_quant_dequant_pass.apply(graph)
 
-        # save abs_max or KL threshold to scale var node
-        if self._algo == "KL":
-            scale_dict = self._quantized_var_kl_threshold
+            # save abs_max or KL threshold to scale var node
+            print("set threshold")
+            if self._algo == "KL":
+                scale_dict = self._quantized_var_kl_threshold
+            else:
+                scale_dict = self._quantized_var_abs_max
+            for key, val in scale_dict.items():
+                _set_variable_data(
+                    self._scope,
+                    self._place,
+                    key + ".scale",
+                    np.array(
+                        [val], dtype=np.float32))
+                _set_variable_data(
+                    self._scope,
+                    self._place,
+                    key + ".quant_dequant.scale",
+                    np.array(
+                        [val], dtype=np.float32))
+
+            # apply QuantizationFreezePass, and obtain the final quant model
+            print("start QuantizationFreezePass")
+            freeze_pass = QuantizationFreezePass(
+                scope=self._scope,
+                place=self._place,
+                weight_bits=self._weight_bits,
+                activation_bits=self._activation_bits,
+                weight_quantize_type=self._weight_quantize_type,
+                quantizable_op_type=major_quantizable_op_types)
+            freeze_pass.apply(graph)
+            return graph
+
+        #save_path = "/work/autil/_transformer_quant/post_quant_2/draw_model"
+        only_process_one_block = False
+
+        if only_process_one_block:
+            graph = IrGraph(core.Graph(self._program.desc, 0), for_test=True)
+            graph = _apply_pass(graph)
+            self._program = graph.to_program_with_desc(self._program.desc)
         else:
-            scale_dict = self._quantized_var_abs_max
-        for key, val in scale_dict.items():
-            _set_variable_data(
-                self._scope,
-                self._place,
-                key + ".scale",
-                np.array(
-                    [val], dtype=np.float32))
-            _set_variable_data(
-                self._scope,
-                self._place,
-                key + ".quant_dequant.scale",
-                np.array(
-                    [val], dtype=np.float32))
+            final_program_desc = None
+            for i in range(self._program.num_blocks):
+                print("start quantize block: " + str(i))
+                graph = IrGraph(
+                    core.Graph(self._program.desc, i), for_test=True)
+                #self._draw_graph(graph, save_path, str(i) + "_origin")
+                graph = _apply_pass(graph)
+                #self._draw_graph(graph, save_path, str(i) + "_processed")
+                updated_program = graph.to_program()
 
-        # apply QuantizationFreezePass, and obtain the final quant model
-        freeze_pass = QuantizationFreezePass(
-            scope=self._scope,
-            place=self._place,
-            weight_bits=self._weight_bits,
-            activation_bits=self._activation_bits,
-            weight_quantize_type=self._weight_quantize_type,
-            quantizable_op_type=major_quantizable_op_types)
-        freeze_pass.apply(graph)
-        self._program = graph.to_program()
+                if final_program_desc is None:
+                    final_program_desc = core.ProgramDesc(updated_program.desc,
+                                                          False)
+                else:
+                    final_program_desc.append_block_op_var(
+                        updated_program.desc.block(0))
+
+                print("finish quantize block: " + str(i))
+
+            final_program_desc.set_block_attrs(self._program.desc)
+            self._program = framework.Program._construct_from_desc(
+                final_program_desc)
+        print("finish updata program")
+
+    def _draw_graph(self, graph, save_path, graph_name):
+        print("draw graph into " + save_path + "/" + graph_name)
+        graph.draw(save_path, graph_name)
+
+    def _save_program(self, program, save_path, program_name):
+        print("save program into " + save_path + "/" + program_name)
+        io.save_inference_model(
+            dirname=os.path.join(save_path, program_name),
+            feeded_var_names=self._feed_list,
+            target_vars=self._fetch_list,
+            executor=self._executor,
+            main_program=program)
 
     def _save_output_threshold(self):
         '''

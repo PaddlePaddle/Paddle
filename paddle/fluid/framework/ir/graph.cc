@@ -34,19 +34,30 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   ResolveHazard(var_nodes);
 }
 
+// Use the block_index block in program to construct graph
+Graph::Graph(const ProgramDesc &program, size_t block_index)
+    : program_(program) {
+  auto var_nodes = InitFromProgram(program_, block_index);
+  ResolveHazard(var_nodes);
+}
+
 std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
-    const ProgramDesc &program) {
+    const ProgramDesc &program, size_t block_index) {
   VLOG(3) << "block in program:" << program_.Size();
-  std::unordered_map<std::string, VarDesc *> all_vars;
+  std::unordered_map<std::string, VarDesc *> block_0_all_vars;
+  std::unordered_map<std::string, VarDesc *> block_i_all_vars;
   // var nodes for each var name, will have multiple versions in SSA
   std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *var : program.Block(0).AllVars()) {
-    all_vars.emplace(var->Name(), var);
+    block_0_all_vars.emplace(var->Name(), var);
+  }
+  for (auto *var : program.Block(block_index).AllVars()) {
+    block_i_all_vars.emplace(var->Name(), var);
   }
 
-  auto not_visited_vars = all_vars;
+  auto not_visited_vars = block_i_all_vars;
 
-  for (auto *op : program.Block(0).AllOps()) {
+  for (auto *op : program.Block(block_index).AllOps()) {
     ir::Node *node = CreateOpNode(op);
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
@@ -55,8 +66,12 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       ir::Node *var = nullptr;
       if (var_nodes.find(each_var_name) != var_nodes.end()) {
         var = var_nodes.at(each_var_name).back();
-      } else if (all_vars.count(each_var_name) != 0) {
-        var = CreateVarNode(all_vars.at(each_var_name));
+      } else if (block_i_all_vars.count(each_var_name) != 0) {
+        var = CreateVarNode(block_i_all_vars.at(each_var_name));
+        var_nodes[each_var_name].push_back(var);
+      } else if (block_0_all_vars.count(each_var_name) != 0) {
+        // Weights saved in block0, this case handle it
+        var = CreateVarNode(block_0_all_vars.at(each_var_name));
         var_nodes[each_var_name].push_back(var);
       } else {
         // Operation input var can be optional (dispensable). Which means
@@ -82,8 +97,8 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
       }
 
       ir::Node *var = nullptr;
-      if (all_vars.count(each_var_name) != 0) {
-        var = CreateVarNode(all_vars.at(each_var_name));
+      if (block_i_all_vars.count(each_var_name) != 0) {
+        var = CreateVarNode(block_i_all_vars.at(each_var_name));
       } else {
         // Operation output vars can be @EMPTY@. For example, while_grad
         // can have multi @EMPTY@ outputs with no VarDesc.
@@ -107,7 +122,7 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 
   Set<const std::vector<OpDesc *>>(
       details::kStaleProgramOpDescs,
-      new std::vector<OpDesc *>(program.Block(0).AllOps()));
+      new std::vector<OpDesc *>(program.Block(block_index).AllOps()));
   return var_nodes;
 }
 

@@ -72,6 +72,7 @@ namespace ir {
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
+  Graph(const ProgramDesc &program, size_t block_index);
 
   virtual ~Graph() {
     for (auto &attr : attrs_) {
@@ -246,7 +247,7 @@ class Graph {
 
  private:
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
-      const ProgramDesc &program);
+      const ProgramDesc &program, size_t block_index = 0);
 
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc program_;
