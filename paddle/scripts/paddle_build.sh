@@ -328,6 +328,13 @@ function build() {
     ============================================
 EOF
     build_base $@
+    current_branch=`git branch | grep \* | cut -d ' ' -f2`
+    if [ "$current_branch" != "develop_base_pr" ];then
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build |awk '{print $1}')
+        echo "Build Size: $buildSize"
+        PR_whlSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+        echo "PR whl Size: $PR_whlSize"
+    fi
 }
 
 function build_mac() {
@@ -342,6 +349,10 @@ EOF
         make clean
     fi
     make install -j 8
+    buildSize=$(du -h -d 0 ${PADDLE_ROOT}/build |awk '{print $1}')
+    echo "Build Size: $buildSize"
+    PR_whlSize=$(du -h -d 0 ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+    echo "PR whl Size: $PR_whlSize"
 }
 
 function run_test() {
@@ -459,8 +470,10 @@ EOF
         elif [ "$1" == "cp37-cp37m" ]; then
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
-
+        ut_startTime_s=`date +%s`
         ctest --output-on-failure -j $2
+        ut_endTime_s=`date +%s`
+        echo "Mac testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         paddle version
         # Recovery proxy to avoid failure in later steps
         export http_proxy=$my_proxy
@@ -685,6 +698,13 @@ function caught_error() {
     done
 }
 
+function case_count(){
+    testcases=$1
+    testtype=$2
+    num=$(echo $testcases|grep -o '\^'|wc -l)
+    echo "$testtype testcases count is $num"
+}
+
 function card_test() {
     set -m
 
@@ -808,10 +828,23 @@ set +x
                 testcase=''
         done <<< "$test_cases";
 
+        ut_single_startTime_s=`date +%s`        
         card_test "$single_card_tests" 1    # run cases with single GPU
         card_test "$single_card_tests_1" 1    # run cases with single GPU
+        ut_single_endTime_s=`date +%s`
+        case_count $single_card_tests "single"
+        case_count $single_card_tests_1 "single"
+        echo "single card TestCases Total Time: $[ $ut_single_endTime_s - $ut_single_startTime_s ]s"
+        ut_multiple_startTime_s=`date +%s`
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
+        ut_multiple_endTime_s=`date +%s`
+        case_count $multiple_card_tests "multiple"
+        echo "multiple card TestCases Total Time: $[ $ut_multiple_endTime_s - $ut_multiple_startTime_s ]s"
+        ut_exclusive_startTime_s=`date +%s`
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        ut_exclusive_endTime_s=`date +%s`
+        case_count $exclusive_tests "exclusive"
+        echo "exclusive TestCases Total Time: $[ $ut_exclusive_endTime_s - $ut_exclusive_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -1084,6 +1117,8 @@ EOF
 
     make -j ${parallel_number} fluid_lib_dist
     make -j ${parallel_number} inference_lib_dist
+    buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build |awk '{print $1}')
+    echo "Fluid lib build Size: $buildSize"
 }
 
 function tar_fluid_lib() {
@@ -1146,14 +1181,20 @@ function main() {
     init
     case $CMD in
       build_only)
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
         ;;
       build_and_check)
         check_style
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         example
@@ -1209,10 +1250,16 @@ function main() {
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
         enable_unused_var_check
+        ut_startTime_s=`date +%s`
         parallel_test
+        ut_endTime_s=`date +%s`
+        echo "TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
@@ -1226,9 +1273,18 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
+        startTime_s=`date +%s`
         gen_fluid_lib ${parallel_number}
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        fluid_startTime_s=`date +%s`
         test_fluid_lib
+        fluid_endTime_s=`date +%s`
+        echo "Fluid lib testCase Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
+        fluid_train_startTime_s=`date +%s`
         test_fluid_lib_train
+        fluid_train_endTime_s=`date +%s`
+        echo "Fluid train lib testCase Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -1238,13 +1294,19 @@ function main() {
         assert_api_spec_approvals
         ;;
       maccheck)
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py35)
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
@@ -1253,9 +1315,15 @@ function main() {
         build_mac
         ;;
       cicheck_py35)
+        startTime_s=`date +%s`
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+        endTime_s=`date +%s`
+        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        ut_startTime_s=`date +%s`
         parallel_test
+        ut_endTime_s=`date +%s`
+        echo "TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
