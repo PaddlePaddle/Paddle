@@ -5468,7 +5468,7 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
-    if ':' in device:
+    if device and ':' in device:
         device, index = device.split(':')
     else:
         index = ""
