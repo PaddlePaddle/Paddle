@@ -769,15 +769,17 @@ class Pool2D(layers.Layer):
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+            ``[batch_size, input_channels, input_height, input_width]``. When it is `"NHWC"`, the data is 
+            stored in the order of: ``[batch_size, input_height, input_width, input_channels]``
 
     Returns:
         None
 
     Raises:
-        ValueError: If 'pool_type' is not "max" nor "avg"
-        ValueError: If 'global_pooling' is False and 'pool_size' is -1
-        ValueError: If 'use_cudnn' is not a bool value.
+        ValueError: If ``pool_type`` is not "max" nor "avg".
+        ValueError: If ``global_pooling`` is False and ``pool_size`` is -1.
+        ValueError: If ``use_cudnn`` is not a bool value.
+        ValueError: If ``data_format`` is not "NCHW" nor "NHWC".
 
     Examples:
 
