@@ -429,13 +429,11 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-        #remove proxy here to fix dist error on mac
+        #remove proxy here to fix error on mac dist ut 
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
-        # make install should also be test when unittest
-        make install -j 8
-
+        
         set +ex
         if [ "$1" == "cp27-cp27m" ]; then
             pip uninstall -y paddlepaddle
