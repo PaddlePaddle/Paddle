@@ -19,7 +19,7 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.slim.quantization import transform_qat
+from paddle.fluid.contrib.slim.quantization import quantize_qat
 from paddle.fluid.optimizer import AdamOptimizer
 
 os.environ["CPU_NUM"] = "8"
@@ -109,7 +109,7 @@ class TestDygraphQAT(unittest.TestCase):
     def test_qat(self):
         with fluid.dygraph.guard():
             mnist = MNIST()
-            transform_qat(mnist)
+            quantize_qat(mnist)
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=mnist.parameters())
             train_reader = paddle.batch(

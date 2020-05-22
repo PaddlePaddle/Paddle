@@ -26,7 +26,7 @@ from ....framework import _varbase_creator
 from ....initializer import Constant
 from ....log_helper import get_logger
 
-__all__ = ['transform_qat']
+__all__ = ['quantize_qat']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -91,21 +91,40 @@ class FakeQuant(layers.Layer):
         return out, out_scale
 
 
-def transform_qat(model,
-                  weight_bits=8,
-                  activation_bits=8,
-                  moving_rate=0.9,
-                  quantizable_layer_type=['Conv2D', 'Linear']):
+def quantize_qat(model,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 quantizable_layer_type=['Conv2D', 'Linear']):
     def _add_fake_quant(layer, input):
+        _logger.info("------------------------------------------------{}".
+                     format(layer.full_name()))
+        is_test = not layer.training
         quant_inputs = []
+
+        # add fake_quant for activation inputs
         for layer_in in input:
-            quant_bits = weight_bits if layer_in.persistable else activation_bits
+            _logger.info("***********************************************{}".
+                         format(layer_in.name))
+            # prevent pruning the fake_quant_grad op
+            layer_in.stop_gradient = False
             dtype = 'float64' if layer_in.dtype == core.VarDesc.VarType.FP64 else 'float32'
-            is_test = not layer.training
-            fake_quant = FakeQuant(layer_in.name, moving_rate, quant_bits,
-                                   dtype, is_test)
-            quant_input, _ = fake_quant(layer_in)
+            fake_quant_input = FakeQuant(layer_in.name, moving_rate,
+                                         activation_bits, dtype, is_test)
+            quant_input, _ = fake_quant_input(layer_in)
             quant_inputs.append(quant_input)
+
+        # add fake_quant for weight inputs
+        params = layer._parameters.items()
+        for key, param in params:
+            _logger.info("key-------------------------:{}".format(key))
+            _logger.info("name-------------------------:{}".format(param.name))
+            if key.find('weight') != -1:
+                dtype = 'float64' if param.dtype == core.VarDesc.VarType.FP64 else 'float32'
+                fake_quant_weight = FakeQuant(param.name, moving_rate,
+                                              weight_bits, dtype, is_test)
+                quant_param, _ = fake_quant_weight(param)
+                layer._parameters[key] = quant_param
 
         return tuple(quant_inputs)
 
