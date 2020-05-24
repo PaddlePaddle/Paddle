@@ -1148,7 +1148,8 @@ void MultiSlotDataset::GetRandomData(
   int debug_push_cnt = 0;
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   slots_shuffle_rclist_.ReInit();
-  for (const auto& rec : slots_shuffle_original_data_) {
+  const auto& slots_shuffle_original_data = GetSlotsOriginalData();
+  for (const auto& rec : slots_shuffle_original_data) {
     RecordCandidate rand_rec;
     Record new_rec = rec;
     slots_shuffle_rclist_.AddAndGet(rec, &rand_rec);
