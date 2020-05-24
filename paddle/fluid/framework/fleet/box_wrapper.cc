@@ -257,6 +257,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
 }
 
 void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {
+  VLOG(0) << "Begin GetRandomReplace";
   size_t ins_num = pass_data.size();
   replace_idx_.resize(ins_num);
   for (auto& cand_list : random_ins_pool_list) {
@@ -281,12 +282,14 @@ void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {
     threads[tid].join();
   }
   pass_done_semi_->Put(1);
+  VLOG(0) << "End GetRandomReplace";
 }
 
 void BoxWrapper::GetRandomData(
     const std::vector<Record>& pass_data,
     const std::unordered_set<uint16_t>& slots_to_replace,
     std::vector<Record>* result) {
+  VLOG(0) << "Begin GetRandomData";
   std::vector<std::thread> threads;
   for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
     threads.push_back(std::thread([this, &pass_data, tid, &slots_to_replace,
@@ -328,12 +331,15 @@ void BoxWrapper::GetRandomData(
   for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
     threads[tid].join();
   }
+  VLOG(0) << "End GetRandomData";
 }
 
 void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
                                    int feed_pass_thread_num) {
+  VLOG(0) << "Enter AddReplaceFeasign Function";
   int semi;
   pass_done_semi_->Get(semi);
+  VLOG(0) << "Last Pass had updated random pool done. Begin AddReplaceFeasign";
   std::vector<std::thread> threads;
   for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
     threads.push_back(std::thread([this, tid, p_agent, feed_pass_thread_num]() {
@@ -353,6 +359,7 @@ void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
   for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
     threads[tid].join();
   }
+  VLOG(0) << "End AddReplaceFeasign";
 }
 
 }  // end namespace framework

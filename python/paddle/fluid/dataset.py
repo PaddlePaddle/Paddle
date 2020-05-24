@@ -1079,6 +1079,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def _dynamic_adjust_after_train(self):
         pass
+
     def slots_shuffle(self, slots):
         """
         Slots Shuffle 

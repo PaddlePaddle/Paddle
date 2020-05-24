@@ -1281,21 +1281,15 @@ void MultiSlotDataset::PreprocessChannel(
     }
   }
   CHECK(input_channel_->Size() == 0)
-      << "input channel should be empty before slots shuffle, but its size is: "
-      << input_channel_->Size();
-  CHECK(end_size == 0) << "output and consume channel should be empty before "
-                          "slots shuffle, but its size is: "
-                       << end_size;
+      << "input channel should be empty before slots shuffle";
 }
 
 // slots shuffle to input_channel_ with needed-shuffle slots
 void MultiSlotDataset::SlotsShuffle(
     const std::set<std::string>& slots_to_replace) {
-  if (!slots_shuffle_fea_eval_) {
-    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end,"
-               "fea eval mode off, need to set on for slots shuffle";
-    return;
-  }
+  PADDLE_ENFORCE_EQ(slots_shuffle_fea_eval_, true,
+                    platform::errors::PreconditionNotMet(
+                        "fea eval mode off, need to set on for slots shuffle"));
   platform::Timer timeline;
   timeline.Start();
   std::unordered_set<uint16_t> index_slots;

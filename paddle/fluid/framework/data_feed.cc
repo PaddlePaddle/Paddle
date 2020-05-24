@@ -1452,8 +1452,11 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
 int PaddleBoxDataFeed::GetCurrentPhase() {
 #ifdef PADDLE_WITH_BOX_PS
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  // return box_ptr->PassFlag();  // join: 1, update: 0
-  return 1;
+  if (box_ptr->Mode() == 1) {  // For AucRunner
+    return 1;
+  } else {
+    return box_ptr->Phase();
+  }
 #else
   LOG(WARNING) << "It should be complied with BOX_PS...";
   return current_phase_;

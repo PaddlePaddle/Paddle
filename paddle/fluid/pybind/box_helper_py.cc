@@ -86,7 +86,7 @@ void BindBoxWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_name_list", &framework::BoxWrapper::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>())
-      .def("flip_pass_flag", &framework::BoxWrapper::FlipPassFlag,
+      .def("flip_phase", &framework::BoxWrapper::FlipPhase,
            py::call_guard<py::gil_scoped_release>())
       .def("init_afs_api", &framework::BoxWrapper::InitAfsAPI,
            py::call_guard<py::gil_scoped_release>())
