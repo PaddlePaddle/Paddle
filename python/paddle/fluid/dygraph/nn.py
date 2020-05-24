@@ -1077,8 +1077,19 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
-                                               'epsilon', self._epsilon)
+            in_nc = int(input.shape[1])
+            if self.scale.trainable == False:
+                scale = self.scale[:in_nc]
+            else:
+                scale = self.scale
+
+            if self.bias.trainable == False:
+                bias = self.bias[:in_nc]
+            else:
+                bias = self.bias
+
+            out, _, _ = core.ops.instance_norm(input, scale, bias, 'epsilon',
+                                               self._epsilon)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
