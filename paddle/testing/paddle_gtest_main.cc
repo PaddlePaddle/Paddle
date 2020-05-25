@@ -24,9 +24,11 @@ int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
+  std::vector<std::string> args;
   std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
+    args.push_back(std::string(argv[i]));
   }
 
   std::vector<std::string> envs;
@@ -71,6 +73,7 @@ int main(int argc, char** argv) {
     env_string = env_string.substr(0, env_string.length() - 1);
     env_str = strdup(env_string.c_str());
     new_argv.push_back(env_str);
+    args.push_back(env_string);
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
@@ -83,12 +86,14 @@ int main(int argc, char** argv) {
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
     undefok_str = strdup(undefok_string.c_str());
     new_argv.push_back(undefok_str);
+    args.push_back(std::string(undefok_str));
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
   google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
+  paddle::framework::InitGflags(args);
   paddle::framework::InitDevices(true);
 
   int ret = RUN_ALL_TESTS();
