@@ -1,4 +1,4 @@
-//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,13 +23,15 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
+static void PullBoxExtendedSparseFunctor(
+    const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
   auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+  auto outputs_extend = ctx.MultiOutput<framework::Tensor>("OutExtend");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
   // BoxPS only supports float now
-  std::vector<float *> all_values(slot_size);
+  std::vector<float *> all_values(slot_size * 2);
   std::vector<int64_t> slot_lengths(slot_size);
   for (size_t i = 0; i < slot_size; i++) {
     const auto *slot = inputs[i];
@@ -38,24 +40,30 @@ static void PullBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     all_keys[i] = single_slot_keys;
     slot_lengths[i] = slot->numel();
     auto *output = outputs[i]->mutable_data<T>(ctx.GetPlace());
-    all_values[i] = output;
+    auto *output_extend = outputs_extend[i]->mutable_data<T>(ctx.GetPlace());
+    all_values[i] = reinterpret_cast<float *>(output);
+    all_values[i + slot_size] = reinterpret_cast<float *>(output_extend);
   }
 #ifdef PADDLE_WITH_BOX_PS
-  auto hidden_size = ctx.Attr<int>("size");
+  auto emb_size = ctx.Attr<int>("emb_size");
+  auto emb_extended_size = ctx.Attr<int>("emb_extended_size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PullSparse(ctx.GetPlace(), all_keys, all_values, slot_lengths,
-                      hidden_size, 0);
+                      emb_size, emb_extended_size);
 #endif
 }
 
 template <typename T>
-static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
+static void PushBoxExtendedSparseFunctor(
+    const framework::ExecutionContext &ctx) {
   auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
   auto d_output =
       ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
+  auto d_output_extend =
+      ctx.MultiInput<framework::Tensor>(framework::GradVarName("OutExtend"));
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);
-  std::vector<const float *> all_grad_values(slot_size);
+  std::vector<const float *> all_grad_values(slot_size * 2);
   std::vector<int64_t> slot_lengths(slot_size);
   int batch_size = -1;
   for (size_t i = 0; i < slot_size; i++) {
@@ -71,35 +79,41 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     } else {
       PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
                         platform::errors::PreconditionNotMet(
-                            "The batch size of all input slots should be same, "
+                            "The batch size of all input slots should be same,"
                             "please cheack"));
     }
     const float *grad_value = d_output[i]->data<float>();
-    all_grad_values[i] = grad_value;
+    const float *grad_value_extend = d_output_extend[i]->data<float>();
+    all_grad_values[i] = reinterpret_cast<const float *>(grad_value);
+    all_grad_values[i + slot_size] =
+        reinterpret_cast<const float *>(grad_value_extend);
   }
 #ifdef PADDLE_WITH_BOX_PS
-  auto hidden_size = ctx.Attr<int>("size");
+  auto emb_size = ctx.Attr<int>("emb_size");
+  auto emb_extended_size = ctx.Attr<int>("emb_extended_size");
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   box_ptr->PushSparseGrad(ctx.GetPlace(), all_keys, all_grad_values,
-                          slot_lengths, hidden_size, 0, batch_size);
+                          slot_lengths, emb_size, emb_extended_size,
+                          batch_size);
 #endif
 }
 
 using LoDTensor = framework::LoDTensor;
 template <typename T>
-class PullBoxSparseCPUKernel : public framework::OpKernel<T> {
+class PullBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PullBoxSparseFunctor<T>(ctx);
+    PullBoxExtendedSparseFunctor<T>(ctx);
   }
 };
 
 template <typename T>
-class PushBoxSparseCPUKernel : public framework::OpKernel<T> {
+class PushBoxExtendedSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PushBoxSparseFunctor<T>(ctx);
+    PushBoxExtendedSparseFunctor<T>(ctx);
   }
 };
+
 }  // namespace operators
 }  // namespace paddle

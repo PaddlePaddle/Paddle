@@ -63,9 +63,9 @@ void BindBoxHelper(py::module* m) {
 void BindBoxWrapper(py::module* m) {
   py::class_<framework::BoxWrapper, std::shared_ptr<framework::BoxWrapper>>(
       *m, "BoxWrapper")
-      .def(py::init([]() {
+      .def(py::init([](int embedx_dim, int expand_embed_dim) {
         // return std::make_shared<paddle::framework::BoxHelper>(dataset);
-        return framework::BoxWrapper::GetInstance();
+        return framework::BoxWrapper::SetInstance(embedx_dim, expand_embed_dim);
       }))
       .def("save_base", &framework::BoxWrapper::SaveBase,
            py::call_guard<py::gil_scoped_release>())
