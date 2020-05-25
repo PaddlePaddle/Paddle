@@ -120,6 +120,7 @@ struct SparseMeta {
   std::vector<std::string> value_names;
   std::vector<int> value_dims;
   std::vector<std::string> cached_varnames;
+  std::vector<std::string> initializer_attrs;
   Mode mode;
 
   std::string ToString() {
@@ -133,10 +134,17 @@ struct SparseMeta {
     }
 
     ss << " grad var: " << grad_name;
+
     ss << " cached varnames: ";
     for (int i = 0; i < static_cast<int>(cached_varnames.size()); i++) {
       ss << cached_varnames[i] << " ";
     }
+
+    ss << " initializer attrs";
+    for (int i = 0; i < static_cast<int>(initializer_attrs.size()); i++) {
+      ss << initializer_attrs[i] << " ";
+    }
+
     return ss.str();
   }
 };
@@ -201,17 +209,15 @@ class ValueBlock {
     }
   }
 
-  std::vector<std::vector<float>> Init(
-      const std::vector<std::string> &origin_names,
-      const std::vector<int> &origin_dims) {
+  std::vector<std::vector<float>> Init() {
     auto rets = std::vector<std::vector<float>>();
     rets.resize(origin_names.size());
 
-    for (int i = 0; i < static_cast<int>(origin_names.size()); i++) {
-      auto name = origin_names[i];
+    for (int i = 0; i < static_cast<int>(value_names_.size()); i++) {
+      auto name = value_names_[i];
       auto *init = initializers_.at(name);
 
-      auto dim = origin_dims[i];
+      auto dim = value_dims_[i];
       rets[i].resize(dim);
 
       for (int j = 0; j < static_cast<int>(numel); j++) {
@@ -225,19 +231,12 @@ class ValueBlock {
       const int64_t &id, const std::vector<std::string> &value_names) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    return values_.at(id)->get(value_names);
-  }
-
-  std::vector<std::vector<float>> Get(
-      const int64_t &id, const std::vector<std::string> &value_names,
-      const std::vector<std::string> &origin_names,
-      const std::vector<int> &origin_dims) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    if (!Has(id)) {
-      auto value = new VALUE(origin_names);
-      value->set(Init(origin_names, origin_dims));
-      values_[id] = value;
+    if (mode_ == Mode::training) {
+      if (!Has(id)) {
+        auto value = new VALUE(value_names_);
+        value->set(Init());
+        values_[id] = value;
+      }
     }
     return values_.at(id)->get(value_names);
   }
@@ -264,6 +263,9 @@ class ValueBlock {
   std::unordered_map<int64_t, VALUE *> values_;
 
  private:
+  std::vector<std::string> value_names_;
+  std::vector<int> value_dims_;
+  Mode mode_;
   std::unordered_map<std::string, Initializer *> initializers_;
   mutable std::mutex mutex_;
 };
@@ -277,21 +279,10 @@ class SparseVariable {
     meta_.value_dims = meta.value_dims;
     meta_.grad_name = meta.grad_name;
     meta_.cached_varnames = meta.cached_varnames;
+    meta_.initializer_attrs = meta.initializer_attrs;
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       values_dims[meta_.value_names[i]] = meta_.value_dims[i];
-    }
-  }
-
-  void GetAndInit(const std::vector<int64_t> &ids,
-                  const std::vector<std::string> &value_names,
-                  std::vector<std::vector<std::vector<float>>> *values) {
-    for (auto &id : ids) {
-      std::vector<std::vector<float>> value;
-      auto &block = GetShard(id);
-      auto id_values =
-          block.Get(id, value_names, meta_.value_names, meta_.value_dims);
-      values->push_back(id_values);
     }
   }
 
@@ -301,7 +292,7 @@ class SparseVariable {
     for (auto &id : ids) {
       std::vector<std::vector<float>> value;
       auto &block = GetShard(id);
-      auto id_values = block.Get(id, value_names);
+      auto id_values = block.Get(id, value_names, meta_.mode);
       values->push_back(id_values);
     }
   }
