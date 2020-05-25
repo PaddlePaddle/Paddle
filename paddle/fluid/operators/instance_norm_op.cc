@@ -603,7 +603,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInference,
+DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInferer,
                            {"DY", "DDY"});
 
 }  // namespace operators
@@ -618,7 +618,7 @@ REGISTER_OPERATOR(instance_norm_grad, ops::InstanceNormGradOp,
                   ops::InstanceNormDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::InstanceNormDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp,
-                  ops::InstanceNormDoubleGradOpInplaceInference);
+                  ops::InstanceNormDoubleGradOpInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     instance_norm,
