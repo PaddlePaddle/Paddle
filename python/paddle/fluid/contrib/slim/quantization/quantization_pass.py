@@ -356,12 +356,11 @@ class QuantizationTransformPass(object):
                     out_node = func(in_node)
                     # loss shape must be 1 when minimize
                     loss = mean(out_node)
-                #if self._optimizer is not None:
-                if not self._for_test:
-                    assert self._optimizer, "optimizer_func must be set when for_test is False"
-                    in_node.stop_gradient = False
-                    optimizer = self._optimizer()
-                    optimizer.minimize(loss)
+                    if not self._for_test:
+                        assert self._optimizer, "optimizer_func must be set when for_test is False"
+                        in_node.stop_gradient = False
+                        optimizer = self._optimizer()
+                        optimizer.minimize(loss)
             self._exe.run(startup_program)
             tmp_graph = IrGraph(
                 core.Graph(tmp_program.desc), for_test=self._for_test)
