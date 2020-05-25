@@ -896,7 +896,8 @@ class BoxHelper {
     box_ptr->FlipPhase();
 
     std::unordered_set<uint16_t> index_slots;
-    dataset_->PreprocessChannel(slots_to_replace, index_slots);
+    dynamic_cast<MultiSlotDataset*>(dataset_)->PreprocessChannel(
+        slots_to_replace, index_slots);
     const std::vector<Record>& pass_data =
         dynamic_cast<MultiSlotDataset*>(dataset_)->GetSlotsOriginalData();
     if (!get_random_replace_done_) {

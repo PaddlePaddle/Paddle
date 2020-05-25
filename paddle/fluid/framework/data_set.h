@@ -109,14 +109,7 @@ class Dataset {
   virtual void LocalShuffle() = 0;
   // global shuffle data
   virtual void GlobalShuffle(int thread_num = -1) = 0;
-  // for slots shuffle
-  virtual void PreprocessChannel(
-      const std::set<std::string>& slots_to_replace,
-      std::unordered_set<uint16_t>& index_slot) = 0;  // NOLINT
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
-  virtual void GetRandomData(
-      const std::unordered_set<uint16_t>& slots_to_replace,
-      std::vector<Record>* result) = 0;
   // create readers
   virtual void CreateReaders() = 0;
   // destroy readers
@@ -210,14 +203,7 @@ class DatasetImpl : public Dataset {
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle(int thread_num = -1);
-  virtual void PreprocessChannel(
-      const std::set<std::string>& slots_to_replace,
-      std::unordered_set<uint16_t>& index_slot) {  // NOLINT
-  }
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
-  virtual void GetRandomData(
-      const std::unordered_set<uint16_t>& slots_to_replace,
-      std::vector<Record>* result) {}
   virtual const std::vector<T>& GetSlotsOriginalData() {
     return slots_shuffle_original_data_;
   }
