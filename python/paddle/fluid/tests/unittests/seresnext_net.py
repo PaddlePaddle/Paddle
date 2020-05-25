@@ -173,7 +173,7 @@ model = SE_ResNeXt50Small
 
 
 def batch_size():
-    return 8
+    return 6
 
 
 def iter(use_cuda):
