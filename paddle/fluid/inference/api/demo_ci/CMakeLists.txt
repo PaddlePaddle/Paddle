@@ -7,6 +7,10 @@ option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
+else()
+  # PD_INFER_DECL is mainly used to set the dllimport/dllexport attribute in dynamic library mode. 
+  # Set it to empty in static library mode to avoid compilation issues.
+  add_definitions("-DPD_INFER_DECL")
 endif()
 
 macro(safe_set_static_flag)
@@ -110,11 +114,7 @@ else()
 endif()
 
 if(WITH_STATIC_LIB)
-  if(WIN32)
-    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
-  else()
-    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
-  endif()
+  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   if(WIN32)
     set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -176,7 +176,9 @@ if(WIN32)
           COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}/Release
     )
   endif()
-  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
-    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-    )
+  if(NOT WITH_STATIC_LIB)
+      add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+      )
+  endif()
 endif()
