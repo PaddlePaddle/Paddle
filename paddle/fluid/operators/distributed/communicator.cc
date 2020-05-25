@@ -150,7 +150,7 @@ void AsyncCommunicator::SendThread() {
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(4) << "run send graph";
+    VLOG(5) << "run send graph";
     auto before_run_send_graph = GetCurrentUS();
     for (auto &iter : send_varname_to_queue_) {
       auto &var_name = iter.first;
@@ -190,18 +190,18 @@ void AsyncCommunicator::SendThread() {
                                ctx.merge_add);
           }
           auto after_merge = GetCurrentUS();
-          VLOG(4) << "merge " << merged_var_num << " " << var_name
+          VLOG(5) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
           send_functor(ctx, *send_scope_, true, 1);
           auto after_send = GetCurrentUS();
-          VLOG(4) << "send " << var_name << " use time "
+          VLOG(5) << "send " << var_name << " use time "
                   << after_send - after_merge;
         };
         task_futures.emplace_back(
             send_threadpool_->enqueue(std::move(send_task)));
       } else {
-        VLOG(4) << var_name << " queue empty";
+        VLOG(5) << var_name << " queue empty";
       }
     }
     for (auto &task_f : task_futures) {
@@ -209,7 +209,7 @@ void AsyncCommunicator::SendThread() {
     }
     auto after_run_send_graph = GetCurrentUS();
 
-    VLOG(4) << "run send graph use time "
+    VLOG(5) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     Recv();
   }
