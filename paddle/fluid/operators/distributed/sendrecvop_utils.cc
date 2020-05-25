@@ -35,12 +35,14 @@ using VarMsg = sendrecv::VariableMessage;
 
 static TensorPayload GetCommunicationAllocationFromTensor(
     const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
+  VLOG(3) << "GetCommunicationAllocationFromTensor Begin";
   if (is_gpu_place(ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE(is_gpu_place(tensor.place()));
     auto& gpu_dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
+    VLOG(3) << "GetCommunicationAllocationFromTensor copy_size:" << copy_size;
     platform::CUDAPinnedPlace cuda_pinned;
     auto result = memory::AllocShared(cuda_pinned, copy_size);
 
@@ -48,6 +50,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
                  BOOST_GET_CONST(platform::CUDAPlace, tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
     ctx.Wait();
+    VLOG(3) << "GetCommunicationAllocationFromTensor copy End";
     return TensorPayload(result);
 #else
     PADDLE_THROW("This situation should not be happened");
@@ -59,14 +62,18 @@ static TensorPayload GetCommunicationAllocationFromTensor(
 TensorPayload GetTensorPayload(framework::Variable* var,
                                const platform::DeviceContext& ctx,
                                VarMsg* request) {
+  VLOG(3) << "GetTensorPayload Begin";
   auto tensor = var->Get<framework::LoDTensor>();
   // FIXME(wuyi): data types in send_recv.proto is copied from
   // framework.proto
+  VLOG(3) << "GetTensorPayload set_data_type Begin";
   request->set_data_type(static_cast<VarMsg::Type>(tensor.type()));
   for (auto& dim : framework::vectorize(tensor.dims())) {
     request->add_dims(dim);
   }
+
   const framework::LoD lod = tensor.lod();
+  VLOG(3) << "GetTensorPayload set_lod_level Begin, lod.size(): " << lod.size();
   if (lod.size() > 0) {
     request->set_lod_level(lod.size());
     for (auto& each : lod) {
