@@ -79,7 +79,8 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
                         "except the specified axis.");
     }
   }
-
+  VLOG(1) << "StridedNumelCopyWithAxis CUDA Copy before: " << before
+          << " dst_after: " << dst_after << " src_after: " << src_after;
   for (int64_t i = 0; i < before; ++i) {
     if (platform::is_cpu_place(place)) {
       auto& cpu_place = BOOST_GET_CONST(platform::CPUPlace, place);
@@ -87,9 +88,12 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
                    src + i * src_after, sizeof(T) * size);
     } else {
 #ifdef PADDLE_WITH_CUDA
+      VLOG(1) << "StridedNumelCopyWithAxis CUDA Copy Begin";
+      VLOG(1) << "StridedNumelCopyWithAxis CUDA Copy i: " << i;
       auto& gpu_place = BOOST_GET_CONST(platform::CUDAPlace, place);
       auto& cuda_ctx =
           reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
+
       memory::Copy(gpu_place, dst + i * dst_after, gpu_place,
                    src + i * src_after, sizeof(T) * size, cuda_ctx.stream());
 #else
