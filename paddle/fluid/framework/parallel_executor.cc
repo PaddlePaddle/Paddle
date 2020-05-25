@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_double(eager_delete_tensor_gb);
@@ -820,6 +821,8 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
+  platform::RecordEvent parallel_executor_event(
+      "ParallelExecutor::Run", paddle::platform::EventRole::kSpecial);
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
