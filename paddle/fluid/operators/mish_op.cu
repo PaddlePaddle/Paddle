@@ -31,6 +31,19 @@ __global__ void KeMishFw(const T* in, T* out, const int numel,
   }
 }
 
+// expf instead of exp should be used for float type, complement
+// and register float kernel separatelly
+__global__ void KeMishFwFP32(const float* in, float* out, const int numel,
+                             const float threshold) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (; tid < numel; tid += stride) {
+    float x = in[tid];
+    float sp = CalcSoftplusFP32(x, threshold);
+    out[tid] = x * tanhf(sp);
+  }
+}
+
 template <typename T>
 __global__ void KeMishBw(const T* in, const T* dout, T* din, const int numel,
                          const float threshold) {
@@ -42,6 +55,20 @@ __global__ void KeMishBw(const T* in, const T* dout, T* din, const int numel,
     T tsp = tanh(sp);
     T grad_sp = -expm1(-sp);
     T grad_tsp = (static_cast<T>(1) - tsp * tsp) * grad_sp;
+    din[tid] = dout[tid] * (x * grad_tsp + tsp);
+  }
+}
+
+__global__ void KeMishBwFP32(const float* in, const float* dout, float* din,
+                             const int numel, const float threshold) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  for (; tid < numel; tid += stride) {
+    float x = in[tid];
+    float sp = CalcSoftplusFP32(x, threshold);
+    float tsp = tanhf(sp);
+    float grad_sp = -expm1f(-sp);
+    float grad_tsp = (static_cast<float>(1) - tsp * tsp) * grad_sp;
     din[tid] = dout[tid] * (x * grad_tsp + tsp);
   }
 }
@@ -64,6 +91,27 @@ class MishCUDAKernel : public framework::OpKernel<T> {
     KeMishFw<T><<<config.blocks, config.threads, 0,
                   ctx.cuda_device_context().stream()>>>(x_data, out_data, numel,
                                                         threshold);
+  }
+};
+
+template <typename DeviceContext>
+class MishFP32CUDAKernel : public framework::OpKernel<float> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    const float threshold = ctx.Attr<float>("threshold");
+
+    const float* x_data = x->data<float>();
+    float* out_data = out->mutable_data<float>(ctx.GetPlace());
+
+    const int numel = x->numel();
+
+    platform::GpuLaunchConfig config = platform::getGpuLaunchConfig(numel, ctx);
+    KeMishFwFP32<<<config.blocks, config.threads, 0,
+                   ctx.cuda_device_context().stream()>>>(x_data, out_data,
+                                                         numel, threshold);
   }
 };
 
@@ -90,14 +138,36 @@ class MishGradCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename DeviceContext>
+class MishGradFP32CUDAKernel : public framework::OpKernel<float> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+
+    auto threshold = ctx.Attr<float>("threshold");
+
+    const float* x_data = x->data<float>();
+    const float* dout_data = dout->data<float>();
+    float* dx_data = dx->mutable_data<float>(ctx.GetPlace());
+
+    const int numel = x->numel();
+
+    platform::GpuLaunchConfig config = platform::getGpuLaunchConfig(numel, ctx);
+    KeMishBwFP32<<<config.blocks, config.threads, 0,
+                   ctx.cuda_device_context().stream()>>>(
+        x_data, dout_data, dx_data, numel, threshold);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    mish, ops::MishCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    mish, ops::MishFP32CUDAKernel<paddle::platform::CUDADeviceContext>,
     ops::MishCUDAKernel<paddle::platform::CUDADeviceContext, double>)
 REGISTER_OP_CUDA_KERNEL(
-    mish_grad,
-    ops::MishGradCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    mish_grad, ops::MishGradFP32CUDAKernel<paddle::platform::CUDADeviceContext>,
     ops::MishGradCUDAKernel<paddle::platform::CUDADeviceContext, double>)

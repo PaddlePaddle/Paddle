@@ -114,9 +114,8 @@ REGISTER_OPERATOR(mish, ops::MishOp, ops::MishOpMaker,
                   ops::MishGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(mish_grad, ops::MishGradOp);
 REGISTER_OP_CPU_KERNEL(
-    mish, ops::MishCPUKernel<paddle::platform::CPUDeviceContext, float>,
+    mish, ops::MishFP32CPUKernel<paddle::platform::CPUDeviceContext>,
     ops::MishCPUKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    mish_grad,
-    ops::MishGradCPUKernel<paddle::platform::CPUDeviceContext, float>,
+    mish_grad, ops::MishGradFP32CPUKernel<paddle::platform::CPUDeviceContext>,
     ops::MishGradCPUKernel<paddle::platform::CPUDeviceContext, double>);
