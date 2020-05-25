@@ -199,9 +199,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
 
-  if (!platform::is_cpu_place(place)) {
-    PADDLE_THROW("multi prefetch only support CPU currently");
-  }
+  // if (!platform::is_cpu_place(place)) {
+  //   PADDLE_THROW("multi prefetch only support CPU currently");
+  // }
 
   std::vector<std::vector<int64_t>> ids_group;
   std::vector<int64_t> ids_union;
@@ -210,13 +210,17 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
   for (auto& id_name : id_var_names) {
     auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
-    auto* id_data = id_tensor.data<int64_t>();
+    // auto* id_data = id_tensor.data<int64_t>();
+    // for (int64_t i = 0; i < id_tensor.numel(); ++i) {
+    //   ids.push_back(id_data[i]);
+    //   ids_union.push_back(id_data[i]);
+    // }
     std::vector<int64_t> ids;
-
-    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
-      ids.push_back(id_data[i]);
-      ids_union.push_back(id_data[i]);
-    }
+    std::vector<int64_t> ids_union_part;
+    TensorToVector(id_tensor, context.device_context(), &ids);
+    TensorToVector(id_tensor, context.device_context(), &ids_union_part);
+    ids_union.insert(index_union.end(), ids_union_part.begin(),
+                     ids_union_part.end());
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
   }
@@ -247,18 +251,26 @@ void prefetchs(const std::vector<std::string>& id_var_names,
         framework::make_ddim({static_cast<int64_t>(ids.size()), vec_dim_1}));
     out_t->set_lod(ids_lods[i]);
 
-    auto* out_d = out_t->mutable_data<float>(place);
+    // auto* out_d = out_t->mutable_data<float>(place);
+    std::vector<float> out_vec(ids.size() * vec_dim_1, 0);
 
     for (size_t idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
-
       if (padding_idx != distributed::kNoPadding && id == padding_idx) {
-        memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
+        continue;
       } else {
         std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
-                    out_d + idx * vec_dim_1);
+                    &out_vec[idx * vec_dim_1]);
       }
+
+      // if (padding_idx != distributed::kNoPadding && id == padding_idx) {
+      //   memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
+      // } else {
+      //   std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
+      //               out_d + idx * vec_dim_1);
+      // }
     }
+    TensorFromVector(out_vec, context.device_context(), out_t);
   }
 }
 
