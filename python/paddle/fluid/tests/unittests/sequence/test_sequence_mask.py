@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.fluid.framework import convert_np_dtype_to_dtype_, Program, program_guard
 import paddle.fluid.core as core
 import numpy as np
 import copy
@@ -152,6 +152,18 @@ class SequenceMaskTest4_tensor_attr(SequenceMaskTestBase_tensor_attr):
 class SequenceMaskTest5_tensor_attr(SequenceMaskTestBase_tensor_attr):
     def initParameters(self):
         self.mask_dtype = 'float64'
+
+
+class TestSequenceMaskOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.uniform(1, 5, [4]).astype("float32")
+
+            def test_Variable():
+                # the input must be Variable
+                fluid.layers.sequence_mask(input_data, maxlen=4)
+
+            self.assertRaises(TypeError, test_Variable)
 
 
 if __name__ == '__main__':

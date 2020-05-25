@@ -74,13 +74,25 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
     auto *y = context.Input<framework::LoDTensor>("Y");
     auto *out = context.Output<framework::LoDTensor>("Out");
 
-    PADDLE_ENFORCE_EQ(y->lod().empty(), false,
-                      "Input(Y) Tensor of SequenceExpandAsOp does not contain "
-                      "LoD information.");
+    PADDLE_ENFORCE_EQ(
+        y->lod().empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(Y) of SequenceExpandAsOp has wrong LoD information. "
+            "Expected Y's lod is not empty, but received empty lod."));
 
     auto &y_lod = y->lod();
-    PADDLE_ENFORCE_EQ(y_lod.size(), 1, "LoD of Y should be 1.");
-    PADDLE_ENFORCE_GT(y_lod[0].size(), 1, ".");
+    PADDLE_ENFORCE_EQ(y_lod.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) of SequenceExpandAsOp has wrong LoD "
+                          "information. Expected Y's lod level = 1, but "
+                          "received  lod level = %d.",
+                          y_lod.size()));
+    PADDLE_ENFORCE_GT(y_lod[0].size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Input(Y) of SequenceExpandAsOp has wrong LoD "
+                          "information. Expected the size of Y's lod[0] > 1, "
+                          "but received lod[0].size = %d.",
+                          y_lod[0].size()));
 
     out->mutable_data<T>(context.GetPlace());
 

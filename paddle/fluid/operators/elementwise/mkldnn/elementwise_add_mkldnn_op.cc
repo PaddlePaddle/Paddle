@@ -25,8 +25,8 @@ namespace operators {
 using framework::DataLayout;
 using framework::Tensor;
 using mkldnn::memory;
-using mkldnn::reorder;
 using mkldnn::primitive;
+using mkldnn::reorder;
 using mkldnn::stream;
 using mkldnn::sum;
 
@@ -34,51 +34,29 @@ template <typename T>
 class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx =
+    const auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    const auto* x = ctx.Input<Tensor>("X");
+    const auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor"));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor"));
-
-    PADDLE_ENFORCE_EQ(
-        y->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
-    PADDLE_ENFORCE_NE(
-        y->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for Y tensor"));
-
-    auto src_x_tz = framework::vectorize<int64_t>(x->dims());
-    auto src_y_tz = framework::vectorize<int64_t>(y->dims());
-    auto dst_tz = framework::vectorize<int64_t>(z->dims());
-
-    // Currently MKL-DNN kernel supports only Z <- X + Y, shape(X) == shape(Y)
-    // TODO(jczaja): Binary primitive support broadcasting, so we can support
-    // this in kernel
     platform::BinaryMKLDNNHandler<T> handler(
-        dnnl::algorithm::binary_add, src_x_tz, x->format(), y->format(),
-        dev_ctx, ctx.GetPlace(), ctx.OutputName("Out"));
+        dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z, ctx.OutputName("Out"));
 
-    auto src_x_memory = handler.AcquireSrcMemory(x);
-    auto src_y_memory = handler.AcquireSecondSrcMemory(y);
+    const auto src_x_memory = handler.AcquireSrcMemory(x);
+    const auto src_y_memory = handler.AcquireSecondSrcMemory(y);
 
     // For Inplace src and and dst are the same memory object
-    auto dst_memory =
+    const auto dst_memory =
         x->IsSharedBufferWith(*z) ? src_x_memory : handler.AcquireDstMemory(z);
 
-    auto binary_prim = handler.AcquireForwardPrimitive();
+    const auto binary_prim = handler.AcquireForwardPrimitive();
 
     mkldnn::stream astream(mkldnn_engine);
 
-    std::unordered_map<int, dnnl::memory> args = {
+    const std::unordered_map<int, dnnl::memory> args = {
         {DNNL_ARG_SRC_0, *src_x_memory},
         {DNNL_ARG_SRC_1, *src_y_memory},
         {DNNL_ARG_DST, *dst_memory}};
@@ -107,6 +85,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       in->set_format(out->format());
     };
 
+    // TODO(jczaja): Double check if vcopy works for blocked data
     auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
     if (dx) {
       blas.VCOPY(dout->numel(), dout->data<T>(),
