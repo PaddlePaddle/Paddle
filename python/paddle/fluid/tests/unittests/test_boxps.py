@@ -172,6 +172,7 @@ class TestBoxPSPreload(unittest.TestCase):
             exe.run(fluid.default_startup_program())
             datasets[0].load_into_memory()
             datasets[0].begin_pass()
+            datasets[0].slots_shuffle([])
             datasets[1].preload_into_memory()
             exe.train_from_dataset(
                 program=fluid.default_main_program(),
