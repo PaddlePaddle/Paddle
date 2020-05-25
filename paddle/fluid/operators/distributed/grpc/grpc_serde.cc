@@ -50,7 +50,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // servers the trainer's profiling state so that PS can follow the
   // trainer.
   VLOG(3) << "SerializeToByteBuffer platform::ShouldSendProfileState: "
-          << platform::ShouldSendProfileState;
+          << platform::ShouldSendProfileState();
   if (platform::ShouldSendProfileState()) {
     if (platform::IsProfileEnabled()) {
       request.set_profile(platform::kEnableProfiler);
@@ -69,12 +69,12 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
 
   if (var->IsType<framework::LoDTensor>()) {
     VLOG(3) << "SerializeToByteBuffer var->IsType<framework::LoDTensor>: "
-            << var->IsType<framework::LoDTensor>;
+            << var->IsType<framework::LoDTensor>();
     request.set_type(::sendrecv::LOD_TENSOR);
     payload = new TensorPayload(GetTensorPayload(var, ctx, &request));
   } else if (var->IsType<framework::SelectedRows>()) {
     VLOG(3) << "SerializeToByteBuffer var->IsType<framework::SelectedRows>: "
-            << var->IsType<framework::SelectedRows>;
+            << var->IsType<framework::SelectedRows>();
     request.set_type(::sendrecv::SELECTED_ROWS);
     payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, &request));
 #ifdef PADDLE_WITH_NCCL
