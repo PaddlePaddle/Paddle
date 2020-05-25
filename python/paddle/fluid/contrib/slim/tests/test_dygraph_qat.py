@@ -19,7 +19,7 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.slim.quantization import quantize_qat
+from paddle.fluid.contrib.slim.quantization.dyquant import quantize_qat
 from paddle.fluid.optimizer import AdamOptimizer
 
 os.environ["CPU_NUM"] = "8"
