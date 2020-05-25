@@ -628,11 +628,15 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
           ctx.Attr<std::string>("padding_algorithm");
 
       // Only 2D pooling is supported now
-      PADDLE_ENFORCE_EQ(ksize.size(), 2, "ksize must be 2D, i.e. 2D pooling");
+      PADDLE_ENFORCE_EQ(ksize.size(), 2,
+                        platform::errors::InvalidArgument(
+                            "ksize must be 2D, i.e. 2D pooling"));
       PADDLE_ENFORCE_EQ(pooling_type == "max" || pooling_type == "avg", true,
-                        "pooling_type must be 'max' or 'avg'");
+                        platform::errors::InvalidArgument(
+                            "pooling_type must be 'max' or 'avg'"));
       PADDLE_ENFORCE_EQ(input->dims().size(), 4,
-                        "Input dim must be with 4, i.e. NCHW");
+                        platform::errors::InvalidArgument(
+                            "Input dim must be with 4, i.e. NCHW"));
 
       const auto input_dims = input->dims();
       framework::DDim data_dims =
