@@ -29,12 +29,10 @@ class FakeQuant(layers.Layer):
                  name=None,
                  moving_rate=0.9,
                  quant_bits=8,
-                 dtype='float32',
-                 is_test=False):
+                 dtype='float32'):
         super(FakeQuant, self).__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
-        self._is_test = is_test
         scale_attr = ParamAttr(name="{}.quant_dequant.scale".format(name)
                                if name else None)
         self.scale = self.create_parameter(
@@ -44,41 +42,36 @@ class FakeQuant(layers.Layer):
             is_bias=False,
             default_initializer=Constant(0.001))
 
-        if not self._is_test:
-            state_attr = ParamAttr(
-                name=unique_name.generate('quant_dequant.state'))
-            self.state = self.create_parameter(
-                shape=[1],
-                attr=state_attr,
-                dtype=dtype,
-                is_bias=False,
-                default_initializer=Constant(1))
-            accum_attr = ParamAttr(
-                name=unique_name.generate('quant_dequant.accum'))
-            self.accum = self.create_parameter(
-                shape=[1],
-                attr=accum_attr,
-                dtype=dtype,
-                is_bias=False,
-                default_initializer=Constant(1))
-        else:
-            self.state = None
-            self.accum = None
+        state_attr = ParamAttr(name=unique_name.generate('quant_dequant.state'))
+        self.state = self.create_parameter(
+            shape=[1],
+            attr=state_attr,
+            dtype=dtype,
+            is_bias=False,
+            default_initializer=Constant(1))
+        accum_attr = ParamAttr(name=unique_name.generate('quant_dequant.accum'))
+        self.accum = self.create_parameter(
+            shape=[1],
+            attr=accum_attr,
+            dtype=dtype,
+            is_bias=False,
+            default_initializer=Constant(1))
 
     def forward(self, input):
+        attrs = ('moving_rate', self._moving_rate, 'bit_length',
+                 self._quant_bits, 'is_test', not self.training)
         quant_out = _varbase_creator(
             type=input.type,
             name="{}.quant_dequant".format(input.name),
             shape=input.shape,
             dtype=input.dtype,
             persistable=False)
-
-        attrs = ('moving_rate', self._moving_rate, 'bit_length',
-                 self._quant_bits, 'is_test', self._is_test)
+        state = self.state if self.training else None
+        accum = self.accum if self.training else None
 
         out, _, _, _ = core.ops.fake_quantize_dequantize_moving_average_abs_max(
-            input, self.scale, self.accum, self.state, quant_out, self.scale,
-            self.state, self.accum, *attrs)
+            input, self.scale, accum, state, quant_out, self.scale, state,
+            accum, *attrs)
         return out
 
 
@@ -98,13 +91,11 @@ class QuantizedConv2D(layers.Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
-        is_test = not layer.training
         self._fake_quant_input = FakeQuant(layer.full_name(), moving_rate,
-                                           activation_bits, self._dtype,
-                                           is_test)
+                                           activation_bits, self._dtype)
 
         self._fake_quant_weight = FakeQuant(self.weight.name, moving_rate,
-                                            weight_bits, self._dtype, is_test)
+                                            weight_bits, self._dtype)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
@@ -168,13 +159,11 @@ class QuantizedLinear(layers.Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
-        is_test = not layer.training
         self._fake_quant_input = FakeQuant(layer.full_name(), moving_rate,
-                                           activation_bits, self._dtype,
-                                           is_test)
+                                           activation_bits, self._dtype)
 
         self._fake_quant_weight = FakeQuant(self.weight.name, moving_rate,
-                                            weight_bits, self._dtype, is_test)
+                                            weight_bits, self._dtype)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
