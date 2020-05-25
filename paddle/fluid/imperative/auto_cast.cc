@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/imperative/auto_cast.h"
+#include <algorithm>
 #include <memory>
+#include <set>
 #include <string>
+#include <tuple>
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/imperative/layer.h"
@@ -29,70 +32,18 @@ namespace imperative {
 // Operators that supports fp16 calculation can be divided into 3 sets.
 
 // The set of ops that support fp16 calculation and are considered numerically -
-// safe and performance - critical.These ops are always converted to fp16.
-const std::unordered_set<std::string> white_ops = {
-    "conv2d", "matmul", "mul",
-};
+// safe and performance critical. These ops are always converted to fp16.
+static std::unordered_set<std::string> g_white_ops;
 
 // The set of ops that support fp16 calculation and are considered numerically -
 // dangerous and whose effects may also be observed in downstream ops.
-const std::unordered_set<std::string> black_ops = {
-    "exp",
-    "square",
-    "log",
-    "mean",
-    "sum",
-    "cos_sim",
-    "softmax",
-    "softmax_with_cross_entropy",
-    "sigmoid_cross_entropy_with_logits",
-    "cross_entropy",
-    "cross_entropy2",
-};
+static std::unordered_set<std::string> g_black_ops;
 
 // This set contains two types of ops. All ops supported fp16 calculation. One
 // of two types is considered numerically - safe, but may be made unsafe by an
 // upstream blacklist op. Another type do not have numerically - significant
 // effects, like stack, flatten2.
-const std::unordered_set<std::string> gray_ops = {
-    "elementwise_add",
-    "elementwise_sub",
-    "elementwise_mul",
-    "elementwise_div",
-    "elementwise_max",
-    "elementwise_min",
-    "elementwise_pow",
-    "elementwise_mod",
-    "elementwise_floordiv",
-    "batch_norm",
-    "tanh",
-    "sigmoid",
-    "lookup_table",
-    "top_k",
-    "pool2d",
-    "pool3d",
-    "dropout",
-    "relu",
-    "relu6",
-    "leaky_relu",
-    "soft_relu",
-    "flatten2",
-    "stack",
-    "unstack",
-    "uniform_random_batch_size_like",
-    "gaussian_random",
-    "gaussian_random_batch_size_like",
-    "slice",
-    "rank",
-    "scale",
-    "transpose2",
-    "reshape2",
-    "gather",
-    "fill_constant",
-    "get_tensor_from_selected_rows",
-    "sign",
-    "cast",
-};
+// static std::unordered_set<std::string> g_gray_ops;
 
 inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
   if (!platform::is_gpu_place(var->Place())) {
@@ -160,7 +111,7 @@ static inline framework::proto::VarType::Type GetPromoteType(
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins) {
   NameVarBaseMap new_ins = {};
-  if (white_ops.count(op_type)) {
+  if (g_white_ops.count(op_type)) {
     for (const auto& pair : ins) {
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
               << (*pair.second.cbegin())->DataType() << " to FP16";
@@ -170,7 +121,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (black_ops.count(op_type)) {
+  } else if (g_black_ops.count(op_type)) {
     for (const auto& pair : ins) {
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
               << (*pair.second.cbegin())->DataType() << " to FP16";
@@ -180,7 +131,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
       }
     }
     return new_ins;
-  } else if (gray_ops.count(op_type)) {
+  } else {
     auto dst_type = GetPromoteType(ins);
 
     for (const auto& pair : ins) {
@@ -204,5 +155,20 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   }
   return ins;
 }
+
+void SetAmpOpList(const std::unordered_set<std::string>& white_list,
+                  const std::unordered_set<std::string>& black_list) {
+  std::copy(white_list.begin(), white_list.end(),
+            std::inserter(g_white_ops, g_white_ops.begin()));
+  std::copy(black_list.begin(), black_list.end(),
+            std::inserter(g_black_ops, g_black_ops.begin()));
+}
+
+std::tuple<const std::unordered_set<std::string>,
+           const std::unordered_set<std::string>>
+GetAmpOpList() {
+  return std::make_tuple(g_white_ops, g_black_ops);
+}
+
 }  // namespace imperative
 }  // namespace paddle

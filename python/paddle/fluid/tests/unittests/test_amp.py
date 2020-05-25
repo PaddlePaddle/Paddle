@@ -52,41 +52,79 @@ class TestAmpApi(unittest.TestCase):
 
         return _reader_imple
 
-    def test_amp(self):
-        #resnet = ResNet()
+    # def test_amp(self):
+    #     #resnet = ResNet()
+    #     inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+    #     scaler = fluid.dygraph.amp.Scaler()
+
+    #     def run_model(enable_amp=True):
+    #         with fluid.dygraph.guard():
+    #             with fluid.dygraph.amp.autocast(enable_amp):
+    #                 for i in range(10):
+    #                     model = SimpleConv(
+    #                         num_channels=3,
+    #                         num_filters=64,
+    #                         filter_size=7,
+    #                         stride=2,
+    #                         act='relu')
+    #                     sgd = fluid.optimizer.SGDOptimizer(
+    #                         learning_rate=0.001,
+    #                         parameter_list=model.parameters())
+    #                     inp = fluid.dygraph.to_variable(inp_np)
+    #                     out = model(inp)
+
+    #                     loss = fluid.layers.reduce_mean(out)
+    #                     scaled = scaler.scale(loss)
+    #                     print(loss, scaled)
+    #                     scaled.backward()
+    #                     scaler.step(sgd, scaled)
+
+    #     time1 = time.time()
+    #     out1 = run_model(True)
+    #     print(time.time() - time1)
+
+    #     def test_amp(self):
+    #     #resnet = ResNet()
+    #     inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+    #     scaler = fluid.dygraph.amp.Scaler()
+
+    def test_custom_list(self):
+        with fluid.dygraph.guard():
+            tracer = fluid.framework._dygraph_tracer()
+            base_white_list = fluid.dygraph.amp.auto_cast.white_list
+            base_black_list = fluid.dygraph.amp.auto_cast.black_list
+            with fluid.dygraph.amp.autocast(
+                    True, custom_white_list=["log"],
+                    custom_black_list=["conv2d"]):
+                white_list, black_list = tracer._get_amp_op_list()
+                self.assertTrue(
+                    set(white_list) ==
+                    (set(base_white_list) | {"log"}) - {"conv2d"})
+
+                self.assertTrue(
+                    set(black_list) ==
+                    (set(base_black_list) - {"log"}) | {"conv2d"})
+
+    def test_custom_list_exception(self):
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
-        scaler = fluid.dygraph.amp.Scaler()
 
-        def run_model(enable_amp=True):
+        def func():
             with fluid.dygraph.guard():
-                with fluid.dygraph.amp.autocast(enable_amp):
-                    for i in range(10):
-                        model = SimpleConv(
-                            num_channels=3,
-                            num_filters=64,
-                            filter_size=7,
-                            stride=2,
-                            act='relu')
-                        sgd = fluid.optimizer.SGDOptimizer(
-                            learning_rate=0.001,
-                            parameter_list=model.parameters())
-                        inp = fluid.dygraph.to_variable(inp_np)
-                        out = model(inp)
+                model = SimpleConv(
+                    num_channels=3,
+                    num_filters=64,
+                    filter_size=7,
+                    stride=2,
+                    act='relu')
 
-                        loss = fluid.layers.reduce_mean(out)
-                        scaled = scaler.scale(loss)
-                        print(loss, scaled)
-                        scaled.backward()
-                        scaler.step(sgd, scaled)
+                with fluid.dygraph.amp.autocast(
+                        True,
+                        custom_white_list=["conv2d"],
+                        custom_black_list=["conv2d"]):
+                    inp = fluid.dygraph.to_variable(inp_np)
+                    out = model(inp)
 
-        time1 = time.time()
-        out1 = run_model(True)
-        print(time.time() - time1)
-
-        # time2 = time.time()
-        # out2 = run_model(True)
-        # print(time.time() - time2)
-        # self.assertTrue(np.allclose(out1, out2))
+        self.assertRaises(ValueError, func)
 
 
 if __name__ == '__main__':

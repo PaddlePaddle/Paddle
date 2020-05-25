@@ -23,8 +23,10 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/imperative/auto_cast.h"
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
@@ -845,6 +847,14 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "tmp")
+      .def("_set_amp_op_list",
+           [](imperative::Tracer &self,
+              const std::unordered_set<std::string> &white_list,
+              const std::unordered_set<std::string> &black_list) {
+             imperative::SetAmpOpList(white_list, black_list);
+           })
+      .def("_get_amp_op_list",
+           [](imperative::Tracer &self) { return imperative::GetAmpOpList(); })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

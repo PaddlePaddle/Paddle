@@ -14,13 +14,17 @@ limitations under the License. */
 
 #pragma once
 #include <memory>
+#include <set>
 #include <string>
+#include <tuple>
+#include <unordered_set>
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace imperative {
 
+// NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
   explicit inline AutoCastGuard(std::shared_ptr<Tracer> tracer, bool guard_mode)
@@ -44,5 +48,11 @@ class AutoCastGuard {
 
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins);
+void SetAmpOpList(const std::unordered_set<std::string>& white_list,
+                  const std::unordered_set<std::string>& black_list);
+std::tuple<const std::unordered_set<std::string>,
+           const std::unordered_set<std::string>>
+GetAmpOpList();
+
 }  // namespace imperative
 }  // namespace paddle
