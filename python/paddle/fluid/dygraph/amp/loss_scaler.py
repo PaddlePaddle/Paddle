@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fluid import core, layers, dygraph
+from paddle.fluid import core, dygraph
 from paddle.fluid.framework import _varbase_creator
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
@@ -79,12 +79,6 @@ class Scaler(object):
                 "output must be a Variable or an list/tuple of Variables")
 
     @dygraph.no_grad
-    def scale_inplace(self, var, scale):
-        #TODO(zhiqiu): support inplace operation directly in the future
-        new_var = core.ops.scale(var, 'scale', scale)
-        layers.assign(new_var, var)
-        return None
-
     def unscale_(self, optimizer):
         if not self._enable:
             return
