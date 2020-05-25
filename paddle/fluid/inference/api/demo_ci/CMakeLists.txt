@@ -10,7 +10,7 @@ if(NOT WITH_STATIC_LIB)
 else()
   # PD_INFER_DECL is mainly used to set the dllimport/dllexport attribute in dynamic library mode. 
   # Set it to empty in static library mode to avoid compilation issues.
-  add_definitions("-DPD_INFER_DECL")
+  add_definitions("/DPD_INFER_DECL=")
 endif()
 
 macro(safe_set_static_flag)
