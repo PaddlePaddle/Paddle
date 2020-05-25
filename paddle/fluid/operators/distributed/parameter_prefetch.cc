@@ -219,7 +219,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     std::vector<int64_t> ids_union_part;
     TensorToVector(id_tensor, context.device_context(), &ids);
     TensorToVector(id_tensor, context.device_context(), &ids_union_part);
-    ids_union.insert(index_union.end(), ids_union_part.begin(),
+    ids_union.insert(ids_union.end(), ids_union_part.begin(),
                      ids_union_part.end());
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
