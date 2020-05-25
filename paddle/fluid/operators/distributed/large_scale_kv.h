@@ -40,6 +40,79 @@ namespace operators {
 namespace distributed {
 
 enum Mode { training, infer };
+enum InitType { uniform_random, fill_constant, gaussian_random };
+
+class Initializer {
+ public:
+  explicit Initializer(std::string attrs) = 0;
+
+  virtual float GetValue() const = 0;
+
+  virtual ~Initializer() {}
+
+ private:
+  unsigned int seed_;
+};
+
+class UniformInitializer : public Initializer {
+ public:
+  explicit UniformInitializer(std::string attrs) {
+    seed_ = static_cast<unsigned int>(attrs.get("seed"));
+    min_ = static_cast<float>(attrs_.at("min"));
+    max_ = static_cast<float>(attrs_.at("max"));
+
+    if (seed_ == 0) {
+      seed_ = std::random_device()();
+    }
+
+    random_engine_->seed(seed_);
+    dist_ = std::make_shared<std::uniform_real_distribution<>>(min_, max_);
+  }
+
+  float GetValue() const override { return (*dist_)(*random_engine_); }
+
+ private:
+  float min_;
+  float max_;
+  std::shared_ptr<std::minstd_rand> random_engine_;
+  std::shared_ptr<std::uniform_real_distribution<>> dist_;
+};
+
+class GaussianInitializer : public Initializer {
+ public:
+  explicit GaussianInitializer(std::string attrs) {
+    seed_ = static_cast<unsigned int>(attrs.get("seed"));
+    mean_ = static_cast<float>(attrs_.at("mean"));
+    std_ = static_cast<float>(attrs_.at("std"));
+
+    if (seed_ == 0) {
+      seed_ = std::random_device()();
+    }
+
+    random_engine_->seed(seed_);
+    dist_ = std::make_shared<std::normal_distribution<>>(mean_, std_);
+  }
+
+  float GetValue() const override { return (*dist_)(*random_engine_); }
+
+ private:
+  float std_;
+  float mean_;
+  std::shared_ptr<std::minstd_rand> random_engine_;
+  std::shared_ptr<std::normal_distribution<>> dist_;
+};
+
+class FillConstantInitializer : public Initializer {
+ public:
+  explicit FillConstantInitializer(std::string attrs) {
+    value_ = static_cast<float>(attrs_.at("value"));
+  }
+
+  float GetValue() const override { return value_; }
+
+ private:
+  float value_;
+};
 
 struct SparseMeta {
   std::string name;
@@ -107,12 +180,24 @@ struct VALUE {
 
 class ValueBlock {
  public:
-  bool Has(const int64_t id) {
-    auto got = values_.find(id);
-    if (got == values_.end()) {
-      return false;
-    } else {
-      return true;
+  explicit ValueBlock(
+      const std::unordered_map<std::string, std::string> &attrs) {
+    for (auto &attr : attrs) {
+      name = attr.first;
+      att = attr.second;
+      initializers_[name] = new Initializer(att);
+    }
+  }
+
+  ~ValueBlock() {
+    for (auto *init : initializers_) {
+      delete init.second;
+      initializers.erase(init.fitst);
+    }
+
+    for (auto *value : values_) {
+      delete value.second;
+      values_.erase(value.fitst);
     }
   }
 
@@ -124,9 +209,14 @@ class ValueBlock {
 
     for (int i = 0; i < static_cast<int>(origin_names.size()); i++) {
       auto name = origin_names[i];
+      auto *init = initializers_.at(name);
+
       auto dim = origin_dims[i];
       rets[i].resize(dim);
-      std::fill(rets[i].data(), rets[i].data() + dim, static_cast<float>(0.5));
+
+      for (int j = 0; j < static_cast<int>(numel); j++) {
+        rets[i][j] = init->GetValue();
+      }
     }
     return rets;
   }
@@ -160,9 +250,21 @@ class ValueBlock {
     value->set(value_names, values);
   }
 
+ private:
+  bool Has(const int64_t id) {
+    auto got = values_.find(id);
+    if (got == values_.end()) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+ public:
   std::unordered_map<int64_t, VALUE *> values_;
 
  private:
+  std::unordered_map<std::string, Initializer *> initializers_;
   mutable std::mutex mutex_;
 };
 
