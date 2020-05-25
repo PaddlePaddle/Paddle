@@ -92,8 +92,6 @@ class VarBase {
 
   framework::Variable* MutableVar() { return var_->MutableVar(); }
 
-  const framework::Tensor* GetTensorPtr() { return var_->GetTensorPtr(); }
-
   bool HasGradVar() const { return grad_var_ != nullptr; }
 
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
@@ -229,10 +227,6 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place);
-
-template <typename VarType>
-void CheckNanInf(std::string op_type, const NameVarMap<VarType>& ins,
-                 const NameVarMap<VarType>& outs);
 
 }  // namespace imperative
 }  // namespace paddle

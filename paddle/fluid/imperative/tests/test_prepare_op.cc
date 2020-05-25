@@ -118,11 +118,13 @@ TEST(test_prepare_op, test_prepare_op) {
                               place, split_attr_map));
 }
 
+const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+
 TEST(test_prepare_op, test_get_tensor_from_var) {
   std::shared_ptr<imperative::VarBase> vout_error(
       new imperative::VarBase(false, "vout_error"));
   vout_error->MutableVar()->GetMutable<framework::SelectedRows>();
-  auto* ts = vout_error->GetTensorPtr();
+  auto* ts = GetTensorFromVar(*vout_error->MutableVar());
   ASSERT_TRUE(ts != nullptr);
 }
 #if defined(PADDLE_WITH_CUDA)

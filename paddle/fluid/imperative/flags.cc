@@ -19,18 +19,6 @@ DEFINE_uint64(dygraph_debug, 0,
               "Debug level of dygraph. This flag is not "
               "open to users");
 
-/**
- * Example: FLAGS_imperative_check_nan_inf=0, disable imperative NAN/INF check.
- *          FLAGS_imperative_check_nan_inf=1, enable imperative NAN/INF check,
- * raise exception and stop execution when NAN/INF detected at the first time.
- *          FLAGS_imperative_check_nan_inf=2, enable imperative NAN/INF check,
- * do not raise exception but log the message and continue execution.
- */
-DEFINE_uint64(
-    imperative_check_nan_inf, 0,
-    "Checking whether operator produce NAN/INF or not in imperative "
-    "mode. It will be extremely slow so please use this flag wisely.");
-
 namespace paddle {
 namespace imperative {
 
