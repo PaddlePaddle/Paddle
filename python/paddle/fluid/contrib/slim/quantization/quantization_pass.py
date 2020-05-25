@@ -285,6 +285,7 @@ class QuantizationTransformPass(object):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         create_var_map = {}
         create_op_map = {}
+        processed_vars = collections.OrderedDict()
 
         def _quant_preprocess(op_node):
             user_skipped = False
@@ -345,7 +346,8 @@ class QuantizationTransformPass(object):
 
         def _insert_func(graph, func, var_node, op):
             tmp_program = Program()
-            with program_guard(tmp_program):
+            startup_program = Program()
+            with program_guard(tmp_program, startup_program):
                 with unique_name.guard(var_node.name() + "_"):
                     in_node = data(
                         var_node.name() + '_tmp_input',
@@ -360,6 +362,7 @@ class QuantizationTransformPass(object):
                     in_node.stop_gradient = False
                     optimizer = self._optimizer()
                     optimizer.minimize(loss)
+            self._exe.run(startup_program)
             tmp_graph = IrGraph(
                 core.Graph(tmp_program.desc), for_test=self._for_test)
             in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
@@ -463,14 +466,18 @@ class QuantizationTransformPass(object):
                             graph, self._act_preprocess_func, var_node, op)
 
                     if is_weight and self._weight_quantize_func is not None:
+                        if name in processed_vars:
+                            continue
                         target_out_node = _insert_func(
                             graph, self._weight_quantize_func, var_node, op)
-                        dequantized_vars[name] = target_out_node
+                        processed_vars[name] = target_out_node
                         continue
                     elif not is_weight and self._act_quantize_func is not None:
+                        if name in processed_vars:
+                            continue
                         target_out_node = _insert_func(
                             graph, self._act_quantize_func, var_node, op)
-                        dequantized_vars[name] = target_out_node
+                        processed_vars[name] = target_out_node
                         continue
 
                     quant_bits = self._weight_bits if var_node.name() in persistable_vars \
