@@ -12,24 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import sys
-from ....dygraph import layers
-from ....dygraph.nn import Conv2D, Linear
-from .... import core
-from .... import dygraph_utils
-from .... import unique_name
-from ....param_attr import ParamAttr
-from ....framework import _varbase_creator, in_dygraph_mode
-from ....initializer import Constant
-from ....log_helper import get_logger
-from ....data_feeder import check_variable_and_dtype
+from .....dygraph import layers
+from ..... import core
+from ..... import dygraph_utils
+from ..... import unique_name
+from .....param_attr import ParamAttr
+from .....framework import _varbase_creator
+from .....initializer import Constant
+from .....data_feeder import check_variable_and_dtype
 
-__all__ = ['quantize_qat']
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
-_quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
+__all__ = ['FakeQuant', 'QuantizedConv2D', 'QuantizedLinear']
 
 
 class FakeQuant(layers.Layer):
@@ -116,7 +108,7 @@ class QuantizedConv2D(layers.Layer):
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
-        quant_weight = self._fake_quant_input(self.weight)
+        quant_weight = self._fake_quant_weight(self.weight)
 
         if self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
@@ -186,7 +178,7 @@ class QuantizedLinear(layers.Layer):
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
-        quant_weight = self._fake_quant_input(self.weight)
+        quant_weight = self._fake_quant_weight(self.weight)
         pre_bias = _varbase_creator(dtype=input.dtype)
         core.ops.matmul(quant_input, quant_weight, pre_bias, 'transpose_X',
                         False, 'transpose_Y', False, "alpha", 1)
@@ -194,56 +186,3 @@ class QuantizedLinear(layers.Layer):
             pre_bias, self.bias, axis=len(input.shape) - 1)
 
         return dygraph_utils._append_activation_in_dygraph(pre_act, self._act)
-
-
-def _get_quantized_counterpart(layer,
-                               weight_bits=8,
-                               activation_bits=8,
-                               moving_rate=0.9):
-    quant_layers = tuple(_quant_layers_map.values())
-    quantized_counterpart = tuple('Quantized' + k
-                                  for k in _quant_layers_map.keys())
-
-    predicate = lambda value: isinstance(layer, value)
-    index_generator = (i for i, v in enumerate(quant_layers) if predicate(v))
-
-    try:
-        index = next(index_generator)
-    except StopIteration:
-        _logger.fatal("Don't find any quantized layer for {}.".format(
-            layer.full_name()))
-        sys.exit(-1)
-
-    module = __import__(__name__)
-    quantized_layer = getattr(module, quantized_counterpart[index])(
-        layer, weight_bits, activation_bits, moving_rate)
-    return quantized_layer
-
-
-def quantize_qat(model,
-                 weight_bits=8,
-                 activation_bits=8,
-                 moving_rate=0.9,
-                 quantizable_layer_type=['Conv2D', 'Linear']):
-    quant_layers = tuple(_quant_layers_map[layer]
-                         if layer in _quant_layers_map else layer
-                         for layer in quantizable_layer_type)
-    for layer in quant_layers:
-        assert not isinstance(
-            layer, str), "{} is unspported to be quantized.".format(layer)
-
-    for name, layer in model.named_sublayers():
-        if not isinstance(layer, quant_layers):
-            continue
-
-        scopes = name.split('.')
-        target = scopes[-1]
-        obj = model
-        parent = model
-        for i in range(len(scopes) - 1):
-            obj = getattr(parent, scopes[i])
-            parent = obj
-
-        quant_layer = _get_quantized_counterpart(layer, weight_bits,
-                                                 activation_bits, moving_rate)
-        setattr(obj, target, quant_layer)
