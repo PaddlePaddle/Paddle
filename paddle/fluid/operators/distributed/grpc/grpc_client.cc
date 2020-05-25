@@ -256,17 +256,23 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
 
   const std::string method = kPrefetchRPC;
   int retry_times_ = 0;
-
+  VLOG(3) << "AsyncPrefetchVar Begin";
   while (true) {
+    VLOG(3) << "AsyncPrefetchVar: GetProcessor Begin";
     GetProcessor* s = new GetProcessor(ch);
+    VLOG(3) << "AsyncPrefetchVar: VarHandle Begin";
     VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
+    VLOG(3) << "AsyncPrefetchVar: Prepare Begin";
     s->Prepare(h, time_out);
 
     framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope,
                         p_ctx, s, method, h, table_name_val, this] {
+      VLOG(3) << "AsyncPrefetchVar: AsyncIO Begin";
+      VLOG(3) << "AsyncIO: FindVar Begin";
       auto* var = p_scope->FindVar(in_var_name_val);
 
       ::grpc::ByteBuffer req;
+      VLOG(3) << "AsyncIO: SerializeToByteBuffer Begin";
       SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req,
                             out_var_name_val, 0, table_name_val);
 
@@ -276,10 +282,11 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
       s->response_call_back_ = ProcGetResponse;
 
       platform::RecordRPCEvent record_event(method);
-
+      VLOG(3) << "AsyncIO: PrepareUnaryCall Begin";
       auto call = s->stub_g_.PrepareUnaryCall(
           s->context_.get(), "/sendrecv.SendRecvService/PrefetchVariable", req,
           &cq_);
+      VLOG(3) << "AsyncIO: StartCall Begin";
       call->StartCall();
       call->Finish(&s->reply_, &s->status_, static_cast<void*>(s));
 
