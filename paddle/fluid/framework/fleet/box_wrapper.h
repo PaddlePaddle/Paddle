@@ -31,10 +31,12 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -469,16 +471,16 @@ class BoxWrapper {
    public:
     MetricMsg() {}
     MetricMsg(const std::string& label_varname, const std::string& pred_varname,
-              int is_join, int bucket_size = 1000000)
+              int metric_phase, int bucket_size = 1000000)
         : label_varname_(label_varname),
           pred_varname_(pred_varname),
-          is_join_(is_join) {
+          metric_phase_(metric_phase) {
       calculator = new BasicAucCalculator();
       calculator->init(bucket_size);
     }
     virtual ~MetricMsg() {}
 
-    int IsJoin() const { return is_join_; }
+    int MetricPhase() const { return metric_phase_; }
     BasicAucCalculator* GetCalculator() { return calculator; }
     virtual void add_data(const Scope* exe_scope) {
       std::vector<int64_t> label_data;
@@ -514,20 +516,20 @@ class BoxWrapper {
    protected:
     std::string label_varname_;
     std::string pred_varname_;
-    int is_join_;
+    int metric_phase_;
     BasicAucCalculator* calculator;
   };
 
   class MultiTaskMetricMsg : public MetricMsg {
    public:
     MultiTaskMetricMsg(const std::string& label_varname,
-                       const std::string& pred_varname_list, int is_join,
+                       const std::string& pred_varname_list, int metric_phase,
                        const std::string& cmatch_rank_group,
                        const std::string& cmatch_rank_varname,
                        int bucket_size = 1000000) {
       label_varname_ = label_varname;
       cmatch_rank_varname_ = cmatch_rank_varname;
-      is_join_ = is_join;
+      metric_phase_ = metric_phase;
       calculator = new BasicAucCalculator();
       calculator->init(bucket_size);
       for (auto& cmatch_rank : string::split_string(cmatch_rank_group)) {
@@ -594,14 +596,14 @@ class BoxWrapper {
   class CmatchRankMetricMsg : public MetricMsg {
    public:
     CmatchRankMetricMsg(const std::string& label_varname,
-                        const std::string& pred_varname, int is_join,
+                        const std::string& pred_varname, int metric_phase,
                         const std::string& cmatch_rank_group,
                         const std::string& cmatch_rank_varname,
                         int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       cmatch_rank_varname_ = cmatch_rank_varname;
-      is_join_ = is_join;
+      metric_phase_ = metric_phase;
       calculator = new BasicAucCalculator();
       calculator->init(bucket_size);
       for (auto& cmatch_rank : string::split_string(cmatch_rank_group)) {
@@ -653,12 +655,12 @@ class BoxWrapper {
   class MaskMetricMsg : public MetricMsg {
    public:
     MaskMetricMsg(const std::string& label_varname,
-                  const std::string& pred_varname, int is_join,
+                  const std::string& pred_varname, int metric_phase,
                   const std::string& mask_varname, int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       mask_varname_ = mask_varname;
-      is_join_ = is_join;
+      metric_phase_ = metric_phase;
       calculator = new BasicAucCalculator();
       calculator->init(bucket_size);
     }
@@ -682,36 +684,59 @@ class BoxWrapper {
    protected:
     std::string mask_varname_;
   };
-  const std::vector<std::string>& GetMetricNameList() const {
-    return metric_name_list_;
+  const std::vector<std::string> GetMetricNameList(
+      int metric_phase = -1) const {
+    VLOG(0) << "Want to Get metric phase: " << metric_phase;
+    if (metric_phase == -1) {
+      return metric_name_list_;
+    } else {
+      std::vector<std::string> ret;
+      for (const auto& name : metric_name_list_) {
+        const auto iter = metric_lists_.find(name);
+        PADDLE_ENFORCE_NE(
+            iter, metric_lists_.end(),
+            platform::errors::InvalidArgument(
+                "The metric name you provided is not registered."));
+
+        if (iter->second->MetricPhase() == metric_phase) {
+          VLOG(0) << name << "'s phase is " << iter->second->MetricPhase()
+                  << ", we want";
+          ret.push_back(name);
+        } else {
+          VLOG(0) << name << "'s phase is " << iter->second->MetricPhase()
+                  << ", not we want";
+        }
+      }
+      return ret;
+    }
   }
-  int PassFlag() const { return pass_flag_; }
-  void FlipPassFlag() { pass_flag_ = 1 - pass_flag_; }
+  int Phase() const { return phase_; }
+  void FlipPhase() { phase_ = (phase_ + 1) % phase_num_; }
   std::map<std::string, MetricMsg*>& GetMetricList() { return metric_lists_; }
 
   void InitMetric(const std::string& method, const std::string& name,
                   const std::string& label_varname,
                   const std::string& pred_varname,
                   const std::string& cmatch_rank_varname,
-                  const std::string& mask_varname, bool is_join,
+                  const std::string& mask_varname, int metric_phase,
                   const std::string& cmatch_rank_group,
                   int bucket_size = 1000000) {
     if (method == "AucCalculator") {
       metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
-                                                is_join ? 1 : 0, bucket_size));
+                                                metric_phase, bucket_size));
     } else if (method == "MultiTaskAucCalculator") {
       metric_lists_.emplace(
           name, new MultiTaskMetricMsg(label_varname, pred_varname,
-                                       is_join ? 1 : 0, cmatch_rank_group,
+                                       metric_phase, cmatch_rank_group,
                                        cmatch_rank_varname, bucket_size));
     } else if (method == "CmatchRankAucCalculator") {
       metric_lists_.emplace(
           name, new CmatchRankMetricMsg(label_varname, pred_varname,
-                                        is_join ? 1 : 0, cmatch_rank_group,
+                                        metric_phase, cmatch_rank_group,
                                         cmatch_rank_varname, bucket_size));
     } else if (method == "MaskAucCalculator") {
       metric_lists_.emplace(
-          name, new MaskMetricMsg(label_varname, pred_varname, is_join ? 1 : 0,
+          name, new MaskMetricMsg(label_varname, pred_varname, metric_phase,
                                   mask_varname, bucket_size));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -753,7 +778,8 @@ class BoxWrapper {
   std::unordered_set<std::string> slot_name_omited_in_feedpass_;
 
   // Metric Related
-  int pass_flag_ = 1;  // join: 1, update: 0
+  int phase_ = 1;
+  int phase_num_ = 2;
   std::map<std::string, MetricMsg*> metric_lists_;
   std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
@@ -762,6 +788,57 @@ class BoxWrapper {
 
  public:
   static AfsManager* afs_manager;
+
+  // Auc Runner
+ public:
+  void InitializeAucRunner(std::vector<std::vector<std::string>> slot_eval,
+                           int thread_num, int pool_size,
+                           std::vector<std::string> slot_list) {
+    mode_ = 1;
+    phase_num_ = static_cast<int>(slot_eval.size());
+    phase_ = phase_num_ - 1;
+    auc_runner_thread_num_ = thread_num;
+    pass_done_semi_ = paddle::framework::MakeChannel<int>();
+    pass_done_semi_->Put(1);  // Note: At most 1 pipeline in AucRunner
+    random_ins_pool_list.resize(thread_num);
+
+    std::unordered_set<std::string> slot_set;
+    for (size_t i = 0; i < slot_eval.size(); ++i) {
+      for (const auto& slot : slot_eval[i]) {
+        slot_set.insert(slot);
+      }
+    }
+    for (size_t i = 0; i < slot_list.size(); ++i) {
+      if (slot_set.find(slot_list[i]) != slot_set.end()) {
+        slot_index_to_replace_.insert(static_cast<int16_t>(i));
+      }
+    }
+    for (int i = 0; i < auc_runner_thread_num_; ++i) {
+      random_ins_pool_list[i].SetSlotIndexToReplace(slot_index_to_replace_);
+    }
+    VLOG(0) << "AucRunner configuration: thread number[" << thread_num
+            << "], pool size[" << pool_size << "], runner_group[" << phase_num_
+            << "]";
+    VLOG(0) << "Slots that need to be evaluated:";
+    for (auto e : slot_index_to_replace_) {
+      VLOG(0) << e << ": " << slot_list[e];
+    }
+  }
+  void GetRandomReplace(const std::vector<Record>& pass_data);
+  void AddReplaceFeasign(boxps::PSAgentBase* p_agent, int feed_pass_thread_num);
+  void GetRandomData(const std::vector<Record>& pass_data,
+                     const std::unordered_set<uint16_t>& slots_to_replace,
+                     std::vector<Record>* result);
+  int Mode() const { return mode_; }
+
+ private:
+  int mode_ = 0;  // 0 means train/test 1 means auc_runner
+  int auc_runner_thread_num_ = 1;
+  bool init_done_ = false;
+  paddle::framework::Channel<int> pass_done_semi_;
+  std::unordered_set<uint16_t> slot_index_to_replace_;
+  std::vector<RecordCandidateList> random_ins_pool_list;
+  std::vector<size_t> replace_idx_;
 };
 #endif
 
@@ -810,7 +887,38 @@ class BoxHelper {
     VLOG(3) << "After PreLoadIntoMemory()";
   }
   void WaitFeedPassDone() { feed_data_thread_->join(); }
+  void SlotsShuffle(const std::set<std::string>& slots_to_replace) {
+#ifdef PADDLE_WITH_BOX_PS
+    auto box_ptr = BoxWrapper::GetInstance();
+    PADDLE_ENFORCE_EQ(box_ptr->Mode(), 1,
+                      platform::errors::PreconditionNotMet(
+                          "Should call InitForAucRunner first."));
+    box_ptr->FlipPhase();
 
+    std::unordered_set<uint16_t> index_slots;
+    dynamic_cast<MultiSlotDataset*>(dataset_)->PreprocessChannel(
+        slots_to_replace, index_slots);
+    const std::vector<Record>& pass_data =
+        dynamic_cast<MultiSlotDataset*>(dataset_)->GetSlotsOriginalData();
+    if (!get_random_replace_done_) {
+      box_ptr->GetRandomReplace(pass_data);
+      get_random_replace_done_ = true;
+    }
+    std::vector<Record> random_data;
+    random_data.resize(pass_data.size());
+    box_ptr->GetRandomData(pass_data, index_slots, &random_data);
+
+    auto new_input_channel = paddle::framework::MakeChannel<Record>();
+    new_input_channel->Open();
+    new_input_channel->Write(std::move(random_data));
+    new_input_channel->Close();
+    dynamic_cast<MultiSlotDataset*>(dataset_)->SetInputChannel(
+        new_input_channel);
+    if (dataset_->EnablePvMerge()) {
+      dataset_->PreprocessInstance();
+    }
+#endif
+  }
 #ifdef PADDLE_WITH_BOX_PS
   // notify boxps to feed this pass feasigns from SSD to memory
   static void FeedPassThread(const std::deque<Record>& t, int begin_index,
@@ -881,6 +989,10 @@ class BoxHelper {
     for (size_t i = 0; i < tnum; ++i) {
       threads[i].join();
     }
+
+    if (box_ptr->Mode() == 1) {
+      box_ptr->AddReplaceFeasign(p_agent, tnum);
+    }
     VLOG(3) << "Begin call EndFeedPass in BoxPS";
     box_ptr->EndFeedPass(p_agent);
 #endif
@@ -892,6 +1004,7 @@ class BoxHelper {
   int year_;
   int month_;
   int day_;
+  bool get_random_replace_done_ = false;
 };
 
 }  // end namespace framework
