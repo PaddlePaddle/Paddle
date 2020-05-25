@@ -302,9 +302,9 @@ class QuantizationTransformPass(object):
             key = ''
             for inp in in_node.inputs:
                 key = key + inp.name()
+            key = key + in_node.name()
             for inp in in_node.outputs:
                 key = key + inp.name()
-            key = key + in_node.name()
 
             if key in create_var_map.keys():
                 new_node = create_var_map[key]
@@ -320,9 +320,9 @@ class QuantizationTransformPass(object):
             key = ''
             for inp in op_node.inputs:
                 key = key + inp.name()
+            key = key + op_node.name()
             for inp in op_node.outputs:
                 key = key + inp.name()
-            key = key + op_node.name()
             has_created = False
             if key in create_op_map.keys():
                 new_op_node = create_op_map[key]
@@ -415,7 +415,7 @@ class QuantizationTransformPass(object):
                     if var_node.name() + "@GRAD" in node.name():
                         op_grad_out = node
                 # update op_grad's output
-                if op_grad_out:
+                if op_grad_out is not None:
                     graph.update_output_link(op_grad_out, target_out_grad_node,
                                              op_grad)
                 else:
@@ -430,7 +430,6 @@ class QuantizationTransformPass(object):
                 mean_grad = target_out_grad_node.inputs[0]
                 mean_out_grad = mean_grad.inputs[0]
                 fill_constant_node = mean_out_grad.inputs[0]
-                #target_out_grad_node.clear_inputs()
                 graph.safe_remove_nodes(mean_grad)
                 graph.safe_remove_nodes(mean_out_grad)
                 graph.safe_remove_nodes(fill_constant_node)
