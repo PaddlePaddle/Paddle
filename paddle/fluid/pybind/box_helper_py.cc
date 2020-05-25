@@ -54,6 +54,8 @@ void BindBoxHelper(py::module* m) {
       .def("preload_into_memory", &framework::BoxHelper::PreLoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
       .def("load_into_memory", &framework::BoxHelper::LoadIntoMemory,
+           py::call_guard<py::gil_scoped_release>())
+      .def("slots_shuffle", &framework::BoxHelper::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>());
 }  // end BoxHelper
 
@@ -76,13 +78,15 @@ void BindBoxWrapper(py::module* m) {
       .def("initialize_gpu_and_load_model",
            &framework::BoxWrapper::InitializeGPUAndLoadModel,
            py::call_guard<py::gil_scoped_release>())
+      .def("initialize_auc_runner", &framework::BoxWrapper::InitializeAucRunner,
+           py::call_guard<py::gil_scoped_release>())
       .def("init_metric", &framework::BoxWrapper::InitMetric,
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_msg", &framework::BoxWrapper::GetMetricMsg,
            py::call_guard<py::gil_scoped_release>())
       .def("get_metric_name_list", &framework::BoxWrapper::GetMetricNameList,
            py::call_guard<py::gil_scoped_release>())
-      .def("flip_pass_flag", &framework::BoxWrapper::FlipPassFlag,
+      .def("flip_phase", &framework::BoxWrapper::FlipPhase,
            py::call_guard<py::gil_scoped_release>())
       .def("init_afs_api", &framework::BoxWrapper::InitAfsAPI,
            py::call_guard<py::gil_scoped_release>())
