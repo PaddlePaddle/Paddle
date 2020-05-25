@@ -118,6 +118,10 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
+void BoxWrapper::SetTestMode(bool is_test) const {
+  boxps_ptr_->SetTestMode(is_test);
+}
+
 void BoxWrapper::EndPass(bool need_save_delta) const {
   int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
@@ -147,7 +151,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();
+    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
     LoDTensor& total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys = reinterpret_cast<uint64_t*>(
         total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
@@ -220,7 +224,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
         "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();
+    int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
     LoDTensor& cached_total_keys_tensor = keys_tensor[device_id];
     uint64_t* total_keys =
         reinterpret_cast<uint64_t*>(cached_total_keys_tensor.data<int64_t>());
@@ -232,7 +236,7 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
     push_boxps_timer.Start();
     int ret = boxps_ptr_->PushSparseGPU(
         total_keys, total_grad_values_gpu, static_cast<int>(total_length),
-        boost::get<platform::CUDAPlace>(place).GetDeviceId());
+        BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId());
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "PushSparseGPU failed in BoxPS."));
     push_boxps_timer.Pause();
@@ -251,6 +255,113 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
           << " s";
   VLOG(3) << "End PushSparseGrad";
 }
+
+void BoxWrapper::GetRandomReplace(const std::vector<Record>& pass_data) {
+  VLOG(0) << "Begin GetRandomReplace";
+  size_t ins_num = pass_data.size();
+  replace_idx_.resize(ins_num);
+  for (auto& cand_list : random_ins_pool_list) {
+    cand_list.ReInitPass();
+  }
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads.push_back(std::thread([this, &pass_data, tid, ins_num]() {
+      int start = tid * ins_num / auc_runner_thread_num_;
+      int end = (tid + 1) * ins_num / auc_runner_thread_num_;
+      VLOG(3) << "GetRandomReplace begin for thread[" << tid
+              << "], and process [" << start << ", " << end
+              << "), total ins: " << ins_num;
+      auto& random_pool = random_ins_pool_list[tid];
+      for (int i = start; i < end; ++i) {
+        const auto& ins = pass_data[i];
+        random_pool.AddAndGet(ins, replace_idx_[i]);
+      }
+    }));
+  }
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads[tid].join();
+  }
+  pass_done_semi_->Put(1);
+  VLOG(0) << "End GetRandomReplace";
+}
+
+void BoxWrapper::GetRandomData(
+    const std::vector<Record>& pass_data,
+    const std::unordered_set<uint16_t>& slots_to_replace,
+    std::vector<Record>* result) {
+  VLOG(0) << "Begin GetRandomData";
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads.push_back(std::thread([this, &pass_data, tid, &slots_to_replace,
+                                   result]() {
+      int debug_erase_cnt = 0;
+      int debug_push_cnt = 0;
+      size_t ins_num = pass_data.size();
+      int start = tid * ins_num / auc_runner_thread_num_;
+      int end = (tid + 1) * ins_num / auc_runner_thread_num_;
+      VLOG(3) << "GetRandomData begin for thread[" << tid << "], and process ["
+              << start << ", " << end << "), total ins: " << ins_num;
+      const auto& random_pool = random_ins_pool_list[tid];
+      for (int i = start; i < end; ++i) {
+        const auto& ins = pass_data[i];
+        const RecordCandidate& rand_rec = random_pool.Get(replace_idx_[i]);
+        Record new_rec = ins;
+        for (auto it = new_rec.uint64_feasigns_.begin();
+             it != new_rec.uint64_feasigns_.end();) {
+          if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
+            it = new_rec.uint64_feasigns_.erase(it);
+            debug_erase_cnt += 1;
+          } else {
+            ++it;
+          }
+        }
+        for (auto slot : slots_to_replace) {
+          auto range = rand_rec.feas_.equal_range(slot);
+          for (auto it = range.first; it != range.second; ++it) {
+            new_rec.uint64_feasigns_.push_back({it->second, it->first});
+            debug_push_cnt += 1;
+          }
+        }
+        (*result)[i] = std::move(new_rec);
+      }
+      VLOG(3) << "thread[" << tid << "]: erase feasign num: " << debug_erase_cnt
+              << " repush feasign num: " << debug_push_cnt;
+    }));
+  }
+  for (int tid = 0; tid < auc_runner_thread_num_; ++tid) {
+    threads[tid].join();
+  }
+  VLOG(0) << "End GetRandomData";
+}
+
+void BoxWrapper::AddReplaceFeasign(boxps::PSAgentBase* p_agent,
+                                   int feed_pass_thread_num) {
+  VLOG(0) << "Enter AddReplaceFeasign Function";
+  int semi;
+  pass_done_semi_->Get(semi);
+  VLOG(0) << "Last Pass had updated random pool done. Begin AddReplaceFeasign";
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
+    threads.push_back(std::thread([this, tid, p_agent, feed_pass_thread_num]() {
+      VLOG(3) << "AddReplaceFeasign begin for thread[" << tid << "]";
+      for (size_t pool_id = tid; pool_id < random_ins_pool_list.size();
+           pool_id += feed_pass_thread_num) {
+        auto& random_pool = random_ins_pool_list[pool_id];
+        for (size_t i = 0; i < random_pool.Size(); ++i) {
+          auto& ins_candidate = random_pool.Get(i);
+          for (const auto& pair : ins_candidate.feas_) {
+            p_agent->AddKey(pair.second.uint64_feasign_, tid);
+          }
+        }
+      }
+    }));
+  }
+  for (int tid = 0; tid < feed_pass_thread_num; ++tid) {
+    threads[tid].join();
+  }
+  VLOG(0) << "End AddReplaceFeasign";
+}
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif

@@ -285,10 +285,12 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         it, var_base_map_out_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
 
-    PADDLE_ENFORCE_EQ(it->second.size(), dims.size(),
-                      platform::errors::PreconditionNotMet(
-                          "dim size [%d] is not match output var number [%d]",
-                          dims.size(), it->second.size()));
+    PADDLE_ENFORCE_EQ(dims.size(), it->second.size(),
+                      platform::errors::InvalidArgument(
+                          "The number of dims is expected to be equal to the "
+                          "number of Outputs(%s). But receieved: the number of "
+                          "dims = %d, the number of Outputs(%s) = %d.",
+                          name, dims.size(), name, it->second.size()));
 
     for (size_t i = 0; i < dims.size(); ++i) {
       if (it->second[i]) {

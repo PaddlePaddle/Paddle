@@ -25,6 +25,8 @@ import os
 import six
 import tempfile
 
+from paddle.fluid import unique_name
+
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
     "ExponentialDecay": "exponential_decay",
@@ -34,6 +36,9 @@ dygraph_class_to_static_api = {
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
 }
+
+FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
+FOR_ITER_VAR_SHAPE_PREFIX = '__for_loop_var_shape'
 
 
 def _is_api_in_module_helper(obj, module_prefix):
@@ -50,8 +55,9 @@ def is_api_in_module(node, module_prefix):
         #  source_file = inspect.getfile(dyfunc)
         #  import_statements = ImportVisitor(source_file).transform()
         #  import_str = "".join(import_statements)
-        import paddle.fluid as fluid
         import paddle
+        import paddle.fluid as fluid
+        import paddle.fluid.layers as layers
         from paddle.fluid.dygraph import to_variable
         import paddle.fluid.dygraph as dygraph
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
@@ -61,6 +67,10 @@ def is_api_in_module(node, module_prefix):
 
 
 def is_dygraph_api(node):
+    # Note: A api in module dygraph_to_static is not a real dygraph api.
+    if is_api_in_module(node, "paddle.fluid.dygraph.dygraph_to_static"):
+        return False
+
     return is_api_in_module(node, "paddle.fluid.dygraph")
 
 
@@ -84,29 +94,19 @@ def is_numpy_api(node):
         return False
 
 
-def is_control_flow_to_transform(node, var_name_to_type):
+def is_control_flow_to_transform(node,
+                                 static_analysis_visitor=None,
+                                 var_name_to_type=None):
     """
-    Determines whether the node is a Paddle control flow statement which needs to
-    transform into a static graph control flow statement.
+    Determines whether the node is a PaddlePaddle control flow statement which needs to
+    be transformed into a static graph control flow statement.
     """
     assert isinstance(node, gast.AST), \
         "The type of input node must be gast.AST, but received %s." % type(node)
-
-    if isinstance(node, gast.If):
-        from .ifelse_transformer import IfConditionVisitor
-        if_visitor = IfConditionVisitor(
-            node.test, node_var_type_map=var_name_to_type)
-        return if_visitor.is_control_flow()
-
-    if isinstance(node, gast.For):
-        # TODO: make a better condition
-        return True
-
-    if isinstance(node, gast.While):
-        # TODO: make a better condition
-        return True
-
-    return False
+    visitor = IsControlFlowVisitor(
+        node, static_analysis_visitor, node_var_type_map=var_name_to_type)
+    need_to_transform = visitor.transform()
+    return need_to_transform
 
 
 def _delete_keywords_from(node):
@@ -411,3 +411,601 @@ def ast_to_source_code(ast_node):
         ast_node = gast.gast_to_ast(ast_node)
     source_code = astor.to_source(ast_node)
     return source_code
+
+
+def is_candidate_node(node):
+    """
+    Nodes with specified type will be dependent on tensor.
+    """
+    is_compare_node = isinstance(node, (gast.Compare, gast.BoolOp, gast.UnaryOp,
+                                        gast.For, gast.If, gast.While))
+    # TODO(Aurelius84): `.numpy()` may be an customized function,
+    # and should consider a more elegant way to solve this problem.
+    has_numpy_attr = ".numpy()" in ast_to_source_code(node)
+    return is_compare_node or has_numpy_attr
+
+
+def compare_with_none(node):
+    """
+    Whether the comparator of `gast.Compare` node is `None`.
+    """
+    if isinstance(node, gast.Compare):
+        for child in [node.left, node.comparators]:
+            # node.comparators is a list.
+            if isinstance(child, list):
+                child = child[0]
+            if (isinstance(child, gast.Constant) and child.value is None) or (
+                    isinstance(child, gast.Name) and child.id == 'None'):
+                return True
+    return False
+
+
+class IsControlFlowVisitor(gast.NodeVisitor):
+    """
+    Judge whether the ast_node of control flow from Dygraph code dependent on paddle Tensor.
+    `ast_node` can be gast.If, gast.For, gast.While, gast.If.test(gast.Compare, gast.BoolOp, gast.UnaryOp).
+
+    If returns True,
+    gast.If.test must meet at least one of the following requirements:
+        1. involves at least one var whose type is Tensor.
+        2. the Tensor var calls `.numpy()[]` interface or Tensor.shape is [1].
+        3. involves Tensor.shape[i] and the shape[i] is unknown in compile time.
+    gast.While must meet at least one of the requirements 1 to 5:
+        4. has `break` statement.
+        5. has `continue` statement.
+    gast.For must meet at least one of the requirements 4 to 6:
+        6. calls `range` function in `for` statement and the argument of range is Tensor.
+        TODO: Support non-range case
+
+    The following examples should not be considered as control_flow_if:
+        1. `if Tensor_var` or `if Tensor_var is None`
+        2. if Tensor.shape[i] is determined with fixed value (not -1 or None)
+
+    Note: pred in ConditionalBlock require variable, which means all vars should be Tensor
+          or transformed into Tensor, like fill_constant(shape=[1], dtype='int32', value=Tensor.shape[i]).
+
+    TODO: 1. need to deal with `tensor.shape[i]` which need to eval the data of shape[i],
+             because reshape_op may be called before this statement.
+    """
+
+    def __init__(self,
+                 ast_node,
+                 static_analysis_visitor=None,
+                 node_var_type_map=None):
+        assert isinstance(
+            ast_node, gast.AST
+        ), "Type of input node should be gast.AST, but received %s." % type(
+            ast_node)
+        self.ast_root = ast_node
+        if static_analysis_visitor is None:
+            from .static_analysis import StaticAnalysisVisitor
+            static_analysis_visitor = StaticAnalysisVisitor(ast_node)
+        self.static_analysis_visitor = static_analysis_visitor
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
+        self.node_var_type_map = node_var_type_map
+
+        self.is_control_flow_num = 0
+        self._compare_node_tenor_set = set()
+
+    def transform(self):
+        node = self.ast_root
+        if isinstance(node, gast.If):
+            self._visit_If(node)
+        elif isinstance(node, gast.For):
+            self._visit_For(node)
+        elif isinstance(node, gast.While):
+            self._visit_While(node)
+        else:
+            self.visit(node)
+        return self.is_control_flow_num > 0
+
+    def _visit_If(self, node):
+        assert isinstance(node, gast.If)
+        self.visit(node.test)
+        return
+
+    def _visit_For(self, node):
+        assert isinstance(node, gast.For)
+        if not isinstance(node.iter, gast.Call):
+            return
+
+        # for in range(v.numpy()) or for in enumerate(v.numpy())
+        if isinstance(node.iter.func, gast.Name):
+            if node.iter.func.id == "range" or node.iter.func.id == "enumerate":
+                for arg in node.iter.args:
+                    self.visit(arg)
+            else:
+                return
+        # for in v.numpy()
+        elif isinstance(node.iter.func, gast.Attribute):
+            if node.iter.func.attr == 'numpy':
+                self._visit_Call(node.iter)
+            else:
+                return
+        else:
+            return
+
+        for child_node in gast.walk(node):
+            if isinstance(child_node, (gast.Continue, gast.Break)):
+                self._visit_break_continue(child_node)
+        return
+
+    def _visit_While(self, node):
+        assert isinstance(node, gast.While)
+        test = node.test
+        self.generic_visit(test)
+        for child_node in gast.walk(node):
+            if isinstance(child_node, (gast.Continue, gast.Break)):
+                self._visit_break_continue(child_node)
+        return
+
+    def _visit_break_continue(self, node):
+        assert isinstance(node, (gast.Break, gast.Continue))
+        wrapper_node = self.node_to_wrapper_map.get(node)
+        if not wrapper_node:
+            # Transformed node is not in node_to_wrapper_map
+            return
+
+        while wrapper_node.parent:
+            parent_node = wrapper_node.parent.node
+            if isinstance(parent_node, (gast.For, gast.While)):
+                if parent_node is self.ast_root:
+                    self.is_control_flow_num += 1
+                    return
+                else:
+                    return
+
+            wrapper_node = wrapper_node.parent
+
+        return
+
+    def visit_BoolOp(self, node):
+        for i, child in enumerate(node.values):
+            self.visit(child)
+        return node
+
+    def visit_Compare(self, node):
+        pre_control_flow_num = self.is_control_flow_num
+        if not compare_with_none(node):
+            self.generic_visit(node)
+            for child in gast.walk(node):
+                if isinstance(child, gast.Subscript):
+                    self._visit_Subscript(child)
+        if self.is_control_flow_num > pre_control_flow_num:
+            self._compare_node_tenor_set.add(node)
+        return node
+
+    def _visit_Subscript(self, node):
+        self.generic_visit(node)
+        if hasattr(node, 'value') and isinstance(node.value, gast.Call):
+            self._visit_Call(node.value)
+        return node
+
+    def _visit_Call(self, node):
+        assert isinstance(node, gast.Call)
+        if isinstance(node.func, gast.Attribute):
+            attr_node = node.func
+            if attr_node.attr == 'numpy':
+                self.is_control_flow_num += 1
+
+    def visit_Call(self, node):
+        self._visit_Call(node)
+        if is_paddle_api(node):
+            self.is_control_flow_num += 1
+        return node
+
+    def visit_Name(self, node):
+        if self._is_node_with_tensor(node, node.id):
+            self.is_control_flow_num += 1
+        return node
+
+    def visit_Constant(self, node):
+        if self._is_node_with_tensor(node, node.value):
+            self.is_control_flow_num += 1
+        return node
+
+    def _is_node_with_tensor(self, node, name_id):
+        from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+
+        # Look up the node_var_type_map by name_id.
+        if self.node_var_type_map:
+            if name_id and isinstance(name_id, six.string_types):
+                var_type = self.node_var_type_map.get(name_id, None)
+                if var_type and var_type & NodeVarType.TENSOR_TYPES:
+                    return True
+        # if not found, look up the node_to_wrapper_map by node.
+        wrapper_node = self.node_to_wrapper_map.get(node, None)
+        if wrapper_node is not None:
+            if wrapper_node.node_var_type & NodeVarType.TENSOR_TYPES:
+                return True
+
+        return False
+
+    def get_compare_nodes_with_tensor(self):
+        return self._compare_node_tenor_set
+
+
+class NameNodeReplaceTransformer(gast.NodeTransformer):
+    """
+    This class replaces specified gast.Name node by replace_node.
+    """
+
+    def __init__(self, root_node, target_name, replace_node):
+        assert isinstance(target_name, str)
+        self.target_name = target_name
+        self.replace_node = replace_node
+
+        self.visit(root_node)
+
+    def visit_Name(self, node):
+        if node.id == self.target_name:
+            return self.replace_node
+        return node
+
+
+class ForNodeVisitor(object):
+    """
+    This class parses python for statement, get transformed 3 statement components of for node
+    three key statements:
+        1). init_stmts: list[node], prepare nodes of for loop, may not only one
+        2). cond_stmt: node, condition node to judge whether continue loop
+        3). body_stmts: list[node], updated loop body, sometimes we should change
+            the original statement in body, not just append new statement
+
+    In this process, the semantics of for does not change.
+
+    Now only can parse 3 type statements:
+        1). for x in range(***)
+        2). for x in var.numpy()
+        3). for i, x enumerate(var.numpy())
+    """
+
+    def __init__(self, for_node):
+        assert isinstance(
+            for_node, gast.For
+        ), "Input node for the initialization of ForNodeVisitor is not gast.For node."
+        # 1. original for node
+        self.node = for_node
+
+        # 2. gast.For node main parts
+        self.target = for_node.target
+        # NOTE: type may be Node or list[Node]
+        self.iter_args = for_node.iter if self.is_for_iter(
+        ) else for_node.iter.args
+        self.body = for_node.body
+
+        # 3. key shared node or names
+        # - x:
+        #   - for x in range(***)
+        #   - for x in var.numpy()
+        #   - for i, x enumerate(var.numpy())
+        self.iter_var_name = self._get_iter_var_name()
+
+        # - created index var to slice Variable: __for_loop_var_index_0
+        #   - for x in var.numpy()
+        #   - for i, x enumerate(var.numpy())
+        self.iter_idx_name = unique_name.generate(FOR_ITER_INDEX_PREFIX)
+
+        # - created shape var to build loop condition: __for_loop_var_shape_0
+        #   - for x in var.numpy()
+        #   - for i, x enumerate(var.numpy())
+        self.iter_var_shape_name = unique_name.generate(
+            FOR_ITER_VAR_SHAPE_PREFIX)
+
+        # - var.numpy()
+        #   - for x in var.numpy()
+        #   - for i, x enumerate(var.numpy())
+        self.iter_node = self._get_iter_node()
+
+        # - enumeate i:
+        #   - for i, x enumerate(var.numpy())
+        self.enum_idx_name = self._get_enum_idx_name()
+
+        # - range/enumerate args length
+        self.args_length = None
+
+    def parse(self):
+        self._args_check()
+        if self.is_for_range_iter():
+            return self._parse_for_range_stmts()
+        elif self.is_for_iter():
+            return self._parse_for_stmts()
+        elif self.is_for_enumerate_iter():
+            return self._parse_for_enumerate_stmts()
+        else:
+            raise None
+
+    def is_for_range_iter(self):
+        return isinstance(self.node.iter.func,
+                          gast.Name) and self.node.iter.func.id == "range"
+
+    def is_for_iter(self):
+        return isinstance(
+            self.node.iter.func,
+            gast.Attribute) and self.node.iter.func.attr == 'numpy'
+
+    def is_for_enumerate_iter(self):
+        return isinstance(self.node.iter.func,
+                          gast.Name) and self.node.iter.func.id == "enumerate"
+
+    def _args_check(self):
+        if self.is_for_range_iter():
+            self.args_length = len(self.iter_args)
+            assert self.args_length >= 1 and self.args_length <= 3, "range() function takes 1 to 3 arguments"
+        elif self.is_for_enumerate_iter():
+            self.args_length = len(self.iter_args)
+            assert self.args_length >= 1 and self.args_length <= 2, "enumerate() function takes 1 to 2 arguments"
+        else:
+            self.args_length = None
+
+    def _parse_for_range_stmts(self):
+        init_stmts = []
+        init_stmts.append(self._build_index_init_node())
+
+        compare_node = self._build_compare_node()
+        step_node = self._build_step_node()
+        cond_stmt = self._build_cond_stmt(step_node, compare_node)
+
+        body_stmts = self.body
+        body_stmts.append(self._build_index_increase_node(step_node))
+
+        return init_stmts, cond_stmt, body_stmts
+
+    def _parse_for_stmts(self):
+        init_stmts = []
+        init_stmts.append(self._build_index_init_node())
+        init_stmts.append(self._build_var_shape_assign_node())
+
+        compare_node = self._build_compare_node()
+        step_node = self._build_step_node()
+        cond_stmt = self._build_cond_stmt(step_node, compare_node)
+
+        body_stmts = self.body
+        var_slice_node = self._build_var_slice_node()
+        for body_node in body_stmts:
+            NameNodeReplaceTransformer(body_node, self.iter_var_name,
+                                       var_slice_node)
+        body_stmts.append(self._build_index_increase_node(step_node))
+
+        return init_stmts, cond_stmt, body_stmts
+
+    def _parse_for_enumerate_stmts(self):
+        init_stmts = []
+        init_stmts.append(self._build_index_init_node())
+        init_stmts.append(self._build_var_shape_assign_node())
+        init_stmts.append(self._build_enum_init_node())
+
+        compare_node = self._build_compare_node()
+        step_node = self._build_step_node()
+        cond_stmt = self._build_cond_stmt(step_node, compare_node)
+
+        body_stmts = self.body
+        var_slice_node = self._build_var_slice_node()
+        for body_node in body_stmts:
+            NameNodeReplaceTransformer(body_node, self.iter_var_name,
+                                       var_slice_node)
+        body_stmts.append(self._build_index_increase_node(step_node))
+        body_stmts.append(self._build_enum_increase_node())
+
+        return init_stmts, cond_stmt, body_stmts
+
+    def _build_index_init_node(self):
+        if self.is_for_range_iter():
+            if self.args_length == 1:
+                index_init_node = get_constant_variable_node(self.iter_var_name,
+                                                             0)
+            else:
+                index_init_node = gast.Assign(
+                    targets=[
+                        gast.Name(
+                            id=self.iter_var_name,
+                            ctx=gast.Store(),
+                            annotation=None,
+                            type_comment=None)
+                    ],
+                    value=self.iter_args[0])
+        else:
+            index_init_node = get_constant_variable_node(self.iter_idx_name, 0)
+        return index_init_node
+
+    def _build_var_shape_assign_node(self):
+        # get variable shape as iter length
+        return gast.Assign(
+            targets=[
+                gast.Name(
+                    id=self.iter_var_shape_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None)
+            ],
+            value=create_api_shape_node(self.iter_node.func))
+
+    def _build_enum_init_node(self):
+        enum_init_node = get_constant_variable_node(
+            name=self.enum_idx_name, value=0)
+        if self.is_for_enumerate_iter() and self.args_length != 1:
+            enum_init_node = gast.Assign(
+                targets=[
+                    gast.Name(
+                        id=self.enum_idx_name,
+                        ctx=gast.Store(),
+                        annotation=None,
+                        type_comment=None)
+                ],
+                value=self.iter_args[1])
+        return enum_init_node
+
+    def _build_compare_node(self):
+        if self.is_for_range_iter():
+            compare_node = self.iter_args[
+                0] if self.args_length == 1 else self.iter_args[1]
+        else:
+            compare_node = gast.Subscript(
+                value=gast.Name(
+                    id=self.iter_var_shape_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                slice=gast.Index(value=gast.Constant(
+                    value=0, kind=None)),
+                ctx=gast.Load())
+        return compare_node
+
+    def _build_step_node(self):
+        if self.is_for_range_iter():
+            step_node = self.iter_args[
+                2] if self.args_length == 3 else gast.Constant(
+                    value=1, kind=None)
+        else:
+            step_node = gast.Constant(value=1, kind=None)
+        return step_node
+
+    def _build_cond_stmt(self, step_node, compare_node):
+        return gast.Compare(
+            left=gast.BinOp(
+                left=gast.Name(
+                    id=self.iter_var_name
+                    if self.is_for_range_iter() else self.iter_idx_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                op=gast.Add(),
+                right=step_node),
+            ops=[gast.LtE()],
+            comparators=[compare_node])
+
+    def _build_index_increase_node(self, step_node):
+        return gast.AugAssign(
+            target=gast.Name(
+                id=self.iter_var_name
+                if self.is_for_range_iter() else self.iter_idx_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None),
+            op=gast.Add(),
+            value=step_node)
+
+    def _build_var_slice_node(self):
+        return gast.Subscript(
+            value=self.iter_node,
+            slice=gast.Index(value=gast.Name(
+                id=self.iter_idx_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None)),
+            ctx=gast.Load())
+
+    def _build_enum_increase_node(self):
+        return gast.AugAssign(
+            target=gast.Name(
+                id=self.enum_idx_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None),
+            op=gast.Add(),
+            value=gast.Constant(
+                value=1, kind=None))
+
+    def _get_iter_var_name(self):
+        if self.is_for_range_iter():
+            return self.target.id
+        elif self.is_for_iter():
+            return self.target.id
+        elif self.is_for_enumerate_iter():
+            return self.target.elts[1].id
+        return None
+
+    def _get_iter_node(self):
+        if self.is_for_iter():
+            return self.iter_args
+        elif self.is_for_enumerate_iter():
+            return self.iter_args[0]
+        return None
+
+    def _get_enum_idx_name(self):
+        if self.is_for_enumerate_iter():
+            return self.target.elts[0].id
+        return None
+
+
+class SplitAssignTransformer(gast.NodeTransformer):
+    """
+    This class transforms sequence assignments and multi-target assignments to normal assignments.
+    """
+
+    def __init__(self, ast_node):
+        assert isinstance(ast_node, gast.AST)
+        self.ast_root = ast_node
+
+    def transform(self):
+        self.visit(self.ast_root)
+
+    def visit_Assign(self, node):
+        target_nodes = node.targets
+        if len(target_nodes) == 1:
+            node = self._parse_sequence_assign(node)
+        else:
+            node = self._parse_multi_target_assign(node)
+        return node
+
+    def _parse_sequence_assign(self, node):
+        """
+        a, b = c, d
+        ->
+        a = c
+        b = d
+        """
+        assert isinstance(node, gast.Assign)
+
+        target_nodes = node.targets
+        value_node = node.value
+        if not isinstance(target_nodes[0], (gast.List, gast.Tuple)):
+            return node
+        if not isinstance(value_node, (gast.List, gast.Tuple)):
+            return node
+
+        targets = node.targets[0].elts
+        values = node.value.elts
+        if len(targets) != len(values):
+            return node
+
+        new_nodes = []
+        for target, value in zip(targets, values):
+            assign_node = gast.Assign(targets=[target], value=value)
+            new_nodes.append(assign_node)
+
+        return new_nodes
+
+    def _parse_multi_target_assign(self, node):
+        """
+         Example 1:
+         a = b = c
+         ->
+         b = c
+         a = b
+
+         Example 2:
+         a, b = c, d = x
+         ->
+         c,d = x
+         a = c
+         b = d
+         """
+        assert isinstance(node, gast.Assign)
+
+        target_nodes = node.targets
+        value_node = node.value
+        new_nodes = []
+        for target in reversed(target_nodes):
+            assign_node = gast.Assign(targets=[target], value=value_node)
+            # NOTE: Because assign_node can be sequence assign statement like `a,b = c,d`,
+            # it's necessary to visit this new assign_node
+            parsed_node = self.visit_Assign(assign_node)
+            if not isinstance(parsed_node, list):
+                parsed_node = [parsed_node]
+
+            new_nodes.extend(parsed_node)
+            value_node = target
+
+        return new_nodes

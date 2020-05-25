@@ -22,10 +22,11 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 
 
-def gen_input_help(input, rank_offset, max_rank):
+def gen_input_help(input, rank_offset, max_rank, max_size):
     input_row, input_col = input.shape
-    input_help = np.zeros((input_row * max_rank * input_col, ))
-    ins_rank = np.zeros((input_row, 1))
+    max_ins = np.max((max_size, input_row))
+    input_help = np.zeros((max_ins * max_rank * input_col))
+    ins_rank = np.zeros((max_ins, 1))
     ins_rank.fill(-1)
 
     output_col = max_rank * input_col
@@ -46,7 +47,7 @@ def gen_input_help(input, rank_offset, max_rank):
         rank_input_col_idx = output_col_idx % input_col
         index = rank_offset[output_row_idx, 2 * k + 2]
         input_help[idx] = input[index, rank_input_col_idx]
-    input_help = input_help.reshape([input_row, max_rank * input_col])
+    input_help = input_help.reshape([max_ins, max_rank * input_col])
 
     return input_help, ins_rank
 
@@ -83,7 +84,7 @@ def gen_param_help(input, rank_offset, param, max_rank):
     return output_param
 
 
-def np_rank_attention(input, rank_offset, rank_para, max_rank):
+def np_rank_attention(input, rank_offset, rank_para, max_rank, max_size):
     input_row, input_col = input.shape
     rank_offset_row, rank_offset_col = rank_offset.shape
     rank_para_row, rank_para_col = rank_para.shape
@@ -92,7 +93,8 @@ def np_rank_attention(input, rank_offset, rank_para, max_rank):
     assert (max_rank == ((rank_offset_col - 1) / 2))
     assert (rank_para_row == max_rank * max_rank * input_col)
 
-    input_help, ins_rank = gen_input_help(input, rank_offset, max_rank)
+    input_help, ins_rank = gen_input_help(input, rank_offset, max_rank,
+                                          max_size)
     param_help = gen_param_help(input, rank_offset, rank_para, max_rank)
     block_matrix_row = input_col * max_rank
 
@@ -159,14 +161,19 @@ class TestRankAttentionOpComplex(OpTest):
         ]
         rank_para = np.random.random(rank_para_shape).astype(self.dtype)
         np_out, np_input_help, np_param_help, np_ins_rank = np_rank_attention(
-            input, np.array(rank_offset), rank_para, self.max_rank)
+            input,
+            np.array(rank_offset), rank_para, self.max_rank, self.pv_num * 7)
         self.inputs = {
             "X": input,
             "RankOffset": np.array(rank_offset).astype("int32"),
             "RankParam": rank_para
         }
-        self.attrs = {'MaxRank': self.max_rank}
-        self.outputs = {"Out": np_out}
+        self.attrs = {'MaxRank': self.max_rank, 'MaxSize': self.pv_num * 7}
+        self.outputs = {
+            "Out": np_out,
+            "InputHelp": np_input_help,
+            "InsRank": np_ins_rank
+        }
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
@@ -195,14 +202,19 @@ class TestRankAttentionOpCpu(OpTest):
         ]
         rank_para = np.random.random(rank_para_shape).astype(self.dtype)
         np_out, np_input_help, np_param_help, np_ins_rank = np_rank_attention(
-            input, np.array(rank_offset), rank_para, self.max_rank)
+            input,
+            np.array(rank_offset), rank_para, self.max_rank, self.pv_num * 7)
         self.inputs = {
             "X": input,
             "RankOffset": np.array(rank_offset).astype("int32"),
             "RankParam": rank_para
         }
-        self.attrs = {'MaxRank': self.max_rank}
-        self.outputs = {"Out": np_out}
+        self.attrs = {'MaxRank': self.max_rank, 'MaxSize': self.pv_num * 7}
+        self.outputs = {
+            "Out": np_out,
+            "InputHelp": np_input_help,
+            "InsRank": np_ins_rank
+        }
 
     def test_check_output_cpu(self):
         try:

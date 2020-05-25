@@ -82,13 +82,7 @@ $$Out = scale*(X + bias)$$
 class ScaleOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    auto &in_var_name = ctx->Input("X").front();
-    auto out_var_name = ctx->Output("Out").front();
-
-    if (in_var_name != out_var_name) {
-      ctx->SetType(out_var_name, ctx->GetType(in_var_name));
-      ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
-    }
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
@@ -110,7 +104,7 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ScaleOpInplace, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
@@ -119,7 +113,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,
-                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplace);
+                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,

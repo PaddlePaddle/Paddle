@@ -13,33 +13,55 @@
 # limitations under the License.
 
 # TODO: define activation functions of neural network
+from ...fluid.layers import brelu  #DEFINE_ALIAS
+from ...fluid.layers import elu  #DEFINE_ALIAS
+from ...fluid.layers import erf  #DEFINE_ALIAS
+from ...fluid.layers import gelu  #DEFINE_ALIAS
+from ...fluid.layers import hard_shrink  #DEFINE_ALIAS
+from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
+from ...fluid.layers import hard_swish  #DEFINE_ALIAS
+from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
+from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
+from ...fluid.layers import maxout  #DEFINE_ALIAS
+from ...fluid.layers import relu6  #DEFINE_ALIAS
+from ...fluid.layers import selu  #DEFINE_ALIAS
+from ...fluid.layers import soft_relu  #DEFINE_ALIAS
+from ...fluid.layers import softmax  #DEFINE_ALIAS
+from ...fluid.layers import softplus  #DEFINE_ALIAS
+from ...fluid.layers import softshrink  #DEFINE_ALIAS
+from ...fluid.layers import softsign  #DEFINE_ALIAS
+from ...fluid.layers import swish  #DEFINE_ALIAS
+from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
+from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
+
 __all__ = [
-    #             'brelu',
-    #            'elu',
-    #            'erf',
-    #            'gelu',
-    #            'hard_shrink',
-    #            'hard_sigmoid',
-    #            'hard_swish',
+    'brelu',
+    'elu',
+    'erf',
+    'gelu',
+    'hard_shrink',
+    'hard_sigmoid',
+    'hard_swish',
     'hsigmoid',
-    #            'leaky_relu',
-    #            'logsigmoid',
-    #            'maxout',
-    #            'prelu',
+    'leaky_relu',
+    'logsigmoid',
+    'maxout',
+    #       'prelu',
     'relu',
-    #            'relu6',
-    #            'selu',
+    'relu6',
+    'selu',
     'sigmoid',
-    #            'soft_relu',
-    #            'softmax',
-    #            'softplus',
-    #            'softshrink',
-    #            'softsign',
-    #            'swish',
-    #            'tanh_shrink',
-    #            'thresholded_relu',
+    'soft_relu',
+    'softmax',
+    'softplus',
+    'softshrink',
+    'softsign',
+    'swish',
+    'tanh_shrink',
+    'thresholded_relu',
     'log_softmax'
 ]
+
 import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
@@ -56,6 +78,9 @@ def hsigmoid(input,
              path_code=None,
              is_sparse=False):
     """
+	:alias_main: paddle.nn.functional.hsigmoid
+	:alias: paddle.nn.functional.hsigmoid,paddle.nn.functional.activation.hsigmoid
+
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -169,6 +194,9 @@ def hsigmoid(input,
 
 def relu(input, inplace=False, name=None):
     """
+	:alias_main: paddle.nn.functional.relu
+	:alias: paddle.nn.functional.relu,paddle.nn.functional.activation.relu
+
     ReLU Activation.
 
     .. math:
@@ -218,6 +246,9 @@ def relu(input, inplace=False, name=None):
 
 def sigmoid(input, inplace=False, name=None):
     """
+	:alias_main: paddle.nn.functional.sigmoid
+	:alias: paddle.nn.functional.sigmoid,paddle.nn.functional.activation.sigmoid
+
     Sigmoid Activation.
 
     .. math:
@@ -276,6 +307,9 @@ def sigmoid(input, inplace=False, name=None):
 
 def log_softmax(input, axis=None, dtype=None, name=None):
     """
+	:alias_main: paddle.nn.functional.log_softmax
+	:alias: paddle.nn.functional.log_softmax,paddle.nn.functional.activation.log_softmax
+
     This operator implements the log_softmax layer. The calculation process is as follows:
 
     .. math::

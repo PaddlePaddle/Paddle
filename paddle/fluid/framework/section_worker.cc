@@ -95,11 +95,11 @@ void SyncFunctor::Synchronize() {
 }
 
 std::atomic<int> SectionWorker::cpu_id_(0);
-void SectionWorker::Initialize(const TrainerDesc& trainer_desc) {
+void SectionWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
-      trainer_desc.section_param().section_config(section_id_).program_desc()));
+      desc.section_param().section_config(section_id_).program_desc()));
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -211,7 +211,7 @@ void SectionWorker::TrainFiles() {
     auto& metric_list = box_ptr->GetMetricList();
     for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
       auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
+      if (box_ptr->Phase() != metric_msg->MetricPhase()) {
         continue;
       }
       metric_msg->add_data(exe_scope);
@@ -367,12 +367,18 @@ void SectionWorker::TrainFilesWithProfiler() {
     auto& metric_list = box_ptr->GetMetricList();
     for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
       auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
+      if (box_ptr->Phase() != metric_msg->MetricPhase()) {
         continue;
       }
       metric_msg->add_data(exe_scope);
     }
 #endif
+    if (need_dump_field_) {
+      DumpField(*scope, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && pipeline_id_ == 0) {
+      DumpParam(*scope, step_cnt);
+    }
 
     if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
       // FIXME: Temporarily we assume two adjacent sections are in different
@@ -409,6 +415,9 @@ void SectionWorker::TrainFilesWithProfiler() {
     ++step_cnt;
     accum_num += batch_size;
     main_timer.Pause();
+  }
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
   }
   outer_timer.Pause();
 

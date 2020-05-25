@@ -30,7 +30,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(
             shape[i], 0,
             platform::errors::InvalidArgument(
-                "Each value of attribute 'shape' is expected to be greater "
+                "Each value of attribute 'shape' is expected to be no less "
                 "than 0. But recieved: shape[%u] = %d; shape = [%s].",
                 i, shape[i], framework::make_ddim(shape)));
       }
@@ -63,9 +63,8 @@ class FillConstantOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
-    auto& out_var_name = ctx->Output("Out").front();
-    ctx->SetDataType(out_var_name, data_type);
+        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+    ctx->SetOutputDataType("Out", data_type);
   }
 };
 

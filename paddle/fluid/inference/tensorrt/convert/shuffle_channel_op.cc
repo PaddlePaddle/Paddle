@@ -38,7 +38,7 @@ class ShuffleChannelOpConverter : public OpConverter {
     int c = input_dims.d[0];
     int h = input_dims.d[1];
     int w = input_dims.d[2];
-    int group = boost::get<int>(op_desc.GetAttr("group"));
+    int group = BOOST_GET_CONST(int, op_desc.GetAttr("group"));
 
     if (engine_->with_dynamic_shape()) {
       PADDLE_THROW(platform::errors::Fatal(

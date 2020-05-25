@@ -60,8 +60,36 @@ template <typename DeviceContext, typename T>
 class ClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max = context.Attr<T>("max");
-    auto min = context.Attr<T>("min");
+    auto max = static_cast<T>(context.Attr<float>("max"));
+    Tensor max_cpu;
+    if (context.HasInput("Max")) {
+      auto* max_t = context.Input<Tensor>("Max");
+      auto* max_data = max_t->data<T>();
+      if (platform::is_gpu_place(max_t->place())) {
+        TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
+        max_data = max_cpu.data<T>();
+      }
+      max = max_data[0];
+    }
+    max = static_cast<T>(max);
+
+    auto min = context.Attr<float>("min");
+    Tensor min_cpu;
+    if (context.HasInput("Min")) {
+      auto* min_t = context.Input<Tensor>("Min");
+      auto* min_data = min_t->data<T>();
+      if (platform::is_gpu_place(min_t->place())) {
+        TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
+        min_data = min_cpu.data<T>();
+      }
+      min = min_data[0];
+    }
+    min = static_cast<T>(min);
+    PADDLE_ENFORCE_LT(min, max, platform::errors::InvalidArgument(
+                                    "max should be greater than min. "
+                                    "But received min = %f, max = %f",
+                                    min, max));
+
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
       auto* x = context.Input<framework::LoDTensor>("X");
@@ -75,8 +103,9 @@ class ClipKernel : public framework::OpKernel<T> {
     } else if (x_var->IsType<framework::SelectedRows>()) {
       auto* x = context.Input<framework::SelectedRows>("X");
       auto* out = context.Output<framework::SelectedRows>("Out");
-      PADDLE_ENFORCE_NE(x, out,
-                        "Inplace clip is not allowed when x is SelectedRows");
+      PADDLE_ENFORCE_NE(x, out, platform::errors::InvalidArgument(
+                                    "Inplace clip is not allowed "
+                                    "when x is SelectedRows"));
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(context.template device_context<DeviceContext>(), *x, out);
       auto* out_tensor = out->mutable_value();
@@ -95,8 +124,32 @@ template <typename DeviceContext, typename T>
 class ClipGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto max = context.Attr<T>("max");
-    auto min = context.Attr<T>("min");
+    auto max = static_cast<T>(context.Attr<float>("max"));
+    Tensor max_cpu;
+    if (context.HasInput("Max")) {
+      auto* max_t = context.Input<Tensor>("Max");
+      auto* max_data = max_t->data<T>();
+      if (platform::is_gpu_place(max_t->place())) {
+        TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
+        max_data = max_cpu.data<T>();
+      }
+      max = max_data[0];
+    }
+    max = static_cast<T>(max);
+
+    auto min = context.Attr<float>("min");
+    Tensor min_cpu;
+    if (context.HasInput("Min")) {
+      auto* min_t = context.Input<Tensor>("Min");
+      auto* min_data = min_t->data<T>();
+      if (platform::is_gpu_place(min_t->place())) {
+        TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
+        min_data = min_cpu.data<T>();
+      }
+      min = min_data[0];
+    }
+    min = static_cast<T>(min);
+
     auto* d_out =
         context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto* d_x =

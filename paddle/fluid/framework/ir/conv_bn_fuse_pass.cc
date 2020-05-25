@@ -170,7 +170,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
                 eltwise_y_in_tensor->numel(), 0.0f);
 
     // update weights and biases
-    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
+    float epsilon =
+        BOOST_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
     recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
                                *bn_mean, *bn_variance, eltwise_y_in_tensor,
                                epsilon, conv_type());
@@ -275,7 +276,8 @@ void ConvEltwiseAddBNFusePass::ApplyImpl(ir::Graph* graph) const {
         scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
 
     // update weights and biases
-    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
+    float epsilon =
+        BOOST_GET_CONST(float, batch_norm->Op()->GetAttr("epsilon"));
     recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
                                *bn_mean, *bn_variance, eltwise_y_in_tensor,
                                epsilon, conv_type());
