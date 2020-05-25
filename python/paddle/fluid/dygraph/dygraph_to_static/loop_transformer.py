@@ -166,13 +166,19 @@ class NameVisitor(gast.NodeVisitor):
 
         in_loop_vars = self.in_loop_vars[node]
         in_loop_name_strs = self._var_nodes_to_names(in_loop_vars)
+
         before_loop_body_vars = self.before_loop_body_vars[node]
+        before_loop_body_vars = self._remove_target_vars_of_for(
+            before_loop_body_vars, node)
         before_loop_name_strs = self._var_nodes_to_names(before_loop_body_vars)
+
         after_loop_vars = self.current_seen_vars - before_loop_body_vars - in_loop_vars
+        after_loop_vars = self._remove_target_vars_of_for(after_loop_vars, node)
         after_loop_name_strs = self._var_nodes_to_names(after_loop_vars,
                                                         read_context)
         condition_vars = self.condition_vars[node]
         condition_names = self._var_nodes_to_names(condition_vars)
+
         write_vars = self.write_in_loop[node]
         write_names = self._var_nodes_to_names(write_vars)
 
@@ -203,6 +209,7 @@ class NameVisitor(gast.NodeVisitor):
                 # vars out
                 loop_var_names.add(name)
                 create_var_names.add(name)
+
         return loop_var_names, create_var_names
 
     def visit_Name(self, node):
@@ -221,8 +228,8 @@ class NameVisitor(gast.NodeVisitor):
             self.in_loop_vars[loop_node].add(node)
             if type(node.ctx) in write_context:
                 self.write_in_loop[loop_node].add(node)
-            if self.in_condition:
-                self.condition_vars[loop_node].add(node)
+        if self.in_condition:
+            self.condition_vars[loop_node].add(node)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
@@ -309,10 +316,58 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _is_call_func_name_node(self, node):
-        parent_node = self.node_to_wrapper_map[node].parent.node
+        parent_node = self._get_parent_node(node)
         if isinstance(parent_node, gast.Call) and parent_node.func == node:
             return True
         return False
+
+    def _get_parent_node(self, node):
+        wrapper_node = self.node_to_wrapper_map.get(node)
+        if wrapper_node:
+            parent_node = wrapper_node.parent.node
+            return parent_node
+        return None
+
+    def _remove_target_vars_of_for(self,
+                                   before_or_after_loop_vars,
+                                   loop_node=None):
+        """
+        Remove target vars of gast.For from before_loop_vars or after_loop_vars.
+        :param before_or_after_loop_vars: before_loop_vars or after_loop_vars of loop_node.
+        :param loop_node: Current loop node.
+        """
+
+        removed_vars = set()
+        for name_node in before_or_after_loop_vars:
+            if not isinstance(name_node, gast.Name):
+                continue
+
+            parent_node = self._get_parent_node(name_node)
+            if isinstance(parent_node, gast.Tuple):
+                parent_node = self._get_parent_node(parent_node)
+
+            if isinstance(parent_node,
+                          gast.For) and parent_node is not loop_node:
+                target_node = parent_node.target
+
+                if isinstance(target_node, gast.Tuple):
+                    target_vars = target_node.elts
+                else:
+                    target_vars = [target_node]
+
+                if name_node in target_vars:
+                    removed_vars.add(name_node)
+
+        removed_vars_name_strs = {var.id for var in removed_vars}
+
+        for var in before_or_after_loop_vars:
+            if not isinstance(var, gast.Name):
+                continue
+            if var.id in removed_vars_name_strs and var not in self.condition_vars[
+                    loop_node]:
+                removed_vars.add(var)
+
+        return before_or_after_loop_vars - removed_vars
 
 
 class LoopTransformer(gast.NodeTransformer):
