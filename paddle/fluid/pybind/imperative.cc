@@ -771,7 +771,7 @@ void BindImperative(py::module *m_ptr) {
 #if NCCL_VERSION_CODE >= 2212
                imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
 #else
-               if (!self._is_sparse()) {
+               if (!self.Var().IsType<framework::SelectedRows>()) {
                  imperative::AllReduce(self.Var(), self.MutableVar(), strategy);
                } else {
                  PADDLE_THROW(platform::errors::Unimplemented(
