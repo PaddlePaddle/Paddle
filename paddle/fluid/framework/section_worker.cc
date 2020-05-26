@@ -211,7 +211,7 @@ void SectionWorker::TrainFiles() {
     auto& metric_list = box_ptr->GetMetricList();
     for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
       auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
+      if (box_ptr->Phase() != metric_msg->MetricPhase()) {
         continue;
       }
       metric_msg->add_data(exe_scope);
@@ -367,7 +367,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     auto& metric_list = box_ptr->GetMetricList();
     for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
       auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
+      if (box_ptr->Phase() != metric_msg->MetricPhase()) {
         continue;
       }
       metric_msg->add_data(exe_scope);

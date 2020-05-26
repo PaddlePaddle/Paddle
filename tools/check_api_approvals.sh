@@ -283,6 +283,16 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 32832641 6836917
 fi
 
+# Get the list of PR authors with unresolved unit test issues
+pip install PyGithub
+# For getting PR related data
+wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
+if [ "${HASUTFIXED}" != "" ]; then
+  echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
+  check_approval 1 45041955 22165420
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"

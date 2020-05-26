@@ -307,7 +307,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInference, "Bias");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInferer, "Bias");
 
 }  // namespace operators
 }  // namespace paddle
@@ -317,7 +317,7 @@ REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
                   ops::NCEGradOpMaker<paddle::framework::OpDesc>,
                   ops::NCEGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference,
-                  ops::NCEGradOpNoNeedBufferVarInference);
+                  ops::NCEGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,

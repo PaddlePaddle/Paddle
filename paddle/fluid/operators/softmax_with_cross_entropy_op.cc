@@ -287,10 +287,10 @@ class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyInplaceInference,
+DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyInplaceInferer,
                            {"Logits", "Softmax"});
 
-DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyGradInplaceInference,
+DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyGradInplaceInferer,
                            {"Softmax", framework::GradVarName("Logits")});
 
 }  // namespace operators
@@ -302,10 +302,10 @@ REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
                   ops::SoftmaxWithCrossEntropyOpMaker,
                   ops::SoftmaxGradMaker<paddle::framework::OpDesc>,
                   ops::SoftmaxGradMaker<paddle::imperative::OpBase>,
-                  ops::SoftmaxWithCrossEntropyInplaceInference);
+                  ops::SoftmaxWithCrossEntropyInplaceInferer);
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad,
-                  ops::SoftmaxWithCrossEntropyGradInplaceInference);
+                  ops::SoftmaxWithCrossEntropyGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(softmax_with_cross_entropy,
                        ops::SoftmaxWithCrossEntropyKernel<float>,
                        ops::SoftmaxWithCrossEntropyKernel<double>);
