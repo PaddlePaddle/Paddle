@@ -178,11 +178,11 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   auto vec_dim_1 = 0;
   framework::Variable* var = scope.FindVar(persistable_var_name);
 
-  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
-                    platform::errors::InvalidArgument(
-                        "prefetch can only support LodTensor only"));
-
-  vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
+  if (var->IsType<SelectedRows>()) {
+    vec_dim_1 = var->Get<framework::SelectedRows>().value().dims()[1];
+  } else {
+    vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
+  }
 
   PADDLE_ENFORCE_GT(vec_dim_1, 0,
                     platform::errors::InvalidArgument(
