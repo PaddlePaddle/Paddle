@@ -30,6 +30,7 @@
 #include <ThreadPool.h>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
@@ -46,6 +47,7 @@ enum InitType { uniform_random, fill_constant, gaussian_random };
 class Initializer {
  public:
   Initializer() {}
+
   explicit Initializer(const std::vector<std::string> &attrs) {}
 
   virtual float GetValue() = 0;
@@ -308,7 +310,7 @@ class SparseVariable {
     meta_.initializer_attrs = meta.initializer_attrs;
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
-      values_dims[meta_.value_names[i]] = meta_.value_dims[i];
+      values_dims_[meta_.value_names[i]] = meta_.value_dims[i];
     }
 
     for (size_t i = 0; i < shard_num_; i++) {
@@ -339,7 +341,7 @@ class SparseVariable {
 
   void Dims(std::vector<std::string> value_names, std::vector<int64_t> *dims) {
     for (auto &name : value_names) {
-      dims->push_back(values_dims.at(name));
+      dims->push_back(values_dims_.at(name));
     }
   }
 
@@ -358,13 +360,91 @@ class SparseVariable {
       filenames.push_back(filename);
     }
 
-    Save(filenames, meta_.value_names);
+    SaveToSelectedRows(filenames, meta_.value_names);
 
     VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " done";
   }
 
-  void Save(const std::vector<std::string> &filenames,
-            const std::vector<std::string> &valuenames) {
+  void SaveToSelectedRows(const std::vector<std::string> &filenames,
+                          const std::vector<std::string> &valuenames) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto &value_name : valuenames) {
+      auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
+                          value_name);
+      if (it == meta_.value_names.end()) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "[%s] is invalid param for [%s]", value_name, meta_.name));
+      }
+    }
+
+    auto place = platform::CPUPlace();
+    // get device context from pool
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(place);
+
+    int64_t ids_num = 0;
+    for (auto &block : shard_blocks_) {
+      ids_num += block->values_.size();
+    }
+
+    std::vector<std::shared_ptr<Variable>> variables;
+    std::vector<float *> tensors;
+    std::vector<int64_t> ids;
+    std::vector<int64_t> dims;
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
+      auto dim = values_dims_.at(valuenames[i]);
+      auto var = std::make_shared<Variable>();
+      auto *slr = var->GetMutable<framework::SelectedRows>();
+      auto *src_t = slr->mutable_value();
+
+      src_t->Resize({ids_num, dim});
+      auto *value = src_t->mutable_data<float>(place);
+
+      dims.push_back(dim);
+      variables.push_back(var);
+      tensors.push_back(value);
+    }
+
+    int64_t offset = 0;
+    for (auto &block : shard_blocks_) {
+      for (auto value : block->values_) {
+        ids.push_back(value.first);
+        std::vector<std::vector<float>> vss = value.second->get(valuenames);
+
+        for (int i = 0; i < static_cast<int>(vss.size()); i++) {
+          auto &vs = vss[i];
+          std::memcpy(tensors[i] + offset * dims[i], vs.data(),
+                      sizeof(float) * dims[i]);
+        }
+
+        offset += 1;
+      }
+    }
+
+    for (auto &var : variables) {
+      auto *slr = var->GetMutable<framework::SelectedRows>();
+      slr->set_rows(ids);
+      slr->set_height(ids.size());
+    }
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
+      auto &filename = filenames[i];
+
+      auto &selectedRows = variables[i]->Get<framework::SelectedRows>();
+
+      std::ofstream fout(filename, std::ios::binary);
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                        platform::errors::Unavailable(
+                            "Cannot open %s to save variables.", filename));
+
+      framework::SerializeToStream(fout, selectedRows, dev_ctx);
+      fout.close();
+    }
+  }
+
+  void SaveToText(const std::vector<std::string> &filenames,
+                  const std::vector<std::string> &valuenames) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     for (auto &value_name : valuenames) {
@@ -426,7 +506,7 @@ class SparseVariable {
   mutable std::mutex mutex_;
 
   SparseMeta meta_;
-  std::unordered_map<std::string, int64_t> values_dims;
+  std::unordered_map<std::string, int64_t> values_dims_;
   const size_t shard_mask_ = 127;
   const size_t shard_num_ = 128;
   std::vector<std::shared_ptr<ValueBlock>> shard_blocks_;
