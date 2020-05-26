@@ -20,10 +20,10 @@ set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
 set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
 
-# the recent version of eigen will cause compilation error on windows
+# update eigen on windows to the commit id 39142904cc on 08/04/2020
 if(WIN32)
-    set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git)
-    set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
+    set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
+    set(EIGEN_TAG        39142904cc2301628931481e8b331cc2d567e22f)
 endif()
 
 # eigen on cuda9.1 missing header of math_funtions.hpp
