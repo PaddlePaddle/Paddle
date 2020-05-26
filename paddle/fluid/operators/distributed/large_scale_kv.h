@@ -34,6 +34,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -44,7 +45,7 @@ enum InitType { uniform_random, fill_constant, gaussian_random };
 
 class Initializer {
  public:
-  explicit Initializer(std::string attrs) = 0;
+  explicit Initializer(std::vector<std::string> attrs) = 0;
 
   virtual float GetValue() const = 0;
 
@@ -56,7 +57,7 @@ class Initializer {
 
 class UniformInitializer : public Initializer {
  public:
-  explicit UniformInitializer(std::string attrs) {
+  explicit UniformInitializer(std::vector<std::string> attrs) {
     seed_ = static_cast<unsigned int>(attrs.get("seed"));
     min_ = static_cast<float>(attrs_.at("min"));
     max_ = static_cast<float>(attrs_.at("max"));
@@ -80,7 +81,7 @@ class UniformInitializer : public Initializer {
 
 class GaussianInitializer : public Initializer {
  public:
-  explicit GaussianInitializer(std::string attrs) {
+  explicit GaussianInitializer(std::vector<std::string> attrs) {
     seed_ = static_cast<unsigned int>(attrs.get("seed"));
     mean_ = static_cast<float>(attrs_.at("mean"));
     std_ = static_cast<float>(attrs_.at("std"));
@@ -104,7 +105,7 @@ class GaussianInitializer : public Initializer {
 
 class FillConstantInitializer : public Initializer {
  public:
-  explicit FillConstantInitializer(std::string attrs) {
+  explicit FillConstantInitializer(std::vector<std::string> attrs) {
     value_ = static_cast<float>(attrs_.at("value"));
   }
 
@@ -188,12 +189,24 @@ struct VALUE {
 
 class ValueBlock {
  public:
-  explicit ValueBlock(
-      const std::unordered_map<std::string, std::string> &attrs) {
-    for (auto &attr : attrs) {
-      name = attr.first;
-      att = attr.second;
-      initializers_[name] = new Initializer(att);
+  explicit ValueBlock(const std::vector<std::string> value_names,
+                      const std::vector<int> value_dims,
+                      const std::string &attrs)
+      : value_names_(value_names), value_dims_(value_dims) {
+    for (size_t i = 0; i < value_names.size(); i++) {
+      auto name = value_names[i];
+      auto slices = string::split_string<std::string>(attrs[i], "&");
+
+      if (slices[0] == "gaussian_random") {
+        initializers_[name] = new GaussianInitializer(slices);
+      } else if (slices[0] == "fill_constant") {
+        initializers_[name] = new FillConstantInitializer(slices);
+      } else if (slices[0] == "uniform_random") {
+        initializers_[name] = new UniformInitializer(slices);
+      } else {
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("%s can not be supported", name));
+      }
     }
   }
 
@@ -283,6 +296,13 @@ class SparseVariable {
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       values_dims[meta_.value_names[i]] = meta_.value_dims[i];
+    }
+
+    std::vector<std::string> value_names_;
+    std::vector<int> value_dims_;
+
+    for (int i = 0; i < shard_num_; i++) {
+      auto block = ValueBlock();
     }
   }
 
@@ -400,7 +420,8 @@ class SparseVariable {
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims;
   const size_t shard_mask_ = 127;
-  std::vector<ValueBlock> shard_blocks_ = std::vector<ValueBlock>(128);
+  const size_t shard_num_ = 128;
+  std::vector<ValueBlock> shard_blocks_;
 };
 
 class LargeScaleKV {

@@ -115,7 +115,8 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
   for (auto attrs : kv_attrs) {
     std::vector<std::string> pieces;
     split(attrs, ':', &pieces);
-    PADDLE_ENFORCE_EQ(pieces.size(), 6, "must 5");
+    PADDLE_ENFORCE_EQ(pieces.size(), 7,
+                      "param, names, dims, mode, grad, cached_var, init_attrs");
 
     std::string name;
     std::string grad_name;
@@ -123,6 +124,7 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
     std::vector<int> value_dims;
     distributed::Mode mode;
     std::vector<std::string> cached_names;
+    std::vector<std::string> init_attrs;
 
     name = pieces[0];
     split(pieces[1], ',', &value_names);
@@ -138,6 +140,7 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
 
     grad_name = pieces[4];
     split(pieces[5], ',', &cached_names);
+    split(pieces[6], ',', &init_attrs);
 
     auto meta = distributed::SparseMeta();
     meta.name = name;
@@ -146,6 +149,7 @@ void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
     meta.mode = mode;
     meta.grad_name = grad_name;
     meta.cached_varnames = cached_names;
+    meta.initializer_attrs = init_attrs;
 
     VLOG(3) << "add sparse meta: " << meta.ToString();
     metas.push_back(meta);

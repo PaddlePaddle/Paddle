@@ -641,6 +641,30 @@ def large_scale_sparse_pass(program, config):
     opt_value_map["decayed_adagrad"] = ["Param", "Moment"]
     opt_value_map["ftrl"] = ["Param", "SquaredAccumulator", "LinearAccumulator"]
 
+    opt_init_map = {}
+    opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
+    opt_init_map["fill_constant"] = ["value"]
+    opt_init_map["uniform_random"] = ["seed", "min", "max"]
+    opt_init_map["truncated_gaussian_random"] = ["seed", "mean", "std"]
+
+    def get_initializer_attrs(acture_value_names):
+        l_sep = ","
+        l_in = "&"
+        init_attrs = []
+        o_startup_program = config.get_origin_startup_program()
+
+        for value_name in acture_value_names:
+            for op in o_startup_program.global_block().ops:
+                if op.type in opt_init_map.keys() and value_name == op.output(
+                        "Out")[0]:
+                    init_attr = [op.type]
+                    for attr in opt_init_map[op.type]:
+                        init_attr.append(str(op.attr(attr)))
+                    init_attrs.append(l_in.join(init_attr))
+                    break
+
+        return l_sep.join(init_attrs)
+
     def get_optimizer_values(block):
         value_names = []
         acture_names = []
@@ -738,9 +762,13 @@ def large_scale_sparse_pass(program, config):
         names_str = ",".join(value_names)
         dims_str = ",".join([str(dim) for dim in value_dims])
         cached_str = ",".join(acture_names + ["kSparseIDs"])
+        init_attr_str = get_initializer_attrs(acture_names)
 
-        meta_str = ":".join(
-            [param, names_str, dims_str, mode, grad.name, cached_str])
+        meta_str = ":".join([
+            param, names_str, dims_str, mode, grad.name, cached_str,
+            init_attr_str
+        ])
+        print("large_scale_meta: {}".format(meta_str))
         large_scale_kv_metas.append(meta_str)
 
     op._set_attr("large_scale_kv_meta", large_scale_kv_metas)
