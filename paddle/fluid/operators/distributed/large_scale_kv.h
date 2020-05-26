@@ -389,14 +389,14 @@ class SparseVariable {
       ids_num += block->values_.size();
     }
 
-    std::vector<std::shared_ptr<Variable>> variables;
+    std::vector<std::shared_ptr<framework::Variable>> variables;
     std::vector<float *> tensors;
     std::vector<int64_t> ids;
     std::vector<int64_t> dims;
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
       auto dim = values_dims_.at(valuenames[i]);
-      auto var = std::make_shared<Variable>();
+      auto var = std::make_shared<framework::Variable>();
       auto *slr = var->GetMutable<framework::SelectedRows>();
       auto *src_t = slr->mutable_value();
 
