@@ -45,71 +45,84 @@ enum InitType { uniform_random, fill_constant, gaussian_random };
 
 class Initializer {
  public:
-  explicit Initializer(std::vector<std::string> attrs) = 0;
+  Initializer() {}
+  explicit Initializer(const std::vector<std::string> &attrs) {}
 
-  virtual float GetValue() const = 0;
+  virtual float GetValue() = 0;
 
   virtual ~Initializer() {}
 
- private:
+ protected:
+  std::string name_;
   unsigned int seed_;
 };
 
 class UniformInitializer : public Initializer {
  public:
-  explicit UniformInitializer(std::vector<std::string> attrs) {
-    seed_ = static_cast<unsigned int>(attrs.get("seed"));
-    min_ = static_cast<float>(attrs_.at("min"));
-    max_ = static_cast<float>(attrs_.at("max"));
+  explicit UniformInitializer(const std::vector<std::string> &attrs) {
+    std::stringstream ss;
+    ss << "Attr: ";
+    for (auto &attr : attrs) {
+      ss << " " << attr;
+    }
+    VLOG(1) << ss.str();
+
+    name_ = attrs[0];
+    seed_ = static_cast<unsigned int>(std::stoi(attrs[1]));
+    min_ = std::stof(attrs[2]);
+    max_ = std::stof(attrs[3]);
 
     if (seed_ == 0) {
       seed_ = std::random_device()();
     }
 
-    random_engine_->seed(seed_);
-    dist_ = std::make_shared<std::uniform_real_distribution<>>(min_, max_);
+    random_engine_.seed(seed_);
+    dist_ = std::uniform_real_distribution<float>(min_, max_);
   }
 
-  float GetValue() const override { return (*dist_)(*random_engine_); }
+  float GetValue() override { return dist_(random_engine_); }
 
  private:
   float min_;
   float max_;
-  std::shared_ptr<std::minstd_rand> random_engine_;
-  std::shared_ptr<std::uniform_real_distribution<>> dist_;
+
+  std::minstd_rand random_engine_;
+  std::uniform_real_distribution<float> dist_;
 };
 
 class GaussianInitializer : public Initializer {
  public:
-  explicit GaussianInitializer(std::vector<std::string> attrs) {
-    seed_ = static_cast<unsigned int>(attrs.get("seed"));
-    mean_ = static_cast<float>(attrs_.at("mean"));
-    std_ = static_cast<float>(attrs_.at("std"));
+  explicit GaussianInitializer(const std::vector<std::string> &attrs) {
+    name_ = attrs[0];
+    seed_ = static_cast<unsigned int>(std::stoi(attrs[1]));
+    mean_ = std::stof(attrs[2]);
+    std_ = std::stof(attrs[3]);
 
     if (seed_ == 0) {
       seed_ = std::random_device()();
     }
 
     random_engine_->seed(seed_);
-    dist_ = std::make_shared<std::normal_distribution<>>(mean_, std_);
+    dist_ = std::make_shared<std::normal_distribution<float>>(mean_, std_);
   }
 
-  float GetValue() const override { return (*dist_)(*random_engine_); }
+  float GetValue() override { return (*dist_)(*random_engine_); }
 
  private:
   float std_;
   float mean_;
   std::shared_ptr<std::minstd_rand> random_engine_;
-  std::shared_ptr<std::normal_distribution<>> dist_;
+  std::shared_ptr<std::normal_distribution<float>> dist_;
 };
 
 class FillConstantInitializer : public Initializer {
  public:
-  explicit FillConstantInitializer(std::vector<std::string> attrs) {
-    value_ = static_cast<float>(attrs_.at("value"));
+  explicit FillConstantInitializer(const std::vector<std::string> &attrs) {
+    name_ = attrs[0];
+    value_ = std::stof(attrs[1]);
   }
 
-  float GetValue() const override { return value_; }
+  float GetValue() override { return value_; }
 
  private:
   float value_;
@@ -190,9 +203,9 @@ struct VALUE {
 class ValueBlock {
  public:
   explicit ValueBlock(const std::vector<std::string> value_names,
-                      const std::vector<int> value_dims,
-                      const std::string &attrs)
-      : value_names_(value_names), value_dims_(value_dims) {
+                      const std::vector<int> value_dims, const Mode &mode,
+                      const std::vector<std::string> &attrs)
+      : value_names_(value_names), value_dims_(value_dims), mode_(mode) {
     for (size_t i = 0; i < value_names.size(); i++) {
       auto name = value_names[i];
       auto slices = string::split_string<std::string>(attrs[i], "&");
@@ -211,20 +224,20 @@ class ValueBlock {
   }
 
   ~ValueBlock() {
-    for (auto *init : initializers_) {
+    for (auto init : initializers_) {
       delete init.second;
-      initializers.erase(init.fitst);
+      initializers_.erase(init.first);
     }
 
-    for (auto *value : values_) {
+    for (auto value : values_) {
       delete value.second;
-      values_.erase(value.fitst);
+      values_.erase(value.first);
     }
   }
 
   std::vector<std::vector<float>> Init() {
     auto rets = std::vector<std::vector<float>>();
-    rets.resize(origin_names.size());
+    rets.resize(value_names_.size());
 
     for (int i = 0; i < static_cast<int>(value_names_.size()); i++) {
       auto name = value_names_[i];
@@ -233,7 +246,7 @@ class ValueBlock {
       auto dim = value_dims_[i];
       rets[i].resize(dim);
 
-      for (int j = 0; j < static_cast<int>(numel); j++) {
+      for (int j = 0; j < static_cast<int>(dim); j++) {
         rets[i][j] = init->GetValue();
       }
     }
@@ -298,11 +311,10 @@ class SparseVariable {
       values_dims[meta_.value_names[i]] = meta_.value_dims[i];
     }
 
-    std::vector<std::string> value_names_;
-    std::vector<int> value_dims_;
-
-    for (int i = 0; i < shard_num_; i++) {
-      auto block = ValueBlock();
+    for (size_t i = 0; i < shard_num_; i++) {
+      auto block = std::make_shared<ValueBlock>(
+          meta.value_names, meta.value_dims, meta.mode, meta.initializer_attrs);
+      shard_blocks_.emplace_back(block);
     }
   }
 
@@ -311,8 +323,8 @@ class SparseVariable {
            std::vector<std::vector<std::vector<float>>> *values) {
     for (auto &id : ids) {
       std::vector<std::vector<float>> value;
-      auto &block = GetShard(id);
-      auto id_values = block.Get(id, value_names, meta_.mode);
+      auto *block = GetShard(id);
+      auto id_values = block->Get(id, value_names);
       values->push_back(id_values);
     }
   }
@@ -321,7 +333,7 @@ class SparseVariable {
            const std::vector<std::string> &value_names,
            const std::vector<std::vector<std::vector<float>>> &values) {
     for (int i = 0; i < static_cast<int>(ids.size()); i++) {
-      GetShard(ids[i]).Set(ids[i], value_names, values[i]);
+      GetShard(ids[i])->Set(ids[i], value_names, values[i]);
     }
   }
 
@@ -372,23 +384,19 @@ class SparseVariable {
     }
 
     for (auto &block : shard_blocks_) {
-      for (auto value : block.values_) {
+      for (auto value : block->values_) {
         std::vector<std::vector<float>> vss = value.second->get(valuenames);
 
         auto id = value.first;
 
         for (int i = 0; i < static_cast<int>(vss.size()); i++) {
           auto &vs = vss[i];
-
           std::stringstream ss;
           ss << id << "\t";
-
           ss << vs.size() << "\t";
-
           for (auto v : vs) {
             ss << v << " ";
           }
-
           ss << "\n";
 
           fouts[i]->write(ss.str().c_str(), sizeof(char) * ss.str().size());
@@ -405,13 +413,13 @@ class SparseVariable {
     int64_t cnt = 0;
 
     for (auto &block : shard_blocks_) {
-      cnt += block.values_.size();
+      cnt += block->values_.size();
     }
     return cnt;
   }
 
-  ValueBlock &GetShard(const int64_t id) {
-    return shard_blocks_[id & shard_mask_];
+  ValueBlock *GetShard(const int64_t id) {
+    return shard_blocks_[id & shard_mask_].get();
   }
 
  private:
@@ -421,7 +429,7 @@ class SparseVariable {
   std::unordered_map<std::string, int64_t> values_dims;
   const size_t shard_mask_ = 127;
   const size_t shard_num_ = 128;
-  std::vector<ValueBlock> shard_blocks_;
+  std::vector<std::shared_ptr<ValueBlock>> shard_blocks_;
 };
 
 class LargeScaleKV {

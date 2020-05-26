@@ -654,9 +654,10 @@ def large_scale_sparse_pass(program, config):
         o_startup_program = config.get_origin_startup_program()
 
         for value_name in acture_value_names:
+            origin_var_name = _orig_varname(value_name)
             for op in o_startup_program.global_block().ops:
-                if op.type in opt_init_map.keys() and value_name == op.output(
-                        "Out")[0]:
+                if op.type in opt_init_map.keys(
+                ) and origin_var_name == op.output("Out")[0]:
                     init_attr = [op.type]
                     for attr in opt_init_map[op.type]:
                         init_attr.append(str(op.attr(attr)))

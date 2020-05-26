@@ -51,7 +51,7 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     std::vector<int64_t> dims;
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
-    ins->Get(tablename)->GetAndInit(ids, value_names, &values);
+    ins->Get(tablename)->Get(ids, value_names, &values);
     ins->Get(tablename)->Dims(value_names, &dims);
 
     platform::CPUPlace cpu;
