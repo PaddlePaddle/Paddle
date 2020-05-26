@@ -46,6 +46,7 @@ class TestMKLDNNElementwiseAddOp3(TestMKLDNNElementwiseAddOp):
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
+
 class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
@@ -53,8 +54,18 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
         self.out = np.add(self.x, self.y)
 
     # TODO(jczaja): Enable when grad is ready
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
 
 ''' INT8 Tests '''
+
 
 @skip_check_grad_ci(
     reason="oneDNN's int8 elementwise_ops don't implemend grad kernel.")
