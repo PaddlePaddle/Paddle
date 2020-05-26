@@ -137,7 +137,7 @@ class DeviceTracer {
 DeviceTracer* GetDeviceTracer();
 
 // Set a name for the cuda kernel operation being launched by the thread.
-std::string SetCurAnnotation(Event* event);
+void SetCurAnnotation(Event* event);
 // Clear the name after the operation is done.
 void ClearCurAnnotation();
 // Current name of the operation being run in the thread.
