@@ -63,7 +63,7 @@ elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
 endif()
 
-if (NOT ${WITH_GPU} OR ${NCCL_VERSION} VERSION_LESS 2212)
+if (NOT ${WITH_GPU} OR (WITH_NCCL AND ${NCCL_VERSION} VERSION_LESS 2212))
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
 endif()
