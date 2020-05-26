@@ -29,18 +29,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 
-  dump_fields_path_ = trainer_desc.dump_fields_path();
-  dump_converter_ = trainer_desc.dump_converter();
-  need_dump_field_ = false;
-  if (trainer_desc.dump_fields_size() != 0 && dump_fields_path_ != "") {
-    need_dump_field_ = true;
-  }
-  if (need_dump_field_) {
-    auto &file_list = dataset->GetFileList();
-    if (file_list.size() == 0) {
-      need_dump_field_ = false;
-    }
-  }
+  ParseDumpConfig(trainer_desc);
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
@@ -60,8 +49,12 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
         trainer_desc.device_worker_name());
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetNeedDumpField(need_dump_field_);
+    workers_[i]->SetNeedDumpParam(need_dump_param_);
+    workers_[i]->SetDumpFieldVector(dump_fields_);
+    workers_[i]->SetDumpParamVector(dump_param_);
+    workers_[i]->InitRandomDumpConfig(trainer_desc);
     workers_[i]->Initialize(trainer_desc);
-    workers_[i]->SetNeedDump(need_dump_field_);
   }
 
   VLOG(3) << "going to initialize pull dense worker";
@@ -69,33 +62,6 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
-}
-
-void DistMultiTrainer::DumpWork(int tid) {
-#ifdef _LINUX
-  int err_no = 0;
-  std::string path = string::format_string(
-      "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
-
-  std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
-  while (1) {
-    std::string out_str;
-    if (!queue_->Get(out_str)) {
-      break;
-    }
-    size_t write_count =
-        fwrite_unlocked(out_str.data(), 1, out_str.length(), fp.get());
-    if (write_count != out_str.length()) {
-      VLOG(3) << "dump text failed";
-      continue;
-    }
-    write_count = fwrite_unlocked("\n", 1, 1, fp.get());
-    if (write_count != 1) {
-      VLOG(3) << "dump text failed";
-      continue;
-    }
-  }
-#endif
 }
 
 void DistMultiTrainer::InitDumpEnv() {
@@ -112,16 +78,8 @@ void DistMultiTrainer::InitDumpEnv() {
   }
   for (int i = 0; i < dump_thread_num_; i++) {
     dump_thread_.push_back(
-        std::thread(std::bind(&DistMultiTrainer::DumpWork, this, i)));
+        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
   }
-}
-
-void DistMultiTrainer::FinalizeDumpEnv() {
-  queue_->Close();
-  for (auto &th : dump_thread_) {
-    th.join();
-  }
-  queue_.reset();
 }
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,

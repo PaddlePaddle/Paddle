@@ -179,18 +179,16 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
-    if (var == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
-    }
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                     "Y@GRAD of LayerNorm Op is not found."));
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
     } else if (var->IsType<LoDTensor>()) {
       t = &var->Get<LoDTensor>();
     }
-    if (t == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
     return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
 };
@@ -222,7 +220,7 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LayerNormGradNoNeedBufferVarInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LayerNormGradNoNeedBufferVarInferer,
                                     "Bias");
 
 }  // namespace operators
@@ -233,7 +231,7 @@ REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
                   ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp,
-                  ops::LayerNormGradNoNeedBufferVarInference);
+                  ops::LayerNormGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);

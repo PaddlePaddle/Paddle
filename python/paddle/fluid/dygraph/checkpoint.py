@@ -32,6 +32,8 @@ __all__ = [
 @dygraph_only
 def save_dygraph(state_dict, model_path):
     '''
+    :api_attr: imperative
+
     Save Layer's state_dict to disk. This will generate a file with suffix ".pdparams"
     
     The state_dict is get from Layers.state_dict function
@@ -95,6 +97,8 @@ def save_dygraph(state_dict, model_path):
 @dygraph_only
 def load_dygraph(model_path, keep_name_table=False):
     '''
+    :api_attr: imperative
+    
     Load parameter state_dict from disk.
 
     Args:

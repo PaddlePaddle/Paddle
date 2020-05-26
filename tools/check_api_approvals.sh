@@ -157,7 +157,7 @@ if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "boost::get" || true`
-if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
+if [ ${HAS_BOOST_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="boost::get is not recommended, because it may throw an bad_get exception without any stack information, so please use BOOST_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle boost::get and specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
     check_approval 1 6836917 47554610 22561442
 fi
@@ -281,6 +281,16 @@ ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_gr
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
   check_approval 1 32832641 6836917
+fi
+
+# Get the list of PR authors with unresolved unit test issues
+pip install PyGithub
+# For getting PR related data
+wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
+if [ "${HASUTFIXED}" != "" ]; then
+  echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
+  check_approval 1 45041955 22165420
 fi
 
 if [ -n "${echo_list}" ];then

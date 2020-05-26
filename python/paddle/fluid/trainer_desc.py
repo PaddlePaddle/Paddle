@@ -107,6 +107,15 @@ class TrainerDesc(object):
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 
+    def _set_enable_random_dump(self, enable_random_dump):
+        self.proto_desc.enable_random_dump = enable_random_dump
+
+    def _set_dump_interval(self, dump_interval):
+        self.proto_desc.dump_interval = dump_interval
+
+    def _set_random_with_lineid(self, random_with_lineid):
+        self.proto_desc.random_with_lineid = random_with_lineid
+
     def _set_dump_param(self, dump_param):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
