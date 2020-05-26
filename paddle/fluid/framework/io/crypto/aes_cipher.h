@@ -27,14 +27,21 @@
 
 #pragma once
 
-#include <cryptopp/cryptlib.h>
-#include <cryptopp/filters.h>
-#include <cryptopp/smartptr.h>
-
 #include <string>
 
 #include "paddle/fluid/framework/io/crypto/cipher.h"
 
+namespace CryptoPP {
+
+class StreamTransformationFilter;
+class SymmetricCipher;
+class AuthenticatedSymmetricCipher;
+class AuthenticatedDecryptionFilter;
+class AuthenticatedEncryptionFilter;
+template <class CryptoppCipher>
+class member_ptr;
+
+}  // namespace CryptoPP
 namespace paddle {
 namespace framework {
 
