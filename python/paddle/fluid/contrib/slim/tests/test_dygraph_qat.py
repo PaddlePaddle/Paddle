@@ -114,9 +114,12 @@ class TestDygraphQAT(unittest.TestCase):
                 learning_rate=0.001, parameter_list=mnist.parameters())
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
+            test_reader = paddle.batch(
+                paddle.dataset.mnist.test(), batch_size=8)
 
             epoch_num = 2
             for epoch in range(epoch_num):
+                mnist.train()
                 for batch_id, data in enumerate(train_reader()):
                     dy_x_data = np.array(
                         [x[0].reshape(1, 28, 28)
@@ -134,8 +137,31 @@ class TestDygraphQAT(unittest.TestCase):
                     adam.minimize(avg_loss)
                     mnist.clear_gradients()
                     if batch_id % 100 == 0:
-                        print("Loss at epoch {} step {}: {:}".format(
+                        print("Train | Loss at epoch {} step {}: {:}".format(
                             epoch, batch_id, avg_loss.numpy()))
+
+                mnist.eval()
+                for batch_id, data in enumerate(test_reader()):
+                    dy_x_data = np.array(
+                        [x[0].reshape(1, 28, 28)
+                         for x in data]).astype('float32')
+                    y_data = np.array(
+                        [x[1] for x in data]).astype('int64').reshape(-1, 1)
+
+                    img = fluid.dygraph.to_variable(dy_x_data)
+                    label = fluid.dygraph.to_variable(y_data)
+
+                    out = mnist(img)
+                    acc_top1 = fluid.layers.accuracy(
+                        input=out, label=label, k=1)
+                    acc_top5 = fluid.layers.accuracy(
+                        input=out, label=label, k=5)
+
+                    if batch_id % 100 == 0:
+                        print(
+                            "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".
+                            format(epoch, batch_id,
+                                   acc_top1.numpy(), acc_top5.numpy()))
 
             model_dict = mnist.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
