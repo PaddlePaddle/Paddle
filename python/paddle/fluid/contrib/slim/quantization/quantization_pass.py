@@ -43,7 +43,7 @@ _fake_quant_dequant_op_list = [
 _out_scale_op_list = [
     "conv2d", "depthwise_conv2d", "mul", "matmul", "relu", "leaky_relu",
     "relu6", "sigmoid", "tanh", "prelu", "swish", "softmax", "batch_norm",
-    "elementwise_add", "pool2d", "reshape2", "transpose2"
+    "elementwise_add", "pool2d", "reshape2", "transpose2", "concat"
 ]
 
 # list op real input and output names, to avoid processing input such as AxisTensor.
