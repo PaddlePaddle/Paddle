@@ -209,8 +209,8 @@ class PSLib(Fleet):
                 "You should run DistributedOptimizer.minimize() first")
 
     def end_pass(self, scope):
-        if self.worker_index() < self.xpu_num():
-            self._heter_ptr.end_pass(scope, self.worker_index())
+        if self._role_maker.worker_index() < self._role_maker.xpu_num():
+            self._heter_ptr.end_pass(scope, self._role_maker.worker_index())
         
     
     def stop_worker(self):
