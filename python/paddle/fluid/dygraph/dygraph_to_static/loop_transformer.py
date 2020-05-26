@@ -328,9 +328,7 @@ class NameVisitor(gast.NodeVisitor):
             return parent_node
         return None
 
-    def _remove_target_vars_of_for(self,
-                                   before_or_after_loop_vars,
-                                   loop_node=None):
+    def _remove_target_vars_of_for(self, before_or_after_loop_vars, loop_node):
         """
         Remove target vars of gast.For from before_loop_vars or after_loop_vars.
         :param before_or_after_loop_vars: before_loop_vars or after_loop_vars of loop_node.
@@ -343,6 +341,9 @@ class NameVisitor(gast.NodeVisitor):
                 continue
 
             parent_node = self._get_parent_node(name_node)
+
+            # NOTE: gast.For.target can be gast.Tuple.
+            #  For example: `for i, j in enumerate(x)` has two target vars: i and j
             if isinstance(parent_node, gast.Tuple):
                 parent_node = self._get_parent_node(parent_node)
 
