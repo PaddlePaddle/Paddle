@@ -22,21 +22,12 @@ import six
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
     def setUp(self):
-        self.shape = [10, 10]
+        self.shape = [10, 1024]
         self.dtype = np.float32
 
     def test_add(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
-        with fluid.dygraph.guard():
-            a = fluid.dygraph.to_variable(a_np)
-            b = fluid.dygraph.to_variable(b_np)
-            res = a + b
-            self.assertTrue(np.array_equal(res.numpy(), a_np + b_np))
-
-    def test_add_different_dtype(self):
-        a_np = np.random.random(self.shape).astype(np.float32)
-        b_np = np.random.random(self.shape).astype(np.float16)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
@@ -258,6 +249,29 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
                         (2, 2), dtype="float32"),
                     rtol=1e-05,
                     atol=0.0))
+
+    def test_add_different_dtype(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = fluid.dygraph.to_variable(b_np)
+            res = a + b
+            self.assertTrue(np.array_equal(res.numpy(), a_np + b_np))
+
+    def test_astype(self):
+        a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = a.astype(np.float16)
+            res2 = a.astype('float16')
+            res3 = a.astype(fluid.core.VarDesc.VarType.FP16)
+
+            self.assertEqual(res1.dtype, res2.dtype)
+            self.assertEqual(res1.dtype, res3.dtype)
+
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            self.assertTrue(np.array_equal(res1.numpy(), res3.numpy()))
 
 
 if __name__ == '__main__':
