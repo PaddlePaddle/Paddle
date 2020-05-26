@@ -945,7 +945,7 @@ def partial_sum(input, start_index=0, length=-1):
 
 def sparse_embedding(input,
                      size,
-                     padding_idx,
+                     padding_idx=None,
                      is_test=False,
                      enter=None,
                      param_attr=None,
