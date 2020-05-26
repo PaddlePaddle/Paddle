@@ -114,7 +114,7 @@ class TestDygraphQAT(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
             test_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=32)
+                paddle.dataset.mnist.test(), batch_size=8)
 
             epoch_num = 2
             for epoch in range(epoch_num):
