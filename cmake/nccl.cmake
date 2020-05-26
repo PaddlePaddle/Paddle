@@ -23,7 +23,8 @@ if(WITH_NCCL)
         NCCL_VERSION "${NCCL_VERSION}")
 
     if("${NCCL_VERSION}" GREATER "2000")
-        message(STATUS "Current NCCL version is v${NCCL_VERSION}. ")
+        message(STATUS "Current NCCL header is ${NCCL_INCLUDE_DIR}/nccl.h. "
+            "Current NCCL version is v${NCCL_VERSION}. ")
     else()
         # in old version nccl, it may not define NCCL_VERSION_CODE
         string(REGEX MATCH "define NCCL_MAJOR +([0-9]+)" NCCL_MAJOR_VERSION
@@ -48,6 +49,7 @@ if(WITH_NCCL)
         endif()
         add_definitions("-DNCCL_VERSION_CODE=$NCCL_VERSION")
 
-        message(STATUS "Current NCCL version is v${NCCL_VERSION}. ")
+        message(STATUS "Current NCCL header is ${NCCL_INCLUDE_DIR}/nccl.h. "
+            "Current NCCL version is v${NCCL_MAJOR_VERSION}.${NCCL_MINOR_VERSION}.${NCCL_PATCH_VERSION} ")
     endif()
 endif()
