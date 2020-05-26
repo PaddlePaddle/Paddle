@@ -52,7 +52,7 @@ Record ProcessALine(const std::string &line) {
   return record;
 }
 
-void test_paddle_tensor() {
+TEST(test_paddle_tensor, paddle_tensor) {
   std::unique_ptr<PaddlePredictor> predictor, analysis_predictor;
   AnalysisConfig config;
 
@@ -85,6 +85,5 @@ void test_paddle_tensor() {
   analysis_predictor->Run({input}, &analysis_output, 1);
 }
 
-TEST(test_paddle_tensor, paddle_tensor) { test_paddle_tensor(); }
 }  // namespace inference
 }  // namespace paddle

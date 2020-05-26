@@ -152,7 +152,7 @@ copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_INSTALL_DIR})
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
     if(WITH_STATIC_LIB)
-        set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/*paddle_fluid.*)
+        set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.lib)
     else()
         set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.dll
                             ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.lib)

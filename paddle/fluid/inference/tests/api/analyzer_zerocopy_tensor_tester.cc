@@ -23,7 +23,7 @@
 namespace paddle {
 namespace inference {
 
-void test_zerocopy_tensor() {
+TEST(test_zerocopy_tensor, zerocopy_tensor) {
   AnalysisConfig config;
   config.SetModel(FLAGS_infer_model + "/__model__",
                   FLAGS_infer_model + "/__params__");
@@ -60,6 +60,6 @@ void test_zerocopy_tensor() {
   out_data.resize(out_num);
   output_t->copy_to_cpu<float>(out_data.data());
 }
-TEST(test_zerocopy_tensor, zerocopy_tensor) { test_zerocopy_tensor(); }
+
 }  // namespace inference
 }  // namespace paddle
