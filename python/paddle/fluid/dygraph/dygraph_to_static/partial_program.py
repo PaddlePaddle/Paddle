@@ -16,8 +16,49 @@ from __future__ import print_function
 import numpy as np
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
+
+
+class NestSequence(object):
+    """
+    A wrapper class that easily to flatten and restore the nest structure of
+    given sequence.
+    """
+
+    def __init__(self, raw_input):
+        self.__raw_input = raw_input
+        self.__var_ids = self._get_var_ids()
+
+    def tolist(self):
+        """
+        Flattens the nested sequences into single list.
+        """
+        return flatten(self.__raw_input)
+
+    def restore(self, value_list):
+        """
+        Restores the nested sequence from value list.
+        """
+        assert len(self.tolist()) == len(value_list)
+        return pack_sequence_as(self.__raw_input, value_list)
+
+    def _get_var_ids(self):
+        var_ids = []
+        for idx, var in enumerate(self.tolist()):
+            if isinstance(var, (framework.Variable, core.VarBase)):
+                var_ids.append(idx)
+
+        return var_ids
+
+    @property
+    def var_ids(self):
+        return self.__var_ids
+
+    def __getitem__(self, item):
+        return self.tolist()[item]
 
 
 class PartialProgramLayer(layers.Layer):
@@ -43,8 +84,8 @@ class PartialProgramLayer(layers.Layer):
 
     def __init__(self, main_program, inputs, outputs, parameters=None):
         super(PartialProgramLayer, self).__init__()
-        self.inputs = inputs
-        self.outputs = outputs
+        self._inputs = NestSequence(inputs)
+        self._outputs = NestSequence(outputs)
         self._params = parameters if parameters is not None else []
         # Check all params from main program can be found in self._params:
         # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
@@ -65,7 +106,7 @@ class PartialProgramLayer(layers.Layer):
     def _append_backward_desc(self):
         program = self._infer_program.clone()
         targets = []
-        for out in self.outputs:
+        for out in self._outputs.tolist():
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
@@ -101,37 +142,37 @@ class PartialProgramLayer(layers.Layer):
                 'is_test': not self.training
             })
 
-        outs = out_vars
-        if len(outs) == 1:
-            outs = outs[0]
-        return outs
+        return self._restore_out(out_vars)
 
     def _prepare(self, inputs):
         """
         Prepare inputs, outputs, attrs.
         """
         assert isinstance(inputs, (tuple, list))
+        # Flatten inputs with nested structure into single list.
+        flatten_inputs = flatten(inputs)
         # Convert variable into VarBase and feed in training data.
         input_vars = []
-        for i, value in enumerate(inputs):
+        for i, value in enumerate(flatten_inputs):
             if isinstance(value, np.ndarray):
                 var = core.VarBase(
                     value=value,
-                    name=self.inputs[i].desc.name(),
+                    name=self._inputs[i].desc.name(),
                     persistable=False,
                     place=framework._current_expected_place(),
                     zero_copy=True)
             elif isinstance(value, core.VarBase):
                 var = value
-                var.name = self.inputs[i].desc.name()
+                var.name = self._inputs[i].desc.name()
             else:
                 continue
             input_vars.append(var)
+
         # Create VarBase to receive output data.
         out_vars = []
-        for var in self.outputs:
-            if not isinstance(var, framework.Variable):
-                continue
+        for idx in self._outputs.var_ids:
+            var = self._outputs[idx]
+            assert isinstance(var, framework.Variable)
             var_desc = var.desc
             var_base = core.VarBase(var_desc.dtype(),
                                     var_desc.shape(),
@@ -146,6 +187,20 @@ class PartialProgramLayer(layers.Layer):
         tmp_scope_vec.value().set_scope(self._inner_scope)
 
         return input_vars, out_vars, tmp_scope_vec
+
+    def _restore_out(self, out_vars):
+        """
+        Restores same nested outputs by only replacing the Variable with VarBase.
+        """
+
+        flatten_outputs = self._outputs.tolist()
+        for i, idx in enumerate(self._outputs.var_ids):
+            flatten_outputs[idx] = out_vars[i]
+        outs = self._outputs.restore(flatten_outputs)
+        if len(outs) == 1:
+            outs = outs[0]
+
+        return outs
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient
