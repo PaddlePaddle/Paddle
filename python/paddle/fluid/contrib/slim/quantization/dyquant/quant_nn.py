@@ -17,7 +17,7 @@ from ..... import core
 from ..... import dygraph_utils
 from ..... import unique_name
 from .....param_attr import ParamAttr
-from .....framework import _varbase_creator
+from .....framework import _varbase_creator, in_dygraph_mode
 from .....initializer import Constant
 from .....data_feeder import check_variable_and_dtype
 
@@ -58,21 +58,52 @@ class FakeQuant(layers.Layer):
             default_initializer=Constant(1))
 
     def forward(self, input):
-        attrs = ('moving_rate', self._moving_rate, 'bit_length',
-                 self._quant_bits, 'is_test', not self.training)
-        quant_out = _varbase_creator(
-            type=input.type,
-            name="{}.quant_dequant".format(input.name),
-            shape=input.shape,
-            dtype=input.dtype,
-            persistable=False)
-        state = self.state if self.training else None
-        accum = self.accum if self.training else None
+        if in_dygraph_mode():
+            attrs = ('moving_rate', self._moving_rate, 'bit_length',
+                     self._quant_bits, 'is_test', not self.training)
+            quant_out = _varbase_creator(
+                type=input.type,
+                name="{}.quant_dequant".format(input.name),
+                shape=input.shape,
+                dtype=input.dtype,
+                persistable=False)
+            state = self.state if self.training else None
+            accum = self.accum if self.training else None
 
-        out, _, _, _ = core.ops.fake_quantize_dequantize_moving_average_abs_max(
-            input, self.scale, accum, state, quant_out, self.scale, state,
-            accum, *attrs)
-        return out
+            out, _, _, _ = core.ops.fake_quantize_dequantize_moving_average_abs_max(
+                input, self.scale, accum, state, quant_out, self.scale, state,
+                accum, *attrs)
+            return out
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 "FakeQuant")
+        attrs = {
+            'moving_rate': self._moving_rate,
+            'bit_length': self._quant_bits,
+            'is_test': not self.training
+        }
+        inputs = {"X": [input], "InScale": [self.scale]}
+        quant_out = self._helper.create_variable(
+            name="{}.quant_dequant".format(input.name),
+            dtype=input.dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+        outputs = {"Out": [quant_out], "OutScale": [self.scale]}
+
+        if self.training:
+            inputs['InState'] = [self.state]
+            inputs['InAccum'] = [self.accum]
+            outputs['OutState'] = [self.state]
+            outputs['OutAccum'] = [self.accum]
+
+        self._helper.append_op(
+            type="fake_quantize_dequantize_moving_average_abs_max",
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs)
+
+        return quant_out
 
 
 class QuantizedConv2D(layers.Layer):
@@ -101,7 +132,7 @@ class QuantizedConv2D(layers.Layer):
         quant_input = self._fake_quant_input(input)
         quant_weight = self._fake_quant_weight(self.weight)
 
-        if self._l_type == 'conv2d':
+        if in_dygraph_mode() and self._l_type == 'conv2d':
             attrs = ('strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups
                      if self._groups else 1, 'use_cudnn', self._use_cudnn)
@@ -111,6 +142,9 @@ class QuantizedConv2D(layers.Layer):
                                                             1)
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
+        check_variable_and_dtype(quant_input, 'input',
+                                 ['float16', 'float32', 'float64'],
+                                 'QuantizedConv2D')
         attrs = {
             'strides': self._stride,
             'paddings': self._padding,
@@ -119,9 +153,6 @@ class QuantizedConv2D(layers.Layer):
             'use_cudnn': self._use_cudnn,
             'use_mkldnn': False,
         }
-
-        check_variable_and_dtype(quant_input, 'input',
-                                 ['float16', 'float32', 'float64'], 'Conv2D')
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
 
@@ -168,10 +199,41 @@ class QuantizedLinear(layers.Layer):
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
         quant_weight = self._fake_quant_weight(self.weight)
-        pre_bias = _varbase_creator(dtype=input.dtype)
-        core.ops.matmul(quant_input, quant_weight, pre_bias, 'transpose_X',
-                        False, 'transpose_Y', False, "alpha", 1)
-        pre_act = dygraph_utils._append_bias_in_dygraph(
-            pre_bias, self.bias, axis=len(input.shape) - 1)
+        if in_dygraph_mode():
+            pre_bias = _varbase_creator(dtype=input.dtype)
+            core.ops.matmul(quant_input, quant_weight, pre_bias, 'transpose_X',
+                            False, 'transpose_Y', False, "alpha", 1)
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, axis=len(input.shape) - 1)
 
-        return dygraph_utils._append_activation_in_dygraph(pre_act, self._act)
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               self._act)
+
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'],
+                                 "QuantizedLinear")
+        attrs = {
+            "transpose_X": False,
+            "transpose_Y": False,
+            "alpha": 1,
+        }
+        inputs = {"X": [quant_input], "Y": [quant_weight]}
+        mul_out = self._helper.create_variable_for_type_inference(self._dtype)
+
+        self._helper.append_op(
+            type="matmul",
+            inputs=inputs,
+            outputs={"Out": [mul_out]},
+            attrs=attrs)
+        if self.bias is not None:
+            pre_activation = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype)
+            self._helper.append_op(
+                type='elementwise_add',
+                inputs={'X': [mul_out],
+                        'Y': [self.bias]},
+                outputs={'Out': [pre_activation]},
+                attrs={'axis': len(input.shape) - 1})
+        else:
+            pre_activation = mul_out
+        return self._helper.append_activation(pre_activation, act=self._act)
