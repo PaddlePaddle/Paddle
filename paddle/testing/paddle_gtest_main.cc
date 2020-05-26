@@ -23,12 +23,32 @@ limitations under the License. */
 int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
-  std::vector<char*> new_argv;
-  std::vector<std::string> args;
+  std::vector<char*> external_argv;
+  std::vector<std::string> internal_args;
   std::string gflags_env;
+
+  std::vector<google::CommandLineFlagInfo> all_flags;
+  std::vector<std::string> external_flags_name;
+  google::GetAllFlags(&all_flags);
+  for (size_t i = 0; i < all_flags.size(); ++i) {
+    external_flags_name.push_back(all_flags[i].name);
+  }
+
   for (int i = 0; i < argc; ++i) {
-    new_argv.push_back(argv[i]);
-    args.push_back(std::string(argv[i]));
+    bool flag = true;
+    std::string tmp(argv[i]);
+    for (size_t j = 0; j < external_flags_name.size(); ++j) {
+      if (tmp.find(external_flags_name[j]) != std::string::npos) {
+        external_argv.push_back(argv[i]);
+        LOG(INFO) << "external " << argv[i];
+        flag = false;
+        break;
+      }
+    }
+    if (flag) {
+      LOG(INFO) << "internal " << argv[i];
+      internal_args.push_back(std::string(argv[i]));
+    }
   }
 
   std::vector<std::string> envs;
@@ -72,8 +92,7 @@ int main(int argc, char** argv) {
     }
     env_string = env_string.substr(0, env_string.length() - 1);
     env_str = strdup(env_string.c_str());
-    new_argv.push_back(env_str);
-    args.push_back(env_string);
+    internal_args.push_back(env_string);
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
@@ -85,15 +104,21 @@ int main(int argc, char** argv) {
     }
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
     undefok_str = strdup(undefok_string.c_str());
-    new_argv.push_back(undefok_str);
-    args.push_back(std::string(undefok_str));
+    internal_args.push_back(std::string(undefok_str));
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
-  int new_argc = static_cast<int>(new_argv.size());
-  char** new_argv_address = new_argv.data();
-  google::ParseCommandLineFlags(&new_argc, &new_argv_address, false);
-  paddle::framework::InitGflags(args);
+  int new_argc = static_cast<int>(external_argv.size());
+  char** external_argv_address = external_argv.data();
+  google::ParseCommandLineFlags(&new_argc, &external_argv_address, false);
+
+  std::vector<char*> internal_argv;
+  int internal_argc = internal_args.size();
+  for (auto& arg : internal_args) {
+    internal_argv.push_back(const_cast<char*>(arg.data()));
+  }
+  char** arr = internal_argv.data();
+  paddle::platform::ParseCommandLineFlags(internal_argc, arr, true);
   paddle::framework::InitDevices(true);
 
   int ret = RUN_ALL_TESTS();

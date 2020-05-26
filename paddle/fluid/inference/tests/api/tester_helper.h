@@ -66,8 +66,7 @@ DEFINE_bool(warmup, false,
             "Use warmup to calculate elapsed_time more accurately. "
             "To reduce CI time, it sets false in default.");
 
-DECLARE_bool(profile);
-DECLARE_int32(paddle_num_threads);
+DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
 
 namespace paddle {
 namespace inference {
@@ -373,7 +372,7 @@ void PredictionWarmUp(PaddlePredictor *predictor,
     predictor->ZeroCopyRun();
   }
   PrintTime(batch_size, 1, num_threads, tid, warmup_timer.toc(), 1, data_type);
-  if (FLAGS_profile) {
+  if (FLAGS_enable_profile) {
     paddle::platform::ResetProfiler();
   }
 }
