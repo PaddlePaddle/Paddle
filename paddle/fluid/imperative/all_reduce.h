@@ -18,6 +18,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <nccl.h>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"

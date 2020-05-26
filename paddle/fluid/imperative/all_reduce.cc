@@ -49,6 +49,7 @@ static void AllReduce(const framework::Tensor &src, framework::Tensor *dst,
       src_ptr, dst_ptr, src.numel(), nccl_dtype, ncclSum, comm, stream));
 }
 
+#if NCCL_VERSION_CODE >= 2212
 static void AllReduce(const framework::SelectedRows &src,
                       framework::SelectedRows *dst,
                       const ParallelStrategy &strategy, cudaStream_t stream) {
@@ -134,6 +135,7 @@ static void AllReduce(const framework::SelectedRows &src,
   VLOG(0) << "Result SelectedRows rows: "
           << string::join_strings(*dst_rows, ',');
 }
+#endif
 
 void AllReduce(const framework::Variable &src, framework::Variable *dst,
                const ParallelStrategy &strategy, cudaStream_t stream) {
@@ -143,6 +145,7 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
     }
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>(), strategy, stream);
+#if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     if (&src != dst) {
       if (!dst->IsType<framework::SelectedRows>()) {
@@ -158,6 +161,7 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
                 stream);
       *dst = std::move(tmp_dst);
     }
+#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Unsupported variable type %s for imperative allreduce, only "
@@ -169,8 +173,10 @@ void AllReduce(const framework::Variable &src, framework::Variable *dst,
 static const platform::Place &GetVarPlace(const framework::Variable &src) {
   if (src.IsType<framework::LoDTensor>()) {
     return src.Get<framework::LoDTensor>().place();
+#if NCCL_VERSION_CODE >= 2212
   } else if (src.IsType<framework::SelectedRows>()) {
     return src.Get<framework::SelectedRows>().value().place();
+#endif
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Cannot get unsupported variable type %s for imperative allreduce, "

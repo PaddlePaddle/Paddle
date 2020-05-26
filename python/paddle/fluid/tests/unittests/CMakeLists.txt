@@ -58,11 +58,14 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_batch_fc_op) # TODO(shenliang03): batch_fc_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
-    list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+elseif(${NCCL_VERSION} VERSION_LESS 2212)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
 endif()
 
 if(NOT WITH_GPU OR WIN32)
