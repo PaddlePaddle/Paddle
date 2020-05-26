@@ -42,7 +42,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   platform::RecordRPCEvent record_event("serial");
   VarMsg request;
   TensorPayload* payload = nullptr;
-  VLOG(3) << "SerializeToByteBuffer Begin";
+  VLOG(3) << "SerializeToByteBuffer Begin var: " << name;
   request.set_varname(name);
   request.set_trainer_id(trainer_id);
   // Note: normally the profiler is enabled in 1 trainer, hence only
@@ -50,7 +50,7 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   // servers the trainer's profiling state so that PS can follow the
   // trainer.
   VLOG(3) << "SerializeToByteBuffer platform::ShouldSendProfileState: "
-          << platform::ShouldSendProfileState();
+          << platform::ShouldSendProfileState() << " var: " << name;
   if (platform::ShouldSendProfileState()) {
     if (platform::IsProfileEnabled()) {
       request.set_profile(platform::kEnableProfiler);
@@ -58,23 +58,25 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
       request.set_profile(platform::kDisableProfiler);
     }
   }
-  VLOG(3) << "SerializeToByteBuffer out_name.empty(): " << out_name.empty();
+  VLOG(3) << "SerializeToByteBuffer out_name.empty(): " << out_name.empty()
+          << " var: " << name;
   if (!out_name.empty()) {
     request.set_out_varname(out_name);
   }
-  VLOG(3) << "SerializeToByteBuffer table_name.empty(): " << table_name.empty();
+  VLOG(3) << "SerializeToByteBuffer table_name.empty(): " << table_name.empty()
+          << " var: " << name;
   if (!table_name.empty()) {
     request.set_table_name(table_name);
   }
 
   if (var->IsType<framework::LoDTensor>()) {
     VLOG(3) << "SerializeToByteBuffer var->IsType<framework::LoDTensor>: "
-            << var->IsType<framework::LoDTensor>();
+            << var->IsType<framework::LoDTensor>() << " var: " << name;
     request.set_type(::sendrecv::LOD_TENSOR);
     payload = new TensorPayload(GetTensorPayload(var, ctx, &request));
   } else if (var->IsType<framework::SelectedRows>()) {
     VLOG(3) << "SerializeToByteBuffer var->IsType<framework::SelectedRows>: "
-            << var->IsType<framework::SelectedRows>();
+            << var->IsType<framework::SelectedRows>() << " var: " << name;
     request.set_type(::sendrecv::SELECTED_ROWS);
     payload = new TensorPayload(GetSelectedRowsPayload(var, ctx, &request));
 #ifdef PADDLE_WITH_NCCL
@@ -88,14 +90,17 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                  typeid(var->Type()).name());
   }
 
-  VLOG(3) << "SerializeToByteBuffer AppendToString Begin";
+  VLOG(3) << "SerializeToByteBuffer AppendToString Begin"
+          << " var: " << name;
   std::string header;
   request.AppendToString(&header);
   auto buffer = std::unique_ptr<char[]>(new char[1024]);
   void* buf = buffer.get();
-  VLOG(3) << "SerializeToByteBuffer ProtoEncodeHelper Begin";
+  VLOG(3) << "SerializeToByteBuffer ProtoEncodeHelper Begin"
+          << " var: " << name;
   ProtoEncodeHelper e(static_cast<char*>(buf), 1024);
-  VLOG(3) << "SerializeToByteBuffer WriteRawBytes Begin";
+  VLOG(3) << "SerializeToByteBuffer WriteRawBytes Begin"
+          << " var: " << name;
   e.WriteRawBytes(std::string(header.data(), header.size()));
 // NCCLID is copied directly to the message, return bytebuffer
 // with only one slice if serializing NCCLID.
@@ -115,7 +120,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 #endif
   PADDLE_ENFORCE_NOT_NULL(payload);
-  VLOG(3) << "SerializeToByteBuffer WriteVarlengthBeginning Begin";
+  VLOG(3) << "SerializeToByteBuffer WriteVarlengthBeginning Begin"
+          << " var: " << name;
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
@@ -136,7 +142,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
                                     SerializeDestroyCallback, payload),
       ::grpc::Slice::STEAL_REF);
 
-  VLOG(3) << "SerializeToByteBuffer SelectedRows Custom Process Begin";
+  VLOG(3) << "SerializeToByteBuffer SelectedRows Custom Process Begin"
+          << " var: " << name;
   if (var->IsType<framework::SelectedRows>()) {
     auto* slr = var->GetMutable<framework::SelectedRows>();
     ProtoEncodeHelper e2(static_cast<char*>(buf), 128);
@@ -144,13 +151,16 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
     PADDLE_ENFORCE(VectorElemName(slr->rows()) == typeid(int64_t).name());
     size_t rows_memory_size = slr->rows().size() * sizeof(int64_t);
     VLOG(3)
-        << "SerializeToByteBuffer SelectedRows WriteVarlengthBeginning Begin";
+        << "SerializeToByteBuffer SelectedRows WriteVarlengthBeginning Begin"
+        << " var: " << name;
     e2.WriteVarlengthBeginning(VarMsg::kRowsFieldNumber, rows_memory_size);
     slices[2] = ::grpc::Slice(e2.size());
-    VLOG(3) << "SerializeToByteBuffer SelectedRows memcpy Begin";
+    VLOG(3) << "SerializeToByteBuffer SelectedRows memcpy Begin"
+            << " var: " << name;
     memcpy(const_cast<uint8_t*>(slices[2].begin()), e2.data(), e2.size());
     VLOG(3) << "SerializeToByteBuffer SelectedRows "
-               "grpc_slice_new_with_user_data Begin";
+               "grpc_slice_new_with_user_data Begin"
+            << " var: " << name;
     slices[3] = ::grpc::Slice(
         grpc_slice_new_with_user_data(
             const_cast<void*>(
@@ -163,7 +173,8 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   }
 
   ::grpc::ByteBuffer tmp(&slices[0], num_slices);
-  VLOG(3) << "SerializeToByteBuffer SelectedRows Swap Begin";
+  VLOG(3) << "SerializeToByteBuffer SelectedRows Swap Begin"
+          << " var: " << name;
   msg->Swap(&tmp);
 }
 

@@ -91,8 +91,9 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
   if (send_var->IsType<framework::LoDTensor>()) {
     size_t out_num = rpc_ctx.splited_var_names.size();
+    auto &send_tensor = send_var->Get<framework::LoDTensor>();
+
     if (out_num > 1) {
-      auto &send_tensor = send_var->Get<framework::LoDTensor>();
       auto &send_tensor_dims = send_tensor.dims();
       std::vector<framework::DDim> outs_dims;
       outs_dims.reserve(out_num);
@@ -112,14 +113,53 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       for (size_t i = 0; i < out_num; ++i) {
         framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
                                      ->GetMutable<framework::LoDTensor>();
-        *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
+        if (platform::is_cpu_place(send_tensor.place())) {
+          VLOG(1) << "Parameter Send: Send tensor on CPU: "
+                  << platform::is_cpu_place(send_tensor.place());
+          *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
+        } else {
+          VLOG(1) << "Parameter Send: Send tensor on GPU: "
+                  << platform::is_gpu_place(send_tensor.place());
+
+          auto cpu_ctx = paddle::platform::CPUDeviceContext();
+          auto *gpu_ctx = reinterpret_cast<platform::CUDADeviceContext *>(
+              platform::DeviceContextPool::Instance().Get(send_tensor.place()));
+          auto &cpu_place =
+              BOOST_GET_CONST(platform::CPUPlace, cpu_ctx.GetPlace());
+          auto &gpu_place =
+              BOOST_GET_CONST(platform::CUDAPlace, gpu_ctx->GetPlace());
+          auto send_tensor_slice =
+              send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
+          out->Resize(send_tensor_slice.dims());
+          paddle::memory::Copy(
+              cpu_place, out->data<T>(), gpu_place, send_tensor_slice.data<T>(),
+              sizeof(T) * send_tensor_slice.numel(), gpu_ctx->stream());
+        }
+
         row_offset += outs_dims[i][0];
       }
     } else {
-      auto &send_tensor = send_var->Get<framework::LoDTensor>();
       framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[0])
                                    ->GetMutable<framework::LoDTensor>();
-      out->ShareDataWith(send_tensor);
+      if (platform::is_cpu_place(send_tensor.place())) {
+        VLOG(1) << "Parameter Send: Send tensor on CPU: "
+                << platform::is_cpu_place(send_tensor.place());
+        out->ShareDataWith(send_tensor);
+      } else {
+        VLOG(1) << "Parameter Send: Send tensor on GPU: "
+                << platform::is_gpu_place(send_tensor.place());
+        auto cpu_ctx = paddle::platform::CPUDeviceContext();
+        auto *gpu_ctx = reinterpret_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(send_tensor.place()));
+        auto &cpu_place =
+            BOOST_GET_CONST(platform::CPUPlace, cpu_ctx.GetPlace());
+        auto &gpu_place =
+            BOOST_GET_CONST(platform::CUDAPlace, gpu_ctx->GetPlace());
+        out->Resize(send_tensor.dims());
+        paddle::memory::Copy(
+            cpu_place, out->data<T>(), gpu_place, send_tensor.data<T>(),
+            sizeof(T) * send_tensor.numel(), gpu_ctx->stream());
+      }
     }
     if (rpc_ctx.use_send_handler) {
       for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {

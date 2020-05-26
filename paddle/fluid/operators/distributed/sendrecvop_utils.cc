@@ -35,10 +35,9 @@ using VarMsg = sendrecv::VariableMessage;
 
 static TensorPayload GetCommunicationAllocationFromTensor(
     const platform::DeviceContext& ctx, const framework::Tensor& tensor) {
-  VLOG(3) << "GetCommunicationAllocationFromTensor Begin";
-  if (is_gpu_place(ctx.GetPlace())) {
+  if (is_gpu_place(ctx.GetPlace()) && is_gpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE(is_gpu_place(tensor.place()));
+    VLOG(3) << "GetCommunicationAllocationFromTensor GPU Begin";
     auto& gpu_dev_ctx =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx);
     auto copy_size = tensor.numel() * framework::SizeOfType(tensor.type());
@@ -56,6 +55,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     PADDLE_THROW("This situation should not be happened");
 #endif
   } else {
+    VLOG(3) << "GetCommunicationAllocationFromTensor CPU Begin";
     return TensorPayload(tensor);
   }
 }

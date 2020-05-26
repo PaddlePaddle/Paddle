@@ -127,6 +127,8 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto trainer_id = BOOST_GET_CONST(int, op->GetNullableAttr("trainer_id"));
       recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
+      VLOG(3) << "find and init an recv op: "
+              << recv_varname_to_ctx[recv_var_name];
     }
   }
 
