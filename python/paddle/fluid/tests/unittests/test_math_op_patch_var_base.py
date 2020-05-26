@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-from decorator_helper import prog_scope
 import paddle.fluid as fluid
 import numpy as np
 import six
@@ -29,6 +28,15 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
     def test_add(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = fluid.dygraph.to_variable(b_np)
+            res = a + b
+            self.assertTrue(np.array_equal(res.numpy(), a_np + b_np))
+
+    def test_add_different_dtype(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
         with fluid.dygraph.guard():
             a = fluid.dygraph.to_variable(a_np)
             b = fluid.dygraph.to_variable(b_np)
