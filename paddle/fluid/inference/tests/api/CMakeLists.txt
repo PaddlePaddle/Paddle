@@ -1,8 +1,4 @@
-if (NOT ON_INFER)
-    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
-else()
-    set(INFERENCE_EXTRA_DEPS paddle_fluid_shared)
-endif()
+set(INFERENCE_EXTRA_DEPS paddle_fluid_shared)
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
