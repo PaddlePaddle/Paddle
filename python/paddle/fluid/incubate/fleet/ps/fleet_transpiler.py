@@ -509,6 +509,8 @@ class FleetTranspiler(Fleet):
             dirname=dirname,
             vars=local_vars)
 
+        return [var.name for var in local_vars]
+
     def _save_sparse_params(self, executor, dirname, context, main_program):
         prog = Program()
         block = prog.global_block()
@@ -530,15 +532,31 @@ class FleetTranspiler(Fleet):
                 })
 
         executor.run(prog)
+        return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
         sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
             recv_type=2)
+
         dense_ctx = fleet.compiled_config.get_communicator_recv_context(
             recv_type=1)
 
-        self._save_dense_params(executor, dirname, dense_ctx, main_program)
-        self._save_sparse_params(executor, dirname, sparse_ctx, main_program)
+        recv_dense_varnames = self._save_dense_params(executor, dirname,
+                                                      dense_ctx, main_program)
+        recv_sparse_varnames = self._save_sparse_params(
+            executor, dirname, sparse_ctx, main_program)
+
+        saved_varnames = recv_dense_varnames + recv_sparse_varnames
+
+        vars = main_program.list_vars()
+        remaining_vars = []
+
+        for var in vars:
+            if var.name not in saved_varnames:
+                remaining_vars.append(var)
+
+        fluid.io.save_vars(
+            executor, main_program=main_program, dirname=dirname, vars=vars)
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
