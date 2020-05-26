@@ -149,6 +149,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   CP_MEMBER(serialized_info_cache_);
 
+  // encrypted model related
+  CP_MEMBER(decrypt_);
+  CP_MEMBER(encrypt_);
+  CP_MEMBER(key_);
+
   CP_MEMBER(thread_local_stream_);
 
   if (use_gpu_) {
@@ -448,6 +453,10 @@ NativeConfig AnalysisConfig::ToNativeConfig() const {
   config.device = device_id_;
   config.fraction_of_gpu_memory = fraction_of_gpu_memory_for_pool();
   config.specify_input_name = specify_input_name_;
+  if (decrypt_) {
+    config.enable_decrypt();
+  }
+  config.set_key(key_);
   return config;
 }
 

@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -33,8 +35,23 @@ class LoadOpKernel : public framework::OpKernel<T> {
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
     auto filename = ctx.Attr<std::string>("file_path");
-    std::ifstream fin(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fin), true,
+    std::shared_ptr<paddle::framework::CryptIfstream> fin;
+    const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+    if (ctx.Attr<bool>("decrypt")) {
+      std::string key = ctx.Attr<std::string>("key");
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        platform::errors::InvalidArgument(
+                            "The input parameter 'key' is empty, "
+                            "Please input valid key for enabling decryption."));
+      fin = std::make_shared<paddle::framework::CryptIfstream>(
+          filename.data(), std::ios::binary,
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
+    } else {
+      fin = std::make_shared<paddle::framework::CryptIfstream>(
+          filename.data(), std::ios::binary);
+    }
+    PADDLE_ENFORCE_EQ(fin->is_open(), true,
                       platform::errors::Unavailable(
                           "Load operator fail to open file %s, please check "
                           "whether the model file is complete or damaged.",
@@ -49,9 +66,9 @@ class LoadOpKernel : public framework::OpKernel<T> {
             "The variable %s to be loaded cannot be found.", out_var_name));
 
     if (out_var->IsType<framework::LoDTensor>()) {
-      LoadLodTensor(fin, place, out_var, ctx);
+      LoadLodTensor(*fin, place, out_var, ctx);
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      LoadSelectedRows(fin, place, out_var);
+      LoadSelectedRows(*fin, place, out_var);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Load operator only supports loading LoDTensor and SelectedRows "

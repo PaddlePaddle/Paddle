@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <fstream>
+#include <memory>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -23,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
@@ -79,10 +81,27 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
+    std::shared_ptr<paddle::framework::CryptOfstream> fout;
+    if (ctx.Attr<bool>("encrypt")) {
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+      std::string key = ctx.Attr<std::string>("key");
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        platform::errors::InvalidArgument(
+                            "The input parameter 'key' is empty, "
+                            "Please input valid key for enabling encryption."));
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary,
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
+    } else {
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary);
+    }
+    PADDLE_ENFORCE_EQ(
+        fout->is_open(), true,
+        platform::errors::Unavailable("Cannot open %s to save variables, "
+                                      "Check the correctness of file path.",
+                                      filename));
 
     auto save_as_fp16 = ctx.Attr<bool>("save_as_fp16");
     auto in_dtype = tensor.type();
@@ -95,11 +114,11 @@ class SaveOpKernel : public framework::OpKernel<T> {
       framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
       // copy LoD info to the new tensor
       out.set_lod(tensor.lod());
-      framework::SerializeToStream(fout, out, dev_ctx);
+      framework::SerializeToStream(*fout, out, dev_ctx);
     } else {
-      framework::SerializeToStream(fout, tensor, dev_ctx);
+      framework::SerializeToStream(*fout, tensor, dev_ctx);
     }
-    fout.close();
+    fout->close();
   }
 
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
@@ -138,12 +157,29 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
-    std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
-                      platform::errors::Unavailable(
-                          "Cannot open %s to save variables.", filename));
-    framework::SerializeToStream(fout, selectedRows, dev_ctx);
-    fout.close();
+    std::shared_ptr<paddle::framework::CryptOfstream> fout;
+    if (ctx.Attr<bool>("encrypt")) {
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+      std::string key = ctx.Attr<std::string>("key");
+      PADDLE_ENFORCE_EQ(key.empty(), false,
+                        platform::errors::InvalidArgument(
+                            "The input parameter 'key' is empty, "
+                            "Please input valid key for enabling encryption."));
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary,
+          reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+          TAG_SIZE);
+    } else {
+      fout = std::make_shared<paddle::framework::CryptOfstream>(
+          filename.data(), std::ios::binary);
+    }
+    PADDLE_ENFORCE_EQ(
+        fout->is_open(), true,
+        platform::errors::Unavailable("Cannot open %s to save variables, "
+                                      "Check the correctness of file path.",
+                                      filename));
+    framework::SerializeToStream(*fout, selectedRows, dev_ctx);
+    fout->close();
   }
 };
 

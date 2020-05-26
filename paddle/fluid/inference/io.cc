@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -45,15 +46,44 @@ void Init(const std::vector<std::string> argv) {
   framework::InitDevices(FLAGS_init_p2p, devices);
 }
 
-void ReadBinaryFile(const std::string& filename, std::string* contents) {
-  std::ifstream fin(filename, std::ios::in | std::ios::binary);
-  PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s", filename);
-  fin.seekg(0, std::ios::end);
-  contents->clear();
-  contents->resize(fin.tellg());
-  fin.seekg(0, std::ios::beg);
-  fin.read(&(contents->at(0)), contents->size());
-  fin.close();
+void ReadBinaryFile(const std::string& filename, std::string* contents,
+                    bool decrypt = false, const std::string& key = "") {
+  std::shared_ptr<paddle::framework::CryptIfstream> fin;
+  if (decrypt) {
+    PADDLE_ENFORCE_EQ(key.empty(), false,
+                      platform::errors::InvalidArgument(
+                          "The input parameter 'key' is empty, "
+                          "Please input valid key for enabling decryption."));
+    const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+    const size_t IV_SIZE = paddle::framework::DEFAULT_AES_IV_SIZE;
+    fin = std::make_shared<paddle::framework::CryptIfstream>(
+        filename.data(), std::ios::in | std::ios::binary,
+        reinterpret_cast<const unsigned char*>(key.data()), key.size(),
+        TAG_SIZE);
+    PADDLE_ENFORCE_EQ(fin->is_open(), true,
+                      platform::errors::Unavailable(
+                          "Cannot open file %s, "
+                          "Please check the correctness of file path",
+                          filename));
+    fin->seekg(0, std::ios::end);
+    contents->resize((size_t)fin->tellg() - TAG_SIZE - IV_SIZE);
+    fin->seekg(IV_SIZE, std::ios::beg);
+    fin->read(&(contents->at(0)), contents->size());
+    fin->close();
+  } else {
+    fin = std::make_shared<paddle::framework::CryptIfstream>(
+        filename.data(), std::ios::in | std::ios::binary);
+    PADDLE_ENFORCE_EQ(fin->is_open(), true,
+                      platform::errors::Unavailable(
+                          "Cannot open file %s, "
+                          "Please check the correctness of file path",
+                          filename));
+    fin->seekg(0, std::ios::end);
+    contents->resize(fin->tellg());
+    fin->seekg(0, std::ios::beg);
+    fin->read(&(contents->at(0)), contents->size());
+    fin->close();
+  }
 }
 
 bool IsPersistable(const framework::VarDesc* var) {
@@ -69,8 +99,8 @@ bool IsPersistable(const framework::VarDesc* var) {
 void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
                       const framework::ProgramDesc& main_program,
                       const std::string& dirname,
-                      const std::string& param_filename,
-                      bool model_from_memory = false) {
+                      const std::string& param_filename, bool model_from_memory,
+                      bool decrypt, const std::string& key) {
   const framework::BlockDesc& global_block = main_program.Block(0);
 
   framework::ProgramDesc* load_program = new framework::ProgramDesc();
@@ -101,6 +131,8 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
         op->SetType("load");
         op->SetOutput("Out", {new_var->Name()});
         op->SetAttr("file_path", {dirname + "/" + new_var->Name()});
+        op->SetAttr("decrypt", decrypt);
+        op->SetAttr("key", key);
         op->CheckAttrs();
       }
     }
@@ -115,6 +147,8 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
     op->SetOutput("Out", paramlist);
     op->SetAttr("file_path", {param_filename});
     op->SetAttr("model_from_memory", {model_from_memory});
+    op->SetAttr("decrypt", decrypt);
+    op->SetAttr("key", key);
     op->CheckAttrs();
   }
 
@@ -125,11 +159,13 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
 
 std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
-                                             const std::string& dirname) {
+                                             const std::string& dirname,
+                                             bool decrypt,
+                                             const std::string& key) {
   std::string model_filename = dirname + "/__model__";
   std::string program_desc_str;
   VLOG(3) << "loading model from " << model_filename;
-  ReadBinaryFile(model_filename, &program_desc_str);
+  ReadBinaryFile(model_filename, &program_desc_str, decrypt, key);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -139,15 +175,18 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   // model_from_memory is false in separate parameters.
   LoadPersistables(executor, scope, *main_program, dirname, "",
-                   false /* model_from_memory */);
+                   false /* model_from_memory */, decrypt, key);
   return main_program;
 }
 
-std::unique_ptr<framework::ProgramDesc> Load(
-    framework::Executor* executor, framework::Scope* scope,
-    const std::string& prog_filename, const std::string& param_filename) {
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
+                                             const std::string& prog_filename,
+                                             const std::string& param_filename,
+                                             bool decrypt,
+                                             const std::string& key) {
   std::string program_desc_str;
-  ReadBinaryFile(prog_filename, &program_desc_str);
+  ReadBinaryFile(prog_filename, &program_desc_str, decrypt, key);
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
@@ -156,7 +195,7 @@ std::unique_ptr<framework::ProgramDesc> Load(
                  main_program->Version());
 
   LoadPersistables(executor, scope, *main_program, "", param_filename,
-                   false /* model_from_memory */);
+                   false /* model_from_memory */, decrypt, key);
   return main_program;
 }
 

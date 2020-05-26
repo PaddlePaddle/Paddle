@@ -139,7 +139,10 @@ set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
 copy(inference_lib_dist
         SRCS ${cudaerror_INCLUDE_DIR}
         DSTS ${dst_dir})
-
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/cryptopp")
+copy(inference_lib_dist
+        SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)
 # CMakeCache Info
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt

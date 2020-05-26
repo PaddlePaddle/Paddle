@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <fstream>
 #include <thread>  // NOLINT
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -191,6 +192,61 @@ TEST(AnalysisPredictor, Clone) {
   for (auto& t : threads) {
     t.join();
   }
+}
+
+TEST(SecModelTest, secure_model_test) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(false);
+
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+
+  int64_t data[4] = {1, 2, 3, 4};
+  PaddleTensor tensor;
+  tensor.shape = std::vector<int>({4, 1});
+  tensor.data.Reset(data, sizeof(data));
+  tensor.dtype = PaddleDType::INT64;
+
+  std::vector<PaddleTensor> inputs(4, tensor);
+  std::vector<PaddleTensor> outputs;
+  ASSERT_TRUE(predictor->Run(inputs, &outputs));
+
+  // save encrypted model
+  AnalysisConfig config_save_enc;
+  config_save_enc.SetModel(FLAGS_dirname);
+  config_save_enc.SwitchIrOptim(false);
+  config_save_enc.enable_encrypt();
+  const std::string key("0", 32);
+  config_save_enc.set_key(key);
+
+  auto save_predictor = CreatePaddlePredictor<AnalysisConfig>(config_save_enc);
+  std::string enc_dir = FLAGS_dirname;
+  dynamic_cast<AnalysisPredictor*>(save_predictor.get())
+      ->SaveOptimModel(enc_dir);
+
+  // compare with secure model
+  AnalysisConfig config_sec;
+  config_sec.enable_decrypt();
+
+  config_sec.SetModel(enc_dir + "/model", enc_dir + "/params");
+  config_sec.SwitchIrOptim(false);
+  config_sec.set_key(key);
+
+  // AnalysisPredictor
+  auto sec_predictor = CreatePaddlePredictor<AnalysisConfig>(config_sec);
+  std::vector<PaddleTensor> sec_outputs;
+  ASSERT_TRUE(sec_predictor->Run(inputs, &sec_outputs));
+  ASSERT_EQ(sec_outputs.size(), 1UL);
+  inference::CompareTensor(outputs.front(), sec_outputs.front());
+
+  // NativePredictor
+  config_sec.SetModel(enc_dir + "/model", enc_dir + "/params");
+  auto sec_native_predictor =
+      CreatePaddlePredictor<NativeConfig>(config_sec.ToNativeConfig());
+  std::vector<PaddleTensor> sec_native_outputs;
+  ASSERT_TRUE(sec_native_predictor->Run(inputs, &sec_native_outputs));
+  ASSERT_EQ(sec_native_outputs.size(), 1UL);
+  inference::CompareTensor(outputs.front(), sec_native_outputs.front());
 }
 
 // This function is not released yet, will fail on some machine.

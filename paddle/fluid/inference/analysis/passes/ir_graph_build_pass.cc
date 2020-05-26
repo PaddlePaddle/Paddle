@@ -23,7 +23,8 @@
 namespace paddle {
 namespace inference {
 
-extern void ReadBinaryFile(const std::string &filename, std::string *contents);
+extern void ReadBinaryFile(const std::string &filename, std::string *contents,
+                           bool decrypt = false, const std::string &key = "");
 
 namespace analysis {
 
@@ -41,14 +42,16 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
   if (argument->model_dir_valid()) {
     auto program =
-        LoadModel(argument->model_dir(), argument->scope_ptr(), place);
+        LoadModel(argument->model_dir(), argument->scope_ptr(), place,
+                  argument->need_decrypt(), argument->aes_key());
     argument->SetMainProgram(program.release());
   } else if (argument->model_program_path_valid() &&
              argument->model_params_path_valid()) {
     auto program = LoadModel(
         argument->model_program_path(), argument->model_params_path(),
         argument->scope_ptr(), place,
-        argument->model_from_memory_valid() && argument->model_from_memory());
+        argument->model_from_memory_valid() && argument->model_from_memory(),
+        argument->need_decrypt(), argument->aes_key());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
@@ -64,18 +67,18 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &path, framework::Scope *scope,
-    const platform::Place &place) {
+    const platform::Place &place, bool decrypt, const std::string &key) {
   framework::Executor exe(place);
-  return Load(&exe, scope, path);
+  return Load(&exe, scope, path, decrypt, key);
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &program_path, const std::string &params_path,
     framework::Scope *scope, const platform::Place &place,
-    bool model_from_memory) {
+    bool model_from_memory, bool decrypt, const std::string &key) {
   framework::Executor exe(place);
   if (!model_from_memory) {
-    return Load(&exe, scope, program_path, params_path);
+    return Load(&exe, scope, program_path, params_path, decrypt, key);
   } else {
     return LoadFromMemory(&exe, scope, program_path, params_path);
   }

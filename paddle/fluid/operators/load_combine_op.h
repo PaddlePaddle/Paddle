@@ -15,11 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/io/crypt_fstream.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -41,14 +43,30 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
                           "it to be greater than 0.",
                           out_var_names.size()));
     if (!model_from_memory) {
-      std::ifstream fin(filename, std::ios::binary);
+      const size_t TAG_SIZE = paddle::framework::DEFAULT_AES_TAG_SIZE;
+      std::shared_ptr<paddle::framework::CryptIfstream> fin;
+      if (ctx.Attr<bool>("decrypt")) {
+        std::string key = ctx.Attr<std::string>("key");
+        PADDLE_ENFORCE_EQ(
+            key.empty(), false,
+            platform::errors::InvalidArgument(
+                "The input parameter 'key' is empty, "
+                "Please input valid key for enabling decryption."));
+        fin = std::make_shared<paddle::framework::CryptIfstream>(
+            filename.data(), std::ios::binary,
+            reinterpret_cast<const unsigned char *>(key.data()), key.size(),
+            TAG_SIZE);
+      } else {
+        fin = std::make_shared<paddle::framework::CryptIfstream>(
+            filename.data(), std::ios::binary);
+      }
       PADDLE_ENFORCE_EQ(
-          static_cast<bool>(fin), true,
+          static_cast<bool>(*fin), true,
           platform::errors::Unavailable(
               "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
-      LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
+      LoadParamsFromBuffer(ctx, place, fin.get(), load_as_fp16, out_var_names);
     } else {
       PADDLE_ENFORCE_NE(
           filename.empty(), true,

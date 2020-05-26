@@ -37,7 +37,7 @@ if (WITH_LITE)
     add_subdirectory(lite)
 endif()
 
-SET(OP_HEADER_DEPS xxhash executor)
+SET(OP_HEADER_DEPS xxhash executor cryptopp)
 
 if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)

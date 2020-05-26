@@ -60,6 +60,17 @@ This operator will serialize and write LoDTensor / SelectedRows variable to file
                          "The \"file_path\" where the variable will be saved.")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
+    AddAttr<bool>("encrypt",
+                  "(boolean, default false)"
+                  "If true, the tensor will be encrypted and then saved. "
+                  "Otherwise, the tensor will be "
+                  "directly saved as plaintext.")
+        .SetDefault(false);
+    AddAttr<std::string>("key",
+                         "(string)"
+                         "Input key, that used for encrypting."
+                         "If encrypt = true, requre input key.")
+        .SetDefault(std::string());
     AddOutput(LOOKUP_TABLE_PATH,
               "(string)"
               "for pserver: The \"kLookupTablePath\" where checkpoint notify "

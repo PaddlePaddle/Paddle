@@ -54,8 +54,15 @@ using VarQuantScale =
  * All the fields should be registered here for clearness.
  */
 struct Argument {
-  Argument() = default;
-  explicit Argument(const std::string& model_dir) { SetModelDir(model_dir); }
+  Argument() {
+    SetNeedDecrypt(false);
+    SetAESKey("");
+  }
+  explicit Argument(const std::string& model_dir) {
+    SetModelDir(model_dir);
+    SetNeedDecrypt(false);
+    SetAESKey("");
+  }
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
@@ -213,6 +220,10 @@ struct Argument {
                              framework::proto::ProgramDesc);
 
   DECL_ARGUMENT_FIELD(fusion_statis, FusionStatis, fusion_statis_t);
+
+  // Whether to decrypt the model
+  DECL_ARGUMENT_FIELD(need_decrypt, NeedDecrypt, bool);
+  DECL_ARGUMENT_FIELD(aes_key, AESKey, std::string);
 
  private:
   std::unordered_set<std::string> valid_fields_;
