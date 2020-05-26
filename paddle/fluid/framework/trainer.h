@@ -196,7 +196,7 @@ class ModelParallelTrainer : public TrainerBase {
   void Finalize() override;
   void GetSkipVars(int section_id, const ProgramDesc& main_program);
   virtual Scope* GetWorkerScope(int thread_id);
-  void InitDumpEnv() override;
+  void InitDumpEnv() override{};
   virtual std::string GetDumpPath(int tid);
 
  protected:

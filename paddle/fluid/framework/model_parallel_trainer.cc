@@ -221,7 +221,7 @@ void ModelParallelTrainer::Run() {
   }
 }
 
-std::string PipelineTrainer::GetDumpPath(int tid) {
+std::string ModelParallelTrainer::GetDumpPath(int tid) {
   return string::format_string("%s/part-%05d", dump_fields_path_.c_str(), tid);
 }
 
