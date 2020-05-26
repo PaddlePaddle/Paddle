@@ -390,6 +390,7 @@ class SectionWorker : public DeviceWorker {
 };
 #endif
 
+#if defined(PADDLE_WITH_NCCL)
 class ModelParallelWorker : public DeviceWorker {
  public:
   ModelParallelWorker() { local_batch_id_ = 0; }
@@ -448,6 +449,7 @@ class ModelParallelWorker : public DeviceWorker {
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
+#endif
 
 }  // namespace framework
 }  // namespace paddle

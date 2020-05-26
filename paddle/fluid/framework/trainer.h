@@ -174,6 +174,7 @@ class PipelineTrainer : public TrainerBase {
 };
 #endif
 
+#if defined(PADDLE_WITH_NCCL)
 class ModelParallelTrainer : public TrainerBase {
  public:
   ModelParallelTrainer() {}
@@ -209,6 +210,7 @@ class ModelParallelTrainer : public TrainerBase {
   bool isPersistableVarGrad(std::string name);
   bool isPersistable(VarDesc* var);
 };
+#endif
 
 }  // namespace framework
 }  // namespace paddle

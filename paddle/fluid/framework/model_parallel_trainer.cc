@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -255,3 +256,4 @@ Scope* ModelParallelTrainer::GetWorkerScope(int thread_id) {
 
 }  // end namespace framework
 }  // end namespace paddle
+#endif
