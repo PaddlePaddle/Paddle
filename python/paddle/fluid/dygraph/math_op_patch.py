@@ -93,6 +93,8 @@ def monkey_patch_math_varbase():
                     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
 
         """
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
         return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
