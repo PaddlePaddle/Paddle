@@ -41,10 +41,30 @@ void PrintVar(framework::Scope* scope, const std::string& var_name,
   }
 
   std::ostringstream sstream;
-  sstream << print_info << "\t";
-  sstream << var_name << "\t";
-  sstream << *tensor << "\t";
-  std::cout << sstream.str() << std::endl;
+  // sstream << print_info << "\t";
+  sstream << print_info << ": ";
+  // sstream << var_name << "\t";
+
+#define PrintTensorCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (tensor->type() == proto_type) {            \
+      sstream << "[";                             \
+      auto* data = tensor->data<cpp_type>();             \
+      auto element_num = tensor->numel();         \
+      if (element_num > 0) {                      \
+        sstream << data[0];                            \
+        for (int j = 1; j < element_num; ++j) {   \
+          sstream << " " << data[j];                   \
+        }                                         \
+      }                                           \
+      sstream << "]";                             \
+    }                                             \
+  } while (0)
+
+  _ForEachDataType_(PrintTensorCallback);
+  // sstream << *tensor << "\t";
+  std::cout << sstream.str();
+  // std::cout << sstream.str() << std::endl;
 }
 
 }  // end namespace platform

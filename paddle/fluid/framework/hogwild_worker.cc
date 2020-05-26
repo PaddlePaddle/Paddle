@@ -232,7 +232,11 @@ void HogwildWorker::PrintFetchVars() {
       for (int i = 0; i < fetch_var_num; ++i) {
         platform::PrintVar(thread_scope_, fetch_config_.fetch_var_names(i),
                            fetch_config_.fetch_var_str_format(i));
+        if(i < fetch_var_num - 1) {
+          std::cout << ", \t";
+        }
       }
+      std::cout << std::endl;
     }
   }
 }
