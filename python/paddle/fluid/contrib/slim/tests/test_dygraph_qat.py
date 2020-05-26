@@ -21,6 +21,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization.dyquant import quantize_qat
 from paddle.fluid.optimizer import AdamOptimizer
+from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph import ProgramTranslator
 
 os.environ["CPU_NUM"] = "8"
 
@@ -93,16 +95,13 @@ class MNIST(fluid.dygraph.Layer):
                     loc=0.0, scale=scale)),
             act="softmax")
 
-    def forward(self, inputs, label=None):
-        x = self._simple_img_conv_pool_1(inputs)
+    @declarative
+    def forward(self, input):
+        x = self._simple_img_conv_pool_1(input)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
-        if label is not None:
-            acc = fluid.layers.accuracy(input=x, label=label)
-            return x, acc
-        else:
-            return x
+        return x
 
 
 class TestDygraphQAT(unittest.TestCase):
@@ -115,7 +114,7 @@ class TestDygraphQAT(unittest.TestCase):
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
             test_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=8)
+                paddle.dataset.mnist.test(), batch_size=32)
 
             epoch_num = 2
             for epoch in range(epoch_num):
@@ -130,15 +129,18 @@ class TestDygraphQAT(unittest.TestCase):
                     img = fluid.dygraph.to_variable(dy_x_data)
                     label = fluid.dygraph.to_variable(y_data)
 
-                    cost, acc = mnist(img, label)
-                    loss = fluid.layers.cross_entropy(cost, label)
+                    out = mnist(img)
+                    acc = fluid.layers.accuracy(out, label)
+                    loss = fluid.layers.cross_entropy(out, label)
                     avg_loss = fluid.layers.mean(loss)
                     avg_loss.backward()
                     adam.minimize(avg_loss)
                     mnist.clear_gradients()
                     if batch_id % 100 == 0:
-                        print("Train | Loss at epoch {} step {}: {:}".format(
-                            epoch, batch_id, avg_loss.numpy()))
+                        print(
+                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".
+                            format(epoch, batch_id,
+                                   avg_loss.numpy(), acc.numpy()))
 
                 mnist.eval()
                 for batch_id, data in enumerate(test_reader()):
@@ -165,6 +167,10 @@ class TestDygraphQAT(unittest.TestCase):
 
             model_dict = mnist.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
+
+        prog_trans = ProgramTranslator()
+        prog_trans.save_inference_model(
+            "./mnist_infer_model", feed=[0], fetch=[0])
 
 
 if __name__ == '__main__':
