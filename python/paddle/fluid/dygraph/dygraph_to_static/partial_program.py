@@ -14,12 +14,18 @@
 
 from __future__ import print_function
 import numpy as np
+import logging
+
+from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
+
+_logger = log_helper.get_logger(
+    __name__, logging.WARNING, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class NestSequence(object):
@@ -28,9 +34,10 @@ class NestSequence(object):
     given sequence.
     """
 
-    def __init__(self, raw_input):
+    def __init__(self, raw_input, need_check=False):
         self.__raw_input = raw_input
         self.__var_ids = self._get_var_ids()
+        self._check_non_variable(need_check)
 
     def tolist(self):
         """
@@ -52,6 +59,22 @@ class NestSequence(object):
                 var_ids.append(idx)
 
         return var_ids
+
+    def _check_non_variable(self, need_check):
+        """
+        Raises warning if output of traced function contains non-tensor type values.
+        """
+        if need_check:
+            warning_types = set()
+            for var in self.tolist():
+                if not isinstance(var, (framework.Variable, core.VarBase)):
+                    warning_types.add(type(var))
+            if warning_types:
+                _logger.warning(
+                    "Output of traced function contains non-tensor type values: {}. "
+                    "Currently, We don't support to update them while training and will return "
+                    "what we first saw. Please try to return them as tensor.".
+                    format(list(warning_types)))
 
     @property
     def var_ids(self):
@@ -85,7 +108,7 @@ class PartialProgramLayer(layers.Layer):
     def __init__(self, main_program, inputs, outputs, parameters=None):
         super(PartialProgramLayer, self).__init__()
         self._inputs = NestSequence(inputs)
-        self._outputs = NestSequence(outputs)
+        self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
         # Check all params from main program can be found in self._params:
         # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
