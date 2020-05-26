@@ -657,6 +657,8 @@ class CompileTimeStrategy(object):
         sparse_param_grads, dense_param_grads = _get_params_grads(
             sparse_varnames)
 
+        dense_param_grads[0], dense_param_grads[1] = dense_param_grads[
+            1], dense_param_grads[0]
         return sparse_param_grads, dense_param_grads
 
 
