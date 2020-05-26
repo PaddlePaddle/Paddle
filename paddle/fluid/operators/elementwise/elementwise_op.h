@@ -348,16 +348,16 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplace, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
+DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplace, {"DDX", "DDOut"});
+DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplaceInferer,
+                           {"DDX", "DDOut"});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInference, "X",
-                                    "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInference,
-                                    "Y", "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInferer, "X", "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInferer, "Y",
+                                    "DOut");
 
 }  // namespace operators
 }  // namespace paddle
@@ -389,4 +389,4 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInference,
                     ::paddle::operators::ElementwiseOpInferVarType,     \
                     op_type##GradMaker<::paddle::framework::OpDesc>,    \
                     op_type##GradMaker<::paddle::imperative::OpBase>,   \
-                    ::paddle::operators::ElementwiseOpInplace);
+                    ::paddle::operators::ElementwiseOpInplaceInferer);

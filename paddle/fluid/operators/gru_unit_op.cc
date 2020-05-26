@@ -234,7 +234,7 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUUnitGradOpNoNeedBufferVarInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUUnitGradOpNoNeedBufferVarInferer,
                                     "Bias");
 
 }  // namespace operators
@@ -246,7 +246,7 @@ REGISTER_OPERATOR(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker,
                   ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::GRUUnitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp,
-                  ops::GRUUnitGradOpNoNeedBufferVarInference);
+                  ops::GRUUnitGradOpNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(
     gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,
