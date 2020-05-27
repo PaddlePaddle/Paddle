@@ -60,66 +60,69 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int 
 }
 
 void HeterCpuWorker::GetXpuOpIndex() {
-  int first = 0;
+  xpu_begin_op_index_ = xpu_end_op_index_ = -1;
   for (size_t i = 0; i < ops_.size(); ++i) {
-    if (!first && ops_[i]->Type() == "mul") {
-      first = 1;
-      xpu_begin_op_index_ = i;
-      auto& in_map = ops_[i]->Inputs();
-      
-      
-      auto it = in_map.find("X");
-      if (it != in_map.end()) {
+    //if (!first && ops_[i]->Type() == "mul") {
+    //  first = 1;
+    //  xpu_begin_op_index_ = i;
+    //  auto& in_map = ops_[i]->Inputs();
+    //  
+    //  
+    //  auto it = in_map.find("X");
+    //  if (it != in_map.end()) {
+    //    for (auto& x : it->second) {
+    //      send_var_ = x;
+    //    }
+    //  }
+    //  
+    //}
+    //if (ops_[i]->Type() == "mul_grad") {
+    //  xpu_end_op_index_ = i;
+    //  //auto& out_map = ops_[i]->Outputs();
+    //  //auto it = out_map.find("X@GRAD");
+    //  //if (it != out_map.end()) {
+    //  //  for (auto& x : it->second) {
+    //  //    recv_var = x;
+    //  //  }
+    //  //}
+    //}
+    auto& out_map = ops_[i]->Outputs();
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
         for (auto& x : it->second) {
-          send_var_ = x;
+          if (x == "concat_1.tmp_0") {
+            xpu_begin_op_index_ = i + 1;
+          }
         }
       }
-      
     }
-    if (ops_[i]->Type() == "mul_grad") {
-      xpu_end_op_index_ = i;
-      //auto& out_map = ops_[i]->Outputs();
-      //auto it = out_map.find("X@GRAD");
-      //if (it != out_map.end()) {
-      //  for (auto& x : it->second) {
-      //    recv_var = x;
-      //  }
-      //}
+    
+    {
+      auto it = out_map.find("X@GRAD");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
     }
-    //auto& out_map = ops_[i]->Outputs();
-    //
-    //{
-    //  auto it = out_map.find("Out");
-    //  if (it != out_map.end()) {
-    //    for (auto& x : it->second) {
-    //      if (x == "concat_1.tmp_0") {
-    //        xpu_begin_op_index_ = i + 1;
-    //      }
-    //    }
-    //  }
-    //}
-    //
-    //{
-    //  auto it = out_map.find("X@GRAD");
-    //  if (it != out_map.end()) {
-    //    for (auto& x : it->second) {
-    //      if (x == "concat_1.tmp_0@GRAD") {
-    //        xpu_end_op_index_ = i;
-    //      }
-    //    }
-    //  }
-    //}
-    //
-    //{
-    //  auto it = out_map.find("Out");
-    //  if (it != out_map.end()) {
-    //    for (auto& x : it->second) {
-    //      if (x == "concat_1.tmp_0@GRAD") {
-    //        xpu_end_op_index_ = i;
-    //      }
-    //    }
-    //  }
-    //}
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
+  }
+  if (xpu_end_op_index_ == -1) {
+    xpu_end_op_index_ = ops_.size() - 1;
   }
   VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
 }
@@ -801,7 +804,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       else if (task->state_ == XPU) {
         timeline.Start();
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_);
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
         task->Update();
         JumpContext(task);
         timeline.Pause();
@@ -1068,7 +1071,7 @@ void HeterCpuWorker::TrainFiles() {
       }
       else if (task->state_ == XPU) {
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_);
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
         task->Update();
         JumpContext(task);
         break;

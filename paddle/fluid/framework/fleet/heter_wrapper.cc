@@ -90,6 +90,9 @@ void HeterWrapper::StartXpuService(const std::string& ip, uint32_t port) {
   
 void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope, VariableMessage* req_var) {
   Variable* var = scope->FindVar(varname);
+  if (var == nullptr) {
+    return;
+  }
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   req_var->set_varname(varname); 
   req_var->set_type(LOD_TENSOR);
@@ -223,7 +226,7 @@ void HeterWrapper::EndPass(Scope* scope, int num) {
   //}
 }
 
-void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank, std::string send_var) {
+void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank) {
   HeterRequest request;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
@@ -245,7 +248,13 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker
   }); 
 
   std::vector<std::string> varnames = {"click", "12345"};
-  varnames.push_back(send_var);
+  //varnames.push_back(send_var);
+  //if (send_var == "_generated_var_412") {
+  varnames.push_back("filter_by_instag_0.tmp_0");
+  varnames.push_back("filter_by_instag_2.tmp_0");
+  varnames.push_back("filter_by_instag_0.tmp_1");
+  varnames.push_back("concat_1.tmp_0");
+  //}
   for (auto& varname : varnames) {
     auto* req_var = request.add_vars();
     SerializeToReq(varname, task->scope_, req_var);

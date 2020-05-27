@@ -612,7 +612,6 @@ class HeterCpuWorker : public HogwildWorker {
   void CopyDenseVars();
 
  private:
-  std::string send_var_;
   //std::string recv_var;
   int mpi_rank_;
   int worker_num_;

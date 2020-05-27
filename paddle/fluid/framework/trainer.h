@@ -172,7 +172,6 @@ class HeterXpuTrainer : public TrainerBase {
   int EndPass(const HeterRequest* request, HeterResponse* response);
   int StopService(const HeterRequest* request, HeterResponse* response);
  protected:
-  std::string recv_var_;
   DownpourWorkerParameter param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::string> need_merge_var_names_;
