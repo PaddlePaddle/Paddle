@@ -241,11 +241,11 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInToOut, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceinToOut,
+DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(FlattenGradNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FlattenGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -254,17 +254,17 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
                   ops::FlattenGradOpMaker<paddle::framework::OpDesc>,
                   ops::FlattenGradOpMaker<paddle::imperative::OpBase>,
-                  ops::FlattenOpInplaceInToOut);
+                  ops::FlattenOpInplaceInferer);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
-                  ops::FlattenGradInplaceinToOut,
-                  ops::FlattenGradNoNeedBufferVarsInference);
+                  ops::FlattenGradInplaceInferer,
+                  ops::FlattenGradNoNeedBufferVarsInferer);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
                   ops::Flatten2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Flatten2GradOpMaker<paddle::imperative::OpBase>,
-                  ops::FlattenOpInplaceInToOut);
+                  ops::FlattenOpInplaceInferer);
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
-                  ops::FlattenGradInplaceinToOut);
+                  ops::FlattenGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     flatten, ops::FlattenKernel<paddle::platform::CPUDeviceContext, float>,

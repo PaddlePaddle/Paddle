@@ -71,7 +71,7 @@ class FillZerosLikeOp2Maker : public FillZerosLikeOpMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInferer,
                                     "X");
 
 }  // namespace operators
@@ -83,7 +83,7 @@ REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
 
 REGISTER_OPERATOR(
     fill_zeros_like2, ops::FillZerosLikeOp2, ops::FillZerosLikeOp2Maker,
-    ops::FillZerosLikeOp2NoNeedBufferVarsInference,
+    ops::FillZerosLikeOp2NoNeedBufferVarsInferer,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
