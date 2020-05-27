@@ -415,3 +415,5 @@ TEST(BOOST_GET_SAFELY, FAIL) {
   }
   EXPECT_TRUE(caught_exception);
 }
+
+TEST(LOG_FATAL, FAIL) { LOG(FATAL) << "error test."; }
