@@ -59,10 +59,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
 endif()
 
-#if(NOT ON_INFER)
-#  return()
-#endif()
-
 set(SHARED_INFERENCE_SRCS
     io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc

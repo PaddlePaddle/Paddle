@@ -23,9 +23,20 @@ limitations under the License. */
 int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
+  // Because the dynamic library libpaddle_fluid.so clips the symbol table, the
+  // external program cannot recognize the flag inside the so, and the flag
+  // defined by the external program cannot be accessed inside the so.
+  // Therefore, the ParseCommandLine function needs to be called separately
+  // inside and outside.
   std::vector<char*> external_argv;
-  std::vector<std::string> internal_args;
-  std::string gflags_env;
+  std::vector<char*> internal_argv;
+
+  // ParseNewCommandLineFlags in gflags.cc starts processing
+  // commandline strings from idx 1.
+  // The reason is, it assumes that the first one (idx 0) is
+  // the filename of executable file.
+  external_argv.push_back(argv[0]);
+  internal_argv.push_back(argv[0]);
 
   std::vector<google::CommandLineFlagInfo> all_flags;
   std::vector<std::string> external_flags_name;
@@ -47,7 +58,7 @@ int main(int argc, char** argv) {
     }
     if (flag) {
       LOG(INFO) << "internal " << argv[i];
-      internal_args.push_back(std::string(argv[i]));
+      internal_argv.push_back(argv[i]);
     }
   }
 
@@ -92,7 +103,7 @@ int main(int argc, char** argv) {
     }
     env_string = env_string.substr(0, env_string.length() - 1);
     env_str = strdup(env_string.c_str());
-    internal_args.push_back(env_string);
+    internal_argv.push_back(env_str);
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
@@ -104,7 +115,7 @@ int main(int argc, char** argv) {
     }
     undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
     undefok_str = strdup(undefok_string.c_str());
-    internal_args.push_back(std::string(undefok_str));
+    internal_argv.push_back(undefok_str);
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
@@ -112,11 +123,7 @@ int main(int argc, char** argv) {
   char** external_argv_address = external_argv.data();
   google::ParseCommandLineFlags(&new_argc, &external_argv_address, false);
 
-  std::vector<char*> internal_argv;
-  int internal_argc = internal_args.size();
-  for (auto& arg : internal_args) {
-    internal_argv.push_back(const_cast<char*>(arg.data()));
-  }
+  int internal_argc = internal_argv.size();
   char** arr = internal_argv.data();
   paddle::platform::ParseCommandLineFlags(internal_argc, arr, true);
   paddle::framework::InitDevices(true);
