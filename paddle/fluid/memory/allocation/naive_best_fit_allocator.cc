@@ -166,7 +166,8 @@ size_t Used<platform::CUDAPlace>(const platform::CUDAPlace &place) {
 #ifdef PADDLE_WITH_CUDA
   return GetGPUBuddyAllocator(place.device)->Used();
 #else
-  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -196,7 +197,8 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
   }
   return ptr;
 #else
-  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -206,7 +208,8 @@ void Free<platform::CUDAPlace>(const platform::CUDAPlace &place, void *p,
 #ifdef PADDLE_WITH_CUDA
   GetGPUBuddyAllocator(place.device)->Free(p);
 #else
-  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -231,7 +234,8 @@ size_t Used<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place) {
 #ifdef PADDLE_WITH_CUDA
   return GetCUDAPinnedBuddyAllocator()->Used();
 #else
-  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -251,7 +255,8 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   }
   return ptr;
 #else
-  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -261,7 +266,8 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
 #ifdef PADDLE_WITH_CUDA
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
-  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -299,7 +305,8 @@ size_t Usage::operator()(const platform::CUDAPlace &gpu) const {
 #ifdef PADDLE_WITH_CUDA
   return Used(gpu);
 #else
-  PADDLE_THROW("'CUDAPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPlace' is not supported in CPU only device."));
 #endif
 }
 
@@ -307,7 +314,8 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 #ifdef PADDLE_WITH_CUDA
   return Used(cuda_pinned);
 #else
-  PADDLE_THROW("'CUDAPinnedPlace' is not supported in CPU only device.");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "'CUDAPinnedPlace' is not supported in CPU only device."));
 #endif
 }
 }  // namespace legacy

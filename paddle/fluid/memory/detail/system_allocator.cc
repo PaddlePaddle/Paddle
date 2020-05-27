@@ -197,7 +197,8 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  PADDLE_ENFORCE_EQ(index, 1);
+  PADDLE_ENFORCE_EQ(index, 1,
+                    platform::errors::InvalidArgument("index should be 1"));
 
   PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
   cuda_pinnd_alloc_size_ -= size;
