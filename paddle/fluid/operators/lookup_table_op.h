@@ -92,25 +92,37 @@ class LookupTableKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < ids_numel; ++i) {
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
-        } else if (is_test) {
-          memset(output + i * row_width, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_GE(
               ids[i], 0,
               "Variable value (input) of OP(fluid.layers.embedding) "
               "expected >= 0. But received %ld",
               ids[i]);
-          auto id_index = table_t.Index(ids[i]);
-          PADDLE_ENFORCE_GE(id_index, 0,
-                            "the input key should be exists. But received %d.",
-                            id_index);
-          if (input_data_type == framework::proto::VarType::INT8) {
-            memcpy(output + i * row_width, table + id_index * row_width,
-                   row_width * sizeof(T));
+          if (is_test) {
+            if (table_t.HasKey(ids[i])) {
+              auto id_index = table_t.Index(ids[i]);
+              if (input_data_type == framework::proto::VarType::INT8) {
+                memcpy(output + i * row_width, table + id_index * row_width,
+                       row_width * sizeof(T));
+              } else {
+                auto blas =
+                    math::GetBlas<platform::CPUDeviceContext, T>(context);
+                blas.VCOPY(row_width, table + id_index * row_width,
+                           output + i * row_width);
+              }
+            } else {
+              memset(output + i * row_width, 0, row_width * sizeof(T));
+            }
           } else {
-            auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-            blas.VCOPY(row_width, table + id_index * row_width,
-                       output + i * row_width);
+            auto id_index = table_t.Index(ids[i]);
+            if (input_data_type == framework::proto::VarType::INT8) {
+              memcpy(output + i * row_width, table + id_index * row_width,
+                     row_width * sizeof(T));
+            } else {
+              auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+              blas.VCOPY(row_width, table + id_index * row_width,
+                         output + i * row_width);
+            }
           }
         }
       }

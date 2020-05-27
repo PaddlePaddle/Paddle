@@ -11,34 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0(the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http:  // www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
@@ -535,6 +507,18 @@ class FleetTranspiler(Fleet):
         return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
+        def __exclude_vars(exclude_var_names=[]):
+            def is_valid(var):
+                if var.name in exclude_var_names:
+                    return False
+                if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                                var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                                var.desc.type() == core.VarDesc.VarType.READER:
+                    return False
+                return var.persistable
+
+            return is_valid
+
         sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
             recv_type=2)
 
@@ -548,12 +532,8 @@ class FleetTranspiler(Fleet):
 
         saved_varnames = recv_dense_varnames + recv_sparse_varnames
 
-        vars = main_program.list_vars()
-        remaining_vars = []
-
-        for var in vars:
-            if var.name not in saved_varnames:
-                remaining_vars.append(var)
+        remaining_vars = list(
+            filter(__exclude_vars(saved_varnames), main_program.list_vars()))
 
         fluid.io.save_vars(
             executor,
