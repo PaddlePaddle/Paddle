@@ -288,9 +288,9 @@ pip install PyGithub
 # For getting PR related data
 wget https://paddle-ci.gz.bcebos.com/blk/block.txt
 echo >> block.txt
+echo chalsliu >> block.txt
 cat block.txt
 python ${PADDLE_ROOT}/tools/check_ut.py
-echo chalsliu >> block.txt
 HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
 if [ "${HASUTFIXED}" != "" ]; then
   echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
