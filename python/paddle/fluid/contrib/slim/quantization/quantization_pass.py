@@ -24,6 +24,7 @@ from .... import unique_name
 from ....framework import Program, program_guard, default_startup_program
 from ....data import data
 from ....layers import mean
+from ....executor import scope_guard
 
 __all__ = [
     'QuantizationTransformPass', 'QuantizationFreezePass', 'ConvertToInt8Pass',
@@ -361,7 +362,8 @@ class QuantizationTransformPass(object):
                         in_node.stop_gradient = False
                         optimizer = self._optimizer()
                         optimizer.minimize(loss)
-            self._exe.run(startup_program)
+            with scope_guard(self._scope):
+                self._exe.run(startup_program)
             tmp_graph = IrGraph(
                 core.Graph(tmp_program.desc), for_test=self._for_test)
             in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
