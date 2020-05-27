@@ -28,8 +28,8 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) const {
   return nullptr;
 }
 
-template PD_INFER_DECL float *ZeroCopyTensor::data<float>(
-    PaddlePlace *place, int *size) const;
+template PD_INFER_DECL float *ZeroCopyTensor::data<float>(PaddlePlace *place,
+                                                          int *size) const;
 template PD_INFER_DECL int64_t *ZeroCopyTensor::data<int64_t>(
     PaddlePlace *place, int *size) const;
 template float *ZeroCopyTensor::mutable_data(PaddlePlace place);

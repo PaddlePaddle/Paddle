@@ -27,8 +27,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "gflags/gflags.h"         // NOLINT
 #include "paddle_infer_declare.h"  // NOLINT
-#include "gflags/gflags.h"  // NOLINT
 
 /*! \namespace paddle
  */
@@ -431,7 +431,7 @@ PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 PD_INFER_DECL std::string get_version();
 
 #if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
-PD_INFER_DECL std::string UpdateDllFlag (const char* name, const char* value);
+PD_INFER_DECL std::string UpdateDllFlag(const char* name, const char* value);
 #endif
 
 }  // namespace paddle
