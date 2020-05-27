@@ -1473,19 +1473,19 @@ class Executor(object):
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer._desc(), scope, None)
 
-        if fetch_handler is not None:
-            scope0 = trainer_instance.get_worker_scope(0)
-            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
-            fetch_monitor.start()
-            self._default_executor.run_from_dataset(trainer_instance)
-            fetch_monitor.stop()
-            self._default_executor.release_trainer(trainer_instance)
-        else:
+        #if fetch_handler is not None:
+        #    scope0 = trainer_instance.get_worker_scope(0)
+        #    fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+        #    fetch_monitor.start()
+        #    self._default_executor.run_from_dataset(trainer_instance)
+        #    fetch_monitor.stop()
+        #    self._default_executor.release_trainer(trainer_instance)
+        #else:
 
-            self._default_executor.run_from_dataset(trainer_instance)
-            self._default_executor.release_trainer(trainer_instance)
+        self._default_executor.run_from_dataset(trainer_instance)
+        #self._default_executor.release_trainer(trainer_instance)
 
-        return None
+        return trainer_instance
 
     def train_from_dataset(self,
                            program=None,
