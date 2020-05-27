@@ -306,8 +306,7 @@ DECLARE_INPLACE_OP_INFERER(UnsqueezeInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(UnsqueezeGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInference,
-                                    "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
@@ -316,7 +315,7 @@ REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
                   ops::UnsqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp,
-                  ops::UnsqueezeGradOpNoNeedBufferVarInference);
+                  ops::UnsqueezeGradOpNoNeedBufferVarInferer);
 
 REGISTER_OPERATOR(unsqueeze2, ops::Unsqueeze2Op, ops::Unsqueeze2OpMaker,
                   ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,
