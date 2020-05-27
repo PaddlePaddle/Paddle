@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
+#include "paddle/fluid/operators/distributed_ops/distributed_lookup_table_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -75,28 +76,6 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
-  }
-};
-
-template <typename T>
-class DistributedLookupTableKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto ids_vars = context.MultiInputVar("Ids");
-    auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
-
-    auto id_names = context.InputNames("Ids");
-    auto embedding_name = context.InputNames("W").front();
-    auto out_names = context.OutputNames("Outputs");
-
-    auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
-    auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
-
-    operators::distributed::prefetchs(
-        id_names, out_names, embedding_name, false, lookup_tables, endpoints,
-        height_sections, context, context.scope());
   }
 };
 
@@ -168,4 +147,5 @@ REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
 REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
-                       ops::DistributedLookupTableKernel<float>);
+                       ops::DistributedLookupTableKernel<
+                           paddle::platform::CPUDeviceContext, float>);

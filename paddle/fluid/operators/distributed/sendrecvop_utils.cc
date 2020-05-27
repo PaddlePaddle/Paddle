@@ -47,7 +47,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     memory::Copy(cuda_pinned, result->ptr(),
                  BOOST_GET_CONST(platform::CUDAPlace, tensor.place()),
                  tensor.data<void>(), copy_size, gpu_dev_ctx.stream());
-    ctx.Wait();
+    // ctx.Wait();
     return TensorPayload(result);
 #else
     PADDLE_THROW("This situation should not be happened");
