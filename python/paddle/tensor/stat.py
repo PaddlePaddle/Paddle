@@ -157,8 +157,8 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
 
     tmp = var(input, axis=axis, keepdim=keepdim, unbiased=unbiased, name=name)
     tmp = layers.sqrt(tmp)
-    if out is not None:
+    if out is None:
+        return tmp
+    else:
         layers.assign(input=tmp, output=out)
         return out
-    else:
-        return tmp
