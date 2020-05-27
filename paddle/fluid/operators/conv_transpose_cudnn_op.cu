@@ -245,7 +245,8 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int output_offset =
         transformed_output.numel() / transformed_output.dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
-    T alpha = static_cast<T>(1.0), beta = static_cast<T>(0.0);
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = 0.0f;
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     for (int g = 0; g < groups; g++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
@@ -493,7 +494,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     int output_grad_offset = transformed_output_grad.numel() /
                              transformed_output_grad.dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
-    T alpha = static_cast<T>(1.0), beta = static_cast<T>(0.0);
+    ScalingParamType<T> alpha = 1.0f;
+    ScalingParamType<T> beta = 0.0f;
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       // Because beta is zero, it is unnecessary to reset input_grad.
