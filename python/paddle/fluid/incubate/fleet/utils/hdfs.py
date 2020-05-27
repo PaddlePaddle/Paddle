@@ -24,6 +24,7 @@ import copy
 import errno
 import time
 import logging
+from fs import FS
 
 __all__ = ["HDFSClient"]
 
@@ -42,7 +43,7 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class HDFSClient(object):
+class HDFSClient(FS):
     """
     A tool of HDFS
 
@@ -602,6 +603,9 @@ class HDFSClient(object):
             _logger.error("Put local dir: {} to HDFS dir: {} failed".format(
                 local_dir, dest_dir))
             return False
+        return True
+
+    def need_upload_download(self):
         return True
 
 

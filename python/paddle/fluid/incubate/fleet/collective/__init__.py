@@ -70,7 +70,7 @@ class Collective(Fleet):
         self._origin_program = None
         self._transpiled_program = None
         self.main_program = None
-        self._checkoint_prefix = "__paddle_fleet_checkpoint__"
+        self._checkpoint_prefix = "__paddle_fleet_checkpoint__"
         self._param_file_name = "_paddle_fleet_param__"
 
     def init_worker(self):
@@ -220,27 +220,27 @@ class Collective(Fleet):
             if len(g) != 2:
                 continue
 
-            if g[0] != self._checkoint_prefix:
+            if g[0] != self._checkpoint_prefix:
                 continue
 
             try:
                 n = int(g[1])
                 if n <= max_no - checkpoint_num:
-                    path = "{}/{}.{}".format(root_path, self._checkoint_prefix,
+                    path = "{}/{}.{}".format(root_path, self._checkpoint_prefix,
                                              n)
                     fs.rmr(path)
             except Exception as e:
                 print(e)
                 continue
 
-    def save_check_point(self,
-                         executor,
-                         path,
-                         train_status,
-                         main_program=None,
-                         fs=LocalFS(),
-                         local_cache_path=".cache",
-                         remain_all_checkpoint=True):
+    def save_checkpoint(self,
+                        executor,
+                        path,
+                        train_status,
+                        main_program=None,
+                        fs=LocalFS(),
+                        local_cache_path=".cache",
+                        remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         """
@@ -255,7 +255,7 @@ class Collective(Fleet):
         if max_no < 0:
             max_no = -1
 
-        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
+        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
         saved_path = tmp_path
 
@@ -264,7 +264,7 @@ class Collective(Fleet):
         cache_path = None
         if fs.need_upload_download():
             cache_path = "{}/{}.{}.saved_cache".format(
-                local_cache_path, self._checkoint_prefix, max_no + 1)
+                local_cache_path, self._checkpoint_prefix, max_no + 1)
             if not local_fs.stat(cache_path):
                 local_fs.mkdir(cache_path)
             saved_path = cache_path
@@ -284,14 +284,14 @@ class Collective(Fleet):
         if not remain_all_checkpoint:
             self.clean_redundant_check_points(path)
 
-    def load_check_point(self,
-                         executor,
-                         path,
-                         trainer_id,
-                         main_program=None,
-                         fs=LocalFS(),
-                         local_cache_path=".cache",
-                         ignore_empty=True):
+    def load_checkpoint(self,
+                        executor,
+                        path,
+                        trainer_id,
+                        main_program=None,
+                        fs=LocalFS(),
+                        local_cache_path=".cache",
+                        ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
@@ -306,11 +306,11 @@ class Collective(Fleet):
         local_fs = LocalFS()
         if fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache.{}".format(
-                local_cache_path, self._checkoint_prefix, max_no, trainer_id)
+                local_cache_path, self._checkpoint_prefix, max_no, trainer_id)
             if local_fs.stat(cache_path):
                 local_fs.delete(cache_path)
 
-        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
+        real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)
         load_path = real_path
         if fs.need_upload_download():
             fs.download(real_path, cache_path)
