@@ -556,7 +556,10 @@ class FleetTranspiler(Fleet):
                 remaining_vars.append(var)
 
         fluid.io.save_vars(
-            executor, main_program=main_program, dirname=dirname, vars=vars)
+            executor,
+            main_program=main_program,
+            dirname=dirname,
+            vars=remaining_vars)
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
