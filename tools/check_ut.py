@@ -28,7 +28,7 @@ class PRChecker(object):
         self.repo = None
 
     def check(self):
-        """ check pr """
+        """ check pr. """
         filename = 'block.txt'
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
@@ -44,7 +44,8 @@ class PRChecker(object):
         with open(filename) as f:
             for l in f:
                 if l.rstrip('\r\n') == user:
-                    print('{} has UT to be fixed, so CI failed.'.format(user))
+                    print('{} has unit-test to be fixed, so CI failed.'.format(
+                        user))
                     exit(1)
         exit(0)
 
