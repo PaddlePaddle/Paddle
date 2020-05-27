@@ -51,13 +51,11 @@ int main(int argc, char** argv) {
     for (size_t j = 0; j < external_flags_name.size(); ++j) {
       if (tmp.find(external_flags_name[j]) != std::string::npos) {
         external_argv.push_back(argv[i]);
-        LOG(INFO) << "external " << argv[i];
         flag = false;
         break;
       }
     }
     if (flag) {
-      LOG(INFO) << "internal " << argv[i];
       internal_argv.push_back(argv[i]);
     }
   }
