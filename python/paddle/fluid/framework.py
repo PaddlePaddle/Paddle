@@ -2768,8 +2768,12 @@ class Block(object):
             Operator: the append Operator.
         """
         if in_dygraph_mode():
+
             attrs = kwargs.get("attrs", {})
             type = kwargs.get("type", None)
+            raise ValueError(
+                "Please update layers that use operator %s in dygraph mode." %
+                type)
             op = Operator(
                 block=self,
                 desc=None,
