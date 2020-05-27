@@ -254,7 +254,7 @@ def terminate_local_procs(procs):
         if p.proc.poll() is None:
             # subprocess need to release resource(e.g. shared memory)
             # use join to wait subprocess releasing
-            p.proc.join(timeout=1)
+            p.proc.terminate()
             p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
