@@ -187,7 +187,6 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       VLOG(3) << "choose algo " << algo;
     } else if (deterministic) {
       algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
-      return algo;
     } else {
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();

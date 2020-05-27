@@ -716,7 +716,7 @@ class TestDepthwiseConvTransposeAsymmetricPad_NHWC(TestConv2dTransposeOp):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNNWith_FP16(TestConv2dTransposeOp):
+class TestCUDNN_FP16(TestConv2dTransposeOp):
     def init_test_case(self):
         self.dtype = np.float16
         self.pad = [1, 1]
@@ -743,7 +743,7 @@ class TestCUDNNWith_FP16(TestConv2dTransposeOp):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestCUDNN_FP16(TestConv2dTransposeOp):
+class TestCUDNN_NHWC_FP16(TestCUDNN_FP16):
     def init_test_case(self):
         self.dtype = np.float16
         self.pad = [0, 0]
@@ -754,19 +754,6 @@ class TestCUDNN_FP16(TestConv2dTransposeOp):
         f_c = self.input_size[-1]
         self.filter_size = [f_c, 6, 3, 3]
         self.data_format = 'NHWC'
-
-    def init_op_type(self):
-        self.use_cudnn = True
-        self.need_check_grad = False
-        self.op_type = "conv2d_transpose"
-
-    def test_check_output(self):
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(
-                place, atol=0.02, check_dygraph=(self.use_mkldnn == False))
-        else:
-            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
