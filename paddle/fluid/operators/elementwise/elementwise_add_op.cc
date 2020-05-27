@@ -97,15 +97,15 @@ REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpGrad, ops::ElementwiseGradOpInplace,
-    ops::ElementwiseGradNoBufVarsInference,
+    elementwise_add_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_add_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
-                  ops::ElementwiseDoubleGradOpInplace,
-                  ops::ElementwiseDoubleGradNoBufVarsInference);
+                  ops::ElementwiseDoubleGradOpInplaceInferer,
+                  ops::ElementwiseDoubleGradNoBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,

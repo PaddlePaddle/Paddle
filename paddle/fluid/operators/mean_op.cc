@@ -83,7 +83,7 @@ class MeanGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(MeanGradNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(MeanGradNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -93,7 +93,7 @@ REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
                   ops::MeanGradMaker<paddle::framework::OpDesc>,
                   ops::MeanGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
-                  ops::MeanGradNoNeedBufferVarsInference);
+                  ops::MeanGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     mean, ops::MeanKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeanKernel<paddle::platform::CPUDeviceContext, double>);

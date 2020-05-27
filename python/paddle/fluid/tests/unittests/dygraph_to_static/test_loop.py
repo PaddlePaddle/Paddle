@@ -132,6 +132,19 @@ def var_create_in_for_loop(max_len):
     return ret
 
 
+def nested_for_loop_dyfunc():
+    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
+    three = fluid.layers.fill_constant(shape=[1], value=3, dtype="int32")
+    for j in range(two):
+        for i in range(10):
+            a = 2
+
+    for i in range(three):
+        b = fluid.layers.zeros(shape=[1], dtype='float32')
+
+    return b
+
+
 class TestNameVisitor(unittest.TestCase):
     def setUp(self):
         self.loop_funcs = [
@@ -141,6 +154,8 @@ class TestNameVisitor(unittest.TestCase):
             set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"])
         ]
         self.create_var_names = [set(), set(["ret"]), set()]
+
+        self.nested_for_loop_func = nested_for_loop_dyfunc
 
     def test_loop_vars(self):
         for i in range(len(self.loop_funcs)):
@@ -154,6 +169,28 @@ class TestNameVisitor(unittest.TestCase):
                         node)
                     self.assertEqual(loop_var_names, self.loop_var_names[i])
                     self.assertEqual(create_var_names, self.create_var_names[i])
+
+    def test_nested_loop_vars(self):
+        func = self.nested_for_loop_func
+        test_func = inspect.getsource(func)
+        gast_root = gast.parse(test_func)
+        name_visitor = NameVisitor(gast_root)
+
+        self.loop_var_names = [
+            set(["j", "two"]),
+            set(["i", "three", "b"]),
+            set(["i"]),
+        ]
+        self.create_var_names = [set(), set(["b"]), set()]
+        i = 0
+        for node in gast.walk(gast_root):
+            if isinstance(node, (gast.While, gast.For)):
+                loop_var_names, create_var_names = name_visitor.get_loop_var_names(
+                    node)
+                # print(loop_var_names)
+                self.assertEqual(loop_var_names, self.loop_var_names[i])
+                self.assertEqual(create_var_names, self.create_var_names[i])
+                i += 1
 
 
 class TestTransformWhileLoop(unittest.TestCase):

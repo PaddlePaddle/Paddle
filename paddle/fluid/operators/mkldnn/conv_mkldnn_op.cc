@@ -94,8 +94,9 @@ template <typename T, typename K>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   platform::errors::InvalidArgument("It must use CPUPlace."));
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL Conv must use CPUPlace"));
     bool is_INT8 =
         std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
     if (!is_INT8) {
@@ -446,8 +447,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // of conv int8 mkl-dnn. Once conv fp32 and conv int8
     // are merged/unified, this will disappear
     std::string key_tid = "";
-    if (platform::get_cur_mkldnn_session_id() ==
-        platform::kMKLDNNSessionID_Default) {
+    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_tid = "-t:" + platform::ThreadIDasStr();
     }
 
@@ -784,9 +785,9 @@ template <typename T>
 class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   platform::errors::InvalidArgument("It must use CPUPlace."));
-
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL ConvGrad must use CPUPlace"));
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();

@@ -62,7 +62,6 @@ BufferedReader::BufferedReader(
 }
 
 void BufferedReader::ReadTillBufferFullAsync() {
-  PADDLE_ENFORCE_EQ(position_.size(), 0U);
   for (size_t i = 0; i < buffer_size_; ++i) {
     ReadAsync(i);
   }
@@ -87,8 +86,10 @@ void BufferedReader::ReadAsync(size_t i) {
       if (gpu.empty()) {
         gpu.resize(cpu.size());
       } else {
-        PADDLE_ENFORCE_EQ(gpu.size(), cpu.size(),
-                          "Input tensor number not matched");
+        PADDLE_ENFORCE_EQ(
+            gpu.size(), cpu.size(),
+            platform::errors::InvalidArgument(
+                "Input tensor number on GPU and CPU devices are not matched."));
       }
 
       std::vector<void *> gpu_ptrs;

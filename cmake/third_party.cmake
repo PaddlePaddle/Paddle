@@ -305,4 +305,8 @@ if (WITH_LITE)
     include(external/lite)
 endif (WITH_LITE)
 
+if (WITH_CRYPTO)
+    include(external/cryptopp)   # download, build, install cryptopp
+endif (WITH_CRYPTO)
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
