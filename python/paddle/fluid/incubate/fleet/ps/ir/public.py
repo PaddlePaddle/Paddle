@@ -418,16 +418,23 @@ class CompileTimeStrategy(object):
                     max_pserver_count = 1
                 if max_pserver_count < slice_count:
                     split_count = max_pserver_count
-
                 block_size = int(math.ceil(var_numel / float(split_count)))
-                split_count = int(math.ceil(var_numel / float(block_size)))
 
+                if len(var.shape) >= 2:
+                    # align by dim1(width)
+                    dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                    remains = block_size % dim1
+                    if remains != 0:
+                        block_size += dim1 - remains
+                # update split_count after aligning
+                split_count = int(math.ceil(var_numel / float(block_size)))
                 for block_id in range(split_count):
                     curr_block_size = min(block_size, var_numel - (
                         (block_id) * block_size))
                     block = vars_metatools.VarBlock(var.name, block_id,
                                                     curr_block_size)
                     blocks.append(str(block))
+
             else:
                 split_count = slice_count
                 numel = reduce(lambda x, y: x * y, var.shape)
@@ -460,6 +467,7 @@ class CompileTimeStrategy(object):
         grad_blocks = self._slice_variable(grad_list,
                                            len(self.get_ps_endpoints()),
                                            self.min_block_size, uniform)
+
         param_blocks = self._slice_variable(param_list,
                                             len(self.get_ps_endpoints()),
                                             self.min_block_size, uniform)
@@ -526,21 +534,13 @@ class CompileTimeStrategy(object):
             grad = vars_metatools.create_var_struct(grad)
             origin_for_dense.append((param, grad))
 
-        ordered_dense, ordered_dense_offsets, merged_param, merged_grad = self.dense_var_merge(
-            origin_for_dense)
-        ordered_param = []
-        ordered_grad = []
+        for dense_pair in origin_for_dense:
+            param, grad = dense_pair
 
-        for param, grad in ordered_dense:
-            ordered_param.append(param)
-            ordered_grad.append(grad)
-
-        param = MergedVariable(merged_param, ordered_param,
-                               ordered_dense_offsets)
-        grad = MergedVariable(merged_grad, ordered_grad, ordered_dense_offsets)
-
-        self.merged_dense_pairs.append((param, grad))
-        self.merged_variables_pairs.append((param, grad))
+            m_param = MergedVariable(param, [param], [0])
+            m_grad = MergedVariable(grad, [grad], [0])
+            self.merged_variables_pairs.append((m_param, m_grad))
+            self.merged_dense_pairs.append((m_param, m_grad))
 
         for sparse_pair in origin_for_sparse:
             param, grad = sparse_pair
@@ -558,7 +558,7 @@ class CompileTimeStrategy(object):
 
         param_merges = []
         param_merges.extend(origin_for_sparse)
-        param_merges.append((merged_param, merged_grad))
+        param_merges.extend(origin_for_dense)
 
         for param, grad in param_merges:
             param_name_grad_name[param.name] = grad.name
@@ -657,8 +657,6 @@ class CompileTimeStrategy(object):
         sparse_param_grads, dense_param_grads = _get_params_grads(
             sparse_varnames)
 
-        dense_param_grads[0], dense_param_grads[1] = dense_param_grads[
-            1], dense_param_grads[0]
         return sparse_param_grads, dense_param_grads
 
 
