@@ -202,8 +202,10 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     continue;
   }
   
+  int first = 0;
   for (size_t i = 0; i < ops_.size(); ++i) {
-    if (!xpu_begin_op_index_ && ops_[i]->Type() == "mul") {
+    if (!first && ops_[i]->Type() == "mul") {
+      first = 1; 
       xpu_begin_op_index_ = i;
     }
     if (ops_[i]->Type() == "mul_grad") {
