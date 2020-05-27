@@ -67,8 +67,8 @@ endif()
 
 if (WITH_NCCL)
     if (${NCCL_VERSION} VERSION_LESS 2212)
-        LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
-        LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_transformer)
     endif()
 endif()
 
@@ -183,7 +183,6 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
