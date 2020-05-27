@@ -83,7 +83,7 @@ _op_real_in_out_name = {
     "swish": [["X"], ["Out"]],
     "dropout": [["X"], ["Out"]],
     "batch_norm": [["X"], ["Y"]],
-    "sigmoid": [["X"], ["Y"]],
+    "sigmoid": [["X"], ["Out"]],
 }
 
 
