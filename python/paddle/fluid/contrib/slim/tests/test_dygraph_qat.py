@@ -19,10 +19,9 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.slim.quantization.dyquant import quantize_qat
+from paddle.fluid.contrib.slim.quantization import DygraphQuantizationPass
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph import ProgramTranslator
 
 os.environ["CPU_NUM"] = "8"
 
@@ -96,8 +95,8 @@ class MNIST(fluid.dygraph.Layer):
             act="softmax")
 
     @declarative
-    def forward(self, input):
-        x = self._simple_img_conv_pool_1(input)
+    def forward(self, inputs):
+        x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
@@ -106,27 +105,28 @@ class MNIST(fluid.dygraph.Layer):
 
 class TestDygraphQAT(unittest.TestCase):
     def test_qat(self):
+        dyquant_pass = DygraphQuantizationPass()
+        dyquant_pass.prepare_quantize()
         with fluid.dygraph.guard():
             mnist = MNIST()
-            quantize_qat(mnist)
+            dyquant_pass.quantize_qat(mnist)
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=mnist.parameters())
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=32, drop_last=True)
             test_reader = paddle.batch(
-                paddle.dataset.mnist.test(), batch_size=8)
+                paddle.dataset.mnist.test(), batch_size=32)
 
             epoch_num = 2
             for epoch in range(epoch_num):
                 mnist.train()
                 for batch_id, data in enumerate(train_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
                     y_data = np.array(
                         [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-                    img = fluid.dygraph.to_variable(dy_x_data)
+                    img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = mnist(img)
@@ -144,13 +144,12 @@ class TestDygraphQAT(unittest.TestCase):
 
                 mnist.eval()
                 for batch_id, data in enumerate(test_reader()):
-                    dy_x_data = np.array(
-                        [x[0].reshape(1, 28, 28)
-                         for x in data]).astype('float32')
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
                     y_data = np.array(
                         [x[1] for x in data]).astype('int64').reshape(-1, 1)
 
-                    img = fluid.dygraph.to_variable(dy_x_data)
+                    img = fluid.dygraph.to_variable(x_data)
                     label = fluid.dygraph.to_variable(y_data)
 
                     out = mnist(img)
@@ -164,13 +163,18 @@ class TestDygraphQAT(unittest.TestCase):
                             "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".
                             format(epoch, batch_id,
                                    acc_top1.numpy(), acc_top5.numpy()))
-
+            # save weights
             model_dict = mnist.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
 
-        prog_trans = ProgramTranslator()
-        prog_trans.save_inference_model(
-            "./mnist_infer_model", feed=[0], fetch=[0])
+        # save inference quantized model
+        dyquant_pass.save_infer_quant_model(
+            dirname="./mnist_infer_model",
+            model=mnist,
+            input_shape=(1, 28, 28),
+            input_dtype='float32',
+            feed=[0],
+            fetch=[0])
 
 
 if __name__ == '__main__':
