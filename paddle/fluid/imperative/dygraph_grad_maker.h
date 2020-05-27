@@ -258,6 +258,8 @@ class TracedGradOp {
     }
   }
 
+  std::string Type() const { return op_->Type(); }
+
   void SetType(const std::string& type) { op_->SetType(type); }
 
   void SetAttrMap(const framework::AttributeMap& attrs) {
