@@ -94,8 +94,8 @@ class AllocatorFacadePrivate {
       }
 
       default: {
-        PADDLE_THROW("Unsupported allocator strategy: %d",
-                     static_cast<int>(strategy));
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Unsupported allocator strategy: %d", static_cast<int>(strategy)));
       }
     }
     InitZeroSizeAllocators();
