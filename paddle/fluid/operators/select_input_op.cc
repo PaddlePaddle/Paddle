@@ -81,8 +81,7 @@ class SelectInputInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInputs("X"), "Input", "X", "SelectInputOp");
-    OP_INOUT_CHECK(context->HasInputs("Mask"), "Input", "Mask",
-                   "SelectInputOp");
+    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask", "SelectInputOp");
     OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "SelectInputOp");
   }
 };
