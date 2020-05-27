@@ -211,8 +211,51 @@ class PSLib(Fleet):
     def end_pass(self, scope):
         if self._role_maker.worker_index() < self._role_maker.xpu_num():
             self._heter_ptr.end_pass(scope, self._role_maker.worker_index())
+            self._heter_ptr.stop_xpu_service(self._role_maker.worker_index())
         
+    def train_from_dataset(self,
+                           executor,
+                           program=None,
+                           dataset=None,
+                           scope=None,
+                           thread=0,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100,
+                           fetch_handler=None):
+        """
+
+        """
+
+        if self._role_maker.is_worker():
+            self._role_maker._barrier_heter()
+        executor.train_from_dataset(program, dataset, scope, thread,
+                                      debug, fetch_list, fetch_info,
+                                      print_period, fetch_handler)
     
+    def start_heter_trainer(self,
+                           executor,
+                           program=None,
+                           scope=None,
+                           debug=False,
+                           fetch_list=None,
+                           fetch_info=None,
+                           print_period=100,
+                           fetch_handler=None):
+        """
+
+        """
+
+        trainer_instance = executor.start_heter_trainer(program, scope,
+                                debug, fetch_list, fetch_info,
+                                print_period, fetch_handler)
+        if self._role_maker.is_xpu():
+            print("barrier heter")
+            self._role_maker._barrier_heter()
+            print("barrier heter")
+        executor._default_executor.release_trainer(trainer_instance)
+
     def stop_worker(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be

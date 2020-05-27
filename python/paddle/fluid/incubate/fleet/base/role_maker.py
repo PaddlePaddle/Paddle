@@ -941,7 +941,17 @@ class HeterRoleMaker(GeneralRoleMaker):
                           self._hdfs_name, self._hdfs_ugi, self._iface,
                           self._prefix)
                 self._node_type_comm = gloo
-
+            
+            if training_role == "TRAINER" or training_role == "XPU":
+                gloo = fluid.core.Gloo()
+                heter_list = worker_endpoints + xpu_endpoints
+                gloo.init(heter_list.index(self._cur_endpoint),
+                          len(heter_list),
+                          self._hdfs_path.rstrip("/") + "/heter",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
+                self._heter_comm = gloo
+                
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist + xpu_endpoints
             gloo.init(
@@ -949,6 +959,7 @@ class HeterRoleMaker(GeneralRoleMaker):
                 len(all_list),
                 self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
                 self._hdfs_ugi, self._iface, self._prefix)
+            
             self._all_comm = gloo
             self._trainers_num = trainers_num
             self._server_endpoints = eplist
@@ -984,6 +995,15 @@ class HeterRoleMaker(GeneralRoleMaker):
             self.generate_role()
         if self.is_xpu():
             self._node_type_comm.barrier()
+
+    def _barrier_heter(self):
+        """
+        barrier all workers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_xpu() or self.is_worker:
+            self._heter_comm.barrier()
 
     def xpu_num(self):
         """

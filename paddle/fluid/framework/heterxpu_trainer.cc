@@ -203,43 +203,49 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   
   for (size_t i = 0; i < ops_.size(); ++i) {
-    auto& out_map = ops_[i]->Outputs();
-    
-    {
-      auto it = out_map.find("Out");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0") {
-            xpu_begin_op_index_ = i + 1;
-          }
-        }
-      }
+    if (!xpu_begin_op_index_ && ops_[i]->Type() == "mul") {
+      xpu_begin_op_index_ = i;
     }
-    
-    {
-      auto it = out_map.find("X@GRAD");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0@GRAD") {
-            xpu_end_op_index_ = i;
-          }
-        }
-      }
+    if (ops_[i]->Type() == "mul_grad") {
+      xpu_end_op_index_ = i;
     }
-    
-    {
-      auto it = out_map.find("Out");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0@GRAD") {
-            xpu_end_op_index_ = i;
-          }
-        }
-      }
-    }
+    //auto& out_map = ops_[i]->Outputs();
+    //
+    //{
+    //  auto it = out_map.find("Out");
+    //  if (it != out_map.end()) {
+    //    for (auto& x : it->second) {
+    //      if (x == "concat_1.tmp_0") {
+    //        xpu_begin_op_index_ = i + 1;
+    //      }
+    //    }
+    //  }
+    //}
+    //
+    //{
+    //  auto it = out_map.find("X@GRAD");
+    //  if (it != out_map.end()) {
+    //    for (auto& x : it->second) {
+    //      if (x == "concat_1.tmp_0@GRAD") {
+    //        xpu_end_op_index_ = i;
+    //      }
+    //    }
+    //  }
+    //}
+    //
+    //{
+    //  auto it = out_map.find("Out");
+    //  if (it != out_map.end()) {
+    //    for (auto& x : it->second) {
+    //      if (x == "concat_1.tmp_0@GRAD") {
+    //        xpu_end_op_index_ = i;
+    //      }
+    //    }
+    //  }
+    //}
   }
   
-  VLOG(3) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
+  VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
   VLOG(3) << "init other env done.";
 }
 

@@ -71,7 +71,7 @@ class HeterWrapper {
   
   void CallRemoteXpuSync(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker);
   
-  void StopXpuService();
+  void StopXpuService(int num);
   
   void EndPass(Scope* scope, int num);
   

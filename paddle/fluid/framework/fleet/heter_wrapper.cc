@@ -184,14 +184,14 @@ framework::proto::VarType::Type HeterWrapper::ToVarType(
   }
 }
 
-void HeterWrapper::StopXpuService() {
+void HeterWrapper::StopXpuService(int num) {
   HeterRequest request;
   HeterResponse response;
   brpc::Controller cntl;
   request.set_cmd(2);
   
-  for (size_t i = 0; i < xpu_channels_.size(); ++i) {
-    HeterService_Stub stub(xpu_channels_[i].get());
+  //for (size_t i = 0; i < xpu_channels_.size(); ++i) {
+    HeterService_Stub stub(xpu_channels_[num].get());
     stub.service(&cntl, &request, &response, NULL);
     if (cntl.Failed()) {
       VLOG(0) << "call stop xpu service fail: " << cntl.ErrorText();
@@ -199,7 +199,7 @@ void HeterWrapper::StopXpuService() {
     else {
       VLOG(3) << "call stop xpu service success";
     }
-  }
+  //}
 }
 
 void HeterWrapper::EndPass(Scope* scope, int num) {
