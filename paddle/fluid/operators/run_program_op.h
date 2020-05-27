@@ -285,6 +285,16 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);
     details::ShareVarsFromScope(param_grad_vars, param_grad_names, &scope);
+
+    // Step 5. clear scope, reset tensor array lenght
+    for (auto var_desc : block->AllVars()) {
+      auto var_name = var_desc->Name();
+      auto *var = scope.FindVar(var_name);
+      if (var->IsType<framework::LoDTensorArray>()) {
+        auto *array = var->GetMutable<framework::LoDTensorArray>();
+        array->clear();
+      }
+    }
   }
 };
 
