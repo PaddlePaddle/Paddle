@@ -223,7 +223,7 @@ void HeterWrapper::EndPass(Scope* scope, int num) {
   //}
 }
 
-void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank) {
+void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank, std::string send_var) {
   HeterRequest request;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
@@ -244,7 +244,8 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker
     worker->Schedule(task->taskid_); 
   }); 
 
-  std::vector<std::string> varnames = {"concat_1.tmp_0", "click", "12345"};
+  std::vector<std::string> varnames = {"click", "12345"};
+  varnames.push_back(send_var);
   for (auto& varname : varnames) {
     auto* req_var = request.add_vars();
     SerializeToReq(varname, task->scope_, req_var);

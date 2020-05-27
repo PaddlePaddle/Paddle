@@ -207,9 +207,25 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     if (!first && ops_[i]->Type() == "mul") {
       first = 1; 
       xpu_begin_op_index_ = i;
+      auto& in_map = ops_[i]->Inputs();
+      
+      
+      auto it = in_map.find("X");
+      if (it != in_map.end()) {
+        for (auto& x : it->second) {
+          send_var = x;
+        }
+      }
     }
     if (ops_[i]->Type() == "mul_grad") {
       xpu_end_op_index_ = i;
+      auto& out_map = ops_[i]->Outputs();
+      auto it = out_map.find("X@GRAD");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          recv_var_ = x;
+        }
+      }
     }
     //auto& out_map = ops_[i]->Outputs();
     //
@@ -399,7 +415,7 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
     bthread_yield();
   }
 
-  std::string varname = "concat_1.tmp_0@GRAD";
+  std::string varname = recv_var_;
 
   auto* res_var = response->add_vars();
   heter_ptr_->SerializeToReq(varname, context->scope_, res_var);

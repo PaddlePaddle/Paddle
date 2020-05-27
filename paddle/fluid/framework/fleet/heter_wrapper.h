@@ -67,7 +67,7 @@ class HeterWrapper {
 
   void StartXpuService(const std::string& ip, uint32_t port);
   
-  void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank);
+  void CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank, std::string send_var);
   
   void CallRemoteXpuSync(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker);
   
