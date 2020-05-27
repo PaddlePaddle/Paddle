@@ -875,7 +875,7 @@ def crf_decoding(input, param_attr, label=None, length=None):
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
+        dtype=core.VarDesc.VarType.INT64)
     inputs = {"Emission": [input], "Transition": transition, "Label": label}
     if length:
         inputs['Length'] = length
@@ -1125,12 +1125,12 @@ def chunk_eval(input,
             dict_size = 10000
             label_dict_len = 7
             sequence = fluid.data(
-                name='id', shape=[-1, 1], lod_level=1, dtype='int64')
+                name='id', shape=[None, 1], lod_level=1, dtype='int64')
             embedding = fluid.embedding(
                 input=sequence, size=[dict_size, 512])
             hidden = fluid.layers.fc(input=embedding, size=512)
-            label = fluid.layers.data(
-                name='label', shape=[1], lod_level=1, dtype='int32')
+            label = fluid.data(
+                name='label', shape=[None, 1], lod_level=1, dtype='int64')
             crf = fluid.layers.linear_chain_crf(
                 input=hidden, label=label, param_attr=fluid.ParamAttr(name="crfw"))
             crf_decode = fluid.layers.crf_decoding(
@@ -1139,9 +1139,12 @@ def chunk_eval(input,
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=int((label_dict_len - 1) / 2))
     """
     helper = LayerHelper("chunk_eval", **locals())
+
+    check_variable_and_dtype(input, 'input', ['int64'], 'chunk_eval')
+    check_variable_and_dtype(label, 'label', ['int64'], 'chunk_eval')
 
     # prepare output
     precision = helper.create_variable_for_type_inference(dtype="float32")
@@ -1899,7 +1902,7 @@ def pool2d(input,
                              None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                 The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                 `[batch_size, input_channels, input_height, input_width]`.
 
@@ -6083,19 +6086,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
     helper = LayerHelper("reshape2", **locals())
 
-    def get_new_shape_tensor(list_shape):
-        new_shape_tensor = []
-        for dim in list_shape:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_shape_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
-
     def get_attr_shape(list_shape):
         unk_dim_idx = -1
         attrs_shape = []
@@ -6133,7 +6123,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                                 "but received %s." % len(shape))
         attrs["shape"] = get_attr_shape(shape)
         if utils._contain_var(shape):
-            inputs['ShapeTensor'] = get_new_shape_tensor(shape)
+            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
         elif isinstance(actual_shape, Variable):
             actual_shape.stop_gradient = True
             inputs["Shape"] = actual_shape
@@ -6258,19 +6248,6 @@ def unsqueeze(input, axes, name=None):
     inputs = {"X": input}
     attrs = {}
 
-    def _to_Variable_list(one_list):
-        Variable_list = []
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                ele.stop_gradient = True
-                Variable_list.append(ele)
-            else:
-                assert (isinstance(ele, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
-                Variable_list.append(temp_out)
-        return Variable_list
-
     if isinstance(axes, int):
         axes = [axes]
     if isinstance(axes, Variable):
@@ -6278,7 +6255,7 @@ def unsqueeze(input, axes, name=None):
         inputs["AxesTensor"] = axes
     elif isinstance(axes, (list, tuple)):
         if utils._contain_var(axes):
-            inputs["AxesTensorList"] = _to_Variable_list(axes)
+            inputs["AxesTensorList"] = utils._convert_to_tensor_list(axes)
         else:
             attrs["axes"] = axes
 
@@ -7050,6 +7027,8 @@ def image_resize(input,
         'TRILINEAR' : Trilinear interpolation
 
         'NEAREST' : Nearest neighbor interpolation
+        
+        'BICUBIC' : Bicubic interpolation
     
     Linear interpolation is the method of using a line connecting two known quantities 
     to determine the value of an unknown quantity between the two known quantities.
@@ -7068,6 +7047,11 @@ def image_resize(input,
     interpolating functions of three variables (e.g. D-direction,
     H-direction and W-direction in this op) on a rectilinear 3D grid.
     The linear interpolation is performed on three directions.
+    
+    Bicubic interpolation is an extension of cubic interpolation for interpolating
+    data points on a two-dimensional regular grid. The interpolated surface is
+    smoother than corresponding surfaces obtained by bilinear interpolation or
+    nearest-neighbor interpolation.
 
     Align_corners and align_mode are optional parameters,the calculation method
     of interpolation can be selected by them.
@@ -7162,27 +7146,45 @@ def image_resize(input,
               output: (N,C,D_out,H_out,W_out) where:
 
               D_out = D_{in} * scale_{factor}
+       
+        Trilinear interpolation:
+          if:
+              align_corners = False , align_mode = 0
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = (D_{in}+0.5) * scale_{factor} - 0.5
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,D_in,H_in,W_in)
+              output: (N,C,D_out,H_out,W_out) where:
+              D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
+        
 
+    For details of linear interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Linear_interpolation.
+    
     For details of nearest neighbor interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation.
-
+    
     For details of bilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Bilinear_interpolation.
-
+    
     For details of trilinear interpolation, please refer to Wikipedia:
     https://en.wikipedia.org/wiki/Trilinear_interpolation.
-
-
+    
+    For details of bicubic interpolation, please refer to Wikipedia:
+    https://en.wikipedia.org/wiki/Bicubic_interpolation
 
     Parameters:
-        input (Variable): 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
+        input (Variable): 3-D, 4-D or 5-D Tensor, its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
-        out_shape(list|tuple|Variable|None): Output shape of image resize
-             layer, the shape is (out_h, out_w) when input is a 4-D Tensor and is
-             (out_d, out_h, out_w) when input is a 5-D Tensor. Default: None. If
-             a list, each element can be an integer or a Tensor Variable of shape: [1].
+        out_shape (list|tuple|Variable|None): Output shape of image resize
+             layer, the shape is (out_w, ) when input is a 3-D Tensor, the shape is (out_h, out_w) 
+             when input is a 4-D Tensor and is (out_d, out_h, out_w) when input is a 5-D Tensor. 
+             Default: None. If a list, each element can be an integer or a Tensor Variable of shape: [1].
              If a Tensor Variable, its dimensions size should be a 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
              least one of :attr:`out_shape` or :attr:`scale` must be set.
@@ -7190,7 +7192,7 @@ def image_resize(input,
              Default: None.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
-        resample(str): The resample method. It supports 'BILINEAR', 'TRILINEAR'
+        resample(str): The resample method. It supports 'LINEAR', 'BICUBIC', 'BILINEAR', 'TRILINEAR'
                        and 'NEAREST' currently. Default: 'BILINEAR'
         actual_shape(Variable): An optional input to specify output shape
                                 dynamically. If provided, image resize
@@ -7209,26 +7211,27 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\'
-                            for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for
-                            src_idx = scale*dst_index.
+        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the fomula in the 
+                            the example code above, it can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , 
+                            can be \'1\' for src_idx = scale*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            will be consistent with that of the input. An optional string from:`NCW`, `NWC`, `"NCHW"`, `"NHWC"`, `"NCDHW"`,
             `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored
             in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
+        A 3-D Tensor of the shape (num_batches, channels, out_w) or (num_batches, out_w, channels),
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
         or 5-D Tensor of the shape (num_batches, channels, out_d, out_h, out_w) or (num_batches, out_d, out_h, out_w, channels).
 
     Raises:
         TypeError: out_shape should be a list or tuple or Variable.
         TypeError: actual_shape should either be Variable or None.
-        ValueError: The 'resample' of image_resize can only be 'BILINEAR',
-                    'TRILINEAR' or 'NEAREST' currently.
+        ValueError: The 'resample' of image_resize can only be 'LINEAR', 'BILINEAR',
+                    'TRILINEAR', 'BICUBIC' or 'NEAREST' currently.
         ValueError: 'LINEAR' only support 3-D tensor.
-        ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
+        ValueError: 'BICUBIC', 'BILINEAR' and 'NEAREST' only support 4-D tensor.
         ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
         ValueError: out_shape length should be 1 for input 3-D tensor.
@@ -7237,7 +7240,7 @@ def image_resize(input,
         ValueError: scale should be greater than zero.
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCW', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+        ValueError: data_format can only be 'NCW', 'NWC', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -7332,10 +7335,10 @@ def image_resize(input,
     helper = LayerHelper('{}_interp'.format(resample_type), **locals())
     dtype = helper.input_dtype()
 
-    if len(input.shape) == 3 and data_format not in ['NCHW', 'NHWC']:
+    if len(input.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
-            " received but only `NCHW` or `NHWC` supported for 3-D input.")
+            " received but only `NCW` or `NWC` supported for 3-D input.")
     elif len(input.shape) == 4 and data_format not in ['NCHW', 'NHWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: " + data_format +
@@ -7348,9 +7351,9 @@ def image_resize(input,
     def _is_list_or_turple_(data):
         return (isinstance(data, list) or isinstance(data, tuple))
 
-    if data_format == 'NCHW' or data_format == 'NCDHW':
+    if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
-    if data_format == 'NHWC' or data_format == 'NDHWC':
+    if data_format == 'NHWC' or data_format == 'NDHWC' or data_format == 'NWC':
         data_layout = 'NHWC'
 
     inputs = {"X": input}
@@ -7472,7 +7475,7 @@ def resize_linear(input,
                   actual_shape=None,
                   align_corners=True,
                   align_mode=1,
-                  data_format='NCHW'):
+                  data_format='NCW'):
     """
     This op resizes the input by performing linear interpolation based on given
     output shape which specified by actual_shape, out_shape and scale
@@ -7515,7 +7518,7 @@ def resize_linear(input,
               W_out = W_{in} * scale_{factor}
 
     Parameters:
-        input(Variable): 3-D Tensor(NCHW), its data type is float32, float64, or uint8,
+        input(Variable): 3-D Tensor(NCW), its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize linear
             layer, the shape is (out_w,). Default: None. If a list, each 
@@ -7541,13 +7544,14 @@ def resize_linear(input,
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+            will be consistent with that of the input. An optional string from: `"NCW"`, `"NWC"`.
+            The default is `"NCW"`. When it is `"NCW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_width]`.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  
+            For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-	Variable: 3-D tensor(NCHW or NHWC).
+	Variable: 3-D tensor(NCW or NWC).
     
     Examples:
         .. code-block:: python
@@ -8843,11 +8847,9 @@ def crop(x, shape=None, offsets=None, name=None):
             crop = fluid.layers.crop(z, shape=[2, 2, 3])
 
     """
+    check_variable_and_dtype(x, 'x', ['float32'], 'crop')
+    check_type(shape, 'shape', (list, tuple, Variable), 'crop')
     helper = LayerHelper('crop', **locals())
-
-    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-            isinstance(shape, Variable)):
-        raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
         offsets = [0] * len(x.shape)
@@ -10194,26 +10196,13 @@ def expand(x, expand_times, name=None):
                     "Each element given in expand_times must not be negative.")
         return attrs_expand_times
 
-    def get_new_expand_times_tensor(list_expand_times):
-        new_expand_times_tensor = []
-        for ele in list_expand_times:
-            if isinstance(ele, Variable):
-                ele.stop_gradient = True
-                new_expand_times_tensor.append(ele)
-            else:
-                assert (isinstance(ele, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
-                new_expand_times_tensor.append(temp_out)
-        return new_expand_times_tensor
-
     if isinstance(expand_times, Variable):
         expand_times.stop_gradient = True
         inputs['ExpandTimes'] = expand_times
     elif isinstance(expand_times, (list, tuple)):
         attrs['expand_times'] = get_attr_expand_times(expand_times)
         if utils._contain_var(expand_times):
-            inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+            inputs['expand_times_tensor'] = utils._convert_to_tensor_list(
                 expand_times)
 
     dtype = helper.input_dtype(input_param_name='x')
@@ -10786,19 +10775,6 @@ def slice(input, axes, starts, ends):
 
     helper = LayerHelper('slice', **locals())
 
-    def get_new_list_tensor(old_list):
-        new_list_tensor = []
-        for dim in old_list:
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                new_list_tensor.append(dim)
-            else:
-                assert (isinstance(dim, int))
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_list_tensor.append(temp_out)
-        return new_list_tensor
-
     inputs = {'Input': input}
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
@@ -10811,7 +10787,7 @@ def slice(input, axes, starts, ends):
     elif isinstance(starts, (list, tuple)):
         attrs['starts'] = []
         if utils._contain_var(starts):
-            inputs['StartsTensorList'] = get_new_list_tensor(starts)
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
             for i, dim in enumerate(starts):
                 if isinstance(dim, Variable):
                     attrs['starts'].append(-1)
@@ -10829,7 +10805,7 @@ def slice(input, axes, starts, ends):
     elif isinstance(ends, (list, tuple)):
         attrs['ends'] = []
         if utils._contain_var(ends):
-            inputs['EndsTensorList'] = get_new_list_tensor(ends)
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
             for i, dim in enumerate(ends):
                 if isinstance(dim, Variable):
                     attrs['ends'].append(-1)
@@ -11069,8 +11045,26 @@ def shape(input):
 
     Get the shape of the input.
 
+    .. code-block:: text
+
+        Case1:
+            Given N-D Tensor:
+                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+            Then:
+                input.shape = [2, 4]
+
+        Case2:
+            Given SelectedRows:
+                input.rows = [0, 4, 19]
+                input.height = 20
+                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
+            Then:
+                input.shape = [3, 2]
+
     Args:
-        input (Variable): The input N-D Tensor. Datatype can be float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type float32, float64, int32, int64.
+                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
         Variable (Tensor): The shape of the input variable.
@@ -11081,7 +11075,7 @@ def shape(input):
             import paddle.fluid as fluid
             import numpy as np
 
-            inputs = fluid.layers.data(name="x", shape=[3, 100, 100], dtype="float32")
+            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = fluid.layers.shape(inputs)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -14679,6 +14673,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
                                                    nshards=2,
                                                    shard_id=0)
     """
+    check_variable_and_dtype(input, 'input', ['int64'], 'shard_index')
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
     if shard_id < 0 or shard_id >= nshards:

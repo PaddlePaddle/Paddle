@@ -52,11 +52,11 @@ from .activation import thresholded_relu  #DEFINE_ALIAS
 from .activation import log_softmax  #DEFINE_ALIAS
 from .common import dropout  #DEFINE_ALIAS
 # from .common import embedding        #DEFINE_ALIAS
-# from .common import fc        #DEFINE_ALIAS
+# from .common import fc  #DEFINE_ALIAS
 from .common import label_smooth  #DEFINE_ALIAS
 from .common import one_hot  #DEFINE_ALIAS
 from .common import pad  #DEFINE_ALIAS
-# from .common import pad_constant_like        #DEFINE_ALIAS
+from .common import pad_constant_like  #DEFINE_ALIAS
 from .common import pad2d  #DEFINE_ALIAS
 from .common import unfold  #DEFINE_ALIAS
 # from .common import bilinear_tensor_product        #DEFINE_ALIAS
@@ -68,19 +68,19 @@ from .conv import conv3d  #DEFINE_ALIAS
 from .conv import conv3d_transpose  #DEFINE_ALIAS
 from .extension import add_position_encoding  #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter        #DEFINE_ALIAS
-# from .extension import continuous_value_model        #DEFINE_ALIAS
-# from .extension import filter_by_instag        #DEFINE_ALIAS
+from .extension import continuous_value_model  #DEFINE_ALIAS
+from .extension import filter_by_instag  #DEFINE_ALIAS
 # from .extension import linear_chain_crf        #DEFINE_ALIAS
 # from .extension import merge_selected_rows        #DEFINE_ALIAS
 from .extension import multiclass_nms  #DEFINE_ALIAS
-# from .extension import polygon_box_transform        #DEFINE_ALIAS
-# from .extension import random_crop        #DEFINE_ALIAS
+from .extension import polygon_box_transform  #DEFINE_ALIAS
+from .extension import random_crop  #DEFINE_ALIAS
 from .extension import row_conv  #DEFINE_ALIAS
-# from .extension import rpn_target_assign        #DEFINE_ALIAS
-# from .extension import similarity_focus        #DEFINE_ALIAS
+from .extension import rpn_target_assign  #DEFINE_ALIAS
+from .extension import similarity_focus  #DEFINE_ALIAS
 from .extension import target_assign  #DEFINE_ALIAS
 from .extension import temporal_shift  #DEFINE_ALIAS
-# from .extension import warpctc        #DEFINE_ALIAS
+from .extension import warpctc  #DEFINE_ALIAS
 from .extension import diag_embed  #DEFINE_ALIAS
 from .learning_rate import cosine_decay  #DEFINE_ALIAS
 from .learning_rate import exponential_decay  #DEFINE_ALIAS
@@ -123,17 +123,17 @@ from .loss import bpr_loss  #DEFINE_ALIAS
 from .loss import center_loss  #DEFINE_ALIAS
 from .loss import cross_entropy  #DEFINE_ALIAS
 from .loss import dice_loss  #DEFINE_ALIAS
-# from .loss import edit_distance        #DEFINE_ALIAS
-# from .loss import huber_loss        #DEFINE_ALIAS
+from .loss import edit_distance  #DEFINE_ALIAS
+from .loss import huber_loss  #DEFINE_ALIAS
 from .loss import iou_similarity  #DEFINE_ALIAS
 from .loss import kldiv_loss  #DEFINE_ALIAS
 from .loss import log_loss  #DEFINE_ALIAS
-# from .loss import margin_rank_loss        #DEFINE_ALIAS
+from .loss import margin_rank_loss  #DEFINE_ALIAS
 from .loss import mse_loss  #DEFINE_ALIAS
 # from .loss import nce        #DEFINE_ALIAS
 from .loss import npair_loss  #DEFINE_ALIAS
 from .loss import rank_loss  #DEFINE_ALIAS
-# from .loss import sampled_softmax_with_cross_entropy        #DEFINE_ALIAS
+from .loss import sampled_softmax_with_cross_entropy  #DEFINE_ALIAS
 from .loss import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
 from .loss import sigmoid_focal_loss  #DEFINE_ALIAS
 from .loss import smooth_l1  #DEFINE_ALIAS
@@ -169,27 +169,27 @@ from .vision import deformable_roi_pooling  #DEFINE_ALIAS
 from .vision import density_prior_box  #DEFINE_ALIAS
 from .vision import detection_output  #DEFINE_ALIAS
 from .vision import distribute_fpn_proposals  #DEFINE_ALIAS
-# from .vision import fsp_matrix        #DEFINE_ALIAS
+from .vision import fsp_matrix  #DEFINE_ALIAS
 from .vision import generate_mask_labels  #DEFINE_ALIAS
 from .vision import generate_proposal_labels  #DEFINE_ALIAS
 from .vision import generate_proposals  #DEFINE_ALIAS
 from .vision import grid_sampler  #DEFINE_ALIAS
 from .vision import image_resize  #DEFINE_ALIAS
-# from .vision import image_resize_short        #DEFINE_ALIAS
+from .vision import image_resize_short  #DEFINE_ALIAS
 # from .vision import multi_box_head        #DEFINE_ALIAS
-# from .vision import pixel_shuffle        #DEFINE_ALIAS
+from .vision import pixel_shuffle  #DEFINE_ALIAS
 from .vision import prior_box  #DEFINE_ALIAS
 from .vision import prroi_pool  #DEFINE_ALIAS
 from .vision import psroi_pool  #DEFINE_ALIAS
 from .vision import resize_bilinear  #DEFINE_ALIAS
 from .vision import resize_nearest  #DEFINE_ALIAS
 from .vision import resize_trilinear  #DEFINE_ALIAS
-# from .vision import retinanet_detection_output        #DEFINE_ALIAS
-# from .vision import retinanet_target_assign        #DEFINE_ALIAS
+from .vision import retinanet_detection_output  #DEFINE_ALIAS
+from .vision import retinanet_target_assign  #DEFINE_ALIAS
 from .vision import roi_align  #DEFINE_ALIAS
-# from .vision import roi_perspective_transform        #DEFINE_ALIAS
+from .vision import roi_perspective_transform  #DEFINE_ALIAS
 from .vision import roi_pool  #DEFINE_ALIAS
-# from .vision import shuffle_channel        #DEFINE_ALIAS
+from .vision import shuffle_channel  #DEFINE_ALIAS
 from .vision import space_to_depth  #DEFINE_ALIAS
 from .vision import yolo_box  #DEFINE_ALIAS
 from .vision import yolov3_loss  #DEFINE_ALIAS

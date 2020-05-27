@@ -101,8 +101,18 @@ class IfElseTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if need_transform:
             pred_node, new_assign_nodes = if_condition_visitor.transform()
+
+            if len(new_assign_nodes) > 0:
+                pred_node = merge_multi_assign_nodes(new_assign_nodes)
+
             new_node = create_cond_node(None, pred_node, node.body, node.orelse,
                                         True)
+            # Note: A blank line will be added separately if transform gast.Expr
+            # into source code. Using gast.Expr.value instead to avoid syntax error
+            # in python.
+            if isinstance(new_node, gast.Expr):
+                new_node = new_node.value
+
             return new_node
         else:
             return node
@@ -143,6 +153,59 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def get_new_func_nodes(self):
         return self.new_func_nodes
+
+
+def merge_multi_assign_nodes(assign_nodes):
+    """
+     Merges multiple separate assign statements into a single node.
+    """
+    if not isinstance(assign_nodes, (list, tuple)):
+        assign_nodes = [assign_nodes]
+
+    return MergeAssignTransformer().transform(assign_nodes)
+
+
+class MergeAssignTransformer(gast.NodeTransformer):
+    """
+    Merges multiple separate assign statements into a single node.
+    Because it cannot be determined the insertion location of new nodes for `IfExpr`,
+    so replaces original node with merges conditional node.
+
+    Note: This is a very low level api and only used for IfExpr transformation
+          in control flow.
+
+    For example:
+        IfExpr:
+            y = x+1 if mean or x > 0 else x-1
+
+        assign nodes:
+            bool_tensor_1 = fluid.layers.cast(x=mean, dtype='bool')
+            logic_or_0 = fluid.layers.logical_or(x=bool_tensor_1, y=x > 0)
+
+        merged node:
+            fluid.layers.logical_or(x=fluid.layers.cast(x=mean, dtype='bool'), y=x > 0)
+    """
+
+    def __init__(self):
+        self._name_to_nodes_value = {}
+
+    def transform(self, nodes):
+        value = None
+        for node in nodes:
+            assert isinstance(node, gast.Assign)
+            # Note: targets of created assign node in control flow `if`
+            # only contains one element.
+            assert isinstance(node.targets[0], gast.Name)
+            target_name = node.targets[0].id
+            value = self.visit(node.value)
+            self._name_to_nodes_value[target_name] = value
+
+        return value
+
+    def visit_Name(self, node):
+        if node.id in self._name_to_nodes_value:
+            node = self._name_to_nodes_value[node.id]
+        return node
 
 
 class NodeTestTransformer(gast.NodeTransformer):

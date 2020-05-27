@@ -1536,9 +1536,11 @@ def teacher_student_sigmoid_loss(input,
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
 
     """
-    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+    check_variable_and_dtype(input, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
                              'teacher_student_sigmoid_loss')
-    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+    check_variable_and_dtype(label, "label",
+                             ['float32', 'float64', 'int32', 'int64'],
                              'teacher_student_sigmoid_loss')
 
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())

@@ -1141,13 +1141,15 @@ void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId end";
 }
 
-void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
-                                     std::vector<Record>* result) {
+void MultiSlotDataset::GetRandomData(
+    const std::unordered_set<uint16_t>& slots_to_replace,
+    std::vector<Record>* result) {
   int debug_erase_cnt = 0;
   int debug_push_cnt = 0;
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   slots_shuffle_rclist_.ReInit();
-  for (const auto& rec : slots_shuffle_original_data_) {
+  const auto& slots_shuffle_original_data = GetSlotsOriginalData();
+  for (const auto& rec : slots_shuffle_original_data) {
     RecordCandidate rand_rec;
     Record new_rec = rec;
     slots_shuffle_rclist_.AddAndGet(rec, &rand_rec);
@@ -1161,7 +1163,7 @@ void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
       }
     }
     for (auto slot : slots_to_replace) {
-      auto range = rand_rec.feas.equal_range(slot);
+      auto range = rand_rec.feas_.equal_range(slot);
       for (auto it = range.first; it != range.second; ++it) {
         new_rec.uint64_feasigns_.push_back({it->second, it->first});
         debug_push_cnt += 1;
@@ -1173,9 +1175,9 @@ void MultiSlotDataset::GetRandomData(const std::set<uint16_t>& slots_to_replace,
           << " repush feasign num: " << debug_push_cnt;
 }
 
-// slots shuffle to input_channel_ with needed-shuffle slots
-void MultiSlotDataset::SlotsShuffle(
-    const std::set<std::string>& slots_to_replace) {
+void MultiSlotDataset::PreprocessChannel(
+    const std::set<std::string>& slots_to_replace,
+    std::unordered_set<uint16_t>& index_slots) {  // NOLINT
   int out_channel_size = 0;
   if (cur_channel_ == 0) {
     for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
@@ -1189,20 +1191,14 @@ void MultiSlotDataset::SlotsShuffle(
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() begin with input channel size: "
           << input_channel_->Size()
           << " output channel size: " << out_channel_size;
-  if (!slots_shuffle_fea_eval_) {
-    VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end,"
-               "fea eval mode off, need to set on for slots shuffle";
-    return;
-  }
+
   if ((!input_channel_ || input_channel_->Size() == 0) &&
       slots_shuffle_original_data_.size() == 0 && out_channel_size == 0) {
     VLOG(3) << "DatasetImpl<T>::SlotsShuffle() end, no data to slots shuffle";
     return;
   }
-  platform::Timer timeline;
-  timeline.Start();
+
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
-  std::set<uint16_t> index_slots;
   for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     std::string cur_slot = multi_slot_desc.slots(i).name();
     if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
@@ -1287,6 +1283,19 @@ void MultiSlotDataset::SlotsShuffle(
   }
   CHECK(input_channel_->Size() == 0)
       << "input channel should be empty before slots shuffle";
+}
+
+// slots shuffle to input_channel_ with needed-shuffle slots
+void MultiSlotDataset::SlotsShuffle(
+    const std::set<std::string>& slots_to_replace) {
+  PADDLE_ENFORCE_EQ(slots_shuffle_fea_eval_, true,
+                    platform::errors::PreconditionNotMet(
+                        "fea eval mode off, need to set on for slots shuffle"));
+  platform::Timer timeline;
+  timeline.Start();
+  std::unordered_set<uint16_t> index_slots;
+  PreprocessChannel(slots_to_replace, index_slots);
+
   std::vector<Record> random_data;
   random_data.clear();
   // get slots shuffled random_data

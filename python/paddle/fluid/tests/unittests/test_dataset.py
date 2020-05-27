@@ -125,6 +125,7 @@ class TestDataset(unittest.TestCase):
         dataset.set_trainer_num(4)
         dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
         dataset.set_download_cmd("./read_from_afs my_fs_name my_fs_ugi")
+        dataset.enable_pv_merge()
 
         thread_num = dataset.get_thread_num()
         self.assertEqual(thread_num, 12)
@@ -231,7 +232,7 @@ class TestDataset(unittest.TestCase):
         dataset.set_pipe_command("cat")
         dataset.set_use_var(slots_vars)
         dataset.load_into_memory()
-        dataset.set_fea_eval(10000, True)
+        dataset.set_fea_eval(1, True)
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
         dataset.set_generate_unique_feasigns(True, 15)

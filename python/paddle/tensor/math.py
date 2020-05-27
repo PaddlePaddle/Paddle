@@ -58,6 +58,10 @@ from ..fluid.layers import stanh    #DEFINE_ALIAS
 from ..fluid.layers import atan    #DEFINE_ALIAS
 from ..fluid.layers import erf    #DEFINE_ALIAS
 
+from ..fluid.layers import increment    #DEFINE_ALIAS
+from ..fluid.layers import multiplex    #DEFINE_ALIAS
+from ..fluid.layers import sums    #DEFINE_ALIAS
+
 __all__ = [
         'abs',
         'acos',
@@ -77,10 +81,10 @@ __all__ = [
         'elementwise_sub',
         'exp',
         'floor',
-#       'increment',
+        'increment',
         'log',
         'mul',
-#       'multiplex',
+        'multiplex',
         'pow',
         'reciprocal',
         'reduce_max',
@@ -96,7 +100,7 @@ __all__ = [
         'square',
         'stanh',
         'sum',
-#       'sums',
+        'sums',
         'tanh',
         'elementwise_sum',
         'max',
@@ -115,6 +119,7 @@ __all__ = [
         'trace',
         'kron'
 ]
+
 
 # yapf: enable.
 

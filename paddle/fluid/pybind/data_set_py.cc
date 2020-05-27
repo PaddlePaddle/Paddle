@@ -291,6 +291,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_fleet_send_sleep_seconds",
            &framework::Dataset::SetFleetSendSleepSeconds,
+           py::call_guard<py::gil_scoped_release>())
+      .def("enable_pv_merge", &framework::Dataset::EnablePvMerge,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")
