@@ -550,6 +550,7 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
+    @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
         Saves current model as the inference model. It will prune the main_program
