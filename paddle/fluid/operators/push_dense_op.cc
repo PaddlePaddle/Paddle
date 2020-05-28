@@ -56,7 +56,7 @@ The input gradients is all dense gradient tensors in a table.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(PushDenseNoNeedBufferVarsInference, "Ids");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(PushDenseNoNeedBufferVarsInferer, "Ids");
 
 }  // namespace operators
 }  // namespace paddle
@@ -66,5 +66,5 @@ REGISTER_OPERATOR(
     push_dense, ops::PushDenseOp, ops::PushDenseOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::PushDenseNoNeedBufferVarsInference);
+    ops::PushDenseNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(push_dense, ops::PushDenseCPUKernel<float>)

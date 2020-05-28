@@ -1902,7 +1902,7 @@ def pool2d(input,
                              None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
                 The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                 `[batch_size, input_channels, input_height, input_width]`.
 
@@ -11045,8 +11045,26 @@ def shape(input):
 
     Get the shape of the input.
 
+    .. code-block:: text
+
+        Case1:
+            Given N-D Tensor:
+                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+            Then:
+                input.shape = [2, 4]
+
+        Case2:
+            Given SelectedRows:
+                input.rows = [0, 4, 19]
+                input.height = 20
+                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
+            Then:
+                input.shape = [3, 2]
+
     Args:
-        input (Variable): The input N-D Tensor. Datatype can be float32, float64, int32, int64.
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type float32, float64, int32, int64.
+                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
 
     Returns:
         Variable (Tensor): The shape of the input variable.
@@ -11057,7 +11075,7 @@ def shape(input):
             import paddle.fluid as fluid
             import numpy as np
 
-            inputs = fluid.layers.data(name="x", shape=[3, 100, 100], dtype="float32")
+            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = fluid.layers.shape(inputs)
 
             exe = fluid.Executor(fluid.CPUPlace())

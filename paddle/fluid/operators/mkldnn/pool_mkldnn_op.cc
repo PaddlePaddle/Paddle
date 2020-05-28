@@ -33,61 +33,19 @@ template <typename T>
 class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL Pool must use CPUPlace"));
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
 
-    PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
-
-    std::string pooling_type = ctx.Attr<std::string>("pooling_type");
-
-    std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
-    std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
-
-    std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
-    std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
-
-    std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
-    std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
-
-    bool global_pooling = ctx.Attr<bool>("global_pooling");
-    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
-
-    // Only 2D pooling is supported now
-    PADDLE_ENFORCE_EQ(ksize.size(), 2, "ksize must be 2D, i.e. 2D pooling");
-    PADDLE_ENFORCE_EQ(pooling_type == "max" || pooling_type == "avg", true,
-                      "pooling_type must be 'max' or 'avg'");
-    PADDLE_ENFORCE_EQ(input->dims().size(), 4,
-                      "Input dim must be with 4, i.e. NCHW");
-
-    auto input_dims = input->dims();
-    framework::DDim data_dims =
-        framework::slice_ddim(input_dims, 2, input_dims.size());
-
-    if (global_pooling) {
-      UpdateKsize(&ksize, data_dims);
-    }
-
-    UpdatePadding(&paddings, global_pooling, 0, padding_algorithm, data_dims,
-                  strides, ksize);
-
-    auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
-    auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
-
-    auto is_test = ctx.Attr<bool>("is_test");
-
-    platform::PoolingMKLDNNHandler<T> handler(
-        src_tz, dst_tz, ksize, strides, paddings, pooling_type,
-        ctx.Attr<bool>("ceil_mode"), input->format(),
-        paddle::framework::ToMKLDNNDataType(input->type()), is_test, dev_ctx,
-        ctx.GetPlace(), ctx.OutputName("Out"), ctx.Attr<bool>("exclusive"));
+    platform::PoolingMKLDNNHandler<T> handler(ctx, dev_ctx, mkldnn_engine,
+                                              ctx.GetPlace(), input, output,
+                                              ctx.OutputName("Out"));
 
     auto src_memory = handler.AcquireSrcMemory(input);
     auto dst_memory = handler.AcquireDstMemory(output);
@@ -95,7 +53,8 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto pool_p = handler.AcquireForwardPrimitive();
 
     mkldnn::stream astream(dev_ctx.GetEngine());
-    if ((is_test == false) && (pooling_type == "max")) {
+    if ((ctx.Attr<bool>("is_test") == false) &&
+        (ctx.Attr<std::string>("pooling_type") == "max")) {
       // Training
       auto workspace_memory = handler.AcquireWorkspaceMemory();
       pool_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
@@ -117,9 +76,9 @@ template <typename T>
 class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
-
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL PoolGrad must use CPUPlace"));
     const Tensor* in_x = ctx.Input<Tensor>("X");
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
