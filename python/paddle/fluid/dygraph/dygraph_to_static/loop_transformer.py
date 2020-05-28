@@ -109,8 +109,10 @@ class LogicalOpTransformer(gast.NodeTransformer):
             len(nodes))
         if len(nodes) > 2:
             # Creates logic_and/logic_or node recursively.
-            pre_assign_node = self._create_bool_op_node(nodes[:2], api_type)
-            nodes = [pre_assign_node] + nodes[2:]
+            pre_logic_node = self._create_bool_op_node(nodes[:2], api_type)
+            post_logic_node = self._create_bool_op_node(nodes[2:], api_type)
+            nodes = [pre_logic_node] + [post_logic_node]
+
         args = [ast_to_source_code(child) for child in nodes]
         new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
             api_type, args[0], args[1])
