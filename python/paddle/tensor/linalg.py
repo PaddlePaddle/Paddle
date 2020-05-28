@@ -31,7 +31,7 @@ __all__ = [
     'cholesky',
     #       'tensordot',
     'bmm',
-    'histc'
+    'histogram'
 ]
 
 
@@ -754,7 +754,7 @@ def bmm(x, y, name=None):
     return out
 
 
-def histc(input, bins=100, min=0, max=0):
+def histogram(input, bins=100, min=0, max=0):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max. 
     If min and max are both zero, the minimum and maximum values of the data are used.
@@ -767,7 +767,7 @@ def histc(input, bins=100, min=0, max=0):
         max (int): upper end of the range (inclusive)
 
     Returns:
-        Variable: Tensor or LoDTensor calculated by histc layer. The data type is int64.
+        Variable: Tensor or LoDTensor calculated by histogram layer. The data type is int64.
 
     Code Example 1:
         .. code-block:: python
@@ -777,7 +777,7 @@ def histc(input, bins=100, min=0, max=0):
             train_program = paddle.Program()
             with paddle.program_guard(train_program, startup_program):
                 inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
-                output = paddle.histc(inputs, bins=5, min=1, max=5)
+                output = paddle.histogram(inputs, bins=5, min=1, max=5)
                 place = paddle.CPUPlace()
                 exe = paddle.Executor(place)
                 exe.run(startup_program)
@@ -794,18 +794,18 @@ def histc(input, bins=100, min=0, max=0):
             with paddle.imperative.guard(paddle.CPUPlace()):
                 inputs_np = np.array([1, 2, 1]).astype(np.float)
                 inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histc(inputs, bins=4, min=0, max=3)
+                result = paddle.histogram(inputs, bins=4, min=0, max=3)
                 print(result) # [0, 2, 1, 0]
     """
     if in_dygraph_mode():
-        return core.ops.histc(input, "bins", bins, "min", min, "max", max)
+        return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
 
-    helper = LayerHelper('histc', **locals())
-    check_variable_and_dtype(input, 'X',
-                             ['int32', 'int64', 'float32', 'float64'], 'histc')
+    helper = LayerHelper('histogram', **locals())
+    check_variable_and_dtype(
+        input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram')
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
-        type='histc',
+        type='histogram',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={'bins': bins,

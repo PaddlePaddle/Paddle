@@ -23,15 +23,15 @@ from paddle.fluid import Program, program_guard
 from op_test import OpTest
 
 
-class TestHistcOpAPI(unittest.TestCase):
-    """Test histc api."""
+class TestHistogramOpAPI(unittest.TestCase):
+    """Test histogram api."""
 
     def test_static_graph(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             inputs = fluid.data(name='input', dtype='int64', shape=[2, 3])
-            output = paddle.histc(inputs, bins=5, min=1, max=5)
+            output = paddle.histogram(inputs, bins=5, min=1, max=5)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
@@ -45,22 +45,22 @@ class TestHistcOpAPI(unittest.TestCase):
             expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(
                 (actual == expected).all(),
-                msg='histc output is wrong, out =' + str(actual))
+                msg='histogram output is wrong, out =' + str(actual))
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
             inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
             inputs = fluid.dygraph.to_variable(inputs_np)
-            actual = paddle.histc(inputs, bins=5, min=1, max=5)
+            actual = paddle.histogram(inputs, bins=5, min=1, max=5)
             expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
             self.assertTrue(
                 (actual.numpy() == expected).all(),
-                msg='histc output is wrong, out =' + str(actual.numpy()))
+                msg='histogram output is wrong, out =' + str(actual.numpy()))
 
 
-class TestHistcOp(OpTest):
+class TestHistogramOp(OpTest):
     def setUp(self):
-        self.op_type = "histc"
+        self.op_type = "histogram"
         self.init_test_case()
         np_input = np.random.randint(
             low=0, high=20, size=self.in_shape, dtype=np.int64)

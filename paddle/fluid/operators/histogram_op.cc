@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/histc_op.h"
+#include "paddle/fluid/operators/histogram_op.h"
 
 #include <string>
 #include <unordered_map>
@@ -24,13 +24,13 @@ namespace operators {
 using framework::OpKernelType;
 using framework::Tensor;
 
-class HistcOp : public framework::OperatorWithKernel {
+class HistogramOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "histc");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "histc");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "histogram");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "histogram");
     const auto &nbins = ctx->Attrs().Get<int64_t>("bins");
     const auto &minval = ctx->Attrs().Get<int>("min");
     const auto &maxval = ctx->Attrs().Get<int>("max");
@@ -56,11 +56,11 @@ class HistcOp : public framework::OperatorWithKernel {
   }
 };
 
-class HistcOpMaker : public framework::OpProtoAndCheckerMaker {
+class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) The input tensor of Histc op,");
-    AddOutput("Out", "(Tensor) The output tensor of Histc op,");
+    AddInput("X", "(Tensor) The input tensor of Histogram op,");
+    AddOutput("Out", "(Tensor) The output tensor of Histogram op,");
     AddAttr<int64_t>("bins", "(int) number of histogram bins")
         .SetDefault(100)
         .EqualGreaterThan(1);
@@ -69,7 +69,7 @@ class HistcOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("max", "(int) upper end of the range (inclusive)")
         .SetDefault(0);
     AddComment(R"DOC(
-          Histc Operator.
+          Histogram Operator.
           Computes the histogram of a tensor. The elements are sorted
           into equal width bins between min and max. If min and max are
           both zero, the minimum and maximum values of the data are used.
@@ -82,11 +82,11 @@ class HistcOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    histc, ops::HistcOp, ops::HistcOpMaker,
+    histogram, ops::HistogramOp, ops::HistogramOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    histc, ops::HistcKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::HistcKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::HistcKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::HistcKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    histogram, ops::HistogramKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::HistogramKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::HistogramKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::HistogramKernel<paddle::platform::CPUDeviceContext, int64_t>);
