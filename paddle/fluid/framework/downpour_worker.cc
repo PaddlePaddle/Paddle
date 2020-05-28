@@ -782,7 +782,7 @@ void DownpourWorker::TrainFiles() {
             if (s != "") s += ",";
             s += ins_id;
           }
-          fprintf(stderr, "batch_size: %d, ins_ids_vec: %s\n", batch_size,
+          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
                   s.c_str());
           s = "";
           for (auto& param : *all_param_) {
