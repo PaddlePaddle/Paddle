@@ -23,7 +23,7 @@ from ..data_feeder import check_type
 __all__ = [
     'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
     'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay', 'LinearLrWarmup',
-    'ReduceLROnPlateau'
+    'ReduceLROnPlateau', 'MultiStepDecay'
 ]
 
 
@@ -785,7 +785,6 @@ class ReduceLROnPlateau(LearningRateDecay):
             raise ValueError('threshold mode ' + threshold_mode +
                              ' is unknown!')
         self.threshold_mode = threshold_mode
-
         check_type(learning_rate, 'learning_rate', (float, int, Variable),
                    'ReduceLROnPlateau')
         if isinstance(learning_rate, (float, int)):
@@ -867,3 +866,85 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         else:
             return current > best + self.threshold
+
+
+class MultiStepDecay(LearningRateDecay):
+    """
+    Decays the learning rate of ``optimizer`` by ``decay_rate`` once ``global_step`` reaches one of the milestones.
+
+    The algorithm can be described as the code below. 
+
+    .. code-block:: text
+
+        learning_rate = 0.5
+        milestones = [30, 50]
+        decay_rate = 0.1
+        if global_step < 30:
+            learning_rate = 0.5
+        elif global_step < 50:
+            learning_rate = 0.05
+        else:
+            learning_rate = 0.005
+
+    Parameters:
+        learning_rate (Variable|float|int): The initial learning rate. It can be set to python float or int number. If 
+            the type is Variable, it should be 1-D Tensor with shape [1], and the data type should be 'float32' or 'float64'.
+        milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
+        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
+            It should be less than 1.0. Default: 0.1.
+        begin(int, optional): The begin step to initialize the global_step in the description above. Default: 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            Default: 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. Default: 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import numpy as np
+            with fluid.dygraph.guard():
+                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+                linear = fluid.dygraph.Linear(10, 10)
+                input = fluid.dygraph.to_variable(x)
+                adam = fluid.optimizer.Adam(
+                    learning_rate = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5]),
+                    parameter_list = linear.parameters())
+
+                for step in range(10):
+                    out = linear(input)
+                    loss = fluid.layers.reduce_mean(out)
+                    adam.minimize(loss)                 
+                    lr = adam.current_step_lr()
+                    print("step:{}, current lr is {}" .format(step, lr))
+
+    """
+
+    def __init__(self,
+                 learning_rate,
+                 milestones,
+                 decay_rate=0.1,
+                 begin=0,
+                 step=1,
+                 dtype='float32'):
+        super(MultiStepDecay, self).__init__(begin, step, dtype)
+        check_type(learning_rate, 'learning_rate', (float, int, Variable),
+                   'MultiStepDecay')
+        if isinstance(learning_rate, (float, int)):
+            learning_rate = self.create_lr_var(learning_rate)
+
+        self.learning_rate = learning_rate
+        check_type(milestones, 'milestones', (tuple, list), 'MultiStepDecay')
+        self.milestones = milestones
+        self.decay_rate = self.create_lr_var(decay_rate)
+
+    def step(self):
+        from .. import layers
+        for i in range(len(self.milestones)):
+            if self.step_num < self.milestones[i]:
+                return self.learning_rate * (self.decay_rate**i)
+
+        return self.learning_rate * (self.decay_rate**len(self.milestones))

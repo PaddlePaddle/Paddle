@@ -98,8 +98,22 @@ def noam_decay(global_step, d_model, warmup_steps, learning_rate=1.0):
     return decayed_lr
 
 
-class TestNoamLearningRateDecayDygraphMode(unittest.TestCase):
-    def test_dygraph_mode(self):
+def linear_lr_warmup(global_step, warmup_steps, start_lr, end_lr):
+    linear_step = end_lr - start_lr
+    decayed_lr = start_lr + linear_step * (global_step / warmup_steps)
+    return decayed_lr
+
+
+def multi_step_decay(global_step, learning_rate, milestones, decay_rate=1.0):
+    for i in range(len(milestones)):
+        if global_step < milestones[i]:
+            return learning_rate * math.pow(decay_rate, i)
+
+    return learning_rate * math.pow(decay_rate, len(milestones))
+
+
+class TestLearningRateDecayDygraph(unittest.TestCase):
+    def test_NoamDecay(self):
         with fluid.dygraph.guard():
             d_model = 0.01
             warmup_steps = 200
@@ -111,6 +125,48 @@ class TestNoamLearningRateDecayDygraphMode(unittest.TestCase):
                                           learning_rate)
                 fluid_result = lr()
 
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result[0],
+                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    format(step, right_result, fluid_result[0]))
+
+    def test_LinearLrWarmup(self):
+        with fluid.dygraph.guard():
+            lr = fluid.layers.polynomial_decay(
+                learning_rate=1.0,
+                decay_steps=10,
+                end_learning_rate=0.0,
+                power=1.0)
+            lr = fluid.layers.linear_lr_warmup(
+                learning_rate=lr, warmup_steps=2, start_lr=0.0, end_lr=1.0)
+
+            right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
+            for i in range(5):
+
+                t = lr()
+
+                self.assertTrue(
+                    np.allclose((t.numpy())[0].item(), right_result[i]))
+
+            with self.assertRaises(TypeError):
+                lr = fluid.layers.linear_lr_warmup(
+                    learning_rate="fake_lr",
+                    warmup_steps=2,
+                    start_lr=0.0,
+                    end_lr=1.0)
+
+    def test_MultiStepDecay(self):
+        with fluid.dygraph.guard():
+            learning_rate = 0.1
+            milestones = [2, 4, 8]
+            decay_rate = 0.2
+            lr = fluid.layers.multi_step_decay(learning_rate, milestones,
+                                               decay_rate)
+            for step in range(10):
+                right_result = multi_step_decay(step, learning_rate, milestones,
+                                                decay_rate)
+                fluid_result = lr()
                 self.assertAlmostEqual(
                     right_result,
                     fluid_result[0],
@@ -171,31 +227,30 @@ class TestLearningRateDecay(unittest.TestCase):
             (natural_exp_decay, layers.natural_exp_decay, common_kwargs_false),
             (inverse_time_decay, layers.inverse_time_decay, common_kwargs_true),
             (inverse_time_decay, layers.inverse_time_decay,
-             common_kwargs_false),
-            (polynomial_decay, layers.polynomial_decay, {
-                "learning_rate": 1.0,
-                "decay_steps": 5,
-                "cycle": True
-            }),
-            (polynomial_decay, layers.polynomial_decay, {
-                "learning_rate": 1.0,
-                "decay_steps": 5,
-                "cycle": False
-            }),
-            (piecewise_decay, layers.piecewise_decay, {
-                "boundaries": [3, 6, 9],
-                "values": [0.1, 0.2, 0.3, 0.4]
-            }),
-            (cosine_decay, layers.cosine_decay, {
-                "learning_rate": 0.1,
-                "step_each_epoch": 100,
-                "epochs": 120
-            }),
-            (noam_decay, layers.noam_decay, {
-                "d_model": 0.01,
-                "warmup_steps": 200,
-                "learning_rate": 2.0
-            }),
+             common_kwargs_false), (polynomial_decay, layers.polynomial_decay, {
+                 "learning_rate": 1.0,
+                 "decay_steps": 5,
+                 "cycle": True
+             }), (polynomial_decay, layers.polynomial_decay, {
+                 "learning_rate": 1.0,
+                 "decay_steps": 5,
+                 "cycle": False
+             }), (piecewise_decay, layers.piecewise_decay, {
+                 "boundaries": [3, 6, 9],
+                 "values": [0.1, 0.2, 0.3, 0.4]
+             }), (cosine_decay, layers.cosine_decay, {
+                 "learning_rate": 0.1,
+                 "step_each_epoch": 100,
+                 "epochs": 120
+             }), (noam_decay, layers.noam_decay, {
+                 "d_model": 0.01,
+                 "warmup_steps": 200,
+                 "learning_rate": 2.0
+             }), (multi_step_decay, layers.multi_step_decay, {
+                 "learning_rate": 0.5,
+                 "milestones": [3, 5, 8],
+                 "decay_rate": 0.2
+             })
         ]
 
         for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:
@@ -205,12 +260,6 @@ class TestLearningRateDecay(unittest.TestCase):
             startup_program = framework.Program()
             with framework.program_guard(main_program, startup_program):
                 self.check_decay(py_decay_fn, fluid_decay_fn, kwargs)
-
-
-def linear_lr_warmup(global_step, warmup_steps, start_lr, end_lr):
-    linear_step = end_lr - start_lr
-    decayed_lr = start_lr + linear_step * (global_step / warmup_steps)
-    return decayed_lr
 
 
 class TestLinearWamrupLearningRateDecay(TestLearningRateDecay):
@@ -302,37 +351,6 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
         start_lr = 0
         end_lr = 1
         run_places(lr, start_lr, end_lr)
-
-
-class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
-    def test_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            lr = fluid.layers.polynomial_decay(
-                learning_rate=1.0,
-                decay_steps=10,
-                end_learning_rate=0.0,
-                power=1.0)
-            lr = fluid.layers.linear_lr_warmup(
-                learning_rate=lr, warmup_steps=2, start_lr=0.0, end_lr=1.0)
-
-            right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
-            for i in range(5):
-
-                t = lr()
-
-                self.assertTrue(
-                    np.allclose((t.numpy())[0].item(), right_result[i]))
-
-
-class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):
-    def test_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            with self.assertRaises(TypeError):
-                lr = fluid.layers.linear_lr_warmup(
-                    learning_rate="fake_lr",
-                    warmup_steps=2,
-                    start_lr=0.0,
-                    end_lr=1.0)
 
 
 def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,

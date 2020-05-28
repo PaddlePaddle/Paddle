@@ -38,7 +38,7 @@ from ..data_feeder import check_variable_and_dtype, check_type
 __all__ = [
     'exponential_decay', 'natural_exp_decay', 'inverse_time_decay',
     'polynomial_decay', 'piecewise_decay', 'noam_decay', 'cosine_decay',
-    'linear_lr_warmup'
+    'linear_lr_warmup', 'multi_step_decay'
 ]
 
 
@@ -588,4 +588,93 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
                         learning_rate = tensor.fill_constant(
                             shape=[1], dtype=dtype, value=float(learning_rate))
                     tensor.assign(learning_rate, lr)
+            return lr
+
+
+def multi_step_decay(learning_rate, milestones, decay_rate=0.1):
+    """
+	:alias_main: paddle.nn.functional.multi_step_decay
+	:alias: paddle.nn.functional.multi_step_decay,paddle.nn.functional.learning_rate.multi_step_decay
+	:old_api: paddle.fluid.layers.multi_step_decay
+
+    Decays the learning rate of ``optimizer`` by ``decay_rate`` once ``global_step`` reaches one of the milestones.
+
+    The algorithm can be described as the code below. 
+
+    .. code-block:: text
+
+        learning_rate = 0.5
+        milestones = [30, 50]
+        decay_rate = 0.1
+        if global_step < 30:
+            learning_rate = 0.5
+        elif global_step < 50:
+            learning_rate = 0.05
+        else:
+            learning_rate = 0.005
+
+    Parameters:
+        learning_rate (Variable|float|int): The initial learning rate. It can be set to python float or int number. If 
+            the type is Variable, it should be 1-D Tensor with shape [1], and the data type should be 'float32' or 'float64'.
+        milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
+        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
+            It should be less than 1.0. Default: 0.1.
+
+    Returns:
+        None.
+
+    Examples:
+    
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+
+        milestones = [3, 5]
+        lr = fluid.layers.multi_step_decay(0.5, milestones, decay_rate=0.1)
+        adam = fluid.optimizer.Adam(learning_rate = lr)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        for step in range(10):
+            out, = exe.run(fluid.default_main_program(), fetch_list=[lr.name])
+            print("step:{}, current lr is {}" .format(step, out))
+
+    """
+
+    with default_main_program()._lr_schedule_guard():
+        check_type(learning_rate, 'learning_rate', (float, int, Variable),
+                   'multi_step_decay')
+        check_type(milestones, 'milestones', (tuple, list), 'multi_step_decay')
+
+        if in_dygraph_mode():
+            decay = imperate_lr.MultiStepDecay(learning_rate, milestones,
+                                               decay_rate)
+            return decay
+        else:
+            global_step = _decay_step_counter()
+
+            lr = tensor.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype='float32',
+                persistable=True,
+                name="learning_rate")
+
+            dacay_rate = tensor.create_global_var(
+                shape=[1],
+                value=float(decay_rate),
+                dtype='float32',
+                persistable=True,
+                name="dacay_rate")
+
+            with control_flow.Switch() as switch:
+                for i in range(len(milestones)):
+                    with switch.case(global_step < milestones[i]):
+                        decayed_lr = learning_rate * (dacay_rate**i)
+                        tensor.assign(decayed_lr, lr)
+                with switch.default():
+                    decayed_lr = learning_rate * (dacay_rate**len(milestones))
+                    tensor.assign(decayed_lr, lr)
+
             return lr

@@ -90,6 +90,7 @@ from .learning_rate import noam_decay  #DEFINE_ALIAS
 from .learning_rate import piecewise_decay  #DEFINE_ALIAS
 from .learning_rate import polynomial_decay  #DEFINE_ALIAS
 from .learning_rate import linear_lr_warmup  #DEFINE_ALIAS
+from .learning_rate import multi_step_decay  #DEFINE_ALIAS
 # from .lod import sequence_concat        #DEFINE_ALIAS
 # from .lod import sequence_conv        #DEFINE_ALIAS
 # from .lod import sequence_enumerate        #DEFINE_ALIAS
