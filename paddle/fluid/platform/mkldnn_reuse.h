@@ -162,7 +162,7 @@ class MKLDNNHandlerT {
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::desc md, void* ptr, const std::string& suffix) {
-    auto local_key = key_ + suffix;
+    const auto local_key = key_ + suffix;
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
@@ -172,6 +172,24 @@ class MKLDNNHandlerT {
       mem_p->set_data_handle(ptr);
     }
     return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      mkldnn::memory::desc md, const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemory(const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    return std::static_pointer_cast<mkldnn::memory>(
+        dev_ctx_.GetBlob(local_key));
   }
 
   const MKLDNNDeviceContext& dev_ctx_;
@@ -535,21 +553,39 @@ template <typename T>
 class LRNMKLDNNHandler
     : public MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward> {
  public:
-  LRNMKLDNNHandler(const std::vector<int64_t>& dims, const int n,
-                   const float alpha, const float beta, const float k,
-                   const MKLDNNMemoryFormat fmt, bool is_test,
+  LRNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
-                   platform::Place cpu_place, const std::string& unique_name)
+                   const mkldnn::engine mkldnn_engine,
+                   platform::Place cpu_place, const Tensor* input,
+                   const std::string& unique_name)
 
       : platform::MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
-    auto src_md =
-        mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
-    this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
-        mkldnn::algorithm::lrn_across_channels, src_md, n, alpha, beta, k);
+            dev_ctx, mkldnn_engine, cpu_place,
+            platform::CreateKey(framework::vectorize(input->dims()),
+                                unique_name)) {
+    if (!this->isCached()) {
+      const int n = ctx.Attr<int>("n");
+      // MKL-DNN implements LRN in a caffe way:
+      // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
+      // Where sum of squares is divided by size of normalization window
+      // this is not the case for PaddlePaddle LRN.
+      // Hence we need to compensate for this diffrence by
+      // multipliing alpha by size of window(n)
+      const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
+      const float beta = ctx.Attr<float>("beta");
+      const float k = ctx.Attr<float>("k");
+      bool is_test = ctx.Attr<bool>("is_test");
+
+      auto dims = paddle::framework::vectorize(input->dims());
+
+      auto src_md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
+                                         input->format());
+
+      this->AcquireForwardPrimitiveDescriptor(
+          is_test ? mkldnn::prop_kind::forward_inference
+                  : mkldnn::prop_kind::forward_training,
+          mkldnn::algorithm::lrn_across_channels, src_md, n, alpha, beta, k);
+    }
   }
 
   LRNMKLDNNHandler(const std::vector<int64_t>& dims, const int n,
@@ -835,7 +871,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
  protected:
   mkldnn::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
                                        std::vector<int>& axis          // NOLINT
-                                       ) {
+  ) {
     size_t ndims = axis.size();
 
     std::vector<int64_t> strides(ndims);
@@ -1289,10 +1325,11 @@ static void SetDstMemoryQuantized(
                     "Dst memory for quantization can not have dims > 5");
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md = platform::MKLDNNMemDesc(
-      {dst_tz}, paddle::framework::ToMKLDNNDataType(
-                    framework::DataTypeTrait<T>::DataType()),
-      dst_fmt);
+  auto tmp_dst_md =
+      platform::MKLDNNMemDesc({dst_tz},
+                              paddle::framework::ToMKLDNNDataType(
+                                  framework::DataTypeTrait<T>::DataType()),
+                              dst_fmt);
   dst_md.reset(new mkldnn::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new mkldnn::memory(*dst_md, engine, to_void_cast<T>(output_data)));
