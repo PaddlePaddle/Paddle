@@ -871,7 +871,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
  protected:
   mkldnn::memory::desc Axis2MemoryDesc(std::vector<int64_t>& nchw_tz,  // NOLINT
                                        std::vector<int>& axis          // NOLINT
-  ) {
+                                       ) {
     size_t ndims = axis.size();
 
     std::vector<int64_t> strides(ndims);
@@ -1325,11 +1325,10 @@ static void SetDstMemoryQuantized(
                     "Dst memory for quantization can not have dims > 5");
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md =
-      platform::MKLDNNMemDesc({dst_tz},
-                              paddle::framework::ToMKLDNNDataType(
-                                  framework::DataTypeTrait<T>::DataType()),
-                              dst_fmt);
+  auto tmp_dst_md = platform::MKLDNNMemDesc(
+      {dst_tz}, paddle::framework::ToMKLDNNDataType(
+                    framework::DataTypeTrait<T>::DataType()),
+      dst_fmt);
   dst_md.reset(new mkldnn::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new mkldnn::memory(*dst_md, engine, to_void_cast<T>(output_data)));
