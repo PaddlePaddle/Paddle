@@ -23,15 +23,13 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrappe
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import create_api_shape_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node, to_static_variable
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -61,13 +59,56 @@ def create_while_node(condition_name, body_name, loop_var_names):
     ]
     while_args.append(gast.List(elts=assign_targets, ctx=gast.Param()))
 
-    while_func_id = gast.parse('fluid.layers.while_loop').body[0].value
+    while_func_id = gast.parse(
+        'fluid.dygraph.dygraph_to_static.loop_transformer.convert_while_loop'
+    ).body[0].value
     while_node = gast.Call(func=while_func_id, args=while_args, keywords=[])
     assign_node = gast.Assign(
         targets=[gast.Tuple(
             elts=assign_targets, ctx=gast.Store())],
         value=while_node)
     return assign_node
+
+
+from paddle.fluid.framework import Variable
+from paddle.fluid.layers import fill_constant, control_flow, logical_and, logical_or, logical_not
+
+
+def convert_while_loop(cond, body, loop_vars):
+    pred = cond(*loop_vars)
+    if isinstance(pred, Variable):
+        loop_vars = [to_static_variable(var) for var in loop_vars]
+        loop_vars = control_flow.while_loop(cond, body, loop_vars)
+    else:
+        while cond(*loop_vars):
+            loop_vars = body(*loop_vars)
+
+    return loop_vars
+
+
+def convert_logical_and(x, y):
+    if isinstance(x, Variable):
+        if not isinstance(y, Variable):
+            y = fill_constant(shape=[1], value=bool(y), dtype="bool")
+        return logical_and(x, y)
+    else:
+        return x and y
+
+
+def convert_logical_or(x, y):
+    if isinstance(x, Variable):
+        if not isinstance(y, Variable):
+            y = fill_constant(shape=[1], value=bool(y), dtype="bool")
+        return logical_or(x, y)
+    else:
+        return x and y
+
+
+def convert_logical_not(x):
+    if isinstance(x, Variable):
+        return logical_not(x)
+    else:
+        return not x
 
 
 class LogicalOpTransformer(gast.NodeTransformer):
@@ -85,7 +126,8 @@ class LogicalOpTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.op, gast.Not):
             arg = ast_to_source_code(node.operand)
-            new_node_str = "fluid.layers.logical_not({})".format(arg)
+            new_node_str = "fluid.dygraph.dygraph_to_static.loop_transformer.convert_logical_not({})".format(
+                arg)
             # gast.parse returns Module(body=[expr(value=...)])
             new_node = gast.parse(new_node_str).body[0].value
             return new_node
@@ -114,7 +156,7 @@ class LogicalOpTransformer(gast.NodeTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
+        new_node_str = "fluid.dygraph.dygraph_to_static.loop_transformer.convert_logical_{}(x={}, y={})".format(
             api_type, args[0], args[1])
         # gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
@@ -541,8 +583,8 @@ class LoopTransformer(gast.NodeTransformer):
 
     def get_while_stmt_nodes(self, node):
         # TODO: consider while - else in python
-        if not self.name_visitor.is_control_flow_loop(node):
-            return [node]
+        # if not self.name_visitor.is_control_flow_loop(node):
+        #     return [node]
 
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
@@ -561,8 +603,8 @@ class LoopTransformer(gast.NodeTransformer):
                 new_stmts.append(create_static_variable_gast_node(name))
 
         # while x < 10 in dygraph should be convert into static tensor < 10
-        for name in loop_var_names:
-            new_stmts.append(to_static_variable_gast_node(name))
+        # for name in loop_var_names:
+        #     new_stmts.append(to_static_variable_gast_node(name))
 
         logical_op_transformer = LogicalOpTransformer(node.test)
         cond_value_node = logical_op_transformer.transform()
