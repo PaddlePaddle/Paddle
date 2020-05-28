@@ -237,6 +237,7 @@ def elementwise_equal(x, y, name=None):
     """
     helper = LayerHelper("elementwise_equal", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = False
     out.stop_gradient = True
 
     helper.append_op(
