@@ -425,7 +425,7 @@ function run_mac_test() {
     Running unit tests ...
     ========================================
 EOF
-        #remove proxy here to fix error on mac dist ut 
+        #remove proxy here to fix dist ut 'test_fl_listen_and_serv_op' error on mac. see details: https://github.com/PaddlePaddle/Paddle/issues/24738
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
