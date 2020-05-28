@@ -64,13 +64,6 @@ class Initializer {
 class UniformInitializer : public Initializer {
  public:
   explicit UniformInitializer(const std::vector<std::string> &attrs) {
-    std::stringstream ss;
-    ss << "Attr: ";
-    for (auto &attr : attrs) {
-      ss << " " << attr;
-    }
-    VLOG(1) << ss.str();
-
     name_ = attrs[0];
     seed_ = static_cast<unsigned int>(std::stoi(attrs[1]));
     min_ = std::stof(attrs[2]);
