@@ -33,29 +33,39 @@ class FakeQuant(layers.Layer):
         super(FakeQuant, self).__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
-        scale_attr = ParamAttr(name="{}.quant_dequant.scale".format(name)
-                               if name else None)
+
+        scale_prefix = "{}.quant_dequant.scale".format(
+            name) if name else 'quant_dequant.scale'
+        scale_attr = ParamAttr(name=unique_name.generate(scale_prefix))
         self.scale = self.create_parameter(
             shape=[1],
             attr=scale_attr,
             dtype=dtype,
             is_bias=False,
             default_initializer=Constant(0.001))
+        self.scale.stop_gradient = True
 
-        state_attr = ParamAttr(name=unique_name.generate('quant_dequant.state'))
+        state_prefix = "{}.quant_dequant.state".format(
+            name) if name else 'quant_dequant.state'
+        state_attr = ParamAttr(name=unique_name.generate(state_prefix))
         self.state = self.create_parameter(
             shape=[1],
             attr=state_attr,
             dtype=dtype,
             is_bias=False,
             default_initializer=Constant(1))
-        accum_attr = ParamAttr(name=unique_name.generate('quant_dequant.accum'))
+        self.state.stop_gradient = True
+
+        accum_prefix = "{}.quant_dequant.accum".format(
+            name) if name else 'quant_dequant.accum'
+        accum_attr = ParamAttr(name=unique_name.generate(accum_prefix))
         self.accum = self.create_parameter(
             shape=[1],
             attr=accum_attr,
             dtype=dtype,
             is_bias=False,
             default_initializer=Constant(1))
+        self.accum.stop_gradient = True
 
     def forward(self, input):
         if in_dygraph_mode():
