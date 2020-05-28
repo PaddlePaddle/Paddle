@@ -41,7 +41,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
     int frame_size = hidden_prev_dims[1];
     int weight_height = weight_dims[0];
     int weight_width = weight_dims[1];
-    if (ctx->IsRuntime()) {
+    if (ctx->IsRuntime() || input_size >= 0) {
       PADDLE_ENFORCE_EQ(input_size, frame_size * 3,
                         platform::errors::InvalidArgument(
                             "The second dimension of Input(Input) must be 3 "
@@ -178,7 +178,7 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     int frame_size = hidden_prev_dims[1];
     int weight_height = weight_dims[0];
     int weight_width = weight_dims[1];
-    if (ctx->IsRuntime()) {
+    if (ctx->IsRuntime() || input_size >= 0) {
       PADDLE_ENFORCE_EQ(
           input_size, frame_size * 3,
           platform::errors::InvalidArgument(
