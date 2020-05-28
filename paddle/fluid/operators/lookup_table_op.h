@@ -99,8 +99,9 @@ class LookupTableKernel : public framework::OpKernel<T> {
               "expected >= 0. But received %ld",
               ids[i]);
           if (is_test) {
-            if (table_t.HasKey(ids[i])) {
-              auto id_index = table_t.Index(ids[i]);
+            auto id_index = table_t.GetIndexFromId(ids[i]);
+
+            if (id_index != -1) {
               if (input_data_type == framework::proto::VarType::INT8) {
                 memcpy(output + i * row_width, table + id_index * row_width,
                        row_width * sizeof(T));

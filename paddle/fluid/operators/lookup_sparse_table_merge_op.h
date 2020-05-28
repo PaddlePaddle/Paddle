@@ -71,6 +71,7 @@ class LookupSparseTableMergeKernel : public framework::OpKernel<T> {
       std::copy_n(in_data, rows * width, out_data + cnt);
       cnt += rows * width;
     }
+    out->SyncIndex();
   }
 };
 

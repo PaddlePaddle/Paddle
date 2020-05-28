@@ -122,7 +122,7 @@ class SelectedRows {
   /*
    * @brief Get the index of the key from id_to_index_ map.
    */
-  inline int64_t GetIndexFromId(int64_t key) {
+  inline int64_t GetIndexFromId(int64_t key) const {
     auto iter = id_to_index_.find(key);
     if (iter == id_to_index_.end()) {
       return -1;
