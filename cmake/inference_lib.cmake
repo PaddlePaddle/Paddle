@@ -213,7 +213,11 @@ copy(fluid_lib_dist
         )
 
 set(module "platform")
-set(platform_lib_deps profiler_proto error_codes_proto cuda_error_proto)
+set(platform_lib_deps profiler_proto error_codes_proto)
+if(WITH_GPU)
+  set(platform_lib_deps ${platform_lib_deps} cuda_error_proto)
+endif(WITH_GPU)
+
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/*.pb.h
