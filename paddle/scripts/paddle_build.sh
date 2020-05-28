@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 # Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
@@ -330,9 +329,49 @@ EOF
     build_base $@
     current_branch=`git branch | grep \* | cut -d ' ' -f2`
     if [ "$current_branch" != "develop_base_pr" ];then
-        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build |awk '{print $1}')
+        build_size
+    fi
+}
+
+function cmake_gen_and_build() {
+    startTime_s=`date +%s`
+    cmake_gen $1
+    build $2
+    endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+}
+
+function cmake_gen_and_build_mac() {
+    startTime_s=`date +%s`
+    cmake_gen $1
+    build_mac
+    endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+}
+
+function build_size() {
+    cat <<EOF
+    ============================================
+    Calculate /paddle/build size and PR whl size
+    ============================================
+EOF
+    if [ "$1" == "fluid_inference"]; then
+        cd ${PADDLE_ROOT}/build
+        cp -r fluid_inference_install_dir fluid_inference
+        tar -czf fluid_inference.tgz fluid_inference
+        buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/fluid_inference.tgz |awk '{print $1}')
+        echo "FLuid_Inference Size: $buildSize"
+        
+    else
+        SYSTEM=`uname -s`
+        if [ "$SYSTEM" == "Darwin" ]; then
+            com='du -h -d 0'
+        else
+            com='du -h --max-depth=0'
+        fi
+        buildSize=$($com ${PADDLE_ROOT}/build |awk '{print $1}')
         echo "Build Size: $buildSize"
-        PR_whlSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
+        PR_whlSize=$($com ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
         echo "PR whl Size: $PR_whlSize"
     fi
 }
@@ -349,10 +388,7 @@ EOF
         make clean
     fi
     make install -j 8
-    buildSize=$(du -h -d 0 ${PADDLE_ROOT}/build |awk '{print $1}')
-    echo "Build Size: $buildSize"
-    PR_whlSize=$(du -h -d 0 ${PADDLE_ROOT}/build/python/dist |awk '{print $1}')
-    echo "PR whl Size: $PR_whlSize"
+    build_size
 }
 
 function run_test() {
@@ -699,15 +735,24 @@ function caught_error() {
 }
 
 function case_count(){
+    cat <<EOF
+    ============================================
+    TestCases Count 
+    ============================================
+EOF
     testcases=$1
-    testtype=$2
     num=$(echo $testcases|grep -o '\^'|wc -l)
-    echo "$testtype testcases count is $num"
+    if [ "$2" == "" ]; then
+        echo "exclusive TestCases count is $num"
+    else
+        echo "$2 card TestCases count is $num"
+    fi
 }
 
 function card_test() {
     set -m
-
+    case_count $1 $2
+    ut_startTime_s=`date +%s` 
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
@@ -755,6 +800,12 @@ function card_test() {
     done
 
     wait; # wait for all subshells to finish
+    ut_endTime_s=`date +%s`
+    if [ "$2" == "" ]; then
+        echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+    else
+        echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+    fi
     set +m
 }
 
@@ -827,24 +878,10 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
-
-        ut_single_startTime_s=`date +%s`        
         card_test "$single_card_tests" 1    # run cases with single GPU
         card_test "$single_card_tests_1" 1    # run cases with single GPU
-        ut_single_endTime_s=`date +%s`
-        case_count $single_card_tests "single"
-        case_count $single_card_tests_1 "single"
-        echo "single card TestCases Total Time: $[ $ut_single_endTime_s - $ut_single_startTime_s ]s"
-        ut_multiple_startTime_s=`date +%s`
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
-        ut_multiple_endTime_s=`date +%s`
-        case_count $multiple_card_tests "multiple"
-        echo "multiple card TestCases Total Time: $[ $ut_multiple_endTime_s - $ut_multiple_startTime_s ]s"
-        ut_exclusive_startTime_s=`date +%s`
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
-        ut_exclusive_endTime_s=`date +%s`
-        case_count $exclusive_tests "exclusive"
-        echo "exclusive TestCases Total Time: $[ $ut_exclusive_endTime_s - $ut_exclusive_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -853,9 +890,12 @@ set -ex
 }
 
 function parallel_test() {
+    ut_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     parallel_test_base
+    ut_endTime_s=`date +%s`
+    echo "TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
 }
 
 function enable_unused_var_check() {
@@ -1113,12 +1153,15 @@ EOF
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
+    startTime_s=`date +%s` 
     cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
 
     make -j ${parallel_number} fluid_lib_dist
     make -j ${parallel_number} inference_lib_dist
-    buildSize=$(du -h --max-depth=0 ${PADDLE_ROOT}/build |awk '{print $1}')
-    echo "Fluid lib build Size: $buildSize"
+
+    endTime_s=`date +%s`
+    echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+    build_size "fluid_inference"
 }
 
 function tar_fluid_lib() {
@@ -1140,10 +1183,13 @@ function test_fluid_lib() {
     Testing fluid library for inference ...
     ========================================
 EOF
+    fluid_startTime_s=`date +%s`
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
+    fluid_endTime_s=`date +%s`
+    echo "test_fluid_lib Total Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
     ./clean.sh
 }
 
@@ -1154,7 +1200,10 @@ function test_fluid_lib_train() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
+    fluid_train_startTime_s=`date +%s`
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    fluid_train_endTime_s=`date +%s`
+    echo "test_fluid_lib_train Total Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
     ./clean.sh
 }
 
@@ -1175,26 +1224,19 @@ function example() {
 }
 
 
+
 function main() {
     local CMD=$1 
     local parallel_number=$2
     init
     case $CMD in
       build_only)
-        startTime_s=`date +%s`
-        cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       build_and_check)
         check_style
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
-        startTime_s=`date +%s`
-        cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number} 
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         check_sequence_op_unittest
         generate_api_spec ${PYTHON_ABI:-""} "PR"
         example
@@ -1250,16 +1292,9 @@ function main() {
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
-        startTime_s=`date +%s`
-        cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         enable_unused_var_check
-        ut_startTime_s=`date +%s`
         parallel_test
-        ut_endTime_s=`date +%s`
-        echo "TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
@@ -1273,18 +1308,9 @@ function main() {
         assert_api_spec_approvals
         ;;
       test_inference)
-        startTime_s=`date +%s`
         gen_fluid_lib ${parallel_number}
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-        fluid_startTime_s=`date +%s`
         test_fluid_lib
-        fluid_endTime_s=`date +%s`
-        echo "Fluid lib testCase Time: $[ $fluid_endTime_s - $fluid_startTime_s ]s"
-        fluid_train_startTime_s=`date +%s`
         test_fluid_lib_train
-        fluid_train_endTime_s=`date +%s`
-        echo "Fluid train lib testCase Time: $[ $fluid_train_endTime_s - $fluid_train_startTime_s ]s"
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}
@@ -1294,19 +1320,11 @@ function main() {
         assert_api_spec_approvals
         ;;
       maccheck)
-        startTime_s=`date +%s`
-        cmake_gen ${PYTHON_ABI:-""}
-        build_mac
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py35)
-        startTime_s=`date +%s`
-        cmake_gen ${PYTHON_ABI:-""}
-        build_mac
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
+        cmake_gen_and_build_mac ${PYTHON_ABI:-""}
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
@@ -1315,15 +1333,8 @@ function main() {
         build_mac
         ;;
       cicheck_py35)
-        startTime_s=`date +%s`
-        cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        endTime_s=`date +%s`
-        echo "Build Time: $[ $endTime_s - $startTime_s ]s"
-        ut_startTime_s=`date +%s`
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
-        ut_endTime_s=`date +%s`
-        echo "TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
