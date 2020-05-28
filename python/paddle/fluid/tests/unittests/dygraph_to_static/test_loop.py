@@ -85,7 +85,7 @@ def while_loop_bool_op(x):
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
     x = fluid.dygraph.to_variable(
         x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
-    while (x >= 0 and x < 10) or x <= -1 or x < -3 or (x < -7 or x < -5):
+    while x <= -1 or x < -3 or (x < -7 or x < -5) or (x >= 0 and x < 10):
         i = i + x
         x = x + 1
     return i
