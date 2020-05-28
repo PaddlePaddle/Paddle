@@ -1218,7 +1218,6 @@ function example() {
     fi
 }
 
-
 function main() {
     local CMD=$1 
     local parallel_number=$2
