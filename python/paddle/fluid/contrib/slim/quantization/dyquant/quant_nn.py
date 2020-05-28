@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .....dygraph import layers
-from ..... import core
-from ..... import dygraph_utils
-from ..... import unique_name
-from .....param_attr import ParamAttr
-from .....framework import _varbase_creator, in_dygraph_mode
-from .....initializer import Constant
-from .....data_feeder import check_variable_and_dtype
+from paddle.fluid.dygraph import layers
+from paddle.fluid import core
+from paddle.fluid import dygraph_utils
+from paddle.fluid import unique_name
+from paddle.fluid.param_attr import ParamAttr
+from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.initializer import Constant
+from paddle.fluid.data_feeder import check_variable_and_dtype
 
 __all__ = ['FakeQuant', 'QuantizedConv2D', 'QuantizedLinear']
 
