@@ -53,8 +53,8 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
 class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelperOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "RNNMemoryHelperOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelper");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "RNNMemoryHelper");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -142,9 +142,9 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelperGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "RNNMemoryHelperGrad");
     OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
-                   "RNNMemoryHelperGradOp");
+                   "RNNMemoryHelperGrad");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
   }

@@ -25,14 +25,14 @@ class GRUUnitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRUUnitOp");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRUUnit");
     OP_INOUT_CHECK(ctx->HasInput("HiddenPrev"), "Input", "HiddenPrev",
-                   "GRUUnitOp");
-    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRUUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Gate"), "Output", "Gate", "GRUUnitOp");
+                   "GRUUnit");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRUUnit");
+    OP_INOUT_CHECK(ctx->HasOutput("Gate"), "Output", "Gate", "GRUUnit");
     OP_INOUT_CHECK(ctx->HasOutput("ResetHiddenPrev"), "Output",
-                   "ResetHiddenPrev", "GRUUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "GRUUnitOp");
+                   "ResetHiddenPrev", "GRUUnit");
+    OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "GRUUnit");
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
@@ -160,15 +160,15 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRUUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "GRUUnitGrad");
     OP_INOUT_CHECK(ctx->HasInput("HiddenPrev"), "Input", "HiddenPrev",
-                   "GRUUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRUUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Gate"), "Input", "Gate", "GRUUnitGradOp");
+                   "GRUUnitGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "GRUUnitGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Gate"), "Input", "Gate", "GRUUnitGrad");
     OP_INOUT_CHECK(ctx->HasInput("ResetHiddenPrev"), "Input", "ResetHiddenPrev",
-                   "GRUUnitGradOp");
+                   "GRUUnitGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Hidden")), "Input",
-                   "Hidden@GRAD", "GRUUnitGradOp");
+                   "Hidden@GRAD", "GRUUnitGrad");
 
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
