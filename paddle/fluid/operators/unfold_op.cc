@@ -174,7 +174,7 @@ class UnfoldGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradOpNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradOpNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -184,7 +184,7 @@ REGISTER_OPERATOR(unfold, ops::UnfoldOp, ops::UnfoldOpMaker,
                   ops::UnfoldGradMaker<paddle::framework::OpDesc>,
                   ops::UnfoldGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(unfold_grad, ops::UnfoldGradOp,
-                  ops::UnfoldGradOpNoNeedBufferVarsInference);
+                  ops::UnfoldGradOpNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     unfold, ops::UnfoldOpKernel<paddle::platform::CPUDeviceContext, float>,
