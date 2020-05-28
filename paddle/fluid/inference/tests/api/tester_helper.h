@@ -67,6 +67,7 @@ DEFINE_bool(warmup, false,
             "To reduce CI time, it sets false in default.");
 
 DEFINE_bool(enable_profile, false, "Turn on profiler for fluid");
+DEFINE_int32(cpu_num_threads, 1, "Number of threads for each paddle instance.");
 
 namespace paddle {
 namespace inference {

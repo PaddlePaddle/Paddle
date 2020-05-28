@@ -53,7 +53,7 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
              --infer_data=${data_path}
              --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
-             --num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
 
@@ -69,7 +69,7 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_bi
              --infer_data=${data_path}
              --warmup_batch_size=10
              --batch_size=300
-             --num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=1)
 endfunction()
 
@@ -92,7 +92,7 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --int8_model=${int8_model_dir}
              --infer_data=${data_path}
              --batch_size=50
-             --num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
 endfunction()
@@ -190,7 +190,7 @@ download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar
 inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
-       --num_threads=${CPU_NUM_THREADS_ON_CI})
+       --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
