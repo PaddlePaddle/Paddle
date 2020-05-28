@@ -19,7 +19,8 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.contrib.slim.quantization import DygraphQuantizationPass
+from paddle.fluid import core
+from paddle.fluid.contrib.slim.quantization import DygraphQuantAware
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph import declarative
 
@@ -73,9 +74,9 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
         return x
 
 
-class MNIST(fluid.dygraph.Layer):
+class Mnist(fluid.dygraph.Layer):
     def __init__(self):
-        super(MNIST, self).__init__()
+        super(Mnist, self).__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu")
@@ -103,13 +104,18 @@ class MNIST(fluid.dygraph.Layer):
         return x
 
 
-class TestDygraphQAT(unittest.TestCase):
+class TestDygraphQat(unittest.TestCase):
+    """
+    QAT = quantization-aware training
+    """
+
     def test_qat(self):
-        dyquant_pass = DygraphQuantizationPass()
-        dyquant_pass.prepare_quantize()
+        dygraph_qat = DygraphQuantAware()
+        dygraph_qat.prepare()
+
         with fluid.dygraph.guard():
-            mnist = MNIST()
-            dyquant_pass.quantize_qat(mnist)
+            mnist = Mnist()
+            dygraph_qat.quantize(mnist)
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=mnist.parameters())
             train_reader = paddle.batch(
@@ -163,18 +169,43 @@ class TestDygraphQAT(unittest.TestCase):
                             "Test | At epoch {} step {}: acc1 = {:}, acc5 = {:}".
                             format(epoch, batch_id,
                                    acc_top1.numpy(), acc_top5.numpy()))
+
             # save weights
             model_dict = mnist.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
 
+            # test the correctness of `save_infer_quant_model`
+            data = next(test_reader())
+            test_data = np.array([x[0].reshape(1, 28, 28)
+                                  for x in data]).astype('float32')
+            test_img = fluid.dygraph.to_variable(test_data)
+            mnist.eval()
+            before_save = mnist(test_img)
+
         # save inference quantized model
-        dyquant_pass.save_infer_quant_model(
-            dirname="./mnist_infer_model",
+        path = "./mnist_infer_model"
+        dygraph_qat.save_infer_quant_model(
+            dirname=path,
             model=mnist,
             input_shape=(1, 28, 28),
             input_dtype='float32',
             feed=[0],
             fetch=[0])
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        [inference_program, feed_target_names, fetch_targets] = (
+            fluid.io.load_inference_model(
+                dirname=path, executor=exe))
+        after_save, = exe.run(inference_program,
+                              feed={feed_target_names[0]: test_data},
+                              fetch_list=fetch_targets)
+
+        if not np.allclose(after_save, before_save.numpy()):
+            self.assertTrue(
+                False, msg='Failed to save the inference quantized model.')
 
 
 if __name__ == '__main__':

@@ -15,64 +15,46 @@
 import logging
 import sys
 import numpy as np
-from .....dygraph import ProgramTranslator, to_variable, guard
-from .....dygraph.nn import Conv2D, Linear
-from .....log_helper import get_logger
-from .quant_nn import FakeQuant, QuantizedConv2D, QuantizedLinear
+from paddle.fluid import dygraph
+from paddle.fluid.dygraph.nn import Conv2D
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.log_helper import get_logger
+from .quant_nn import FakeQuant
+from .quant_nn import QuantizedConv2D
+from .quant_nn import QuantizedLinear
 
-__all__ = ['DygraphQuantizationPass']
+__all__ = ['DygraphQuantAware']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class DygraphQuantizationPass(object):
+class DygraphQuantAware(object):
     def __init__(self,
                  weight_bits=8,
                  activation_bits=8,
                  moving_rate=0.9,
                  quantizable_layer_type=['Conv2D', 'Linear']):
-        super(DygraphQuantizationPass, self).__init__()
+        super(DygraphQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
-        self._quantizable_layer_type = quantizable_layer_type
         self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
-        self._translator = ProgramTranslator()
-
-    def prepare_quantize(self):
-        self._translator.enable_declarative = False
-
-    def save_infer_quant_model(self,
-                               dirname,
-                               model,
-                               input_shape,
-                               input_dtype='float32',
-                               feed=None,
-                               fetch=None,
-                               append_batch_size=True):
-        with guard():
-            self._translator.enable_declarative = True
-            model.eval()
-            raw_data = np.random.random(input_shape)
-            input_data = raw_data[np.newaxis, :].astype(
-                input_dtype) if append_batch_size else raw_data.astype(
-                    input_dtype)
-            input_var = to_variable(input_data)
-            out = model(input_var)
-
-        self._translator.save_inference_model(dirname, feed, fetch)
-
-    def quantize_qat(self, model):
-        quant_layers = tuple(self._quant_layers_map[layer]
-                             if layer in self._quant_layers_map else layer
-                             for layer in self._quantizable_layer_type)
-        for layer in quant_layers:
+        self._translator = dygraph.ProgramTranslator()
+        self._quantizable_layer_type = tuple(
+            self._quant_layers_map[layer]
+            if layer in self._quant_layers_map else layer
+            for layer in quantizable_layer_type)
+        for layer in self._quantizable_layer_type:
             assert not isinstance(
                 layer, str), "{} is unspported to be quantized.".format(layer)
 
+    def prepare(self):
+        self._translator.enable_declarative = False
+
+    def quantize(self, model):
         for name, layer in model.named_sublayers():
-            if not isinstance(layer, quant_layers):
+            if not isinstance(layer, self._quantizable_layer_type):
                 continue
 
             scopes = name.split('.')
@@ -86,6 +68,26 @@ class DygraphQuantizationPass(object):
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
 
+    def save_infer_quant_model(self,
+                               dirname,
+                               model,
+                               input_shape,
+                               input_dtype='float32',
+                               feed=None,
+                               fetch=None,
+                               append_batch_size=True):
+        with dygraph.guard():
+            self._translator.enable_declarative = True
+            model.eval()
+            raw_data = np.random.random(input_shape)
+            input_data = raw_data[np.newaxis, :].astype(
+                input_dtype) if append_batch_size else raw_data.astype(
+                    input_dtype)
+            input_var = dygraph.to_variable(input_data)
+            out = model(input_var)
+
+        self._translator.save_inference_model(dirname, feed, fetch)
+
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
         quantized_counterpart = tuple('Quantized' + k
@@ -98,7 +100,7 @@ class DygraphQuantizationPass(object):
         try:
             index = next(index_generator)
         except StopIteration:
-            _logger.fatal("Don't find any quantized layer for {}.".format(
+            _logger.fatal("The layer {} is unsupported to be quantized.".format(
                 layer.full_name()))
             sys.exit(-1)
 
