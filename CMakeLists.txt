@@ -88,7 +88,6 @@ option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE}
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
-option(WITH_CRYPTO   "Compile PaddlePaddle with paddle_crypto lib"         ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
