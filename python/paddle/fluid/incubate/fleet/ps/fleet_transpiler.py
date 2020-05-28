@@ -488,10 +488,6 @@ class FleetTranspiler(Fleet):
         block = prog.global_block()
 
         for name, var_ctx in context.items():
-            print("name: {}, ctx: {}, ep: {}, merged: {}".format(
-                name, "xx", var_ctx.split_varnames(), var_ctx.split_endpoints(
-                )))
-
             block.append_op(
                 type='checkpoint_notify',
                 attrs={
