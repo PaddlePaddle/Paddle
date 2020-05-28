@@ -73,9 +73,10 @@ class HDFSClient(FS):
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
-            config_command = '-D%s=%s' % (k, v)
-            self.pre_commands.append(config_command)
+        if configs:
+            for k, v in configs.iteritems():
+                config_command = '-D%s=%s' % (k, v)
+                self.pre_commands.append(config_command)
 
     def __run_hdfs_cmd(self, commands, retry_times=5):
         whole_commands = copy.deepcopy(self.pre_commands)
@@ -580,7 +581,7 @@ class HDFSClient(FS):
         _logger.info("Finish upload datas from {} to {}".format(local_path,
                                                                 hdfs_path))
 
-    def upload_dir(self, dest_dir, local_dir, overwrite=False):
+    def upload_dir(self, local_dir, dest_dir, overwrite=False):
         """
         upload dir to hdfs
         Args:

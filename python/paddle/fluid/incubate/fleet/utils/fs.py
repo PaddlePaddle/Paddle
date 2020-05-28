@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HDFS Utils."""
-
 import os
 import sys
 import subprocess
@@ -25,31 +23,13 @@ import errno
 import time
 import logging
 import abc
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 import shutil
 
 __all__ = ['FS', 'LocalFS']
 
 
-def get_logger(name, level, fmt):
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    handler = logging.FileHandler('fs.log', mode='w')
-    formatter = logging.Formatter(fmt=fmt)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    return logger
-
-
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
-
-
 class FS(object):
-    @abc.abstractmethod
-    def lsr(self, fs_path):
-        pass
-
     @abc.abstractmethod
     def ls(self, fs_path):
         pass
@@ -67,19 +47,20 @@ class FS(object):
         pass
 
     @abc.abstractmethod
-    def upload(self, local_path, fs_path):
+    def upload(self, local_path, fs_path, overwrite=False):
         pass
 
     @abc.abstractmethod
-    def download(self, fs_path, local_path):
+    def download(self,
+                 fs_path,
+                 local_path,
+                 multi_processes=5,
+                 overwrite=False,
+                 retry_times=5):
         pass
 
     @abc.abstractmethod
-    def mkdir(self, fs_path):
-        pass
-
-    @abc.abstractmethod
-    def mv(self, fs_src_path, fs_dst_path):
+    def mkdirs(self, fs_path):
         pass
 
     @abc.abstractmethod
@@ -90,21 +71,33 @@ class FS(object):
     def need_upload_download(self):
         pass
 
-
-class LocalFS(FS):
-    def lsr(self, fs_path):
+    @abc.abstractmethod
+    def rename(self, fs_src_path, fs_dst_path):
         pass
 
+    @abc.abstractmethod
+    def mv(self, fs_src_path, fs_dst_path):
+        pass
+
+    @abc.abstractmethod
+    def upload_dir(self, local_dir, dest_dir, overwrite=False):
+        pass
+
+
+class LocalFS(FS):
     def ls(self, fs_path):
         return [f for f in os.listdir(fs_path)]
 
-    def mkdir(self, fs_path):
+    def mkdirs(self, fs_path):
         assert not os.path.isfile(fs_path), "{} is already a file".format(
             fs_path)
         os.system("mkdir -p {}".format(fs_path))
 
-    def mv(self, fs_src_path, fs_dst_path):
+    def rename(self, fs_src_path, fs_dst_path):
         os.rename(fs_src_path, fs_dst_path)
+
+    def rename(self, fs_src_path, fs_dst_path):
+        self.rename(fs_src_path, fs_dst_path)
 
     def _rmr(self, fs_path):
         shutil.rmtree(fs_path)
@@ -113,7 +106,7 @@ class LocalFS(FS):
         os.remove(fs_path)
 
     def delete(self, fs_path):
-        if not self.stat(fs_path):
+        if not self.is_exist(fs_path):
             return
 
         if os.path.isfile(fs_path):
@@ -125,7 +118,13 @@ class LocalFS(FS):
         return False
 
     def is_file(self, fs_path):
-        pass
+        return os.path.isfile(fs_path)
 
     def is_dir(self, fs_path):
-        pass
+        return os.path.isdir(fs_path)
+
+    def is_exist(self, fs_path):
+        return os.path.exists(fs_path)
+
+    def touch(self, fs_path):
+        return Path(fs_path).touch()

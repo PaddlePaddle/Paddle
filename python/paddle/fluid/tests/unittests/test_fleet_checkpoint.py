@@ -17,7 +17,8 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
 import os
-from paddle.distributed.fs_wrapper import LocalFS, BDFS
+from paddle.distributed.fs import LocalFS
+from paddle.distributed.hdfs import HDFSClient
 
 
 class FleetTest(unittest.TestCase):
@@ -60,12 +61,9 @@ class FleetTest(unittest.TestCase):
         fleet.clean_redundant_check_points(dir_path, fs=fs)
 
     def test_hdfs_check_point(self):
-        try:
-            fs = BDFS("xxxx", "xxxx", 1 * 1000, 1 * 1000)
-            dir_path = "/user/Paddle_Data/gongweibao/edl_test/my_paddle_model"
-            self._test_check_point(fs, dir_path)
-        except Exception as e:
-            print(e)
+        fs = BDFS("xxxx", "xxxx", 1 * 1000, 1 * 1000)
+        dir_path = "/user/Paddle_Data/gongweibao/edl_test/my_paddle_model"
+        self._test_check_point(fs, dir_path)
 
     def test_local_check_point(self):
         fs = LocalFS()
