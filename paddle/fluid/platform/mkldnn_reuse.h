@@ -439,16 +439,9 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
 
-      float scale_0 = scale_z / scale_x;
-      float scale_1 = scale_z / scale_y;
-      dnnl::primitive_attr attributes;
-      attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
-                            {scale_0});
-      attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
-                            {scale_1});
-
-      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
-                                              dst_md);
+      auto attributes = CreateAttributes(algo, scale_x, scale_y, scale_z);
+      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
+                                              src1_md, dst_md);
     }
   }
 
@@ -457,6 +450,38 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src1_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
+  }
+
+ private:
+  static inline dnnl::primitive_attr CreateAttributes(dnnl::algorithm op,
+                                                      float scale_x,
+                                                      float scale_y,
+                                                      float scale_z) {
+    // Scales set in attributes for inputs contibute to the output equation
+    // in the following way (assuming no broadcasting takes place):
+    // output_i = scale_0 * x_i <+ or *> scale_1 * y_i;
+    // Hence we have to create scales that will:
+    // 1. Dequantize both values, by multiplying with (1.0 / scale_x_or_y)
+    // 2. Quantize their result to output scale range, by multiplying with
+    // (scale_z)
+    // If we combine these two, we end up with following equation
+    // output = scale_out * (1/scale_x * x <* or +> 1/scale_y * y)
+    // Hence, to mimic such behaviour using provided interface,
+    // For add operation the equation is equal to:
+    // output = (scale_out / scale_x) * x + (scale_out / scale_y) * y
+    //                <scale_0>                  <scale_1>
+    // For mul operation on the other hand
+    // output = (scale_out / scale_x) * x * (1.0 / scale_y) * y
+    //                <scale_0>                 <scale_1>
+    float scale_0 = scale_z / scale_x;
+    float scale_1 =
+        op == dnnl::algorithm::binary_add ? scale_z / scale_y : 1.0 / scale_y;
+    dnnl::primitive_attr attributes;
+    attributes.set_scales(/* input_x_id = */ DNNL_ARG_SRC_0, /* mask = */ 0,
+                          {scale_0});
+    attributes.set_scales(/* input_y_id = */ DNNL_ARG_SRC_1, /* mask = */ 0,
+                          {scale_1});
+    return attributes;
   }
 };
 
