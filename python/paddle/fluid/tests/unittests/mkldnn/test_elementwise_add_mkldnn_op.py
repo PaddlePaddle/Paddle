@@ -17,12 +17,6 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_add_op import TestElementwiseAddOp
-'''
-MKLDNN does not support tensors of dimensions number equal to 3.
-Such dimensions cause exceptions in MKLDNN reorder primitive.
-The DNNL-based kernel is used only when broadcasting is not required
-(see GetExpectedKernelType() methods in elementwise_add_op.h).
-'''
 
 
 class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
