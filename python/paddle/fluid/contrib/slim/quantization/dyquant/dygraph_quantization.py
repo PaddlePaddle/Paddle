@@ -34,13 +34,15 @@ class DygraphQuantAware(object):
                  weight_bits=8,
                  activation_bits=8,
                  moving_rate=0.9,
-                 quantizable_layer_type=['Conv2D', 'Linear']):
+                 quantizable_layer_type=['Conv2D', 'Linear'],
+                 program_translator=None):
         super(DygraphQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
         self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
-        self._translator = dygraph.ProgramTranslator()
+        self._translator = (program_translator if program_translator else
+                            dygraph.ProgramTranslator())
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
             if layer in self._quant_layers_map else layer
