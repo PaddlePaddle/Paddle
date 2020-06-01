@@ -186,12 +186,9 @@ class TestTransform(TestTransformBase):
         if not isinstance(dy_outs, tuple):
             dy_outs = (dy_outs, )
 
-        # NOTE: return type is difference
         st_outs = self.get_static_output()
-        if not isinstance(st_outs, list):
+        if not isinstance(st_outs, tuple):
             st_outs = (st_outs, )
-        else:
-            st_outs = tuple(st_outs)
 
         for x, y in zip(dy_outs, st_outs):
             self.assertTrue(np.allclose(x.numpy(), y.numpy()))
