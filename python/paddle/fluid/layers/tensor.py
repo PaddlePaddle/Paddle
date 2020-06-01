@@ -1093,13 +1093,39 @@ def reverse(x, axis):
 
     The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
+    .. code-block:: text
+
+        Case 1:
+
+            Given a LoDTensor:
+                x = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+                axis = [0, 1]
+
+            Then:
+                output = [[8, 7, 6], [5, 4, 3], [2, 1, 0]]
+
+        Case 2:
+
+            Given a LoDTensorArray:
+                x = {[[0, 1],
+                      [2, 3]],
+                     [[4, 5, 6]],
+                     [[7],[8], [9]]}
+                axis = 0
+
+            Then:
+                output = {[[7],[8], [9]],
+                          [[4, 5, 6]],
+                          [[0, 1],
+                           [2, 3]]}
+
     Parameters:
         x (Variable): A tensor or LoDTensorArray to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
-                      If input is a LoDTensorArray, returns a new reversed LoDTensorArray without changing the internal order of the each Tensor.
+                      If input is a LoDTensorArray, returns a new reversed LoDTensorArray without changing the internal order of each inner tensor.
         axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
             in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
-            will be apply on each axis in the tuple or list. If input is a LoDTensorArray, the value of axis must be 0 with shape
-            shall be [1] when axis is a list or tuple.
+            will be apply on each axis in the tuple or list. If input is a LoDTensorArray, the value of axis shall be 0, or a
+            list [0] or tuple (0, ) with shape [1].
 
     Returns:
         Variable: The reversed tensor with the same shape and data type as :attr:`x`.

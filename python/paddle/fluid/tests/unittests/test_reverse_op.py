@@ -142,8 +142,7 @@ class TestReverseLoDTensorArray(unittest.TestCase):
                 map(main_program.global_block().var,
                     [x.name + "@GRAD" for x in inputs]))
 
-            feed_dict = dict.fromkeys(
-                zip([x.name for x in inputs], inputs_data))
+            feed_dict = dict(zip([x.name for x in inputs], inputs_data))
             res = self.exe.run(main_program,
                                feed=feed_dict,
                                fetch_list=input_grads + [output.name])
@@ -161,11 +160,11 @@ class TestReverseLoDTensorArray(unittest.TestCase):
         gt, res = self.run_program(arr_len=1)
         self.check_output(gt, res)
         # test with list type of axis
-        gt, res = self.run_program(arr_len=1, axis=[1])
+        gt, res = self.run_program(arr_len=1, axis=[0])
         self.check_output(gt, res)
 
     def check_output(self, gt, res):
-        arr_len = len(gt)
+        arr_len = len(res) - 1
         reversed_array = res[-1]
         # check output
         self.assertTrue(np.array_equal(gt, reversed_array))
@@ -175,10 +174,10 @@ class TestReverseLoDTensorArray(unittest.TestCase):
 
     def test_raise_error(self):
         # The len(axis) should be 1 is input(X) is LoDTensorArray
-        with self.assertRaises():
+        with self.assertRaises(Exception):
             self.run_program(arr_len=3, axis=[0, 1])
         # The value of axis should be 0 is input(X) is LoDTensorArray
-        with self.assertRaises():
+        with self.assertRaises(Exception):
             self.run_program(arr_len=3, axis=1)
 
 
