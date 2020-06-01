@@ -35,6 +35,17 @@ def while_loop_dyfunc(x):
     return i
 
 
+def while_loop_dyfunc_without_tensor(x):
+    a = 1
+    # There are no tensors in the while condition, which means it's a plain while in python,
+    # so it wont't be transformed to `while_loop` op.
+    while not a > 4 and a > 0:
+        x = x + 1
+        a = a + 1
+
+    return x
+
+
 def while_loop_dyfun_with_conflict_var(x):
     i = fluid.dygraph.to_variable(x)
 
@@ -85,7 +96,9 @@ def while_loop_bool_op(x):
 def while_loop_bool_op2(x):
     i = fluid.dygraph.to_variable(x)
     a = 1
-    while x < 10 and (a < 4 or a > 0) or a < -1:
+
+    # In the while condition, there are both Paddle Variable and non-Variable.
+    while x < 10 and (a < 4 or a > 0) or a < -1 or not x > -1:
         i = i + x
         x = x + 1
         a = a + 1
@@ -225,6 +238,11 @@ class TestTransformWhileLoop(unittest.TestCase):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
         self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
+
+
+class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_dyfunc_without_tensor
 
 
 class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
