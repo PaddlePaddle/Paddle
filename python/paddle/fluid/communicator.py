@@ -19,16 +19,13 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 from . import core
 from .framework import Program
+from .transpiler.distribute_transpiler import DistributedMode
 
 __all__ = ['Communicator']
 
 
 class Communicator(object):
-    def __init__(self,
-                 program,
-                 vars_info=None,
-                 trainers=None,
-                 geo_sgd_need_push_nums=None):
+    def __init__(self, program, mode, kwargs=None, envs={}):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -55,15 +52,41 @@ class Communicator(object):
         for op in program.block(0).ops:
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
-        # Todo: Add check
-        if vars_info and trainers and geo_sgd_need_push_nums:
-            # for geo sgd
-            self.communicator_ = core.DistCommunicator(
-                program.desc,
-                global_scope(), vars_info, trainers, geo_sgd_need_push_nums)
-        else:
-            self.communicator_ = core.DistCommunicator(program.desc,
-                                                       global_scope())
+
+        if mode == DistributedMode.GEO:
+            push_vars = kwargs["push_vars"]
+            push_var_names = []
+
+            for k, vs in push_vars.items():
+                varnames = "&".join(vs["var_names"])
+                sections = "&".join([str(v) for v in vs["sections"]])
+                endpoints = "&".join(vs["epmap"])
+                is_sparse = "1" if vs["is_sparse"] == ['True'] else "0"
+
+                push_var_names.append(k)
+                envs[k] = "#".join([varnames, sections, endpoints, is_sparse])
+
+            envs["geo_trainer_nums"] = str(kwargs["trainers"])
+            envs["geo_need_push_nums"] = str(kwargs["push_nums"])
+            envs["geo_send_varnames"] = '#'.join(push_var_names)
+
+        if mode == DistributedMode.SYNC:
+            envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
+            envs["trainer_id"] = str(kwargs["trainer_id"])
+
+        mode_str = None
+
+        if mode == DistributedMode.SYNC:
+            mode_str = "SYNC"
+        elif mode == DistributedMode.ASYNC:
+            mode_str = "ASYNC"
+        elif mode == DistributedMode.HALF_ASYNC:
+            mode_str = "HALF_ASYNC"
+        elif mode == DistributedMode.GEO:
+            mode_str = "GEO"
+
+        self.communicator_ = core.DistCommunicator(mode_str, program.desc,
+                                                   global_scope(), envs)
 
     def start(self):
         """

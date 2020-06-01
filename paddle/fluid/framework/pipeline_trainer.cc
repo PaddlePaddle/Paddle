@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -27,6 +27,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   VLOG(3) << "pipeline num: " << pipeline_num_;
 
   SetDataset(dataset);
+  ParseDumpConfig(trainer_desc);
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -103,8 +104,15 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
           this_worker->SetDataFeed(readers[reader_index++]);
           this_worker->SetReaderPlace(place);
         }
+        if (i == section_num_ - 1) {
+          this_worker->SetNeedDumpField(need_dump_field_);
+          this_worker->SetNeedDumpParam(need_dump_param_);
+          this_worker->SetDumpFieldVector(dump_fields_);
+          this_worker->SetDumpParamVector(dump_param_);
+        }
         this_worker->SetPlace(place);
         this_worker->Initialize(trainer_desc);
+        this_worker->InitRandomDumpConfig(trainer_desc);
       }
     }
   }
@@ -117,6 +125,33 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
   // set debug here
   SetDebug(trainer_desc.debug());
+}
+
+void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+  if (need_dump_field_) {
+    InitDumpEnv();
+  }
+  VLOG(3) << "init other env done.";
+}
+
+std::string PipelineTrainer::GetDumpPath(int tid) {
+  return string::format_string("%s/part-%05d", dump_fields_path_.c_str(), tid);
+}
+
+void PipelineTrainer::InitDumpEnv() {
+  queue_ = paddle::framework::MakeChannel<std::string>();
+  // Only set dump channel on the last section
+  for (int j = 0; j < pipeline_num_; ++j) {
+    for (size_t k = 0; k < workers_[section_num_ - 1][j].size(); ++k) {
+      workers_[section_num_ - 1][j][k]->SetChannelWriter(queue_.get());
+    }
+  }
+  // TODO(hutuxian): should make it as a config
+  dump_thread_num_ = 1;
+  for (int i = 0; i < dump_thread_num_; i++) {
+    dump_thread_.push_back(
+        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+  }
 }
 
 void PipelineTrainer::InitFirstScopeQueue(ScopeQueue* scope_queue,
@@ -168,6 +203,11 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   SectionWorker::cpu_id_.store(pipeline_config_.start_cpu_core_id());
   scope_queues_.resize(section_num_);
   pipeline_scopes_.resize(pipeline_num_);
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      persistable_vars_.push_back(var->Name());
+    }
+  }
 
   VLOG(3) << "Init ScopeQueues and create all scopes";
   for (int i = 0; i < section_num_; ++i) {
@@ -266,7 +306,10 @@ void PipelineTrainer::Finalize() {
   for (auto& th : section_threads_) {
     th.join();
   }
-  for (const auto& var : *param_need_sync_) {
+  if (need_dump_field_) {
+    FinalizeDumpEnv();
+  }
+  for (const auto& var : persistable_vars_) {
     auto* root_tensor = root_scope_->Var(var)->GetMutable<LoDTensor>();
     // TODO(hutuxian): Add a final all-reduce?
     const auto& thread_tensor =

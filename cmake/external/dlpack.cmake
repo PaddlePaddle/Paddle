@@ -15,6 +15,7 @@
 include(ExternalProject)
 
 set(DLPACK_PREFIX_DIR ${THIRD_PARTY_PATH}/dlpack)
+set(DLPACK_SOURCE_DIR ${THIRD_PARTY_PATH}/dlpack/src/extern_dlpack)
 
 set(DLPACK_REPOSITORY https://github.com/dmlc/dlpack.git)
 set(DLPACK_TAG        v0.2)
@@ -22,9 +23,9 @@ set(DLPACK_TAG        v0.2)
 cache_third_party(extern_dlpack
     REPOSITORY    ${DLPACK_REPOSITORY}
     TAG           ${DLPACK_TAG}
-    DIR           ${DLPACK_PREFIX_DIR})
+    DIR           DLPACK_SOURCE_DIR)
 
-set(DLPACK_INCLUDE_DIR ${DLPACK_SOURCE_DIR}/include)
+set(DLPACK_INCLUDE_DIR  ${DLPACK_SOURCE_DIR}/include)
 include_directories(${DLPACK_INCLUDE_DIR})
 
 ExternalProject_Add(

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from op_test import OpTest
@@ -184,6 +185,27 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         # do not support GPU kernel currently
         for place in places:
             self.check_with_place(place)
+
+
+class TestSGDOpWithLargeInput(unittest.TestCase):
+    def runTest(self):
+        data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
+        label = fluid.layers.fill_constant(
+            shape=[1, 150], value=0.5, dtype='float32')
+        emb = fluid.embedding(input=data, size=(10000000, 150), dtype='float32')
+        out = fluid.layers.l2_normalize(x=emb, axis=-1)
+
+        cost = fluid.layers.square_error_cost(input=out, label=label)
+        avg_cost = fluid.layers.mean(cost)
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer.minimize(avg_cost)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        compiled_prog = fluid.compiler.CompiledProgram(
+            fluid.default_main_program())
+        result = exe.run(compiled_prog, fetch_list=[avg_cost])
 
 
 if __name__ == "__main__":

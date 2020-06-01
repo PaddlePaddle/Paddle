@@ -60,10 +60,10 @@ struct ExtractAttribute<bool> {
 
   bool* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET_CONST(int, attr);
       attr = static_cast<bool>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      float val = boost::get<float>(attr);
+      float val = BOOST_GET_CONST(float, attr);
       attr = static_cast<bool>(val);
     }
     bool* attr_value = nullptr;
@@ -86,10 +86,10 @@ struct ExtractAttribute<int64_t> {
 
   int64_t* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET_CONST(int, attr);
       attr = static_cast<int64_t>(val);
     } else if (attr.type() == typeid(float)) {  // NOLINT
-      int val = boost::get<float>(attr);
+      int val = BOOST_GET_CONST(float, attr);
       attr = static_cast<int64_t>(val);
     }
     int64_t* attr_value = nullptr;
@@ -112,11 +112,11 @@ struct ExtractAttribute<std::vector<int64_t>> {
 
   std::vector<int64_t>* operator()(Attribute& attr) const {
     if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
-      std::vector<int> val = boost::get<std::vector<int>>(attr);
+      std::vector<int> val = BOOST_GET_CONST(std::vector<int>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
-      std::vector<float> val = boost::get<std::vector<float>>(attr);
+      std::vector<float> val = BOOST_GET_CONST(std::vector<float>, attr);
       std::vector<int64_t> vec(val.begin(), val.end());
       attr = vec;
     }
@@ -140,10 +140,10 @@ struct ExtractAttribute<float> {
 
   float* operator()(Attribute& attr) const {
     if (attr.type() == typeid(int)) {  // NOLINT
-      int val = boost::get<int>(attr);
+      int val = BOOST_GET_CONST(int, attr);
       attr = static_cast<float>(val);
     } else if (attr.type() == typeid(int64_t)) {  // NOLINT
-      int64_t val = boost::get<int64_t>(attr);
+      int64_t val = BOOST_GET_CONST(int64_t, attr);
       attr = static_cast<float>(val);
     }
     float* attr_value = nullptr;
@@ -339,9 +339,11 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap* attr_map) const {
-    for (const auto& checker : attr_checkers_) {
-      checker(attr_map, false);
+  void Check(AttributeMap* attr_map, bool explicit_only = false) const {
+    auto checker_num = attr_checkers_.size();
+    if (explicit_only) checker_num = explicit_checker_num_;
+    for (size_t i = 0; i < checker_num; ++i) {
+      attr_checkers_[i](attr_map, false);
     }
   }
 
@@ -353,8 +355,21 @@ class OpAttrChecker {
     return default_values_map;
   }
 
+  void RecordExplicitCheckerNum() {
+    explicit_checker_num_ = attr_checkers_.size();
+  }
+
  private:
   std::vector<AttrChecker> attr_checkers_;
+
+  // in order to improve the efficiency of dynamic graph mode,
+  // we divede the attribute into explicit type and implicit type.
+  // for explicit attribute, we mean the attribute added in the customized
+  // op makers, usually it's defined in the overloaded Make method.
+  // for implicit attribute, we mean the attribute added outside of the Make
+  // method like "op_role", "op_role_var", and they are useless in dynamic graph
+  // mode
+  size_t explicit_checker_num_;
 };
 
 }  // namespace framework

@@ -38,6 +38,10 @@ class FleetCollectiveTest(unittest.TestCase):
         import paddle.fluid.incubate.fleet.base.role_maker as role_maker
         from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 
+        if not fluid.core.is_compiled_with_cuda():
+            # Operator "gen_nccl_id" has not been registered
+            return
+
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
         loss = fluid.layers.mean(hidden)

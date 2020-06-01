@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
@@ -166,7 +167,7 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
     auto& lod = input.lod()[lod_level - 1];
     const size_t item_dim = output->numel() / output->dims()[0];
     dim3 threads(1024, 1);
-    dim3 grid(lod.size(), 1);
+    dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
     if (pooltype == "MAX") {
       sequence_pool_kernel<
           T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
@@ -330,7 +331,7 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
     auto& lod = in_grad->lod()[lod_level - 1];
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
     dim3 threads(1024, 1);
-    dim3 grid(lod.size(), 1);
+    dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
     if (pooltype == "MAX") {
       sequence_pool_grad_kernel<
           T, MaxPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(

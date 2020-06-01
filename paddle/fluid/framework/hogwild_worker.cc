@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
@@ -29,6 +30,11 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
   use_cvm_ = desc.use_cvm();
+  thread_barrier_ = desc.thread_barrier();
+
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
@@ -141,6 +147,14 @@ void HogwildWorker::TrainFilesWithProfiler() {
       op_total_time[i] += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
     }
+
+    if (need_dump_field_) {
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
+    }
+
     total_inst += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
@@ -158,6 +172,17 @@ void HogwildWorker::TrainFilesWithProfiler() {
     thread_scope_->DropKids();
     timeline.Start();
   }
+
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
+  }
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (thread_barrier_) {
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::TrainFiles() {
@@ -183,6 +208,12 @@ void HogwildWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (thread_barrier_) {
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::PrintFetchVars() {

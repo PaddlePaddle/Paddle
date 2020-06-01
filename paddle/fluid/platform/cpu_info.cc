@@ -139,6 +139,33 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   if (cpu_isa == isa_any) {
     return true;
   } else {
+#ifndef WITH_NV_JETSON
+    int reg[4];
+    cpuid(reg, 0);
+    int nIds = reg[0];
+    if (nIds >= 0x00000001) {
+      // EAX = 1
+      cpuid(reg, 0x00000001);
+      // AVX: ECX Bit 28
+      if (cpu_isa == avx) {
+        int avx_mask = (1 << 28);
+        return (reg[2] & avx_mask) != 0;
+      }
+    }
+    if (nIds >= 0x00000007) {
+      // EAX = 7
+      cpuid(reg, 0x00000007);
+      if (cpu_isa == avx2) {
+        // AVX2: EBX Bit 5
+        int avx2_mask = (1 << 5);
+        return (reg[1] & avx2_mask) != 0;
+      } else if (cpu_isa == avx512f) {
+        // AVX512F: EBX Bit 16
+        int avx512f_mask = (1 << 16);
+        return (reg[1] & avx512f_mask) != 0;
+      }
+    }
+#endif
     return false;
   }
 }

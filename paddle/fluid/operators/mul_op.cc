@@ -32,15 +32,9 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of MulOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of MulOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of MulOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Mul");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Mul");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -80,10 +74,9 @@ class MulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
         platform::errors::InvalidArgument(
-            "After flatten the input tensor X and Y to 2-D dimensions "
-            "matrix X1 and Y1, the matrix X1's width must be equal with matrix "
-            "Y1's height. But received X's shape = [%s], X1's shape = [%s], "
-            "X1's "
+            "After flatten the input tensor X and Y to 2-D dimensions matrix "
+            "X1 and Y1, the matrix X1's width must be equal with matrix Y1's "
+            "height. But received X's shape = [%s], X1's shape = [%s], X1's "
             "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = "
             "%s.",
             x_dims, x_mat_dims, x_mat_dims[1], y_dims, y_mat_dims,
@@ -207,9 +200,10 @@ or not. But the output only shares the LoD information with input $X$.
 
 class MulOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Out"}};
+    return m;
   }
 };
 
@@ -218,10 +212,10 @@ class MulGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "mul");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "mul");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "mul");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
@@ -243,8 +237,7 @@ class MulOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("mul_grad");
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
@@ -252,7 +245,6 @@ class MulOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
 
@@ -261,9 +253,9 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "mul");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "mul");
+    OP_INOUT_CHECK(ctx->HasInput("DOut"), "Input", "DOut", "mul");
 
     if (ctx->HasOutput("DDOut") &&
         (ctx->HasInput("DDX") || (ctx->HasInput("DDY")))) {
@@ -284,8 +276,7 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("mul_grad_grad");
 
     retv->SetInput("X", this->Input("X"));
@@ -300,11 +291,12 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     if (!ddx.empty() || !ddw.empty()) {
       retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     }
-    retv->SetOutput("DX", ddw.empty() ? this->Empty() : this->InputGrad("X"));
-    retv->SetOutput("DY", ddx.empty() ? this->Empty() : this->InputGrad("Y"));
+    retv->SetOutput(
+        "DX", ddw.empty() ? this->EmptyInputGrad() : this->InputGrad("X"));
+    retv->SetOutput(
+        "DY", ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
 
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
 

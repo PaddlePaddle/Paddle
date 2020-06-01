@@ -31,31 +31,33 @@ class TransposeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Transpose");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Transpose");
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
     PADDLE_ENFORCE_EQ(x_rank, axis_size,
-                      "ShapeError: The input tensor's dimension "
-                      "should be equal to the axis's size. "
-                      "But received input tensor's dimension is %d, "
-                      "axis's size is %d",
-                      x_rank, axis_size);
+                      platform::errors::InvalidArgument(
+                          "The input tensor's dimension "
+                          "should be equal to the axis's size. "
+                          "But received input tensor's dimension is %d, "
+                          "axis's size is %d",
+                          x_rank, axis_size));
 
     std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
-      PADDLE_ENFORCE(
-          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-          "ValueError: Each element of Attribute axis should "
-          "be a unique value range from 0 to (dims - 1), "
-          "where the dims is the axis's size, "
-          "unique value means this axis value can appear only once. "
-          "But received axis[%d] is %d, axis_size is %d, "
-          "count[axis[%d]] is %d",
-          i, axis[i], axis_size, i, count[axis[i]]);
+      PADDLE_ENFORCE_EQ(
+          axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1, true,
+          platform::errors::InvalidArgument(
+              "Each element of Attribute axis should "
+              "be a unique value range from 0 to (dims - 1), "
+              "where the dims is the axis's size, "
+              "unique value means this axis value can appear only once. "
+              "But received axis[%d] is %d, axis_size is %d, "
+              "count[axis[%d]] is %d",
+              i, axis[i], axis_size, i, count[axis[i]]));
     }
 
     framework::DDim out_dims(x_dims);
@@ -71,24 +73,16 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
-      using framework::proto::VarType;
-      auto input_data_type = ctx.Input<Tensor>("X")->type();
-      customized_type_value = (input_data_type == VarType::INT8 ||
-                               input_data_type == VarType::UINT8)
-                                  ? kTransposeMKLDNNINT8
-                                  : kTransposeMKLDNNFP32;
     }
 #endif
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout_, library_, customized_type_value);
+        layout_, library_);
   }
 };
 
@@ -157,9 +151,9 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "TransposeOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "TransposeOpGrad");
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -201,8 +195,7 @@ class Transpose2Op : public TransposeOp {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     TransposeOp::InferShape(ctx);
-    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
-                   "Output(XShape) should not be null");
+    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Transpose2");
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
     x_shape_dim[0] = 0;
@@ -253,14 +246,12 @@ class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("transpose2_grad");
     grad_op->SetInput("XShape", this->Output("XShape"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -269,9 +260,10 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("XShape"), "Input(XShape) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("XShape"), "Input", "XShape",
+                   "Transpose2OpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "Transpose2OpGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       auto xshape_dim = ctx->GetInputDim("XShape");
       auto x_shape_dim =

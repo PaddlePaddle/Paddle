@@ -55,9 +55,9 @@ void ShuffleChannelDetectPass::ApplyImpl(ir::Graph* graph) const {
     std::string output_name = reshape2_out->Name();
 
     auto reshape1_shape =
-        boost::get<std::vector<int>>(reshape1_desc->GetAttr("shape"));
+        BOOST_GET_CONST(std::vector<int>, reshape1_desc->GetAttr("shape"));
     auto reshape2_shape =
-        boost::get<std::vector<int>>(reshape2_desc->GetAttr("shape"));
+        BOOST_GET_CONST(std::vector<int>, reshape2_desc->GetAttr("shape"));
 
     int i_c = reshape1_shape[2];
     int o_c = reshape2_shape[1];

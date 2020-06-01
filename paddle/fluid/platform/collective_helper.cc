@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 
 #include <memory>
@@ -35,10 +35,11 @@ class NCCLCommImpl : public NCCLComm {
   int rank() const override { return rank_; }
 
   int device_id() const override {
-    return boost::get<CUDAPlace>(dev_ctx_->GetPlace()).device;
+    return BOOST_GET_CONST(CUDAPlace, dev_ctx_->GetPlace()).device;
   }
 
-  ncclComm_t comm() const override { return dev_ctx_->nccl_comm(); }
+  void set_comm(ncclComm_t comm) { comm_ = comm; }
+  ncclComm_t comm() const override { return comm_; }
 
   cudaStream_t stream() const override { return dev_ctx_->stream(); }
 
@@ -50,6 +51,7 @@ class NCCLCommImpl : public NCCLComm {
   int ring_id_;
   int nranks_;
   int rank_;
+  ncclComm_t comm_;
   std::unique_ptr<CUDADeviceContext> dev_ctx_;
 };
 
@@ -66,33 +68,16 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::ncclCommInitRank(&comm, nranks, *nccl_id, rank));
 
-  std::unique_ptr<CUDADeviceContext> dev_ctx(
-      new CUDADeviceContext(CUDAPlace(dev_id)));
-  dev_ctx->set_nccl_comm(comm);
-
-  NCCLCommImpl* c = new NCCLCommImpl;
-  c->set_ring_id(ring_id);
-  c->set_nranks(nranks);
-  c->set_rank(rank);
-  c->set_dev_ctx(std::move(dev_ctx));
-
-  comm_map_mutex_.lock();
-  if (comm_map_.count(ring_id) == 0) {
-    comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<NCCLComm>>());
-  }
-  auto& dev2comm = comm_map_[ring_id];
-
-  dev2comm.emplace(dev_id, std::unique_ptr<NCCLComm>(c));
-  comm_map_mutex_.unlock();
+  auto* comm_wrapper = AssignNCCLComm(comm, nranks, rank, dev_id, ring_id);
 
   VLOG(1) << "nccl communicator of rank " << rank << " in ring " << ring_id
-          << " has been created";
+          << " has been created on device " << dev_id;
 
   std::call_once(once_flag_, []() {
     std::atexit([]() { NCCLCommContext::Instance().ReleaseNCCLComms(); });
   });
 
-  return comm_map_[ring_id][dev_id].get();
+  return comm_wrapper;
 }
 
 void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
@@ -105,21 +90,10 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
       comms, dev_ids.size(), dev_ids.data()));
 
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0);
-  comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<NCCLComm>>());
-
-  auto& dev2comm = comm_map_[ring_id];
   for (size_t i = 0; i < dev_ids.size(); ++i) {
-    std::unique_ptr<CUDADeviceContext> dev_ctx(
-        new CUDADeviceContext(CUDAPlace(dev_ids[i])));
-    dev_ctx->set_nccl_comm(comms[i]);
-
-    NCCLCommImpl* c = new NCCLCommImpl;
-    c->set_ring_id(ring_id);
-    c->set_nranks(dev_ids.size());
-    c->set_rank(i);
-    c->set_dev_ctx(std::move(dev_ctx));
-
-    dev2comm.emplace(dev_ids[i], std::unique_ptr<NCCLComm>(c));
+    AssignNCCLComm(comms[i], dev_ids.size(), i, dev_ids[i], ring_id);
+    VLOG(1) << "nccl communicator of rank " << i << " in ring " << ring_id
+            << " has been created on device " << dev_ids[i];
   }
 
   std::call_once(once_flag_, []() {
@@ -127,10 +101,38 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
   });
 }
 
+NCCLComm* NCCLCommContext::AssignNCCLComm(ncclComm_t comm, int nranks, int rank,
+                                          int dev_id, int ring_id) {
+  std::unique_ptr<CUDADeviceContext> dev_ctx(
+      new CUDADeviceContext(CUDAPlace(dev_id)));
+
+  NCCLCommImpl* c = new NCCLCommImpl;
+  c->set_ring_id(ring_id);
+  c->set_nranks(nranks);
+  c->set_rank(rank);
+  c->set_comm(comm);
+  c->set_dev_ctx(std::move(dev_ctx));
+
+  comm_map_mutex_.lock();
+  if (comm_map_.count(ring_id) == 0) {
+    comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<NCCLComm>>());
+  }
+  auto& dev2comm = comm_map_[ring_id];
+
+  dev2comm.emplace(dev_id, std::unique_ptr<NCCLComm>(c));
+  comm_map_mutex_.unlock();
+
+  if (ring_id == 0) {
+    auto* dev_ctx = static_cast<platform::CUDADeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(
+            platform::CUDAPlace(dev_id)));
+    dev_ctx->set_nccl_comm(comm);
+  }
+
+  return comm_map_[ring_id][dev_id].get();
+}
+
 void NCCLCommContext::ReleaseNCCLComms() {
-  // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
-  // destroy nccl_comm_t explicitly. Please refer to
-  // platform::CUDADeviceContext::~CUDADeviceContext()
   for (auto& p : comm_map_) {
     for (auto& q : p.second) {
       q.second.reset();

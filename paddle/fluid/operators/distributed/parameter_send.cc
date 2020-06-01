@@ -115,6 +115,11 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
         *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
         row_offset += outs_dims[i][0];
       }
+    } else {
+      auto &send_tensor = send_var->Get<framework::LoDTensor>();
+      framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[0])
+                                   ->GetMutable<framework::LoDTensor>();
+      out->ShareDataWith(send_tensor);
     }
     if (rpc_ctx.use_send_handler) {
       for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {

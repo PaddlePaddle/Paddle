@@ -207,11 +207,6 @@ if(LINUX)
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
 
-if(UNIX AND NOT APPLE)
-  # except apple from nix*Os family
-  set(LINUX TRUE)
-endif(UNIX AND NOT APPLE)
-
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
@@ -222,8 +217,8 @@ foreach(flag ${GPU_COMMON_FLAGS})
 endforeach()
 
 if(WIN32 AND MSVC_STATIC_CRT)
-# windows build turn off warnings.
-safe_set_static_flag()
+    # windows build turn off warnings.
+    safe_set_static_flag()
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO

@@ -14,7 +14,7 @@
 """Defination of trainers."""
 
 import sys
-from os import path
+import os
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 
@@ -32,9 +32,12 @@ class TrainerDesc(object):
         '''
         # Workaround for relative import in protobuf under python3
         # TODO: should be fixed
-        cur_path = path.dirname(__file__)
-        sys.path.append(cur_path)
-        sys.path.append(cur_path + "/proto")
+        cur_path = os.path.dirname(__file__)
+        if cur_path not in sys.path:
+            sys.path.append(cur_path)
+        if cur_path + "/proto" not in sys.path:
+            sys.path.append(cur_path + "/proto")
+
         from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
@@ -104,13 +107,29 @@ class TrainerDesc(object):
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 
+    def _set_enable_random_dump(self, enable_random_dump):
+        self.proto_desc.enable_random_dump = enable_random_dump
+
+    def _set_dump_interval(self, dump_interval):
+        self.proto_desc.dump_interval = dump_interval
+
+    def _set_random_with_lineid(self, random_with_lineid):
+        self.proto_desc.random_with_lineid = random_with_lineid
+
     def _set_dump_param(self, dump_param):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
 
+    def _set_thread_barrier(self, thread_barrier):
+        self.proto_desc.thread_barrier = thread_barrier
+
     def _set_check_nan_var_names(self, check_nan_var_names):
         for var in check_nan_var_names:
             self.proto_desc.check_nan_var_names.append(var)
+
+    def _set_loss_names(self, loss_names):
+        for loss in loss_names:
+            self.proto_desc.loss_names.append(loss)
 
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
@@ -223,6 +242,7 @@ class MultiTrainer(TrainerDesc):
         super(MultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
         self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
         self._device_worker._gen_worker_desc(self.proto_desc)
 
 

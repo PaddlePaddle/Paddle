@@ -138,25 +138,23 @@ IF (WIN32)
 ENDIF(WIN32)
 
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
-
     find_path(PROTOBUF_INCLUDE_DIR google/protobuf/message.h PATHS ${PROTOBUF_ROOT}/include NO_DEFAULT_PATH)
     find_library(PROTOBUF_LIBRARY protobuf libprotobuf.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_library(PROTOBUF_LITE_LIBRARY protobuf-lite libprotobuf-lite.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_library(PROTOBUF_PROTOC_LIBRARY protoc libprotoc.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_program(PROTOBUF_PROTOC_EXECUTABLE protoc PATHS ${PROTOBUF_ROOT}/bin NO_DEFAULT_PATH)
     if (PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY AND PROTOBUF_LITE_LIBRARY AND PROTOBUF_PROTOC_LIBRARY AND PROTOBUF_PROTOC_EXECUTABLE)
-        message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
         SET(PROTOBUF_FOUND true)
         SET_PROTOBUF_VERSION()
         PROMPT_PROTOBUF_LIB()
-    else()
-        message(WARNING "Cannot find protobuf library in ${PROTOBUF_ROOT}")
+        message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
     endif()
 endif()
 
 FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     STRING(REPLACE "extern_" "" TARGET_DIR_NAME "${TARGET_NAME}")
     SET(PROTOBUF_PREFIX_DIR  ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
+    SET(PROTOBUF_SOURCE_DIR  ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME}/src/${TARGET_NAME})
     SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_DIR_NAME})
 
     SET(${TARGET_NAME}_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
@@ -196,7 +194,8 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     IF(WIN32)
         SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} 
             "-DCMAKE_GENERATOR=${CMAKE_GENERATOR}"
-            "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}")
+            "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
+            "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
     SET(PROTOBUF_REPOSITORY  https://github.com/protocolbuffers/protobuf.git)
@@ -205,7 +204,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     cache_third_party(${TARGET_NAME}
         REPOSITORY    ${PROTOBUF_REPOSITORY}
         TAG           ${PROTOBUF_TAG}
-        DIR           ${PROTOBUF_PREFIX_DIR})
+        DIR           PROTOBUF_SOURCE_DIR)
 
     ExternalProject_Add(
         ${TARGET_NAME}
@@ -226,7 +225,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
                         -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
                         -DCMAKE_INSTALL_LIBDIR=lib
                         -DBUILD_SHARED_LIBS=OFF
-                        -Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}
         CMAKE_CACHE_ARGS
                         -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

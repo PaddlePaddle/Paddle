@@ -17,6 +17,7 @@
 #ifdef PADDLE_WITH_DISTRIBUTE
 
 #ifdef PADDLE_WITH_GRPC
+#include "paddle/fluid/operators/distributed/communicator.h"
 
 #include "paddle/fluid/operators/distributed/grpc/grpc_client.h"
 #include "paddle/fluid/operators/distributed/grpc/grpc_server.h"

@@ -15,14 +15,14 @@
 from __future__ import print_function
 
 import unittest
-from decorator_helper import prog_scope
 import paddle.fluid as fluid
 import numpy as np
+import six
 
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
     def setUp(self):
-        self.shape = [10, 10]
+        self.shape = [10, 1024]
         self.dtype = np.float32
 
     def test_add(self):
@@ -207,6 +207,71 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             a = fluid.dygraph.to_variable(a_np)
             res = -a
             self.assertTrue(np.array_equal(res.numpy(), -a_np))
+
+    def test_float_int_long(self):
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(np.array([100.1]))
+            self.assertTrue(float(a) == 100.1)
+            self.assertTrue(int(a) == 100)
+            if six.PY2:
+                self.assertTrue(long(a) == 100)
+            else:
+                self.assertTrue(int(a) == 100)
+
+    def test_len(self):
+        a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            self.assertTrue(len(a) == 10)
+
+    def test_index(self):
+        with fluid.dygraph.guard():
+            var1 = fluid.dygraph.to_variable(np.array([2]))
+            i_tmp = 0
+            for i in range(var1):
+                self.assertTrue(i == i_tmp)
+                i_tmp = i_tmp + 1
+            list1 = [1, 2, 3, 4, 5]
+            self.assertTrue(list1[var1] == 3)
+            str1 = "just test"
+            self.assertTrue(str1[var1] == 's')
+
+    def test_np_left_mul(self):
+        with fluid.dygraph.guard():
+            t = np.sqrt(2.0 * np.pi)
+            x = fluid.layers.ones((2, 2), dtype="float32")
+            y = t * x
+
+            self.assertTrue(
+                np.allclose(
+                    y.numpy(),
+                    t * np.ones(
+                        (2, 2), dtype="float32"),
+                    rtol=1e-05,
+                    atol=0.0))
+
+    def test_add_different_dtype(self):
+        a_np = np.random.random(self.shape).astype(np.float32)
+        b_np = np.random.random(self.shape).astype(np.float16)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = fluid.dygraph.to_variable(b_np)
+            res = a + b
+            self.assertTrue(np.array_equal(res.numpy(), a_np + b_np))
+
+    def test_astype(self):
+        a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = a.astype(np.float16)
+            res2 = a.astype('float16')
+            res3 = a.astype(fluid.core.VarDesc.VarType.FP16)
+
+            self.assertEqual(res1.dtype, res2.dtype)
+            self.assertEqual(res1.dtype, res3.dtype)
+
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+            self.assertTrue(np.array_equal(res1.numpy(), res3.numpy()))
 
 
 if __name__ == '__main__':

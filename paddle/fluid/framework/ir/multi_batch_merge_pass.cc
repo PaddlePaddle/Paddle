@@ -86,8 +86,9 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
   for (auto node : nodes) {
     if (!node->IsOp()) continue;
     PADDLE_ENFORCE(node->Op(), "must find opdesc");
-    int op_role = boost::get<int>(node->Op()->GetAttr(
-        framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+    int op_role = BOOST_GET_CONST(
+        int, node->Op()->GetAttr(
+                 framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
     if ((op_role == static_cast<int>(framework::OpRole::kForward)) ||
         (op_role & static_cast<int>(framework::OpRole::kBackward)) ||
         (op_role & static_cast<int>(framework::OpRole::kLoss))) {
@@ -98,7 +99,8 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
       optimize_ops.push_back(node);
       auto op_role_var = node->Op()->GetNullableAttr(
           OpProtoAndCheckerMaker::OpRoleVarAttrName());
-      auto op_role_vars = boost::get<std::vector<std::string>>(op_role_var);
+      auto op_role_vars =
+          BOOST_GET_CONST(std::vector<std::string>, op_role_var);
       for (size_t i = 0; i < op_role_vars.size(); i += 2) {
         grad_names.insert(op_role_vars[i + 1]);
         gradname2paramname[op_role_vars[i + 1]] = op_role_vars[i];
@@ -179,7 +181,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
         ir::Node* var = nullptr;
         auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names,
                                              bn_vars_need_rename);
-        // should be initialized by startup, how to initilize tensor in the
+        // should be initialized by startup, how to initialize tensor in the
         // scope?
         if (node->Name() == "batch_norm" &&
             bn_vars_need_rename.find(in_node->Name()) !=

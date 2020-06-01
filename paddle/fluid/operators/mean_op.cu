@@ -59,17 +59,14 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
 
     auto err = cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, trans_x,
                                       out_data, size_prob, stream);
-    PADDLE_ENFORCE_CUDA_SUCCESS(err,
-                                "MeanOP failed to get reduce workspace size",
-                                cudaGetErrorString(err));
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
     framework::Tensor tmp;
     auto* temp_storage = tmp.mutable_data<uint8_t>(
         framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
         context.GetPlace());
     err = cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, trans_x,
                                  out_data, size_prob, stream);
-    PADDLE_ENFORCE_CUDA_SUCCESS(err, "MeanOP failed to run reduce computation",
-                                cudaGetErrorString(err));
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
   }
 };
 
@@ -78,11 +75,11 @@ class MeanCUDAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(
-        OG->numel(), 1,
-        platform::errors::InvalidArgument(
-            "Mean Gradient Input Tensor len should be 1. But received %d",
-            OG->numel()));
+    PADDLE_ENFORCE_EQ(OG->numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "Mean Gradient Input Tensor len should be 1. But "
+                          "received Out@Grad's elements num is %d.",
+                          OG->numel()));
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 

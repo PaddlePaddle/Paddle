@@ -58,16 +58,15 @@ output operators.
 class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must has input X");
+    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must have input X");
   }
 };
 
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    for (auto &o : ctx->Output("Out")) {
-      ctx->SetType(o, framework::proto::VarType::LOD_RANK_TABLE);
-    }
+    ctx->SetOutputType("Out", framework::proto::VarType::LOD_RANK_TABLE,
+                       framework::ALL_ELEMENTS);
   }
 };
 

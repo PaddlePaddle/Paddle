@@ -75,8 +75,7 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_sub_grad_grad");
     op->SetInput("Y", this->Input("Y"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
@@ -86,7 +85,6 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return op;
   }
 };
 
@@ -99,14 +97,14 @@ REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    elementwise_sub_grad, ops::ElementwiseOpGrad, ops::ElementwiseGradOpInplace,
-    ops::ElementwiseGradNoBufVarsInference,
+    elementwise_sub_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
-                  ops::ElementwiseDoubleGradOpInplace,
-                  ops::ElementwiseDoubleGradNoBufVarsInference);
+                  ops::ElementwiseDoubleGradOpInplaceInferer,
+                  ops::ElementwiseDoubleGradNoBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_sub,

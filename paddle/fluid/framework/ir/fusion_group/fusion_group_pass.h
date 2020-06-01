@@ -16,19 +16,20 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_set>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
-#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class FusionGroupPass : public Pass {
+class FusionGroupPass : public FusePassBase {
  protected:
   void ApplyImpl(Graph* graph) const override;
 
  private:
   int DetectFusionGroup(Graph* graph, int type = 0) const;
+  bool GenerateCode(fusion_group::SubGraph* subgraph) const;
   void InsertFusionGroupOp(Graph* graph,
                            fusion_group::SubGraph* subgraph) const;
 

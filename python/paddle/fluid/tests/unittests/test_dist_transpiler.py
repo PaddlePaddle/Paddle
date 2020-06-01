@@ -62,10 +62,10 @@ class TranspilerTest(unittest.TestCase):
         self.origin_prog = main.clone()
         return main
 
-    def get_trainer(self, config=None):
+    def get_trainer(self, config=None, sync_mode=True):
         src = fluid.default_startup_program().clone()
 
-        t = self._transpiler_instance(config)
+        t = self._transpiler_instance(config, sync_mode=True)
 
         trainer_main = t.get_trainer_program(wait_port=False)
         trainer_startup = fluid.default_startup_program()
@@ -118,7 +118,7 @@ class TestBasicModel(TranspilerTest):
 
         trainer, trainer_startup = self.get_trainer()
 
-        # splited var blocks should be in startup program
+        # split var blocks should be in startup program
         self.assertTrue("fc_w.block0" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w.block1" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w" in trainer_startup.global_block().vars)
@@ -476,15 +476,18 @@ class TestL2Decay(TranspilerTest):
             size=1000,
             act=None,
             param_attr=fluid.ParamAttr(
-                name='fc_w',
-                regularizer=fluid.regularizer.L2Decay(),
-                gradient_clip=fluid.clip.GradientClipByValue(0.1)),
+                name='fc_w', regularizer=fluid.regularizer.L2Decay()),
             bias_attr=fluid.ParamAttr(name='fc_b'))
         y = fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-        sgd_optimizer.minimize(avg_cost)
+
+        def filter(param):
+            return param.name == "fc_w"
+
+        clip = fluid.clip.GradientClipByValue(0.1, need_clip=filter)
+        sgd_optimizer.minimize(avg_cost, grad_clip=clip)
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)

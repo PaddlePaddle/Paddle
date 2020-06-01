@@ -17,6 +17,27 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void AddVarToScope(Scope* param_scope, const std::string& name,
+                   const DDim& dims) {
+  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  tensor->Resize(dims);
+  tensor->mutable_data<float>(platform::CPUPlace());
+}
+
+Scope* CreateParamScope() {
+  auto param_scope = new Scope();
+  AddVarToScope(param_scope, "weights0", {768, 768});
+  AddVarToScope(param_scope, "weights1", {768, 768});
+  AddVarToScope(param_scope, "weights2", {768, 768});
+
+  AddVarToScope(param_scope, "bias_0", {768});
+  AddVarToScope(param_scope, "bias_1", {768});
+  AddVarToScope(param_scope, "bias_2", {768});
+  AddVarToScope(param_scope, "biasqk", {768});
+  AddVarToScope(param_scope, "weightsl", {768, 768});
+  return param_scope;
+}
+
 TEST(MultiHeadMatmulFusePass, basic) {
   // inputs                           operator            output
   // --------------------------------------------------------------------
@@ -87,7 +108,10 @@ TEST(MultiHeadMatmulFusePass, basic) {
   layers.mul(reshape_qkv_out, weights_l);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  auto pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass");
+  graph->Set("__param_scope__", CreateParamScope());
+
+  auto pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass_v2");
+  if (pass.get() == nullptr) LOG(INFO) << "asdfasdf";
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
@@ -96,8 +120,17 @@ TEST(MultiHeadMatmulFusePass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "multihead_matmul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 29);
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1);
+  PADDLE_ENFORCE_EQ(
+      num_nodes_before, num_nodes_after + 39,
+      platform::errors::InvalidArgument(
+          "After the multihead_matmul pass, The node num in graph "
+          "should be %d, but the result is %d",
+          num_nodes_before - 39, num_nodes_after));
+  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
+                    platform::errors::InvalidArgument(
+                        "After the multihead_matmul pass, there should be one "
+                        "multihead_matmul op, but the result is %d",
+                        num_fused_nodes_after));
 }
 
 }  // namespace ir
@@ -105,3 +138,4 @@ TEST(MultiHeadMatmulFusePass, basic) {
 }  // namespace paddle
 
 USE_PASS(multihead_matmul_fuse_pass);
+USE_PASS(multihead_matmul_fuse_pass_v2);

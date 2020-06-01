@@ -1,13 +1,20 @@
 include(operators)
 register_operators(EXCLUDES
+    fused_bn_activation_op
     conv_fusion_op
     fusion_transpose_flatten_concat_op
     fusion_conv_inception_op
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
+    fused_embedding_eltwise_layernorm_op
     fusion_group_op)
 
 if (WITH_GPU)
+    # fused_bn_activation_op needs cudnn 7.4.1 above
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7401)
+        op_library(fused_bn_activation_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_batch_norm_act);\n")
+    endif()
     # conv_fusion_op needs cudnn 7 above
     if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
         op_library(conv_fusion_op)
@@ -27,6 +34,8 @@ if (WITH_GPU)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(multihead_matmul);\n")
+    op_library(fused_embedding_eltwise_layernorm_op)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_embedding_eltwise_layernorm);\n")
     # fusion_group
     if(NOT APPLE AND NOT WIN32)
         op_library(fusion_group_op DEPS device_code)

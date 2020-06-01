@@ -329,7 +329,7 @@ class TestReshapeOpError(unittest.TestCase):
 
             self.assertRaises(AssertionError, test_shape_2)
 
-            # The argument shape have more than one negtive value.
+            # The argument shape have more than one negative value.
             def test_shape_3():
                 fluid.layers.reshape(x3, [-1, -2, 5])
 

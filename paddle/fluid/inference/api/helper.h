@@ -39,6 +39,24 @@ extern std::string paddle::framework::DataTypeToString(
 namespace paddle {
 namespace inference {
 
+template <typename T>
+constexpr PaddleDType PaddleTensorGetDType();
+
+template <>
+constexpr PaddleDType PaddleTensorGetDType<int32_t>() {
+  return PaddleDType::INT32;
+}
+
+template <>
+constexpr PaddleDType PaddleTensorGetDType<int64_t>() {
+  return PaddleDType::INT64;
+}
+
+template <>
+constexpr PaddleDType PaddleTensorGetDType<float>() {
+  return PaddleDType::FLOAT32;
+}
+
 using paddle::framework::DataTypeToString;
 
 // Timer for timer
@@ -163,10 +181,28 @@ int VecReduceToInt(const std::vector<T> &v) {
 }
 
 template <typename T>
+void CheckAssignedData(const std::vector<std::vector<T>> &data,
+                       const int num_elems) {
+  int num = 0;
+  for (auto it = data.begin(); it != data.end(); ++it) {
+    num += (*it).size();
+  }
+  PADDLE_ENFORCE_EQ(
+      num, num_elems,
+      platform::errors::OutOfRange(
+          "The number of elements out of bounds. "
+          "Expected number of elements = %d. But received %d. Suggested Fix: "
+          "If the tensor is expected to assign %d elements, check the number "
+          "of elements of your 'infer_data'.",
+          num_elems, num, num_elems));
+}
+
+template <typename T>
 static void TensorAssignData(PaddleTensor *tensor,
                              const std::vector<std::vector<T>> &data) {
   // Assign buffer
   int num_elems = VecReduceToInt(tensor->shape);
+  CheckAssignedData(data, num_elems);
   tensor->data.Resize(sizeof(T) * num_elems);
   int c = 0;
   for (const auto &f : data) {

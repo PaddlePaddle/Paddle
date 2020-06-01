@@ -54,10 +54,6 @@ class MKLDNNActivationGradKernel
     PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
                       "Wrong format set for Input OutGrad tensor");
 
-    PADDLE_ENFORCE_EQ(
-        ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
-
     Functor functor;
     functor(ctx);
   }
@@ -66,15 +62,21 @@ class MKLDNNActivationGradKernel
 template <typename T>
 void eltwise_forward(const framework::ExecutionContext &ctx,
                      mkldnn::algorithm algorithm) {
-  PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                 "It must use CPUPlace.");
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Operator DNNL eletwise_forward must use CPUPlace"));
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
   const auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Output<Tensor>("Out");
 
-  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+
+  // paddle uses beta but mkldnn uses alpha for swish
+  if (algorithm == mkldnn::algorithm::eltwise_swish) {
+    std::swap(alpha, beta);
+  }
 
   PADDLE_ENFORCE(
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
@@ -84,14 +86,13 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
-  bool is_test = ctx.Attr<bool>("is_test");
-
   platform::ActivationMKLDNNHandler<T> handler(
-      src_tz, algorithm, alpha, beta, src_format, is_test, dev_ctx,
-      ctx.GetPlace(), ctx.InputName("X"));
+      src_tz, algorithm, alpha, beta, src_format, dev_ctx, ctx.GetPlace(),
+      ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p = handler.AcquireDstMemory(y);
+  auto dst_memory_p =
+      x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
   mkldnn::stream astream(dev_ctx.GetEngine());
@@ -112,8 +113,13 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+
+  // paddle uses beta but mkldnn uses alpha for swish
+  if (algorithm == mkldnn::algorithm::eltwise_swish) {
+    std::swap(alpha, beta);
+  }
 
   auto diff_dst_tz = framework::vectorize<int64_t>(diff_y->dims());
 
@@ -159,8 +165,36 @@ struct MKLDNNActivationGradFunc : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct GeluMKLDNNFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const bool approximate = ctx.Attr<bool>("approximate");
+    if (approximate) {
+      eltwise_forward<T>(ctx, mkldnn::algorithm::eltwise_gelu_tanh);
+    } else {
+      eltwise_forward<T>(ctx, mkldnn::algorithm::eltwise_gelu_erf);
+    }
+  }
+};
+
+template <typename T>
+struct GeluMKLDNNGradFunctor : public BaseActivationFunctor<T> {
+  void operator()(const framework::ExecutionContext &ctx) const {
+    const bool approximate = ctx.Attr<bool>("approximate");
+    if (approximate) {
+      eltwise_grad<T>(ctx, mkldnn::algorithm::eltwise_gelu_tanh);
+    } else {
+      eltwise_grad<T>(ctx, mkldnn::algorithm::eltwise_gelu_erf);
+    }
+  }
+};
+
+template <typename T>
 using ReluMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_relu>;
+
+template <typename T>
+using SwishMKLDNNFunctor =
+    MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_swish>;
 
 template <typename T>
 using TanhMKLDNNFunctor =
@@ -177,6 +211,10 @@ using AbsMKLDNNFunctor =
 template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_relu>;
+
+template <typename T>
+using SwishMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_swish>;
 
 template <typename T>
 using TanhMKLDNNGradFunctor =
@@ -204,6 +242,8 @@ namespace ops = paddle::operators;
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                  \
   __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);       \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor); \
+  __macro(gelu, GeluMKLDNNFunctor, GeluMKLDNNGradFunctor);       \
+  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);    \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);       \
   __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);       \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);

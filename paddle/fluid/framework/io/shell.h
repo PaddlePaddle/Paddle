@@ -65,7 +65,12 @@ inline void shell_execute(const std::string& cmd) {
   } while (err_no == -1);
 }
 
-extern std::string shell_get_command_output(const std::string& cmd);
+// timeout:ms, default -1 means forever.
+// sleep_inter:ms, default -1 means not sleep.
+extern std::string shell_get_command_output(const std::string& cmd,
+                                            int time_out = -1,
+                                            int sleep_inter = -1,
+                                            bool print_cmd = false);
 
 }  // namespace framework
 }  // namespace paddle

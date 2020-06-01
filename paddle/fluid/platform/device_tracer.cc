@@ -40,6 +40,9 @@ namespace {
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
+// stack to strore event sunch as pe and so on
+static std::deque<Event *> main_thread_annotation_stack{};
+static std::deque<std::string> main_thread_annotation_stack_name{};
 
 std::map<uint32_t, int32_t> system_thread_id_map;
 
@@ -50,7 +53,7 @@ void PrintCuptiHint() {
   static bool showed = false;
   if (showed) return;
   showed = true;
-  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
+  LOG(WARNING) << "Invalid timestamp occurred. Please try increasing the "
                   "FLAGS_multiple_of_cupti_buffer_size.";
 }
 
@@ -400,7 +403,7 @@ class DeviceTracerImpl : public DeviceTracer {
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }
-    const std::vector<int> cbids {
+    const std::vector<int> runtime_cbids {
       CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
@@ -414,9 +417,15 @@ class DeviceTracerImpl : public DeviceTracer {
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
 #endif
     };
-    for (auto cbid : cbids)
+    const std::vector<int> driver_cbids{CUPTI_DRIVER_TRACE_CBID_cuLaunch,
+                                        CUPTI_DRIVER_TRACE_CBID_cuLaunchGrid,
+                                        CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel};
+    for (auto cbid : runtime_cbids)
       CUPTI_CALL(dynload::cuptiEnableCallback(
           1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API, cbid));
+    for (auto cbid : driver_cbids)
+      CUPTI_CALL(dynload::cuptiEnableCallback(
+          1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API, cbid));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = true;
@@ -446,6 +455,11 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
+        Event *parent = e->parent();
+        while (parent) {
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent = parent->parent();
+        }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -453,6 +467,11 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
+        Event *parent = e->parent();
+        while (parent) {
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent = parent->parent();
+        }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -550,7 +569,7 @@ class DeviceTracerImpl : public DeviceTracer {
         } else if (platform::is_gpu_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPlace);
           event->set_device_id(
-              boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
+              BOOST_GET_CONST(platform::CUDAPlace, r.place).GetDeviceId());
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else {
@@ -622,9 +641,52 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-void SetCurAnnotation(Event *event) { annotation_stack.push_back(event); }
+// In order to record PE time, we add main_thread_annotation_stack
+// for all event between PE run, we treat it as PE's child Event,
+// so when event is not in same thread of PE event, we need add
+// father event(PE::run event) for this event
+void SetCurAnnotation(Event *event) {
+  std::string ret;
+  if (!annotation_stack.empty()) {
+    event->set_parent(annotation_stack.back());
+    event->set_name(annotation_stack.back()->name() + "/" + event->name());
+  }
+  if (annotation_stack.empty() && !main_thread_annotation_stack.empty() &&
+      main_thread_annotation_stack.back()->thread_id() != event->thread_id()) {
+    event->set_parent(main_thread_annotation_stack.back());
+    event->set_name(main_thread_annotation_stack.back()->name() + "/" +
+                    event->name());
+  }
+  annotation_stack.push_back(event);
 
-void ClearCurAnnotation() { annotation_stack.pop_back(); }
+  if (event->role() == EventRole::kSpecial) {
+    std::string name = event->name();
+    if (!main_thread_annotation_stack_name.empty()) {
+      name = main_thread_annotation_stack_name.back() + "/" + event->name();
+    }
+    main_thread_annotation_stack_name.push_back(name);
+    main_thread_annotation_stack.push_back(event);
+  }
+}
+
+void ClearCurAnnotation() {
+  if (!main_thread_annotation_stack.empty() &&
+      main_thread_annotation_stack.back()->name() ==
+          annotation_stack.back()->name()) {
+    std::string name = annotation_stack.back()->name();
+    std::string main_name = main_thread_annotation_stack.back()->name();
+    int main_name_len = main_name.length();
+    int name_len = name.length();
+    int prefix_len = main_name_len - name_len;
+
+    if (prefix_len >= 0 && main_name.at(prefix_len) == '/' &&
+        name == main_name.substr(prefix_len, name_len)) {
+      main_thread_annotation_stack_name.pop_back();
+      main_thread_annotation_stack.pop_back();
+    }
+  }
+  annotation_stack.pop_back();
+}
 
 Event *CurAnnotation() {
   if (annotation_stack.empty()) return nullptr;

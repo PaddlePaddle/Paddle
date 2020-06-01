@@ -9,12 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -94,11 +95,11 @@ void SyncFunctor::Synchronize() {
 }
 
 std::atomic<int> SectionWorker::cpu_id_(0);
-void SectionWorker::Initialize(const TrainerDesc& trainer_desc) {
+void SectionWorker::Initialize(const TrainerDesc& desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
-      trainer_desc.section_param().section_config(section_id_).program_desc()));
+      desc.section_param().section_config(section_id_).program_desc()));
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -146,6 +147,9 @@ void SectionWorker::TrainFiles() {
   int64_t accum_num = 0;
   int batch_size = 0;
   Scope* scope = nullptr;
+  if (device_reader_ != nullptr) {
+    device_reader_->Start();
+  }
   while (in_scope_queue_->Receive(&scope)) {
     if (device_reader_ != nullptr) {
       device_reader_->AssignFeedVar(*scope);
@@ -202,6 +206,17 @@ void SectionWorker::TrainFiles() {
     // No effect when it is a CPUDeviceContext
     dev_ctx_->Wait();
 
+#ifdef PADDLE_WITH_BOX_PS
+    auto box_ptr = BoxWrapper::GetInstance();
+    auto& metric_list = box_ptr->GetMetricList();
+    for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
+      auto* metric_msg = iter->second;
+      if (box_ptr->Phase() != metric_msg->MetricPhase()) {
+        continue;
+      }
+      metric_msg->add_data(exe_scope);
+    }
+#endif
     if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
       // FIXME: Temporarily we assume two adjacent sections are in different
       // places,
@@ -273,6 +288,9 @@ void SectionWorker::TrainFilesWithProfiler() {
     op_total_time[i] = 0.0;
   }
   platform::Timer timeline;
+  if (device_reader_ != nullptr) {
+    device_reader_->Start();
+  }
 
   bool started = false;
   while (in_scope_queue_->Receive(&scope)) {
@@ -330,9 +348,11 @@ void SectionWorker::TrainFilesWithProfiler() {
     SEC_LOG << "begin running ops";
     cal_timer.Resume();
     int op_id = 0;
+    dev_ctx_->Wait();
     for (auto& op : ops_) {
       timeline.Start();
       op->Run(*exe_scope, place_);
+      dev_ctx_->Wait();
       timeline.Pause();
       op_total_time[op_id++] += timeline.ElapsedUS();
     }
@@ -342,6 +362,23 @@ void SectionWorker::TrainFilesWithProfiler() {
     // No effect when it is a CPUDeviceContext
     dev_ctx_->Wait();
     cal_timer.Pause();
+#ifdef PADDLE_WITH_BOX_PS
+    auto box_ptr = BoxWrapper::GetInstance();
+    auto& metric_list = box_ptr->GetMetricList();
+    for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
+      auto* metric_msg = iter->second;
+      if (box_ptr->Phase() != metric_msg->MetricPhase()) {
+        continue;
+      }
+      metric_msg->add_data(exe_scope);
+    }
+#endif
+    if (need_dump_field_) {
+      DumpField(*scope, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && pipeline_id_ == 0) {
+      DumpParam(*scope, step_cnt);
+    }
 
     if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
       // FIXME: Temporarily we assume two adjacent sections are in different
@@ -378,6 +415,9 @@ void SectionWorker::TrainFilesWithProfiler() {
     ++step_cnt;
     accum_num += batch_size;
     main_timer.Pause();
+  }
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
   }
   outer_timer.Pause();
 

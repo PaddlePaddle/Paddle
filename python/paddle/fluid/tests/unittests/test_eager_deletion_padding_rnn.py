@@ -21,7 +21,6 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
-import time
 import os
 
 from paddle.fluid import ParamAttr
@@ -118,8 +117,7 @@ def lm_model(hidden_size,
              num_steps=20,
              init_scale=0.1,
              dropout=None,
-             rnn_model='static',
-             use_py_reader=False):
+             rnn_model='static'):
     def padding_rnn(input_embedding, len=3, init_hidden=None, init_cell=None):
         weight_1_arr = []
         weight_2_arr = []
@@ -279,38 +277,9 @@ def lm_model(hidden_size,
                 gate_input = layers.elementwise_add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
 
-                try:
-                    from paddle.fluid.contrib.layers import fused_elemwise_activation
-                    # fluid.contrib.layers.fused_elemwise_activation can do a fused
-                    # operation, like:
-                    # 1) x + sigmoid(y); x + tanh(y)
-                    # 2) tanh(x + y)
-                    # Now the unary operation supported in this fused op is limit, and
-                    # we will extent this operation to support more unary operations and
-                    # do this kind of fusion automitically in future version of paddle.fluid.
-                    # layers.sigmoid(i) * layers.tanh(j)
-                    tmp0 = fused_elemwise_activation(
-                        x=layers.tanh(j),
-                        y=i,
-                        functor_list=['elementwise_mul', 'sigmoid'],
-                        save_intermediate_out=False)
-                    # pre_cell * layers.sigmoid(f)
-                    tmp1 = fused_elemwise_activation(
-                        x=pre_cell,
-                        y=f,
-                        functor_list=['elementwise_mul', 'sigmoid'],
-                        save_intermediate_out=False)
-                    c = tmp0 + tmp1
-                    # layers.tanh(c) * layers.sigmoid(o)
-                    m = fused_elemwise_activation(
-                        x=layers.tanh(c),
-                        y=o,
-                        functor_list=['elementwise_mul', 'sigmoid'],
-                        save_intermediate_out=False)
-                except ImportError:
-                    c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                        i) * layers.tanh(j)
-                    m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
+                    i) * layers.tanh(j)
+                m = layers.tanh(c) * layers.sigmoid(o)
 
                 hidden_array[k] = m
                 cell_array[k] = c
@@ -342,23 +311,16 @@ def lm_model(hidden_size,
         return real_res, last_hidden, last_cell
 
     batch_size_each = batch_size
-    if use_py_reader:
-        feed_shapes = [[batch_size_each, num_steps, 1],
-                       [batch_size_each * num_steps, 1]]
-        py_reader = fluid.layers.py_reader(
-            capacity=16, shapes=feed_shapes, dtypes=['int64', 'int64'])
-        x, y = fluid.layers.read_file(py_reader)
-    else:
-        x = layers.data(
-            name="x",
-            shape=[batch_size_each, num_steps, 1],
-            dtype='int64',
-            append_batch_size=False)
-        y = layers.data(
-            name="y",
-            shape=[batch_size_each * num_steps, 1],
-            dtype='int64',
-            append_batch_size=False)
+    x = layers.data(
+        name="x",
+        shape=[batch_size_each, num_steps, 1],
+        dtype='int64',
+        append_batch_size=False)
+    y = layers.data(
+        name="y",
+        shape=[batch_size_each * num_steps, 1],
+        dtype='int64',
+        append_batch_size=False)
 
     init_hidden = layers.data(
         name="init_hidden",
@@ -472,10 +434,7 @@ def lm_model(hidden_size,
     layers.assign(input=last_hidden, output=init_hidden)
 
     feeding_list = ['x', 'y', 'init_hidden', 'init_cell']
-    if use_py_reader:
-        return loss, last_hidden, last_cell, feeding_list, py_reader
-    else:
-        return loss, last_hidden, last_cell, feeding_list
+    return loss, last_hidden, last_cell, feeding_list
 
 
 class PaddingRNNTestBase(unittest.TestCase):
@@ -483,7 +442,29 @@ class PaddingRNNTestBase(unittest.TestCase):
         self.reader = Reader()
         self.device_count = 1
 
-    def prepare_program(self, config, parallel=True):
+        # The default exec_strategy used for PaddingRNN.
+        # You can change it in set_customed_config.
+        self.exec_strategy = fluid.ExecutionStrategy()
+        self.exec_strategy.num_threads = self.device_count
+        self.exec_strategy.num_iteration_per_drop_scope = 100
+
+        # The default build_strategy used for PaddingRNN.
+        # You can change it in set_customed_config.
+        self.build_strategy = fluid.BuildStrategy()
+        self.build_strategy.enable_inplace = True
+        self.build_strategy.memory_optimize = False
+        self.build_strategy.fuse_all_optimizer_ops = True
+
+        # CPU executor is used for PaddingRNN default.
+        # You can change to CUDA executor in set_customed_config.
+        self.exe = Executor(fluid.CPUPlace())
+
+    def set_customed_config(self):
+        # This function will be called before training.
+        # You can override the function to set your own config.
+        pass
+
+    def _prepare_program(self, config, parallel=True):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
         self.startup_program.random_seed = config.random_seed
@@ -497,8 +478,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                     num_steps=config.num_steps,
                     init_scale=config.init_scale,
                     dropout=config.dropout,
-                    rnn_model=config.rnn_model,
-                    use_py_reader=False)
+                    rnn_model=config.rnn_model)
                 self.loss, self.last_hidden, self.last_cell, self.feed_order = res_vars
 
                 fluid.clip.set_gradient_clip(
@@ -515,28 +495,19 @@ class PaddingRNNTestBase(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(
                     learning_rate=self.learning_rate)
                 optimizer.minimize(self.loss)
-        self.exe = Executor(fluid.CPUPlace())
+
         self.exe.run(self.startup_program)
 
         if parallel:
-            exec_strategy = fluid.ExecutionStrategy()
-            exec_strategy.num_threads = self.device_count
-            exec_strategy.num_iteration_per_drop_scope = 100
-
-            build_strategy = fluid.BuildStrategy()
-            build_strategy.enable_inplace = True
-            build_strategy.memory_optimize = False
-            build_strategy.fuse_all_optimizer_ops = True
-
             self.train_program = fluid.compiler.CompiledProgram(
                 self.main_program).with_data_parallel(
                     loss_name=self.loss.name,
-                    build_strategy=build_strategy,
-                    exec_strategy=exec_strategy)
+                    build_strategy=self.build_strategy,
+                    exec_strategy=self.exec_strategy)
         else:
             self.train_program = self.main_program
 
-    def generate_init_data(self):
+    def _generate_init_data(self):
         init_hidden = np.zeros(
             (self.config.num_layers, self.config.batch_size,
              self.config.hidden_size),
@@ -547,19 +518,19 @@ class PaddingRNNTestBase(unittest.TestCase):
             dtype='float32')
         return init_hidden, init_cell
 
-    def generate_new_lr(self, epoch_id=0, device_count=1):
+    def _generate_new_lr(self, epoch_id=0, device_count=1):
         new_lr = self.config.base_learning_rate * (self.config.lr_decay**max(
             epoch_id + 1 - self.config.epoch_start_decay, 0.0))
         lr = np.ones((self.device_count), dtype='float32') * new_lr
         return lr
 
-    def prepare_input(self,
-                      batch,
-                      init_hidden=None,
-                      init_cell=None,
-                      epoch_id=0,
-                      with_lr=True,
-                      device_count=1):
+    def _prepare_input(self,
+                       batch,
+                       init_hidden=None,
+                       init_cell=None,
+                       epoch_id=0,
+                       with_lr=True,
+                       device_count=1):
         x, y = batch
         x = x.reshape((-1, self.config.num_steps, 1))
         y = y.reshape((-1, 1))
@@ -572,19 +543,19 @@ class PaddingRNNTestBase(unittest.TestCase):
         if init_cell is not None:
             res['init_cell'] = init_cell
         if with_lr:
-            res['learning_rate'] = self.generate_new_lr(epoch_id, device_count)
+            res['learning_rate'] = self._generate_new_lr(epoch_id, device_count)
         return res
 
-    def train_an_epoch(self, epoch_id, batch_times, use_program_cache=True):
+    def _train_an_epoch(self, epoch_id, use_program_cache=True):
         train_data_iter = self.reader.get_data_iter(self.config)
 
         total_loss = 0
         iters = 0
 
-        init_hidden, init_cell = self.generate_init_data()
+        init_hidden, init_cell = self._generate_init_data()
         ppl = np.zeros(shape=(0))
         for batch_id, batch in enumerate(train_data_iter):
-            input_data_feed = self.prepare_input(
+            input_data_feed = self._prepare_input(
                 batch,
                 init_hidden=init_hidden,
                 init_cell=init_cell,
@@ -592,7 +563,6 @@ class PaddingRNNTestBase(unittest.TestCase):
                 with_lr=True,
                 device_count=self.device_count)
 
-            batch_start_time = time.time()
             fetch_outs = self.exe.run(self.train_program,
                                       feed=input_data_feed,
                                       fetch_list=[
@@ -601,8 +571,6 @@ class PaddingRNNTestBase(unittest.TestCase):
                                           self.last_cell.name
                                       ],
                                       use_program_cache=use_program_cache)
-            batch_time = time.time() - batch_start_time
-            batch_times.append(batch_time)
 
             cost_train = np.array(fetch_outs[0])
             lr = np.array(fetch_outs[1])
@@ -617,17 +585,13 @@ class PaddingRNNTestBase(unittest.TestCase):
         return ppl
 
     def train(self, config, parallel=True, use_program_cache=True):
+        self.set_customed_config()
+
         self.config = config
-        self.prepare_program(config, parallel)
-        total_time = 0.0
+        self._prepare_program(config, parallel)
         ppl = np.zeros(shape=(0, config.batch_size))
         for epoch_id in range(config.max_epoch):
-            batch_times = []
-            epoch_start_time = time.time()
-            train_ppl = self.train_an_epoch(epoch_id, batch_times,
-                                            use_program_cache)
-            epoch_time = time.time() - epoch_start_time
-            total_time += epoch_time
+            train_ppl = self._train_an_epoch(epoch_id, use_program_cache)
             ppl = np.append(ppl, train_ppl)
         return ppl
 

@@ -215,8 +215,9 @@ __global__ void Pad2DGradReflectNCHW(const int out_size, T* d_in_data,
     in_w = max(in_w, -in_w);
     in_h = min(in_h, 2 * in_height - in_h - 2);
     in_w = min(in_w, 2 * in_width - in_w - 2);
-    atomicAdd(&d_in_data[(nc * in_height + in_h) * in_width + in_w],
-              d_out_data[out_index]);
+    platform::CudaAtomicAdd(
+        &d_in_data[(nc * in_height + in_h) * in_width + in_w],
+        d_out_data[out_index]);
   }
 }
 
@@ -240,7 +241,7 @@ __global__ void Pad2DGradReflectNHWC(const int out_size, T* d_in_data,
     in_w = max(in_w, -in_w);
     in_h = min(in_h, in_height * 2 - in_h - 2);
     in_w = min(in_w, in_width * 2 - in_w - 2);
-    atomicAdd(
+    platform::CudaAtomicAdd(
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
         d_out_data[out_index]);
   }
@@ -260,8 +261,9 @@ __global__ void Pad2DGradEdgeNCHW(const int out_size, T* d_in_data,
     nc /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    atomicAdd(&d_in_data[(nc * in_height + in_h) * in_width + in_w],
-              d_out_data[out_index]);
+    platform::CudaAtomicAdd(
+        &d_in_data[(nc * in_height + in_h) * in_width + in_w],
+        d_out_data[out_index]);
   }
 }
 
@@ -281,7 +283,7 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
     n /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    atomicAdd(
+    platform::CudaAtomicAdd(
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
         d_out_data[out_index]);
   }
@@ -312,7 +314,7 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T value = context.Attr<T>("pad_value");
+    T value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
@@ -459,5 +461,12 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(pad2d, ops::Pad2dCUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(pad2d_grad, ops::Pad2dGradCUDAKernel<float>);
+namespace plat = paddle::platform;
+
+REGISTER_OP_CUDA_KERNEL(pad2d, ops::Pad2dCUDAKernel<plat::float16>,
+                        ops::Pad2dCUDAKernel<float>,
+                        ops::Pad2dCUDAKernel<double>, ops::Pad2dCUDAKernel<int>,
+                        ops::Pad2dCUDAKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(pad2d_grad, ops::Pad2dGradCUDAKernel<plat::float16>,
+                        ops::Pad2dGradCUDAKernel<float>,
+                        ops::Pad2dGradCUDAKernel<double>);

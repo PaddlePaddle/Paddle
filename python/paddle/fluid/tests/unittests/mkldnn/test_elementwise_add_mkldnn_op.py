@@ -15,117 +15,55 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_elementwise_add_op import *
 '''
-Some tests differ from the tests defined in test_elementwise_add_op.py
-because MKLDNN does not support tensors of number of dimensions 3.
+MKLDNN does not support tensors of dimensions number equal to 3.
 Such dimensions cause exceptions in MKLDNN reorder primitive.
+The DNNL-based kernel is used only when broadcasting is not required
+(see GetExpectedKernelType() methods in elementwise_add_op.h).
 '''
 
 
 class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
+    def init_data_format(self):
+        self.data_format = 'MKLDNN'
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMKLDNNElementwiseAddOp2(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestMKLDNNElementwiseAddOp3(TestMKLDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    def init_kernel_type(self):
-        self.use_mkldnn = True
 
-
-class TestMKLDNNElementwiseAddOp_scalar(TestElementwiseAddOp_scalar):
+class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(1).astype(self.dtype)
-        self.out = self.x + self.y
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
 
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+    # TODO(jczaja): Enable when grad is ready
+    def test_check_grad_normal(self):
+        pass
 
+    def test_check_grad_ingore_x(self):
+        pass
 
-class TestMKLDNNElementwiseAddOp_scalar2(TestElementwiseAddOp_scalar2):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(1, 1).astype(self.dtype)
-        self.out = self.x + self.y
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_Vector(TestElementwiseAddOp_Vector):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TesMKLDNNtElementwiseAddOp_broadcast_0(TestElementwiseAddOp_broadcast_0):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1, 1)
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_broadcast_1(TestElementwiseAddOp_broadcast_1):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 1, 1)
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_broadcast_2(TestElementwiseAddOp_broadcast_2):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1, 1, 4)
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_broadcast_3(TestElementwiseAddOp_broadcast_3):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_broadcast_4(TestElementwiseAddOp_broadcast_4):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_rowwise_add_0(
-        TestElementwiseAddOp_rowwise_add_0):
-    def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_rowwise_add_1(
-        TestElementwiseAddOp_rowwise_add_1):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-
-class TestMKLDNNElementwiseAddOp_channelwise_add(
-        TestElementwiseAddOp_channelwise_add):
-    def init_input_output(self):
-        self.x = np.random.rand(3, 5, 20, 20).astype(self.dtype)
-        self.y = np.random.rand(3, 1, 1, 1).astype(self.dtype)
-        self.out = self.x + self.y
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+    def test_check_grad_ingore_y(self):
+        pass
 
 
 if __name__ == '__main__':

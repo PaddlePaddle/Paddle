@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import math
+import numpy as np
 import unittest
 
 import paddle.fluid as fluid
@@ -89,6 +90,34 @@ def cosine_decay(global_step, learning_rate, step_each_epoch, epochs):
     return decayed_lr
 
 
+def noam_decay(global_step, d_model, warmup_steps, learning_rate=1.0):
+    a = math.pow(global_step, -0.5)
+    b = math.pow(warmup_steps, -1.5) * global_step
+    decayed_lr = learning_rate * math.pow(d_model, -0.5) * min(a, b)
+
+    return decayed_lr
+
+
+class TestNoamLearningRateDecayDygraphMode(unittest.TestCase):
+    def test_dygraph_mode(self):
+        with fluid.dygraph.guard():
+            d_model = 0.01
+            warmup_steps = 200
+            learning_rate = 2.0
+            lr = fluid.layers.noam_decay(d_model, warmup_steps, learning_rate)
+            for step in range(5):
+                step += 1
+                right_result = noam_decay(step, d_model, warmup_steps,
+                                          learning_rate)
+                fluid_result = lr()
+
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result[0],
+                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    format(step, right_result, fluid_result[0]))
+
+
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
         places = [fluid.CPUPlace()]
@@ -112,6 +141,9 @@ class TestLearningRateDecay(unittest.TestCase):
         exe.run(startup_prog)
 
         for step in range(10):
+            # Step of NoamDecay starts from 1.
+            if python_decay_fn.__name__ == 'noam_decay':
+                step += 1
             lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             python_decayed_lr = python_decay_fn(
                 global_step=float(step), **kwargs)
@@ -159,10 +191,15 @@ class TestLearningRateDecay(unittest.TestCase):
                 "step_each_epoch": 100,
                 "epochs": 120
             }),
+            (noam_decay, layers.noam_decay, {
+                "d_model": 0.01,
+                "warmup_steps": 200,
+                "learning_rate": 2.0
+            }),
         ]
 
         for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:
-            print("class=" + self.__class__.__name__ + "decay_fn=" +
+            print("class=" + self.__class__.__name__ + " decay_fn=" +
                   py_decay_fn.__name__ + " kwargs=" + str(kwargs))
             main_program = framework.Program()
             startup_program = framework.Program()
@@ -195,6 +232,9 @@ class TestLinearWamrupLearningRateDecay(TestLearningRateDecay):
         exe.run(startup_prog)
 
         for step in range(20):
+            # Step of NoamDecay starts from 1.
+            if fluid_decay_fn.__name__ == 'noam_decay':
+                step += 1
             lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             if step < warmup_steps:
                 python_decayed_lr = linear_lr_warmup(
@@ -280,7 +320,8 @@ class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
 
                 t = lr()
 
-                self.assertEqual(t[0], right_result[i])
+                self.assertTrue(
+                    np.allclose((t.numpy())[0].item(), right_result[i]))
 
 
 class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):
@@ -292,6 +333,112 @@ class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):
                     warmup_steps=2,
                     start_lr=0.0,
                     end_lr=1.0)
+
+
+def reduce_lr_on_plateau(decay_rate, threshold, cooldown, patience, m, n, loss,
+                         var_list):
+    def is_better(current, best, m, n):
+        if m == 'min' and n == 'rel':
+            return current < best - best * threshold
+        elif m == 'min' and n == 'abs':
+            return current < best - threshold
+        elif m == 'max' and n == 'rel':
+            return current > best + best * threshold
+        else:  # mode == 'max' and epsilon_mode == 'abs':
+            return current > best + threshold
+
+    if var_list[2] > 0:
+        var_list[2] -= 1
+        return var_list[1]
+
+    if is_better(loss, var_list[0], m, n):
+        var_list[0] = loss
+        var_list[3] = 0
+    else:
+        var_list[3] += 1
+        if var_list[3] > patience:
+            var_list[2] = cooldown
+            var_list[3] = 0
+            new_lr = var_list[1] * decay_rate
+            var_list[1] = new_lr if var_list[1] - new_lr > 1e-8 else var_list[1]
+
+    return var_list[1]
+
+
+class TestReduceLROnPlateauDecay(unittest.TestCase):
+    def test_dygraph_mode(self):
+        with fluid.dygraph.guard():
+            # the decay rate must be less than 1.0
+            with self.assertRaises(ValueError):
+                fluid.dygraph.ReduceLROnPlateau(
+                    learning_rate=1.0, decay_rate=2.0)
+            # the mode must be "min" or "max"
+            with self.assertRaises(ValueError):
+                fluid.dygraph.ReduceLROnPlateau(learning_rate=1.0, mode="test")
+            # the threshold_mode must be "rel" or "abs"
+            with self.assertRaises(ValueError):
+                fluid.dygraph.ReduceLROnPlateau(
+                    learning_rate=1.0, threshold_mode="test")
+
+            base_lr = 1.0
+            patience = 3
+            cooldown = 1
+            decay_rate = 0.5
+            threshold = 1e-4
+            linear = fluid.dygraph.Linear(10, 10)
+
+            for m, n in zip(['min', 'max', 'min', 'max'],
+                            ['rel', 'rel', 'abs', 'abs']):
+                kwargs = {
+                    'learning_rate': base_lr,
+                    'decay_rate': decay_rate,
+                    'threshold': threshold,
+                    'verbose': True,
+                    'patience': patience,
+                    'cooldown': cooldown,
+                    'mode': m,
+                    'threshold_mode': n,
+                    'eps': 1e-6
+                }
+                print("class=" + fluid.dygraph.ReduceLROnPlateau.__name__ +
+                      " kwargs=" + str(kwargs))
+                lr = fluid.dygraph.ReduceLROnPlateau(**kwargs)
+                sgd = fluid.optimizer.SGD(learning_rate=lr,
+                                          parameter_list=linear.parameters())
+
+                best = float("-10000") if m == "max" else float("10000")
+                expected_lr = 1.0
+                cooldown_counter = 0
+                num_bad_epochs = 0
+                var_list = [best, expected_lr, cooldown_counter, num_bad_epochs]
+                step_num = 0
+                epoch_num = 0
+                for epoch in range(30):
+                    total_loss = 0
+
+                    for batch_id in range(2):
+                        step_num += 1
+                        x = fluid.dygraph.to_variable(
+                            np.array([step_num]).astype('float32'))
+                        loss = layers.sin(x)
+                        sgd.minimize(loss)
+                        total_loss += loss
+
+                    epoch_num += 1
+                    # get expected lr from fluid
+                    avg_loss = total_loss / 1
+                    lr.step(avg_loss)
+                    actual_lr = lr().numpy()[0]
+
+                    # get expected lr form python
+                    expected_lr = reduce_lr_on_plateau(decay_rate, threshold,
+                                                       cooldown, patience, m, n,
+                                                       avg_loss, var_list)
+                    self.assertEqual(
+                        expected_lr,
+                        actual_lr,
+                        msg='Failed reduce lr scheduler in epoch {0}, Python result is {1}, Fluid result is {2}'.
+                        format(epoch_num, expected_lr, actual_lr))
 
 
 if __name__ == '__main__':

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -178,7 +178,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
         d_batch_sum, d_batch_square_sum);
 
     if (need_sync_stats) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       auto comm = platform::NCCLCommContext::Instance().Get(0, ctx.GetPlace());
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_size),

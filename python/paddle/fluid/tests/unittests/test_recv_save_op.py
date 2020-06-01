@@ -29,6 +29,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.transpiler.details import VarStruct, VarsDistributed
 from dist_test_utils import *
+from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
 
 
 def run_pserver(pserver_id):
@@ -56,7 +57,7 @@ def run_pserver(pserver_id):
                     "optimize_blocks": [optimize_block],
                     "endpoint": '127.0.0.1:0',
                     "Fanin": 1,
-                    "sync_mode": True,
+                    "distributed_mode": DistributedMode.SYNC,
                     "grad_to_block_id": []
                 })
 

@@ -120,8 +120,10 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
+    const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
+    bool test_mode = is_test && (!trainable_stats);
 
-    bool global_stats = is_test || use_global_stats;
+    bool global_stats = test_mode || use_global_stats;
 
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
@@ -142,7 +144,11 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto src_tz = paddle::framework::vectorize<int64_t>(x->dims());
     auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
-    PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(), 1,
+        platform::errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
     const unsigned int C = scale_tz[0];
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
@@ -156,7 +162,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto flags = mkldnn::normalization_flags::use_scale_shift;  // 001
     if (global_stats)
       flags |= mkldnn::normalization_flags::use_global_stats;  // 010
-    if (fuse_with_relu && is_test)
+    if (fuse_with_relu && test_mode)
       flags |= mkldnn::normalization_flags::fuse_norm_relu;  // 100
 
     BatchNormMKLDNNHandler<T> handler(
@@ -246,7 +252,11 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto src_tz = paddle::framework::vectorize<int64_t>(x->dims());
     auto scale_tz = paddle::framework::vectorize<int64_t>(scale->dims());
-    PADDLE_ENFORCE(scale_tz.size() == 1, "Dims of scale tensor is NOT 1");
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(), 1,
+        platform::errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
 
     const unsigned int C = scale_tz[0];
 

@@ -340,7 +340,7 @@ class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("LoDTensor", "Input of Tensor type Variable.");
-    AddComment("This Op is only for IndicateVarDataType inferface test.");
+    AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
 
@@ -362,7 +362,7 @@ class IndicateSelectedRowsDataTypeTestProtoMaker
  public:
   void Make() {
     AddInput("SelectedRows", "Input of SelectedRows type Variable.");
-    AddComment("This Op is only for IndicateVarDataType inferface test.");
+    AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
 
@@ -382,7 +382,7 @@ class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("Other", "Input of Other type Variable");
-    AddComment("This Op is only for IndicateVarDataType inferface test.");
+    AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
 
@@ -476,14 +476,14 @@ TEST(IndicateVarDataTypeTest, other) {
   paddle::framework::InitDevices(true);
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("indicate_other_data_type_test");
-  BuildVar("Other", {"lod_tensor_array_1"}, op_desc.add_inputs());
+  BuildVar("Other", {"lod_rank_table_1"}, op_desc.add_inputs());
 
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  auto* var = scope.Var("lod_tensor_array_1");
-  var->GetMutable<paddle::framework::LoDTensorArray>();
+  auto* var = scope.Var("lod_rank_table_1");
+  var->GetMutable<paddle::framework::LoDRankTable>();
 
   bool caught = false;
   try {
@@ -491,11 +491,13 @@ TEST(IndicateVarDataTypeTest, other) {
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
-    EXPECT_TRUE(ex_msg.find("The Input Variable(Other) of "
-                            "indicate_other_data_type_test Op used to "
-                            "determine kernel data type "
-                            "is empty or not LoDTensor or SelectedRows") !=
-                std::string::npos);
+    EXPECT_TRUE(
+        ex_msg.find(
+            "The Input Variable(Other) of "
+            "indicate_other_data_type_test Op used to "
+            "determine kernel data type "
+            "is empty or not LoDTensor or SelectedRows or LoDTensorArray") !=
+        std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -525,13 +527,13 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
 
   paddle::framework::RuntimeContext ctx({}, {});
   paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
-                                                  ctx, nullptr);
+                                                  ctx);
 
   ASSERT_EQ(exe_context.InputSize("input"), 1u);
   ASSERT_EQ(exe_context.OutputSize("output"), 1u);
 
   auto attr_map = exe_context.Attrs();
-  ASSERT_EQ(boost::get<float>(attr_map["scale"]), 3.14f);
+  ASSERT_EQ(BOOST_GET(float, attr_map["scale"]), 3.14f);
   ASSERT_EQ(exe_context.Type(), "test_operator");
 }
 
@@ -572,7 +574,7 @@ class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(LoDTensor) Input Variable.");
     AddOutput("Out", "(LoDTensor) Output Variable.");
-    AddComment("This Op is only for Get/SetLoDLevel inferface test.");
+    AddComment("This Op is only for Get/SetLoDLevel interface test.");
   }
 };
 

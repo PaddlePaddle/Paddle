@@ -314,7 +314,8 @@ class LocalSGD(Collective):
                     name=self.snapshot_name(param.name),
                     shape=param.shape,
                     persistable=True,
-                    stop_gradient=True)
+                    stop_gradient=True,
+                    dtype=param.dtype)
 
                 block._insert_op(
                     idx + 1,
@@ -379,7 +380,7 @@ class SingleProcessMultiThread(GradAllReduce):
     '''
 
     def __init__(self):
-        GradAllReduce.__init__(self, -1)
+        GradAllReduce.__init__(self, 1)
         self.mode = "single_process_multi_thread"
 
     def _transpile_startup_program(self):

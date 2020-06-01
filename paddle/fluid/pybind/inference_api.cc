@@ -27,8 +27,10 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace py = pybind11;
 
@@ -79,24 +81,6 @@ void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
 }
 
 template <typename T>
-constexpr PaddleDType PaddleTensorGetDType();
-
-template <>
-constexpr PaddleDType PaddleTensorGetDType<int32_t>() {
-  return PaddleDType::INT32;
-}
-
-template <>
-constexpr PaddleDType PaddleTensorGetDType<int64_t>() {
-  return PaddleDType::INT64;
-}
-
-template <>
-constexpr PaddleDType PaddleTensorGetDType<float>() {
-  return PaddleDType::FLOAT32;
-}
-
-template <typename T>
 PaddleTensor PaddleTensorCreate(
     py::array_t<T> data, const std::string name = "",
     const std::vector<std::vector<size_t>> &lod = {}, bool copy = true) {
@@ -111,7 +95,7 @@ PaddleTensor PaddleTensorCreate(
     tensor.data = PaddleBuf(data.mutable_data(), data.size() * sizeof(T));
   }
 
-  tensor.dtype = PaddleTensorGetDType<T>();
+  tensor.dtype = inference::PaddleTensorGetDType<T>();
   tensor.name = name;
   tensor.lod = lod;
   tensor.shape.resize(data.ndim());
@@ -192,6 +176,12 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
   }
   return array;
 }
+
+py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
+  std::stringstream ss;
+  paddle::inference::SerializePDTensorToStream(&ss, tensor);
+  return static_cast<py::bytes>(ss.str());
+}
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -214,6 +204,7 @@ void BindInferenceApi(py::module *m) {
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
+  m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
 }
 
 namespace {
@@ -422,16 +413,21 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false, py::arg("use_calib_mode") = true)
-      .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
-           py::arg("max_batch_size") = 1,
+      .def("set_trt_dynamic_shape_info",
+           &AnalysisConfig::SetTRTDynamicShapeInfo,
+           py::arg("min_input_shape") =
+               std::map<std::string, std::vector<int>>({}),
            py::arg("max_input_shape") =
-               std::map<std::string, std::vector<int>>(),
-           py::arg("min_subgraph_size") = 6,
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("optim_input_shape") =
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("disable_trt_plugin_fp16") = false)
+      .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("auto_config_layout") = false,
            py::arg("passes_filter") = std::vector<std::string>(),
            py::arg("ops_filter") = std::vector<std::string>())
-      .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
@@ -554,7 +550,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const std::vector<std::string> &>())
       .def("enable_cudnn", &PassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &PassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
       .def("use_gpu", &PassStrategy::use_gpu);
 
@@ -563,7 +558,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const CpuPassStrategy &>())
       .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &CpuPassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &CpuPassStrategy::EnableMkldnnQuantizer);
 
   py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
@@ -571,7 +565,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const GpuPassStrategy &>())
       .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &GpuPassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer);
 }
 }  // namespace

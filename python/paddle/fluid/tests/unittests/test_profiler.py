@@ -18,10 +18,12 @@ import unittest
 import os
 import tempfile
 import numpy as np
+import paddle.utils as utils
 import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
+from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
@@ -30,12 +32,9 @@ class TestProfiler(unittest.TestCase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def net_profiler(self, state, use_parallel_executor=False):
-        profile_path = os.path.join(tempfile.gettempdir(), "profile")
-        open(profile_path, "w").write("")
+    def build_program(self, compile_program=True):
         startup_program = fluid.Program()
         main_program = fluid.Program()
-
         with fluid.program_guard(main_program, startup_program):
             image = fluid.layers.data(name='x', shape=[784], dtype='float32')
             hidden1 = fluid.layers.fc(input=image, size=64, act='relu')
@@ -65,65 +64,144 @@ class TestProfiler(unittest.TestCase):
         optimizer = fluid.optimizer.Momentum(learning_rate=0.001, momentum=0.9)
         opts = optimizer.minimize(avg_cost, startup_program=startup_program)
 
-        place = fluid.CPUPlace() if state == 'CPU' else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        exe.run(startup_program)
-        if use_parallel_executor:
-            pe = fluid.ParallelExecutor(
-                state != 'CPU',
-                loss_name=avg_cost.name,
-                main_program=main_program)
+        if compile_program:
+            train_program = fluid.compiler.CompiledProgram(
+                main_program).with_data_parallel(loss_name=avg_cost.name)
+        else:
+            train_program = main_program
+        return train_program, startup_program, avg_cost, batch_size, batch_acc
 
-        pass_acc_calculator = fluid.average.WeightedAverage()
-        with profiler.profiler(state, 'total', profile_path) as prof:
-            for iter in range(10):
-                if iter == 2:
-                    profiler.reset_profiler()
-                x = np.random.random((32, 784)).astype("float32")
-                y = np.random.randint(0, 10, (32, 1)).astype("int64")
+    def get_profile_path(self):
+        profile_path = os.path.join(tempfile.gettempdir(), "profile")
+        open(profile_path, "w").write("")
+        return profile_path
 
-                if use_parallel_executor:
-                    pe.run(feed={'x': x, 'y': y}, fetch_list=[avg_cost.name])
-                    continue
-                outs = exe.run(main_program,
-                               feed={'x': x,
-                                     'y': y},
-                               fetch_list=[avg_cost, batch_acc, batch_size])
-                acc = np.array(outs[1])
-                b_size = np.array(outs[2])
-                pass_acc_calculator.add(value=acc, weight=b_size)
-                pass_acc = pass_acc_calculator.eval()
+    def check_profile_result(self, profile_path):
         data = open(profile_path, 'rb').read()
-        self.assertGreater(len(data), 0)
-        profile_pb = profiler_pb2.Profile()
-        profile_pb.ParseFromString(data)
-        self.assertGreater(len(profile_pb.events), 0)
-        for event in profile_pb.events:
-            if event.type == profiler_pb2.Event.GPUKernel:
-                if not event.detail_info and not event.name.startswith("MEM"):
-                    raise Exception(
-                        "Kernel %s missing event. Has this kernel been recorded by RecordEvent?"
-                        % event.name)
-            elif event.type == profiler_pb2.Event.CPU and (
-                    event.name.startswith("Driver API") or
-                    event.name.startswith("Runtime API")):
-                print("Warning: unregister", event.name)
+        if (len(data) > 0):
+            profile_pb = profiler_pb2.Profile()
+            profile_pb.ParseFromString(data)
+            self.assertGreater(len(profile_pb.events), 0)
+            for event in profile_pb.events:
+                if event.type == profiler_pb2.Event.GPUKernel:
+                    if not event.detail_info and not event.name.startswith(
+                            "MEM"):
+                        raise Exception(
+                            "Kernel %s missing event. Has this kernel been recorded by RecordEvent?"
+                            % event.name)
+                elif event.type == profiler_pb2.Event.CPU and (
+                        event.name.startswith("Driver API") or
+                        event.name.startswith("Runtime API")):
+                    print("Warning: unregister", event.name)
+
+    def run_iter(self, exe, main_program, fetch_list, pass_acc_calculator):
+        x = np.random.random((32, 784)).astype("float32")
+        y = np.random.randint(0, 10, (32, 1)).astype("int64")
+        outs = exe.run(main_program,
+                       feed={'x': x,
+                             'y': y},
+                       fetch_list=fetch_list)
+        acc = np.array(outs[1])
+        b_size = np.array(outs[2])
+        pass_acc_calculator.add(value=acc, weight=b_size)
+        pass_acc = pass_acc_calculator.eval()
+
+    def net_profiler(self,
+                     exe,
+                     state,
+                     tracer_option,
+                     batch_range=None,
+                     use_parallel_executor=False,
+                     use_new_api=False):
+        main_program, startup_program, avg_cost, batch_size, batch_acc = self.build_program(
+            compile_program=use_parallel_executor)
+        exe.run(startup_program)
+
+        profile_path = self.get_profile_path()
+        if not use_new_api:
+            with profiler.profiler(state, 'total', profile_path, tracer_option):
+                pass_acc_calculator = fluid.average.WeightedAverage()
+                for iter in range(10):
+                    if iter == 2:
+                        profiler.reset_profiler()
+                    self.run_iter(exe, main_program,
+                                  [avg_cost, batch_acc, batch_size],
+                                  pass_acc_calculator)
+        else:
+            options = utils.ProfilerOptions(options={
+                'state': state,
+                'sorted_key': 'total',
+                'tracer_level': tracer_option,
+                'batch_range': [0, 10] if batch_range is None else batch_range,
+                'profile_path': profile_path
+            })
+            with utils.Profiler(enabled=True, options=options) as prof:
+                pass_acc_calculator = fluid.average.WeightedAverage()
+                for iter in range(10):
+                    self.run_iter(exe, main_program,
+                                  [avg_cost, batch_acc, batch_size],
+                                  pass_acc_calculator)
+                    utils.get_profiler().record_step()
+                    if batch_range is None and iter == 2:
+                        utils.get_profiler().reset()
+
+        self.check_profile_result(profile_path)
 
     def test_cpu_profiler(self):
-        self.net_profiler('CPU')
-        self.net_profiler('CPU', use_parallel_executor=True)
+        exe = fluid.Executor(fluid.CPUPlace())
+        for use_new_api in [False, True]:
+            self.net_profiler(
+                exe,
+                'CPU',
+                "Default",
+                batch_range=[5, 10],
+                use_new_api=use_new_api)
+            #self.net_profiler('CPU', "Default", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
-        self.net_profiler('GPU')
-        self.net_profiler('GPU', use_parallel_executor=True)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        for use_new_api in [False, True]:
+            self.net_profiler(
+                exe,
+                'GPU',
+                "OpDetail",
+                batch_range=[0, 100],
+                use_new_api=use_new_api)
+            #self.net_profiler('GPU', "OpDetail", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
-        self.net_profiler('All')
-        self.net_profiler('All', use_parallel_executor=True)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        for use_new_api in [False, True]:
+            self.net_profiler(
+                exe,
+                'All',
+                "AllOpDetail",
+                batch_range=None,
+                use_new_api=use_new_api)
+            #self.net_profiler('All', "AllOpDetail", use_parallel_executor=True)
+
+
+class TestProfilerAPIError(unittest.TestCase):
+    def test_errors(self):
+        options = utils.ProfilerOptions()
+        self.assertTrue(options['profile_path'] is None)
+        self.assertTrue(options['timeline_path'] is None)
+
+        options = options.with_state('All')
+        self.assertTrue(options['state'] == 'All')
+        try:
+            print(options['test'])
+        except ValueError:
+            pass
+
+        global_profiler = utils.get_profiler()
+        with utils.Profiler(enabled=True) as prof:
+            self.assertTrue(utils.get_profiler() == prof)
+            self.assertTrue(global_profiler != prof)
 
 
 if __name__ == '__main__':

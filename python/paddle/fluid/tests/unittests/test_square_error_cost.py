@@ -48,5 +48,22 @@ class TestSquareErrorCost(unittest.TestCase):
             self.assertTrue(np.isclose(np_result, result).all())
 
 
+class TestSquareErrorInvalidInput(unittest.TestCase):
+    def test_error(self):
+        def test_invalid_input():
+            input = [256, 3]
+            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
+            loss = fluid.layers.square_error_cost(input, label)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_label():
+            input = fluid.data(name='input2', shape=[None, 3], dtype='float32')
+            label = [256, 3]
+            loss = fluid.layers.square_error_cost(input, label)
+
+        self.assertRaises(TypeError, test_invalid_label)
+
+
 if __name__ == "__main__":
     unittest.main()

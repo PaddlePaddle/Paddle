@@ -221,5 +221,27 @@ class TestIfElseFalseBranch(TestIfElse):
         self.data = np.random.rand(25, 1).astype(np.float32)
 
 
+class TestIfElseError(unittest.TestCase):
+    def test_input_type_error(self):
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            src = layers.data(name='data', shape=[1], dtype='float32')
+            const_value = layers.fill_constant(
+                [1], dtype='float32', value=123.0)
+            ifcond = layers.less_than(x=src, y=const_value)
+            with self.assertRaises(TypeError):
+                ie = layers.IfElse(set())
+            with self.assertRaises(TypeError):
+                ie = layers.IfElse(ifcond, set())
+
+            with self.assertRaises(TypeError):
+                ie = layers.IfElse(ifcond)
+                with ie.true_block():
+                    true_target = ie.input(src)
+                    true_target = fluid.layers.exp(true_target)
+                    ie.output([])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -85,7 +85,8 @@ TEST(DeviceCode, cuda) {
 }
 
 TEST(DeviceCodePool, cuda) {
-  if (!paddle::platform::dynload::HasNVRTC()) {
+  if (!paddle::platform::dynload::HasNVRTC() ||
+      !paddle::platform::dynload::HasCUDADriver()) {
     return;
   }
 

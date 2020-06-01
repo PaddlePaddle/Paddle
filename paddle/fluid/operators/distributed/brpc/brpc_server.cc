@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/brpc/brpc_server.h"
+#include <memory>
+#include <unordered_map>
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/brpc/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/brpc/brpc_variable_response.h"
@@ -100,7 +102,7 @@ class BRPCServiceImpl : public SendRecvService {
 
     distributed::BRPCVariableResponse resp(request_send_h_->scope(),
                                            request_send_h_->dev_ctx(),
-                                           !request_send_h_->sync_mode());
+                                           request_send_h_->distributed_mode());
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
 

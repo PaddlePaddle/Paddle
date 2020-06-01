@@ -18,12 +18,12 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 
+using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
 using paddle::ConvertToPDDataType;
-using paddle::ConvertToACPrecision;
 
 extern "C" {
 
@@ -79,10 +79,11 @@ const char* PD_ParamsFile(const PD_AnalysisConfig* config) {
   return config->config.params_file().c_str();
 }
 
-void PD_EnableUseGpu(PD_AnalysisConfig* config,
-                     uint64_t memory_pool_init_size_mb, int device_id) {
+void PD_EnableUseGpu(PD_AnalysisConfig* config, int memory_pool_init_size_mb,
+                     int device_id) {
   PADDLE_ENFORCE_NOT_NULL(config);
-  config->config.EnableUseGpu(memory_pool_init_size_mb, device_id);
+  config->config.EnableUseGpu(static_cast<uint64_t>(memory_pool_init_size_mb),
+                              device_id);
 }
 
 void PD_DisableGpu(PD_AnalysisConfig* config) {
@@ -165,55 +166,9 @@ bool PD_TensorrtEngineEnabled(const PD_AnalysisConfig* config) {
   return config->config.tensorrt_engine_enabled();
 }
 
-void PD_EnableAnakinEngine(PD_AnalysisConfig* config, int max_batch_size,
-                           PD_MaxInputShape* max_input_shape,
-                           int max_input_shape_size, int min_subgraph_size,
-                           Precision precision, bool auto_config_layout,
-                           char** passes_filter, int passes_filter_size,
-                           char** ops_filter, int ops_filter_size) {
-  PADDLE_ENFORCE_NOT_NULL(config);
-  std::map<std::string, std::vector<int>> mis;
-  if (max_input_shape) {
-    for (int i = 0; i < max_input_shape_size; ++i) {
-      std::vector<int> tmp_shape;
-      tmp_shape.assign(
-          max_input_shape[i].shape,
-          max_input_shape[i].shape + max_input_shape[i].shape_size);
-      mis[std::string(max_input_shape[i].name)] = std::move(tmp_shape);
-    }
-  }
-  std::vector<std::string> pf;
-  std::vector<std::string> of;
-  if (passes_filter) {
-    pf.assign(passes_filter, passes_filter + passes_filter_size);
-  }
-  if (ops_filter) {
-    of.assign(ops_filter, ops_filter + ops_filter_size);
-  }
-
-  config->config.EnableAnakinEngine(max_batch_size, mis, min_subgraph_size,
-                                    paddle::ConvertToACPrecision(precision),
-                                    auto_config_layout, pf, of);
-}
-
-bool PD_AnakinEngineEnabled(const PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(config);
-  return config->config.anakin_engine_enabled();
-}
-
 void PD_SwitchIrDebug(PD_AnalysisConfig* config, bool x) {
   PADDLE_ENFORCE_NOT_NULL(config);
   config->config.SwitchIrDebug(x);
-}
-
-void PD_EnableNgraph(PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(config);
-  config->config.EnableNgraph();
-}
-
-bool PD_NgraphEnabled(const PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(config);
-  return config->config.ngraph_enabled();
 }
 
 void PD_EnableMKLDNN(PD_AnalysisConfig* config) {
@@ -293,5 +248,13 @@ void PD_SetInValid(PD_AnalysisConfig* config) {
 bool PD_IsValid(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(config);
   return config->config.is_valid();
+}
+
+void PD_DisableGlogInfo(PD_AnalysisConfig* config) {
+  config->config.DisableGlogInfo();
+}
+
+void PD_DeletePass(PD_AnalysisConfig* config, char* pass_name) {
+  return config->config.pass_builder()->DeletePass(std::string(pass_name));
 }
 }  // extern "C"

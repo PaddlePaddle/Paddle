@@ -361,7 +361,7 @@ class TestWith1x1(TestConv3dOp):
         self.input_size = [2, 3, 4, 4, 4]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -374,10 +374,10 @@ class TestWithInput1x1Filter1x1(TestConv3dOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 1, 1, 1]
+        self.input_size = [40, 3, 1, 1, 1]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -393,7 +393,7 @@ class TestWithDilation(TestConv3dOp):
         self.input_size = [2, 3, 6, 6, 6]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 2, 2, 2]
+        self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
         self.dilations = [2, 2, 2]
@@ -699,7 +699,7 @@ class TestWith1x1_AsyPadding(TestConv3dOp_2):
         self.input_size = [2, 3, 4, 4, 4]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -718,7 +718,7 @@ class TestWithDilation_AsyPadding(TestConv3dOp_2):
         self.input_size = [2, 3, 6, 6, 6]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 2, 2, 2]
+        self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
         self.dilations = [2, 2, 2]

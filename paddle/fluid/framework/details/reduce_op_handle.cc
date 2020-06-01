@@ -264,20 +264,20 @@ void ReduceOpHandle::RunImpl() {
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       auto pre_in = pre_in_var->Get<framework::LoDTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
           out_var_handle->place(), pre_in.type());
 
       auto out_p = out_var_handle->place();
-      int root_id = boost::get<platform::CUDAPlace>(out_p).device;
+      int root_id = BOOST_GET_CONST(platform::CUDAPlace, out_p).device;
       std::vector<std::function<void()>> all_reduce_calls;
       for (size_t i = 0; i < var_scopes.size(); ++i) {
         auto &p = in_places[i];
         auto &lod_tensor = *lod_tensors[i];
 
-        int dev_id = boost::get<platform::CUDAPlace>(p).device;
+        int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
         auto &nccl_ctx = nccl_ctxs_->at(dev_id);
 
         void *buffer = const_cast<void *>(lod_tensor.data<void>());

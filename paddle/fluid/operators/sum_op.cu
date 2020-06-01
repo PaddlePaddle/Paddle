@@ -68,22 +68,6 @@ __global__ void SumSelectedRowsCUDAKernel(T **sr_in_out, int64_t N,
 }
 
 template <class T>
-__global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
-                                    int64_t N) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = id; i < N / 4; i += blockDim.x * gridDim.x) {
-    const float4 *in0_4 = reinterpret_cast<float4 *>(in_0);
-    const float4 *in1_4 = reinterpret_cast<float4 *>(in_1);
-    float4 tmp;
-    tmp.x = in0_4[i].x + in1_4[i].x;
-    tmp.y = in0_4[i].y + in1_4[i].y;
-    tmp.z = in0_4[i].z + in1_4[i].z;
-    tmp.w = in0_4[i].w + in1_4[i].w;
-    reinterpret_cast<float4 *>(out)[i] = tmp;
-  }
-}
-
-template <class T>
 void SumToLoDTensor(const framework::ExecutionContext &context) {
   auto in_vars = context.MultiInputVar("X");
   const size_t in_num = in_vars.size();
@@ -202,7 +186,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       auto tmp_sr_in_out_array =
           memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
 
-      memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
+      memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                    tmp_sr_in_out_array->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void *>(sr_in_out_data.data()),
                    sr_in_out_data.size() * sizeof(T *), dev_ctx.stream());
@@ -220,7 +204,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   if (!in_data.empty()) {
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
-    memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                  tmp_in_array->ptr(), platform::CPUPlace(),
                  reinterpret_cast<void *>(in_data.data()),
                  in_data.size() * sizeof(T *), dev_ctx.stream());

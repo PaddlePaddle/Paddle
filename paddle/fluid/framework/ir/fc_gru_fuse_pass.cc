@@ -127,8 +127,9 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(Hidden, Hidden, gru_pattern);
     // nodes need be removed
     GET_IR_NODE_FROM_SUBGRAPH(BatchGate, BatchGate, gru_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(BatchResetHiddenPrev, BatchGate, gru_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchGate, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchResetHiddenPrev, BatchResetHiddenPrev,
+                              gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchHidden, gru_pattern);
 
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
@@ -138,7 +139,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       gru_creater(gru, x_n, w, Weight, Bias, Hidden, fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul, gru, elementwise_add, fc_bias, fc_out, mul_out, BatchGate,
+          {mul, gru, elementwise_add, fc_out, mul_out, BatchGate,
            BatchResetHiddenPrev, BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {

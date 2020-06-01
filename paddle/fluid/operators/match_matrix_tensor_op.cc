@@ -15,6 +15,7 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include "paddle/fluid/operators/match_matrix_tensor_op.h"
@@ -60,7 +61,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   int64_t tmp_dim_0 = -1;
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
     const auto& x_lod = x_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(x_lod.empty(), false, "The Input(X) must hold lod info.");
     const auto& x_lod_0 = x_lod[0];
@@ -71,7 +72,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
         "The Input(X)'s lod info mismatches the actual tensor shape.");
 
     framework::Variable* y_var =
-        boost::get<framework::Variable*>(ctx->GetInputVarPtrs("Y")[0]);
+        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
     const auto& y_lod = y_var->Get<LoDTensor>().lod();
     PADDLE_ENFORCE_EQ(y_lod.empty(), false, "The Input(Y) must hold lod info.");
     const auto& y_lod_0 = y_lod[0];
@@ -96,10 +97,10 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     // compile time
     framework::VarDesc* x_desc =
-        boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("X")[0]);
     PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
     framework::VarDesc* y_desc =
-        boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Y")[0]);
+        BOOST_GET(framework::VarDesc*, ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(y_desc->GetLoDLevel(), 1);
     ctx->ShareLoD("X", "Out");
   }
@@ -287,8 +288,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
             auto* r_data = bottom_r_data + (offset_r[b] + j) * dim_in;
             auto* r_diff = bottom_r_diff + (offset_r[b] + j) * dim_in;
             if (diff != 0.0) {
-              avx_axpy(r_data, l_trans_diff, dim_in, diff);
-              avx_axpy(l_trans_data, r_diff, dim_in, diff);
+              axpy(r_data, l_trans_diff, dim_in, diff);
+              axpy(l_trans_data, r_diff, dim_in, diff);
             }
           }
         }
@@ -313,6 +314,26 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class MatchMatrixTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("match_matrix_tensor_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput("W", this->Input("W"));
+    grad_op->SetInput("Tmp", this->Output("Tmp"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    grad_op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -320,8 +341,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     match_matrix_tensor, ops::MatchMatrixTensorOP,
     ops::MatchMatrixTensorOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
+    ops::MatchMatrixTensorGradOpMaker<paddle::framework::OpDesc>,
+    ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,

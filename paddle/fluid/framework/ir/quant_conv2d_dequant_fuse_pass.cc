@@ -93,7 +93,8 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
       }
     }
 
-    int bit_length = boost::get<int>(quant_op->Op()->GetAttr("bit_length"));
+    int bit_length =
+        BOOST_GET_CONST(int, quant_op->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
     // Prepare input scale
     std::string input_scale_var_name = quant_op->Op()->Input("InScale").front();
@@ -125,9 +126,9 @@ void RunQuantDequant(ir::Graph* graph, Scope* scope, int times,
         delete_nodes.insert(
             nodes[i * kNumFields + kDequantOpWeightScaleOffset]);
       } else {
-        float max_range = boost::get<float>(
-            nodes[i * kNumFields + kDequantOpOffset]->Op()->GetAttr(
-                "max_range"));
+        float max_range = BOOST_GET_CONST(
+            float, nodes[i * kNumFields + kDequantOpOffset]->Op()->GetAttr(
+                       "max_range"));
         weight_scale.push_back((range * range) / max_range);
       }
 

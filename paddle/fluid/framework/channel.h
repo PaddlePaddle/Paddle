@@ -43,6 +43,7 @@ class ChannelObject {
     capacity_ = (std::min)(MaxCapacity(), capacity);
   }
 
+  const std::deque<T>& GetData() const { return data_; }
   void Clear() {
     std::unique_lock<std::mutex> lock(mutex_);
     data_.clear();

@@ -18,9 +18,9 @@ limitations under the License. */
 
 #ifdef _WIN32
 #if defined(__AVX2__)
-#include <immintrin.h>  //avx2
+#include <immintrin.h>  // avx2
 #elif defined(__AVX__)
-#include <intrin.h>  //avx
+#include <intrin.h>  // avx
 #endif               // AVX
 #else                // WIN32
 #ifdef __AVX__
@@ -35,6 +35,19 @@ limitations under the License. */
 #define ALIGN32_BEG
 #define ALIGN32_END __attribute__((aligned(32)))
 #endif  // _WIN32
+
+#ifndef PADDLE_WITH_XBYAK
+#ifdef _WIN32
+#define cpuid(reg, x) __cpuidex(reg, x, 0)
+#else
+#ifndef WITH_NV_JETSON
+#include <cpuid.h>
+inline void cpuid(int reg[4], int x) {
+  __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);
+}
+#endif
+#endif
+#endif
 
 namespace paddle {
 namespace platform {

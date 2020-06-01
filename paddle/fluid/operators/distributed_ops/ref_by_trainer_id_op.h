@@ -32,15 +32,19 @@ class RefByTrainerIdKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CUDA
       auto stream = context.cuda_device_context().stream();
       memory::Copy<>(platform::CPUPlace(), &trainer_id,
-                     boost::get<platform::CUDAPlace>(context.GetPlace()),
+                     BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                      trainer_id_data, sizeof(int64_t), stream);
 #endif
     } else {
       trainer_id = *trainer_id_data;
     }
-    PADDLE_ENFORCE_LT((size_t)trainer_id, in_list.size());
+    PADDLE_ENFORCE_LT((size_t)trainer_id, in_list.size(),
+                      platform::errors::InvalidArgument(
+                          "X' size must >= TrainerId: [%s], but received [%s]",
+                          trainer_id, in_list.size()));
     out->mutable_data<T>(context.GetPlace());
-    out->ShareDataWith(*(in_list[trainer_id]));
+    framework::TensorCopy(*(in_list[trainer_id]), in_list[trainer_id]->place(),
+                          out);
   }
 };
 

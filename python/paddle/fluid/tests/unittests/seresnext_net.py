@@ -17,8 +17,7 @@ import paddle.fluid as fluid
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle.fluid.layers.ops as ops
-from paddle.fluid.initializer import init_on_cpu
-from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
+from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
 import math
 import os
@@ -161,20 +160,6 @@ def SE_ResNeXt50Small(use_feed):
     return loss
 
 
-def cosine_decay(learning_rate, step_each_epoch, epochs=120):
-    """
-    Applies cosine decay to the learning rate.
-    lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
-    """
-    global_step = _decay_step_counter()
-
-    with init_on_cpu():
-        epoch = ops.floor(global_step / step_each_epoch)
-        decayed_lr = learning_rate * \
-                     (ops.cos(epoch * (math.pi / epochs)) + 1)/2
-    return decayed_lr
-
-
 def optimizer(learning_rate=0.01):
     optimizer = fluid.optimizer.Momentum(
         learning_rate=cosine_decay(
@@ -188,7 +173,7 @@ model = SE_ResNeXt50Small
 
 
 def batch_size():
-    return 12
+    return 8
 
 
 def iter(use_cuda):

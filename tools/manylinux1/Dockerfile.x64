@@ -15,8 +15,7 @@ ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz
 COPY build_scripts /build_scripts
-RUN bash build_scripts/build.sh && \
-  bash build_scripts/install_nccl2.sh && rm -rf build_scripts
+RUN bash build_scripts/build.sh && bash build_scripts/install_nccl2.sh && rm -rf build_scripts
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
 

@@ -4,6 +4,7 @@ endif()
 
 
 if (WITH_NV_JETSON)
+  add_definitions(-DWITH_NV_JETSON)
   set(paddle_known_gpu_archs "53 62 72")
   set(paddle_known_gpu_archs7 "53")
   set(paddle_known_gpu_archs8 "53 62")
@@ -26,7 +27,9 @@ function(detect_installed_gpus out_variable)
     set(cufile ${PROJECT_BINARY_DIR}/detect_cuda_archs.cu)
 
     file(WRITE ${cufile} ""
-      "#include <cstdio>\n"
+      "#include \"stdio.h\"\n"
+      "#include \"cuda.h\"\n"
+      "#include \"cuda_runtime.h\"\n"
       "int main() {\n"
       "  int count = 0;\n"
       "  if (cudaSuccess != cudaGetDeviceCount(&count)) return -1;\n"
@@ -34,12 +37,12 @@ function(detect_installed_gpus out_variable)
       "  for (int device = 0; device < count; ++device) {\n"
       "    cudaDeviceProp prop;\n"
       "    if (cudaSuccess == cudaGetDeviceProperties(&prop, device))\n"
-      "      std::printf(\"%d.%d \", prop.major, prop.minor);\n"
+      "      printf(\"%d.%d \", prop.major, prop.minor);\n"
       "  }\n"
       "  return 0;\n"
       "}\n")
 
-    execute_process(COMMAND "${CUDA_NVCC_EXECUTABLE}" "-ccbin=${CUDA_HOST_COMPILER}"
+    execute_process(COMMAND "${CUDA_NVCC_EXECUTABLE}"
                     "--run" "${cufile}"
                     WORKING_DIRECTORY "${PROJECT_BINARY_DIR}/CMakeFiles/"
                     RESULT_VARIABLE nvcc_res OUTPUT_VARIABLE nvcc_out
@@ -101,8 +104,14 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "Pascal")
     set(cuda_arch_bin "60 61")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Volta")
+    if (NOT ${CUDA_VERSION} LESS 10.0)
+      add_definitions("-DSUPPORTS_CUDA_FP16")
+    endif()
     set(cuda_arch_bin "70")
   elseif(${CUDA_ARCH_NAME} STREQUAL "Turing")
+    if (NOT ${CUDA_VERSION} LESS 10.0)
+      add_definitions("-DSUPPORTS_CUDA_FP16")
+    endif()
     set(cuda_arch_bin "75")
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
@@ -181,7 +190,7 @@ add_definitions("-DPADDLE_CUDA_BINVER=\"${CUDA_VERSION_MAJOR}${CUDA_VERSION_MINO
 include_directories(${CUDA_INCLUDE_DIRS})
 if(NOT WITH_DSO)
     if(WIN32)
-      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY})
+      set_property(GLOBAL PROPERTY CUDA_MODULES ${CUDNN_LIBRARY} ${CUDA_CUBLAS_LIBRARIES} ${CUDA_curand_LIBRARY} ${CUDA_cusolver_LIBRARY})
     endif(WIN32)
 endif(NOT WITH_DSO)
 
@@ -196,9 +205,9 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 if (NOT WIN32) # windows msvc2015 support c++11 natively. 
-# -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
-list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
+  # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
+  list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+  list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
 # in cuda9, suppress cuda warning on eigen 
@@ -220,6 +229,11 @@ if (NOT WIN32)
 else(NOT WIN32)
   list(APPEND CUDA_NVCC_FLAGS  "-Xcompiler \"/wd 4244 /wd 4267 /wd 4819\"")
   list(APPEND CUDA_NVCC_FLAGS  "--compiler-options;/bigobj")
+  if(MSVC_STATIC_CRT)
+    list(APPEND CUDA_NVCC_FLAGS "-Xcompiler" "-MT$<$<CONFIG:Debug>:d>")
+  else()
+    list(APPEND CUDA_NVCC_FLAGS "-Xcompiler" "-MD$<$<CONFIG:Debug>:d>")
+  endif()
   if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND CUDA_NVCC_FLAGS  "-g -G")
     # match the cl's _ITERATOR_DEBUG_LEVEL

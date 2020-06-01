@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
 from ..framework import Parameter
 from .layers import Layer
 
 __all__ = [
     'Sequential',
     'ParameterList',
+    'LayerList',
 ]
 
 
@@ -168,4 +170,131 @@ class ParameterList(Layer):
         """
         idx = len(self._parameters)
         self.add_parameter(str(idx), parameter)
+        return self
+
+
+class LayerList(Layer):
+    """
+    LayerList holds sublayers, and sublayers it contains are properly registered.
+    Holded sublayers can be indexed like a regular python list.
+
+    Parameters:
+        sublayers (iterable of Layer, optional): sublayers to hold
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+
+            class MyLayer(fluid.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.linears = fluid.dygraph.LayerList(
+                        [fluid.dygraph.Linear(10, 10) for i in range(10)])
+
+                def forward(self, x):
+                    # LayerList can act as an iterable, or be indexed using ints
+                    for i, l in enumerate(self.linears):
+                        x = self.linears[i // 2](x) + l(x)
+                    return x
+    """
+
+    def __init__(self, sublayers=None):
+        super(LayerList, self).__init__()
+        if sublayers is not None:
+            for idx, layer in enumerate(sublayers):
+                self.add_sublayer(str(idx), layer)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return self.__class__(list(self._sub_layers.values())[idx])
+        else:
+            return self._sub_layers[str(idx)]
+
+    def __setitem__(self, idx, sublayer):
+        return setattr(self, str(idx), sublayer)
+
+    def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            for k in range(len(self._sub_layers))[idx]:
+                delattr(self, str(k))
+        else:
+            delattr(self, str(idx))
+        str_indices = [str(i) for i in range(len(self._sub_layers))]
+        self._sub_layers = OrderedDict(
+            list(zip(str_indices, self._sub_layers.values())))
+
+    def __len__(self):
+        return len(self._sub_layers)
+
+    def __iter__(self):
+        return iter(self._sub_layers.values())
+
+    def append(self, sublayer):
+        """
+        Appends a sublayer to the end of the list.
+
+        Parameters:
+            sublayer (Layer): sublayer to append
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another = fluid.dygraph.Linear(10, 10)
+                    linears.append(another)
+                    print(len(linears))  # 11
+        """
+        self.add_sublayer(str(len(self)), sublayer)
+        return self
+
+    def insert(self, index, sublayer):
+        """
+        Insert a sublayer before a given index in the list.
+
+        Parameters:
+            index (int): index to insert.
+            sublayer (Layer): sublayer to insert
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another = fluid.dygraph.Linear(10, 10)
+                    linears.insert(3, another)
+                    print(linears[3] is another)  # True
+        """
+        assert isinstance(index, int) and \
+               0 <= index < len(self._sub_layers), \
+            "index should be an integer in range [0, len(self))"
+        for i in range(len(self._sub_layers), index, -1):
+            self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
+        self._sub_layers[str(index)] = sublayer
+
+    def extend(self, sublayers):
+        """
+        Appends sublayers to the end of the list.
+
+        Parameters:
+            sublayers (iterable of Layer): iterable of sublayers to append
+
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another_list = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(5)])
+                    linears.extend(another_list)
+                    print(len(linears))  # 15
+                    print(another_list[0] is linears[10])  # True
+        """
+        offset = len(self)
+        for i, sublayer in enumerate(sublayers):
+            idx = str(offset + i)
+            self.add_sublayer(idx, sublayer)
         return self

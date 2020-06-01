@@ -40,6 +40,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
       op->SetAttr("alpha", 0.02f);
     } else if (type == "relu6") {
       op->SetAttr("threshold", 6.0f);
+    } else if (type == "swish") {
+      op->SetAttr("beta", 1.0f);
     }
   }
   op->SetOutput("Out", outputs);
@@ -112,8 +114,8 @@ void MainTest(std::string activation) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(boost::get<bool>(op->GetAttr("use_mkldnn")));
-      auto op_name = boost::get<std::string>(op->GetAttr("name"));
+      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
       if (op->GetAttrIfExists<std::string>("fuse_activation") == activation) {
         ++conv_activation_count;
       }
@@ -133,6 +135,7 @@ TEST(ConvActivationFusePass, conv_leaky_relu_fuse_pass) {
   MainTest("leaky_relu");
 }
 TEST(ConvActivationFusePass, conv_relu6_fuse_pass) { MainTest("relu6"); }
+TEST(ConvActivationFusePass, conv_swish_fuse_pass) { MainTest("swish"); }
 
 }  // namespace ir
 }  // namespace framework

@@ -73,7 +73,7 @@ class TestKLDivLossOp3(TestKLDivLossOp):
 
 class TestKLDivLossOp4(TestKLDivLossOp):
     def initTestCase(self):
-        self.x_shape = (5, 7)
+        self.x_shape = (5, 20)
         self.reduction = 'sum'
 
 

@@ -74,7 +74,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     else:
         # Avoid sorting possibly large arrays;
         # First partition to get top K unsorted
-        # and then sort just thoes
+        # and then sort just those
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
@@ -281,7 +281,7 @@ class TestGenerateProposalsOp(OpTest):
 
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.lod]),
-            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod]),
         }
 
     def test_check_output(self):
@@ -324,6 +324,36 @@ class TestGenerateProposalsOp(OpTest):
             self.scores, self.bbox_deltas, self.im_info, self.anchors,
             self.variances, self.pre_nms_topN, self.post_nms_topN,
             self.nms_thresh, self.min_size, self.eta)
+
+
+class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
+    def set_data(self):
+        self.init_test_params()
+        self.init_test_input()
+        self.init_test_output()
+        self.inputs = {
+            'Scores': self.scores,
+            'BboxDeltas': self.bbox_deltas,
+            'ImInfo': self.im_info.astype(np.float32),
+            'Anchors': self.anchors,
+            'Variances': self.variances
+        }
+
+        self.attrs = {
+            'pre_nms_topN': self.pre_nms_topN,
+            'post_nms_topN': self.post_nms_topN,
+            'nms_thresh': self.nms_thresh,
+            'min_size': self.min_size,
+            'eta': self.eta,
+            'return_rois_num': True
+        }
+
+        self.outputs = {
+            'RpnRois': (self.rpn_rois[0], [self.lod]),
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod]),
+            'RpnRoisLod': (np.asarray(
+                self.lod, dtype=np.int32))
+        }
 
 
 if __name__ == '__main__':
