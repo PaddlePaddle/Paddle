@@ -214,35 +214,33 @@ class AfsManager {
     int fd_read[2];
     int fd_write[2];
     if (read) {
-      if (pipe(fd_read) != 0) {
-        LOG(FATAL) << "create read pipe failed";
-        return -1;
-      }
+      PADDLE_ENFORCE_EQ(
+          pipe(fd_read), 0,
+          platform::errors::External("Create read pipe failed in AfsManager."));
     }
     if (write) {
-      if (pipe(fd_write) != 0) {
-        LOG(FATAL) << "create write pipe failed";
-        return -1;
-      }
+      PADDLE_ENFORCE_EQ(pipe(fd_write), 0,
+                        platform::errors::External(
+                            "Create write pipe failed in AfsManager."));
     }
     pid = vfork();
-    if (pid < 0) {
-      LOG(FATAL) << "fork failed";
-      return -1;
-    }
+    PADDLE_ENFORCE_GE(platform::errors::External(
+        "Failed to create a child process via fork in AfsManager."));
     if (pid == 0) {
       if (read) {
-        if (-1 == dup2(fd_read[1], STDOUT_FILENO)) {
-          LOG(FATAL) << "dup2 failed";
-        }
+        PADDLE_ENFORCE_NE(
+            dup2(fd_read[1], STDOUT_FILENO), -1,
+            platform::errors::External(
+                "Failed to duplicate file descriptor via dup2 in AfsManager."));
         close(fd_read[1]);
         close(fd_read[0]);
       }
 
       if (write) {
-        if (-1 == dup2(fd_write[0], STDIN_FILENO)) {
-          LOG(FATAL) << "dup2 failed";
-        }
+        PADDLE_ENFORCE_NE(
+            dup2(fd_write[0], STDIN_FILENO), -1,
+            platform::errors::External(
+                "Failed to duplicate file descriptor via dup2 in AfsManager."));
         close(fd_write[0]);
         close(fd_write[1]);
       }
@@ -265,20 +263,20 @@ class AfsManager {
         close(fd_read[1]);
         fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
         fp_read = fdopen(fd_read[0], "r");
-        if (0 == fp_read) {
-          LOG(FATAL) << "fdopen failed.";
-          return -1;
-        }
+        PADDLE_ENFORCE_NE(
+            fp_read, 0,
+            platform::errors::External(
+                "Failed to open file descriptor via fdopen in AfsManager."));
       }
 
       if (write) {
         close(fd_write[0]);
         fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
         fp_write = fdopen(fd_write[1], "w");
-        if (0 == fp_write) {
-          LOG(FATAL) << "fdopen failed.";
-          return -1;
-        }
+        PADDLE_ENFORCE_NE(
+            fp_write, 0,
+            platform::errors::External(
+                "Failed to open file descriptor via fdopen in AfsManager."));
       }
       return 0;
     }

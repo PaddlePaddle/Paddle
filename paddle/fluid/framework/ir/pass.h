@@ -126,7 +126,8 @@ class Pass {
 
  protected:
   virtual void ApplyImpl(Graph *graph) const {
-    LOG(FATAL) << "Calling virtual Pass not implemented.";
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Calling virtual Pass not implemented."));
   }
 
   // Some Pass must be placed before this Pass, and some
