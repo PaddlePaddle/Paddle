@@ -60,7 +60,7 @@ def create_while_node(condition_name, body_name, loop_var_names):
     while_args.append(gast.List(elts=assign_targets, ctx=gast.Param()))
 
     while_func_id = gast.parse(
-        'fluid.dygraph.dygraph_to_static.loop_transformer.convert_while_loop'
+        'fluid.dygraph.dygraph_to_static.convert_operators.convert_while_loop'
     ).body[0].value
     while_node = gast.Call(func=while_func_id, args=while_args, keywords=[])
     assign_node = gast.Assign(
@@ -68,47 +68,6 @@ def create_while_node(condition_name, body_name, loop_var_names):
             elts=assign_targets, ctx=gast.Store())],
         value=while_node)
     return assign_node
-
-
-from paddle.fluid.framework import Variable
-from paddle.fluid.layers import fill_constant, control_flow, logical_and, logical_or, logical_not
-
-
-def convert_while_loop(cond, body, loop_vars):
-    pred = cond(*loop_vars)
-    if isinstance(pred, Variable):
-        loop_vars = [to_static_variable(var) for var in loop_vars]
-        loop_vars = control_flow.while_loop(cond, body, loop_vars)
-    else:
-        while cond(*loop_vars):
-            loop_vars = body(*loop_vars)
-
-    return loop_vars
-
-
-def convert_logical_and(x, y):
-    if isinstance(x, Variable):
-        if not isinstance(y, Variable):
-            y = fill_constant(shape=[1], value=bool(y), dtype="bool")
-        return logical_and(x, y)
-    else:
-        return x and y
-
-
-def convert_logical_or(x, y):
-    if isinstance(x, Variable):
-        if not isinstance(y, Variable):
-            y = fill_constant(shape=[1], value=bool(y), dtype="bool")
-        return logical_or(x, y)
-    else:
-        return x and y
-
-
-def convert_logical_not(x):
-    if isinstance(x, Variable):
-        return logical_not(x)
-    else:
-        return not x
 
 
 class LogicalOpTransformer(gast.NodeTransformer):
@@ -126,7 +85,7 @@ class LogicalOpTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.op, gast.Not):
             arg = ast_to_source_code(node.operand)
-            new_node_str = "fluid.dygraph.dygraph_to_static.loop_transformer.convert_logical_not({})".format(
+            new_node_str = "fluid.dygraph.dygraph_to_static.convert_operators.convert_logical_not({})".format(
                 arg)
             # gast.parse returns Module(body=[expr(value=...)])
             new_node = gast.parse(new_node_str).body[0].value
@@ -156,7 +115,7 @@ class LogicalOpTransformer(gast.NodeTransformer):
             nodes = [pre_logic_node] + [post_logic_node]
 
         args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "fluid.dygraph.dygraph_to_static.loop_transformer.convert_logical_{}(x={}, y={})".format(
+        new_node_str = "fluid.dygraph.dygraph_to_static.convert_operators.convert_logical_{}(x={}, y={})".format(
             api_type, args[0], args[1])
         # gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
