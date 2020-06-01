@@ -82,6 +82,16 @@ def while_loop_bool_op(x):
     return i
 
 
+def while_loop_bool_op2(x):
+    i = fluid.dygraph.to_variable(x)
+    a = 1
+    while x < 10 and (a < 4 or a > 0) or a < -1:
+        i = i + x
+        x = x + 1
+        a = a + 1
+    return i
+
+
 def while_loop_class_var(x):
     class Foo(object):
         def __init__(self):
@@ -230,6 +240,11 @@ class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
 class TestWhileLoopBoolOp(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_bool_op
+
+
+class TestWhileLoopBoolOp2(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_bool_op2
 
 
 class TestWhileLoopClassVar(TestTransformWhileLoop):
