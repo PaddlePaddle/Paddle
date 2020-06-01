@@ -207,6 +207,21 @@ void DatasetImpl<T>::CreateChannel() {
       multi_pv_consume_.push_back(paddle::framework::MakeChannel<PvInstance>());
     }
   }
+  if (input_ptr_channel_ == nullptr) {
+    input_ptr_channel_ = paddle::framework::MakeChannel<T*>();
+  }
+  if (output_ptr_channel_.size() == 0) {
+    output_ptr_channel_.reserve(channel_num_);
+    for (int i = 0; i < channel_num_; ++i) {
+      output_ptr_channel_.push_back(paddle::framework::MakeChannel<T*>());
+    }
+  }
+  if (consume_ptr_channel_.size() == 0) {
+    consume_ptr_channel_.reserve(channel_num_);
+    for (int i = 0; i < channel_num_; ++i) {
+      consume_ptr_channel_.push_back(paddle::framework::MakeChannel<T*>());
+    }
+  }
 }
 
 // if sent message between workers, should first call this function
@@ -283,7 +298,12 @@ void DatasetImpl<T>::WaitPreLoadDone() {
 // release memory data
 template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
-  VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
+  release_thread_ = new std::thread(&DatasetImpl<T>::ReleaseMemoryFun, this);
+  release_thread_->detach();
+}
+template <typename T>
+void DatasetImpl<T>::ReleaseMemoryFun() {
+  VLOG(0) << "DatasetImpl<T>::ReleaseMemory() begin";
   if (input_channel_) {
     input_channel_->Clear();
     input_channel_ = nullptr;
@@ -329,7 +349,7 @@ void DatasetImpl<T>::ReleaseMemory() {
   input_records_.clear();
   std::vector<T>().swap(input_records_);
   std::vector<T>().swap(slots_shuffle_original_data_);
-  VLOG(3) << "DatasetImpl<T>::ReleaseMemory() end";
+  VLOG(0) << "DatasetImpl<T>::ReleaseMemory() end";
 }
 
 // do local shuffle
@@ -530,6 +550,10 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
     input_channel_->SetBlockSize(input_channel_->Size() / channel_num +
                                  (discard_remaining_ins ? 0 : 1));
   }
+  if (static_cast<int>(input_ptr_channel_->Size()) >= channel_num) {
+    input_ptr_channel_->SetBlockSize(input_ptr_channel_->Size() / channel_num +
+                                     (discard_remaining_ins ? 0 : 1));
+  }
   if (static_cast<int>(input_pv_channel_->Size()) >= channel_num) {
     input_pv_channel_->SetBlockSize(input_pv_channel_->Size() / channel_num +
                                     (discard_remaining_ins ? 0 : 1));
@@ -629,6 +653,7 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetCurrentPhase(current_phase_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
+      readers_[i]->SetInputPtrChannel(input_ptr_channel_.get());
     }
     if (input_pv_channel_ != nullptr) {
       readers_[i]->SetInputPvChannel(input_pv_channel_.get());
@@ -637,12 +662,17 @@ void DatasetImpl<T>::CreateReaders() {
         static_cast<size_t>(channel_idx) < multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
+      readers_[i]->SetOutputPtrChannel(output_ptr_channel_[channel_idx].get());
+      readers_[i]->SetConsumePtrChannel(
+          consume_ptr_channel_[channel_idx].get());
       readers_[i]->SetOutputPvChannel(multi_pv_output_[channel_idx].get());
       readers_[i]->SetConsumePvChannel(multi_pv_consume_[channel_idx].get());
     } else if (static_cast<size_t>(channel_idx) <
                multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_consume_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_output_channel_[channel_idx].get());
+      readers_[i]->SetOutputPtrChannel(consume_ptr_channel_[channel_idx].get());
+      readers_[i]->SetConsumePtrChannel(output_ptr_channel_[channel_idx].get());
       readers_[i]->SetOutputPvChannel(multi_pv_consume_[channel_idx].get());
       readers_[i]->SetConsumePvChannel(multi_pv_output_[channel_idx].get());
     }
@@ -783,6 +813,7 @@ void MultiSlotDataset::PostprocessInstance() {
     auto fleet_ptr = FleetWrapper::GetInstance();
     std::shuffle(input_records_.begin(), input_records_.end(),
                  fleet_ptr->LocalRandomEngine());
+    /*
     input_channel_->Open();
     input_channel_->Write(std::move(input_records_));
     for (size_t i = 0; i < multi_pv_consume_.size(); ++i) {
@@ -791,19 +822,31 @@ void MultiSlotDataset::PostprocessInstance() {
     input_channel_->Close();
     input_records_.clear();
     input_records_.shrink_to_fit();
+    */
+    int all_records_num = input_records_.size();
+    std::vector<Record*> all_records;
+    all_records.reserve(all_records_num);
+    for (int index = 0; index < all_records_num; ++index) {
+      all_records.push_back(&input_records_[index]);
+    }
+    input_ptr_channel_->Open();
+    input_ptr_channel_->Write(std::move(all_records));
+    input_ptr_channel_->Close();
+    VLOG(0) << "input_ptr_channel size: " << input_ptr_channel_->Size();
   } else {
-    input_channel_->Open();
-    for (size_t i = 0; i < multi_consume_channel_.size(); ++i) {
-      std::vector<Record> ins_data;
-      multi_consume_channel_[i]->Close();
-      multi_consume_channel_[i]->ReadAll(ins_data);
-      input_channel_->Write(std::move(ins_data));
+    // TODO(hutuxian): this can be removed
+    input_ptr_channel_->Open();
+    for (size_t i = 0; i < consume_ptr_channel_.size(); ++i) {
+      std::vector<Record*> ins_data;
+      consume_ptr_channel_[i]->Close();
+      consume_ptr_channel_[i]->ReadAll(ins_data);
+      input_ptr_channel_->Write(std::move(ins_data));
       ins_data.clear();
       ins_data.shrink_to_fit();
-      multi_consume_channel_[i]->Clear();
+      consume_ptr_channel_[i]->Clear();
     }
-    input_channel_->Close();
-    this->LocalShuffle();
+    input_ptr_channel_->Close();
+    // this->LocalShuffle();
   }
 }
 
@@ -817,53 +860,59 @@ void MultiSlotDataset::PreprocessInstance() {
   }
   if (!enable_pv_merge_) {  // means to use Record
     this->LocalShuffle();
-  } else {  // means to use Pv
-    auto fleet_ptr = FleetWrapper::GetInstance();
-    input_channel_->Close();
-    std::vector<PvInstance> pv_data;
-    input_channel_->ReadAll(input_records_);
-    int all_records_num = input_records_.size();
-    std::vector<Record*> all_records;
-    all_records.reserve(all_records_num);
-    for (int index = 0; index < all_records_num; ++index) {
-      all_records.push_back(&input_records_[index]);
-    }
+  }
+  input_channel_->Close();
+  input_channel_->ReadAll(input_records_);
+  int all_records_num = input_records_.size();
+  std::vector<Record*> all_records;
+  all_records.reserve(all_records_num);
+  for (int index = 0; index < all_records_num; ++index) {
+    all_records.push_back(&input_records_[index]);
+  }
+  if (!enable_pv_merge_) {
+    input_ptr_channel_->Open();
+    input_ptr_channel_->Write(std::move(all_records));
+    input_ptr_channel_->Close();
+    VLOG(0) << "input_ptr_channel size: " << input_ptr_channel_->Size();
+    return;
+  }
 
-    std::sort(all_records.data(), all_records.data() + all_records_num,
-              [](const Record* lhs, const Record* rhs) {
-                return lhs->search_id < rhs->search_id;
-              });
-    if (merge_by_sid_) {
-      uint64_t last_search_id = 0;
-      for (int i = 0; i < all_records_num; ++i) {
-        Record* ins = all_records[i];
-        if (i == 0 || last_search_id != ins->search_id) {
-          PvInstance pv_instance = make_pv_instance();
-          pv_instance->merge_instance(ins);
-          pv_data.push_back(pv_instance);
-          last_search_id = ins->search_id;
-          continue;
-        }
-        pv_data.back()->merge_instance(ins);
-      }
-    } else {
-      for (int i = 0; i < all_records_num; ++i) {
-        Record* ins = all_records[i];
+  std::sort(all_records.data(), all_records.data() + all_records_num,
+            [](const Record* lhs, const Record* rhs) {
+              return lhs->search_id < rhs->search_id;
+            });
+
+  std::vector<PvInstance> pv_data;
+  if (merge_by_sid_) {
+    uint64_t last_search_id = 0;
+    for (int i = 0; i < all_records_num; ++i) {
+      Record* ins = all_records[i];
+      if (i == 0 || last_search_id != ins->search_id) {
         PvInstance pv_instance = make_pv_instance();
         pv_instance->merge_instance(ins);
         pv_data.push_back(pv_instance);
+        last_search_id = ins->search_id;
+        continue;
       }
+      pv_data.back()->merge_instance(ins);
     }
-
-    std::shuffle(pv_data.begin(), pv_data.end(),
-                 fleet_ptr->LocalRandomEngine());
-    input_pv_channel_->Open();
-    input_pv_channel_->Write(std::move(pv_data));
-
-    pv_data.clear();
-    pv_data.shrink_to_fit();
-    input_pv_channel_->Close();
+  } else {
+    for (int i = 0; i < all_records_num; ++i) {
+      Record* ins = all_records[i];
+      PvInstance pv_instance = make_pv_instance();
+      pv_instance->merge_instance(ins);
+      pv_data.push_back(pv_instance);
+    }
   }
+
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  std::shuffle(pv_data.begin(), pv_data.end(), fleet_ptr->LocalRandomEngine());
+  input_pv_channel_->Open();
+  input_pv_channel_->Write(std::move(pv_data));
+
+  pv_data.clear();
+  pv_data.shrink_to_fit();
+  input_pv_channel_->Close();
 }
 
 void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
@@ -1264,6 +1313,18 @@ void MultiSlotDataset::PreprocessChannel(
         }
         multi_consume_channel_[i]->Clear();
       }
+    }
+    for (size_t i = 0; i < multi_pv_output_.size(); ++i) {
+      if (!multi_pv_output_[i]) {
+        continue;
+      }
+      multi_pv_output_[i]->Clear();
+    }
+    for (size_t i = 0; i < multi_pv_consume_.size(); ++i) {
+      if (!multi_pv_consume_[i]) {
+        continue;
+      }
+      multi_pv_consume_[i]->Clear();
     }
   }
   int end_size = 0;

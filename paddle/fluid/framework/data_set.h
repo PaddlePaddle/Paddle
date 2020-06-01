@@ -105,6 +105,8 @@ class Dataset {
   virtual void WaitPreLoadDone() = 0;
   // release all memory data
   virtual void ReleaseMemory() = 0;
+  virtual void ReleaseMemoryFun() = 0;
+
   // local shuffle data
   virtual void LocalShuffle() = 0;
   // global shuffle data
@@ -201,6 +203,7 @@ class DatasetImpl : public Dataset {
   virtual void PreLoadIntoMemory();
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
+  virtual void ReleaseMemoryFun();
   virtual void LocalShuffle();
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
@@ -235,6 +238,7 @@ class DatasetImpl : public Dataset {
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
+  paddle::framework::Channel<T*> input_ptr_channel_;
   paddle::framework::Channel<PvInstance> input_pv_channel_;
   std::vector<paddle::framework::Channel<PvInstance>> multi_pv_output_;
   std::vector<paddle::framework::Channel<PvInstance>> multi_pv_consume_;
@@ -242,6 +246,8 @@ class DatasetImpl : public Dataset {
   int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
   std::vector<paddle::framework::Channel<T>> multi_consume_channel_;
+  std::vector<paddle::framework::Channel<T*>> output_ptr_channel_;
+  std::vector<paddle::framework::Channel<T*>> consume_ptr_channel_;
   std::vector<std::unordered_set<uint64_t>> local_tables_;
   // when read ins, we put ins from one channel to the other,
   // and when finish reading, we set cur_channel = 1 - cur_channel,
@@ -261,6 +267,7 @@ class DatasetImpl : public Dataset {
   int64_t fleet_send_batch_size_;
   int64_t fleet_send_sleep_seconds_;
   std::vector<std::thread> preload_threads_;
+  std::thread* release_thread_;
   bool merge_by_insid_;
   bool parse_ins_id_;
   bool parse_content_;

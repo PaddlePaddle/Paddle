@@ -81,7 +81,9 @@ class SplitFunctor<platform::CPUDeviceContext, T> {
     for (int i = 0; i < axis; ++i) {
       input_rows *= dim_0[i];
     }
-
+    if (input_rows == 0) {
+      return;
+    }
     int input_cols = 0;
 
     std::vector<int64_t> output_cols(outputs->size());

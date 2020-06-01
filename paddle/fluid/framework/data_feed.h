@@ -60,19 +60,27 @@ namespace framework {
 //   while (reader->Next()) {
 //      // trainer do something
 //   }
-union FeatureKey {
+HOSTDEVICE union FeatureKey {
   uint64_t uint64_feasign_;
   float float_feasign_;
 };
 
-struct FeatureItem {
+#ifdef PADDLE_WITH_CUDA
+#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
+#else
+#define PADDLE_ALIGN(x)
+#endif
+
+struct PADDLE_ALIGN(8) FeatureItem {
   FeatureItem() {}
   FeatureItem(FeatureKey sign, uint16_t slot) {
     this->sign() = sign;
     this->slot() = slot;
   }
-  FeatureKey& sign() { return *(reinterpret_cast<FeatureKey*>(sign_buffer())); }
-  const FeatureKey& sign() const {
+  HOSTDEVICE FeatureKey& sign() {
+    return *(reinterpret_cast<FeatureKey*>(sign_buffer()));
+  }
+  HOSTDEVICE const FeatureKey& sign() const {
     const FeatureKey* ret = reinterpret_cast<FeatureKey*>(sign_buffer());
     return *ret;
   }
@@ -80,9 +88,12 @@ struct FeatureItem {
   const uint16_t& slot() const { return slot_; }
 
  private:
-  char* sign_buffer() const { return const_cast<char*>(sign_); }
+  HOSTDEVICE char* sign_buffer() const { return const_cast<char*>(sign_); }
   char sign_[sizeof(FeatureKey)];
   uint16_t slot_;
+  uint16_t slot_2;
+  uint16_t slot_3;
+  uint16_t slot_4;
 };
 
 // sizeof Record is much less than std::vector<MultiSlotType>
@@ -149,10 +160,13 @@ class DataFeed {
 
   // This function will do nothing at default
   virtual void SetInputChannel(void* channel) {}
+  virtual void SetInputPtrChannel(void* channel) {}
   // This function will do nothing at default
   virtual void SetOutputChannel(void* channel) {}
+  virtual void SetOutputPtrChannel(void* channel) {}
   // This function will do nothing at default
   virtual void SetConsumeChannel(void* channel) {}
+  virtual void SetConsumePtrChannel(void* channel) {}
   // This function will do nothing at default
   virtual void SetThreadId(int thread_id) {}
   // This function will do nothing at default
@@ -295,6 +309,9 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetInputChannel(void* channel);
   virtual void SetOutputChannel(void* channel);
   virtual void SetConsumeChannel(void* channel);
+  virtual void SetInputPtrChannel(void* channel);
+  virtual void SetOutputPtrChannel(void* channel);
+  virtual void SetConsumePtrChannel(void* channel);
   virtual void SetThreadId(int thread_id);
   virtual void SetThreadNum(int thread_num);
   virtual void SetParseInsId(bool parse_ins_id);
@@ -322,9 +339,14 @@ class InMemoryDataFeed : public DataFeed {
   paddle::framework::ChannelObject<T>* output_channel_;
   paddle::framework::ChannelObject<T>* consume_channel_;
 
+  paddle::framework::ChannelObject<T*>* input_ptr_channel_;
+  paddle::framework::ChannelObject<T*>* output_ptr_channel_;
+  paddle::framework::ChannelObject<T*>* consume_ptr_channel_;
+
   paddle::framework::ChannelObject<PvInstance>* input_pv_channel_;
   paddle::framework::ChannelObject<PvInstance>* output_pv_channel_;
   paddle::framework::ChannelObject<PvInstance>* consume_pv_channel_;
+  std::vector<T*> ins_vec_;
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
@@ -652,6 +674,12 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
+#ifdef PADDLE_WITH_CUDA
+  virtual void CopyForTensor(const paddle::platform::Place& place,
+                             FeatureItem* src, void** dest, size_t* offset,
+                             char* type, size_t total_size, size_t row_size,
+                             size_t col_size);
+#endif
 
  protected:
   virtual bool ParseOneInstance(Record* instance);
@@ -663,6 +691,8 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
   std::vector<std::vector<size_t>> offset_;
   std::vector<bool> visit_;
+  std::vector<size_t> offset;
+  std::vector<size_t> offset_sum;
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
@@ -682,6 +712,7 @@ class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
                              int ins_number);
   std::string rank_offset_name_;
   int pv_batch_size_;
+  std::vector<PvInstance> pv_vec_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

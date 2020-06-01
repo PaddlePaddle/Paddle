@@ -195,14 +195,15 @@ class AfsManager {
     PADDLE_ENFORCE_EQ(ret, 0,
                       platform::errors::PreconditionNotMet(
                           "Called AFSAPI Open file %s Failed.", path.c_str()));
-    char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
+    // char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
+    char _buff[BUF_SIZE];
     int size = 0;
     while ((size = read_stream->Read(_buff, BUF_SIZE)) > 0) {
       fwrite(_buff, 1, size, wfp);
     }
     fflush(wfp);
     fclose(wfp);
-    delete _buff;
+    // delete _buff;
     delete read_stream;
   }
   int PopenBidirectionalInternal(const char* command,
@@ -981,9 +982,11 @@ class BoxHelper {
       const auto& ins = *iter;
       const auto& feasign_v = ins.uint64_feasigns_;
       for (const auto feasign : feasign_v) {
+        /*
         if (index_map.find(feasign.slot()) != index_map.end()) {
           continue;
         }
+        */
         p_agent->AddKey(feasign.sign().uint64_feasign_, thread_id);
       }
     }

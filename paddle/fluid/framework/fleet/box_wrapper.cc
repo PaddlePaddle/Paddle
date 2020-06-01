@@ -264,10 +264,11 @@ void BoxWrapper::GetRandomData(
       VLOG(3) << "GetRandomData begin for thread[" << tid << "], and process ["
               << start << ", " << end << "), total ins: " << ins_num;
       const auto& random_pool = random_ins_pool_list[tid];
-      for (int i = start; i < end; ++i) {
-        const auto& ins = pass_data[i];
-        const RecordCandidate& rand_rec = random_pool.Get(replace_idx_[i]);
+      for (int j = start; j < end; ++j) {
+        const auto& ins = pass_data[j];
+        const RecordCandidate& rand_rec = random_pool.Get(replace_idx_[j]);
         Record new_rec = ins;
+        /*
         for (auto it = new_rec.uint64_feasigns_.begin();
              it != new_rec.uint64_feasigns_.end();) {
           if (slots_to_replace.find(it->slot()) != slots_to_replace.end()) {
@@ -283,8 +284,36 @@ void BoxWrapper::GetRandomData(
             new_rec.uint64_feasigns_.push_back({it->second, it->first});
             debug_push_cnt += 1;
           }
+        }*/
+        // make slot it sequencially
+        std::set<int> slot_id;
+        for (auto e : slots_to_replace) {
+          slot_id.insert(e);
         }
-        (*result)[i] = std::move(new_rec);
+        size_t i = 0;
+        for (auto slot : slot_id) {
+          while (i < new_rec.uint64_feasigns_.size()) {
+            if (new_rec.uint64_feasigns_[i].slot() >= slot) {
+              break;
+            }
+            i++;
+          }
+          while (i < new_rec.uint64_feasigns_.size() &&
+                 new_rec.uint64_feasigns_[i].slot() == slot) {
+            new_rec.uint64_feasigns_.erase(new_rec.uint64_feasigns_.begin() +
+                                           i);
+            debug_erase_cnt += 1;
+          }
+          auto range = rand_rec.feas_.equal_range(slot);
+          for (auto it = range.first; it != range.second; ++it) {
+            // new_rec.uint64_feasigns_.push_back({it->second, it->first});
+            new_rec.uint64_feasigns_.insert(
+                new_rec.uint64_feasigns_.begin() + i, {it->second, it->first});
+            debug_push_cnt += 1;
+            i++;
+          }
+        }
+        (*result)[j] = std::move(new_rec);
       }
       VLOG(3) << "thread[" << tid << "]: erase feasign num: " << debug_erase_cnt
               << " repush feasign num: " << debug_push_cnt;
