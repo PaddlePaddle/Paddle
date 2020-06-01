@@ -261,25 +261,28 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
 
         self._quantized_ops = set()
-        if len(test_case_args.ops_to_quantize) > 0:
-            self._quantized_ops = set(test_case_args.ops_to_quantize.split(','))
+        if test_case_args.ops_to_quantize:
+            self._quantized_ops = set(
+                op.strip() for op in test_case_args.ops_to_quantize.split(','))
 
         self._op_ids_to_skip = set([-1])
-        if len(test_case_args.op_ids_to_skip) > 0:
+        if test_case_args.op_ids_to_skip:
             self._op_ids_to_skip = set(
                 map(int, test_case_args.op_ids_to_skip.split(',')))
 
         _logger.info('FP32 & QAT INT8 prediction run.')
-        _logger.info('QAT model: {0}'.format(qat_model_path))
-        _logger.info('FP32 model: {0}'.format(fp32_model_path))
-        _logger.info('Dataset: {0}'.format(data_path))
-        _logger.info('Labels: {0}'.format(labels_path))
-        _logger.info('Batch size: {0}'.format(batch_size))
-        _logger.info('Batch number: {0}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
-        _logger.info('Quantized ops: {0}.'.format(self._quantized_ops))
-        _logger.info('Op ids to skip quantization: {0}.'.format(
-            self._op_ids_to_skip))
+        _logger.info('QAT model: {}'.format(qat_model_path))
+        _logger.info('FP32 model: {}'.format(fp32_model_path))
+        _logger.info('Dataset: {}'.format(data_path))
+        _logger.info('Labels: {}'.format(labels_path))
+        _logger.info('Batch size: {}'.format(batch_size))
+        _logger.info('Batch number: {}'.format(batch_num))
+        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
+        _logger.info('Quantized ops: {}.'.format(','.join(
+            self._quantized_ops) if self._quantized_ops else 'all quantizable'))
+        _logger.info('Op ids to skip quantization: {}.'.format(','.join(
+            map(str, self._op_ids_to_skip)) if test_case_args.op_ids_to_skip
+                                                               else 'none'))
 
         _logger.info('--- FP32 prediction start ---')
         val_reader = paddle.batch(
