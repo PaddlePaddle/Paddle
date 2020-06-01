@@ -84,10 +84,11 @@ struct EventItem {
 };
 
 struct OverHead {
-  bool print = false;
+  bool print_overhead = false;
+  bool print_explanation = false;
   double total_time = 0.;
-  float compute_ratio = 0.0f;
-  float framework_ratio = 0.0f;
+  double compute_time = 0.0;
+  double framework_time = 0.0;
   EventItem memcpy_item;
   std::vector<EventItem> sub_memcpy_items;
 };
