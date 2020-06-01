@@ -119,4 +119,12 @@ std::string get_version() {
   return ss.str();
 }
 
+#if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
+
+std::string UpdateDllFlag(const char *name, const char *value) {
+  return google::SetCommandLineOption(name, value);
+}
+
+#endif
+
 }  // namespace paddle

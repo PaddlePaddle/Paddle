@@ -440,6 +440,14 @@ inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tenso
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
+inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopy_tensor_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${OCR_INSTALL_DIR}/model)        
+
+inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_tensor_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${OCR_INSTALL_DIR}/model --infer_data=${OCR_INSTALL_DIR}/data.txt --refer_result=${OCR_INSTALL_DIR}/result.txt)    
+            
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c

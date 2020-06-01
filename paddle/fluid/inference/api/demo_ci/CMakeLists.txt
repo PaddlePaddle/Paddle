@@ -7,6 +7,10 @@ option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
 
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
+else()
+  # PD_INFER_DECL is mainly used to set the dllimport/dllexport attribute in dynamic library mode. 
+  # Set it to empty in static library mode to avoid compilation issues.
+  add_definitions("/DPD_INFER_DECL=")
 endif()
 
 macro(safe_set_static_flag)
@@ -174,8 +178,8 @@ if(WIN32)
     )
   endif()
   if(NOT WITH_STATIC_LIB)
-    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX} ${CMAKE_BINARY_DIR}/Release
-    )
+      add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+        COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+      )
   endif()
 endif()

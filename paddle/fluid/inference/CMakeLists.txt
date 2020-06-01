@@ -17,6 +17,10 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake function for inference
 endif()
 
+if(WIN32)
+    add_definitions(-DPADDLE_DLL_INFERENCE)
+endif()
+
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
@@ -85,6 +89,9 @@ cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
+if(WIN32)
+    target_link_libraries(paddle_fluid_shared gflags)
+endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)
