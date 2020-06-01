@@ -47,6 +47,8 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
 
+  RegisterHeterCallback();
+
   thread_num_ = readers.size();
   workers_.resize(thread_num_);
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
@@ -62,6 +64,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
     workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetNeedDump(need_dump_field_);
+    workers_[i]->SetWorkerNum(thread_num_);
   }
 
   VLOG(3) << "going to initialize pull dense worker";
@@ -69,6 +72,15 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
+}
+
+void DistMultiTrainer::RegisterHeterCallback() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->RegisterHeterCallback(
+    [this](int worker, int taskid) {
+      workers_[worker]->Schedule(taskid);
+    }
+  );
 }
 
 void DistMultiTrainer::DumpWork(int tid) {
@@ -194,6 +206,18 @@ void DistMultiTrainer::Finalize() {
   // flush local client push queue
   auto fleet_ptr_ = FleetWrapper::GetInstance();
   fleet_ptr_->ClientFlush();
+}
+
+void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
+                                      const platform::Place &place) {
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->SetPlace(place);
+    workers_[i]->SetReaderPlace(place);
+    workers_[i]->SetRootScope(root_scope_);
+    workers_[i]->CreateDeviceResource(main_program);  // Program
+    workers_[i]->BindingDataFeedMemory();
+    workers_[i]->CacheProgram(main_program);
+  }
 }
 
 template <typename T>

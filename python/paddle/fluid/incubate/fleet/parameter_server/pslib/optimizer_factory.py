@@ -392,6 +392,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             opt_info["dump_slot"] = True
         opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
         opt_info["copy_table"] = strategy.get("copy_table", {})
+	opt_info["worker_name"] = strategy.get("worker_name", "DownpourWorker")
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

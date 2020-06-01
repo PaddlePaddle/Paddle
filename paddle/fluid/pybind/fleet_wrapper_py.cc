@@ -76,6 +76,8 @@ void BindFleetWrapper(py::module* m) {
       .def("set_client2client_config",
            &framework::FleetWrapper::SetClient2ClientConfig)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
+      .def("local_init", &framework::FleetWrapper::LocalInit)
+      .def("local_stop", &framework::FleetWrapper::LocalStop)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);
 }  // end FleetWrapper
