@@ -58,8 +58,10 @@ class MatrixNMSOp : public framework::OperatorWithKernel {
               box_dims[1], score_dims[2]));
     }
     ctx->SetOutputDim("Out", {box_dims[1], box_dims[2] + 2});
+    ctx->SetOutputDim("Index", {box_dims[1], 1});
     if (!ctx->IsRuntime()) {
       ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
+      ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }
   }
 
@@ -163,7 +165,8 @@ template <typename T>
 class MatrixNMSKernel : public framework::OpKernel<T> {
  public:
   size_t MultiClassMatrixNMS(const Tensor& scores, const Tensor& bboxes,
-                             std::vector<T>* out, int64_t background_label,
+                             std::vector<T>* out, std::vector<int>* indices,
+                             int start, int64_t background_label,
                              int64_t nms_top_k, int64_t keep_top_k,
                              bool normalized, T score_threshold,
                              T post_threshold, bool use_gaussian,
@@ -219,6 +222,7 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
       auto cls = all_classes[p];
       auto score = all_scores[p];
       auto bbox = bboxes.data<T>() + idx * bboxes.dims()[1];
+      (*indices).push_back(start + idx);
       (*out).push_back(cls);
       (*out).push_back(score);
       for (int j = 0; j < bboxes.dims()[1]; j++) {
@@ -233,6 +237,7 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Input<LoDTensor>("BBoxes");
     auto* scores = ctx.Input<LoDTensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
+    auto* index = ctx.Output<LoDTensor>("Index");
 
     auto background_label = ctx.Attr<int>("background_label");
     auto nms_top_k = ctx.Attr<int>("nms_top_k");
@@ -245,6 +250,7 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
 
     auto score_dims = scores->dims();
     auto batch_size = score_dims[0];
+    auto num_boxes = score_dims[2];
     auto box_dim = boxes->dims()[2];
     auto out_dim = box_dim + 2;
 
@@ -252,32 +258,38 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
     size_t num_out = 0;
     std::vector<size_t> offsets = {0};
     std::vector<T> detections;
+    std::vector<int> indices;
+    detections.reserve(out_dim * num_boxes * batch_size);
+    indices.reserve(num_boxes * batch_size);
     for (int i = 0; i < batch_size; ++i) {
       scores_slice = scores->Slice(i, i + 1);
       scores_slice.Resize({score_dims[1], score_dims[2]});
       boxes_slice = boxes->Slice(i, i + 1);
       boxes_slice.Resize({score_dims[2], box_dim});
-      std::map<int, std::vector<int>> indices;
-      num_out = MultiClassMatrixNMS(scores_slice, boxes_slice, &detections,
-                                    background_label, nms_top_k, keep_top_k,
-                                    normalized, score_threshold, post_threshold,
-                                    use_gaussian, gaussian_sigma);
+      int start = i * score_dims[2];
+      num_out = MultiClassMatrixNMS(
+          scores_slice, boxes_slice, &detections, &indices, start,
+          background_label, nms_top_k, keep_top_k, normalized, score_threshold,
+          post_threshold, use_gaussian, gaussian_sigma);
       offsets.push_back(offsets.back() + num_out);
     }
 
     int64_t num_kept = offsets.back();
     if (num_kept == 0) {
-      T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
-      od[0] = -1;
+      outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
+      index->mutable_data<int>({0, 1}, ctx.GetPlace());
       offsets = {0, 1};
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
+      index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());
       std::copy(detections.begin(), detections.end(), outs->data<T>());
+      std::copy(indices.begin(), indices.end(), index->data<int>());
     }
 
     framework::LoD lod;
     lod.emplace_back(offsets);
     outs->set_lod(lod);
+    index->set_lod(lod);
   }
 };
 
@@ -340,6 +352,10 @@ class MatrixNMSOpMaker : public framework::OpProtoAndCheckerMaker {
               "the offsets in first dimension are called LoD, the number of "
               "offset is N + 1, if LoD[i + 1] - LoD[i] == 0, means there is "
               "no detected bbox.");
+    AddOutput("Index",
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+              "index of selected bbox. The index is the absolute index cross "
+              "batches.");
     AddComment(R"DOC(
 This operator does multi-class matrix non maximum suppression (NMS) on batched
 boxes and scores.
