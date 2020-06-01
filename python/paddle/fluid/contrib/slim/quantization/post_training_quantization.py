@@ -84,6 +84,15 @@ def _remove_unused_var_nodes(graph):
     return graph
 
 
+def _remove_ctrl_vars(graph):
+    remove_ctr_vars = set()
+    for node in graph.all_var_nodes():
+        if node.is_ctrl_var():
+            remove_ctr_vars.add(node)
+    graph.safe_remove_nodes(remove_ctr_vars)
+    return graph
+
+
 def _apply_pass(scope,
                 graph,
                 pass_name,
@@ -419,6 +428,7 @@ class PostTrainingQuantization(object):
         '''
         _logger.info("Optimize FP32 model ...")
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
+        graph = _remove_ctrl_vars(graph)
         graph = _apply_pass(self._scope, graph, 'conv_bn_fuse_pass')
         self._program = graph.to_program()
 
