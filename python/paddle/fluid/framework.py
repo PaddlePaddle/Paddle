@@ -5455,13 +5455,17 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
+    index = None
     if device and ':' in device:
         device, index = device.split(':')
-        assert device != 'cpu', "Should not set device id for cpu."
+        if device == 'cpu':
+            raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
+    if index:
+        device = ":".join([device, index])
     pre_device = switch_device(device)
     try:
         yield
