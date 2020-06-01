@@ -51,6 +51,12 @@ struct RowwiseAdd {
                   const framework::Tensor& vec, framework::Tensor* output);
 };
 
+template <typename DeviceContext, typename T, int D>
+struct AddTensor {
+  void operator()(DeviceContext* ctx, const framework::Tensor& src,
+                  framework::Tensor* dst);
+};
+
 template <typename DeviceContext, typename T>
 struct ColwiseSum {
   void operator()(const DeviceContext& context, const framework::Tensor& input,

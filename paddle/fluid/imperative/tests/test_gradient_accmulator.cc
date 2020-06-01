@@ -107,12 +107,18 @@ TEST(test_add_functor, add_functor) {
   cpu_res = TensorCPUAddTest(cpu_place, static_cast<double>(1.0),
                              static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
+  cpu_res = TensorCPUAddTest(cpu_place, static_cast<platform::float16>(1.0),
+                             static_cast<platform::float16>(2.0));
+  EXPECT_EQ(cpu_res, 0);
 #if defined(PADDLE_WITH_CUDA)
   int gpu_res = 1;
   gpu_res = TensorGPUAddTest(gpu_place, 1.0, 0.0);
   EXPECT_EQ(gpu_res, 0);
   gpu_res = TensorGPUAddTest(gpu_place, static_cast<double>(1.0),
                              static_cast<double>(2.0));
+  EXPECT_EQ(gpu_res, 0);
+  gpu_res = TensorGPUAddTest(gpu_place, static_cast<platform::float16>(1.0),
+                             static_cast<platform::float16>(2.0));
   EXPECT_EQ(gpu_res, 0);
 #endif
 }

@@ -148,6 +148,23 @@ void RowwiseSum<platform::CUDADeviceContext, double>::operator()(
 template struct RowwiseMean<platform::CUDADeviceContext, float>;
 template struct RowwiseMean<platform::CUDADeviceContext, double>;
 
+template <typename T, int D>
+struct AddTensor<platform::CUDADeviceContext, T, D> {
+  void operator()(platform::CUDADeviceContext* ctx,
+                  const framework::Tensor& src, framework::Tensor* dst) {
+    auto in = framework::EigenTensor<T, D>::From(src);
+    auto out = framework::EigenTensor<T, D>::From(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+};
+
+template struct AddTensor<platform::CUDADeviceContext, platform::float16, 1>;
+template struct AddTensor<platform::CUDADeviceContext, platform::float16, 2>;
+template struct AddTensor<platform::CUDADeviceContext, platform::float16, 3>;
+template struct AddTensor<platform::CUDADeviceContext, platform::float16, 4>;
+template struct AddTensor<platform::CUDADeviceContext, platform::float16, 5>;
+template struct AddTensor<platform::CUDADeviceContext, platform::float16, 6>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
