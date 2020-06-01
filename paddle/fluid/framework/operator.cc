@@ -1050,7 +1050,14 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
-    } else if (Attr<std::string>("op_device") == "gpu") {
+    } else {
+      auto device = Attr<std::string>("op_device");
+      size_t pos = device.find(':');
+      if (pos != std::string::npos) {
+        device = device.substr(0, pos);
+        LOG_FIRST_N(WARNING, 1)
+            << "The device index for device_guard will be ignored.";
+      }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
       if (SupportGPU()) {

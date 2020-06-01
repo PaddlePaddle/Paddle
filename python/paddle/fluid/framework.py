@@ -66,7 +66,6 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
-_current_device_index = None
 
 global_prog_seed = 0
 
@@ -1816,8 +1815,7 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
             core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
             core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
-            core.op_proto_and_checker_maker.kOpDeviceAttrName(),
-            core.op_proto_and_checker_maker.kOpDeviceIndexAttrName(),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName()
         }
 
 
@@ -1869,7 +1867,7 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream', 'queue_generator', 'enqueue', 'dequeue'
+        'c_sync_comm_stream'
     }
 
     def __init__(self,
@@ -1931,12 +1929,8 @@ class Operator(object):
             if _current_device is not None:
                 if self._has_kernel(type):
                     op_device = op_maker.kOpDeviceAttrName()
-                    op_device_index = op_maker.kOpDeviceIndexAttrName()
                     op_attrs[op_device] = _current_device
-                    op_attrs[op_device_index] = _current_device_index
                 else:
-                    op_device_index = op_maker.kOpDeviceIndexAttrName()
-                    op_attrs[op_device_index] = _current_device_index
                     warnings.warn("The Op(%s) is not support to set device." %
                                   type)
                 if 'force_cpu' in op_attrs:
@@ -5418,13 +5412,6 @@ def switch_device(device):
     return pre_device
 
 
-def switch_device_index(index):
-    global _current_device_index
-    pre_device_index = _current_device_index
-    _current_device_index = index
-    return pre_device_index
-
-
 @signature_safe_contextmanager
 def device_guard(device=None):
     """
@@ -5470,19 +5457,16 @@ def device_guard(device=None):
 
     if device and ':' in device:
         device, index = device.split(':')
-    else:
-        index = ""
+        assert device != 'cpu', "Should not set device id for cpu."
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
     pre_device = switch_device(device)
-    pre_index = switch_device_index(index)
     try:
         yield
     finally:
         switch_device(pre_device)
-        switch_device_index(pre_index)
 
 
 def set_flags(flags):

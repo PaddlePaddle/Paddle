@@ -280,15 +280,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-    op_device_index_attr_name = core.op_proto_and_checker_maker.kOpDeviceIndexAttrName(
-    )
 
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
     if op_device_attr_name not in attrs:
         attrs[op_device_attr_name] = ""
-        attrs[op_device_index_attr_name] = ""
     for name, val in six.iteritems(attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
@@ -308,10 +305,7 @@ def _create_loss_op_desc_(loss):
             int(core.op_proto_and_checker_maker.OpRole.Backward) |
             int(core.op_proto_and_checker_maker.OpRole.Loss),
             core.op_proto_and_checker_maker.kOpDeviceAttrName():
-            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName()),
-            core.op_proto_and_checker_maker.kOpDeviceIndexAttrName():
-            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceIndexAttrName(
-            ))
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
         })
     return op_desc
 
@@ -910,14 +904,10 @@ def _append_backward_ops_(block,
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-        device_index_attr_name = core.op_proto_and_checker_maker.kOpDeviceIndexAttrName(
-        )
         if op.desc.has_attr(device_attr_name):
             op_device = op.desc.attr(device_attr_name)
-            op_device_index = op.desc.attr(device_index_attr_name)
             for op_desc in grad_op_desc:
                 op_desc._set_attr(device_attr_name, op_device)
-                op_desc._set_attr(device_index_attr_name, op_device_index)
 
         # Rename internal gradient variables in multiple backward
         # so that they have different names with previous backward.

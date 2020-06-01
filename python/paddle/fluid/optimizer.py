@@ -450,10 +450,8 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-        if device is None or index is None:
-            device, index = self._get_device_for_param(param.name)
-        if index:
-            device = device + ":" + index
+        if device is None:
+            device = self._get_device_for_param(param.name)
         with device_guard(device):
             self.helper.set_variable_initializer(
                 var, initializer=Constant(value=float(fill_value)))
@@ -492,23 +490,19 @@ class Optimizer(object):
                 ops = target_block.ops
                 device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
                 )
-                device_index_attr_name = core.op_proto_and_checker_maker.kOpDeviceIndexAttrName(
-                )
                 for op in ops:
                     input_arg_names = op.input_arg_names
                     if param_name in input_arg_names:
                         self._param_device_map[param_name] = [
-                            op.attr(device_attr_name),
-                            op.attr(device_index_attr_name)
+                            op.attr(device_attr_name)
                         ]
                         break
 
     def _get_device_for_param(self, param_name):
         device = None
-        index = None
         if param_name in self._param_device_map:
-            [device, index] = self._param_device_map[param_name]
-        return device, index
+            device = self._param_device_map[param_name]
+        return device
 
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
@@ -564,10 +558,8 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        device, index = self._get_device_for_param(
-                            param_and_grad[0].name)
-                        if index:
-                            device = device + ":" + index
+                        device = self._get_device_for_param(param_and_grad[0]
+                                                            .name)
                         with device_guard(device):
                             optimize_op = self._append_optimize_op(
                                 target_block, param_and_grad)
