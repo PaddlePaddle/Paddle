@@ -489,6 +489,9 @@ class TestBilinearInitializer(unittest.TestCase):
         block = self.test_bilinear_initializer("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
 
+    def test_type_error(self):
+        self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
+
 
 class TestNumpyArrayInitializer(unittest.TestCase):
     def test_numpy_array_initializer(self, dtype="float32"):

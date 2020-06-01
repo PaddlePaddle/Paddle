@@ -800,7 +800,7 @@ class BilinearInitializer(Initializer):
             value_name = "fp32_values"
             values = [float(v) for v in weight.flat]
         else:
-            raise ValueError("Unsupported dtype %s", var.dtype)
+            raise TypeError("Unsupported dtype %s", var.dtype)
 
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
