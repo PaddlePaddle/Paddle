@@ -63,6 +63,10 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
+// Note: these headers for simplify demangle type string
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/type_defs.h"
+
 namespace paddle {
 namespace platform {
 
@@ -191,6 +195,33 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
+template <typename T>
+inline void ReplaceComplexTypeStr(std::string* str, const char* type_name) {
+  auto type_str = demangle(typeid(T).name());
+  std::size_t found = str->find(type_str);
+  if (found != std::string::npos) {
+    str->replace(found, type_str.length(), type_name);
+    ReplaceComplexTypeStr<T>(str, type_name);
+  }
+}
+
+#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                        \
+  do {                                                                         \
+    auto* __ptr = (__STR);                                                     \
+    if (nullptr != __ptr) {                                                    \
+      paddle::platform::ReplaceComplexTypeStr<__TYPENAME>(__ptr, #__TYPENAME); \
+    }                                                                          \
+  } while (0)
+
+inline void SimplifyDemangleStr(std::string* str) {
+  // the older is important, you have to put complex types in front
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::AttributeMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::Attribute, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVariableWrapperMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVarBaseMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(std::string, str);
+}
+
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
@@ -212,6 +243,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
       if (path.substr(path.length() - 3).compare(".so") == 0) {
+        SimplifyDemangleStr(&demangled);
         sout << string::Sprintf("%-3d %s\n", idx++, demangled);
       }
     }
