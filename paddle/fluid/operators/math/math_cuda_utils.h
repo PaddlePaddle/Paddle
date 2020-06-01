@@ -148,7 +148,7 @@ __inline__ __device__ T blockReduceSum(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
   val = warpReduceSum<T>(val, mask);
 
   return val;
@@ -180,7 +180,7 @@ __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : -1e10f;
+  val = (lane < block_span) ? shared[lane] : -1e10f;
   val = warpReduceMax(val, mask);
 
   return val;
