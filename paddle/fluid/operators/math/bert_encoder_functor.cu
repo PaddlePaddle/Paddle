@@ -143,30 +143,17 @@ __global__ void SoftmaxKernelWithEltadd(T *qk_buf_, const T *bias_qk_,
   int qk_offset = blockIdx.x * seq_len;
   assert(blockDim.x % 32 == 0);
 
-  __shared__ float s_sum, s_max;
-
-  float qk = threadIdx.x < seq_len
-                 ? static_cast<float>((qk_buf_[threadIdx.x + qk_offset] +
-                                       bias_qk_[threadIdx.x + qk_offset]))
-                 : 0.0f;
-  float tmp = threadIdx.x < seq_len ? static_cast<float>(qk) : -1e20f;
-
+  float tmp = threadIdx.x < seq_len
+                  ? static_cast<float>(qk_buf_[threadIdx.x + qk_offset] +
+                                       bias_qk_[threadIdx.x + qk_offset])
+                  : -1e20f;
   float max_val = blockReduceMax<float>(tmp, mask);
 
-  if (threadIdx.x == 0) s_max = max_val;
-  __syncthreads();
-
-  float qk_tmp =
-      threadIdx.x < seq_len ? __expf(static_cast<float>(tmp - s_max)) : 0.0f;
+  float qk_tmp = threadIdx.x < seq_len ? __expf(tmp - max_val) : 0.0f;
   float sum_val = blockReduceSum<float>(qk_tmp, mask);
 
-  if (threadIdx.x == 0) {
-    s_sum = sum_val + 1e-6f;
-  }
-  __syncthreads();
-
   if (threadIdx.x < seq_len)
-    qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / s_sum);
+    qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / sum_val);
 }
 
 template <typename T>
