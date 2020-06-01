@@ -66,6 +66,7 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
 class TestInt8(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self._cpu_only = True
 
     def init_dtype(self):
         self.dtype = np.int8
