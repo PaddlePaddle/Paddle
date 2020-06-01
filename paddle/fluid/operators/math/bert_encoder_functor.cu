@@ -198,19 +198,7 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
                                        "seq_len should <= 1024, "
                                        "but received seq_len is:%d",
                                        seq_len));
-  if (seq_len <= 32)
-    block = 32;
-  else if (seq_len > 32 && seq_len <= 64)
-    block = 64;
-  else if (seq_len > 64 && seq_len <= 128)
-    block = 128;
-  else if (seq_len > 128 && seq_len <= 256)
-    block = 256;
-  else if (seq_len > 256 && seq_len <= 512)
-    block = 512;
-  else
-    block = 1024;
-
+  block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
   SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
       qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
 }
