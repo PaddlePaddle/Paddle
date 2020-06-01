@@ -43,7 +43,7 @@ std::string CipherUtils::GenKeyToFile(int length, const std::string& filename) {
   // CryptoPP::byte key[length];
   prng.GenerateBlock(reinterpret_cast<unsigned char*>(&(rng.at(0))),
                      rng.size());
-  std::ofstream fout(filename);
+  std::ofstream fout(filename, std::ios::binary);
   PADDLE_ENFORCE_EQ(fout.is_open(), true,
                     paddle::platform::errors::Unavailable(
                         "Failed to open file : %s, "

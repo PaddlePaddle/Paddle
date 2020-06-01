@@ -60,7 +60,6 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   CryptoPP::member_ptr<CryptoPP::SymmetricCipher> m_cipher;
   CryptoPP::member_ptr<CryptoPP::StreamTransformationFilter> m_filter;
   bool need_iv = false;
-  std::string iv = "";
   const unsigned char* key_char =
       reinterpret_cast<const unsigned char*>(&(key.at(0)));
   BuildCipher(true, &need_iv, &m_cipher, &m_filter);
@@ -77,7 +76,7 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
   CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
   if (need_iv) {
-    ciphertext = iv_.append(ciphertext);
+    return iv_ + ciphertext;
   }
 
   return ciphertext;
@@ -88,7 +87,6 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
   CryptoPP::member_ptr<CryptoPP::SymmetricCipher> m_cipher;
   CryptoPP::member_ptr<CryptoPP::StreamTransformationFilter> m_filter;
   bool need_iv = false;
-  std::string iv = "";
   const unsigned char* key_char =
       reinterpret_cast<const unsigned char*>(&(key.at(0)));
   BuildCipher(false, &need_iv, &m_cipher, &m_filter);
@@ -115,7 +113,6 @@ std::string AESCipher::AuthenticatedEncryptInternal(
   CryptoPP::member_ptr<CryptoPP::AuthenticatedSymmetricCipher> m_cipher;
   CryptoPP::member_ptr<CryptoPP::AuthenticatedEncryptionFilter> m_filter;
   bool need_iv = false;
-  std::string iv = "";
   const unsigned char* key_char =
       reinterpret_cast<const unsigned char*>(&(key.at(0)));
   BuildAuthEncCipher(&need_iv, &m_cipher, &m_filter);
@@ -143,7 +140,6 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   CryptoPP::member_ptr<CryptoPP::AuthenticatedSymmetricCipher> m_cipher;
   CryptoPP::member_ptr<CryptoPP::AuthenticatedDecryptionFilter> m_filter;
   bool need_iv = false;
-  std::string iv = "";
   const unsigned char* key_char =
       reinterpret_cast<const unsigned char*>(&(key.at(0)));
   BuildAuthDecCipher(&need_iv, &m_cipher, &m_filter);
@@ -266,14 +262,15 @@ std::string AESCipher::Decrypt(const std::string& ciphertext,
 void AESCipher::EncryptToFile(const std::string& plaintext,
                               const std::string& key,
                               const std::string& filename) {
-  std::ofstream fout(filename);
-  fout << this->Encrypt(plaintext, key);
+  std::ofstream fout(filename, std::ios::binary);
+  std::string ciphertext = this->Encrypt(plaintext, key);
+  fout.write(ciphertext.data(), ciphertext.size());
   fout.close();
 }
 
 std::string AESCipher::DecryptFromFile(const std::string& key,
                                        const std::string& filename) {
-  std::ifstream fin(filename);
+  std::ifstream fin(filename, std::ios::binary);
   std::string ciphertext{std::istreambuf_iterator<char>(fin),
                          std::istreambuf_iterator<char>()};
   fin.close();
