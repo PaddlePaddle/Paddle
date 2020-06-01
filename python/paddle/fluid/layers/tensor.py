@@ -1107,8 +1107,7 @@ def reverse(x, axis):
         Case 2:
 
             Given a LoDTensorArray:
-                x = {[[0, 1],
-                      [2, 3]],
+                x = {[[0, 1], [2, 3]],
                      [[4, 5, 6]],
                      [[7],[8], [9]]}
                 axis = 0
@@ -1116,8 +1115,7 @@ def reverse(x, axis):
             Then:
                 output = {[[7],[8], [9]],
                           [[4, 5, 6]],
-                          [[0, 1],
-                           [2, 3]]}
+                          [[0, 1], [2, 3]]}
 
     Parameters:
         x (Variable): A tensor or LoDTensorArray to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
