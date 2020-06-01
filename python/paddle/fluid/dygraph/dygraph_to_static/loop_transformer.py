@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_tran
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node, to_static_variable
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -541,10 +541,6 @@ class LoopTransformer(gast.NodeTransformer):
         return new_stmts
 
     def get_while_stmt_nodes(self, node):
-        # TODO: consider while - else in python
-        # if not self.name_visitor.is_control_flow_loop(node):
-        #     return [node]
-
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
         new_stmts = []
@@ -560,10 +556,6 @@ class LoopTransformer(gast.NodeTransformer):
         for name in create_var_names:
             if "." not in name:
                 new_stmts.append(create_static_variable_gast_node(name))
-
-        # while x < 10 in dygraph should be convert into static tensor < 10
-        # for name in loop_var_names:
-        #     new_stmts.append(to_static_variable_gast_node(name))
 
         logical_op_transformer = LogicalOpTransformer(node.test)
         cond_value_node = logical_op_transformer.transform()
