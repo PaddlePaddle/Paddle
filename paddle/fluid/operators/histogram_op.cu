@@ -15,7 +15,7 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/histc_op.h"
+#include "paddle/fluid/operators/histogram_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 #include "paddle/fluid/platform/hostdevice.h"
@@ -45,9 +45,9 @@ __device__ static IndexType GetBin(T bVal, T minvalue, T maxvalue,
 }
 
 template <typename T, typename IndexType>
-__global__ void KernelHistc(const T* input, const int totalElements,
-                            const int64_t nbins, const T minvalue,
-                            const T maxvalue, int64_t* output) {
+__global__ void KernelHistogram(const T* input, const int totalElements,
+                                const int64_t nbins, const T minvalue,
+                                const T maxvalue, int64_t* output) {
   CUDA_KERNEL_LOOP(linearIndex, totalElements) {
     const IndexType inputIdx = threadIdx.x + blockIdx.x * blockDim.x;
     const auto inputVal = input[inputIdx];
@@ -61,7 +61,7 @@ __global__ void KernelHistc(const T* input, const int totalElements,
 }
 
 template <typename DeviceContext, typename T>
-class HistcCUDAKernel : public framework::OpKernel<T> {
+class HistogramCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     PADDLE_ENFORCE_EQ(
@@ -129,8 +129,8 @@ class HistcCUDAKernel : public framework::OpKernel<T> {
 
     auto stream =
         context.template device_context<platform::CUDADeviceContext>().stream();
-    KernelHistc<T, IndexType><<<GET_BLOCKS(input_numel),
-                                PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    KernelHistogram<T, IndexType><<<GET_BLOCKS(input_numel),
+                                    PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         input_data, input_numel, nbins, output_min, output_max, out_data);
   }
 };
@@ -140,7 +140,8 @@ class HistcCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    histc, ops::HistcCUDAKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::HistcCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::HistcCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::HistcCUDAKernel<paddle::platform::CUDADeviceContext, double>);
+    histogram,
+    ops::HistogramCUDAKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::HistogramCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::HistogramCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::HistogramCUDAKernel<paddle::platform::CUDADeviceContext, double>);

@@ -26,7 +26,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class HistcKernel : public framework::OpKernel<T> {
+class HistogramKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* input = context.Input<framework::Tensor>("X");
