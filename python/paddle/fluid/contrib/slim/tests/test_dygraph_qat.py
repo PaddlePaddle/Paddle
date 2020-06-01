@@ -203,9 +203,9 @@ class TestDygraphQat(unittest.TestCase):
                               feed={feed_target_names[0]: test_data},
                               fetch_list=fetch_targets)
 
-        if not np.allclose(after_save, before_save.numpy()):
-            self.assertTrue(
-                False, msg='Failed to save the inference quantized model.')
+        self.assertTrue(
+            np.allclose(after_save, before_save.numpy()),
+            msg='Failed to save the inference quantized model.')
 
 
 if __name__ == '__main__':
