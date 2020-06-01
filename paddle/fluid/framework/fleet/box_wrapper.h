@@ -341,30 +341,54 @@ class BoxWrapper {
   void BeginPass() const;
   void EndPass(bool need_save_delta) const;
   void SetTestMode(bool is_test) const;
+
+  template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
+  void PullSparseCase(const paddle::platform::Place& place,
+                      const std::vector<const uint64_t*>& keys,
+                      const std::vector<float*>& values,
+                      const std::vector<int64_t>& slot_lengths,
+                      const int hidden_size, const int expand_embed_dim);
+
   void PullSparse(const paddle::platform::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
                   const std::vector<int64_t>& slot_lengths,
-                  const int hidden_size);
+                  const int hidden_size, const int expand_embed_dim);
+
+  template <size_t EMBEDX_DIM, size_t EXPAND_EMBED_DIM = 0>
+  void PushSparseGradCase(const paddle::platform::Place& place,
+                          const std::vector<const uint64_t*>& keys,
+                          const std::vector<const float*>& grad_values,
+                          const std::vector<int64_t>& slot_lengths,
+                          const int hidden_size, const int expand_embed_dim,
+                          const int batch_size);
+
   void PushSparseGrad(const paddle::platform::Place& place,
                       const std::vector<const uint64_t*>& keys,
                       const std::vector<const float*>& grad_values,
                       const std::vector<int64_t>& slot_lengths,
-                      const int hidden_size, const int batch_size);
+                      const int hidden_size, const int expand_embed_dim,
+                      const int batch_size);
+
   void CopyForPull(const paddle::platform::Place& place, uint64_t** gpu_keys,
-                   const std::vector<float*>& values,
-                   const boxps::FeatureValueGpu* total_values_gpu,
+                   const std::vector<float*>& values, void* total_values_gpu,
                    const int64_t* gpu_len, const int slot_num,
-                   const int hidden_size, const int64_t total_length);
+                   const int hidden_size, const int expand_embed_dim,
+                   const int64_t total_length);
+
   void CopyForPush(const paddle::platform::Place& place,
                    const std::vector<const float*>& grad_values,
-                   boxps::FeaturePushValueGpu* total_grad_values_gpu,
+                   void* total_grad_values_gpu,
                    const std::vector<int64_t>& slot_lengths,
-                   const int hidden_size, const int64_t total_length,
-                   const int batch_size);
+                   const int hidden_size, const int expand_embed_dim,
+                   const int64_t total_length, const int batch_size);
+
   void CopyKeys(const paddle::platform::Place& place, uint64_t** origin_keys,
                 uint64_t* total_keys, const int64_t* gpu_len, int slot_num,
                 int total_len);
+
+  void CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim);
+
   boxps::PSAgentBase* GetAgent() { return p_agent_; }
   void InitializeGPUAndLoadModel(
       const char* conf_file, const std::vector<int>& slot_vector,
@@ -442,6 +466,15 @@ class BoxWrapper {
   }
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
+    PADDLE_ENFORCE_EQ(
+        s_instance_ == nullptr, false,
+        platform::errors::PreconditionNotMet(
+            "GetInstance failed in BoxPs, you should use SetInstance firstly"));
+    return s_instance_;
+  }
+
+  static std::shared_ptr<BoxWrapper> SetInstance(int embedx_dim = 8,
+                                                 int expand_embed_dim = 0) {
     if (nullptr == s_instance_) {
       // If main thread is guaranteed to init this, this lock can be removed
       static std::mutex mutex;
@@ -449,8 +482,13 @@ class BoxWrapper {
       if (nullptr == s_instance_) {
         VLOG(3) << "s_instance_ is null";
         s_instance_.reset(new paddle::framework::BoxWrapper());
-        s_instance_->boxps_ptr_.reset(boxps::BoxPSBase::GetIns());
+        s_instance_->boxps_ptr_.reset(
+            boxps::BoxPSBase::GetIns(embedx_dim, expand_embed_dim));
+        embedx_dim_ = embedx_dim;
+        expand_embed_dim_ = expand_embed_dim;
       }
+    } else {
+      LOG(WARNING) << "You have already used SetInstance() before";
     }
     return s_instance_;
   }
@@ -776,6 +814,9 @@ class BoxWrapper {
   const int feedpass_thread_num_ = 30;  // magic number
   static std::shared_ptr<BoxWrapper> s_instance_;
   std::unordered_set<std::string> slot_name_omited_in_feedpass_;
+  // EMBEDX_DIM and EXPAND_EMBED_DIM
+  static int embedx_dim_;
+  static int expand_embed_dim_;
 
   // Metric Related
   int phase_ = 1;
@@ -1009,3 +1050,5 @@ class BoxHelper {
 
 }  // end namespace framework
 }  // end namespace paddle
+
+#include "paddle/fluid/framework/fleet/box_wrapper_impl.h"

@@ -17,7 +17,6 @@ import paddle.fluid.core as core
 import os
 import unittest
 import paddle.fluid.layers as layers
-from paddle.fluid.layers.nn import _pull_box_sparse
 
 
 class TestDataFeed(unittest.TestCase):
@@ -57,9 +56,9 @@ class TestDataFeed(unittest.TestCase):
             lod_level=0,
             append_batch_size=False)
 
-        emb_x, emb_y = _pull_box_sparse([x, y], size=2)
-        emb_xp = _pull_box_sparse(x, size=2)
-        concat = layers.concat([emb_x, emb_y], axis=1)
+        emb_x, emb_y = fluid.contrib.layers._pull_box_extended_sparse(
+            [x, y], size=2, extend_size=128)
+        concat = layers.concat([emb_x[0], emb_x[1], emb_y[0], emb_y[1]], axis=1)
         fc = layers.fc(input=concat,
                        name="fc",
                        size=1,

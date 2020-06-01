@@ -82,8 +82,7 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
     }
   }
 };
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInference,
-                                    "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
@@ -99,7 +98,7 @@ REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
 REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
                   ops::ReduceMeanDoubleGradOpBaseMaker,
-                  ops::ReduceMeanGradNoNeedBufferVarInference);
+                  ops::ReduceMeanGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,
                                          float, ops::MeanFunctor>,

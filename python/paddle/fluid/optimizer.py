@@ -708,7 +708,7 @@ class Optimizer(object):
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
@@ -1462,7 +1462,7 @@ class DGCMomentumOptimizer(Optimizer):
             else:
                 dgc_params_grads.append((param, grad))
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             not_dgc_params_grads = self._grad_clip(not_dgc_params_grads)
         else:

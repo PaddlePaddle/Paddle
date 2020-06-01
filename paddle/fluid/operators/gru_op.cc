@@ -456,7 +456,7 @@ class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUGradOpNoNeedBufferVarInference, "Input",
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUGradOpNoNeedBufferVarInferer, "Input",
                                     "Bias");
 
 }  // namespace operators
@@ -467,7 +467,7 @@ REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
                   ops::GRUGradOpMaker<paddle::framework::OpDesc>,
                   ops::GRUGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gru_grad, ops::GRUGradOp,
-                  ops::GRUGradOpNoNeedBufferVarInference);
+                  ops::GRUGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);
 REGISTER_OP_CPU_KERNEL(
