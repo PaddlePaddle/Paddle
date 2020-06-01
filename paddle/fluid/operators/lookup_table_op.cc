@@ -112,6 +112,11 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                   "for training.")
         .SetDefault(false);
 
+    AddAttr<std::string>("entry",
+                         "(std::string, default "
+                         ") for entry attribute.")
+        .SetDefault("");
+
     AddComment(R"DOC(
 Lookup Table Operator.
 

@@ -12,36 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
+# Copyright(c) 2019 PaddlePaddle Authors.All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#http:  // www.apache.org/licenses/LICENSE-2.0
+# http:  // www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
 Contrib layers just related to the neural network.
 """
 
 from __future__ import print_function
 
-import numpy as np
-import six
 import os
+import six
+import warnings
 import inspect
+
+import numpy as np
+
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable
 from paddle.fluid import core
-import warnings
+from paddle.fluid.entry_attr import ProbabilityEntry, CountFilterEntry
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
@@ -947,7 +950,7 @@ def sparse_embedding(input,
                      size,
                      padding_idx=None,
                      is_test=False,
-                     enter=None,
+                     entry=None,
                      param_attr=None,
                      dtype='float32'):
     helper = LayerHelper('sparse_embedding', **locals())
@@ -970,17 +973,27 @@ def sparse_embedding(input,
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
 
+    entry_str = ""
+
+    if entry is not None:
+        if not isinstance(entry, ProbabilityEntry) or not isinstance(
+                entry, CountFilterEntry):
+            raise ValueError(
+                "entry must be instance in [ProbabilityEntry, CountFilterEntry]")
+        entry_str = entry.to_attr()
+
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
                 'W': w},
         outputs={'Out': tmp},
         attrs={
+            'padding_idx': padding_idx,
             'is_sparse': True,
             'is_distributed': False,
             'remote_prefetch': True,
             'is_test': is_test,
-            'padding_idx': padding_idx
+            'entry': entry_str
         })
 
     return tmp

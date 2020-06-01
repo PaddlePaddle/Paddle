@@ -28,7 +28,7 @@ class EntryAttr(object):
     def __init__(self, name):
         self._name = name
 
-    def _to_string(self):
+    def to_attr(self):
         """
         Returns the attributes of this parameter.
 
@@ -51,7 +51,7 @@ class ProbabilityEntry(EntryAttr):
 
         self._probability = probability
 
-    def _to_string(self):
+    def to_attr(self):
         return ":".join([self._name, str(self._probability)])
 
 
@@ -69,5 +69,5 @@ class CountFilterEntry(EntryAttr):
 
         self._count_filter = count_filter
 
-    def _to_string(self):
+    def to_attr(self):
         return ":".join([self._name, str(self._count_filter)])
