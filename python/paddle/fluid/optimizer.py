@@ -416,8 +416,7 @@ class Optimizer(object):
                          fill_value=0.0,
                          shape=None,
                          type=None,
-                         device=None,
-                         index=None):
+                         device=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -493,9 +492,8 @@ class Optimizer(object):
                 for op in ops:
                     input_arg_names = op.input_arg_names
                     if param_name in input_arg_names:
-                        self._param_device_map[param_name] = [
-                            op.attr(device_attr_name)
-                        ]
+                        self._param_device_map[param_name] = op.attr(
+                            device_attr_name)
                         break
 
     def _get_device_for_param(self, param_name):
