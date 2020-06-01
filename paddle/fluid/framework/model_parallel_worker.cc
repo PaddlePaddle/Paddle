@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL)
+#include <float.h>
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -79,145 +80,114 @@ void ModelParallelWorker::AutoSetCPUAffinity(bool reuse) {
   VLOG(3) << "Set " << thread_id_ << "th thread affinity to CPU " << proc;
 }
 
-void ModelParallelWorker::ForwardPass(int macrobatch_id) {
-  for (auto& op : ops_) {
-    int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-    // We run op with op_role = kLRSched only for the first macrobatch
-    // to avoid increasing the @LR_DECAY_STEP@ multiple times.
-    bool run_first_mbatch = op_role == static_cast<int>(OpRole::kForward) ||
-                            op_role == (static_cast<int>(OpRole::kForward) |
-                                        static_cast<int>(OpRole::kLoss)) ||
-                            op_role == static_cast<int>(OpRole::kLRSched);
-    bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
-                      op_role == (static_cast<int>(OpRole::kForward) |
-                                  static_cast<int>(OpRole::kLoss));
-    if ((macrobatch_id == 0 && run_first_mbatch) ||
-        (macrobatch_id != 0 && run_others)) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for scope " << macrobatch_id;
-      op->Run(*macrobatch_scopes_[macrobatch_id], place_);
-    }
-  }
-}
-
-void ModelParallelWorker::BackwardPass(int macrobatch_id) {
-  for (auto& op : ops_) {
-    int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-    if (op_role == static_cast<int>(OpRole::kBackward) ||
-        op_role == (static_cast<int>(OpRole::kBackward) |
-                    static_cast<int>(OpRole::kLoss))) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for scope " << macrobatch_id;
-      op->Run(*macrobatch_scopes_[macrobatch_id], place_);
-    }
-  }
-}
-
-void ModelParallelWorker::OptimizePass() {
-  for (auto& op : ops_) {
-    int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-    if (op_role == static_cast<int>(OpRole::kOptimize)) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for minibatch scope";
-      // op->Run(*minibatch_scope_, place_);
-      op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
-    }
-  }
-}
-
-void ModelParallelWorker::ForwardPassProfile(int macrobatch_id) {
-  for (auto& op : ops_) {
-    int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-    // We run op with op_role = kLRSched only for the first macrobatch
-    // to avoid increasing the @LR_DECAY_STEP@ multiple times.
-    bool run_first_mbatch = op_role == static_cast<int>(OpRole::kForward) ||
-                            op_role == (static_cast<int>(OpRole::kForward) |
-                                        static_cast<int>(OpRole::kLoss)) ||
-                            op_role == static_cast<int>(OpRole::kLRSched);
-    bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
-                      op_role == (static_cast<int>(OpRole::kForward) |
-                                  static_cast<int>(OpRole::kLoss));
-    if ((macrobatch_id == 0 && run_first_mbatch) ||
-        (macrobatch_id != 0 && run_others)) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for scope " << macrobatch_id;
-      op->Run(*macrobatch_scopes_[macrobatch_id], place_);
-    }
-  }
-}
-
-void ModelParallelWorker::BackwardPassProfile(int macrobatch_id) {
-  for (auto& op : ops_) {
-    int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-    if (op_role == static_cast<int>(OpRole::kBackward) ||
-        op_role == (static_cast<int>(OpRole::kBackward) |
-                    static_cast<int>(OpRole::kLoss))) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for scope " << macrobatch_id;
-      op->Run(*macrobatch_scopes_[macrobatch_id], place_);
-    }
-  }
-}
-
-void ModelParallelWorker::OptimizePassProfile() {
-  for (auto& op : ops_) {
-    int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-    if (op_role == static_cast<int>(OpRole::kOptimize)) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
-              << " for minibatch scope";
-      // op->Run(*minibatch_scope_, place_);
-      op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
-    }
-  }
-}
-
 void ModelParallelWorker::TrainFiles() {
+  VLOG(3) << "ModelParallelWorker::TrainFiles";
   AutoSetCPUAffinity(true);
 
+  int64_t max_memory_size = 0;
+  std::unique_ptr<GarbageCollector> gc;
+  auto unused_vars_ = GetUnusedVars(program_->Block(0), ops_, skip_vars_);
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(place_)) {
+    if (IsFastEagerDeletionModeEnabled()) {
+      gc.reset(new UnsafeFastGPUGarbageCollector(
+          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+    } else {
+      gc.reset(new DefaultStreamGarbageCollector(
+          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+    }
+  } else if (platform::is_cpu_place(place_)) {
+#endif
+    gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place_),
+                                     max_memory_size));
+#ifdef PADDLE_WITH_CUDA
+  }
+#endif
+
   if (thread_id_ == 0) {
-    // For the first section.
-    PADDLE_ENFORCE_NOT_NULL(device_reader_,
-                            "The device reader for the first "
-                            "thread should not be null.");
-    device_reader_->Start();
-    device_reader_->AssignFeedVar(*minibatch_scope_);
     while (true) {
       // Start a minibatch.
-      int batch_size = 0;
       for (int i = 0; i < num_macrobatches_; ++i) {
-        batch_size = device_reader_->Next();
-        {
+        try {
+          for (auto& op : ops_) {
+            int op_role =
+                boost::get<int>(op->Attr<int>(std::string("op_role")));
+            // We run op with op_role = kLRSched only for the first macrobatch
+            // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+            bool run_first_mbatch =
+                op_role == static_cast<int>(OpRole::kForward) ||
+                op_role == (static_cast<int>(OpRole::kForward) |
+                            static_cast<int>(OpRole::kLoss)) ||
+                op_role == static_cast<int>(OpRole::kLRSched);
+            bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                              op_role == (static_cast<int>(OpRole::kForward) |
+                                          static_cast<int>(OpRole::kLoss));
+            if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+              VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                      << " for scope " << i;
+              op->Run(*macrobatch_scopes_[i], place_);
+              if (gc) {
+                DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+                                    unused_vars_, gc.get());
+              }
+            }
+          }
+        } catch (platform::EOFException&) {
           std::unique_lock<std::mutex> lk(thread_mutex);
-          if (batch_size <= 0) {
-            threads_completed = true;
-            VLOG(3) << "thread " << thread_id_ << " completed.";
-            thread_condition.notify_all();
-            return;
-          }
-          if (i == 0) {
-            batch_id_ += 1;
-            thread_condition.notify_all();
-          }
+          threads_completed = true;
+          VLOG(3) << "thread " << thread_id_ << " completed.";
+          VLOG(3) << "called notify all";
+          thread_condition.notify_all();
+          VLOG(0) << "EOF encountered";
+          return;
         }
-        // forward pass:
-        ForwardPass(i);
+        if (i == 0) {
+          VLOG(3) << "called notify all";
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          batch_id_ += 1;
+          thread_condition.notify_all();
+        }
       }
       // backward pass
       for (int i = 0; i < num_macrobatches_; ++i) {
-        BackwardPass(i);
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+          }
+        }
       }
       // update pass
-      OptimizePass();
+      for (auto& op : ops_) {
+        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        if (op_role == static_cast<int>(OpRole::kOptimize)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          op->Run(*macrobatch_scopes_[0], place_);
+          if (gc) {
+            DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
+                                op.get(), unused_vars_, gc.get());
+          }
+        }
+      }
       dev_ctx_->Wait();
     }
   } else {
     while (true) {
       {
-        std::unique_lock<std::mutex> lk(thread_mutex);
         PADDLE_ENFORCE_LE(local_batch_id_, batch_id_,
                           "local_batch_id_ (%d) must be less than or equal to "
                           "batch_id_ (%d)",
                           local_batch_id_, batch_id_);
+        std::unique_lock<std::mutex> lk(thread_mutex);
         if (local_batch_id_ == batch_id_ && !threads_completed) {
           thread_condition.wait(lk);
         }
@@ -233,14 +203,59 @@ void ModelParallelWorker::TrainFiles() {
       }
       // forward pass:
       for (int i = 0; i < num_macrobatches_; ++i) {
-        ForwardPass(i);
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          // We run op with op_role = kLRSched only for the first macrobatch
+          // to avoid increasing the @LR_DECAY_STEP@ multiple times.
+          bool run_first_mbatch =
+              op_role == static_cast<int>(OpRole::kForward) ||
+              op_role == (static_cast<int>(OpRole::kForward) |
+                          static_cast<int>(OpRole::kLoss)) ||
+              op_role == static_cast<int>(OpRole::kLRSched);
+          bool run_others = op_role == static_cast<int>(OpRole::kForward) ||
+                            op_role == (static_cast<int>(OpRole::kForward) |
+                                        static_cast<int>(OpRole::kLoss));
+          if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+          }
+        }
       }
       // backward pass
       for (int i = 0; i < num_macrobatches_; ++i) {
-        BackwardPass(i);
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+            if (gc) {
+              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+                                  unused_vars_, gc.get());
+            }
+          }
+        }
       }
       // update pass
-      OptimizePass();
+      for (auto& op : ops_) {
+        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        if (op_role == static_cast<int>(OpRole::kOptimize)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          op->Run(*macrobatch_scopes_[0], place_);
+          if (gc) {
+            DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
+                                op.get(), unused_vars_, gc.get());
+          }
+        }
+      }
       dev_ctx_->Wait();
     }
   }
@@ -250,11 +265,7 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
   VLOG(3) << "ModelParallelWorker::TrainFilesWithProfiler";
   AutoSetCPUAffinity(true);
 
-  platform::Timer reader_timer;
-  platform::Timer calc_timer;
   platform::Timer batch_timer;
-
-  reader_timer.Resume();
   platform::Timer timeline;
 
   std::vector<double> op_total_time;
@@ -269,7 +280,7 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
   op_max_time.resize(ops_.size());
   op_min_time.resize(ops_.size());
   for (size_t i = 0; i < op_min_time.size(); ++i) {
-    op_min_time[i] = 100000000;
+    op_min_time[i] = DBL_MAX;
   }
   op_count.resize(ops_.size());
 
@@ -294,74 +305,14 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
   }
 #endif
 
-  calc_timer.Resume();
-
   if (thread_id_ == 0) {
-    // For the first section.
-    // PADDLE_ENFORCE_NOT_NULL(device_reader_,
-    //                         "The device reader for the first "
-    //                         "thread should not be null.");
-    // device_reader_->Start();
-    // device_reader_->AssignFeedVar(*minibatch_scope_);
-
-    // Get the lod blocking queue
-    // paddle::operators::reader::LoDTensorBlockingQueueHolder *queue_holder;
-    // for (auto& op : ops_) {
-    //  if (op->Type() == "create_py_reader") {
-    //    auto queue_name = op->Input("blocking_queue");
-    //    VLOG(3) << "blocking_queue:" << queue_name;
-    //    queue_holder =
-    //    macrobatch_scopes_[0]->FindVar(queue_name)->GetMutable<paddle::operators::reader::LoDTensorBlockingQueueHolder>();
-    //    break;
-    //  }
-    //}
-    // auto queue = queue_holder->GetQueue();
     while (true) {
       // Start a minibatch.
       // int batch_size = 0;
       batch_timer.Start();
       for (int i = 0; i < num_macrobatches_; ++i) {
-        // reader_timer.Resume();
-        // batch_size = device_reader_->Next();
-        // reader_timer.Pause();
-        // while (!queue->IsClosed() && queue->Size() == 0) ;
-        // if (queue->IsClosed()) {
-        //  std::unique_lock<std::mutex> lk(thread_mutex);
-        //  threads_completed = true;
-        //  VLOG(3) << "thread " << thread_id_ << " completed.";
-        //  VLOG(3) << "called notify all";
-        //  thread_condition.notify_all();
-        //  calc_timer.Pause();
-        //  VLOG(0) << "read_time: " << reader_timer.ElapsedUS();
-        //  VLOG(0) << "calc_time: " << calc_timer.ElapsedUS();
-        //  return;
-        //}
-
-        //{
-        //  std::unique_lock<std::mutex> lk(thread_mutex);
-        //  //if (batch_size <= 0) {
-        //  //  threads_completed = true;
-        //  //  VLOG(3) << "thread " << thread_id_ << " completed.";
-        //  //  thread_condition.notify_all();
-        //  //  calc_timer.Pause();
-        //  //  VLOG(0) << "read_time: " << reader_timer.ElapsedUS();
-        //  //  VLOG(0) << "calc_time: " << calc_timer.ElapsedUS();
-        //  //  return;
-        //  //}
-        //  if (i == 0) {
-        //    std::unique_lock<std::mutex> lk(thread_mutex);
-        //    batch_id_ += 1;
-        //    thread_condition.notify_all();
-        //  }
-        //}
-        // forward pass:
-        // if (i == 0) {
-        //  VLOG(3) << "called notify all";
-        //  std::unique_lock<std::mutex> lk(thread_mutex);
-        //  thread_condition.notify_all();
-        //}
         try {
-          // int op_idx = 0;
+          int op_idx = 0;
           for (auto& op : ops_) {
             int op_role =
                 boost::get<int>(op->Attr<int>(std::string("op_role")));
@@ -378,25 +329,25 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
             if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
               VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                       << " for scope " << i;
-              // timeline.Start();
+              timeline.Start();
               op->Run(*macrobatch_scopes_[i], place_);
               if (gc) {
                 DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
                                     unused_vars_, gc.get());
               }
-              // timeline.Pause();
-              // auto time = timeline.ElapsedUS();
-              // op_total_time[op_idx] += time;
-              // if (time > op_max_time[op_idx]) {
-              //  op_max_time[op_idx] = time;
-              //}
-              // if (time < op_min_time[op_idx]) {
-              //  op_min_time[op_idx] = time;
-              //}
-              // op_count[op_idx] += 1;
-              // op_total_time[op_idx] += time;
+              timeline.Pause();
+              auto time = timeline.ElapsedUS();
+              op_total_time[op_idx] += time;
+              if (time > op_max_time[op_idx]) {
+                op_max_time[op_idx] = time;
+              }
+              if (time < op_min_time[op_idx]) {
+                op_min_time[op_idx] = time;
+              }
+              op_count[op_idx] += 1;
+              op_total_time[op_idx] += time;
             }
-            // op_idx++;
+            op_idx++;
           }
         } catch (platform::EOFException&) {
           std::unique_lock<std::mutex> lk(thread_mutex);
@@ -404,18 +355,14 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
           VLOG(3) << "thread " << thread_id_ << " completed.";
           VLOG(3) << "called notify all";
           thread_condition.notify_all();
-          calc_timer.Pause();
-          VLOG(0) << "read_time: " << reader_timer.ElapsedUS();
-          VLOG(0) << "calc_time: " << calc_timer.ElapsedUS();
           VLOG(0) << "EOF encountered";
-          // VLOG(0) << "============timeline============";
-          // for (size_t i = 0; i < ops_.size(); ++i) {
-          //  VLOG(0) << "op: " << op_name[i] << ", max_time: " <<
-          //  op_max_time[i]
-          //          << ", min_time: " << op_min_time[i]
-          //          << ", mean_time: " << op_total_time[i] / op_count[i];
-          //}
-          // VLOG(0) << "================================";
+          VLOG(0) << "============timeline============";
+          for (size_t i = 0; i < ops_.size(); ++i) {
+            VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
+                    << ", min_time: " << op_min_time[i]
+                    << ", mean_time: " << op_total_time[i] / op_count[i];
+          }
+          VLOG(0) << "================================";
           return;
         }
         if (i == 0) {
@@ -427,7 +374,7 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
       }
       // backward pass
       for (int i = 0; i < num_macrobatches_; ++i) {
-        // int op_idx = 0;
+        int op_idx = 0;
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
@@ -435,55 +382,53 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
                           static_cast<int>(OpRole::kLoss))) {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
-            // timeline.Start();
+            timeline.Start();
             op->Run(*macrobatch_scopes_[i], place_);
             if (gc) {
               DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
-            // timeline.Pause();
-            // auto time = timeline.ElapsedUS();
-            // op_total_time[op_idx] += time;
-            // if (time > op_max_time[op_idx]) {
-            //  op_max_time[op_idx] = time;
-            //}
-            // if (time < op_min_time[op_idx]) {
-            //  op_min_time[op_idx] = time;
-            //}
-            // op_count[op_idx] += 1;
-            // op_total_time[op_idx] += time;
+            timeline.Pause();
+            auto time = timeline.ElapsedUS();
+            op_total_time[op_idx] += time;
+            if (time > op_max_time[op_idx]) {
+              op_max_time[op_idx] = time;
+            }
+            if (time < op_min_time[op_idx]) {
+              op_min_time[op_idx] = time;
+            }
+            op_count[op_idx] += 1;
+            op_total_time[op_idx] += time;
           }
-          // op_idx++;
+          op_idx++;
         }
       }
       // update pass
-      // int op_idx = 0;
+      int op_idx = 0;
       for (auto& op : ops_) {
         int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
-          // op->Run(*minibatch_scope_, place_);
-          // timeline.Start();
-          // op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          timeline.Start();
           op->Run(*macrobatch_scopes_[0], place_);
           if (gc) {
             DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
-          // timeline.Pause();
-          // auto time = timeline.ElapsedUS();
-          // op_total_time[op_idx] += time;
-          // if (time > op_max_time[op_idx]) {
-          //  op_max_time[op_idx] = time;
-          //}
-          // if (time < op_min_time[op_idx]) {
-          //  op_min_time[op_idx] = time;
-          //}
-          // op_count[op_idx] += 1;
-          // op_total_time[op_idx] += time;
+          timeline.Pause();
+          auto time = timeline.ElapsedUS();
+          op_total_time[op_idx] += time;
+          if (time > op_max_time[op_idx]) {
+            op_max_time[op_idx] = time;
+          }
+          if (time < op_min_time[op_idx]) {
+            op_min_time[op_idx] = time;
+          }
+          op_count[op_idx] += 1;
+          op_total_time[op_idx] += time;
         }
-        // op_idx++;
+        op_idx++;
       }
       dev_ctx_->Wait();
       batch_timer.Pause();
@@ -505,17 +450,13 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
         if (threads_completed) {
           VLOG(3) << "thread " << thread_id_ << " completed.";
           lk.unlock();
-          calc_timer.Pause();
-          VLOG(0) << "read_time: " << reader_timer.ElapsedUS();
-          VLOG(0) << "calc_time: " << calc_timer.ElapsedUS();
-          // VLOG(0) << "============timeline============";
-          // for (size_t i = 0; i < ops_.size(); ++i) {
-          //  VLOG(0) << "op: " << op_name[i] << ", max_time: " <<
-          //  op_max_time[i]
-          //          << ", min_time: " << op_min_time[i]
-          //          << ", mean_time: " << op_total_time[i] / op_count[i];
-          //}
-          // VLOG(0) << "================================";
+          VLOG(0) << "============timeline============";
+          for (size_t i = 0; i < ops_.size(); ++i) {
+            VLOG(0) << "op: " << op_name[i] << ", max_time: " << op_max_time[i]
+                    << ", min_time: " << op_min_time[i]
+                    << ", mean_time: " << op_total_time[i] / op_count[i];
+          }
+          VLOG(0) << "================================";
           return;
         }
         lk.unlock();
@@ -523,7 +464,7 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
       }
       // forward pass:
       for (int i = 0; i < num_macrobatches_; ++i) {
-        // int op_idx = 0;
+        int op_idx = 0;
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
           // We run op with op_role = kLRSched only for the first macrobatch
@@ -539,30 +480,30 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
           if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
-            // timeline.Start();
+            timeline.Start();
             op->Run(*macrobatch_scopes_[i], place_);
             if (gc) {
               DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
-            // timeline.Pause();
-            // auto time = timeline.ElapsedUS();
-            // op_total_time[op_idx] += time;
-            // if (time > op_max_time[op_idx]) {
-            //  op_max_time[op_idx] = time;
-            //}
-            // if (time < op_min_time[op_idx]) {
-            //  op_min_time[op_idx] = time;
-            //}
-            // op_count[op_idx] += 1;
-            // op_total_time[op_idx] += time;
+            timeline.Pause();
+            auto time = timeline.ElapsedUS();
+            op_total_time[op_idx] += time;
+            if (time > op_max_time[op_idx]) {
+              op_max_time[op_idx] = time;
+            }
+            if (time < op_min_time[op_idx]) {
+              op_min_time[op_idx] = time;
+            }
+            op_count[op_idx] += 1;
+            op_total_time[op_idx] += time;
           }
-          // op_idx++;
+          op_idx++;
         }
       }
       // backward pass
       for (int i = 0; i < num_macrobatches_; ++i) {
-        // int op_idx = 0;
+        int op_idx = 0;
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
@@ -570,62 +511,57 @@ void ModelParallelWorker::TrainFilesWithProfiler() {
                           static_cast<int>(OpRole::kLoss))) {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
-            // timeline.Start();
+            timeline.Start();
             op->Run(*macrobatch_scopes_[i], place_);
             if (gc) {
               DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
-            // timeline.Pause();
-            // auto time = timeline.ElapsedUS();
-            // op_total_time[op_idx] += time;
-            // if (time > op_max_time[op_idx]) {
-            //  op_max_time[op_idx] = time;
-            //}
-            // if (time < op_min_time[op_idx]) {
-            //  op_min_time[op_idx] = time;
-            //}
-            // op_count[op_idx] += 1;
-            // op_total_time[op_idx] += time;
+            timeline.Pause();
+            auto time = timeline.ElapsedUS();
+            op_total_time[op_idx] += time;
+            if (time > op_max_time[op_idx]) {
+              op_max_time[op_idx] = time;
+            }
+            if (time < op_min_time[op_idx]) {
+              op_min_time[op_idx] = time;
+            }
+            op_count[op_idx] += 1;
+            op_total_time[op_idx] += time;
           }
-          // op_idx++;
+          op_idx++;
         }
       }
       // update pass
-      // int op_idx = 0;
+      int op_idx = 0;
       for (auto& op : ops_) {
         int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
-          // op->Run(*minibatch_scope_, place_);
-          // timeline.Start();
-          // op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          timeline.Start();
           op->Run(*macrobatch_scopes_[0], place_);
           if (gc) {
             DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
           timeline.Pause();
-          // auto time = timeline.ElapsedUS();
-          // op_total_time[op_idx] += time;
-          // if (time > op_max_time[op_idx]) {
-          //  op_max_time[op_idx] = time;
-          //}
-          // if (time < op_min_time[op_idx]) {
-          //  op_min_time[op_idx] = time;
-          //}
-          // op_count[op_idx] += 1;
-          // op_total_time[op_idx] += time;
+          auto time = timeline.ElapsedUS();
+          op_total_time[op_idx] += time;
+          if (time > op_max_time[op_idx]) {
+            op_max_time[op_idx] = time;
+          }
+          if (time < op_min_time[op_idx]) {
+            op_min_time[op_idx] = time;
+          }
+          op_count[op_idx] += 1;
+          op_total_time[op_idx] += time;
         }
-        // op_idx++;
+        op_idx++;
       }
       dev_ctx_->Wait();
     }
   }
-  calc_timer.Pause();
-  VLOG(3) << "read_time: " << reader_timer.ElapsedUS();
-  VLOG(3) << "calc_time: " << calc_timer.ElapsedUS();
 }
 
 }  // namespace framework

@@ -91,29 +91,6 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
-// bool ModelParallelTrainer::isPersistableVarGrad(std::string name) {
-//  std::size_t pos = name.rfind(framework::kGradVarSuffix);
-//  if (pos == std::string::npos) {
-//    return false;
-//  }
-//  std::string var_name = name.substr(0, pos);
-//  if (persistable_var_names_.find(var_name) != persistable_var_names_.end()) {
-//    return true;
-//  }
-//  return false;
-//}
-
-// bool ModelParallelTrainer::isPersistable(VarDesc* var) {
-//  if (!var->Persistable()) {
-//    return false;
-//  }
-//  auto name = var->Name();
-//  if (name.find("learning_rate") != std::string::npos) {
-//    return false;
-//  }
-//  return true;
-//}
-
 void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
                                           const ProgramDesc& program,
                                           const platform::Place& place) {
