@@ -25,6 +25,8 @@ from paddle.fluid import framework
 from paddle.fluid import executor
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
@@ -108,7 +110,7 @@ class FunctionSpec(object):
     def to_static_inputs(self, main_program):
         inputs = []
         block = main_program.global_block()
-        for input_var in self.args:
+        for input_var in flatten(self.args):
             if isinstance(input_var, np.ndarray):
                 feed_layer = block.create_var(
                     name=unique_name.generate('feed'),
@@ -127,7 +129,8 @@ class FunctionSpec(object):
                 feed_layer = input_var
 
             inputs.append(feed_layer)
-        return inputs
+        # Restores the nested structure as self.args
+        return pack_sequence_as(self.args, inputs)
 
     @property
     def dyfunc(self):
@@ -175,12 +178,12 @@ class ConcreteProgram(object):
         of program as fetch_list.
         """
         # Transforms dygraph function into static function and caches it.
-        dygaph_function = func_spec.dyfunc
-        static_func = convert_function_with_cache(dygaph_function)
+        dygraph_function = func_spec.dyfunc
+        static_func = convert_function_with_cache(dygraph_function)
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
-        # if set in `fluid.dygrap_guard` because some ops rely on it, such as
+        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
         # `fluid.layers.dropout`.
         main_program.random_seed = framework.default_main_program().random_seed
         startup_program.random_seed = framework.default_startup_program(
@@ -203,7 +206,7 @@ class ConcreteProgram(object):
             inputs=inputs,
             outputs=outputs,
             parameters=all_parameters,
-            func=dygaph_function,
+            func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
 
@@ -550,6 +553,7 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
+    @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
         Saves current model as the inference model. It will prune the main_program
