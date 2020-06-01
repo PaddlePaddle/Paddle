@@ -321,7 +321,7 @@ function build_size() {
     Calculate /paddle/build size and PR whl size
     ============================================
 EOF
-    if [ "$1" == "fluid_inference"]; then
+    if [ "$1" == "fluid_inference" ]; then
         cd ${PADDLE_ROOT}/build
         cp -r fluid_inference_install_dir fluid_inference
         tar -czf fluid_inference.tgz fluid_inference
@@ -376,6 +376,7 @@ EOF
         make clean
     fi
     make install -j 8
+    build_size
 }
 
 function cmake_gen_and_build_mac() {
