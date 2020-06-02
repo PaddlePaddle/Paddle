@@ -542,10 +542,12 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
     3. z is both created in If.body and If.orelse node,
     4. q is created only in If.body, and it is used by `print(q)` as gast.Load.
     Note:
-        After transformed, q is created in parent scope. For example,
+        After transformed, q and z are created in parent scope. For example,
 
         x, y = 5, 10
         q = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='q', shape=[-1], dtype='float32')
+        z = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='z', shape=[-1], dtype='float32')
+
         def true_func(x, y, q):
             x = x+1
             z = x*x
@@ -585,7 +587,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
             var for var in _vars_with_store(child_dict) if var in parent_dict
         ])
 
-    def _vars_before_store(ids_dict):
+    def _vars_loaded_before_store(ids_dict):
         new_dict = defaultdict(list)
         for k, ctxs in ids_dict.items():
             for ctx in ctxs:
@@ -609,22 +611,22 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
         var for var in _vars_with_store(else_vars_dict)
         if var not in parent_vars_dict
     ])
-    new_vars_in_if_or_else = body_new_vars | orelse_new_vars
-    new_vars_in_one_of_if_or_else = body_new_vars ^ orelse_new_vars
+    new_vars_in_body_or_orelse = body_new_vars | orelse_new_vars
+    new_vars_in_one_of_body_or_orelse = body_new_vars ^ orelse_new_vars
 
     # 1. the var in parent scope is modified in If.body or If.orelse node.
-    modified_vars_from_parent = modified_vars - new_vars_in_if_or_else
+    modified_vars_from_parent = modified_vars - new_vars_in_body_or_orelse
 
     # 2. new var is both created in If.body and If.orelse node.
     new_vars_in_body_and_orelse = body_new_vars & orelse_new_vars
 
     # 3. new var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
     used_vars_after_ifelse = set(
-        [var for var in _vars_before_store(after_ifelse_vars_dict)])
-    new_vars_to_create = new_vars_in_one_of_if_or_else & used_vars_after_ifelse
+        [var for var in _vars_loaded_before_store(after_ifelse_vars_dict)])
+    new_vars_to_create = new_vars_in_one_of_body_or_orelse & used_vars_after_ifelse | new_vars_in_body_and_orelse
 
     # 4. generate return_ids of if/else node.
-    return_ids = list(modified_vars | new_vars_in_body_and_orelse |
+    return_ids = list(modified_vars_from_parent | new_vars_in_body_and_orelse |
                       new_vars_to_create)
     return_ids.sort()
 
@@ -635,6 +637,7 @@ def transform_if_else(node, root):
     """
     Transform ast.If into control flow statement of Paddle static graph.
     """
+    # TODO(liym27): Consider variable like `self.a` modified in if/else node.
     parent_name_ids = get_name_ids([root], end_node=node)
     body_name_ids = get_name_ids(node.body)
     orelse_name_ids = get_name_ids(node.orelse)
@@ -643,13 +646,15 @@ def transform_if_else(node, root):
     after_ifelse_name_ids = defaultdict(list)
     all_name_ids = get_name_ids([root])
     for name in all_name_ids:
-        before_var_nodes = parent_name_ids.get(name, []) + \
+        before_var_names_ids = parent_name_ids.get(name, []) + \
                            body_name_ids.get(name, []) + orelse_name_ids.get(name, [])
-        after_var_nodes = [
-            ctx for ctx in all_name_ids[name] if ctx not in before_var_nodes
+        # Note: context of node.Name like gast.Load is a concrete object which has unique id different from other gast.Load
+        #  E.g. ctx of `x` can be [<gast.Load object at 0x142a33c90>, <gast.Load object at 0x142a51950>, <gast.Param object at 0x1407d8250>]
+        after_var_names_ids = [
+            ctx for ctx in all_name_ids[name] if ctx not in before_var_names_ids
         ]
-        if after_var_nodes:
-            after_ifelse_name_ids[name] = after_var_nodes
+        if after_var_names_ids:
+            after_ifelse_name_ids[name] = after_var_names_ids
 
     return_name_ids, modified_name_ids_from_parent, new_vars_to_create = parse_cond_return(
         parent_name_ids, body_name_ids, orelse_name_ids, after_ifelse_name_ids)
@@ -664,6 +669,7 @@ def transform_if_else(node, root):
     # Create static variable for those variables
     create_new_vars_in_parent_stmts = []
     for name in new_vars_to_create:
+        # NOTE: Consider variable like `self.a` modified in if/else node.
         if "." not in name:
             create_new_vars_in_parent_stmts.append(
                 create_static_variable_gast_node(name))
