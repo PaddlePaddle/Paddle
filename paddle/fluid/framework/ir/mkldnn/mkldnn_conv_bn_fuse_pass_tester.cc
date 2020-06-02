@@ -259,9 +259,9 @@ class MKLDNNConvBatchNormPassTest {
     // Get result without IR passes applied
     // Need to copy result over as the same scope is used in both executors
     // so first result will be overwritten by second
-    auto* j_tensor = exe.FindTensor("m");
+    auto* m_tensor = exe.FindTensor("m");
     Tensor no_ir_result;
-    TensorCopy(*j_tensor, place, &no_ir_result);
+    TensorCopy(*m_tensor, place, &no_ir_result);
 
     graph.reset(pass->Apply(graph.release()));
 
