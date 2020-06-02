@@ -785,7 +785,7 @@ void DownpourWorker::TrainFiles() {
           fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
                   s.c_str());
           s = "";
-          for (auto& param : *all_param_) {
+          for (auto& param : all_param_) {
             Variable* var = thread_scope_->FindVar(param);
             if (var == nullptr) {
               continue;
