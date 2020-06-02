@@ -62,8 +62,13 @@ class FSTest(unittest.TestCase):
         fs.delete(new_dir_path)
         self.assertTrue(not fs.is_exist(new_dir_path))
 
+    def setUp(self):
+        fs = LocalFS()
+        fs.mkdirs("./fs_test_hdfs")
+        fs.mkdirs("./fs_test_local")
+
     def test_hdfs(self):
-        fs = BDFS("xxxx", None)
+        fs = BDFS("/usr/lib/jvm/java-8-openjdk-amd64", None)
         dir_path = "./fs_test_hdfs"
         self._fs_test(fs, dir_path)
 

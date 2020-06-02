@@ -60,14 +60,19 @@ class FleetTest(unittest.TestCase):
 
         fleet.clean_redundant_check_points(dir_path, fs=fs)
 
+    def setUp(self):
+        fs = LocalFS()
+        fs.mkdirs("./checkpoint_test_hdfs")
+        fs.mkdirs("./checkpoint_test_local")
+
     def test_hdfs_check_point(self):
-        fs = BDFS("xxxx", "xxxx", 1 * 1000, 1 * 1000)
-        dir_path = "/user/Paddle_Data/gongweibao/edl_test/my_paddle_model"
+        fs = HDFSClient("/usr/lib/jvm/java-8-openjdk-amd64", None)
+        dir_path = "./checkpoint_test_hdfs"
         self._test_check_point(fs, dir_path)
 
     def test_local_check_point(self):
         fs = LocalFS()
-        dir_path = "./my_paddle_model"
+        dir_path = "./checkpoint_test_local"
         self._test_check_point(fs, dir_path)
 
 
