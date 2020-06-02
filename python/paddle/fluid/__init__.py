@@ -47,7 +47,6 @@ from .dataset import *
 from .data import *
 
 from . import trainer_desc
-from . import inferencer
 
 from . import io
 from . import evaluator
@@ -90,9 +89,11 @@ from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
+enable_imperative = enable_dygraph
+disable_imperative = disable_dygraph
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
     data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
         'io',
@@ -105,6 +106,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',
+        'enable_imperative',
+        'disable_imperative',
         'transpiler',
         'nets',
         'optimizer',

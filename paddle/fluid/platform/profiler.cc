@@ -63,11 +63,14 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const std::string &name, const EventRole role)
-    : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
+RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  // lock is not needed, the code below is thread-safe
+
+  // do some initialization
+  start_ns_ = PosixInNsec();
+  role_ = role;
   is_enabled_ = true;
+  // lock is not needed, the code below is thread-safe
   Event *e = PushEvent(name, role);
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(e);
@@ -83,7 +86,7 @@ RecordEvent::~RecordEvent() {
                           BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_);
+  PopEvent(name_, role_);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -184,8 +187,8 @@ Event *PushEvent(const std::string &name, const EventRole role) {
   return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role);
 }
 
-void PopEvent(const std::string &name) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
+void PopEvent(const std::string &name, const EventRole role) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role);
 }
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
@@ -256,6 +259,7 @@ void DisableProfiler(EventSortingKey sorted_key,
 
   ResetProfiler();
   g_state = ProfilerState::kDisabled;
+  g_tracer_option = TracerOption::kDefault;
   should_send_profile_state = true;
 }
 
@@ -275,7 +279,8 @@ bool ShouldSendProfileState() { return should_send_profile_state; }
 
 std::string OpName(const framework::VariableNameMap &name_map,
                    const std::string &type_name) {
-  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail)
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail ||
+      !IsProfileEnabled())
     return "";
 
   std::string ret = type_name + "%";

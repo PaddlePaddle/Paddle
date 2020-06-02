@@ -62,8 +62,9 @@ class MKLDNNActivationGradKernel
 template <typename T>
 void eltwise_forward(const framework::ExecutionContext &ctx,
                      mkldnn::algorithm algorithm) {
-  PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                 "It must use CPUPlace.");
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                    paddle::platform::errors::PreconditionNotMet(
+                        "Operator DNNL eletwise_forward must use CPUPlace"));
   auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
   const auto *x = ctx.Input<Tensor>("X");
@@ -90,7 +91,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
       ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
-  auto dst_memory_p = handler.AcquireDstMemory(y);
+  auto dst_memory_p =
+      x->IsSharedBufferWith(*y) ? src_memory_p : handler.AcquireDstMemory(y);
   auto activation_p = handler.AcquireForwardPrimitive();
 
   mkldnn::stream astream(dev_ctx.GetEngine());

@@ -256,9 +256,8 @@ def terminate_local_procs(procs):
             p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
-    # wait all process terminiated
-    # time.sleep(3)
-
+    #wait all process terminiated
+    time.sleep(3)
     for step in range(0, 50):
         alive = False
         for p in procs:

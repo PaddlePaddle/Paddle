@@ -1,7 +1,11 @@
-set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
+if (NOT APPLE AND NOT WIN32)
+    set(INFERENCE_EXTRA_DEPS paddle_fluid_shared)
+else()
+    set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor benchmark)
+endif()
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps} ir_pass_manager analysis_predictor)
+    set(INFERENCE_EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} analysis ${analysis_deps})
 endif()
 
 function(download_data install_dir data_file)
@@ -33,13 +37,13 @@ endfunction()
 
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_test_build TARGET_NAME filename)
 	inference_analysis_test_build(${TARGET_NAME} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark)
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS})
 endfunction()
 
 function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir data_path)
@@ -49,7 +53,7 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
              --infer_data=${data_path}
              --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
-             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
 endfunction()
 
@@ -65,7 +69,7 @@ function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_bi
              --infer_data=${data_path}
              --warmup_batch_size=10
              --batch_size=300
-             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=1)
 endfunction()
 
@@ -88,9 +92,16 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --int8_model=${int8_model_dir}
              --infer_data=${data_path}
              --batch_size=50
-             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --cpu_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_accuracy_layer=false
              --iterations=2)
+endfunction()
+
+function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
+	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
+	        ARGS --data_dir=${data_dir}
+		     --output_file=${output_file}
+		     --local)
 endfunction()
 
 if(NOT APPLE AND WITH_MKLML)
@@ -160,7 +171,7 @@ set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
 download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" "Ernie_large_data.txt.tar.gz" "Ernie_large_result.txt.tar.gz")
 download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
 inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
-    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
 
 # text_classification
@@ -179,7 +190,7 @@ download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar
 inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
   EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
   ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
-       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI})
+       --cpu_num_threads=${CPU_NUM_THREADS_ON_CI})
 
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
@@ -187,6 +198,15 @@ if (NOT EXISTS ${OCR_INSTALL_DIR})
     inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+
+# densebox
+set(DENSEBOX_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/densebox")
+download_data(${DENSEBOX_INSTALL_DIR} "densebox.tar.gz")
+inference_analysis_test(test_analyzer_detect SRCS analyzer_detect_tester.cc 
+  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+  ARGS --infer_model=${DENSEBOX_INSTALL_DIR}/model --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt 
+       --infer_shape=${DENSEBOX_INSTALL_DIR}/shape_50.txt)
+set_property(TEST test_analyzer_detect PROPERTY ENVIRONMENT GLOG_vmodule=analysis_predictor=2)
 
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
@@ -286,8 +306,6 @@ if(WITH_MKLDNN)
   # download dataset if necessary
   download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
 
-  # download small demo set of pascalvoc for testing local userdata preprocessing
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -320,6 +338,19 @@ if(WITH_MKLDNN)
   set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
   inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
   inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
+
+  # preprocess data2bin imagenet
+    download_int8_data(${INT8_DATA_DIR} "imagenet_small.tar.gz")
+    set(IMAGENET_SMALL_DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
+    set(IMAGENET_SMALL_OUTPUT_FILE "imagenet_small.bin")
+    preprocess_data2bin_test_run(preprocess_local_imagenet "full_ILSVRC2012_val_preprocess.py" ${IMAGENET_SMALL_DATA_DIR} ${IMAGENET_SMALL_OUTPUT_FILE})
+    
+  # preprocess data2bin pascalvoc
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
+  set(PASCALVOC_SMALL_DATA_DIR "${INT8_DATA_DIR}/pascalvoc_small")
+  set(PASCALVOC_SMALL_OUTPUT_FILE "pascalvoc_small.bin")
+  preprocess_data2bin_test_run(preprocess_local_pascalvoc "full_pascalvoc_test_preprocess.py" ${PASCALVOC_SMALL_DATA_DIR} ${PASCALVOC_SMALL_OUTPUT_FILE})
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
@@ -414,6 +445,14 @@ inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tenso
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
+inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopy_tensor_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${OCR_INSTALL_DIR}/model)        
+
+inference_analysis_test(test_analyzer_paddletensor_tensor SRCS analyzer_paddle_tensor_tester.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${OCR_INSTALL_DIR}/model --infer_data=${OCR_INSTALL_DIR}/data.txt --refer_result=${OCR_INSTALL_DIR}/result.txt)    
+            
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c

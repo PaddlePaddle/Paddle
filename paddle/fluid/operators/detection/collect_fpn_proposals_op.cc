@@ -65,9 +65,9 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
           context->GetInputVarPtrs("MultiLevelScores");
       for (size_t i = 0; i < roi_inputs.size(); ++i) {
         framework::Variable *roi_var =
-            boost::get<framework::Variable *>(roi_inputs[i]);
+            BOOST_GET(framework::Variable *, roi_inputs[i]);
         framework::Variable *score_var =
-            boost::get<framework::Variable *>(score_inputs[i]);
+            BOOST_GET(framework::Variable *, score_inputs[i]);
         auto &roi_lod = roi_var->Get<LoDTensor>().lod();
         auto &score_lod = score_var->Get<LoDTensor>().lod();
         PADDLE_ENFORCE_EQ(

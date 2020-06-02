@@ -494,5 +494,33 @@ class TestApiWhileLoop_Error(unittest.TestCase):
                               value_error_body_returns_with_mutable_list)
 
 
+class TestApiWhileLoopSliceInBody(unittest.TestCase):
+    def test_var_slice(self):
+        def cond(z, i):
+            return i + 1 <= x_shape[0]
+
+        def body(z, i):
+            z = z + x[i]
+            i += 1
+            return z, i
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[5], dtype='int32')
+            z = fluid.layers.fill_constant([1], 'int32', 0)
+            x_shape = fluid.layers.shape(x)
+            i = fluid.layers.fill_constant([1], 'int32', 0)
+            z, _ = fluid.layers.while_loop(cond, body, [z, i])
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        np_x = np.array([1, 2, 3, 4, 5], dtype='int32')
+        res = exe.run(main_program, feed={'x': np_x}, fetch_list=[z])
+        self.assertTrue(np.array_equal(res[0], [np.sum(np_x)]))
+
+
 if __name__ == '__main__':
     unittest.main()

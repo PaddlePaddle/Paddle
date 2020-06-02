@@ -91,3 +91,4 @@ endfunction()
 external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
 
 add_definitions(-DPADDLE_WITH_LITE)
+add_definitions(-DLITE_WITH_LOG)

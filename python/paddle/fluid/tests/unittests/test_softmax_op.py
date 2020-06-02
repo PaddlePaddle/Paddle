@@ -195,6 +195,9 @@ class TestSoftmaxFP16Op2(TestSoftmaxOp):
     def get_x_shape(self):
         return [2, 3, 4, 5]
 
+    def test_check_grad(self):
+        pass
+
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")

@@ -38,6 +38,7 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
       TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }
+    // NOTE: Converting int64 to int32 may cause data overflow.
     vec_new_data = std::vector<T>(data, data + x->numel());
   } else {
     PADDLE_THROW("The dtype of Tensor must be int32 or int64.");
@@ -69,6 +70,7 @@ inline std::vector<T> GetDataFromTensorList(
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        // NOTE: Converting int64 to int32 may cause data overflow.
         vec_new_data.push_back(static_cast<T>(*temp.data<int64_t>()));
       } else {
         vec_new_data.push_back(static_cast<T>(*tensor->data<int64_t>()));

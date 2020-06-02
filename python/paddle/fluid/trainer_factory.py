@@ -72,6 +72,14 @@ class TrainerFactory(object):
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("enable_random_dump") is not None:
+                    trainer._set_enable_random_dump(opt_info[
+                        "enable_random_dump"])
+                if opt_info.get("dump_interval") is not None:
+                    trainer._set_dump_interval(opt_info["dump_interval"])
+                if opt_info.get("random_with_lineid") is not None:
+                    trainer._set_random_with_lineid(opt_info[
+                        "random_with_lineid"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])

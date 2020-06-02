@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.rnn import GRUCell
+from paddle.fluid.dygraph import GRUCell
 
 import numpy as np
 
@@ -34,9 +34,9 @@ def tanh(x):
 
 def cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih, weight_hh,
                bias_hh):
-    igates = np.matmul(step_input_np, weight_ih)
+    igates = np.matmul(step_input_np, weight_ih.transpose(1, 0))
     igates += bias_ih
-    hgates = np.matmul(pre_hidden_np, weight_hh)
+    hgates = np.matmul(pre_hidden_np, weight_hh.transpose(1, 0))
     hgates += bias_hh
 
     chunked_igates = np.split(igates, indices_or_sections=3, axis=1)

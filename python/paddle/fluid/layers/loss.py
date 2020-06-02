@@ -57,6 +57,11 @@ def center_loss(input,
                 param_attr,
                 update_center=True):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.nn.functional.center_loss
+	:alias: paddle.nn.functional.center_loss,paddle.nn.functional.loss.center_loss
+	:old_api: paddle.fluid.layers.center_loss
+
     **Center loss Cost layer**
     
     This OP accepts input (deep features,the output of the last hidden layer)
@@ -147,6 +152,10 @@ def center_loss(input,
 
 def bpr_loss(input, label, name=None):
     """
+    :alias_main: paddle.nn.functional.bpr_loss
+	:alias: paddle.nn.functional.bpr_loss,paddle.nn.functional.loss.bpr_loss
+	:old_api: paddle.fluid.layers.bpr_loss
+
     **Bayesian Personalized Ranking Loss Operator**
 
     This operator belongs to pairwise ranking loss. Label is the desired item.
@@ -183,6 +192,8 @@ def bpr_loss(input, label, name=None):
     """
     helper = LayerHelper('bpr_loss', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'bpr_loss')
     helper.append_op(
         type='bpr_loss',
         inputs={'X': [input],
@@ -193,6 +204,10 @@ def bpr_loss(input, label, name=None):
 
 def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     """
+    :alias_main: paddle.nn.functional.cross_entropy
+	:alias: paddle.nn.functional.cross_entropy,paddle.nn.functional.loss.cross_entropy
+	:old_api: paddle.fluid.layers.cross_entropy
+
     This operator computes the cross entropy between input and label. It
     supports both hard-label and and soft-label cross entropy computation.
 
@@ -286,6 +301,10 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
 
 def square_error_cost(input, label):
     """
+    :alias_main: paddle.nn.functional.square_error_cost
+	:alias: paddle.nn.functional.square_error_cost,paddle.nn.functional.loss.square_error_cost
+	:old_api: paddle.fluid.layers.square_error_cost
+
     This op accepts input predictions and target label and returns the
     squared error cost.
 
@@ -457,6 +476,8 @@ def edit_distance(input,
             # [4]
 
     """
+    check_variable_and_dtype(input, 'input', ['int64'], 'edit_distance')
+    check_variable_and_dtype(label, 'label', ['int64'], 'edit_distance')
     helper = LayerHelper("edit_distance", **locals())
 
     # remove some tokens from input and labels
@@ -479,7 +500,7 @@ def edit_distance(input,
         label = erased_label
 
     this_inputs = {"Hyps": [input], "Refs": [label]}
-    if input_length and label_length:
+    if input_length is not None and label_length is not None:
         this_inputs['HypsLength'] = [input_length]
         this_inputs['RefsLength'] = [label_length]
 
@@ -616,8 +637,14 @@ def warpctc(input,
             print(output)
     """
     helper = LayerHelper('warpctc', **locals())
+    check_variable_and_dtype(input, 'input', ['float32'], "warpctc")
+    check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
     this_inputs = {'Logits': [input], 'Label': [label]}
-    if input_length and label_length:
+    if input_length is not None and label_length is not None:
+        check_variable_and_dtype(input_length, 'LogitsLength', ['int64'],
+                                 "warpctc")
+        check_variable_and_dtype(label_length, 'LabelLength', ['int64'],
+                                 "warpctc")
         this_inputs['LogitsLength'] = [input_length]
         this_inputs['LabelLength'] = [label_length]
 
@@ -653,6 +680,8 @@ def nce(input,
         seed=0,
         is_sparse=False):
     """
+    :api_attr: Static Graph
+
     ${comment}
 
     Args:
@@ -864,6 +893,8 @@ def hsigmoid(input,
              is_custom=False,
              is_sparse=False):
     """
+    :api_attr: Static Graph
+    
     The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
     and speed up the model training, especially the training of language model.
     Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
@@ -1157,6 +1188,10 @@ def softmax_with_cross_entropy(logits,
                                return_softmax=False,
                                axis=-1):
     """
+    :alias_main: paddle.nn.functional.softmax_with_cross_entropy
+	:alias: paddle.nn.functional.softmax_with_cross_entropy,paddle.nn.functional.loss.softmax_with_cross_entropy
+	:old_api: paddle.fluid.layers.softmax_with_cross_entropy
+
     This operator implements the cross entropy loss function with softmax. This function 
     combines the calculation of the softmax operation and the cross entropy loss function 
     to provide a more numerically stable gradient.
@@ -1280,6 +1315,10 @@ def softmax_with_cross_entropy(logits,
 
 def rank_loss(label, left, right, name=None):
     """
+    :alias_main: paddle.nn.functional.rank_loss
+	:alias: paddle.nn.functional.rank_loss,paddle.nn.functional.loss.rank_loss
+	:old_api: paddle.fluid.layers.rank_loss
+
     This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
     with a training sample consisting of a pair of documents (A and B), The label (P) 
     indicates whether A is ranked higher than B or not. Please refer to more details: 
@@ -1323,15 +1362,9 @@ def rank_loss(label, left, right, name=None):
 
     """
     helper = LayerHelper('rank_loss', **locals())
-
-    if not (isinstance(label, Variable)):
-        raise ValueError("The label should be a Variable")
-
-    if not (isinstance(left, Variable)):
-        raise ValueError("The left should be a Variable")
-
-    if not (isinstance(right, Variable)):
-        raise ValueError("The right should be a Variable")
+    check_variable_and_dtype(label, 'label', ['float32'], "rank_loss")
+    check_variable_and_dtype(left, 'left', ['float32'], "rank_loss")
+    check_variable_and_dtype(right, 'right', ['float32'], "rank_loss")
 
     out = helper.create_variable_for_type_inference("float32")
 
@@ -1380,12 +1413,9 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
     helper = LayerHelper('margin_rank_loss', **locals())
-    if not isinstance(label, Variable):
-        raise ValueError("The label should be a Variable.")
-    if not isinstance(left, Variable):
-        raise ValueError("The left should be a Variable.")
-    if not isinstance(right, Variable):
-        raise ValueError("The right should be a Variable.")
+    check_variable_and_dtype(label, 'label', ['float32'], 'margin_rank_loss')
+    check_variable_and_dtype(label, 'left', ['float32'], 'margin_rank_loss')
+    check_variable_and_dtype(label, 'right', ['float32'], 'margin_rank_loss')
     out = helper.create_variable_for_type_inference(left.dtype)
     act = helper.create_variable_for_type_inference(left.dtype)
     helper.append_op(
@@ -1406,12 +1436,21 @@ def sigmoid_cross_entropy_with_logits(x,
                                       name=None,
                                       normalize=False):
     """
+    :alias_main: paddle.nn.functional.sigmoid_cross_entropy_with_logits
+	:alias: paddle.nn.functional.sigmoid_cross_entropy_with_logits,paddle.nn.functional.loss.sigmoid_cross_entropy_with_logits
+	:old_api: paddle.fluid.layers.sigmoid_cross_entropy_with_logits
+
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}
-        label(${label_type}): ${label_comment}
-        ignore_index(int): ${ignore_index_comment}
+        x(Variable): a 2-D tensor with shape N x D, where N is the batch size and
+                D is the number of classes. This input is a tensor of logits computed
+                by the previous operator. Logits are unscaled log probabilities given
+                as log(p/(1-p)) The data type should be float32 or float64.
+        label (Variable): a 2-D tensor of the same type and shape as X.
+                This input is a tensor of probabalistic labels for each logit.
+        ignore_index(int): Specifies a target value that is ignored and 
+                does not contribute to the input gradient.
         name(str|None): The default value is None.  Normally there is
             no need for user to set this property.  For more information,
             please refer to :ref:`api_guide_Name`
@@ -1436,6 +1475,8 @@ def sigmoid_cross_entropy_with_logits(x,
                 normalize=True) # or False
             # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
+    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
+                             'sigmoid_cross_entropy_with_logits')
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
 
@@ -1456,6 +1497,10 @@ def teacher_student_sigmoid_loss(input,
                                  soft_max_up_bound=15.0,
                                  soft_max_lower_bound=-15.0):
     """
+    :alias_main: paddle.nn.functional.teacher_student_sigmoid_loss
+	:alias: paddle.nn.functional.teacher_student_sigmoid_loss,paddle.nn.functional.loss.teacher_student_sigmoid_loss
+	:old_api: paddle.fluid.layers.teacher_student_sigmoid_loss
+
     **Teacher Student Log Loss Layer**
 
     This layer accepts input predictions and target label and returns the
@@ -1491,9 +1536,11 @@ def teacher_student_sigmoid_loss(input,
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
 
     """
-    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+    check_variable_and_dtype(input, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
                              'teacher_student_sigmoid_loss')
-    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+    check_variable_and_dtype(label, "label",
+                             ['float32', 'float64', 'int32', 'int64'],
                              'teacher_student_sigmoid_loss')
 
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
@@ -1525,8 +1572,8 @@ def huber_loss(input, label, delta):
 
 
     Args:
-        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
-        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
+        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
+        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
         delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type should be float32.
 
     Returns:
@@ -1555,6 +1602,10 @@ def huber_loss(input, label, delta):
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     helper = LayerHelper('huber_loss', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'huber_loss')
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'huber_loss')
     residual = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -1571,6 +1622,10 @@ def huber_loss(input, label, delta):
 @templatedoc()
 def kldiv_loss(x, target, reduction='mean', name=None):
     """
+    :alias_main: paddle.nn.functional.kldiv_loss
+	:alias: paddle.nn.functional.kldiv_loss,paddle.nn.functional.loss.kldiv_loss
+	:old_api: paddle.fluid.layers.kldiv_loss
+
     ${comment}
 
     Args:
@@ -1588,9 +1643,27 @@ def kldiv_loss(x, target, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32')
+            
+            # 'batchmean' reduction, loss shape will be [N]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
             target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
-            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean') # shape=[-1]
+            
+            # 'mean' reduction, loss shape will be [1]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='mean') # shape=[1]
+            
+            # 'sum' reduction, loss shape will be [1]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='sum') # shape=[1]
+            
+            # 'none' reduction, loss shape is same with X shape
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='none') # shape=[-1, 4, 2, 2]
+
     """
     helper = LayerHelper('kldiv_loss', **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'kldiv_loss')
@@ -1613,6 +1686,10 @@ from .control_flow import equal
 
 def npair_loss(anchor, positive, labels, l2_reg=0.002):
     '''
+    :alias_main: paddle.nn.functional.npair_loss
+	:alias: paddle.nn.functional.npair_loss,paddle.nn.functional.loss.npair_loss
+	:old_api: paddle.fluid.layers.npair_loss
+
   **Npair Loss Layer**
 
   Read `Improved Deep Metric Learning with Multi class N pair Loss Objective\
@@ -1679,6 +1756,10 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
 def mse_loss(input, label):
     """
+    :alias_main: paddle.nn.functional.mse_loss
+	:alias: paddle.nn.functional.mse_loss,paddle.nn.functional.loss.mse_loss
+	:old_api: paddle.fluid.layers.mse_loss
+
     This op accepts input predications and target label and returns the mean square error.
 
     The loss can be described as:

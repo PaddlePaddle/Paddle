@@ -36,7 +36,7 @@ class ParamAttr(object):
     
     Note:
         ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
-        It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
+        It is recommended to set ``grad_clip`` in ``optimizer`` to clip gradient. 
         There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
         :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
 
@@ -202,6 +202,8 @@ class ParamAttr(object):
 
 class WeightNormParamAttr(ParamAttr):
     """
+	:api_attr: Static Graph
+
     Parameter of weight Norm. Weight Norm is a reparameterization of the weight vectors
     in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this

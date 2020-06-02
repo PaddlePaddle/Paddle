@@ -21,6 +21,8 @@ import sys
 sys.path.append("../")
 from op_test import OpTest
 
+import paddle.fluid as fluid
+
 
 class TestSequenceReshape(OpTest):
     def init_data(self):
@@ -81,6 +83,26 @@ class TestSequenceReshape_reduce_seq_len0_case1(TestSequenceReshape):
         self.dimension = 24
         self.x_lod = [[0, 2, 8, 2, 0]]
         self.x = np.random.uniform(0.1, 1, [12, 12]).astype('float64')
+
+
+class TestSequenceReshapeOpError(unittest.TestCase):
+    def test_error(self):
+        def test_variable():
+            x = np.random.random((2, 4)).astype("float32")
+            fluid.layers.sequence_reshape(x=x, new_dim=4)
+
+        self.assertRaises(TypeError, test_variable)
+
+        def test_dtype():
+            x1 = fluid.layers.data(
+                name='x1',
+                shape=[2, 6],
+                append_batch_size=False,
+                dtype='float16',
+                lod_level=1)
+            fluid.layers.sequence_reshape(x=x1, new_dim=4)
+
+        self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == '__main__':

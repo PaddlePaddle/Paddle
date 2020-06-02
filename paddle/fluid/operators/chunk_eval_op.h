@@ -51,7 +51,13 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     for (int i = 0; i < length; ++i) {
       int prev_tag = tag;
       int prev_type = type;
-      PADDLE_ENFORCE_LE(label[i], num_chunk_types * num_tag_types);
+      PADDLE_ENFORCE_LE(
+          label[i], num_chunk_types * num_tag_types,
+          platform::errors::InvalidArgument(
+              "The value of Input(Label) should be less than the number of "
+              "chunk types times the number of tag types, but received %d "
+              "(Label) vs %d (chunk types) * %d (tag types).",
+              label[i], num_chunk_types, num_tag_types));
       tag = label[i] % num_tag_types;
       type = label[i] / num_tag_types;
       if (in_chunk && ChunkEnd(prev_tag, prev_type, tag, type, other_chunk_type,
@@ -191,10 +197,16 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
                    tag_inside, tag_end, tag_single, excluded_chunk_types);
       }
     } else {
-      PADDLE_ENFORCE_EQ(lod.size(), 1UL,
-                        "Only support one level sequence now.");
-      PADDLE_ENFORCE(lod == inference->lod(),
-                     "LoD must be same between Inference and Label.");
+      PADDLE_ENFORCE_EQ(
+          lod.size(), 1UL,
+          platform::errors::InvalidArgument(
+              "Only support one level LoD sequence now, but received %d.",
+              lod.size()));
+      PADDLE_ENFORCE_EQ(
+          lod, inference->lod(),
+          platform::errors::InvalidArgument(
+              "Input(Inference) and Input(Label) of Op(chunk_eval) should have "
+              "same LoD information."));
       num_sequences = lod[0].size() - 1;
 
       for (int i = 0; i < num_sequences; ++i) {
