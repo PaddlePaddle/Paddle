@@ -65,7 +65,6 @@ REGISTER_TRAINER_CLASS(MultiTrainer);
 REGISTER_TRAINER_CLASS(DistMultiTrainer);
 #if defined(PADDLE_WITH_NCCL)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
-REGISTER_TRAINER_CLASS(ModelParallelTrainer);
 #endif
 }  // namespace framework
 }  // namespace paddle

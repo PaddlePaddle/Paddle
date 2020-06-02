@@ -157,7 +157,7 @@ if(WITH_PYTHON)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-  add_dependencies(framework_py_proto framework_py_proto_init)
+  add_dependencies(framework_py_proto framework_py_proto_init trainer_py_proto)
   if (NOT WIN32)
     add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
@@ -183,8 +183,7 @@ cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context
 
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 if(WITH_DISTRIBUTE)
-  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc
-  model_parallel_trainer.cc dataset_factory.cc model_parallel_worker.cc
+  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
@@ -194,8 +193,7 @@ if(WITH_DISTRIBUTE)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
-  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc
-  model_parallel_trainer.cc dataset_factory.cc model_parallel_worker.cc
+  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry

@@ -17,7 +17,6 @@ limitations under the License. */
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
-#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -138,66 +137,7 @@ class PipelineTrainer : public TrainerBase {
   virtual Scope* GetWorkerScope(int thread_id);
   void InitDumpEnv() override;
   virtual std::string GetDumpPath(int tid);
-
- protected:
-  int section_num_;
-  int pipeline_num_;
-  int scope_queue_size_;
-  int sync_steps_;
-
-  SectionWorkerParameter pipeline_config_;
-
-  // The in/output var names for each section
-  std::vector<std::unique_ptr<std::vector<std::string>>> in_var_names_;
-  std::vector<std::unique_ptr<std::vector<std::string>>> out_var_names_;
-
-  // Counter for the running thread
-  std::vector<std::vector<int*>> worker_count_;
-  std::vector<std::vector<std::unique_ptr<std::mutex>>> worker_count_mutex_;
-
-  // worker: [section_id][pipeline_id][thread_id]
-  std::vector<std::vector<
-      std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>>
-      workers_;
-  std::vector<std::thread> section_threads_;
-
-  // We use scope to maintain context info, and scopes
-  // will be deliverd between different sections.
-  std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
-  std::vector<Scope*> pipeline_scopes_;
-
-  // The parameters that should be syncronized between different cards using
-  // nccl all-reduce
-  std::shared_ptr<std::vector<std::string>> param_need_sync_;
-  std::vector<std::string> persistable_vars_;
-  std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
-  std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
-
-  std::vector<DataFeed*> readers_;
-
-  void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
-                           const ProgramDesc& main_program,
-                           const Scope& root_scope);
-  void CopyParameters(const Scope& root_scope, int pipeline_id);
-  void construct_sync_functor();
-};
-#endif
-
-#if defined(PADDLE_WITH_NCCL)
-class ModelParallelTrainer : public TrainerBase {
- public:
-  ModelParallelTrainer() {}
-  ~ModelParallelTrainer() override {}
-  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
-  void InitTrainerEnv(const ProgramDesc& main_program,
-                      const platform::Place& place) override;
-  void InitOtherEnv(const ProgramDesc& main_program) override {}
-  void Run() override;
-  void Finalize() override;
   void GetSkipVars(int section_id, const ProgramDesc& main_program);
-  virtual Scope* GetWorkerScope(int thread_id);
-  void InitDumpEnv() override{};
-  virtual std::string GetDumpPath(int tid);
 
  protected:
   int section_num_;
@@ -208,9 +148,9 @@ class ModelParallelTrainer : public TrainerBase {
   std::vector<std::vector<std::string>> skip_vars_;
   TrainerDesc trainer_desc_;
 
+  std::vector<std::thread> section_threads_;
   // worker: [section_id]
   std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
-  std::vector<std::thread> threads_;
   // minibatch_scopes_: [section_id]
   std::vector<Scope*> minibatch_scopes_;
   // macrobatch_scopes_: [section_id][macrobatch_id]
