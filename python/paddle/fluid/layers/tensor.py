@@ -1143,7 +1143,7 @@ def reverse(x, axis):
           tensor_array = fluid.layers.create_array(dtype='float32')
           i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
           fluid.layers.array_write(data1, i, tensor_array)
-          fluid.layers.array_write(data1, i+1, tensor_array)
+          fluid.layers.array_write(data2, i+1, tensor_array)
 
           reversed_tensor_array = fluid.layers.reverse(tensor_array, 0) # {[[3, 4, 5]], [[0, 1, 2]]}
     """
