@@ -55,14 +55,12 @@ class IfElseTransformer(gast.NodeTransformer):
             wrapper_root)
         self.root = wrapper_root.node
         self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
-        self.new_func_nodes = {}
 
     def transform(self):
         """
         Main function to transform AST.
         """
         self.visit(self.root)
-        self.after_visit(self.root)
 
     def visit_If(self, node):
         if_condition_visitor = IfConditionVisitor(node.test,
@@ -116,43 +114,6 @@ class IfElseTransformer(gast.NodeTransformer):
             return new_node
         else:
             return node
-
-    def after_visit(self, node):
-        """
-        This function will add some postprocessing operations with node.
-        It can be used to add the created `true_fn/false_fn` in front of
-        the node.body before they are called in cond layer.
-        """
-        self._insert_func_nodes(node)
-
-    def _insert_func_nodes(self, node):
-        """
-        Defined `true_func` and `false_func` will be inserted in front of corresponding
-        `layers.cond` statement instead of inserting them all into body of parent node.
-        Because private variables of class or other external scope will be modified.
-        For example, `self.var_dict["key"]`. In this case, nested structure of newly
-        defined functions is easier to understand.
-        """
-        if not self.new_func_nodes:
-            return
-        idx = -1
-        if isinstance(node, list):
-            idx = len(node) - 1
-        elif isinstance(node, gast.AST):
-            for _, child in gast.iter_fields(node):
-                self._insert_func_nodes(child)
-        while idx >= 0:
-            child_node = node[idx]
-            if child_node in self.new_func_nodes:
-                node[idx:idx] = self.new_func_nodes[child_node]
-                idx = idx + len(self.new_func_nodes[child_node]) - 1
-                del self.new_func_nodes[child_node]
-            else:
-                self._insert_func_nodes(child_node)
-                idx = idx - 1
-
-    def get_new_func_nodes(self):
-        return self.new_func_nodes
 
 
 def merge_multi_assign_nodes(assign_nodes):
@@ -585,7 +546,7 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict,
 
         x, y = 5, 10
         q = fluid.dygraph.dygraph_to_static.variable_trans_func.data_layer_not_check(name='q', shape=[-1], dtype='float32')
-        def true_func(x, y):
+        def true_func(x, y, q):
             x = x+1
             z = x*x
             q = 10
