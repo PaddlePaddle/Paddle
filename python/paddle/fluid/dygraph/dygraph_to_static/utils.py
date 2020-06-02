@@ -609,14 +609,31 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return node
 
     def visit_Name(self, node):
-        if self.static_analysis_visitor.is_tensor_node(node):
+        if self._is_node_with_tensor(node, node.id):
             self.is_control_flow_num += 1
         return node
 
     def visit_Constant(self, node):
-        if self.static_analysis_visitor.is_tensor_node(node):
+        if self._is_node_with_tensor(node, node.value):
             self.is_control_flow_num += 1
         return node
+
+    def _is_node_with_tensor(self, node, name_id):
+        from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+
+        # Look up the node_var_type_map by name_id.
+        if self.node_var_type_map:
+            if name_id and isinstance(name_id, six.string_types):
+                var_type = self.node_var_type_map.get(name_id, None)
+                if var_type and var_type & NodeVarType.TENSOR_TYPES:
+                    return True
+        # if not found, look up the node_to_wrapper_map by node.
+        wrapper_node = self.node_to_wrapper_map.get(node, None)
+        if wrapper_node is not None:
+            if wrapper_node.node_var_type & NodeVarType.TENSOR_TYPES:
+                return True
+
+        return False
 
     def get_compare_nodes_with_tensor(self):
         return self._compare_node_tenor_set
