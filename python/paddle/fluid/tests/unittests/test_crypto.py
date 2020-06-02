@@ -42,7 +42,7 @@ class CipherTestCase(unittest.TestCase):
         plaintext1 = cipher.decrypt(ciphertext, key)
         plaintext2 = cipher.decrypt_from_file(key, "paddle_aes_test.ciphertext")
 
-        self.assertEqual(plaintext.decode("utf-8"), plaintext1)
+        self.assertEqual(plaintext, plaintext1.decode())
         self.assertEqual(plaintext1, plaintext2)
 
 
