@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers import fill_constant, control_flow, logical_and, logical_or, logical_not
+from paddle.fluid.layers import control_flow, logical_and, logical_or, logical_not
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 
 
@@ -65,15 +65,16 @@ def convert_logical_and(x, y):
         A python bool variable or a bool Tensor.
     """
 
-    if isinstance(x, Variable):
+    if isinstance(x, Variable) and isinstance(y, Variable):
         return _run_paddle_logical_and(x, y)
-    else:
+
+    if not isinstance(x, Variable):
         return _run_py_logical_and(x, y)
+
+    return _run_py_logical_and(y, x)
 
 
 def _run_paddle_logical_and(x, y):
-    if not isinstance(y, Variable):
-        y = fill_constant(shape=[1], value=bool(y), dtype="bool")
     return logical_and(x, y)
 
 
@@ -93,15 +94,16 @@ def convert_logical_or(x, y):
         A python bool variable or a bool Tensor.
     """
 
-    if isinstance(x, Variable):
+    if isinstance(x, Variable) and isinstance(y, Variable):
         return _run_paddle_logical_or(x, y)
-    else:
+
+    if not isinstance(x, Variable):
         return _run_py_logical_or(x, y)
+
+    return _run_py_logical_or(y, x)
 
 
 def _run_paddle_logical_or(x, y):
-    if not isinstance(y, Variable):
-        y = fill_constant(shape=[1], value=bool(y), dtype="bool")
     return logical_or(x, y)
 
 
