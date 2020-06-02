@@ -40,51 +40,35 @@ int TensorddTest(Place place, T t1, T t2) {
     result.emplace_back(src_data[i] + dst_data[i]);
   }
 
-  for (int i = 1; i <= 6; ++i) {
-    std::vector<int64_t> dims = {10};
-    if (i == 1) {
-      dims = {10};
-    } else if (i == 2) {
-      dims = {2, 5};
-    } else if (i == 3) {
-      dims = {1, 2, 5};
-    } else if (i == 4) {
-      dims = {1, 1, 2, 5};
-    } else if (i == 5) {
-      dims = {1, 1, 1, 2, 5};
-    } else if (i == 6) {
-      dims = {1, 1, 1, 2, 5, 1};
-    }
-
-    auto* src = var1.GetMutable<framework::LoDTensor>();
-    auto* dst = var2.GetMutable<framework::LoDTensor>();
-    src->Resize(framework::make_ddim(dims));
-    dst->Resize(framework::make_ddim(dims));
-    auto* src_mutable = src->mutable_data<T>(place);
-    auto* dst_mutable = dst->mutable_data<T>(place);
-    if (!std::is_same<Place, platform::CUDAPlace>::value) {
-      paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
-                           sizeof(T) * src_data.size());
-      paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
-                           sizeof(T) * dst_data.size());
+  std::vector<int64_t> dims = {2, 5};
+  auto* src = var1.GetMutable<framework::LoDTensor>();
+  auto* dst = var2.GetMutable<framework::LoDTensor>();
+  src->Resize(framework::make_ddim(dims));
+  dst->Resize(framework::make_ddim(dims));
+  auto* src_mutable = src->mutable_data<T>(place);
+  auto* dst_mutable = dst->mutable_data<T>(place);
+  if (!std::is_same<Place, platform::CUDAPlace>::value) {
+    paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
+                         sizeof(T) * src_data.size());
+    paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
+                         sizeof(T) * dst_data.size());
 #if defined(PADDLE_WITH_CUDA)
-    } else {
-      paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
-                           sizeof(T) * src_data.size(), 0);
-      paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
-                           sizeof(T) * dst_data.size(), 0);
+  } else {
+    paddle::memory::Copy(place, src_mutable, src_place, src_data.data(),
+                         sizeof(T) * src_data.size(), 0);
+    paddle::memory::Copy(place, dst_mutable, src_place, dst_data.data(),
+                         sizeof(T) * dst_data.size(), 0);
 #endif
-    }
-
-    imperative::TensorAdd(var1, &var2);
-    framework::LoDTensor rlt;
-    platform::CPUPlace rlt_place;
-    framework::TensorCopySync(*dst, rlt_place, &rlt);
-
-    for (unsigned int i = 0; i < rlt.numel(); i++) {
-      if (rlt.data<T>()[i] != result[i]) return 1;
-    }
   }
+  imperative::TensorAdd(var1, &var2);
+  framework::LoDTensor rlt;
+  platform::CPUPlace rlt_place;
+  framework::TensorCopySync(*dst, rlt_place, &rlt);
+
+  for (unsigned int i = 0; i < rlt.numel(); i++) {
+    if (rlt.data<T>()[i] != result[i]) return 1;
+  }
+
   return 0;
 }
 

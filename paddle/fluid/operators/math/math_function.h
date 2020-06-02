@@ -51,8 +51,9 @@ struct RowwiseAdd {
                   const framework::Tensor& vec, framework::Tensor* output);
 };
 
-template <typename DeviceContext, typename T, int D>
-struct AddTensor {
+template <typename DeviceContext, typename T>
+struct ElementwiseAddTo {
+  // dst = dst + src
   void operator()(DeviceContext* ctx, const framework::Tensor& src,
                   framework::Tensor* dst);
 };
