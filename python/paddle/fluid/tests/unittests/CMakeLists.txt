@@ -49,6 +49,7 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+    LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
 endif()
 
 if (NOT ${WITH_GPU})
