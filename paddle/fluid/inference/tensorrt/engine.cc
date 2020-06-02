@@ -237,7 +237,6 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
   std::string name_suffix = std::to_string(name_suffix_counter);
   std::string splitter = "__";
   std::string name_with_suffix = name + splitter + name_suffix;
-  auto w_dims = weight_tensor->dims();
   platform::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(
       weight_map.count(name_with_suffix), 0,
@@ -251,24 +250,6 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
       weight_map[name_with_suffix]->mutable_data<float>(cpu_place);
   name_suffix_counter += 1;
 
-  if (enable_int8) {
-    // when the op is fc, scale's size should be 1
-    // when the op is conv, scale's size should be w_dims[0]
-    bool valid_scale_size =
-        (scale.size() == 1 || scale.size() == static_cast<size_t>(w_dims[0]));
-    PADDLE_ENFORCE(valid_scale_size, "TRT int8 quant: invalid scale size");
-    for (int i = 0; i < weight_tensor->numel(); i++) {
-      if (scale.size() == 1) {
-        weight_data[i] *= (scale[0] / 127);
-      } else {
-        PADDLE_ENFORCE(w_dims.size() == 4,
-                       "TRT int8 quant : We only use the channel quant for "
-                       "conv op, so the weight dims should be 4.");
-        int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
-        weight_data[i] *= (scale[i / inner_size] / 127);
-      }
-    }
-  }
   return weight_data;
 }
 
