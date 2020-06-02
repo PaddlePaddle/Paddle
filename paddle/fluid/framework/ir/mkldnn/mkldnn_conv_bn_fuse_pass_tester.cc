@@ -92,8 +92,8 @@ class MKLDNNConvBatchNormPassTest {
     // params
     for (auto& v : std::vector<std::string>(
              {"weights", "weights2", "bias_bn", "scale", "mean", "variance",
-              "saved_mean", "saved_variance", "bias_bn2", "scale2", "mean2", "variance2",
-               "saved_mean2", "saved_variance2"})) {
+              "saved_mean", "saved_variance", "bias_bn2", "scale2", "mean2",
+              "variance2", "saved_mean2", "saved_variance2"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       var->SetPersistable(true);
@@ -142,8 +142,8 @@ class MKLDNNConvBatchNormPassTest {
                 {"l", "mean", "variance", "saved_mean", "saved_variance"}),
             true);
     }
-      SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"l"}),
-            std::vector<std::string>({"m"}), true);
+    SetOp(&prog, "gelu", "gelu1", std::vector<std::string>({"l"}),
+          std::vector<std::string>({"m"}), true);
 
     return prog;
   }
@@ -196,8 +196,6 @@ class MKLDNNConvBatchNormPassTest {
     auto* weights2_tensor = exe.FindTensor("weights2");
     auto* g_tensor = exe.FindTensor("g");
 
-
-  
     // Batch Norm
     auto* bias_bn_tensor = exe.FindTensor("bias_bn");  // shift
     auto* scale_tensor = exe.FindTensor("scale");
@@ -208,7 +206,7 @@ class MKLDNNConvBatchNormPassTest {
     auto* mean2_tensor = exe.FindTensor("mean2");
     auto* variance2_tensor = exe.FindTensor("variance2");
 
-    int ic, oc, iw, ih, n, fw, fh; 
+    int ic, oc, iw, ih, n, fw, fh;
 
     n = 1;
     fw = fh = 2;
@@ -224,7 +222,7 @@ class MKLDNNConvBatchNormPassTest {
     scale_tensor->Resize({oc});
     mean_tensor->Resize({oc});
     variance_tensor->Resize({oc});
-    if(is_elementwise_add) {
+    if (is_elementwise_add) {
       b_tensor->Resize({n, ic, ih, iw});
       weights2_tensor->Resize({oc, ic, fh, fw});
       bias_bn2_tensor->Resize({oc});
@@ -237,7 +235,7 @@ class MKLDNNConvBatchNormPassTest {
     FillTensorWithRandomData(a_tensor, 1.0f, 2.0f, place);
     FillTensorWithRandomData(g_tensor, 1.0f, 2.0f, place);
     FillTensorWithRandomData(weights_tensor, 1.0f, 2.0f, place);
-    if(is_elementwise_add) { 
+    if (is_elementwise_add) {
       FillTensorWithRandomData(b_tensor, 1.0f, 2.0f, place);
       FillTensorWithRandomData(weights2_tensor, 1.0f, 2.0f, place);
     }
