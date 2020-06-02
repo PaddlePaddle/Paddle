@@ -28,9 +28,11 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
+        is_optimize_model = False
         diff_threshold = 0.025
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file, diff_threshold)
+                      is_full_quantize, is_use_cache_file, is_optimize_model,
+                      diff_threshold)
 
 
 if __name__ == '__main__':
