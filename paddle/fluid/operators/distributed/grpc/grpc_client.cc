@@ -306,52 +306,19 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
 
 VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
                                                int64_t time_out) {
-  const auto ch = GetChannel(ep);
-
-  BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  const std::string method = kBatchBarrierRPC;
-  VarHandlePtr h(
-      new VarHandle(ep, method, BATCH_BARRIER_MESSAGE, nullptr, nullptr));
-  s->Prepare(h, time_out);
-
-  sendrecv::VariableMessage req;
-  req.set_varname(BATCH_BARRIER_MESSAGE);
-
-  platform::RecordRPCEvent record_event(method);
-
-  auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
-
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
-  }
-
+  platform::CPUDeviceContext ctx;
+  auto* scope = new framework::Scope();
+  auto h = AsyncDistributeNotify(ep, ctx, *scope, BATCH_BARRIER_MESSAGE);
+  delete scope;
   return h;
 }
 
 VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
                                                int64_t time_out) {
-  const auto ch = GetChannel(ep);
-  FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
-  const std::string method = kFetchBarrierRPC;
-  VarHandlePtr h(
-      new VarHandle(ep, method, FETCH_BARRIER_MESSAGE, nullptr, nullptr));
-  s->Prepare(h, time_out);
-
-  sendrecv::VariableMessage req;
-  req.set_varname(FETCH_BARRIER_MESSAGE);
-
-  platform::RecordRPCEvent record_event(method);
-
-  auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
-  req_count_++;
-
-  if (UNLIKELY(platform::IsProfileEnabled())) {
-    h->Wait();
-  }
-
+  platform::CPUDeviceContext ctx;
+  auto* scope = new framework::Scope();
+  auto h = AsyncDistributeNotify(ep, ctx, *scope, FETCH_BARRIER_MESSAGE);
+  delete scope;
   return h;
 }
 
