@@ -580,7 +580,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     if (config.thread_local_stream_enabled() &&
         process_level_allocator_enabled) {
       PADDLE_THROW(platform::errors::Fatal(
-          " When binding threads and streams, the use of "
+          "When binding threads and streams, the use of "
           "process-level allocators will result in undefined result "
           "errors due to memory asynchronous operations."
           "The thread and stream binding configuration of all "

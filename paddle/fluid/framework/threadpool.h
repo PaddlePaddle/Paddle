@@ -81,7 +81,7 @@ class ThreadPool {
       } catch (const std::exception& e) {
         PADDLE_THROW(platform::errors::Fatal(
             "Unexpected exception is catched in thread pool. All "
-            "throwable exception in Fluid should be an EnforceNotMet."
+            "throwable exception in Paddle should be an EnforceNotMet."
             "The exception is:\n %s.",
             e.what()));
       }

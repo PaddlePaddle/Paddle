@@ -210,7 +210,7 @@ void OpTester::CreateOpDesc() {
     const std::string &name = item.first;
     PADDLE_ENFORCE_NE(
         attr_types.find(name), attr_types.end(),
-        platform::errors::NotFound("Operator %s do not have attribute %d.",
+        platform::errors::NotFound("Operator %s does not have attribute %d.",
                                    type_, name));
 
     const std::string &value_str = item.second;

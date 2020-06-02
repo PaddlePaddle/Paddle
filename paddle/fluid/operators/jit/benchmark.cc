@@ -120,7 +120,8 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   // Test result from Get function
   auto tgt = jit::KernelFuncs<KernelTuple, PlaceType>::Cache().At(attr);
   if (!tgt) {
-    PADDLE_THROW(paddle::platform::errors::Fatal("Target can not be empty!"));
+    PADDLE_THROW(
+        paddle::platform::errors::Fatal("Benchmark target can not be empty."));
   }
   infos.push_back(std::make_pair("Target", benchmark(tgt, args...)));
 

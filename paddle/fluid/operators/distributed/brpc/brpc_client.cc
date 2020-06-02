@@ -371,8 +371,8 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   for (int i = 0; i < brpc_channel_num_per_server_; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());
     if (c->channel.Init(ep.c_str(), &options) != 0) {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Failed to initialize channel.", var_h->name(), cntl->ErrorText()));
+      PADDLE_THROW(
+          platform::errors::Unavailable("Failed to initialize channel."));
       return nullptr;
     }
 

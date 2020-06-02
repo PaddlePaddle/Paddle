@@ -282,7 +282,7 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unknown gradient scale strategy. Now we only support One, "
+          "Unknown gradient scale strategy. Now only supports One, "
           "CoeffNumDevice and Customized strategies."));
       break;
   }
@@ -1057,7 +1057,7 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unknown reduce strategy. Now we only support Reduce and AllReduce "
+          "Unknown reduce strategy. Now only supports Reduce and AllReduce "
           "strategies."));
       break;
   }

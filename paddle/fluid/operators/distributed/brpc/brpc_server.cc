@@ -376,7 +376,8 @@ void AsyncBRPCServer::StartServer() {
   options.idle_timeout_sec = idle_timeout_s_;
   options.max_concurrency = max_concurrency_;
   if (server_.Start(bind_address_.c_str(), &options) != 0) {
-    PADDDLE_THROW(platform::errors::Unavailable("Failed to start EchoServer."));
+    PADDDLE_THROW(platform::errors::Unavailable(
+        "Failed to start EchoServer %s.", bind_address_));
     return;
   }
 

@@ -224,8 +224,10 @@ class AfsManager {
                             "Create write pipe failed in AfsManager."));
     }
     pid = vfork();
-    PADDLE_ENFORCE_GE(platform::errors::External(
-        "Failed to create a child process via fork in AfsManager."));
+    PADDLE_ENFORCE_GE(
+        pid, 0,
+        platform::errors::External(
+            "Failed to create a child process via fork in AfsManager."));
     if (pid == 0) {
       if (read) {
         PADDLE_ENFORCE_NE(
