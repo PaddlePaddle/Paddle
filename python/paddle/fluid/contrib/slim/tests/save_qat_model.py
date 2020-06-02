@@ -48,6 +48,15 @@ def parse_args():
         default='',
         help='A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
     )
+    parser.add_argument(
+        '--op_ids_to_skip',
+        type=str,
+        default='',
+        help='A comma separated list of operator ids to skip in quantization.')
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='If used, the graph of QAT model is drawn.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -70,8 +79,20 @@ def transform_and_save_model(original_path, save_path, save_type):
         if len(test_args.ops_to_quantize) > 0:
             ops_to_quantize = set(test_args.ops_to_quantize.split(','))
 
+        op_ids_to_skip = set([-1])
+        if len(test_args.op_ids_to_skip) > 0:
+            op_ids_to_skip = set(map(int, test_args.op_ids_to_skip.split(',')))
+
+        graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
+        if (test_args.debug):
+            graph.draw('.', 'qat_orig', graph.all_op_nodes())
         transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
-            ops_to_quantize, _scope=inference_scope, _place=place, _core=core)
+            ops_to_quantize,
+            _op_ids_to_skip=op_ids_to_skip,
+            _scope=inference_scope,
+            _place=place,
+            _core=core,
+            _debug=test_args.debug)
 
         graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
         if save_type == 'FP32':
