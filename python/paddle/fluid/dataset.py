@@ -224,6 +224,9 @@ class DatasetBase(object):
     def set_input_type(self, input_type):
         self.proto_desc.input_type = input_type
 
+    def set_slot_padding_zero(self, slot_padding_zero):
+        self.proto_desc.slot_padding_zero = slot_padding_zero
+
     def set_use_var(self, var_list):
         """
         Set Variables which you will use.

@@ -236,6 +236,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->parse_logkey_ = false;
   this->enable_pv_merge_ = false;
   this->current_phase_ = 1;  // 1:join ;0:update
+  this->slot_padding_zero_ = true;
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -355,6 +356,11 @@ void InMemoryDataFeed<T>::SetEnablePvMerge(bool enable_pv_merge) {
 template <typename T>
 void InMemoryDataFeed<T>::SetCurrentPhase(int current_phase) {
   current_phase_ = current_phase;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetSlotPaddingZero(bool slot_padding_zero) {
+  slot_padding_zero_ = slot_padding_zero;
 }
 
 template <typename T>
@@ -814,6 +820,7 @@ void MultiSlotInMemoryDataFeed::Init(
   pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
   input_type_ = data_feed_desc.input_type();
+  slot_padding_zero_ = data_feed_desc.slot_padding_zero();
 }
 
 void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
@@ -1029,14 +1036,16 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     }
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
-      if (visit_[j]) {
-        visit_[j] = false;
-      } else {
-        // fill slot value with default value 0
-        if (type[0] == 'f') {  // float
-          batch_float_feasigns_[j].push_back(0.0);
-        } else if (type[0] == 'u') {  // uint64
-          batch_uint64_feasigns_[j].push_back(0);
+      if (slot_padding_zero_) {
+        if (visit_[j]) {
+          visit_[j] = false;
+        } else {
+          // fill slot value with default value 0
+          if (type[0] == 'f') {  // float
+            batch_float_feasigns_[j].push_back(0.0);
+          } else if (type[0] == 'u') {  // uint64
+            batch_uint64_feasigns_[j].push_back(0);
+          }
         }
       }
       // get offset of this ins in this slot
@@ -1490,14 +1499,16 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
     }
     for (size_t j = 0; j < use_slots_.size(); ++j) {
       const auto& type = all_slots_type_[j];
-      if (visit_[j]) {
-        visit_[j] = false;
-      } else {
-        // fill slot value with default value 0
-        if (type[0] == 'f') {  // float
-          batch_float_feasigns_[j].push_back(0.0);
-        } else if (type[0] == 'u') {  // uint64
-          batch_uint64_feasigns_[j].push_back(0);
+      if (slot_padding_zero_) {
+        if (visit_[j]) {
+          visit_[j] = false;
+        } else {
+          // fill slot value with default value 0
+          if (type[0] == 'f') {  // float
+            batch_float_feasigns_[j].push_back(0.0);
+          } else if (type[0] == 'u') {  // uint64
+            batch_uint64_feasigns_[j].push_back(0);
+          }
         }
       }
       // get offset of this ins in this slot
