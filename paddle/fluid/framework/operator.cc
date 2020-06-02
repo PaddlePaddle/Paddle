@@ -1050,7 +1050,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
-    } else {
+    } else if (Attr<std::string>("op_device").find("gpu") !=
+               std::string::npos) {
       auto device = Attr<std::string>("op_device");
       size_t pos = device.find(':');
       if (pos != std::string::npos) {
