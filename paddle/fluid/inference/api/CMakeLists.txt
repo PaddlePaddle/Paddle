@@ -33,6 +33,10 @@ cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
           analysis_config zero_copy_tensor trainer_desc_proto)
 
+if(WIN32)
+    target_link_libraries(paddle_inference_api gflags)
+endif()
+
 set(inference_deps ${analysis_deps} paddle_inference_api analysis naive_executor ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)

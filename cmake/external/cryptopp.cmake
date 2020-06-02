@@ -68,7 +68,8 @@ ExternalProject_Add(
     SOURCE_DIR      ${CRYPTOPP_SOURCE_DIR}
     PATCH_COMMAND
     COMMAND ${CMAKE_COMMAND} -E remove_directory "<SOURCE_DIR>/cmake/"
-    COMMAND git clone -b ${CRYPTOPP_TAG} https://github.com/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
+    COMMAND git clone https://github.com/noloader/cryptopp-cmake "<SOURCE_DIR>/cmake"
+    COMMAND cd "<SOURCE_DIR>/cmake" && git checkout tags/${CRYPTOPP_TAG} -b ${CRYPTOPP_TAG}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "<SOURCE_DIR>/cmake/" "<SOURCE_DIR>/"
     INSTALL_DIR     ${CRYPTOPP_INSTALL_DIR}
     CMAKE_ARGS ${CRYPTOPP_CMAKE_ARGS}

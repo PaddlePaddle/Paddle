@@ -19,6 +19,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
