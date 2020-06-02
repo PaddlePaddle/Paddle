@@ -14,7 +14,6 @@
 
 import math
 import numpy as np
-import random
 import unittest
 
 import paddle.fluid as fluid
@@ -23,7 +22,6 @@ from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 
 SEED = 2020
-local_random = random.Random()
 DATATYPE = 'float32'
 program_translator = ProgramTranslator()
 
@@ -345,7 +343,7 @@ def bmn_loss_func(pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end,
 
         r_m = num_h / num_m
         u_smmask = fluid.layers.assign(
-            np.random.uniform(0., 1., [
+            local_random.uniform(0., 1., [
                 gt_iou_map.shape[1], gt_iou_map.shape[2]
             ]).astype(DATATYPE))
         u_smmask = fluid.layers.elementwise_mul(u_mmask, u_smmask)
@@ -353,7 +351,7 @@ def bmn_loss_func(pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end,
 
         r_l = num_h / num_l
         u_slmask = fluid.layers.assign(
-            np.random.uniform(0., 1., [
+            local_random.uniform(0., 1., [
                 gt_iou_map.shape[1], gt_iou_map.shape[2]
             ]).astype(DATATYPE))
         u_slmask = fluid.layers.elementwise_mul(u_lmask, u_slmask)
@@ -488,7 +486,7 @@ def fake_data_reader(args, mode='train'):
 
     def get_video_label(match_map, anchor_xmin, anchor_xmax):
         video_second = local_random.randint(75, 90)
-        label_num = local_random.randint(1, 2)
+        label_num = local_random.randint(1, 3)
 
         gt_bbox = []
         gt_iou_map = []
@@ -540,7 +538,7 @@ def fake_data_reader(args, mode='train'):
         match_map, anchor_xmin, anchor_xmax = get_match_map(args.tscale)
 
         for video_idx in range(iter_num):
-            video_feat = np.random.random(
+            video_feat = local_random.random_sample(
                 [args.feat_dim, args.tscale]).astype('float32')
             gt_iou_map, gt_start, gt_end = get_video_label(
                 match_map, anchor_xmin, anchor_xmax)
@@ -567,8 +565,8 @@ def train_bmn(args, place, to_static):
     with fluid.dygraph.guard(place):
         fluid.default_main_program().random_seed = SEED
         fluid.default_startup_program().random_seed = SEED
-        np.random.seed(SEED)
-        local_random.seed(SEED)
+        global local_random
+        local_random = np.random.RandomState(SEED)
 
         bmn = BMN(args)
         adam = optimizer(args, parameter_list=bmn.parameters())
