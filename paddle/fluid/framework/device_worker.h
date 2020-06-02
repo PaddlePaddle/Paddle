@@ -170,8 +170,8 @@ class DeviceWorker {
   bool need_dump_param_;
   bool need_dump_field_;
   const std::vector<std::string>* dump_param_;
-  const std::vector<std::string> all_param_;
   const std::vector<std::string>* dump_fields_;
+  std::vector<std::string> all_param_;
 
   int dump_mode_ = 0;
   int dump_interval_ = 10000;
