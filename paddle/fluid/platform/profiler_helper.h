@@ -411,14 +411,14 @@ void ComputeOverhead(const std::vector<EventItem> &main_event_items,
   // GpuMemcpy may be in main_event_items
   for (auto &item : main_event_items) {
     if (item.role != EventRole::kSpecial) {
-      overhead->total_time += item.total_time;
+      overhead->accumulated_time += item.total_time;
     }
     UpdateGpuMemcpy(item, &memcpy_async, &memcpy_sync);
   }
 
   for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
     if (it->first == "ParallelExecutor::Run") {
-      overhead->total_time += it->second.total_time;
+      overhead->accumulated_time += it->second.total_time;
     }
     if (it->second.name.find("compute") != std::string::npos &&
         it->second.name.find("compute/") == std::string::npos) {
@@ -426,7 +426,8 @@ void ComputeOverhead(const std::vector<EventItem> &main_event_items,
     }
     UpdateGpuMemcpy(it->second, &memcpy_async, &memcpy_sync);
   }
-  overhead->framework_time = overhead->total_time - overhead->compute_time;
+  overhead->framework_time =
+      overhead->accumulated_time - overhead->compute_time;
   overhead->memcpy_item.calls = memcpy_async.calls + memcpy_sync.calls;
   overhead->memcpy_item.total_time =
       memcpy_async.total_time + memcpy_sync.total_time;
@@ -492,14 +493,18 @@ void GetChildMap(const std::multimap<std::string, EventItem> &sub_child_map,
 }
 
 void PrintOverHead(const OverHead &overhead, const size_t data_width) {
-  float compute_ratio = overhead.compute_time / overhead.total_time;
+  float compute_ratio = overhead.compute_time / overhead.accumulated_time;
   float framework_ratio = 1 - compute_ratio;
+  std::cout << "-------------------------"
+            << "     Overhead Summary      "
+            << "-------------------------\n\n";
   if (overhead.print_explanation) {
     std::cout
-        << "The total time in OpRun Summary may be higher than that of "
-           "ParallelExecutor::Run."
-        << "\nBecause the OP is executed asynchronously. The details are as "
-           "follows: "
+        << "The Overhead Summary divides the cost of each event into framework "
+           "overhead or computation time."
+        << "\nThe `Accumulated time of events` is higher than the `Elapsed "
+           "time of events`."
+        << "\nBecause the OP is executed asynchronously. For example,"
         << "\nEvent                   Timeline"
         << "\nParallelExecutor::Run   "
            "---------------------------------------------------------"
@@ -507,12 +512,14 @@ void PrintOverHead(const OverHead &overhead, const size_t data_width) {
         << "\n  thread2::OP2                      "
            "---------------------------------------------"
         << "\nOP1.time + OP2.time > ParallelExecutor::Run.time\n\n";
+    std::cout << "Elapsed time of events: " << overhead.elapsed_time
+              << std::endl;
+    std::cout << "Accumulated time of events: " << overhead.accumulated_time
+              << std::endl;
+  } else {
+    std::cout << "Total time: " << overhead.elapsed_time << std::endl;
   }
-  std::cout << "-------------------------"
-            << "       OpRun Summary       "
-            << "-------------------------\n\n";
   std::cout.setf(std::ios::left);
-  std::cout << "Total time: " << overhead.total_time << std::endl;
   std::cout << std::setw(25) << "  Computation time"
             << "Total: " << std::setw(data_width) << overhead.compute_time
             << "Ratio: " << compute_ratio * 100 << "%" << std::endl;
@@ -724,6 +731,7 @@ void AnalyzeEvent(
       if (!main_thread_event_name.empty()) {
         overhead->print_explanation = true;
       }
+      overhead->elapsed_time = total;
       overhead->print_overhead = true;
       ComputeOverhead(main_event_items, sub_child_map, overhead);
     }

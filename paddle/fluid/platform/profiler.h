@@ -86,7 +86,8 @@ struct EventItem {
 struct OverHead {
   bool print_overhead = false;
   bool print_explanation = false;
-  double total_time = 0.;
+  double elapsed_time = 0.;      // the elapsed time of all events
+  double accumulated_time = 0.;  // the accumulated time of all events
   double compute_time = 0.0;
   double framework_time = 0.0;
   EventItem memcpy_item;
