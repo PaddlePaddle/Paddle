@@ -181,15 +181,24 @@ struct VALUE {
     }
   }
 
-  std::vector<std::vector<float>> get() { return values_; }
+  std::vector<std::vector<float> *> get() {
+    auto pts = std::vector<std::vector<float> *>();
+    pts.reserve(values_.size());
 
-  std::vector<std::vector<float>> get(const std::vector<std::string> names) {
-    auto rets = std::vector<std::vector<float>>();
+    for (auto &value : values_) {
+      pts.push_back(&value);
+    }
+    return pts;
+  }
+
+  std::vector<std::vector<float> *> get(const std::vector<std::string> names) {
+    auto pts = std::vector<std::vector<float> *>();
+    pts.reserve(values_.size());
 
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
-      rets.push_back(values_[places[names[i]]]);
+      pts.push_back(&(values_[places[names[i]]]));
     }
-    return rets;
+    return pts;
   }
 
   std::vector<std::string> names_;
@@ -221,15 +230,15 @@ class ValueBlock {
   }
 
   ~ValueBlock() {
-    for (auto init : initializers_) {
-      delete init.second;
-      initializers_.erase(init.first);
-    }
-
-    for (auto value : values_) {
-      delete value.second;
-      values_.erase(value.first);
-    }
+    //    for (auto init : initializers_) {
+    //      delete init.second;
+    //      initializers_.erase(init.first);
+    //    }
+    //
+    //    for (auto value : values_) {
+    //      delete value.second;
+    //      values_.erase(value.first);
+    //    }
   }
 
   std::vector<std::vector<float>> Init() {
@@ -250,7 +259,12 @@ class ValueBlock {
     return rets;
   }
 
-  std::vector<std::vector<float>> Get(
+  std::vector<std::vector<float> *> Get(
+      const int64_t &id, const std::vector<std::string> &value_names) {
+    return values_.at(id)->get(value_names);
+  }
+
+  std::vector<std::vector<float> *> GetAndInit(
       const int64_t &id, const std::vector<std::string> &value_names) {
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -261,7 +275,8 @@ class ValueBlock {
         values_[id] = value;
       }
     }
-    return values_.at(id)->get(value_names);
+
+    return Get(id, value_names);
   }
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
@@ -315,13 +330,18 @@ class SparseVariable {
     }
   }
 
-  void Get(const std::vector<int64_t> &ids,
+  void Get(const bool need_init, const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
-           std::vector<std::vector<std::vector<float>>> *values) {
+           std::vector<std::vector<std::vector<float> *>> *values) {
     for (auto &id : ids) {
-      std::vector<std::vector<float>> value;
+      std::vector<std::vector<float> *> id_values;
       auto *block = GetShard(id);
-      auto id_values = block->Get(id, value_names);
+
+      if (need_init) {
+        id_values = block->GetAndInit(id, value_names);
+      } else {
+        id_values = block->Get(id, value_names);
+      }
       values->push_back(id_values);
     }
   }
@@ -412,11 +432,11 @@ class SparseVariable {
     for (auto &block : shard_blocks_) {
       for (auto value : block->values_) {
         ids.push_back(value.first);
-        std::vector<std::vector<float>> vss = value.second->get(valuenames);
+        std::vector<std::vector<float> *> vss = value.second->get(valuenames);
 
         for (int i = 0; i < static_cast<int>(vss.size()); i++) {
           auto &vs = vss[i];
-          std::memcpy(tensors[i] + offset * dims[i], vs.data(),
+          std::memcpy(tensors[i] + offset * dims[i], vs->data(),
                       sizeof(float) * dims[i]);
         }
 
@@ -467,7 +487,7 @@ class SparseVariable {
 
     for (auto &block : shard_blocks_) {
       for (auto value : block->values_) {
-        std::vector<std::vector<float>> vss = value.second->get(valuenames);
+        std::vector<std::vector<float> *> vss = value.second->get(valuenames);
 
         auto id = value.first;
 
@@ -475,8 +495,8 @@ class SparseVariable {
           auto &vs = vss[i];
           std::stringstream ss;
           ss << id << "\t";
-          ss << vs.size() << "\t";
-          for (auto v : vs) {
+          ss << vs->size() << "\t";
+          for (auto v : (*vs)) {
             ss << v << " ";
           }
           ss << "\n";

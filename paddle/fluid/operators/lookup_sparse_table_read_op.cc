@@ -36,6 +36,26 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    auto is_test = Attr<bool>("is_test");
+    if (is_test) {
+      auto meta = distributed::SparseMeta();
+      meta.name = "W";
+      meta.value_names = {"Param"};
+      meta.value_dims = {10};
+      meta.mode = distributed::Mode::training;
+      meta.grad_name = "W@GRAD";
+      meta.cached_varnames = {"W@Block.0"};
+      meta.initializer_attrs = {"uniform_random&0&-1.0&1.0"};
+      distributed::LargeScaleKV::Init({meta});
+
+      auto *init = distributed::LargeScaleKV::GetInstance();
+
+      std::vector<std::vector<std::vector<float> *>> values;
+      for (auto id = 0; id < 1000000; id++) {
+        init->Get(meta.name)->Get(true, {id}, meta.value_names, &values);
+      }
+    }
+
     auto &id_tensor = scope.FindVar(Input("Ids"))->Get<framework::LoDTensor>();
     auto *id_data = id_tensor.data<int64_t>();
     auto tablename = Attr<std::string>("tablename");
@@ -47,15 +67,16 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
       ids.push_back(id_data[i]);
     }
 
-    std::vector<std::vector<std::vector<float>>> values;
+    std::vector<std::vector<std::vector<float> *>> values;
     std::vector<int64_t> dims;
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
-    ins->Get(tablename)->Get(ids, value_names, &values);
+    ins->Get(tablename)->Get(false, ids, value_names, &values);
     ins->Get(tablename)->Dims(value_names, &dims);
 
     platform::CPUPlace cpu;
     std::vector<float *> tensors;
+
     for (int i = 0; i < static_cast<int>(value_names.size()); i++) {
       auto out_var = scope.FindVar(out_names[i]);
       auto out_t = out_var->GetMutable<framework::LoDTensor>();
@@ -70,7 +91,7 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
 
     for (int i = 0; i < static_cast<int>(values.size()); i++) {
       for (int j = 0; j < static_cast<int>(tensors.size()); j++) {
-        std::memcpy(tensors[j] + i * dims[j], values[i][j].data(),
+        std::memcpy(tensors[j] + i * dims[j], values[i][j]->data(),
                     sizeof(float) * dims[j]);
       }
     }
@@ -95,6 +116,9 @@ class LookupSparseTableReadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("value_names",
                                       "(strings)"
                                       "sparse table name");
+
+    AddAttr<bool>("is_test", " for test init large scale kv").SetDefault(false);
+
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.
 
