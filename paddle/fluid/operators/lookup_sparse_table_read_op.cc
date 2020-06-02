@@ -36,25 +36,25 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto is_test = Attr<bool>("is_test");
-    if (is_test) {
-      auto meta = distributed::SparseMeta();
-      meta.name = "W";
-      meta.value_names = {"Param"};
-      meta.value_dims = {10};
-      meta.mode = distributed::Mode::training;
-      meta.grad_name = "W@GRAD";
-      meta.cached_varnames = {"W@Block.0"};
-      meta.initializer_attrs = {"uniform_random&0&-1.0&1.0"};
-      distributed::LargeScaleKV::Init({meta});
-
-      auto *init = distributed::LargeScaleKV::GetInstance();
-
-      std::vector<std::vector<std::vector<float> *>> values;
-      for (auto id = 0; id < 1000000; id++) {
-        init->Get(meta.name)->Get(true, {id}, meta.value_names, &values);
-      }
-    }
+    auto init = Attr<bool>("init");
+    //    if (is_test) {
+    //      auto meta = distributed::SparseMeta();
+    //      meta.name = "W";
+    //      meta.value_names = {"Param"};
+    //      meta.value_dims = {10};
+    //      meta.mode = distributed::Mode::training;
+    //      meta.grad_name = "W@GRAD";
+    //      meta.cached_varnames = {"W@Block.0"};
+    //      meta.initializer_attrs = {"uniform_random&0&-1.0&1.0"};
+    //      distributed::LargeScaleKV::Init({meta});
+    //
+    //      auto *init = distributed::LargeScaleKV::GetInstance();
+    //
+    //      std::vector<std::vector<std::vector<float> *>> values;
+    //      for (auto id = 0; id < 1000000; id++) {
+    //        init->Get(meta.name)->GetAndInit({id}, meta.value_names, &values);
+    //      }
+    //    }
 
     auto &id_tensor = scope.FindVar(Input("Ids"))->Get<framework::LoDTensor>();
     auto *id_data = id_tensor.data<int64_t>();
@@ -71,7 +71,13 @@ class LookupSparseTableReadOp : public framework::OperatorBase {
     std::vector<int64_t> dims;
 
     auto *ins = distributed::LargeScaleKV::GetInstance();
-    ins->Get(tablename)->Get(false, ids, value_names, &values);
+
+    if (init) {
+      ins->Get(tablename)->GetAndInit(ids, value_names, &values);
+    } else {
+      ins->Get(tablename)->Get(ids, value_names, &values);
+    }
+
     ins->Get(tablename)->Dims(value_names, &dims);
 
     platform::CPUPlace cpu;
@@ -117,7 +123,7 @@ class LookupSparseTableReadOpMaker : public framework::OpProtoAndCheckerMaker {
                                       "(strings)"
                                       "sparse table name");
 
-    AddAttr<bool>("is_test", " for test init large scale kv").SetDefault(false);
+    AddAttr<bool>("init", " for test init large scale kv").SetDefault(false);
 
     AddComment(R"DOC(
 Lookup Sprase Tablel Operator.

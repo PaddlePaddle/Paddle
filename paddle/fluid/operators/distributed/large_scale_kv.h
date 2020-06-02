@@ -32,6 +32,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -45,6 +46,23 @@ namespace distributed {
 
 enum Mode { training, infer };
 enum InitType { uniform_random, fill_constant, gaussian_random };
+
+inline std::vector<int> bucket(const int v_size, const int b_size) {
+  int remainder = v_size % b_size;
+  int bucket = v_size / b_size;
+  std::vector<int> ret_vec(b_size, bucket);
+  for (int i = 0; i < remainder; ++i) {
+    ret_vec[i] = ret_vec[i] + 1;
+  }
+  int cur_bucket = 0;
+  for (int &j : ret_vec) {
+    int tmp = j;
+    j = cur_bucket;
+    cur_bucket += tmp;
+  }
+  ret_vec.push_back(cur_bucket);
+  return ret_vec;
+}
 
 class Initializer {
  public:
@@ -330,20 +348,41 @@ class SparseVariable {
     }
   }
 
-  void Get(const bool need_init, const std::vector<int64_t> &ids,
-           const std::vector<std::string> &value_names,
-           std::vector<std::vector<std::vector<float> *>> *values) {
+  void GetAndInit(const std::vector<int64_t> &ids,
+                  const std::vector<std::string> &value_names,
+                  std::vector<std::vector<std::vector<float> *>> *values) {
     for (auto &id : ids) {
       std::vector<std::vector<float> *> id_values;
       auto *block = GetShard(id);
-
-      if (need_init) {
-        id_values = block->GetAndInit(id, value_names);
-      } else {
-        id_values = block->Get(id, value_names);
-      }
+      id_values = block->GetAndInit(id, value_names);
       values->push_back(id_values);
     }
+  }
+
+  void Get(const std::vector<int64_t> &ids,
+           const std::vector<std::string> &value_names,
+           std::vector<std::vector<std::vector<float> *>> *values) {
+    values->resize(ids.size());
+
+    auto buckets = bucket(ids.size(), 4);
+    std::vector<std::future<void>> fs;
+
+    for (int j = 0; j < 4; ++j) {
+      auto begin = buckets[j];
+      auto end = buckets[j + 1];
+
+      fs.push_back(
+          framework::Async([begin, end, &values, &ids, &value_names, this]() {
+            for (int x = begin; x < end; x++) {
+              auto id = ids[x];
+              auto *block = GetShard(id);
+              auto id_values = block->Get(id, value_names);
+              (*values)[x] = id_values;
+            }
+          }));
+    }
+
+    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
   }
 
   void Set(const std::vector<int64_t> &ids,
@@ -529,8 +568,8 @@ class SparseVariable {
 
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims_;
-  const size_t shard_mask_ = 127;
-  const size_t shard_num_ = 128;
+  const size_t shard_mask_ = 31;
+  const size_t shard_num_ = 32;
   std::vector<std::shared_ptr<ValueBlock>> shard_blocks_;
 };
 
