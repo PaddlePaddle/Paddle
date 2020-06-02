@@ -22,11 +22,9 @@ def convert_while_loop(cond, body, loop_vars):
     A function representation of a Python ``while`` statement.
 
     Args:
-        cond(Callable): A callable returning a boolean variable controlling whether to continue looping. And ``cond`` takes
-        as many arguments as ``loop_vars`` .
-        body(Callable): A callable returning a tuple or list of variables of the same arity
-            (length and structure) and types as ``loops_vars`` . And ``body`` takes as many arguments as ``loop_vars`` .
-        loop_vars(list|tuple): A list or tuple of variables that is passed to both ``cond`` and ``body`` .
+        cond(Callable): A callable object that returns a boolean variable to control whether to  execute the loop body.  It takes  ``loop_vars`` as arguments.
+        body(Callable): A callable object that returns a tuple or list of variables with the same arguments ``loops_vars`` as ``cond`` .
+        loop_vars(list|tuple): A list or tuple of variables passed to ``cond`` and ``body`` .
 
     Returns:
         A list or tuple of variables which returned by ``body`` .
@@ -79,6 +77,8 @@ def _run_paddle_logical_and(x, y):
 
 
 def _run_py_logical_and(x, y):
+    assert not isinstance(x, Variable)
+    # NOTE: Returns y if x is True
     return x and y
 
 
@@ -108,6 +108,8 @@ def _run_paddle_logical_or(x, y):
 
 
 def _run_py_logical_or(x, y):
+    assert not isinstance(x, Variable)
+    # NOTE: Returns y if x is False
     return x or y
 
 
