@@ -196,30 +196,32 @@ struct BinaryCompareMessageConverter<false> {
 }  // namespace details
 
 template <typename T>
-inline void ReplaceComplexTypeStr(std::string* str, const char* type_name) {
-  auto type_str = demangle(typeid(T).name());
-  std::size_t found = str->find(type_str);
-  if (found != std::string::npos) {
-    str->replace(found, type_str.length(), type_name);
-    ReplaceComplexTypeStr<T>(str, type_name);
+inline std::string ReplaceComplexTypeStr(std::string str,
+                                         const std::string& type_name) {
+  auto demangle_type_str = demangle(typeid(T).name());
+  size_t start_pos = 0;
+  while ((start_pos = str.find(demangle_type_str, start_pos)) !=
+         std::string::npos) {
+    str.replace(start_pos, demangle_type_str.length(), type_name);
+    start_pos += type_name.length();
   }
+  return str;
 }
 
-#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                        \
-  do {                                                                         \
-    auto* __ptr = (__STR);                                                     \
-    if (nullptr != __ptr) {                                                    \
-      paddle::platform::ReplaceComplexTypeStr<__TYPENAME>(__ptr, #__TYPENAME); \
-    }                                                                          \
+#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                       \
+  do {                                                                        \
+    __STR = paddle::platform::ReplaceComplexTypeStr<__TYPENAME>(__STR,        \
+                                                                #__TYPENAME); \
   } while (0)
 
-inline void SimplifyDemangleStr(std::string* str) {
+inline std::string SimplifyDemangleStr(std::string str) {
   // the older is important, you have to put complex types in front
   __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::AttributeMap, str);
   __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::Attribute, str);
   __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVariableWrapperMap, str);
   __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVarBaseMap, str);
   __REPLACE_COMPLEX_TYPE_STR__(std::string, str);
+  return str;
 }
 
 template <typename StrType>
@@ -243,8 +245,8 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
       if (path.substr(path.length() - 3).compare(".so") == 0) {
-        SimplifyDemangleStr(&demangled);
-        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
+        sout << string::Sprintf("%-3d %s\n", idx++,
+                                SimplifyDemangleStr(demangled));
       }
     }
   }
