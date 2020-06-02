@@ -27,7 +27,6 @@ class TestDataFeed(unittest.TestCase):
         self.pv_batch_size = 10
         self.enable_pv_merge = True
         self.merge_by_sid = True
-        self.slot_padding_zero = False
 
     def set_data_config(self):
         self.dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
@@ -36,7 +35,7 @@ class TestDataFeed(unittest.TestCase):
         self.dataset.set_thread(1)
         self.dataset.set_enable_pv_merge(self.enable_pv_merge)
         self.dataset.set_batch_size(self.batch_size)
-        self.dataset.set_slot_padding_zero(self.slot_padding_zero)
+        self.dataset.set_slot_padding_zero(False)
         if self.enable_pv_merge:
             self.dataset.set_merge_by_sid(self.merge_by_sid)
             self.dataset.set_rank_offset("rank_offset")
