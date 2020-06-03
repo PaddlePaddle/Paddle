@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers import control_flow, logical_and, logical_or, logical_not
+from paddle.fluid.layers import control_flow, logical_and, logical_or, logical_not, cast
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+from paddle.fluid.data_feeder import convert_dtype
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -73,6 +74,8 @@ def convert_logical_and(x, y):
 
 
 def _run_paddle_logical_and(x, y):
+    x = cast_bool_if_necessary(x)
+    y = cast_bool_if_necessary(y)
     return logical_and(x, y)
 
 
@@ -104,6 +107,8 @@ def convert_logical_or(x, y):
 
 
 def _run_paddle_logical_or(x, y):
+    x = cast_bool_if_necessary(x)
+    y = cast_bool_if_necessary(y)
     return logical_or(x, y)
 
 
@@ -131,8 +136,16 @@ def convert_logical_not(x):
 
 
 def _run_paddle_logical_not(x):
+    x = cast_bool_if_necessary(x)
     return logical_not(x)
 
 
 def _run_py_logical_not(x):
     return not x
+
+
+def cast_bool_if_necessary(var):
+    assert isinstance(var, Variable)
+    if convert_dtype(var.dtype) not in ['bool']:
+        var = cast(var, dtype="bool")
+    return var
