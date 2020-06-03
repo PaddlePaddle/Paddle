@@ -36,7 +36,9 @@ class AmpCheckFiniteAndScaleOp : public framework::OperatorWithKernel {
         ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
         platform::errors::InvalidArgument(
             "The input(X) and output(Out) should have same size in "
-            "Operator(amp_check_finite_and_unscale)."));
+            "Operator(amp_check_finite_and_unscale), size of input(X) is %d "
+            "and size of output(Out) is %d.",
+            ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
     ctx->SetOutputDim("FoundInfinite", {1});
@@ -55,13 +57,13 @@ class AmpCheckFiniteAndScaleOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(Tensor) The input tensors of amp_check_finite_and_scale operator.")
+        "(Tensors) The input tensors of amp_check_finite_and_scale operator.")
         .AsDuplicable();
     AddInput("Scale",
              "(Tensor) 1-dim tensor, the scale of amp_check_finite_and_scale "
              "operator.");
     AddOutput("Out",
-              "(Tensor) The scaled output tensor of "
+              "(Tensors) The scaled output tensor of "
               "amp_check_finite_and_unscale operator.")
         .AsDuplicable();
     AddOutput("FoundInfinite",
@@ -78,7 +80,6 @@ FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the da
 Out should not be used, and its data may not be deterministic. 
 Otherwise, FoundInfinite will be 0 (False).
 
-%s
 )DOC");
   }
 };
