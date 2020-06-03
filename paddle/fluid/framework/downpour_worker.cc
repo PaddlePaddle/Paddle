@@ -771,6 +771,7 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+#ifdef PADDLE_WITH_PSLIB
         try {
           op->Run(*thread_scope_, place_);
         } catch (std::exception& e) {
@@ -811,6 +812,9 @@ void DownpourWorker::TrainFiles() {
           }
           throw e;
         }
+#else
+        op->Run(*thread_scope_, place_);
+#endif
       }
     }
 
