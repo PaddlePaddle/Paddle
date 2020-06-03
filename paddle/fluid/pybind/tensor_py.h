@@ -20,6 +20,7 @@ limitations under the License. */
 #include <string>
 #include <tuple>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
@@ -119,15 +120,19 @@ inline std::string TensorDTypeToPyDTypeStr(
       return "e";                                                           \
     } else {                                                                \
       constexpr auto kIsValidDType = ValidDTypeToPyArrayChecker<T>::kValue; \
-      PADDLE_ENFORCE_EQ(kIsValidDType, true,                                \
-                        "This type of tensor cannot be expose to Python");  \
+      PADDLE_ENFORCE_EQ(                                                    \
+          kIsValidDType, true,                                              \
+          platform::errors::Unimplemented(                                  \
+              "This type [%s] of tensor cannot be expose to Python",        \
+              typeid(T).name()));                                           \
       return py::format_descriptor<T>::format();                            \
     }                                                                       \
   }
 
   _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
 #undef TENSOR_DTYPE_TO_PY_DTYPE
-  PADDLE_THROW("Unsupported data type %d", static_cast<int>(type));
+  PADDLE_THROW(platform::errors::Unimplemented("Unsupported data type %s",
+                                               DataTypeToString(type)));
 }
 
 }  // namespace details
@@ -151,7 +156,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
-  PADDLE_ENFORCE_LT(offset, self->numel());
+  PADDLE_ENFORCE_LT(offset, self->numel(), "x");
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
 #ifdef PADDLE_WITH_CUDA
