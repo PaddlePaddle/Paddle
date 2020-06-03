@@ -22,6 +22,7 @@ from . import loss
 from . import datasets
 from . import distributed
 from . import vision
+from . import text
 
 logger.setup_logger()
 
@@ -33,6 +34,7 @@ __all__ = [
     'metrics',
     'loss',
     'vision',
+    'text',
 ]
 
 __all__ += model.__all__

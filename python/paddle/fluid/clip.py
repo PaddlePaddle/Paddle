@@ -158,6 +158,10 @@ class GradientClipBase(object):
 
 class GradientClipByValue(GradientClipBase):
     """
+    :alias_main: paddle.nn.GradientClipByValue
+	:alias: paddle.nn.GradientClipByValue,paddle.nn.clip.GradientClipByValue
+	:old_api: paddle.fluid.clip.GradientClipByValue
+
     Limit the value of multi-dimensional Tensor :math:`X` to the range [min, max].
     
     - Any values less than min are set to ``min``.
@@ -296,6 +300,10 @@ class GradientClipByValue(GradientClipBase):
 
 class GradientClipByNorm(GradientClipBase):
     """
+    :alias_main: paddle.nn.GradientClipByNorm
+	:alias: paddle.nn.GradientClipByNorm,paddle.nn.clip.GradientClipByNorm
+	:old_api: paddle.fluid.clip.GradientClipByNorm
+
     Limit the l2 norm of multi-dimensional Tensor :math:`X` to ``clip_norm`` .
     
     - If the l2 norm of :math:`X` is greater than ``clip_norm`` , :math:`X` will be compressed by a ratio.
@@ -447,6 +455,10 @@ class GradientClipByNorm(GradientClipBase):
 
 class GradientClipByGlobalNorm(GradientClipBase):
     """
+    :alias_main: paddle.nn.GradientClipByGlobalNorm
+	:alias: paddle.nn.GradientClipByGlobalNorm,paddle.nn.clip.GradientClipByGlobalNorm
+	:old_api: paddle.fluid.clip.GradientClipByGlobalNorm
+
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in 
     :math:`t\_list` , and limit it to ``clip_norm`` .
     
@@ -691,6 +703,8 @@ class GradientClipByGlobalNorm(GradientClipBase):
 @framework.dygraph_not_support
 def set_gradient_clip(clip, param_list=None, program=None):
     """
+    :api_attr: Static Graph
+    
     Warning:
     
         This API must be used after building network, and before ``minimize`` , 

@@ -25,6 +25,9 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+using EigenVectorArrayMap = Eigen::Map<Eigen::Array<double, Eigen::Dynamic, 1>>;
+using string::PrettyLogDetail;
+
 namespace {
 
 void UnlinkNodes(ir::Node* a, ir::Node* b) {
@@ -34,12 +37,23 @@ void UnlinkNodes(ir::Node* a, ir::Node* b) {
                   b->inputs.end());
 }
 
+void LogCannotQuantizeOp(Node* op) {
+  std::stringstream msg_ss;
+  msg_ss << "Cannot quantize operator " << op->Name()
+         << " (type: " << op->Op()->Type() << ", id: " << op->id() << ").";
+  PrettyLogDetail(msg_ss.str().c_str());
+}
+
+void LogScaleIsMissingForVar(Node* var) {
+  std::stringstream msg_ss;
+  msg_ss << "Quantization scale for the variable " << var->Name()
+         << " is missing.";
+  PrettyLogDetail(msg_ss.str().c_str());
+}
+
 }  // namespace
 
 enum { U8_MAX = 255, S8_MAX = 127 };
-
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<double, Eigen::Dynamic, 1>>;
-using string::PrettyLogDetail;
 
 void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
                                     std::string input_name, double scale_to_one,
@@ -177,17 +191,8 @@ bool CPUQuantizePass::AreScalesPresentForNodes(
   for (auto node : nodes) {
     if (scales.count(node->Name()) == 0) {
       present = false;
-      std::stringstream msg_ss;
-      msg_ss << "Quantization scale for the variable " << node->Name()
-             << " is missing.";
-      PrettyLogDetail(msg_ss.str().c_str());
+      LogScaleIsMissingForVar(node);
     }
-  }
-  if (!present) {
-    std::stringstream msg_ss;
-    msg_ss << "Cannot quantize operator " << op_node->Name()
-           << " (type: " << op_node->Op()->Type() << ").";
-    PrettyLogDetail(msg_ss.str().c_str());
   }
   return present;
 }
@@ -243,9 +248,11 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     if (with_residual_data) {
       GET_IR_NODE_FROM_SUBGRAPH(conv_residual_data, conv_residual_data,
                                 conv_pattern);
-      if (!AreScalesPresentForNodes(conv_op, {conv_input, conv_filter,
-                                              conv_residual_data, conv_output}))
+      if (!AreScalesPresentForNodes(
+              conv_op, {conv_input, conv_filter, conv_residual_data})) {
+        LogCannotQuantizeOp(conv_op);
         return;
+      }
 
       bool is_residual_unsigned{false};
       auto residual_scale =
@@ -254,9 +261,10 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
       QuantizeInput(g, conv_op, conv_residual_data, "ResidualData",
                     residual_scale, is_residual_unsigned, "Scale_in_eltwise");
     } else {
-      if (!AreScalesPresentForNodes(conv_op,
-                                    {conv_input, conv_filter, conv_output}))
+      if (!AreScalesPresentForNodes(conv_op, {conv_input, conv_filter})) {
+        LogCannotQuantizeOp(conv_op);
         return;
+      }
     }
 
     bool is_input_unsigned{false};
@@ -274,10 +282,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
 
     conv_op->Op()->SetAttr("Scale_weights", filter_scale);
 
-    bool is_output_unsigned{false};
-    auto output_scale = GetScaleValueForNode(conv_output, &is_output_unsigned);
-    DequantizeOutput(g, conv_op, conv_output, "Output", output_scale,
-                     is_output_unsigned, "Scale_out");
+    // if quantization scale is missing for output tensor, return fp32 data
+    if (AreScalesPresentForNodes(conv_op, {conv_output})) {
+      bool is_output_unsigned{false};
+      auto output_scale =
+          GetScaleValueForNode(conv_output, &is_output_unsigned);
+      DequantizeOutput(g, conv_op, conv_output, "Output", output_scale,
+                       is_output_unsigned, "Scale_out");
+    } else {
+      conv_op->Op()->SetAttr("force_fp32_output", true);
+    }
 
     // change threshold in bounded ReLu
     if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
@@ -327,7 +341,10 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
-    if (!AreScalesPresentForNodes(fc, {input, weights, output})) return;
+    if (!AreScalesPresentForNodes(fc, {input, weights})) {
+      LogCannotQuantizeOp(fc);
+      return;
+    }
 
     bool is_input_unsigned{false};
     auto input_scale = GetScaleValueForNode(input, &is_input_unsigned);
@@ -344,10 +361,15 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
 
     fc->Op()->SetAttr("Scale_weights", filter_scale);
 
-    bool is_output_unsigned{false};
-    auto output_scale = GetScaleValueForNode(output, &is_output_unsigned);
-    DequantizeOutput(g, fc, output, "Out", output_scale, is_output_unsigned,
-                     "Scale_out");
+    // if quantization scale is missing for output tensor, return fp32 data
+    if (AreScalesPresentForNodes(fc, {output})) {
+      bool is_output_unsigned{false};
+      auto output_scale = GetScaleValueForNode(output, &is_output_unsigned);
+      DequantizeOutput(g, fc, output, "Out", output_scale, is_output_unsigned,
+                       "Scale_out");
+    } else {
+      fc->Op()->SetAttr("force_fp32_output", true);
+    }
 
     ++quantize_fc_count;
   };
@@ -379,7 +401,10 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);
 
-    if (!AreScalesPresentForNodes(pool_op, {pool_input, pool_output})) return;
+    if (!AreScalesPresentForNodes(pool_op, {pool_input, pool_output})) {
+      LogCannotQuantizeOp(pool_op);
+      return;
+    }
 
     bool is_input_unsigned{false};
     auto input_scale = GetScaleValueForNode(pool_input, &is_input_unsigned);
@@ -417,7 +442,10 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
 
     GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, concat_pattern);
 
-    if (!AreScalesPresentForNodes(concat_op, {concat_out})) return;
+    if (!AreScalesPresentForNodes(concat_op, {concat_out})) {
+      LogCannotQuantizeOp(concat_op);
+      return;
+    }
 
     // if all inputs were unsigned, then the output was set to unsigned
     // during the scale calculation step
@@ -458,7 +486,10 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prior_box_input, prior_box_input,
                               prior_box_pattern);
 
-    if (!AreScalesPresentForNodes(prior_box_op, {prior_box_input})) return;
+    if (!AreScalesPresentForNodes(prior_box_op, {prior_box_input})) {
+      LogCannotQuantizeOp(prior_box_op);
+      return;
+    }
 
     bool is_input_unsigned{false};
     auto input_scale =
@@ -503,8 +534,11 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(transpose_in, transpose_in, transpose_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose_out, transpose_out, transpose_pattern);
 
-    if (!AreScalesPresentForNodes(transpose_op, {transpose_in, transpose_out}))
+    if (!AreScalesPresentForNodes(transpose_op,
+                                  {transpose_in, transpose_out})) {
+      LogCannotQuantizeOp(transpose_op);
       return;
+    }
 
     bool is_input_unsigned{false};
     auto input_scale = GetScaleValueForNode(transpose_in, &is_input_unsigned);
@@ -555,8 +589,10 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in, reshape_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, reshape_pattern);
 
-    if (!AreScalesPresentForNodes(reshape_op, {reshape_in, reshape_out}))
+    if (!AreScalesPresentForNodes(reshape_op, {reshape_in, reshape_out})) {
+      LogCannotQuantizeOp(reshape_op);
       return;
+    }
 
     bool is_input_unsigned{false};
     auto input_scale = GetScaleValueForNode(reshape_in, &is_input_unsigned);
@@ -605,9 +641,10 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
 
-    if (!AreScalesPresentForNodes(matmul_op,
-                                  {matmul_in_x, matmul_in_y, matmul_out}))
+    if (!AreScalesPresentForNodes(matmul_op, {matmul_in_x, matmul_in_y})) {
+      LogCannotQuantizeOp(matmul_op);
       return;
+    }
 
     bool is_x_unsigned{false}, is_y_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
@@ -621,10 +658,15 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     QuantizeInput(g, matmul_op, matmul_in_y, "Y", input_y_scale, is_y_unsigned,
                   "Scale_y");
 
-    bool is_output_unsigned{false};
-    auto output_scale = GetScaleValueForNode(matmul_out, &is_output_unsigned);
-    DequantizeOutput(g, matmul_op, matmul_out, "Out", output_scale,
-                     is_output_unsigned, "Scale_out");
+    // if quantization scale is missing for output tensor, return fp32 data
+    if (AreScalesPresentForNodes(matmul_op, {matmul_out})) {
+      bool is_output_unsigned{false};
+      auto output_scale = GetScaleValueForNode(matmul_out, &is_output_unsigned);
+      DequantizeOutput(g, matmul_op, matmul_out, "Out", output_scale,
+                       is_output_unsigned, "Scale_out");
+    } else {
+      matmul_op->Op()->SetAttr("force_fp32_output", true);
+    }
 
     ++quantize_matmul_count;
   };

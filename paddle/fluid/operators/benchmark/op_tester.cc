@@ -47,7 +47,8 @@ void OpTester::Init(const OpTesterConfig &config) {
     CreateInputVarDesc();
     CreateOutputVarDesc();
   } else {
-    LOG(FATAL) << "Op \"" << config_.op_type << "\" is not registered.";
+    PADDLE_THROW(platform::errors::NotFound("Operator '%s' is not registered.",
+                                            config_.op_type));
   }
 
   if (config_.device_id >= 0) {
@@ -169,10 +170,10 @@ void OpTester::CreateInputVarDesc() {
   std::vector<std::string> input_names = GetOpProtoInputNames();
   for (auto &name : input_names) {
     const OpInputConfig *input = config_.GetInput(name);
-    if (input == nullptr) {
-      LOG(FATAL) << "The input " << name << " of op " << config_.op_type
-                 << " is not correctlly provided.";
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        input, platform::errors::NotFound(
+                   "The input %s of operator %s is not correctlly provided.",
+                   name, config_.op_type));
 
     std::string var_name = config_.op_type + "." + name;
     framework::VarDesc *var = Var(var_name);
@@ -207,9 +208,10 @@ void OpTester::CreateOpDesc() {
       GetOpProtoAttrNames();
   for (auto item : config_.attrs) {
     const std::string &name = item.first;
-    if (attr_types.find(name) == attr_types.end()) {
-      LOG(FATAL) << "Operator " << type_ << " do not have attr " << name;
-    }
+    PADDLE_ENFORCE_NE(
+        attr_types.find(name), attr_types.end(),
+        platform::errors::NotFound("Operator %s does not have attribute %d.",
+                                   type_, name));
 
     const std::string &value_str = item.second;
     const framework::proto::AttrType &type = attr_types[name];
@@ -231,7 +233,8 @@ void OpTester::CreateOpDesc() {
       case framework::proto::AttrType::INTS:
       case framework::proto::AttrType::FLOATS:
       case framework::proto::AttrType::STRINGS:
-        LOG(FATAL) << "Not supported yet.";
+        PADDLE_THROW(
+            platform::errors::Unimplemented("Not supported STRINGS type yet."));
         break;
       case framework::proto::AttrType::LONG: {
         int64_t value = StringTo<int64_t>(value_str);

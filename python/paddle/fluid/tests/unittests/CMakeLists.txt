@@ -49,6 +49,7 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+    LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -99,6 +100,10 @@ endif()
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
     LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
+endif()
+
+if(NOT WITH_CRYPTO)
+    LIST(REMOVE_ITEM TEST_OPS test_crypto)
 endif()
 
 function(py_test_modules TARGET_NAME)

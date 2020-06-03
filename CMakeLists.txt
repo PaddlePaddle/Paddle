@@ -20,19 +20,6 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 include(system)
 
 project(paddle CXX C)
-
-include(init)
-
-# enable language CUDA
-# TODO(Shibo Tao): remove find_package(CUDA) completely.
-find_package(CUDA QUIET)
-option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
-if(WITH_GPU AND NOT APPLE)
-    enable_language(CUDA)
-    message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
-        "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
-endif()
-
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
@@ -65,12 +52,14 @@ else(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
 
+find_package(CUDA QUIET)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
 include(simd)
 
 ################################ Exposed Configurations #######################################
+option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
@@ -91,7 +80,6 @@ option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
 option(WITH_XBYAK       "Compile with xbyak support"                    ON)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
-option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
@@ -99,6 +87,7 @@ option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE}
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
+option(WITH_CRYPTO   "Compile PaddlePaddle with crypto support"         ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -111,11 +100,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
-endif()
-
-# Replace PADDLE_ENFORCE with glog/CHECK for better debug
-if(REPLACE_ENFORCE_GLOG)
-  add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF

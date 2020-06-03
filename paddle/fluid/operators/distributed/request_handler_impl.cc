@@ -76,6 +76,7 @@ bool RequestSendHandler::Handle(const std::string &varname,
     AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
                                                           grad_slr.rows());
   }
+
   executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                 scope);
 

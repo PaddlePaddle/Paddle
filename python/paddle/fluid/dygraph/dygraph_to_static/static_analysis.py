@@ -256,6 +256,14 @@ class StaticAnalysisVisitor(object):
     def get_var_env(self):
         return self.var_env
 
+    def is_tensor_node(self, node):
+        tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
+        node_wrapper = self.node_to_wrapper_map.get(node, None)
+        if node_wrapper is None:
+            return False
+        if node_wrapper.node_var_type & tensor_types:
+            return True
+
     def _get_constant_node_type(self, node):
         assert isinstance(node, gast.Constant), \
             "Type of input node should be gast.Constant, but received %s" % type(node)

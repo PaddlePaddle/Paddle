@@ -37,7 +37,7 @@ class TestImperativeContainer(unittest.TestCase):
             [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
 
     def paddle_imperative_list(self):
-        return paddle.imperative.LayerList(
+        return paddle.nn.LayerList(
             [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
 
     def layer_list(self, use_fluid_api):

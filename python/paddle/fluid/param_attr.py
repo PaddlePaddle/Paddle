@@ -202,6 +202,8 @@ class ParamAttr(object):
 
 class WeightNormParamAttr(ParamAttr):
     """
+	:api_attr: Static Graph
+
     Parameter of weight Norm. Weight Norm is a reparameterization of the weight vectors
     in a neural network that decouples the magnitude of those weight vectors from
     their direction. Weight Norm has been implemented as discussed in this

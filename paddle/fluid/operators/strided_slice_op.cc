@@ -39,9 +39,15 @@ class StridedSliceOp : public framework::OperatorWithKernel {
             "The dimension of StridedSlice operator's input should be less "
             "than 7, but received dimension is %d.",
             in_dims.size()));
-    auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
-    auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
-    auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
+
+    auto starts_int = ctx->Attrs().Get<std::vector<int>>("starts");
+    auto ends_int = ctx->Attrs().Get<std::vector<int>>("ends");
+    auto strides_int = ctx->Attrs().Get<std::vector<int>>("strides");
+
+    std::vector<int64_t> starts(starts_int.begin(), starts_int.end());
+    std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
+    std::vector<int64_t> strides(strides_int.begin(), strides_int.end());
+
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
     auto decrease_axis = ctx->Attrs().Get<std::vector<int>>("decrease_axis");
@@ -109,7 +115,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     }
     // we need to analysis strided slice op is valid for
     // the parameter that we get from python front
-    std::vector<int> out_dims_vector(in_dims.size(), -1);
+    std::vector<int64_t> out_dims_vector(in_dims.size(), -1);
     if (!tensor_input) {
       StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
                           decrease_axis, out_dims_vector.data(), axes.size(),
@@ -118,7 +124,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
     // generate new shape
     if (decrease_axis.size() > 0) {
-      std::vector<int> new_out_shape;
+      std::vector<int64_t> new_out_shape;
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
         if (ctx->IsRuntime() && infer_flags[i] != -1) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
@@ -298,7 +304,7 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInferer,
                                     "Input");
 
 }  // namespace operators
@@ -309,7 +315,7 @@ REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
                   ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
-                  ops::StridedSliceOpGradNoNeedBufferVarsInference);
+                  ops::StridedSliceOpGradNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     strided_slice,

@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -31,6 +33,8 @@ namespace framework {
 class NaiveExecutor {
  public:
   explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+
+  ~NaiveExecutor();
 
   // Create child scope.
   // Create variables.

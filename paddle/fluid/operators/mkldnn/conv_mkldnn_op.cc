@@ -94,8 +94,9 @@ template <typename T, typename K>
 class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL Conv must use CPUPlace"));
     bool is_INT8 =
         std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
     if (!is_INT8) {
@@ -130,37 +131,59 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
-    PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+                      platform::errors::InvalidArgument(
+                          "The input tensor's layout should be %d, but got %d.",
+                          DataLayout::kMKLDNN, input->layout()));
+    PADDLE_ENFORCE_NE(
+        input->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
 
-    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_EQ(
+        filter->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The Filter tensor's layout should be %d, but got %d.",
+            DataLayout::kMKLDNN, filter->layout()));
     PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Filter tensor");
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Filter tensor"));
 
-    PADDLE_ENFORCE_GE(
-        input->dims().size(), 4,
-        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
-    PADDLE_ENFORCE_LE(
-        input->dims().size(), 5,
-        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE_GE(input->dims().size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+                          "NCDHW, but got dimension = %d .",
+                          input->dims().size()));
+    PADDLE_ENFORCE_LE(input->dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+                          "NCDHW, but got dimension = %d .",
+                          input->dims().size()));
 
-    PADDLE_ENFORCE_GE(
-        filter->dims().size(), 4,
-        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
-    PADDLE_ENFORCE_LE(
-        filter->dims().size(), 5,
-        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+    PADDLE_ENFORCE_GE(filter->dims().size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
+                          "OIDHW, but got dimension = %d .",
+                          filter->dims().size()));
+    PADDLE_ENFORCE_LE(filter->dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
+                          "OIDHW, but got dimension = %d .",
+                          filter->dims().size()));
 
     if (bias) {
-      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for Bias tensor");
+      PADDLE_ENFORCE_EQ(
+          bias->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The Bias tensor's layout should be %d, but got %d.",
+              DataLayout::kMKLDNN, bias->layout()));
       PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
-                        "Wrong format set for Bias tensor");
+                        platform::errors::InvalidArgument(
+                            "Got wrong format for Bias tensor."));
 
-      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
-                        "Bias must only have 1 dimension, i.e. X");
+      PADDLE_ENFORCE_EQ(
+          bias->dims().size(), 1,
+          platform::errors::InvalidArgument("Bias must only have 1 dimension, "
+                                            "i.e. X, but got dimension = %d .",
+                                            bias->dims().size()));
     }
 
     std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
@@ -295,10 +318,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       PADDLE_ENFORCE_NE(
           residual_param_data, nullptr,
-          "Provide data if you want MKLDNN conv+elementwise_add fusion");
-      PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
-                        "Output and elementwise parameter need to have the "
-                        "same dimension sizes");
+          platform::errors::InvalidArgument(
+              "Provide data if you want MKLDNN conv+elementwise_add fusion"));
+      PADDLE_ENFORCE_EQ(
+          output->dims(), residual_param->dims(),
+          platform::errors::InvalidArgument(
+              "Output and elementwise parameter need to have the "
+              "same dimension sizes, "
+              "but got output's dimension = %d and residual param's dimension "
+              "= %d .",
+              output->dims().size(), residual_param->dims().size()));
 
       if (residual_param->format() != handler.GetDstFormat()) {
         auto output_data =
@@ -371,16 +400,23 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
+                      platform::errors::InvalidArgument(
+                          "The input tensor's layout should be %d, but got %d.",
+                          DataLayout::kMKLDNN, input->layout()));
     PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+                      platform::errors::InvalidArgument(
+                          "Got wrong format for Input tensor."));
 
-    PADDLE_ENFORCE_GE(
-        input->dims().size(), 4,
-        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
-    PADDLE_ENFORCE_LE(
-        input->dims().size(), 5,
-        "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
+    PADDLE_ENFORCE_GE(input->dims().size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+                          "NCDHW, but got dimension = %d .",
+                          input->dims().size()));
+    PADDLE_ENFORCE_LE(input->dims().size(), 5,
+                      platform::errors::InvalidArgument(
+                          "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+                          "NCDHW, but got dimension = %d .",
+                          input->dims().size()));
 
     std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
@@ -411,8 +447,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // of conv int8 mkl-dnn. Once conv fp32 and conv int8
     // are merged/unified, this will disappear
     std::string key_tid = "";
-    if (platform::get_cur_mkldnn_session_id() ==
-        platform::kMKLDNNSessionID_Default) {
+    if (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default) {
       key_tid = "-t:" + platform::ThreadIDasStr();
     }
 
@@ -438,17 +474,25 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       auto* filter = ctx.Input<Tensor>("Filter");
 
-      PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for Filter tensor");
+      PADDLE_ENFORCE_EQ(
+          filter->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The filter tensor's layout should be %d, but got %d.",
+              DataLayout::kMKLDNN, filter->layout()));
       PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                        "Wrong format set for Filter tensor");
+                        platform::errors::InvalidArgument(
+                            "Got wrong format for Filter tensor."));
 
-      PADDLE_ENFORCE_GE(
-          filter->dims().size(), 4,
-          "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
-      PADDLE_ENFORCE_LE(
-          filter->dims().size(), 5,
-          "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+      PADDLE_ENFORCE_GE(filter->dims().size(), 4,
+                        platform::errors::InvalidArgument(
+                            "Filter must be with 4 or 5 dimensions, i.e. OIHW "
+                            "or OIDHW, but got dimensions = %d .",
+                            filter->dims().size()));
+      PADDLE_ENFORCE_LE(filter->dims().size(), 5,
+                        platform::errors::InvalidArgument(
+                            "Filter must be with 4 or 5 dimensions, i.e. OIHW "
+                            "or OIDHW, but got dimensions = %d .",
+                            filter->dims().size()));
 
       PADDLE_ENFORCE_EQ(
           !fuse_residual_conn || !force_fp32_output, true,
@@ -457,13 +501,20 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
 
       if (bias) {
-        PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
-                          "Wrong layout set for Bias tensor");
+        PADDLE_ENFORCE_EQ(
+            bias->layout(), DataLayout::kMKLDNN,
+            platform::errors::InvalidArgument(
+                "The bias tensor's layout should be %d, but got %d.",
+                DataLayout::kMKLDNN, bias->layout()));
         PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
-                          "Wrong format set for Bias tensor");
+                          platform::errors::InvalidArgument(
+                              "Got wrong format for Bias tensor."));
 
         PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
-                          "Bias must only have 1 dimension, i.e. X");
+                          platform::errors::InvalidArgument(
+                              "Bias must only have 1 dimension, i.e. X, but "
+                              "got dimension = %d .",
+                              bias->dims().size()));
       }
 
       std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
@@ -482,7 +533,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bool is_conv3d = strides.size() == 3U;
 
       PADDLE_ENFORCE_NE(is_conv3d, true,
-                        "int8 does not support conv3d currently");
+                        platform::errors::InvalidArgument(
+                            "int8 does not support conv3d currently, should "
+                            "set param is_conv3d as False"));
 
       auto input_dims = input->dims();
       auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
@@ -599,9 +652,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       if (fuse_residual_conn) {
         auto residual_param = ctx.Input<Tensor>("ResidualData");
-        PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
-                          "Output and elementwise parameter need to have the "
-                          "same dimension sizes");
+        PADDLE_ENFORCE_EQ(
+            output->dims(), residual_param->dims(),
+            platform::errors::InvalidArgument(
+                "Output and elementwise parameter need to have the "
+                "same dimension sizes, but got output's dimension = %d"
+                " and residual param's dimension =%d .",
+                output->dims().size(), residual_param->dims().size()));
         auto residual_dt =
             paddle::framework::ToMKLDNNDataType(residual_param->type());
         if (residual_param->format() != handler->GetDstFormat()) {
@@ -728,9 +785,9 @@ template <typename T>
 class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "It must use CPUPlace.");
-
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL ConvGrad must use CPUPlace"));
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -743,23 +800,34 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
     PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Input tensor");
+                      platform::errors::InvalidArgument(
+                          "The input tensor's layout should be %d, but got %d.",
+                          DataLayout::kMKLDNN, input->layout()));
     PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Input tensor");
+                      platform::errors::InvalidArgument(
+                          "Got wrong format for Input tensor."));
 
-    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Filter tensor");
+    PADDLE_ENFORCE_EQ(
+        filter->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The filter tensor's layout should be %d, but got %d.",
+            DataLayout::kMKLDNN, filter->layout()));
     PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Filter tensor");
+                      platform::errors::InvalidArgument(
+                          "Got wrong format for Filter tensor."));
 
-    PADDLE_ENFORCE_EQ(output_grad->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for output_grad tensor");
+    PADDLE_ENFORCE_EQ(
+        output_grad->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument(
+            "The output_grad tensor's layout should be %d, but got %d.",
+            DataLayout::kMKLDNN, output_grad->layout()));
     PADDLE_ENFORCE_NE(output_grad->format(), MKLDNNMemoryFormat::undef,
                       "Wrong format set for output_grad tensor");
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
+        platform::errors::InvalidArgument(
+            "is_test attribute should be set to False in training phase."));
 
     if (!input_grad && !filter_grad) return;
 
@@ -859,7 +927,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
             dev_ctx.GetBlob(key_conv_pd));
     PADDLE_ENFORCE_NE(conv_pd, nullptr,
-                      "Fail to find conv_pd in device context");
+                      platform::errors::InvalidArgument(
+                          "Fail to find conv_pd in device context"));
 
     auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
 

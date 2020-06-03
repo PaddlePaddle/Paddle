@@ -486,7 +486,7 @@ class TestStridedSliceAPI(unittest.TestCase):
             feed={
                 "x": input,
                 'starts': np.array([-3, 0, 2]).astype("int32"),
-                'ends': np.array([3, 100, -1]).astype("int32"),
+                'ends': np.array([3, 2147483648, -1]).astype("int64"),
                 'strides': np.array([1, 1, 1]).astype("int32")
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7])

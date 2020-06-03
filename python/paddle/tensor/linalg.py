@@ -30,12 +30,16 @@ __all__ = [
     'cross',
     'cholesky',
     #       'tensordot',
-    'bmm'
+    'bmm',
+    'histogram'
 ]
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
+	:alias_main: paddle.matmul
+	:alias: paddle.matmul,paddle.tensor.matmul,paddle.tensor.linalg.matmul
+
     Applies matrix multiplication to two tensors.
 
     Currently, the input tensors' rank can be any, but when the rank of any
@@ -169,6 +173,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     """
+	:alias_main: paddle.norm
+	:alias: paddle.norm,paddle.tensor.norm,paddle.tensor.linalg.norm
+
     Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
     or 2-norm, and in general the p-norm for p > 0) of a given tensor.
 
@@ -344,6 +351,9 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
 
 def dist(x, y, p=2):
     """
+	:alias_main: paddle.dist
+	:alias: paddle.dist,paddle.tensor.dist,paddle.tensor.linalg.dist
+
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
     of distance. The shapes of x and y must be broadcastable. The definition is as follows, for
     details, please refer to the `numpy's broadcasting <https://docs.scipy.org/doc/numpy/user/basics.broadcasting.html>`_:
@@ -442,6 +452,9 @@ def dist(x, y, p=2):
 
 def dot(x, y, name=None):
     """
+	:alias_main: paddle.dot
+	:alias: paddle.dot,paddle.tensor.dot,paddle.tensor.linalg.dot
+
     This operator calculates inner product for vectors.
    
     .. note::
@@ -498,6 +511,9 @@ def dot(x, y, name=None):
 
 def t(input, name=None):
     """
+	:alias_main: paddle.t
+	:alias: paddle.t,paddle.tensor.t,paddle.tensor.linalg.t
+
     Transpose <=2-D tensor. 
     0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
     the fluid.layers.transpose function which perm dimensions set 0 and 1.
@@ -569,6 +585,9 @@ def t(input, name=None):
 
 def cross(input, other, dim=None):
     """
+	:alias_main: paddle.cross
+	:alias: paddle.cross,paddle.tensor.cross,paddle.tensor.linalg.cross
+
     Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
     Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
     If `dim` is not given, it defaults to the first dimension found with the size 3.
@@ -631,6 +650,9 @@ def cross(input, other, dim=None):
 
 def cholesky(x, upper=False):
     """
+	:alias_main: paddle.cholesky
+	:alias: paddle.cholesky,paddle.tensor.cholesky,paddle.tensor.linalg.cholesky
+
     Computes the Cholesky decomposition of one symmetric positive-definite
     matrix or batches of symmetric positive-definite matrice. 
     
@@ -684,6 +706,9 @@ def cholesky(x, upper=False):
 
 def bmm(x, y, name=None):
     """
+	:alias_main: paddle.bmm
+	:alias: paddle.bmm,paddle.tensor.bmm,paddle.tensor.linalg.bmm
+
     Applies batched matrix multiplication to two tensors.
 
     Both of the two input tensors must be three-dementional and share the same batch size.
@@ -726,4 +751,64 @@ def bmm(x, y, name=None):
         return core.ops.bmm(x, y)
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
+    return out
+
+
+def histogram(input, bins=100, min=0, max=0):
+    """
+    Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max. 
+    If min and max are both zero, the minimum and maximum values of the data are used.
+
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64.
+        bins (int): number of histogram bins
+        min (int): lower end of the range (inclusive)
+        max (int): upper end of the range (inclusive)
+
+    Returns:
+        Variable: Tensor or LoDTensor calculated by histogram layer. The data type is int64.
+
+    Code Example 1:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            startup_program = paddle.Program()
+            train_program = paddle.Program()
+            with paddle.program_guard(train_program, startup_program):
+                inputs = paddle.data(name='input', dtype='int32', shape=[2,3])
+                output = paddle.histogram(inputs, bins=5, min=1, max=5)
+                place = paddle.CPUPlace()
+                exe = paddle.Executor(place)
+                exe.run(startup_program)
+                img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
+                res = exe.run(train_program,
+                              feed={'input': img},
+                              fetch_list=[output])
+                print(np.array(res[0])) # [0,3,0,2,1]
+
+    Code Example 2:
+        .. code-block:: python
+            import paddle
+            import numpy as np
+            with paddle.imperative.guard(paddle.CPUPlace()):
+                inputs_np = np.array([1, 2, 1]).astype(np.float)
+                inputs = paddle.imperative.to_variable(inputs_np)
+                result = paddle.histogram(inputs, bins=4, min=0, max=3)
+                print(result) # [0, 2, 1, 0]
+    """
+    if in_dygraph_mode():
+        return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
+
+    helper = LayerHelper('histogram', **locals())
+    check_variable_and_dtype(
+        input, 'X', ['int32', 'int64', 'float32', 'float64'], 'histogram')
+    out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
+    helper.append_op(
+        type='histogram',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'bins': bins,
+               'min': min,
+               'max': max})
     return out

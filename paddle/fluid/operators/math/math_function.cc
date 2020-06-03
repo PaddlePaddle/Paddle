@@ -146,6 +146,19 @@ template struct RowwiseSum<platform::CPUDeviceContext, double>;
 template struct RowwiseMean<platform::CPUDeviceContext, float>;
 template struct RowwiseMean<platform::CPUDeviceContext, double>;
 
+template <typename T>
+struct ElementwiseAddTo<platform::CPUDeviceContext, T> {
+  void operator()(platform::CPUDeviceContext* ctx, const framework::Tensor& src,
+                  framework::Tensor* dst) {
+    auto in = framework::EigenVector<T>::Flatten(src);
+    auto out = framework::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+};
+
+template struct ElementwiseAddTo<platform::CPUDeviceContext, platform::float16>;
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

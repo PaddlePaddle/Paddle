@@ -98,7 +98,8 @@ void CreateTensor(framework::Scope* scope, const std::string& name,
 #ifdef PADDLE_WITH_CUDA
     place = platform::CUDAPlace(0);
 #else
-    LOG(FATAL) << "You must define PADDLE_WITH_CUDA for using CUDAPlace.";
+    PADDLE_THROW(platform::errors::PreconditionNetMet(
+        "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
 #endif
   } else {
     place = platform::CPUPlace();

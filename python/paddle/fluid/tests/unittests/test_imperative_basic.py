@@ -240,18 +240,22 @@ class TestImperative(unittest.TestCase):
     def test_create_VarBase(self):
         x = np.ones([2, 2], np.float32)
         y = np.zeros([3, 3], np.float32)
+        t = fluid.Tensor()
+        t.set(x, fluid.CPUPlace())
         with fluid.dygraph.guard():
             tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
             tmp2 = fluid.core.VarBase(y, fluid.core.CPUPlace())
             tmp3 = fluid.dygraph.base.to_variable(x)
             tmp4 = fluid.core.VarBase(y)
             tmp5 = fluid.core.VarBase(value=x)
+            tmp6 = fluid.core.VarBase(t)
 
             self.assertTrue(np.array_equal(x, tmp.numpy()))
             self.assertTrue(np.array_equal(y, tmp2.numpy()))
             self.assertTrue(np.array_equal(x, tmp3.numpy()))
             self.assertTrue(np.array_equal(y, tmp4.numpy()))
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
+            self.assertTrue(np.array_equal(x, tmp6.numpy()))
 
     def test_no_grad_guard(self):
         data = np.array([[2, 3], [4, 5]]).astype('float32')
@@ -384,7 +388,6 @@ class TestImperative(unittest.TestCase):
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
             l = MyLayer()
-            print(var_inp)
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x.numpy()

@@ -45,7 +45,7 @@ function walk_dir(){
             if [ $level -le 1 ]; then
                 enforce_scan $1"/"$file total_check_cnt valid_check_cnt
                 dir_name=$1
-                echo "${dir_name#../}"/"$file - total: ${total_check_cnt}, valid: ${valid_check_cnt}, invalid: $(($total_check_cnt-$valid_check_cnt))"
+                echo "${dir_name#../}/"$file" | ${total_check_cnt} | ${valid_check_cnt} | $(($total_check_cnt-$valid_check_cnt))"
                 ALL_PADDLE_CHECK_CNT=$(($ALL_PADDLE_CHECK_CNT+$total_check_cnt))
                 VALID_PADDLE_CHECK_CNT=$(($VALID_PADDLE_CHECK_CNT+$valid_check_cnt))
                 walk_dir $1"/"$file $level
