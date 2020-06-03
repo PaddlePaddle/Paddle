@@ -133,12 +133,15 @@ void TestMain(bool padding_weights) {
   Scope scope;
   CreateVarsInScope(&scope, width);
   graph->SetNotOwned(kParamScopeAttr, &scope);
-  auto pass = PassRegistry::Instance().Get("fc_parallel_fuse_pass");
 
   int num_fc_nodes_before = GetNumOpNodes(graph, "fc");
   int original_nodes_num = graph->Nodes().size();
 
+  VLOG(3) << DebugString(graph);
+  auto pass = PassRegistry::Instance().Get("fc_parallel_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
+  VLOG(3) << DebugString(graph);
+
   auto fc_ops = GetOpNodes(graph, "fc");
   int num_fc_nodes_after = fc_ops.size();
   int current_nodes_num = graph->Nodes().size();
