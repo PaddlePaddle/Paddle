@@ -29,14 +29,16 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
   }
   FILE* fp;
   if (!(fp = fopen(path.c_str(), mode.c_str()))) {
-    LOG(FATAL) << "fopen fail, path[" << path << "], mode[" << mode << "]";
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Failed to open file, path[%s], mode[%s].", path, mode));
   }
   return {fp, [path](FILE* fp) {
             if (shell_verbose()) {
               LOG(INFO) << "Closing file[" << path << "]";
             }
             if (0 != fclose(fp)) {
-              LOG(FATAL) << "fclose fail, path[" << path << "]";
+              PADDLE_THROW(platform::errors::Unavailable(
+                  "Failed to close file, path[%s].", path));
             }
           }};
 #endif
@@ -58,7 +60,7 @@ static int close_open_fds_internal() {
 
   int dir_fd = -1;
   if ((dir_fd = open("/proc/self/fd", O_RDONLY)) < 0) {
-    LOG(FATAL) << "proc/self/fd open fail";
+    PADDLE_THROW(platform::errors::Unavailable("Failed to open proc/self/fd."));
     return -1;
   }
   char buffer[sizeof(linux_dirent)];
@@ -68,7 +70,8 @@ static int close_open_fds_internal() {
     if ((bytes = syscall(SYS_getdents, dir_fd,
                          reinterpret_cast<linux_dirent*>(buffer),
                          sizeof(buffer))) < 0) {
-      LOG(FATAL) << "syscall fail";
+      PADDLE_THROW(platform::errors::Unavailable(
+          "System call failed via syscall function."));
       return -1;
     }
 

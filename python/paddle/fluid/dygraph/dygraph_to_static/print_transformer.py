@@ -117,7 +117,7 @@ class PrintTransformer(gast.NodeTransformer):
 
     def _need_transform(self, var_node, print_node):
         if isinstance(var_node, gast.Name):
-            if self._is_tensor_node(var_node):
+            if self.static_analysis_visitor.is_tensor_node(var_node):
                 return True
             else:
                 _logger.warning(
@@ -127,12 +127,4 @@ class PrintTransformer(gast.NodeTransformer):
             _logger.warning(
                 "ProgramTranslator could not transform < %s > now and will run it as-is."
                 % ast_to_source_code(print_node).strip())
-        return False
-
-    def _is_tensor_node(self, node):
-        tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
-        wrapper_node = self.node_to_wrapper_map.get(node, None)
-        if wrapper_node is not None:
-            if wrapper_node.node_var_type & tensor_types:
-                return True
         return False

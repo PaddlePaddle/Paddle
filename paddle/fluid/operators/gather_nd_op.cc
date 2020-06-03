@@ -166,7 +166,7 @@ class GatherNdGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherNdGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -178,7 +178,7 @@ REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
                   ops::GatherNdGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
-                  ops::GatherNdGradNoNeedBufferVarInference);
+                  ops::GatherNdGradNoNeedBufferVarInferer);
 
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,

@@ -148,6 +148,7 @@ cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
+cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 

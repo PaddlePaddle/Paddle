@@ -69,8 +69,10 @@ void RdmaMemPool::Register(const std::string& varname, void* data,
   pthread_rwlock_unlock(&access_);
 
   if (brpc::rdma::RegisterMemoryForRdma(data, data_size)) {
-    LOG(FATAL) << "register " << varname << " data:" << data
-               << " data_size:" << data_size << " error";
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Register memory for RDMA failed. Register %s data: %s data size %d "
+        "error.",
+        varname, data, data_size));
   }
 
   VLOG(4) << "register on rdma:" << varname << " data:" << data

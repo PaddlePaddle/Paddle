@@ -239,7 +239,15 @@ def update_args_of_func(node, dygraph_node, method_name):
 
 
 def create_api_shape_node(tensor_shape_node):
-    assert isinstance(tensor_shape_node, (gast.Attribute, gast.Subscript))
+    assert isinstance(tensor_shape_node,
+                      (gast.Name, gast.Attribute, gast.Subscript))
+
+    if isinstance(tensor_shape_node, gast.Name):
+        api_shape_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[tensor_shape_node],
+            keywords=[])
+        return api_shape_node
 
     if isinstance(tensor_shape_node, gast.Attribute):
         api_shape_node = gast.Call(
@@ -453,8 +461,10 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     gast.While must meet at least one of the requirements 1 to 5:
         4. has `break` statement.
         5. has `continue` statement.
-    gast.For must meet at least one of the requirements 4 to 6:
+    gast.For must meet at least one of the requirements 4 to 8:
         6. calls `range` function in `for` statement and the argument of range is Tensor.
+        7. calls `enumerate` function in `for` statement and the argument of enumerate is Tensor.
+        8. the iterable varaible in `for` statement is Tensor.
         TODO: Support non-range case
 
     The following examples should not be considered as control_flow_if:
@@ -507,22 +517,25 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
-        if not isinstance(node.iter, gast.Call):
-            return
-
-        # for in range(v.numpy()) or for in enumerate(v.numpy())
-        if isinstance(node.iter.func, gast.Name):
-            if node.iter.func.id == "range" or node.iter.func.id == "enumerate":
-                for arg in node.iter.args:
-                    self.visit(arg)
+        if isinstance(node.iter, gast.Call):
+            # for in range(var[0]|var.numpy()[0]) or for in enumerate(var|var.numpy())
+            if isinstance(node.iter.func, gast.Name):
+                if node.iter.func.id == "range" or node.iter.func.id == "enumerate":
+                    for arg in node.iter.args:
+                        self.visit(arg)
+                else:
+                    return
+            # for in var.numpy()
+            elif isinstance(node.iter.func, gast.Attribute):
+                if node.iter.func.attr == 'numpy':
+                    self._visit_Call(node.iter)
+                else:
+                    return
             else:
                 return
-        # for in v.numpy()
-        elif isinstance(node.iter.func, gast.Attribute):
-            if node.iter.func.attr == 'numpy':
-                self._visit_Call(node.iter)
-            else:
-                return
+        elif isinstance(node.iter, gast.Name):
+            # for in var
+            self.visit(node.iter)
         else:
             return
 
@@ -655,10 +668,10 @@ class ForNodeVisitor(object):
 
     In this process, the semantics of for does not change.
 
-    Now only can parse 3 type statements:
-        1). for x in range(***)
-        2). for x in var.numpy()
-        3). for i, x enumerate(var.numpy())
+    Now only can parse 3 type statements (Here var is VarBase(Tensor)):
+        1). for x in range(var[*]|var.numpy()[*])
+        2). for x in var|var.numpy()
+        3). for i, x enumerate(var|var.numpy())
     """
 
     def __init__(self, for_node):
@@ -678,28 +691,29 @@ class ForNodeVisitor(object):
         # 3. key shared node or names
         # - x:
         #   - for x in range(***)
-        #   - for x in var.numpy()
-        #   - for i, x enumerate(var.numpy())
+        #   - for x in var|var.numpy()
+        #   - for i, x enumerate(var|var.numpy())
         self.iter_var_name = self._get_iter_var_name()
 
         # - created index var to slice Variable: __for_loop_var_index_0
-        #   - for x in var.numpy()
-        #   - for i, x enumerate(var.numpy())
+        #   - for x in var|var.numpy()
+        #   - for i, x enumerate(var|var.numpy())
         self.iter_idx_name = unique_name.generate(FOR_ITER_INDEX_PREFIX)
 
         # - created shape var to build loop condition: __for_loop_var_shape_0
-        #   - for x in var.numpy()
-        #   - for i, x enumerate(var.numpy())
+        #   - for x in var|var.numpy()
+        #   - for i, x enumerate(var|var.numpy())
+        #   - for x in var
         self.iter_var_shape_name = unique_name.generate(
             FOR_ITER_VAR_SHAPE_PREFIX)
 
-        # - var.numpy()
-        #   - for x in var.numpy()
-        #   - for i, x enumerate(var.numpy())
+        # - var.numpy()/var
+        #   - for x in var|var.numpy()
+        #   - for i, x enumerate(var|var.numpy())
         self.iter_node = self._get_iter_node()
 
         # - enumeate i:
-        #   - for i, x enumerate(var.numpy())
+        #   - for i, x enumerate(var|var.numpy())
         self.enum_idx_name = self._get_enum_idx_name()
 
         # - range/enumerate args length
@@ -717,17 +731,24 @@ class ForNodeVisitor(object):
             raise None
 
     def is_for_range_iter(self):
-        return isinstance(self.node.iter.func,
-                          gast.Name) and self.node.iter.func.id == "range"
+        return isinstance(self.node.iter, gast.Call) and isinstance(
+            self.node.iter.func,
+            gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        return isinstance(
-            self.node.iter.func,
-            gast.Attribute) and self.node.iter.func.attr == 'numpy'
+        if isinstance(self.node.iter, gast.Name):
+            return True
+        elif isinstance(self.node.iter, gast.Call) and isinstance(
+                self.node.iter.func,
+                gast.Attribute) and self.node.iter.func.attr == 'numpy':
+            return True
+        else:
+            return False
 
     def is_for_enumerate_iter(self):
-        return isinstance(self.node.iter.func,
-                          gast.Name) and self.node.iter.func.id == "enumerate"
+        return isinstance(self.node.iter, gast.Call) and isinstance(
+            self.node.iter.func,
+            gast.Name) and self.node.iter.func.id == "enumerate"
 
     def _args_check(self):
         if self.is_for_range_iter():
@@ -811,6 +832,10 @@ class ForNodeVisitor(object):
 
     def _build_var_shape_assign_node(self):
         # get variable shape as iter length
+        if isinstance(self.iter_node, gast.Call):
+            iter_var = self.iter_node.func
+        else:
+            iter_var = self.iter_node
         return gast.Assign(
             targets=[
                 gast.Name(
@@ -819,7 +844,7 @@ class ForNodeVisitor(object):
                     annotation=None,
                     type_comment=None)
             ],
-            value=create_api_shape_node(self.iter_node.func))
+            value=create_api_shape_node(iter_var))
 
     def _build_enum_init_node(self):
         enum_init_node = get_constant_variable_node(

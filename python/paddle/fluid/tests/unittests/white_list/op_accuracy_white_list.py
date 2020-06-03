@@ -80,5 +80,6 @@ NO_FP16_CHECK_GRAD_OP_LIST = [
     'fused_elemwise_activation', \
     'pool2d', \
     'pool3d', \
-    'softmax'
+    'softmax',\
+    'conv2d_transpose'
 ]
