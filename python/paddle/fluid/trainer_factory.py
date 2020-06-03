@@ -17,10 +17,10 @@ import threading
 import time
 import logging
 import numpy as np
+from paddle.fluid.log_helper import get_logger
 
-FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT)
-local_logger = logging.getLogger(__name__)
+local_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
