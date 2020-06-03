@@ -31,6 +31,8 @@ def convert_while_loop(cond, body, loop_vars):
         A list or tuple of variables which returned by ``body`` .
     """
 
+    # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
+    # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond(*loop_vars)
     if isinstance(pred, Variable):
         loop_vars = _run_paddle_while_loop(cond, body, loop_vars)
