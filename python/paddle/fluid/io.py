@@ -1712,7 +1712,7 @@ def load(program, model_path, executor=None, var_list=None):
     if not os.path.exists(parameter_file_name):
         # model file save by fluid.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
-        _logger.warning(
+        _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
         if executor is None:
@@ -1876,7 +1876,7 @@ def load_program_state(model_path, var_list=None):
     if not os.path.exists(parameter_file_name):
         # model file saved with fluid.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
-        _logger.warning(
+        _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
 
