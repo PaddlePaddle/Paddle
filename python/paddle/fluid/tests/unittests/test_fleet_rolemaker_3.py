@@ -83,8 +83,8 @@ class TestCloudRoleMaker(unittest.TestCase):
         mb = MockBarrier()
         mb.barrier()
         mb.barrier_all()
-        mb.all_reduce()
-        mb.all_gather()
+        mb.all_reduce(1)
+        mb.all_gather(1)
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36005"
         os.environ["TRAINING_ROLE"] = "TRAINER"
