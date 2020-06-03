@@ -105,11 +105,18 @@ class BlockingQueueForBarrier {
 
 class BarrierMonitor {
  public:
-  explicit BarrierMonitor(int workers) : workers_(workers) {
+  explicit BarrierMonitor(int workers) {
     PADDLE_ENFORCE_GT(workers, 0, platform::errors::InvalidArgument(
                                       "trainers must have one or more"));
 
-    barrier_type = BarrierType::kRecvBarrier;
+    this(workers, BarrierType::kRecvBarrier, kMaxWaitMS);
+  }
+
+  explicit BarrierMonitor(int workers, BarrierType type, int64_t max_wait_times)
+      : workers_(workers), barrier_type(type), max_wait_ms(max_wait_times) {
+    PADDLE_ENFORCE_GT(workers, 0, platform::errors::InvalidArgument(
+                                      "trainers must have one or more"));
+
     send_barrier_queue =
         std::make_shared<BlockingQueueForBarrier<int>>(workers);
     recv_barrier_queue =
@@ -149,6 +156,8 @@ class BarrierMonitor {
 
   void WorkerWeakup();
 
+  void Reset(int workers, BarrierType type);
+
  private:
   // Init is called by GetInstance.
   static void InitImpl(int workers) {
@@ -172,6 +181,7 @@ class BarrierMonitor {
   std::mutex mutex_;
 
   BarrierType barrier_type;
+  int64_t max_wait_ms;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
   std::shared_ptr<BlockingQueueForBarrier<int>> send_barrier_queue;
   std::shared_ptr<BlockingQueueForBarrier<int>> recv_barrier_queue;

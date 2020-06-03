@@ -55,6 +55,16 @@ void BarrierMonitor::DecreaseWorker() {
   VLOG(1) << "decrement worker num to " << workers_;
 }
 
+void BarrierMonitor::Reset(int workers, BarrierType type) {
+  std::unique_lock<std::mutex> lck(mutex_);
+
+  workers_ = workers;
+  barrier_type = type;
+
+  send_barrier_queue->Clear();
+  recv_barrier_queue->Clear();
+}
+
 void BarrierMonitor::Monitor() {
   while (!IsReady() && running_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -72,12 +82,12 @@ void BarrierMonitor::Monitor() {
               << " recvQ: " << recv_barrier_queue->Size();
 
       timer++;
-      if (timer >= kMaxWaitMS) {
+      if (max_wait_ms == -1 || timer < max_wait_ms) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      } else {
         VLOG(1) << "time out of " << kMaxRetryTimes
                 << ", need barreir: " << barrier_type << " retry";
         Swap(false);
-      } else {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
     }
   }
