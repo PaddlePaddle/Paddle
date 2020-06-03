@@ -106,6 +106,7 @@ class RequestPrefetchHandler final : public RequestHandler {
     desc.SetInput("Ids", {id_name});
     desc.SetOutput("Out", std::vector<std::string>({out_name}));
     desc.SetAttr("tablename", {table_name});
+    desc.SetAttr("init", true);
     desc.SetAttr("value_names", std::vector<std::string>({"Param"}));
 
     auto op = paddle::framework::OpRegistry::CreateOp(desc);

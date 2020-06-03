@@ -30,6 +30,7 @@
 #include <ThreadPool.h>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/threadpool.h"
@@ -245,6 +246,8 @@ class ValueBlock {
             platform::errors::InvalidArgument("%s can not be supported", name));
       }
     }
+
+    rwlock_.reset(new RWLock);
   }
 
   ~ValueBlock() {
@@ -259,7 +262,18 @@ class ValueBlock {
     //    }
   }
 
-  std::vector<std::vector<float>> Init() {
+  void Init(const int64_t &id) {
+    if (Has(id)) {
+      return;
+    }
+
+    rwlock_->WRLock();
+
+    if (Has(id)) {
+      rwlock_->UNLock();
+      return;
+    }
+
     auto rets = std::vector<std::vector<float>>();
     rets.resize(value_names_.size());
 
@@ -274,33 +288,30 @@ class ValueBlock {
         rets[i][j] = init->GetValue();
       }
     }
-    return rets;
+
+    auto value = new VALUE(value_names_);
+    value->set(rets);
+    values_[id] = value;
+
+    rwlock_->UNLock();
   }
 
   std::vector<std::vector<float> *> Get(
       const int64_t &id, const std::vector<std::string> &value_names) {
-    return values_.at(id)->get(value_names);
+    rwlock_->RDLock();
+    auto ret_values = values_.at(id)->get(value_names);
+    rwlock_->UNLock();
+    return ret_values;
   }
 
   std::vector<std::vector<float> *> GetAndInit(
       const int64_t &id, const std::vector<std::string> &value_names) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    if (mode_ == Mode::training) {
-      if (!Has(id)) {
-        auto value = new VALUE(value_names_);
-        value->set(Init());
-        values_[id] = value;
-      }
-    }
-
+    Init(id);
     return Get(id, value_names);
   }
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
            const std::vector<std::vector<float>> &values) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     auto value = values_.at(id);
     value->set(value_names, values);
   }
@@ -323,7 +334,7 @@ class ValueBlock {
   std::vector<int> value_dims_;
   Mode mode_;
   std::unordered_map<std::string, Initializer *> initializers_;
-  mutable std::mutex mutex_;
+  std::unique_ptr<framework::RWLock> rwlock_{nullptr};
 };
 
 class SparseVariable {
@@ -364,10 +375,10 @@ class SparseVariable {
            std::vector<std::vector<std::vector<float> *>> *values) {
     values->resize(ids.size());
 
-    auto buckets = bucket(ids.size(), 4);
+    auto buckets = bucket(ids.size(), 8);
     std::vector<std::future<void>> fs;
 
-    for (int j = 0; j < 4; ++j) {
+    for (int j = 0; j < 8; ++j) {
       auto begin = buckets[j];
       auto end = buckets[j + 1];
 
@@ -568,8 +579,8 @@ class SparseVariable {
 
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims_;
-  const size_t shard_mask_ = 31;
-  const size_t shard_num_ = 32;
+  const size_t shard_mask_ = 127;
+  const size_t shard_num_ = 128;
   std::vector<std::shared_ptr<ValueBlock>> shard_blocks_;
 };
 
