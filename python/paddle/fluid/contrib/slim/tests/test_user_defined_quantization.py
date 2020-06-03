@@ -136,8 +136,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             act_quantize_func=act_quantize_func,
             weight_quantize_func=weight_quantize_func,
             optimizer_func=get_optimizer,
-            for_test=False,
-            exe=exe)
+            executor=exe)
         train_transform_pass.apply(main_graph)
         test_transform_pass = QuantizationTransformPass(
             scope=scope,
@@ -149,8 +148,7 @@ class TestUserDefinedQuantization(unittest.TestCase):
             act_quantize_func=act_quantize_func,
             weight_quantize_func=weight_quantize_func,
             optimizer_func=get_optimizer,
-            for_test=True,
-            exe=exe)
+            executor=exe)
 
         test_transform_pass.apply(test_graph)
 

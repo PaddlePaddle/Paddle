@@ -174,8 +174,7 @@ class QuantizationTransformPass(object):
                  weight_preprocess_func=None,
                  act_preprocess_func=None,
                  optimizer_func=None,
-                 for_test=False,
-                 exe=None):
+                 executor=None):
         """
         Constructor.
 
@@ -260,8 +259,7 @@ class QuantizationTransformPass(object):
         self._weight_preprocess_func = weight_preprocess_func
         self._act_preprocess_func = act_preprocess_func
         self._optimizer = optimizer_func
-        self._for_test = for_test
-        self._exe = exe
+        self._exe = executor
         quant_type = [
             'abs_max', 'channel_wise_abs_max', 'range_abs_max',
             'moving_average_abs_max'
@@ -299,6 +297,14 @@ class QuantizationTransformPass(object):
         self.create_op_map = {}
 
     def _create_new_node(self, graph, in_node):
+        """
+        create a node that same with in_node in graph
+        Args:
+            graph(IrGraph): create node in graph.
+            in_node(IrVarNode): create node that same with in_node.
+        Returns:
+            created new node
+        """
         key = ''
         for inp in in_node.inputs:
             key = key + inp.name()
@@ -317,6 +323,17 @@ class QuantizationTransformPass(object):
         return new_node
 
     def _copy_graph(self, graph, source_graph, op_node):
+        """
+        copy op_node in source_graph to graph. And will run recursively 
+        for next ops that link to op_node's outputs.
+        Args:
+            graph(IrGraph): target graph to copy.
+            source_graph(IrGraph): source graph to copy.
+            op_node(IrOpNode): op node in source_graph.
+        Returns:
+            None
+
+        """
         key = ''
         for inp in op_node.inputs:
             key = key + inp.name()
@@ -344,6 +361,17 @@ class QuantizationTransformPass(object):
         return
 
     def _insert_func(self, graph, func, var_node, op):
+        """
+        Insert a tmp program that returned by func between var_node and op.
+
+        Args:
+            graph(IrGraph): target graph to insert tmp program.
+            func(Function): function to define a tmp program
+            var_node(IrVarNode): node in target graph.
+            op(IrOpNode): op in target graph.
+        Returns:
+            op's new input that replaces var_node
+        """
         tmp_program = Program()
         startup_program = Program()
         with program_guard(tmp_program, startup_program):
@@ -355,15 +383,16 @@ class QuantizationTransformPass(object):
                 out_node = func(in_node)
                 # loss shape must be 1 when minimize
                 loss = mean(out_node)
-                if not self._for_test:
-                    assert self._optimizer, "optimizer_func must be set when for_test is False"
+                if not graph._for_test:
+                    assert self._optimizer, "optimizer_func must be set when graph is test graph"
                     in_node.stop_gradient = False
                     optimizer = self._optimizer()
                     optimizer.minimize(loss)
         with scope_guard(self._scope):
             self._exe.run(startup_program)
+
         tmp_graph = IrGraph(
-            core.Graph(tmp_program.desc), for_test=self._for_test)
+            core.Graph(tmp_program.desc), for_test=graph._for_test)
         in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
                                                in_node.name)
         out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
@@ -371,6 +400,7 @@ class QuantizationTransformPass(object):
 
         in_node_params = []
         in_op_node = []
+        # copy tmp graph to graph, after that, we can insert tmp graph's copy to graph.
         for node in tmp_graph.all_var_nodes():
             if node.inputs == [] and node.persistable():
                 in_node_params.append(node)
@@ -396,7 +426,7 @@ class QuantizationTransformPass(object):
         graph.update_input_link(var_node, target_out_node, op)
 
         # update grad
-        if not self._for_test:
+        if not graph._for_test:
             op_out = op.outputs[0]
             op_out_grad = graph._find_node_by_name(graph.all_var_nodes(),
                                                    op_out.name() + "@GRAD")
@@ -490,13 +520,23 @@ class QuantizationTransformPass(object):
                     else:
                         is_weight = False
 
+                    # if var node is weight and weight_preprocess_func is not None,
+                    # will insert weight preprocess func 
+                    # to preorocess weight before quantization
+                    # if var node is activation and act_preprocess_func is not None, 
+                    # will insert activation preprocess func 
+                    # to preorocess activation before quantization
                     if is_weight and self._weight_preprocess_func is not None:
                         var_node = self._insert_func(
                             graph, self._weight_preprocess_func, var_node, op)
-                    if not is_weight and self._act_preprocess_func is not None:
+                    elif not is_weight and self._act_preprocess_func is not None:
                         var_node = self._insert_func(
                             graph, self._act_preprocess_func, var_node, op)
 
+                    # if var node is weight and weight_quantize_func is not None,
+                    # will insert weight quantize func to quantize and dequantize weight
+                    # if var node is activation and act_quantize_func is not None,
+                    # will insert act quantize func to quantize and dequantize activation
                     if is_weight and self._weight_quantize_func is not None:
                         target_out_node = self._insert_func(
                             graph, self._weight_quantize_func, var_node, op)
