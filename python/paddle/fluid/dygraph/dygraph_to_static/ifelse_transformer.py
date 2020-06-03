@@ -63,22 +63,13 @@ class IfElseTransformer(gast.NodeTransformer):
         self.visit(self.root)
 
     def visit_If(self, node):
-        if_condition_visitor = IfConditionVisitor(node.test,
-                                                  self.static_analysis_visitor)
-        need_transform = if_condition_visitor.is_control_flow()
         self.generic_visit(node)
-        if need_transform:
-            pred_node, new_assign_nodes = if_condition_visitor.transform()
-            new_vars_stmts, true_func_node, false_func_node, return_name_ids = transform_if_else(
-                node, self.root)
-            # create layers.cond
-            cond_node = create_cond_node(return_name_ids, pred_node,
-                                         true_func_node, false_func_node)
+        new_vars_stmts, true_func_node, false_func_node, return_name_ids = transform_if_else(
+            node, self.root)
+        new_node = create_cond_node(return_name_ids, node.test, true_func_node,
+                                    false_func_node)
 
-            return new_vars_stmts + [true_func_node, false_func_node
-                                     ] + new_assign_nodes + [cond_node]
-        else:
-            return node
+        return new_vars_stmts + [true_func_node, false_func_node] + [new_node]
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
@@ -93,27 +84,17 @@ class IfElseTransformer(gast.NodeTransformer):
         """
         Transformation with `true_fn(x) if Tensor > 0 else false_fn(x)`
         """
-        if_condition_visitor = IfConditionVisitor(node.test,
-                                                  self.static_analysis_visitor)
-        need_transform = if_condition_visitor.is_control_flow()
         self.generic_visit(node)
-        if need_transform:
-            pred_node, new_assign_nodes = if_condition_visitor.transform()
 
-            if len(new_assign_nodes) > 0:
-                pred_node = merge_multi_assign_nodes(new_assign_nodes)
+        new_node = create_cond_node(None, node.test, node.body, node.orelse,
+                                    True)
+        # Note: A blank line will be added separately if transform gast.Expr
+        # into source code. Using gast.Expr.value instead to avoid syntax error
+        # in python.
+        if isinstance(new_node, gast.Expr):
+            new_node = new_node.value
 
-            new_node = create_cond_node(None, pred_node, node.body, node.orelse,
-                                        True)
-            # Note: A blank line will be added separately if transform gast.Expr
-            # into source code. Using gast.Expr.value instead to avoid syntax error
-            # in python.
-            if isinstance(new_node, gast.Expr):
-                new_node = new_node.value
-
-            return new_node
-        else:
-            return node
+        return new_node
 
 
 def merge_multi_assign_nodes(assign_nodes):
@@ -724,7 +705,9 @@ def create_cond_node(return_name_ids,
             body=body)
         return lambda_node
 
-    cond_api = gast.parse('fluid.layers.cond').body[0].value
+    cond_api = gast.parse(
+        'fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse'
+    ).body[0].value
     true_func_lambda = create_lambda_node(true_func, is_if_expr)
     false_func_lambda = create_lambda_node(false_func, is_if_expr)
     cond_layer = gast.Call(
