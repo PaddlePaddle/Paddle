@@ -301,7 +301,6 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetParseContent(bool parse_content);
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvMerge(bool enable_pv_merge);
-  virtual void SetSlotPaddingZero(bool slot_padding_zero);
   virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
 

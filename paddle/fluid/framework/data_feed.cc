@@ -359,11 +359,6 @@ void InMemoryDataFeed<T>::SetCurrentPhase(int current_phase) {
 }
 
 template <typename T>
-void InMemoryDataFeed<T>::SetSlotPaddingZero(bool slot_padding_zero) {
-  slot_padding_zero_ = slot_padding_zero;
-}
-
-template <typename T>
 void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
   parse_ins_id_ = parse_ins_id;
 }
