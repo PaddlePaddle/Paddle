@@ -184,12 +184,12 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
 
 // Throw some informations when CPU instructions mismatch.
-#define AVX_GUIDE(compiletime, runtime)                                     \
-  LOG(FATAL)                                                                \
-      << "This version is compiled on higher instruction(" #compiletime     \
-         ") system, you may encounter illegal instruction error running on" \
-         " your local CPU machine. Please reinstall the " #runtime          \
-         " version or compile from source code."
+#define AVX_GUIDE(compiletime, runtime)                                  \
+  PADDLE_THROW(platform::errors::Unavailable(                            \
+      "This version is compiled on higher instruction(" #compiletime     \
+      ") system, you may encounter illegal instruction error running on" \
+      " your local CPU machine. Please reinstall the " #runtime          \
+      " version or compile from source code."))
 
 #ifdef __AVX512F__
   if (!platform::MayIUse(platform::avx512f)) {

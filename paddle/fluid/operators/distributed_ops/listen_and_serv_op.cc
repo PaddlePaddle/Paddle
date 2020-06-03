@@ -74,7 +74,9 @@ static void ParallelExecuteBlocks(
                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
-        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
+        PADDLE_THROW(platform::errors::Fatal(
+            "Run %d-th sub program failed. The exception is:\n%s.", idx,
+            e.what()));
       }
     }));
   }
@@ -315,8 +317,9 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
                                     const framework::Scope &scope) const {
   for (const auto &varname : varnames) {
     auto var = scope.FindVar(varname);
-    PADDLE_ENFORCE(var != nullptr,
-                   "Received var should be initialized in the received scope.");
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::PreconditionNotMet(
+                 "Received var is not initialized in the received scope."));
     if (var->IsType<framework::SelectedRows>()) {
       sparse_vars_.push_back(varname);
     } else if (var->IsType<framework::LoDTensor>() ||
@@ -344,7 +347,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto pserver_id = Attr<int>("pserver_id");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE(!rpc_service_);
+  PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
+                    platform::errors::PreconditionNotMet(
+                        "RPC service has been created unexpectedly."));
   std::string endpoint = Attr<std::string>("endpoint");
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
   int lr_decay_block_id = Attr<int>(kLRDecayBlockId);
@@ -390,8 +395,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
-  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
-                 "optimize blocks should be 1 at least on the pserver side.");
+  PADDLE_ENFORCE_GE(optimize_blocks.size(), 1,
+                    platform::errors::PreconditionNotMet(
+                        "optimize blocks is less than 1. Optimize blocks "
+                        "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 

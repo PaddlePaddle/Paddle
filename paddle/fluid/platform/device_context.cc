@@ -419,8 +419,9 @@ size_t MKLDNNDeviceContext::GetShapeBlobSize() const {
   BlobMap* pMap = p_blobmap_.get();
   auto map_it = pMap->find(tls().cur_mkldnn_session_id);
   if (map_it == pMap->end()) {
-    LOG(FATAL) << "MKLDNNDeviceContext don't find cur_mkldnn_session_id : "
-               << tls().cur_mkldnn_session_id;
+    PADDLE_THROW(platform::errors::NotFound(
+        "MKLDNNDeviceContext don't find cur_mkldnn_session_id: %d.",
+        tls().cur_mkldnn_session_id));
   }
   return map_it->second->size();
 }
