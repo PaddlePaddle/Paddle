@@ -39,8 +39,10 @@ class TestMishOpError(unittest.TestCase):
 
 class MishTest(OpTest):
     def setUp(self):
+        self.init_dtype()
         self.init_input_shape()
         self.init_input_range()
+        self.init_threshold()
         self.op_type = "mish"
 
         # mish op contain calculation like: tanh, exp, log, while tanh
@@ -50,7 +52,6 @@ class MishTest(OpTest):
                                  self.x_shape).astype('float32')
         self.inputs = {'X': x_np}
 
-        self.threshold = 5.
         softplus = x_np * (x_np > self.threshold) + np.exp(x_np) * \
                     (x_np < -self.threshold) + np.log(np.exp(x_np) + 1.) * \
                     (x_np >= -self.threshold) * (x_np <= self.threshold)
@@ -59,11 +60,17 @@ class MishTest(OpTest):
         self.outputs = {'Out': out_np}
         self.attrs = {'threshold': self.threshold}
 
+    def init_dtype(self):
+        self.dtype = 'float32'
+
     def init_input_shape(self):
         self.x_shape = (10, 12)
 
     def init_input_range(self):
         self.x_range = [-1, 1]
+
+    def init_threshold(self):
+        self.threshold = 5.
 
     def test_check_output(self):
         self.check_output()
@@ -78,6 +85,24 @@ class MishTestUpperThresh(MishTest):
 
 
 class MishTestLowerThresh(MishTest):
+    def init_input_range(self):
+        self.x_range = [-7, -6]
+
+
+class MishTestFP64(MishTest):
+    def init_dtype(self):
+        self.dtype = 'float64'
+
+    def init_input_range(self):
+        self.x_range = [0, 1]
+
+
+class MishTestFP64UpperThresh(MishTestFP64):
+    def init_input_range(self):
+        self.x_range = [6, 7]
+
+
+class MishTestFP64LowerThresh(MishTestFP64):
     def init_input_range(self):
         self.x_range = [-7, -6]
 
