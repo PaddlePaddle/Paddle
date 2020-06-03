@@ -30,6 +30,7 @@ np.random.seed(SEED)
 
 place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
+program_translator = ProgramTranslator()
 
 
 class SimpleFcLayer(fluid.dygraph.Layer):
@@ -63,6 +64,10 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
                 loss.backward()
                 adam.minimize(loss)
                 layer.clear_gradients()
+            # test for saving model in dygraph.guard
+            infer_model_dir = "./test_dy2stat_save_inference_model"
+            program_translator.save_inference_model(
+                infer_model_dir, feed=[0], fetch=[1])
             # Check the correctness of the inference
             dygraph_out, _ = layer(x)
         self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
@@ -77,7 +82,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
                                    gt_out,
                                    feed=None,
                                    fetch=None):
-        program_translator = ProgramTranslator()
+
         expected_persistable_vars = set([p.name for p in model.parameters()])
 
         infer_model_dir = "./test_dy2stat_save_inference_model"

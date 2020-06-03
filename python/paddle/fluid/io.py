@@ -124,6 +124,8 @@ def is_belong_to_optimizer(var):
 @dygraph_not_support
 def get_program_parameter(program):
     """
+    :api_attr: Static Graph
+
     Get all the parameters from Program.
 
     Args:
@@ -147,6 +149,8 @@ def get_program_parameter(program):
 @dygraph_not_support
 def get_program_persistable_vars(program):
     """
+    :api_attr: Static Graph
+
     Get all the persistable vars from Program.
 
     Args:
@@ -223,6 +227,8 @@ def save_vars(executor,
               predicate=None,
               filename=None):
     """
+    :api_attr: Static Graph
+
     This API saves specific variables in the `Program` to files.
 
     There are two ways to specify the variables to be saved: set variables in 
@@ -365,6 +371,8 @@ def save_vars(executor,
 @dygraph_not_support
 def save_params(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+
     This operator saves all parameters from the :code:`main_program` to
     the folder :code:`dirname` or file :code:`filename`. You can refer to 
     :ref:`api_guide_model_save_reader_en` for more details.
@@ -588,6 +596,8 @@ def _save_distributed_persistables(executor, dirname, main_program):
 @dygraph_not_support
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+
     This operator saves all persistable variables from :code:`main_program` to 
     the folder :code:`dirname` or file :code:`filename`. You can refer to 
     :ref:`api_guide_model_save_reader_en` for more details. And then
@@ -661,6 +671,8 @@ def load_vars(executor,
               predicate=None,
               filename=None):
     """
+    :api_attr: Static Graph
+
     This API loads variables from files by executor.
 
     There are two ways to specify the variables to be loaded: the first way, set
@@ -829,6 +841,8 @@ def load_vars(executor,
 @dygraph_not_support
 def load_params(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+
     This API filters out all parameters from the give ``main_program``
     and then tries to load these parameters from the directory ``dirname`` or
     the file ``filename``.
@@ -887,6 +901,8 @@ def load_params(executor, dirname, main_program=None, filename=None):
 @dygraph_not_support
 def load_persistables(executor, dirname, main_program=None, filename=None):
     """
+    :api_attr: Static Graph
+    
     This API filters out all variables with ``persistable==True`` from the
     given ``main_program`` and then tries to load these variables from the
     directory ``dirname`` or the file ``filename``.
@@ -1084,6 +1100,8 @@ def save_inference_model(dirname,
                          export_for_deployment=True,
                          program_only=False):
     """
+    :api_attr: Static Graph
+
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` .
     If you just want to save parameters of your trained model, please use the
@@ -1288,6 +1306,8 @@ def load_inference_model(dirname,
                          params_filename=None,
                          pserver_endpoints=None):
     """
+    :api_attr: Static Graph
+
     Load the inference model from a given directory. By this API, you can get the model
     structure(Inference Program) and model parameters. If you just want to load
     parameters of the pre-trained model, please use the :ref:`api_fluid_io_load_params` API.
@@ -1577,6 +1597,11 @@ def _load_persistable_nodes(executor, dirname, graph):
 @dygraph_not_support
 def save(program, model_path):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.save
+	:alias: paddle.save,paddle.tensor.save,paddle.tensor.io.save
+	:old_api: paddle.fluid.save
+
     This function save parameters, optimizer information and network description to  model_path.
 
     The parameters contains all the trainable Variable, will save to a file with suffix ".pdparams".
@@ -1636,6 +1661,11 @@ def save(program, model_path):
 @dygraph_not_support
 def load(program, model_path, executor=None, var_list=None):
     """
+    :api_attr: Static Graph
+	:alias_main: paddle.load
+	:alias: paddle.load,paddle.tensor.load,paddle.tensor.io.load
+	:old_api: paddle.fluid.io.load
+
     This function get parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.
 
@@ -1682,7 +1712,7 @@ def load(program, model_path, executor=None, var_list=None):
     if not os.path.exists(parameter_file_name):
         # model file save by fluid.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
-        _logger.warning(
+        _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
         if executor is None:
@@ -1803,6 +1833,8 @@ def load(program, model_path, executor=None, var_list=None):
 @dygraph_not_support
 def load_program_state(model_path, var_list=None):
     """
+    :api_attr: Static Graph
+
     Load program state from local file
     
     Args:
@@ -1844,7 +1876,7 @@ def load_program_state(model_path, var_list=None):
     if not os.path.exists(parameter_file_name):
         # model file saved with fluid.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
-        _logger.warning(
+        _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
 
@@ -1934,6 +1966,8 @@ def load_program_state(model_path, var_list=None):
 @dygraph_not_support
 def set_program_state(program, state_dict):
     """
+    :api_attr: Static Graph
+
     Set program parameter from state_dict
 
     An exception will throw if shape or dtype of the parameters is not match. 

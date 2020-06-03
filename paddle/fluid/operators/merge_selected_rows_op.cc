@@ -23,16 +23,18 @@ class MergeSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MergeSelectedRowsOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MergeSelectedRowsOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
-                      framework::proto::VarType::SELECTED_ROWS,
-                      "Input X only should be SelectedRows.");
-    PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
-                      framework::proto::VarType::SELECTED_ROWS,
-                      "Output Y only should be SelectedRows.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "MergeSelectedRows");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MergeSelectedRows");
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("X").front(),
+        framework::proto::VarType::SELECTED_ROWS,
+        platform::errors::InvalidArgument("Input(X) of MergeSelectedRowsOp "
+                                          "should be of type SelectedRows."));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetOutputsVarType("Out").front(),
+        framework::proto::VarType::SELECTED_ROWS,
+        platform::errors::InvalidArgument("Output(Out) of MergeSelectedRowsOp "
+                                          "should be of type SelectedRows."));
 
     ctx->ShareDim("X", /*->*/ "Out");
   }

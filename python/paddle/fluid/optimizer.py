@@ -708,7 +708,7 @@ class Optimizer(object):
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
@@ -1070,6 +1070,8 @@ class MomentumOptimizer(Optimizer):
 
 class DGCMomentumOptimizer(Optimizer):
     """
+	:api_attr: Static Graph
+
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
     DGC reduces the communication bandwidth by sending only the important gradients (sparse update):\
@@ -1460,7 +1462,7 @@ class DGCMomentumOptimizer(Optimizer):
             else:
                 dgc_params_grads.append((param, grad))
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
+        # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             not_dgc_params_grads = self._grad_clip(not_dgc_params_grads)
         else:
@@ -2994,6 +2996,8 @@ Lamb = LambOptimizer
 
 class ModelAverage(Optimizer):
     """
+	:api_attr: Static Graph
+
     The ModelAverage optimizer accumulates specific continuous historical parameters
     during training. The accumulated historical range can be controlled by the passed
     ``average_window_rate`` argument. The averaged ``Parameter`` are used in the prediction,
@@ -3301,6 +3305,8 @@ class ModelAverage(Optimizer):
 
 class ExponentialMovingAverage(object):
     """
+	:api_attr: Static Graph
+
     Compute the moving average of parameters with exponential decay.
     Given a parameter :math:`\\theta`, its exponential moving average (EMA)
     will be
@@ -3549,6 +3555,8 @@ class ExponentialMovingAverage(object):
 
 class PipelineOptimizer(object):
     """
+	:api_attr: Static Graph
+
     Pipeline Optimizer
 
     Train with pipeline mode. The program will be split by cut_list. 
@@ -3849,6 +3857,8 @@ class PipelineOptimizer(object):
 
 class RecomputeOptimizer(Optimizer):
     """
+	:api_attr: Static Graph
+
     Recompute Optimizer Wrapper
 
     Normally, a training step contains three sub-steps: first, run forward
@@ -3921,6 +3931,8 @@ class RecomputeOptimizer(Optimizer):
 
     def load(self, stat_dict):
         """
+	:api_attr: Static Graph
+
         load function is not supported by Recompute Optimizer for now.
         :return: None
 
@@ -4137,6 +4149,8 @@ class RecomputeOptimizer(Optimizer):
 
 class LookaheadOptimizer(object):
     """
+	:api_attr: Static Graph
+
     This implements the Lookahead optimizer of the
     paper : https://arxiv.org/abs/1907.08610.
 

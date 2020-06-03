@@ -244,13 +244,14 @@ bool AnalysisPredictor::PrepareExecutor() {
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
-          << platform::get_cur_mkldnn_session_id();
+          << platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
-    platform::set_cur_mkldnn_session_id(
-        platform::kMKLDNNSessionID_CacheClearing);
-    platform::set_cur_input_shape_cache_capacity(
+    platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
+        platform::MKLDNNDeviceContextThreadLocals::
+            kMKLDNNSessionID_CacheClearing);
+    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(
         config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
@@ -260,7 +261,7 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
-    platform::set_cur_input_shape_str(ss.str());
+    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str(ss.str());
   }
 #endif
 }
@@ -277,10 +278,10 @@ void AnalysisPredictor::MkldnnPostReset() {
       CHECK_LE(shape_blob_size,
                static_cast<size_t>(config_.mkldnn_cache_capacity_));
     }
-    paddle::platform::set_cur_mkldnn_session_id(
-        platform::kMKLDNNSessionID_Default);
-    platform::set_cur_input_shape_cache_capacity(0);
-    platform::set_cur_input_shape_str("");
+    paddle::platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
+        platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default);
+    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_cache_capacity(0);
+    platform::MKLDNNDeviceContext::tls().set_cur_input_shape_str("");
   }
 #endif
 }
@@ -578,11 +579,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
     if (config.thread_local_stream_enabled() &&
         process_level_allocator_enabled) {
-      LOG(FATAL) << " When binding threads and streams, the use of "
-                    "process-level allocators will result in undefined result "
-                    "errors due to memory asynchronous operations."
-                    "The thread and stream binding configuration of all "
-                    "predictors should be the same in a single process.";
+      PADDLE_THROW(platform::errors::Fatal(
+          "When binding threads and streams, the use of "
+          "process-level allocators will result in undefined result "
+          "errors due to memory asynchronous operations."
+          "The thread and stream binding configuration of all "
+          "predictors should be the same in a single process."));
     }
   }
 
@@ -916,8 +918,9 @@ std::string AnalysisPredictor::GetSerializedProgram() const {
 
 bool AnalysisPredictor::CheckOperatorCompatible() {
   if (!inference_program_) {
-    LOG(FATAL) << "Inference program version check failed because the program "
-                  "does not exist.";
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Inference program version check failed because the program does not "
+        "exist."));
     return false;
   }
   bool res = true;

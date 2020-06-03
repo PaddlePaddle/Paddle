@@ -22,7 +22,7 @@ from __future__ import print_function
 from .random import randperm
 from .attribute import rank  #DEFINE_ALIAS
 from .attribute import shape  #DEFINE_ALIAS
-# from .creation import create_tensor        #DEFINE_ALIAS
+from .creation import create_tensor  #DEFINE_ALIAS
 # from .creation import create_lod_tensor        #DEFINE_ALIAS
 # from .creation import create_random_int_lodtensor        #DEFINE_ALIAS
 from .creation import crop_tensor  #DEFINE_ALIAS
@@ -55,6 +55,7 @@ from .linalg import cross  #DEFINE_ALIAS
 from .linalg import cholesky  #DEFINE_ALIAS
 # from .linalg import tensordot        #DEFINE_ALIAS
 from .linalg import bmm  #DEFINE_ALIAS
+from .linalg import histogram  #DEFINE_ALIAS
 from .logic import equal  #DEFINE_ALIAS
 from .logic import greater_equal  #DEFINE_ALIAS
 from .logic import greater_than  #DEFINE_ALIAS
@@ -78,13 +79,13 @@ from .manipulation import expand  #DEFINE_ALIAS
 from .manipulation import expand_as  #DEFINE_ALIAS
 from .manipulation import flatten  #DEFINE_ALIAS
 from .manipulation import gather  #DEFINE_ALIAS
-# from .manipulation import gather_nd        #DEFINE_ALIAS
+from .manipulation import gather_nd  #DEFINE_ALIAS
 from .manipulation import reshape  #DEFINE_ALIAS
 from .manipulation import reverse  #DEFINE_ALIAS
 from .manipulation import scatter  #DEFINE_ALIAS
-# from .manipulation import scatter_nd_add        #DEFINE_ALIAS
-# from .manipulation import scatter_nd        #DEFINE_ALIAS
-# from .manipulation import shard_index        #DEFINE_ALIAS
+from .manipulation import scatter_nd_add  #DEFINE_ALIAS
+from .manipulation import scatter_nd  #DEFINE_ALIAS
+from .manipulation import shard_index  #DEFINE_ALIAS
 from .manipulation import slice  #DEFINE_ALIAS
 from .manipulation import split  #DEFINE_ALIAS
 from .manipulation import squeeze  #DEFINE_ALIAS
@@ -92,11 +93,11 @@ from .manipulation import stack  #DEFINE_ALIAS
 from .manipulation import strided_slice  #DEFINE_ALIAS
 from .manipulation import transpose  #DEFINE_ALIAS
 from .manipulation import unique  #DEFINE_ALIAS
-# from .manipulation import unique_with_counts        #DEFINE_ALIAS
+from .manipulation import unique_with_counts  #DEFINE_ALIAS
 from .manipulation import unsqueeze  #DEFINE_ALIAS
 from .manipulation import unstack  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
-# from .manipulation import unbind        #DEFINE_ALIAS
+from .manipulation import unbind  #DEFINE_ALIAS
 from .manipulation import roll  #DEFINE_ALIAS
 from .math import abs  #DEFINE_ALIAS
 from .math import acos  #DEFINE_ALIAS
@@ -116,10 +117,10 @@ from .math import elementwise_pow  #DEFINE_ALIAS
 from .math import elementwise_sub  #DEFINE_ALIAS
 from .math import exp  #DEFINE_ALIAS
 from .math import floor  #DEFINE_ALIAS
-# from .math import increment        #DEFINE_ALIAS
+from .math import increment  #DEFINE_ALIAS
 from .math import log  #DEFINE_ALIAS
 from .math import mul  #DEFINE_ALIAS
-# from .math import multiplex        #DEFINE_ALIAS
+from .math import multiplex  #DEFINE_ALIAS
 from .math import pow  #DEFINE_ALIAS
 from .math import reciprocal  #DEFINE_ALIAS
 from .math import reduce_max  #DEFINE_ALIAS
@@ -135,7 +136,7 @@ from .math import sqrt  #DEFINE_ALIAS
 from .math import square  #DEFINE_ALIAS
 from .math import stanh  #DEFINE_ALIAS
 from .math import sum  #DEFINE_ALIAS
-# from .math import sums        #DEFINE_ALIAS
+from .math import sums  #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
 from .math import elementwise_sum  #DEFINE_ALIAS
 from .math import max  #DEFINE_ALIAS
@@ -151,7 +152,6 @@ from .math import erf  #DEFINE_ALIAS
 from .math import addcmul  #DEFINE_ALIAS
 from .math import addmm  #DEFINE_ALIAS
 from .math import clamp  #DEFINE_ALIAS
-from .manipulation import unbind  #DEFINE_ALIAS
 from .math import trace  #DEFINE_ALIAS
 from .math import kron  #DEFINE_ALIAS
 # from .random import gaussin        #DEFINE_ALIAS

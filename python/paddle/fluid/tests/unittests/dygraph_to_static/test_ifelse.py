@@ -66,16 +66,22 @@ class TestDygraphIfElse2(TestDygraphIfElse):
 class TestDygraphIfElse3(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_with_if_else3
+
+
+class TestDygraphNestedIfElse(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else
 
 
-class TestDygraphIfElse4(TestDygraphIfElse):
+class TestDygraphNestedIfElse2(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else_2
 
 
-class TestDygraphIfElse5(TestDygraphIfElse):
+class TestDygraphNestedIfElse3(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else_3
@@ -171,6 +177,12 @@ class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_with_class_var
+
+
+class TestDygraphIfTensor(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = if_tensor_case
 
 
 class TestDygraphIfElseNet(unittest.TestCase):

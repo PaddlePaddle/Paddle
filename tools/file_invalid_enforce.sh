@@ -29,6 +29,15 @@
 
 ROOT_DIR=../paddle/fluid/operators
 
+white_list_str = "\
+    layer_norm_op.cc \
+    box_clip_op.cc \
+    box_clip_op.h \
+    random_crop_op.h \
+    elementwise_op_function.cu.h \
+    fused_elemwise_activation_op.cc \
+    auc_op.cu"
+
 function enforce_scan(){
     paddle_check=`grep -r -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
     total_check_cnt=`echo "$paddle_check" | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
@@ -45,14 +54,16 @@ function walk_dir(){
     for file in `ls $1`
     do
         if [ -f $1"/"$file ];then
-            enforce_scan $1"/"$file file_total_check_cnt file_valid_check_cnt
-            file_invalid_check_cnt=$(($total_check_cnt-$valid_check_cnt))
-            if [ $file_invalid_check_cnt -gt 0 ];then
-                echo "- $file | ${file_total_check_cnt} | ${file_valid_check_cnt} | ${file_invalid_check_cnt}"
+            in_white_list=$(echo $white_list_str | grep "${file}")
+            if [[ "$in_white_list" == "" ]];then
+                enforce_scan $1"/"$file file_total_check_cnt file_valid_check_cnt
+                file_invalid_check_cnt=$(($total_check_cnt-$valid_check_cnt))
+                if [ $file_invalid_check_cnt -gt 0 ];then
+                    echo "- $file | ${file_total_check_cnt} | ${file_valid_check_cnt} | ${file_invalid_check_cnt}"
+                fi
             fi
         fi
         if [ -d $1"/"$file ];then
-            
             dir_array[$i]=$1"/"$file
             ((i++))
         fi

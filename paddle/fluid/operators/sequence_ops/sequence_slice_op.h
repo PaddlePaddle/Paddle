@@ -49,18 +49,32 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = in->lod();
-    PADDLE_ENFORCE_EQ(
-        lod.empty(), false,
-        "Input(X) Tensor of SequenceSliceOp does not contain LoD information.");
+    PADDLE_ENFORCE_EQ(lod.empty(), false,
+                      platform::errors::InvalidArgument(
+                          "Input(X) Tensor of SequenceSlice operator does not "
+                          "contain LoD information."));
 
+    PADDLE_ENFORCE_EQ(
+        lod.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "LoD information error. SequenceSlice operator only support one "
+            "level sequence now, but received LoD level is %d.",
+            lod.size()));
     auto n = lod[0].size() - 1;
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(length->dims()[0]),
-        "The size of input-sequence and length-array should be the same");
+        platform::errors::InvalidArgument(
+            "Input length shape error. The length of input LoD sequence and "
+            "input length-array‘s first dimension should be equal, but the LoD "
+            "sequence length is %d, the length-array‘s first dimension is %d.",
+            n, static_cast<size_t>(length->dims()[0])));
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(offset->dims()[0]),
-        "The size of input-sequence and offset-array should be the same");
+        platform::errors::InvalidArgument(
+            "Input offset shape error. The length of input LoD sequence and "
+            "input offset-array‘s first dimension should be equal, but the LoD "
+            "sequence length is %d, the offset-array‘s first dimension is %d.",
+            n, static_cast<size_t>(offset->dims()[0])));
 
     const int64_t* offset_data = offset->data<int64_t>();
     const int64_t* length_data = length->data<int64_t>();
@@ -79,11 +93,21 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LE(0, offset_data[i],
-                        "The offset[%d] must be nonnegative.", i);
+                        platform::errors::InvalidArgument(
+                            "The input offset[%d]'s value is negative, its "
+                            "value is %d, expect it to be non-negative.",
+                            i, offset_data[i]));
       PADDLE_ENFORCE_LE(0, length_data[i],
-                        "The length[%d] must be nonnegative.", i);
-      PADDLE_ENFORCE_LE(lod[0][i] + offset_data[i] + length_data[i],
-                        lod[0][i + 1], "The target tensor's length overflow.");
+                        platform::errors::InvalidArgument(
+                            "The input length[%d]'s value is negative, its "
+                            "value is %d, expect it to be non-negative.",
+                            i, offset_data[i]));
+      PADDLE_ENFORCE_LE(
+          lod[0][i] + offset_data[i] + length_data[i], lod[0][i + 1],
+          platform::errors::OutOfRange(
+              "The slice end index of target tensor is out of range. expect it "
+              "less than or equal to %d, but the actual slice end index is %d.",
+              lod[0][i + 1], lod[0][i] + offset_data[i] + length_data[i]));
     }
 
     out->mutable_data<T>(ctx.GetPlace());

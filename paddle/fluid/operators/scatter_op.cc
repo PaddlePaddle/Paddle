@@ -24,25 +24,34 @@ class ScatterOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Updates"),
-                   "Input(Updates) of ScatterOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ScatterOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ScatterOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Ids) of ScatterOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Updates"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Updates) of ScatterOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ScatterOp should not be null."));
 
     auto updates_dims = ctx->GetInputDim("Updates");
     auto ref_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Ids").size(), 1,
-                      "Update Ids should be 1-D.");
-    PADDLE_ENFORCE_EQ(ref_dims.size(), updates_dims.size(),
-                      "Xerence and Updates should have the same shape size");
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputDim("Ids").size(), 1,
+        platform::errors::InvalidArgument("Update Ids should be 1-D."));
+    PADDLE_ENFORCE_EQ(
+        ref_dims.size(), updates_dims.size(),
+        platform::errors::InvalidArgument(
+            "Rerence and Updates should have the same shape size."));
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
                       ctx->GetInputDim("Ids")[0],
-                      "Updates and Ids should have same batch-size.");
+                      platform::errors::InvalidArgument(
+                          "Updates and Ids should have same batch-size."));
     ctx->SetOutputDim("Out", ref_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -125,7 +134,7 @@ class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterGradNoNeedBufferVarsInferer,
                                     "Updates");
 
 DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
@@ -142,7 +151,7 @@ REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
                   ops::ScatterGradMaker<paddle::imperative::OpBase>,
                   ops::ScatterInplaceInferer);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
-                  ops::ScatterGradNoNeedBufferVarsInference,
+                  ops::ScatterGradNoNeedBufferVarsInferer,
                   ops::ScatterGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>,
                        ops::ScatterOpKernel<double>, ops::ScatterOpKernel<int>,

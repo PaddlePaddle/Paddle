@@ -728,6 +728,8 @@ class InMemoryDataset(DatasetBase):
 
     def release_memory(self):
         """
+        :api_attr: Static Graph
+        
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
@@ -1077,3 +1079,24 @@ class BoxPSDataset(InMemoryDataset):
 
     def _dynamic_adjust_after_train(self):
         pass
+
+    def slots_shuffle(self, slots):
+        """
+        Slots Shuffle 
+        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        in sparse feature with large scale of instances. To compare the metric, i.e.
+        auc while doing slots shuffle on one or several slots with baseline to 
+        evaluate the importance level of slots(features).
+        
+        Args:
+            slots(list[string]): the set of slots(string) to do slots shuffle.
+
+        Examples:
+            import paddle.fluid as fluid
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_merge_by_lineid()
+            #suppose there is a slot 0
+            dataset.slots_shuffle(['0'])
+        """
+        slots_set = set(slots)
+        self.boxps.slots_shuffle(slots_set)

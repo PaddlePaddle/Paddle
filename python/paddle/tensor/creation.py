@@ -28,8 +28,10 @@ from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 
+from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+
 __all__ = [
-    #       'create_tensor',
+    'create_tensor',
     #       'create_lod_tensor',
     #       'create_random_int_lodtensor',
     'crop_tensor',
@@ -60,6 +62,9 @@ def full_like(input,
               stop_gradient=True,
               name=None):
     """
+	:alias_main: paddle.full_like
+	:alias: paddle.full_like,paddle.tensor.full_like,paddle.tensor.creation.full_like
+
     **full_like**
     This function creates a tensor filled with `fill_value` which has identical shape and dtype 
     with `input`.
@@ -118,6 +123,9 @@ def full_like(input,
 
 def linspace(start, stop, num, dtype, out=None, device=None, name=None):
     """
+	:alias_main: paddle.linspace
+	:alias: paddle.linspace,paddle.tensor.linspace,paddle.tensor.creation.linspace
+
     This OP return fixed number of evenly spaced values within a given interval.
     
     **NOTICE**: The output of this OP has no gradient.
@@ -204,6 +212,9 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
 
 def ones(shape, dtype=None, out=None, device=None):
     """
+	:alias_main: paddle.ones
+	:alias: paddle.ones,paddle.tensor.ones,paddle.tensor.creation.ones
+
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
     Args:
@@ -243,6 +254,9 @@ def ones(shape, dtype=None, out=None, device=None):
 
 def ones_like(input, dtype=None, device=None, name=None):
     """
+	:alias_main: paddle.ones_like
+	:alias: paddle.ones_like,paddle.tensor.ones_like,paddle.tensor.creation.ones_like
+
     This function creates a ones tensor which has identical shape and dtype 
     with `input`.
 
@@ -310,6 +324,9 @@ def ones_like(input, dtype=None, device=None, name=None):
 
 def zeros(shape, dtype, out=None, device=None):
     """
+	:alias_main: paddle.zeros
+	:alias: paddle.zeros,paddle.tensor.zeros,paddle.tensor.creation.zeros
+
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
 
     Args:
@@ -349,6 +366,9 @@ def zeros(shape, dtype, out=None, device=None):
 
 def zeros_like(input, dtype=None, device=None, name=None):
     """
+	:alias_main: paddle.zeros_like
+	:alias: paddle.zeros_like,paddle.tensor.zeros_like,paddle.tensor.creation.zeros_like
+
     This function creates a zeros tensor which has identical shape and dtype 
     with `input`.
 
@@ -485,6 +505,9 @@ def full(shape,
          stop_gradient=True,
          name=None):
     """
+	:alias_main: paddle.full
+	:alias: paddle.full,paddle.tensor.full,paddle.tensor.creation.full
+
     This Op return a Tensor with the `fill_value` which size is same as `shape`
     
     Args:
@@ -548,7 +571,7 @@ def full(shape,
                 'full')
     check_type(shape, 'shape', (Variable, list, tuple), 'full')
     if out is not None:
-        check_type(shape, 'out', (Variable), 'full')
+        check_type(out, 'out', (Variable), 'full')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -562,6 +585,9 @@ def full(shape,
 
 def arange(start, end, step=1, dtype=None, name=None):
     """
+	:alias_main: paddle.arange
+	:alias: paddle.arange,paddle.tensor.arange,paddle.tensor.creation.arange
+
     Return evenly spaced values within a given interval.
 
     Values are generated within the half-open interval [start, stop) (in other words,
@@ -666,6 +692,9 @@ def _tril_triu_op(helper):
 
 def tril(input, diagonal=0, name=None):
     """
+	:alias_main: paddle.tril
+	:alias: paddle.tril,paddle.tensor.tril,paddle.tensor.creation.tril
+
     This op returns the lower triangular part of a matrix (2-D tensor) or batch
     of matrices :attr:`input`, the other elements of the result tensor are set 
     to 0. The lower triangular part of the matrix is defined as the elements 
@@ -740,6 +769,9 @@ def tril(input, diagonal=0, name=None):
 
 def triu(input, diagonal=0, name=None):
     """
+	:alias_main: paddle.triu
+	:alias: paddle.triu,paddle.tensor.triu,paddle.tensor.creation.triu
+
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
     :attr:`input`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
@@ -814,6 +846,9 @@ def triu(input, diagonal=0, name=None):
 
 def meshgrid(input, name=None):
     """
+	:alias_main: paddle.meshgrid
+	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
+
     This op takes a list of N tensors as input, each of which is 1-dimensional 
     vector, and creates N-dimensional grids.
     

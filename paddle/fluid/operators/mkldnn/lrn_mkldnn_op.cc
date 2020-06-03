@@ -27,33 +27,22 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     const bool is_float_type = std::is_same<T, float>::value;
-    PADDLE_ENFORCE(is_float_type, "MKLDNN LRN must use float data.");
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "MKLDNN LRN must use CPUPlace.");
-
-    auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+    PADDLE_ENFORCE_EQ(
+        is_float_type, true,
+        platform::errors::PreconditionNotMet("DNNL LRN must use float data."));
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL LRN must use CPUPlace"));
+    auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto x = ctx.Input<Tensor>("X");
     auto out = ctx.Output<Tensor>("Out");
     auto mid = ctx.Output<Tensor>("MidOut");
 
-    const int n = ctx.Attr<int>("n");
-    // MKL-DNN implements LRN in a caffe way:
-    // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
-    // Where sum of squares is divided by size of normalization window
-    // this is not the case for PaddlePaddle LRN.
-    // Hence we need to compensate for this diffrence by
-    // multipliing alpha by size of window(n)
-    const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
-    const float beta = ctx.Attr<float>("beta");
-    const float k = ctx.Attr<float>("k");
-    bool is_test = ctx.Attr<bool>("is_test");
-
-    auto dims = paddle::framework::vectorize<int64_t>(x->dims());
-
-    platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
-                                          is_test, dev_ctx, ctx.GetPlace(),
-                                          ctx.OutputName("Out"));
+    platform::LRNMKLDNNHandler<T> handler(
+        ctx, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, ctx.OutputName("Out"));
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
@@ -75,6 +64,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       // TODO(jczaja): Disable checking mid in unit tests (Require API change)
       mid->mutable_data<T>(ctx.GetPlace());
       auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
+      const float k = ctx.Attr<float>("k");
       e_mid = e_mid.constant(k);
       mid->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
@@ -93,12 +83,16 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     const bool is_float_type = std::is_same<T, float>::value;
-    PADDLE_ENFORCE(is_float_type, "MKLDNN LRN must use float data.");
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
-                   "MKLDNN LRN must use CPUPlace.");
-    PADDLE_ENFORCE(
-        !ctx.Attr<bool>("is_test"),
-        "is_test attribute should be set to False in training phase.");
+    PADDLE_ENFORCE_EQ(is_float_type, true,
+                      platform::errors::PreconditionNotMet(
+                          "DNNL LRN GradOpKernl must use float data."));
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                      paddle::platform::errors::PreconditionNotMet(
+                          "Operator DNNL LRNGrad must use CPUPlace"));
+    PADDLE_ENFORCE_EQ(
+        ctx.Attr<bool>("is_test"), false,
+        platform::errors::PreconditionNotMet(
+            "is_test attribute should be set to False in training phase."));
 
     auto x = ctx.Input<Tensor>("X");
     auto mid = ctx.Input<Tensor>("MidOut");
