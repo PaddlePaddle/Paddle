@@ -39,7 +39,7 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(place=self.place)
+        self.check_output()
 
 
 @skip_check_grad_ci(
@@ -58,13 +58,12 @@ class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
             'FoundInfinite': np.array([1]),
             'Out': [('out0', x)],
         }
-        self.place = fluid.CUDAPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(place=self.place, no_check_set=['Out'])
+        self.check_output(no_check_set=['Out'])
 
 
 @skip_check_grad_ci(
@@ -83,13 +82,12 @@ class TestAmpCheckFiniteAndScaleOpWithInf(OpTest):
             'FoundInfinite': np.array([1]),
             'Out': [('out0', x)],
         }
-        self.place = fluid.CUDAPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(place=self.place, no_check_set=['Out'])
+        self.check_output(no_check_set=['Out'])
 
 
 if __name__ == '__main__':

@@ -56,7 +56,7 @@ class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
       int num = x->numel();
       int block = 512;
       int grid = (num + block - 1) / block;
-      VLOG(3) << "lanuch kernel";
+      VLOG(3) << "launch kernel";
       AmpCheckFiniteAndScale<T><<<grid, block, 0, dev_ctx.stream()>>>(
           x_data, scale_data, num, found_inf_data, out_data);
       VLOG(3) << "finish kernel";

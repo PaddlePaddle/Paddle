@@ -23,12 +23,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
-    : public framework::OpKernel<T> {
+template <typename DeviceContext, typename T>
+class AmpCheckFiniteAndScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     const auto xs = ctx.MultiInput<framework::Tensor>("X");
     const auto* scale = ctx.Input<framework::Tensor>("Scale");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
@@ -37,23 +36,23 @@ class AmpCheckFiniteAndScaleKernel<platform::CPUDeviceContext, T>
     const T* scale_data = scale->data<T>();
     int* found_inf_data = found_inf->mutable_data<int>(dev_ctx.GetPlace());
     *found_inf_data = 0;
-    auto isfinite =
-        ctx.AllocateTmpTensor<bool, platform::CPUDeviceContext>({1}, dev_ctx);
-    const bool* isfinite_data = x->data<bool>();
+    framework::Tensor is_finite =
+        ctx.AllocateTmpTensor<bool, DeviceContext>({1}, dev_ctx);
+    bool* is_finite_data = is_finite.template data<bool>();
 
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];
       auto* out = outs[i];
       out->mutable_data<T>(dev_ctx.GetPlace());
-      if (!(*found_inf)) {
-        framework::TensorIsfinite(*x, &isfinite);
-        if (*isfinite_data) {
+      if (!(*found_inf_data)) {
+        framework::TensorIsfinite(*x, &is_finite);
+        if (*is_finite_data) {
           auto eigen_out = framework::EigenVector<T>::Flatten(*out);
           auto eigen_in = framework::EigenVector<T>::Flatten(*x);
           eigen_out.device(dev) = (*scale_data) * eigen_in;
         } else {
-          *found_inf = 1;
+          *found_inf_data = 1;
           break;
         }
       }
