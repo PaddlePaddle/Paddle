@@ -45,7 +45,7 @@ class AmpCheckFiniteAndScaleKernel<platform::CUDADeviceContext, T>
 
     const T* scale_data = scale->data<T>();
     int* found_inf_data = found_inf->mutable_data<int>(dev_ctx.GetPlace());
-    cudaMemset(found_inf_data, 0, found_inf->numel() * sizeof(int));
+    cudaMemset(found_inf_data, false, found_inf->numel() * sizeof(bool));
 
     for (size_t i = 0; i < xs.size(); ++i) {
       const auto* x = xs[i];

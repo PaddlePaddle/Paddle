@@ -34,8 +34,9 @@ class AmpCheckFiniteAndScaleKernel : public framework::OpKernel<T> {
     auto* found_inf = ctx.Output<framework::Tensor>("FoundInfinite");
 
     const T* scale_data = scale->data<T>();
-    int* found_inf_data = found_inf->mutable_data<int>(dev_ctx.GetPlace());
-    *found_inf_data = 0;
+    bool* found_inf_data = found_inf->mutable_data<bool>(dev_ctx.GetPlace());
+
+    *found_inf_data = false;
     framework::Tensor is_finite =
         ctx.AllocateTmpTensor<bool, DeviceContext>({1}, dev_ctx);
     bool* is_finite_data = is_finite.template data<bool>();
@@ -52,7 +53,7 @@ class AmpCheckFiniteAndScaleKernel : public framework::OpKernel<T> {
           auto eigen_in = framework::EigenVector<T>::Flatten(*x);
           eigen_out.device(dev) = (*scale_data) * eigen_in;
         } else {
-          *found_inf_data = 1;
+          *found_inf_data = true;
           break;
         }
       }

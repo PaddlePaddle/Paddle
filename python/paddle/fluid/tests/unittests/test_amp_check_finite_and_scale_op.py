@@ -18,9 +18,6 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 
 
-@skip_check_grad_ci(
-    reason="Operator amp_check_finite_and_scale is used for dygraph auto-mixed_precision training only. It has no grad op."
-)
 class TestAmpCheckFiniteAndScaleOp(OpTest):
     def setUp(self):
         self.op_type = "amp_check_finite_and_scale"
@@ -33,7 +30,6 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
             'FoundInfinite': np.array([0]),
             'Out': [('out0', x * scale)],
         }
-        self.place = fluid.CUDAPlace(0)
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -42,9 +38,6 @@ class TestAmpCheckFiniteAndScaleOp(OpTest):
         self.check_output()
 
 
-@skip_check_grad_ci(
-    reason="Operator amp_check_finite_and_scale is used for dygraph auto-mixed_precision training only. It has no grad op."
-)
 class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
     def setUp(self):
         self.op_type = "amp_check_finite_and_scale"
@@ -63,12 +56,11 @@ class TestAmpCheckFiniteAndScaleOpWithNan(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
+        # When input contains nan, do not check the output, 
+        # since the output may be nondeterministic and will be discarded.
         self.check_output(no_check_set=['Out'])
 
 
-@skip_check_grad_ci(
-    reason="Operator amp_check_finite_and_scale is used for dygraph auto-mixed_precision training only. It has no grad op."
-)
 class TestAmpCheckFiniteAndScaleOpWithInf(OpTest):
     def setUp(self):
         self.op_type = "amp_check_finite_and_scale"
@@ -87,6 +79,8 @@ class TestAmpCheckFiniteAndScaleOpWithInf(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
+        # When input contains inf, do not check the output, 
+        # since the output may be nondeterministic and will be discarded.
         self.check_output(no_check_set=['Out'])
 
 

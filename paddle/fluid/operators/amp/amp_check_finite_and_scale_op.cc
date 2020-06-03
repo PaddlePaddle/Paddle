@@ -32,9 +32,11 @@ class AmpCheckFiniteAndScaleOp : public framework::OperatorWithKernel {
                    "amp_check_finite_and_unscale");
     OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
                    "amp_check_finite_and_unscale");
-    PADDLE_ENFORCE_EQ(ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
-                      "The input(X) and output(Out) should have same size in "
-                      "Operator(amp_check_finite_and_unscale).");
+    PADDLE_ENFORCE_EQ(
+        ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
+        platform::errors::InvalidArgument(
+            "The input(X) and output(Out) should have same size in "
+            "Operator(amp_check_finite_and_unscale)."));
     auto x_dims = ctx->GetInputsDim("X");
     ctx->SetOutputsDim("Out", x_dims);
     ctx->SetOutputDim("FoundInfinite", {1});
