@@ -487,7 +487,7 @@ class QuantizationTransformPass(object):
         # marked the variable which has been dequantized.
         dequantized_vars = collections.OrderedDict()
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
-        processed_vars = collections.OrderedDict()
+        processed_vars = []
 
         def _quant_preprocess(op_node):
             user_skipped = False
@@ -540,12 +540,12 @@ class QuantizationTransformPass(object):
                     if is_weight and self._weight_quantize_func is not None:
                         target_out_node = self._insert_func(
                             graph, self._weight_quantize_func, var_node, op)
-                        processed_vars[name] = target_out_node
+                        processed_vars.append(name)
                         continue
                     elif not is_weight and self._act_quantize_func is not None:
                         target_out_node = self._insert_func(
                             graph, self._act_quantize_func, var_node, op)
-                        processed_vars[name] = target_out_node
+                        processed_vars.append(name)
                         continue
 
                     quant_bits = self._weight_bits if var_node.name() in persistable_vars \
