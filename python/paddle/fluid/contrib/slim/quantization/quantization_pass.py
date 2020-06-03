@@ -229,9 +229,8 @@ class QuantizationTransformPass(object):
                 Default is None.
             optimizer_func(function): Fuction return a optimizer. When 'is_test' is False and user want to use self-defined 
             quantization function and preprocess function, this function must be set. Default is None.
-            for_test(bool): The graph is for train or test. Default is False.
-            exe(Fluid.Executor): If user want to use self-defined quantization function and preprocess function, exe must be set for
-                initialization. Default is None.
+            executor(Fluid.Executor): If user want to use self-defined quantization function and preprocess function, 
+                executor must be set for initialization. Default is None.
 
 
         Examples:
