@@ -265,11 +265,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 inline bool is_error(bool stat) { return !stat; }
 
 inline void throw_on_error(bool stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 // Note: This Macro can only be used within enforce.h
@@ -660,11 +656,7 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
 }
 
 inline void throw_on_error(cudaError_t e, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /** curand ERROR **/
@@ -711,12 +703,8 @@ inline std::string build_nvidia_error_msg(curandStatus_t stat) {
 }
 
 inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
                              msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUDNN ERROR *****/
@@ -730,11 +718,7 @@ inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
 }
 
 inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUBLAS ERROR *****/
@@ -773,11 +757,7 @@ inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
 }
 
 inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUSOLVER ERROR *****/
@@ -811,11 +791,7 @@ inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
 }
 
 inline void throw_on_error(cusolverStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /****** NCCL ERROR ******/
@@ -830,11 +806,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
 }
 
 inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 

@@ -180,15 +180,14 @@ void *Alloc<platform::CUDAPlace>(const platform::CUDAPlace &place,
     platform::CUDADeviceGuard(place.device);
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
-    LOG(FATAL) << "Cannot allocate " << string::HumanReadableSize(size)
-               << " in GPU " << place.device << ", available "
-               << string::HumanReadableSize(avail) << ", total "
-               << string::HumanReadableSize(total) << ", GpuMinChunkSize "
-               << string::HumanReadableSize(buddy_allocator->GetMinChunkSize())
-               << ", GpuMaxChunkSize "
-               << string::HumanReadableSize(buddy_allocator->GetMaxChunkSize())
-               << ", GPU memory used: "
-               << string::HumanReadableSize(Used<platform::CUDAPlace>(place));
+    PADDLE_THROW(platform::errors::ResourceExhausted(
+        "Cannot allocate %s in GPU %d, avaliable %s, total %s, GpuMinChunkSize "
+        "%s, GpuMaxChunkSize %s, GPU memory used: %s.",
+        string::HumanReadableSize(size), place.device,
+        string::HumanReadableSize(avail), string::HumanReadableSize(total),
+        string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
+        string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
+        string::HumanReadableSize(Used<platform::CUDAPlace>(place))));
   } else {
     if (FLAGS_init_allocated_mem) {
       cudaMemset(ptr, 0xEF, size);
