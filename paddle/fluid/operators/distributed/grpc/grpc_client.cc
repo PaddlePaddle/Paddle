@@ -501,10 +501,11 @@ void GRPCClient::Proceed() {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
     } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error, error_code:" << c->status_.error_code()
-                 << " error_message:" << c->status_.error_message()
-                 << " error_details:" << c->status_.error_details();
+      PADDLE_THROW(platform::errors::External(
+          "%s meets grpc error, error_code is %d, error message is %s, error "
+          "details is %s.",
+          c->GetVarHandlePtr()->String(), c->status_.error_code(),
+          c->status_.error_message(), c->status_.error_details()));
       {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
@@ -519,11 +520,11 @@ void GRPCClient::Proceed() {
       c->GetVarHandlePtr()->should_retry = true;
       c->Finish(false);
     } else {
-      LOG(FATAL) << c->GetVarHandlePtr()->String()
-                 << " meets grpc error, error_code:" << c->status_.error_code()
-                 << " error_message:" << c->status_.error_message()
-                 << " error_details:" << c->status_.error_details();
-
+      PADDLE_THROW(platform::errors::External(
+          "%s meets grpc error, error_code is %d, error message is %s, error "
+          "details is %s.",
+          c->GetVarHandlePtr()->String(), c->status_.error_code(),
+          c->status_.error_message(), c->status_.error_details()));
       c->Finish(false);
     }
 
