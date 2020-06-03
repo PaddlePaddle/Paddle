@@ -29,6 +29,7 @@ class Role:
     WORKER = 1
     SERVER = 2
 
+
 class MockBarrier(object):
     """
     MockBarrier is a empty impletation for barrier
@@ -623,8 +624,8 @@ class GeneralRoleMaker(RoleMakerBase):
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
             self._is_barrier_all = 1
             if "PADDLE_IS_BARRIER_ALL_ROLE" in os.environ:
-                self._is_barrier_all = int(
-                    os.environ["PADDLE_IS_BARRIER_ALL_ROLE"])
+                self._is_barrier_all = int(os.environ[
+                    "PADDLE_IS_BARRIER_ALL_ROLE"])
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
@@ -655,7 +656,8 @@ class GeneralRoleMaker(RoleMakerBase):
                                              self._run_timeout_seconds)
                     if len(self._http_ip_port) != 0:
                         gloo.set_http_store(self._http_ip_port[0],
-                                            int(self._http_ip_port[1]), "trainer")
+                                            int(self._http_ip_port[1]),
+                                            "trainer")
                     else:
                         gloo.set_hdfs_store(self._hdfs_path + "/trainer",
                                             self._hdfs_name, self._hdfs_ugi)
