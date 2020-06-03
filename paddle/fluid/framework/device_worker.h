@@ -45,7 +45,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end);
+std::string PrintLodTensor(Tensor* tensor, int64_t start, int64_t end);
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
@@ -148,6 +148,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  std::vector<std::string> all_param_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
