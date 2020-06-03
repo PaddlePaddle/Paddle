@@ -144,6 +144,35 @@ def _run_py_logical_not(x):
     return not x
 
 
+def convert_ifelse(pred, true_fn, false_fn):
+    """
+    A function representation of a Python ``if/else`` statement.
+
+    Args:
+        pred(bool|Variable): A boolean variable which determines whether to return the result of ``true_fn`` or ``false_fn`` .
+        true_fn(callable): A callable to be performed if ``pred`` is true.
+        false_fn(callable): A callable to be performed if ``pred`` is false.
+
+    Returns:
+        ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
+
+    """
+    if isinstance(pred, Variable):
+        return _run_paddle_cond(pred, true_fn, false_fn)
+    else:
+        return _run_py_ifelse(pred, true_fn, false_fn)
+
+
+def _run_paddle_cond(pred, true_fn, false_fn):
+    pred = cast_bool_if_necessary(pred)
+    return control_flow.cond(pred, true_fn, false_fn)
+
+
+def _run_py_ifelse(pred, true_fn, false_fn):
+
+    return true_fn() if pred else false_fn()
+
+
 def cast_bool_if_necessary(var):
     assert isinstance(var, Variable)
     if convert_dtype(var.dtype) not in ['bool']:
