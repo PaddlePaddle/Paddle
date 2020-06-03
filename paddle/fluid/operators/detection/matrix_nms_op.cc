@@ -278,7 +278,6 @@ class MatrixNMSKernel : public framework::OpKernel<T> {
     if (num_kept == 0) {
       outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
       index->mutable_data<int>({0, 1}, ctx.GetPlace());
-      offsets = {0, 1};
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
       index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());

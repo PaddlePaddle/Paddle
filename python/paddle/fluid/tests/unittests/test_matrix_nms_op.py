@@ -194,7 +194,6 @@ class TestMatrixNMSOp(OpTest):
             nms_top_k, keep_top_k, True, use_gaussian, gaussian_sigma)
 
         empty = len(det_outs) == 0
-        lod = [1] if empty else lod
         det_outs = np.array([], dtype=np.float32) if empty else det_outs
         index_outs = np.array([], dtype=np.float32) if empty else index_outs
         nmsed_outs = det_outs.astype('float32')

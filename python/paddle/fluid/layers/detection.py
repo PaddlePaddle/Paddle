@@ -3365,6 +3365,7 @@ def matrix_nms(bboxes,
                gaussian_sigma=2.,
                background_label=0,
                normalized=True,
+               return_index=False,
                name=None):
     """
     **Matrix NMS**
@@ -3407,14 +3408,21 @@ def matrix_nms(bboxes,
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
         normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, a tuple with one Variable(Out) is returned.
+
+        Out (Variable): A 2-D LoDTensor with shape [No, 6] containing the
+             detection results.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              (After version 1.3, when no boxes detected, the lod is changed
              from {0} to {1})
 
+        Index (Variable): A 2-D LoDTensor with shape [No, 1] containing the
+            selected indices, which are absolute values cross batches.
 
     Examples:
         .. code-block:: python
@@ -3468,7 +3476,10 @@ def matrix_nms(bboxes,
                   'Index': index})
     output.stop_gradient = True
 
-    return output
+    if return_index:
+        return output, index
+    else:
+        return output
 
 
 def distribute_fpn_proposals(fpn_rois,
