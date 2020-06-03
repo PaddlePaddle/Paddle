@@ -34,7 +34,7 @@ class TestGetNameIds(unittest.TestCase):
           def test_fn(x):
             return x+1
         """
-        self.all_name_ids = {'x': [gast.Param()]}
+        self.all_name_ids = {'x': [gast.Param(), gast.Load()]}
 
     def test_get_name_ids(self):
         source = textwrap.dedent(self.source)
@@ -82,6 +82,7 @@ class TestGetNameIds2(TestGetNameIds):
                 gast.Load(),
                 gast.Store(),
                 gast.Store(),
+                gast.Load(),
             ]
         }
 
@@ -113,6 +114,7 @@ class TestGetNameIds3(TestGetNameIds):
                 gast.Store(),
                 gast.Load(),
                 gast.Store(),
+                gast.Load(),
             ]
         }
 
