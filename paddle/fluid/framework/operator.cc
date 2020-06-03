@@ -1057,7 +1057,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
       if (pos != std::string::npos) {
         device = device.substr(0, pos);
         LOG_FIRST_N(WARNING, 1)
-            << "The device index for device_guard will be ignored.";
+            << "Device index is only supported under pipeline parallelism, "
+            << "so it will be ignored.";
       }
       // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
       // will be executed and a warning will be given at the same time.
