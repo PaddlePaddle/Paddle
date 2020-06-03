@@ -424,9 +424,9 @@ class LoopTransformer(gast.NodeTransformer):
 
         # 1. check whether need to transform
         # NOTE: Current need transform cases:
-        #   1). for x in range(VarBase.numpy()[0])
-        #   2). for x in VarBase.numpy()
-        #   3). for i, x in enumerate(VarBase.numpy())
+        #   1). for x in range(VarBase[0]|VarBase.numpy()[0])
+        #   2). for x in VarBase|VarBase.numpy()
+        #   3). for i, x in enumerate(VarBase|VarBase.numpy())
         if not self.name_visitor.is_control_flow_loop(node):
             return [node]
 
