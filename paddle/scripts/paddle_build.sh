@@ -887,12 +887,12 @@ set -ex
 }
 
 function parallel_test() {
-    ut_startTime_s=`date +%s`
+    ut_total_startTime_s=`date +%s`
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     parallel_test_base
-    ut_endTime_s=`date +%s`
-    echo "TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+    ut_total_endTime_s=`date +%s`
+    echo "TestCases Total Time: $[ $ut_total_endTime_s - $ut_total_startTime_s ]s"
 }
 
 function enable_unused_var_check() {
