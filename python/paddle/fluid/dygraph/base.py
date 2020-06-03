@@ -75,6 +75,9 @@ def param_guard(parameters):
                     var_base.dtype,
                     var_base.type,
                     name=var_base.name)
+                is_trainable = isinstance(
+                    var_base, framework.ParamBase) and var_base.trainable
+                new_var.trainable = is_trainable
                 parameters[name] = new_var
         yield
         parameters.update(origin_parameters)

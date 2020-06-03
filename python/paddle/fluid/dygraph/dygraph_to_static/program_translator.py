@@ -141,6 +141,17 @@ class FunctionSpec(object):
                 params = self._args[0]._parameters
         return params
 
+    def buffers(self, include_sublayer=True):
+        buffers = collections.OrderedDict()
+        if self.is_method():
+            if include_sublayer:
+                buffers = self._args[0].buffers()
+                names = [buffer.name for buffer in buffers]
+                buffers = collections.OrderedDict(zip(names, buffers))
+            else:
+                buffers = self._args[0]._buffers
+        return buffers
+
     @switch_to_static_graph
     def to_static_inputs(self, main_program):
         inputs = []
@@ -263,7 +274,7 @@ class ConcreteProgram(object):
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
-            parameters=all_parameters,
+            parameters=all_parameters_or_buffers,
             func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)

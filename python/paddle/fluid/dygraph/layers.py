@@ -90,6 +90,8 @@ class Layer(core.Layer):
         self._dtype = dtype
 
         self._parameters = collections.OrderedDict()
+        # Buffer the varBase (not ParamBase) created in layer
+        self._buffers = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
 
@@ -414,6 +416,48 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
+    def buffers(self, include_sublayers=True):
+        """Returns a list of all buffers from current layer and its sub-layers.
+
+        Parameters:
+            include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
+
+        Returns:
+            list of :ref:`api_guide_Variable_en` : a list of buffers.
+        """
+        ret = [
+            buffer
+            for _, buffer in self.named_buffers(
+                include_sublayers=include_sublayers)
+        ]
+        return ret
+
+    def named_buffers(self, prefix='', include_sublayers=True):
+        """
+        Returns an iterator over all buffers in the Layer, yielding tuple of name and varBase.
+
+        Parameters:
+            prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
+            include_sublayers(bool, optional): Whether include the buffers of sublayers.
+                If True, also include the named buffers from sublayers. Default: True.
+
+        Yields:
+            (string, VarBase): Tuple of name and VarBase
+        """
+        buffers_set = set()
+        named_sublayers = self.named_sublayers(
+            prefix=prefix,
+            include_sublayers=include_sublayers,
+            include_self=True)
+        for layer_prefix, sublayer in named_sublayers:
+            buffers = sublayer._buffers.items()
+            for key, buffer in buffers:
+                if buffer is None or buffer in buffers_set:
+                    continue
+                buffers_set.add(buffer)
+                name = layer_prefix + ('.' if layer_prefix else '') + key
+                yield name, buffer
+
     def clear_gradients(self):
         """
         Clear the gradients of all parameters for this layer.
@@ -462,7 +506,7 @@ class Layer(core.Layer):
                         self._parameters.values())
             self._built = True
 
-        with param_guard(self._parameters):
+        with param_guard(self._parameters), param_guard(self._buffers):
             outputs = self.forward(*inputs, **kwargs)
 
         for forward_post_hook in self._forward_post_hooks.values():
@@ -534,6 +578,8 @@ class Layer(core.Layer):
             return self._parameters[name]
         elif name in self._sub_layers:
             return self._sub_layers[name]
+        elif name in self._buffers:
+            return self._buffers[name]
         else:
             return object.__getattribute__(self, name)
 
@@ -581,7 +627,23 @@ class Layer(core.Layer):
                         .format(name, type(value).__name__))
                 layers[name] = None
             else:
-                object.__setattr__(self, name, value)
+                _buffers = self.__dict__.get('_buffers', None)
+                if isinstance(value, core.VarBase):
+                    if _buffers is None:
+                        raise ValueError(
+                            "super(YourLayer, self).__init__() should be called first"
+                        )
+                    _remove_if_exist(self.__dict__, self._parameters,
+                                     self._sub_layers)
+                    _buffers[name] = value
+                elif _buffers is not None and name in _buffers:
+                    if value is not None:
+                        raise TypeError(
+                            "assignment to varBase_buffers '{}' should be of type core.VarBase or None, but got '{}'"
+                            .format(name, type(value).__name__))
+                    _buffers[name] = None
+                else:
+                    object.__setattr__(self, name, value)
 
     def __delattr__(self, name):
         if name in self._parameters:

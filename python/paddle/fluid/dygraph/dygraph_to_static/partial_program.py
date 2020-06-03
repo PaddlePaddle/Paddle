@@ -255,7 +255,7 @@ class PartialProgramLayer(layers.Layer):
 
         params_name_set = set()
         for i, param in enumerate(self._params):
-            if not isinstance(param, framework.ParamBase):
+            if not isinstance(param, core.VarBase):
                 raise TypeError(
                     'Type of self._params[{}] in PartialProgramLayer should be framework.ParamBase, but received {}.'.
                     format(i, type(param)))
