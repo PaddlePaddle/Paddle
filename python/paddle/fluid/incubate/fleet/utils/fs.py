@@ -137,14 +137,14 @@ class LocalFS(FS):
         return self.rename(src_path, dst_path, overwrite=overwrite)
 
     def list_dirs(self, fs_path):
-        if not self.exists(fs_path):
+        """	
+        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        if not self.is_exist(fs_path):
             return []
 
         dirs = [
             f for f in os.listdir(fs_path) if os.path.isdir(fs_path + "/" + f)
         ]
-        files = [
-            f for f in os.listdir(fs_path) if os.path.isfile(fs_path + "/" + f)
-        ]
 
-        return dirs, files
+        return dirs

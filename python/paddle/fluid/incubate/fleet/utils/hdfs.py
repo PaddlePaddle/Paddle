@@ -621,27 +621,18 @@ class HDFSClient(FS):
     def mv(self, src_path, dst_path, overwrite=False):
         return self.rename(src_path, dst_path, overwrite=overwrite)
 
-    def list_dir(self, fs_path):
+    def list_dirs(self, fs_path):
         """	
-        list directory under fs_path, and only give the pure name, not include the fs_path	
+        list directory,files under fs_path, and only give the pure name, not include the fs_path	
         """
-        cmd = "{} -ls {}".format(self._base_cmd, fs_path)
-        lines = self.__run_hdfs_cmd(cmdi, retry_times=1)
+        dirs = self.lsr(fs_path)
 
-        dirs = []
-        files = []
-        for line in lines:
-            arr = line.split()
-            if len(arr) != 8:
+        ret = []
+        for d in dirs:
+            if fs_path not in d:
                 continue
 
-            if fs_path not in arr[7]:
-                continue
+            p = PurePosixPath(d)
+            ret.append(p.name)
 
-            p = PurePosixPath(arr[7])
-            if arr[0][0] == 'd':
-                dirs.append(p.name)
-            else:
-                files.append(p.name)
-
-        return dirs, files
+        return dirs

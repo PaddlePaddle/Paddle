@@ -185,7 +185,7 @@ class Collective(Fleet):
         """
         max_no = -1
         d = {}
-        dirs, _ = fs.list_dirs(root_path)
+        dirs = fs.list_dirs(root_path)
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
@@ -203,10 +203,10 @@ class Collective(Fleet):
 
         return max_no
 
-    def clean_redundant_check_points(self,
-                                     root_path,
-                                     fs=LocalFS(),
-                                     checkpoint_num=1):
+    def clean_redundant_checkpoints(self,
+                                    root_path,
+                                    fs=LocalFS(),
+                                    checkpoint_num=1):
         max_no = self._get_last_checkpoint_no(root_path, fs)
         if max_no < 0:
             return
@@ -215,8 +215,8 @@ class Collective(Fleet):
             checkpoint_num = 1
 
         dirs = fs.list_dirs(root_path)
-        for dir in dirs:
-            g = dir.split(".")
+        for d in dirs:
+            g = d.split(".")
             if len(g) != 2:
                 continue
 
@@ -228,7 +228,7 @@ class Collective(Fleet):
                 if n <= max_no - checkpoint_num:
                     path = "{}/{}.{}".format(root_path, self._checkpoint_prefix,
                                              n)
-                    fs.rmr(path)
+                    fs.delete(path)
             except Exception as e:
                 print(e)
                 continue
@@ -271,7 +271,7 @@ class Collective(Fleet):
                 local_fs.mkdirs(cache_path)
             else:
                 assert fs.is_dir(
-                    path), "cache path:%s must be a directory".format(
+                    path), "cache path:{} must be a directory".format(
                         cache_path)
 
             saved_path = cache_path
@@ -289,7 +289,7 @@ class Collective(Fleet):
         fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:
-            self.clean_redundant_check_points(path)
+            self.clean_redundant_checkpoints(path)
 
     def load_checkpoint(self,
                         executor,

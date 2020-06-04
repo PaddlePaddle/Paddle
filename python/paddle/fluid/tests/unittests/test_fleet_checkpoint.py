@@ -67,7 +67,7 @@ class FleetTest(unittest.TestCase):
         fs.mkdirs("./checkpoint_test_local")
 
     def test_hdfs_checkpoint(self):
-        fs = HDFSClient("/usr/lib/jvm/java-8-openjdk-amd64", None)
+        fs = HDFSClient("/usr/local/hadoop-2.7.7", None)
         dir_path = "./checkpoint_test_hdfs"
         self._test_checkpoint(fs, dir_path)
 
