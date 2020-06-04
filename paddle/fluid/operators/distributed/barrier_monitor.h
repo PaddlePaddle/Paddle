@@ -105,12 +105,8 @@ class BlockingQueueForBarrier {
 
 class BarrierMonitor {
  public:
-  explicit BarrierMonitor(int workers) {
-    PADDLE_ENFORCE_GT(workers, 0, platform::errors::InvalidArgument(
-                                      "trainers must have one or more"));
-
-    BarrierMonitor(workers, BarrierType::kRecvBarrier, kMaxWaitMS);
-  }
+  explicit BarrierMonitor(int workers)
+      : BarrierMonitor(workers, BarrierType::kRecvBarrier, kMaxWaitMS) {}
 
   explicit BarrierMonitor(int workers, BarrierType type, int64_t max_wait_times)
       : workers_(workers), barrier_type(type), max_wait_ms(max_wait_times) {
