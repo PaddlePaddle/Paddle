@@ -2836,6 +2836,7 @@ class TestBook(LayerTest):
             out = layers.bilinear_tensor_product(data, theta, 6)
             return (out)
 
+    """
     def make_batch_norm(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2856,6 +2857,7 @@ class TestBook(LayerTest):
                 append_batch_size=False)
             out = layers.batch_norm(data, momentum=momentum)
             return (out)
+    """
 
     def make_inplace_abn(self):
         with program_guard(fluid.default_main_program(),
