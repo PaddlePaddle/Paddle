@@ -7,7 +7,7 @@
 #   The three columns of data are: total number, valid number, invalid number. 
 #   The output format is easy to display as a markdown table.
 
-# Usage: bash detail_invalid_enforce.sh (run in tools directory)
+# Usage: bash count_enforce_by_dir.sh (run in tools directory)
 
 # Result Example:
 

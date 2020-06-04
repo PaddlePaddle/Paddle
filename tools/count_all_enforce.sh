@@ -4,7 +4,7 @@
 #   including the total PADDLE check number, the valid check number and the
 #   invalid check number under paddle/fluid and its main sub-directories.
 
-# Usage: bash count_invalid_enforce.sh (run in tools directory)
+# Usage: bash count_all_enforce.sh (run in tools directory)
 
 # Result Example:
 

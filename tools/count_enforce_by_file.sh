@@ -6,7 +6,7 @@
 #   The three columns of data are: total number, valid number, invalid number. 
 #   The output format is easy to display as a markdown table.
 
-# Usage: bash file_invalid_enforce.sh (run in tools directory)
+# Usage: bash count_enforce_by_file.sh (run in tools directory)
 
 # Result Example:
 
@@ -29,7 +29,7 @@
 
 ROOT_DIR=../paddle/fluid/operators
 
-white_list_str = "\
+white_list_str="\
     layer_norm_op.cc \
     box_clip_op.cc \
     box_clip_op.h \
