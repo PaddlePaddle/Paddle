@@ -727,7 +727,7 @@ class ForNodeVisitor(object):
         elif self.is_for_enumerate_iter():
             return self._parse_for_enumerate_stmts()
         else:
-            raise None
+            return None
 
     def is_for_range_iter(self):
         return isinstance(self.node.iter, gast.Call) and isinstance(
@@ -735,7 +735,7 @@ class ForNodeVisitor(object):
             gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        if isinstance(self.node.iter, gast.Name):
+        if isinstance(self.node.iter, (gast.Name, gast.Attribute)):
             return True
         elif isinstance(self.node.iter, gast.Call) and isinstance(
                 self.node.iter.func,
