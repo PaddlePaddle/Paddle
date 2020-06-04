@@ -771,6 +771,7 @@ def histogram(input, bins=100, min=0, max=0):
 
     Code Example 1:
         .. code-block:: python
+
             import paddle
             import numpy as np
             startup_program = paddle.Program()
@@ -781,21 +782,22 @@ def histogram(input, bins=100, min=0, max=0):
                 place = paddle.CPUPlace()
                 exe = paddle.Executor(place)
                 exe.run(startup_program)
-                img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
+                inputs_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int32)
                 res = exe.run(train_program,
-                              feed={'input': img},
+                              feed={'input': inputs_np},
                               fetch_list=[output])
-                print(np.array(res[0])) # [0,3,0,2,1]
+                print(np.array(res[0])) # [0, 3, 0, 2, 1]
 
     Code Example 2:
         .. code-block:: python
+
             import paddle
             import numpy as np
             with paddle.imperative.guard(paddle.CPUPlace()):
-                inputs_np = np.array([1, 2, 1]).astype(np.float)
+                inputs_np = np.array([0.5, 1.5, 2.5]).astype(np.float)
                 inputs = paddle.imperative.to_variable(inputs_np)
-                result = paddle.histogram(inputs, bins=4, min=0, max=3)
-                print(result) # [0, 2, 1, 0]
+                result = paddle.histogram(inputs, bins=5, min=1, max=5)
+                print(result) # [1, 1, 0, 0, 0]
     """
     if in_dygraph_mode():
         return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
