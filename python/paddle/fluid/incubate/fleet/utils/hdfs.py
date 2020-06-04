@@ -500,8 +500,8 @@ class HDFSClient(FS):
         return local_downloads
 
     def upload(self,
-               hdfs_path,
                local_path,
+               hdfs_path,
                multi_processes=5,
                overwrite=False,
                retry_times=5):
@@ -522,6 +522,7 @@ class HDFSClient(FS):
         def __subprocess_upload(hdfs_path_single, datas):
             for data in datas:
                 put_commands = ["-put", data, hdfs_path_single]
+                print("upload commands:", put_commands)
                 returncode, output, errors = self.__run_hdfs_cmd(put_commands,
                                                                  retry_times)
 
@@ -543,6 +544,8 @@ class HDFSClient(FS):
             """
             rlist = []
 
+            print("get_local_files:", path)
+
             if not os.path.exists(path):
                 return rlist
 
@@ -551,6 +554,7 @@ class HDFSClient(FS):
                     t = os.path.join(path, file)
                     rlist.append(t)
             else:
+                print("get_local_filesi2:", path)
                 rlist.append(path)
             return rlist
 
@@ -608,6 +612,9 @@ class HDFSClient(FS):
 
     def need_upload_download(self):
         return True
+
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
+        return self.rename(src_file_path, fs_dst_path, overwrite=overwrite)
 
 
 if __name__ == "__main__":

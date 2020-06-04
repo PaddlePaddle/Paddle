@@ -17,68 +17,78 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
 import os
+import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 
 class FSTest(unittest.TestCase):
-    def _fs_test(self, fs, dir_path):
-        # file
-        file_path = dir_path + "/" + "fs_test.tmp"
+    def _test_dirs(self, fs):
+        dir_path = "./test_dir"
+        fs.delete(dir_path)
+        self.assertTrue(not fs.is_exist(dir_path))
+
+        fs.mkdirs(dir_path)
+        self.assertTrue(fs.is_exist(dir_path))
+        self.assertTrue(not fs.is_file(dir_path and fs.is_dir(dir_path)))
+
+        new_dir_path = "./new_test_dir"
+        fs.mv(dir_path, new_dir_path)
+        self.assertTrue(fs.is_exist(new_dir_path))
+
+        fs.mv(new_dir_path, dir_path)
+        self.assertTrue(fs.is_exist(dir_path))
+
+        fs.delete(dir_path)
+        self.assertTrue(not fs.is_exist(dir_path))
+
+    def _test_touch_file(self, fs):
+        file_path = "./test_file"
+
+        fs.delete(file_path)
         self.assertTrue(not fs.is_exist(file_path))
-        sys.exit(0)
 
-        if self.need_upload_download:
-            local_fs = LocalFS()
-            src_file_path = file_path + ".src"
-            fs.upload(src_file_path, file_path)
-            self.assertTrue(fs.is_exist(file_path))
-        else:
-            fs.touch(file_path)
-            self.assertTrue(fs.is_exist(file_path))
+        fs.touch(fle_path)
+        self.assertTrue(fs.is_exist(file_path))
+        self.assertTrue(not fs.is_dir(file_path) and fs.is_file(file_path))
 
-        self.assertTrue(not fs.is_dir(file_path))
-
-        new_file_path = fs.mv(file_path, new_dir_path)
+        new_dir_path = "./new_test_file"
+        fs.mv(file_path, new_file_path)
         self.assertTrue(fs.is_exist(new_file_path))
 
-        # dir
-        test_dir_path = dir_path + "/dir_test.tmp"
-        self.assertTrue(not fs.is_exist(test_dir_path))
-        fs.mkdirs(test_dir_path)
-        self.assertTrue(fs.is_exist(test_dir_path))
-        self.assertTrue(not fs.is_file(test_dir_path))
-        self.assertTrue(fs.is_dir(test_dir_path))
+        fs.mv(new_file_path, file_path)
+        self.assertTrue(fs.is_exist(file_path))
 
-        # mv dir
-        new_dir_path = dir_path + "/dir_test.new"
-        fs.mv(test_dir_path, new_dir_path)
-        self.assertTrue(fs.is_exist(new_dir_path))
-        self.assertTrue(fs.is_dir(new_dir_path))
+        fs.delete(file_path)
+        self.assertTrue(not fs.is_exist(file_path))
 
-        # delete
-        fs.delete(new_file_path)
-        self.assertTrue(not fs.is_exist(new_file_path))
-        fs.delete(new_dir_path)
-        self.assertTrue(not fs.is_exist(new_dir_path))
+    def _test_upload_file(self, fs):
+        src_file = "./test_upload.src"
+        dst_file = "./test_uolpad.dst"
 
-    def setUp(self):
-        fs = LocalFS()
-        fs.mkdirs("./fs_test_hdfs")
-        fs.mkdirs("./fs_test_local")
+        local = LocalFS()
+        local.touch(src_file)
+        fs.delete(dst_file)
+
+        assert fs.need_upload_download()
+
+        fs.upload(src_file, dst_file)
+        self.assertTrue(not fs.is_exist(dst_file))
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
+        fs.upload(src_file, dst_file)
 
     def test_hdfs(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None)
-        dir_path = "./fs_test_hdfs"
-        self._fs_test(fs, dir_path)
+        self._test_dirs(fs)
+        self._test_upload_file(fs)
 
-    """
     def test_local(self):
         fs = LocalFS()
-        dir_path = "./fs_test_local"
-        self._fs_test(fs, dir_path)
-    """
+        self._test_dirs(fs)
+        self._test_touch_file(fs)
 
 
 if __name__ == '__main__':

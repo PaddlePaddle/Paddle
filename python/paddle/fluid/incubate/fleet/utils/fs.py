@@ -128,3 +128,6 @@ class LocalFS(FS):
 
     def touch(self, fs_path):
         return Path(fs_path).touch()
+
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
+        return self.rename(src_file_path, fs_dst_path, overwrite=overwrite)

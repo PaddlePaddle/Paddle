@@ -26,7 +26,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
-from paddle.distributed.fs_wrapper import LocalFS, BDFS
+from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 
 import os
 import sys
