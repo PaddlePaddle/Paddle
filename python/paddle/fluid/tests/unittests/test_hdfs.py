@@ -76,7 +76,7 @@ class FSTest(unittest.TestCase):
         assert fs.need_upload_download()
 
         fs.upload(src_file, dst_file)
-        self.assertTrue(not fs.is_exist(dst_file))
+        self.assertTrue(fs.is_exist(dst_file))
         fs.delete(dst_file)
         fs.delete(src_file)
 
