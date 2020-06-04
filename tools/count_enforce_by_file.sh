@@ -20,7 +20,8 @@
 #   The three columns of data are: total number, valid number, invalid number. 
 #   The output format is easy to display as a markdown table.
 
-# Usage: bash count_enforce_by_file.sh (run in tools directory)
+# Usage: bash count_enforce_by_file.sh  [target directory or file] (run in tools directory)
+#   - The default check path is paddle/fluid/operators
 
 # Result Example:
 
@@ -44,6 +45,10 @@
 . ./count_all_enforce.sh --source-only
 
 ROOT_DIR=../paddle/fluid/operators
+
+if [ "$1" != "" ]; then
+    ROOT_DIR=$1
+fi
 
 FILE_WHITE_LIST="\
     layer_norm_op.cc \
