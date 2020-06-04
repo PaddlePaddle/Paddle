@@ -48,6 +48,7 @@ if(WIN32)
   SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
   SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
+  add_definitions(-DPADDLE_DLL_INFERENCE)
   # set definition for the dll export
   if (NOT MSVC)
     message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
