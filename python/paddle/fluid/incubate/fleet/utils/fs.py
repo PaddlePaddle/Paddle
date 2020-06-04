@@ -32,23 +32,23 @@ __all__ = ['FS', 'LocalFS']
 class FS(object):
     @abc.abstractmethod
     def ls(self, fs_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def is_file(self, fs_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def is_dir(self, fs_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def is_exist(self, fs_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def upload(self, local_path, fs_path, overwrite=False):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def download(self,
@@ -57,31 +57,31 @@ class FS(object):
                  multi_processes=5,
                  overwrite=False,
                  retry_times=5):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def mkdirs(self, fs_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def delete(self, fs_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def need_upload_download(self):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def rename(self, fs_src_path, fs_dst_path):
-        pass
+    def rename(self, fs_src_path, fs_dst_path, overwrite=False):
+        raise NotImplementedError
 
     @abc.abstractmethod
-    def mv(self, fs_src_path, fs_dst_path):
-        pass
+    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
+        raise NotImplementedError
 
     @abc.abstractmethod
     def upload_dir(self, local_dir, dest_dir, overwrite=False):
-        pass
+        raise NotImplementedError
 
 
 class LocalFS(FS):
@@ -93,11 +93,11 @@ class LocalFS(FS):
             fs_path)
         os.system("mkdir -p {}".format(fs_path))
 
-    def rename(self, fs_src_path, fs_dst_path):
+    def rename(self, fs_src_path, fs_dst_path, overwrite=False):
+        if overwrite:
+            shutil.move(fs_src_path, fs_dst_path)
+            return
         os.rename(fs_src_path, fs_dst_path)
-
-    def rename(self, fs_src_path, fs_dst_path):
-        self.rename(fs_src_path, fs_dst_path)
 
     def _rmr(self, fs_path):
         shutil.rmtree(fs_path)
@@ -129,5 +129,5 @@ class LocalFS(FS):
     def touch(self, fs_path):
         return Path(fs_path).touch()
 
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
-        return self.rename(src_file_path, fs_dst_path, overwrite=overwrite)
+    def mv(self, src_path, dst_path, overwrite=False):
+        return self.rename(src_path, dst_path, overwrite=overwrite)

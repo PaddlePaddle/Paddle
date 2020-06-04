@@ -29,18 +29,18 @@ from fs import FS
 __all__ = ["HDFSClient"]
 
 
-def get_logger(name, level, fmt):
+def get_logger(name, level):
     logger = logging.getLogger(name)
     logger.setLevel(level)
     handler = logging.FileHandler('hdfs.log', mode='w')
-    formatter = logging.Formatter(fmt=fmt)
-    handler.setFormatter(formatter)
+    log_format = logging.Formatter(
+        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+    handler.setFormatter(log_format)
     logger.addHandler(handler)
     return logger
 
 
-_logger = get_logger(
-    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+_logger = get_logger(__name__, logging.INFO)
 
 
 class HDFSClient(FS):
@@ -256,9 +256,12 @@ class HDFSClient(FS):
 
         if not self.is_exist(hdfs_src_path):
             _logger.info("HDFS path do not exist: {}".format(hdfs_src_path))
+            return False
+
         if self.is_exist(hdfs_dst_path) and not overwrite:
             _logger.error("HDFS path is exist: {} and overwrite=False".format(
                 hdfs_dst_path))
+            return False
 
         rename_command = ['-mv', hdfs_src_path, hdfs_dst_path]
         returncode, output, errors = self.__run_hdfs_cmd(
@@ -287,7 +290,7 @@ class HDFSClient(FS):
             if e.errno != errno.EEXIST:
                 raise
 
-    def makedirs(self, hdfs_path):
+    def mkdirs(self, hdfs_path):
         """
         Create a remote directory, recursively if necessary.
 
@@ -613,19 +616,5 @@ class HDFSClient(FS):
     def need_upload_download(self):
         return True
 
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
-        return self.rename(src_file_path, fs_dst_path, overwrite=overwrite)
-
-
-if __name__ == "__main__":
-    hadoop_home = "/home/client/hadoop-client/hadoop/"
-
-    configs = {
-        "fs.default.name": "hdfs://xxx.hadoop.com:54310",
-        "hadoop.job.ugi": "hello,hello123"
-    }
-
-    client = HDFSClient(hadoop_home, configs)
-
-    client.ls("/user/com/train-25")
-    files = client.lsr("/user/com/train-25/models")
+    def mv(self, src_path, dst_path, overwrite=False):
+        return self.rename(file_path, dst_path, overwrite=overwrite)
