@@ -34,7 +34,6 @@ class FSTest(unittest.TestCase):
         self.assertTrue(not fs.is_file(dir_path))
         self.assertTrue(fs.is_dir(dir_path))
 
-        print("test 3")
         new_dir_path = "./new_test_dir"
         fs.mv(dir_path, new_dir_path)
         self.assertTrue(fs.is_exist(new_dir_path))
@@ -79,8 +78,6 @@ class FSTest(unittest.TestCase):
         self.assertTrue(fs.is_exist(dst_file))
         fs.delete(dst_file)
         fs.delete(src_file)
-
-        fs.upload(src_file, dst_file)
 
     def test_hdfs(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None)
