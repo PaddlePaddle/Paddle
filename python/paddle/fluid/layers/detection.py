@@ -3472,8 +3472,8 @@ def matrix_nms(bboxes,
             'keep_top_k': keep_top_k,
             'normalized': normalized
         },
-        outputs= {'Out': output,
-                  'Index': index})
+        outputs={'Out': output,
+                 'Index': index})
     output.stop_gradient = True
 
     if return_index:

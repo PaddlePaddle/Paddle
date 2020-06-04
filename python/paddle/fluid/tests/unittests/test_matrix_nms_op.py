@@ -141,10 +141,9 @@ def batched_multiclass_nms(boxes,
     index_outs = []
     lod = []
     for n in range(batch_size):
-        nmsed_outs, indices = multiclass_nms(boxes[n], scores[n], background,
-                                             score_threshold, post_threshold,
-                                             nms_top_k, keep_top_k, normalized,
-                                             use_gaussian, gaussian_sigma)
+        nmsed_outs, indices = multiclass_nms(
+            boxes[n], scores[n], background, score_threshold, post_threshold,
+            nms_top_k, keep_top_k, normalized, use_gaussian, gaussian_sigma)
         nmsed_num = len(nmsed_outs)
         lod.append(nmsed_num)
         if nmsed_num == 0:
@@ -248,52 +247,54 @@ class TestMatrixNMSError(unittest.TestCase):
             scores = np.reshape(scores, (N, M, C))
             scores_np = np.transpose(scores, (0, 2, 1))
 
-            boxes_data = fluid.data(name='bboxes',
-                                    shape=[M, C, BOX_SIZE],
-                                    dtype='float32')
-            scores_data = fluid.data(name='scores',
-                                     shape=[N, C, M],
-                                     dtype='float32')
+            boxes_data = fluid.data(
+                name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32')
+            scores_data = fluid.data(
+                name='scores', shape=[N, C, M], dtype='float32')
 
             def test_bboxes_Variable():
                 # the bboxes type must be Variable
-                fluid.layers.matrix_nms(bboxes=boxes_np,
-                                        scores=scores_data,
-                                        nms_top_k=nms_top_k,
-                                        keep_top_k=keep_top_k,
-                                        score_threshold=score_threshold,
-                                        post_threshold=post_threshold)
+                fluid.layers.matrix_nms(
+                    bboxes=boxes_np,
+                    scores=scores_data,
+                    nms_top_k=nms_top_k,
+                    keep_top_k=keep_top_k,
+                    score_threshold=score_threshold,
+                    post_threshold=post_threshold)
 
             def test_scores_Variable():
                 # the scores type must be Variable
-                fluid.layers.matrix_nms(bboxes=boxes_data,
-                                        scores=scores_np,
-                                        nms_top_k=nms_top_k,
-                                        keep_top_k=keep_top_k,
-                                        score_threshold=score_threshold,
-                                        post_threshold=post_threshold)
+                fluid.layers.matrix_nms(
+                    bboxes=boxes_data,
+                    scores=scores_np,
+                    nms_top_k=nms_top_k,
+                    keep_top_k=keep_top_k,
+                    score_threshold=score_threshold,
+                    post_threshold=post_threshold)
 
             def test_empty():
                 # when all score are lower than threshold
                 try:
-                    fluid.layers.matrix_nms(bboxes=boxes_data,
-                                            scores=scores_data,
-                                            nms_top_k=nms_top_k,
-                                            keep_top_k=keep_top_k,
-                                            score_threshold=10.,
-                                            post_threshold=post_threshold)
+                    fluid.layers.matrix_nms(
+                        bboxes=boxes_data,
+                        scores=scores_data,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k,
+                        score_threshold=10.,
+                        post_threshold=post_threshold)
                 except Exception as e:
                     self.fail(e)
 
             def test_coverage():
                 # cover correct workflow
                 try:
-                    fluid.layers.matrix_nms(bboxes=boxes_data,
-                                            scores=scores_data,
-                                            nms_top_k=nms_top_k,
-                                            keep_top_k=keep_top_k,
-                                            score_threshold=score_threshold,
-                                            post_threshold=post_threshold)
+                    fluid.layers.matrix_nms(
+                        bboxes=boxes_data,
+                        scores=scores_data,
+                        nms_top_k=nms_top_k,
+                        keep_top_k=keep_top_k,
+                        score_threshold=score_threshold,
+                        post_threshold=post_threshold)
                 except Exception as e:
                     self.fail(e)
 
