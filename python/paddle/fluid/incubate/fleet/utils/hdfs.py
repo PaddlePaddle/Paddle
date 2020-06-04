@@ -277,7 +277,7 @@ class HDFSClient(FS):
             return True
 
     @staticmethod
-    def make_local_dirs(local_path):
+    def _make_local_dirs(local_path):
         """
         create a directory local, is same to mkdir
 
@@ -472,7 +472,7 @@ class HDFSClient(FS):
                     return False
             return True
 
-        self.make_local_dirs(local_path)
+        self._make_local_dirs(local_path)
 
         all_files = self.ls(hdfs_path)
 
@@ -617,4 +617,4 @@ class HDFSClient(FS):
         return True
 
     def mv(self, src_path, dst_path, overwrite=False):
-        return self.rename(file_path, dst_path, overwrite=overwrite)
+        return self.rename(src_path, dst_path, overwrite=overwrite)
