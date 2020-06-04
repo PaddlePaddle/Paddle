@@ -549,15 +549,14 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     act=None)
                 if mode == 'train':
                     label = fluid.data(name="label", shape=[-1, 1], dtype='int32')
-                    # Obtaion the fg_num needed by the sigmoid_focal_loss op:
+                    # Obtain the fg_num needed by the sigmoid_focal_loss op:
                     # 0 in label represents background, >=1 in label represents foreground,
                     # find the elements in label which are greater or equal than 1, then
                     # computed the numbers of these elements.
                     data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
                     fg_label = fluid.layers.greater_equal(label, data)
-                    fg_label = fluid.layers.cast(fg_label, dtype='int64')
+                    fg_label = fluid.layers.cast(fg_label, dtype='int32')
                     fg_num = fluid.layers.reduce_sum(fg_label)
-                    fg_num = fluid.layers.cast(fg_num, dtype='int32')
                     fg_num.stop_gradient = True
                     avg_loss = get_focal_loss(output, label, fg_num, num_classes)
                     return avg_loss
