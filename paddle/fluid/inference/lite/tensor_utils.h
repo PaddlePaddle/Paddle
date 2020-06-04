@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "lite/api/paddle_place.h"
-#include "lite/core/tensor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
 namespace inference {

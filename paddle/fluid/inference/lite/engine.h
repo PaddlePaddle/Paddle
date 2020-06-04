@@ -20,7 +20,18 @@
 #include <unordered_map>
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
 #include "lite/api/cxx_api.h"
+#include "lite/api/paddle_place.h"
+#include "lite/api/paddle_use_kernels.h"
+#include "lite/api/paddle_use_ops.h"
+#include "lite/api/paddle_use_passes.h"
+#include "lite/core/context.h"
+#include "lite/core/device_info.h"
+#include "lite/core/op_registry.h"
+#include "lite/core/tensor.h"
+#pragma GCC diagnostic pop
 
 namespace paddle {
 namespace inference {
