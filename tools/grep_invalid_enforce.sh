@@ -62,22 +62,15 @@
 #         PADDLE_ENFORCE_EQ(status, Status::kException);
 #         PADDLE_ENFORCE_EQ(status, Status::kSuccess);    
 
+. ./count_enforce_by_file.sh --source-only
+
 ROOT_DIR=../paddle/fluid/operators
 
 if [ "$1" != "" ]; then
     ROOT_DIR=$1
 fi
 
-white_list_str="\
-    layer_norm_op.cc \
-    box_clip_op.cc \
-    box_clip_op.h \
-    random_crop_op.h \
-    elementwise_op_function.cu.h \
-    fused_elemwise_activation_op.cc \
-    auc_op.cu"
-
-function enforce_scan(){
+function enforce_grep(){
     paddle_check=`grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
     valid_check=`echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
     invalid_check=`echo "$paddle_check" | grep -vxF "$valid_check" || true`
@@ -88,15 +81,15 @@ function enforce_scan(){
     fi
 }
 
-function walk_dir(){
+function grep_file_recursively(){
     local i=0
     local dir_array
     for file in `ls $1`
     do
         if [ -f $1"/"$file ];then
-            in_white_list=$(echo $white_list_str | grep "${file}")
+            in_white_list=$(echo $FILE_WHITE_LIST | grep "${file}")
             if [[ "$in_white_list" == "" ]];then
-                enforce_scan $1"/"$file
+                enforce_grep $1"/"$file
             fi
         fi
         if [ -d $1"/"$file ];then
@@ -106,23 +99,29 @@ function walk_dir(){
     done
     for sub_dir_name in ${dir_array[@]}
     do
-        walk_dir $sub_dir_name
+        grep_file_recursively $sub_dir_name
     done
 }
 
-function walk_file(){
+function grep_file(){
     file_path=$1
     file_name=`echo ${file_path##*/} `
     if [ -f $file_path ];then
         in_white_list=$(echo $white_list_str | grep "${file_name}")
         if [[ "$in_white_list" == "" ]];then
-            enforce_scan $file_path
+            enforce_grep $file_path
         fi
     fi
 }
 
-if [ -f $ROOT_DIR ];then
-    walk_file $ROOT_DIR
-else
-    walk_dir $ROOT_DIR
+main() {
+    if [ -f $ROOT_DIR ];then
+        grep_file $ROOT_DIR
+    else
+        grep_file_recursively $ROOT_DIR
+    fi
+}
+
+if [ "${1}" != "--source-only" ]; then
+    main "${@}"
 fi
