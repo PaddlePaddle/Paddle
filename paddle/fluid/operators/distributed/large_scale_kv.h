@@ -187,8 +187,8 @@ struct VALUE {
     }
   }
 
-  void set(std::vector<std::vector<float>> &&values) {
-    values_ = std::move(values);
+  void set(std::vector<std::vector<float>> *values) {
+    values_ = std::move(*values);
   }
 
   void set(const std::vector<std::string> &names,
@@ -247,7 +247,7 @@ class ValueBlock {
       }
     }
 
-    rwlock_.reset(new RWLock);
+    rwlock_.reset(new framework::RWLock);
   }
 
   ~ValueBlock() {
@@ -263,9 +263,9 @@ class ValueBlock {
   }
 
   void Init(const int64_t &id) {
-    if (Has(id)) {
-      return;
-    }
+    //    if (Has(id)) {
+    //      return;
+    //    }
 
     rwlock_->WRLock();
 
@@ -312,8 +312,10 @@ class ValueBlock {
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
            const std::vector<std::vector<float>> &values) {
+    rwlock_->WRLock();
     auto value = values_.at(id);
     value->set(value_names, values);
+    rwlock_->UNLock();
   }
 
  private:
