@@ -143,7 +143,7 @@ class Trainer(object):
             return False
 
         if self.endpoint != t.endpoint or \
-                self.rank != t.rank :
+                self.rank != t.rank:
             return False
 
         for a, b in zip(self.gpus, t.gpus):
