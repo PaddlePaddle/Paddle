@@ -107,7 +107,7 @@ function grep_file(){
     file_path=$1
     file_name=`echo ${file_path##*/} `
     if [ -f $file_path ];then
-        in_white_list=$(echo $white_list_str | grep "${file_name}")
+        in_white_list=$(echo $FILE_WHITE_LIST | grep "${file_name}")
         if [[ "$in_white_list" == "" ]];then
             enforce_grep $file_path
         fi
