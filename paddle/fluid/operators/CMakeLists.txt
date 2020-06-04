@@ -23,6 +23,8 @@ if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
 endif()
 
+add_subdirectory(amp)
+
 add_subdirectory(reader)
 
 if (NOT WIN32)

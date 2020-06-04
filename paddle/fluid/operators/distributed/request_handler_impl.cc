@@ -96,11 +96,9 @@ bool RequestSendHandler::Handle(const std::string& varname,
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);
       VLOG(3) << "sync: processing received var: " << varname;
-
-      if (invar == nullptr) {
-        LOG(FATAL) << "sync: Can not find server side var: " << varname;
-        return false;
-      }
+      PADDLE_ENFORCE_NOT_NULL(
+          invar, platform::errors::NotFound(
+                     "sync: Can not find server side var %s.", varname));
     }
   }
   return true;

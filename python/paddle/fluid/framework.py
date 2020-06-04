@@ -1867,7 +1867,7 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream'
+        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
     }
 
     def __init__(self,
@@ -3341,8 +3341,6 @@ class IrOpNode(IrNode):
         """
         assert self.node.op() is not None, \
             "The node operator description can not be None."
-        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
-        ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -3565,6 +3563,12 @@ class IrGraph(object):
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
+
+    def create_control_dep_var(self):
+        """
+        create a control var
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
         """
@@ -5455,10 +5459,17 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
+    index = None
+    if device and ':' in device:
+        device, index = device.split(':')
+        if device == 'cpu':
+            raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
+    if index:
+        device = ":".join([device, index])
     pre_device = switch_device(device)
     try:
         yield

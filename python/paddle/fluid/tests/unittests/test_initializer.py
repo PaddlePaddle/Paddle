@@ -474,17 +474,23 @@ class TestBilinearInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.BilinearInitializer())
-        num_ops = 2 if dtype == "float16" else 1
+        num_ops = 2 if dtype == "float16" or dtype == "float64" else 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
         return block
+
+    def test_bilinear_initializer_fp64(self):
+        self.test_bilinear_initializer(dtype='float64')
 
     def test_bilinear_initializer_fp16(self):
         """Test the bilinear initializer with supplied arguments
         """
         block = self.test_bilinear_initializer("float16")
         self.assertTrue(check_cast_op(block.ops[1]))
+
+    def test_type_error(self):
+        self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
 
 
 class TestNumpyArrayInitializer(unittest.TestCase):
