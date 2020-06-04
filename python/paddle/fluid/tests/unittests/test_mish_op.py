@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
 import six
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest, skip_check_grad_ci
 
@@ -45,11 +45,8 @@ class MishTest(OpTest):
         self.init_threshold()
         self.op_type = "mish"
 
-        # mish op contain calculation like: tanh, exp, log, while tanh
-        # may have diff on CPUPlace(see test_activation_op.py::TestTanh)
-        # set dtype as float32 here.
         x_np = np.random.uniform(self.x_range[0], self.x_range[1],
-                                 self.x_shape).astype('float32')
+                                 self.x_shape).astype(self.dtype)
         self.inputs = {'X': x_np}
 
         softplus = x_np * (x_np > self.threshold) + np.exp(x_np) * \
@@ -89,22 +86,16 @@ class MishTestLowerThresh(MishTest):
         self.x_range = [-7, -6]
 
 
+# mish op contain calculation like: tanh, exp, log, while tanh
+# may have diff on CPUPlace(see test_activation_op.py::TestTanh),
+# especially when abs(x) is a large value, only check input value
+# in range [-1, 1] for float64 here.
 class MishTestFP64(MishTest):
     def init_dtype(self):
         self.dtype = 'float64'
 
     def init_input_range(self):
-        self.x_range = [0, 1]
-
-
-class MishTestFP64UpperThresh(MishTestFP64):
-    def init_input_range(self):
-        self.x_range = [6, 7]
-
-
-class MishTestFP64LowerThresh(MishTestFP64):
-    def init_input_range(self):
-        self.x_range = [-7, -6]
+        self.x_range = [-1, 1]
 
 
 if __name__ == "__main__":
