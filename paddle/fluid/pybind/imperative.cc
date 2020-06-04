@@ -23,9 +23,11 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/all_reduce.h"
+#include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/backward_strategy.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
@@ -845,6 +847,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_enable_autocast", &imperative::Tracer::IsAutoCastEnabled,
+                    &imperative::Tracer::SetEnableAutoCast)
       .def_property("_train_mode", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
@@ -874,6 +878,14 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("_generate_unique_name", &imperative::Tracer::GenerateUniqueName,
            py::arg("key") = "eager_tmp")
+      .def("_set_amp_op_list",
+           [](imperative::Tracer &self,
+              const std::unordered_set<std::string> &white_list,
+              const std::unordered_set<std::string> &black_list) {
+             imperative::SetAmpOpList(white_list, black_list);
+           })
+      .def("_get_amp_op_list",
+           [](imperative::Tracer &self) { return imperative::GetAmpOpList(); })
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
