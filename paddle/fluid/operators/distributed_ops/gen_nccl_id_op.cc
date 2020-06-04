@@ -233,9 +233,9 @@ class GenNCCLIdOp : public framework::OperatorBase {
     notify_h.SetProgram(&empty_program);
     notify_h.SetExecutor(&executor);
 
-    distributed::BarrierMonitor::Init(1,
-                                      distributed::BarrierType::kSendBarrier);
+    distributed::BarrierMonitor::Init(1);
     auto *barrier = distributed::BarrierMonitor::GetInstance();
+    barrier->Reset(1, distributed::BarrierType::kSendBarrier);
 
     std::thread server_thread(
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
