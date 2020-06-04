@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 
@@ -95,22 +96,38 @@ class CGenNCCLIdOp : public framework::OperatorBase {
         new RPCSERVER_T(endpoint, 1));
 
     rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(rpc_service.get());
+    distributed::RequestNotifyHandler notify_h(
+        distributed::DistributedMode::kSync, -1);
+
+    rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
+    rpc_service->RegisterRPC(distributed::kRequestNotify, &notify_h);
 
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
+
+    rpc_h.SetRPCServer(rpc_service.get());
     rpc_h.SetScope(scope);
     rpc_h.SetDevCtx(&dev_ctx);
     rpc_h.SetProgram(&empty_program);
     rpc_h.SetExecutor(&executor);
 
+    notify_h.SetRPCServer(rpc_service.get());
+    notify_h.SetScope(scope);
+    notify_h.SetDevCtx(&dev_ctx);
+    notify_h.SetProgram(&empty_program);
+    notify_h.SetExecutor(&executor);
+
+    distributed::BarrierMonitor::Init(1);
+    auto* barrier = distributed::BarrierMonitor::GetInstance();
+    barrier->Reset(1, distributed::BarrierType::kSendBarrier);
+
     std::thread server_thread(
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
-    rpc_service->SetCond(distributed::kRequestSend);
     VLOG(3) << "start getting nccl id from trainer 0...";
-    rpc_service->WaitBarrier(distributed::kRequestSend);
+    barrier->WaitServerWeakup();
     VLOG(3) << "got nccl id and stop server...";
+    barrier->Stop();
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
