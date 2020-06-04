@@ -1421,8 +1421,8 @@ All parameter, weight, gradient are variables in Paddle.
                                           "Cannot parse user input to OpDesc"));
                     PADDLE_ENFORCE_EQ(
                         desc.IsInitialized(), true,
-                        "User OpDesc is not initialized, the reason is: %s",
                         platform::errors::InvalidArgument(
+                            "User OpDesc is not initialized, the reason is: %s",
                             desc.InitializationErrorString()));
                     return OpRegistry::CreateOp(desc);
                   })

@@ -131,15 +131,18 @@ inline std::string TensorDTypeToPyDTypeStr(
 
   _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
 #undef TENSOR_DTYPE_TO_PY_DTYPE
-  PADDLE_THROW(platform::errors::Unimplemented("Unsupported data type %s",
-                                               DataTypeToString(type)));
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Unsupported data type %s", framework::DataTypeToString(type)));
 }
 
 }  // namespace details
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
-  PADDLE_ENFORCE_LT(offset, self.numel());
+  PADDLE_ENFORCE_LT(
+      offset, self.numel(),
+      platform::errors::InvalidArgument(
+          "The offset of item to get exceeds the size of tensor."));
   T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
     b = self.data<T>()[offset];
@@ -156,7 +159,9 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
-  PADDLE_ENFORCE_LT(offset, self->numel(), "x");
+  PADDLE_ENFORCE_LT(
+      offset, self->numel(),
+      platform::errors::InvalidArgument("The offset exceed size of tensor."));
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
 #ifdef PADDLE_WITH_CUDA
@@ -199,13 +204,16 @@ void SetTensorFromPyArrayT(
       paddle::platform::GpuMemcpySync(dst, array.data(), array.nbytes(),
                                       cudaMemcpyHostToDevice);
     } else {
-      PADDLE_THROW(
-          "Incompatible place type: Tensor.set() supports CPUPlace, CUDAPlace "
-          "and CUDAPinnedPlace, but got %s!",
-          place);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+                       "Incompatible place type: Tensor.set() supports "
+                       "CPUPlace, CUDAPlace "
+                       "and CUDAPinnedPlace, but got %s!"),
+                   place);
     }
 #else
-    PADDLE_THROW("Not supported GPU, please compile WITH_GPU option");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Cannot use CUDAPlace in CPU only version, "
+        "Please recompile or reinstall Paddle with CUDA support."));
 #endif
   }
 }
@@ -239,12 +247,12 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
   } else {
-    PADDLE_THROW(
-        "Incompatible data or style type: tensor.set() supports bool, float16, "
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Incompatible data type: tensor.set() supports bool, float16, "
         "float32, "
         "float64, "
         "int8, int16, int32, int64 and uint8, uint16, but got %s!",
-        array.dtype());
+        array.dtype()));
   }
 }
 
@@ -394,7 +402,8 @@ void _sliceDapper(const framework::Tensor *in, framework::Tensor *out,
       _sliceCompute<T, 9>(in, out, ctx, axes, starts);
       break;
     default:
-      PADDLE_THROW("dim size not exepected, current is %d", size);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "dim size should be 1 to 9, current is %d", size));
       break;
   }
 }
@@ -459,7 +468,9 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::UINT8:
       return _sliceAndConcat<uint8_t>(self, obj, dim);
     default:
-      PADDLE_THROW("Not support type %d", src_type);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Not support tensor type: %s",
+          framework::DataTypeToString(src_type)));
   }
 }
 
@@ -530,14 +541,16 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
           static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
     } else {
       py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-      PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
-                        platform::errors::InvalidArgument(
-                            "PyArray must be writable, otherwise memory leak "
-                            "or double free would occur"));
-      PADDLE_ENFORCE_EQ(py_arr.owndata(), true,
-                        platform::errors::InvalidArgument(
-                            "PyArray must own data, otherwise memory leak "
-                            "or double free would occur"));
+      PADDLE_ENFORCE_EQ(
+          py_arr.writeable(), true,
+          platform::errors::InvalidArgument(
+              "PyArray is not writable, in which case memory leak "
+              "or double free would occur"));
+      PADDLE_ENFORCE_EQ(
+          py_arr.owndata(), true,
+          platform::errors::InvalidArgument(
+              "PyArray does not own data, in which case  memory leak "
+              "or double free would occur"));
       platform::CPUPlace place;
       size_t copy_bytes = sizeof_dtype * numel;
       paddle::memory::Copy(place, py_arr.mutable_data(), place, tensor_buf_ptr,
@@ -548,16 +561,23 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
 #ifdef PADDLE_WITH_CUDA
   py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-  PADDLE_ENFORCE(py_arr.writeable() && py_arr.owndata(),
-                 "PyArray must be writable and own data, otherwise memory leak "
-                 "or double free would occur");
+  PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                    platform::errors::InvalidArgument(
+                        "PyArray is not writable, in which case memory leak "
+                        "or double free would occur"));
+  PADDLE_ENFORCE_EQ(py_arr.owndata(), true,
+                    platform::errors::InvalidArgument(
+                        "PyArray does not own data, in which case  memory leak "
+                        "or double free would occur"));
 
   size_t copy_bytes = sizeof_dtype * numel;
   paddle::platform::GpuMemcpySync(py_arr.mutable_data(), tensor_buf_ptr,
                                   copy_bytes, cudaMemcpyDeviceToHost);
   return py_arr;
 #else
-  PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
+  PADDLE_THROW(platform::errors::PermissionDenied(
+      "Cannot use CUDAPlace in CPU only version, "
+      "Please recompile or reinstall Paddle with CUDA support."));
 #endif
 }
 
