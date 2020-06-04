@@ -186,8 +186,9 @@ class Collective(Fleet):
         max_no = -1
         d = {}
         dirs = fs.list_dirs(root_path)
-        for dir in dirs:
-            g = dir.split(".")
+        print("dirs:", dirs)
+        for d in dirs:
+            g = d.split(".")
             if len(g) != 2:
                 continue
 
@@ -254,6 +255,7 @@ class Collective(Fleet):
             assert fs.is_dir(path), "path:%s must be a directory".format(path)
 
         max_no = self._get_last_checkpoint_no(path, fs=fs)
+        print("max_no:", max_no)
         if max_no < 0:
             max_no = -1
 

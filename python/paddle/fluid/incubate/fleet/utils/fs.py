@@ -31,7 +31,7 @@ __all__ = ['FS', 'LocalFS']
 
 class FS(object):
     @abc.abstractmethod
-    def ls(self, fs_path):
+    def ls_dir(self, fs_path):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -89,7 +89,7 @@ class FS(object):
 
 
 class LocalFS(FS):
-    def ls(self, fs_path):
+    def ls_dir(self, fs_path):
         return [f for f in os.listdir(fs_path)]
 
     def mkdirs(self, fs_path):
