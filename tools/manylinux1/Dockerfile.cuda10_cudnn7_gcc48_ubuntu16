@@ -228,7 +228,7 @@ RUN wget https://paddle-ci.gz.bcebos.com/ccache-3.7.9.tar.gz && \
 # install openjdk-8-jdk
 RUN apt-get install -y openjdk-8-jdk
 ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-RUN wget https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service

@@ -68,7 +68,7 @@ RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/
 # install jdk
 RUN yum install -y java-1.7.0-openjdk-devel.x86_64
 ENV JAVA_HOME=/usr/lib/jvm/java-1.7.0-openjdk-1.7.0.3.x86_64
-RUN wget https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
+RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
