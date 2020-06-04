@@ -56,7 +56,7 @@ void BarrierMonitor::DecreaseWorker() {
 }
 
 void BarrierMonitor::Reset(int workers, BarrierType type) {
-  std::unique_lock<std::mutex> lck(mutex_);
+  std::unique_lock<std::mutex> lk(server_mutex_);
 
   workers_ = workers;
   barrier_type = type;

@@ -243,7 +243,6 @@ class GenNCCLIdOp : public framework::OperatorBase {
     for (int i = 0; i < nccl_comm_num; i++) {
       barrier->WaitServerWeakup();
       barrier->Reset(1, distributed::BarrierType::kSendBarrier);
-      barrier->ServerWeakup();
       VLOG(3) << "trainer_id:" << trainer_id
               << " start getting nccl id from trainer 0, nccl_comm_no:" << i;
     }
@@ -253,7 +252,6 @@ class GenNCCLIdOp : public framework::OperatorBase {
         for (int i = 0; i < nccl_comm_num; i++) {
           barrier->WaitServerWeakup();
           barrier->Reset(1, distributed::BarrierType::kSendBarrier);
-          barrier->ServerWeakup();
 
           VLOG(3) << "trainer_id:" << trainer_id
                   << ", inter_trainer_id:" << inter_trainer_id
@@ -265,7 +263,6 @@ class GenNCCLIdOp : public framework::OperatorBase {
         for (int i = 0; i < nccl_comm_num; i++) {
           barrier->WaitServerWeakup();
           barrier->Reset(1, distributed::BarrierType::kSendBarrier);
-          barrier->ServerWeakup();
 
           VLOG(3)
               << "trainer_id:" << trainer_id
@@ -280,6 +277,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", inter_trainer_id:" << inter_trainer_id
             << ", exter_trainer_id:" << exter_trainer_id
             << " got nccl id and stop server...";
+    barrier->Stop();
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
