@@ -17,12 +17,13 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
 import os
-from paddle.distributed.fs import LocalFS
-from paddle.distributed.hdfs import HDFSClient
+
+from paddle.fluid.incubate.fleet.utils.fs import LocalFS
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 
 class FleetTest(unittest.TestCase):
-    def _test_check_point(self, fs, dir_path):
+    def _test_checkpoint(self, fs, dir_path):
         file_name = "persistables"
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -48,32 +49,32 @@ class FleetTest(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         status = TrainStatus(2)
-        fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
+        fleet.save_checkpoint(exe, dir_path, train_status=status, fs=fs)
         n1 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
 
-        status2 = fleet.load_check_point(exe, dir_path, trainer_id=0, fs=fs)
+        status2 = fleet.load_checkpoint(exe, dir_path, trainer_id=0, fs=fs)
         self.assertEqual(status2, status)
 
-        fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
+        fleet.save_checkpoint(exe, dir_path, train_status=status, fs=fs)
         n2 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
         self.assertEqual(n2, n1 + 1)
 
-        fleet.clean_redundant_check_points(dir_path, fs=fs)
+        fleet.clean_redundant_checkpoints(dir_path, fs=fs)
 
     def setUp(self):
         fs = LocalFS()
         fs.mkdirs("./checkpoint_test_hdfs")
         fs.mkdirs("./checkpoint_test_local")
 
-    def test_hdfs_check_point(self):
+    def test_hdfs_checkpoint(self):
         fs = HDFSClient("/usr/lib/jvm/java-8-openjdk-amd64", None)
         dir_path = "./checkpoint_test_hdfs"
-        self._test_check_point(fs, dir_path)
+        self._test_checkpoint(fs, dir_path)
 
-    def test_local_check_point(self):
+    def test_local_checkpoint(self):
         fs = LocalFS()
         dir_path = "./checkpoint_test_local"
-        self._test_check_point(fs, dir_path)
+        self._test_checkpoint(fs, dir_path)
 
 
 if __name__ == '__main__':

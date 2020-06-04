@@ -102,7 +102,9 @@ class HDFSClient(FS):
 
             if ret_code == 0:
                 break
-            time.sleep(retry_sleep_second)
+
+            if x < retry_times:
+                time.sleep(retry_sleep_second)
 
         return ret_code, ret_out, ret_err
 
@@ -140,7 +142,7 @@ class HDFSClient(FS):
         """
         exist_cmd = ['-test', '-e', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(
-            exist_cmd, retry_times=1)
+            exist_cmd, retry_times=0)
 
         if returncode:
             _logger.error("HDFS is_exist HDFS path: {} failed".format(
@@ -166,7 +168,7 @@ class HDFSClient(FS):
             return False
 
         dir_cmd = ['-test', '-d', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
+        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=0)
 
         if returncode:
             _logger.error("HDFS path: {} failed is not a directory".format(
@@ -192,7 +194,7 @@ class HDFSClient(FS):
             return False
 
         dir_cmd = ['-test', '-d', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
+        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=0)
 
         if returncode == 0:
             _logger.error("HDFS path: {} failed is not a file".format(

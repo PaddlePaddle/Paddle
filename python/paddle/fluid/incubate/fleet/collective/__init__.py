@@ -248,8 +248,10 @@ class Collective(Fleet):
         if main_program == None:
             main_program = self._transpiled_program
 
-        if not fs.stat(path):
-            fs.mkdir(path)
+        if not fs.is_exist(path):
+            fs.mkdirs(path)
+        else:
+            assert fs.is_dir(path), "path:%s must be a directory".format(path)
 
         max_no = self._get_last_checkpoint_no(path, fs=fs)
         if max_no < 0:
@@ -265,8 +267,13 @@ class Collective(Fleet):
         if fs.need_upload_download():
             cache_path = "{}/{}.{}.saved_cache".format(
                 local_cache_path, self._checkpoint_prefix, max_no + 1)
-            if not local_fs.stat(cache_path):
-                local_fs.mkdir(cache_path)
+            if not local_fs.is_exist(cache_path):
+                local_fs.mkdirs(cache_path)
+            else:
+                assert fs.is_dir(
+                    path), "cache path:%s must be a directory".format(
+                        cache_path)
+
             saved_path = cache_path
 
         self.save_persistables(
