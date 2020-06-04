@@ -54,9 +54,10 @@ class FakeDataReader(object):
                 img = np.random.normal(0.485, 0.229,
                                        [3, cfg.input_size, cfg.input_size])
                 gt_boxes_node1 = np.random.randint(
-                    low=0, high=cfg.input_size / 2, size=[1, 2])
-                gt_boxes_node2 = np.random.randint(
-                    low=cfg.input_size / 2, high=cfg.input_size, size=[1, 2])
+                    low=cfg.input_size / 4,
+                    high=cfg.input_size / 2,
+                    size=[1, 2])
+                gt_boxes_node2 = gt_boxes_node1 + cfg.input_size / 4
                 gt_boxes = np.concatenate(
                     (gt_boxes_node1, gt_boxes_node2), axis=1)
                 gt_labels = np.random.randint(
