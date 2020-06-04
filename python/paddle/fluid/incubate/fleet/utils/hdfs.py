@@ -27,6 +27,9 @@ import logging
 from fs import FS
 import paddle.fluid as fluid
 
+from pathlib import PurePosixPath
+import shutil
+
 __all__ = ["HDFSClient"]
 
 
