@@ -367,27 +367,25 @@ class LoopTransformer(gast.NodeTransformer):
     def get_for_stmt_nodes(self, node):
         # TODO: consider for - else in python
 
-        # 1. check whether need to transform
-        # NOTE: Current need transform cases:
-        #   1). for x in range(VarBase[0]|VarBase.numpy()[0])
-        #   2). for x in VarBase|VarBase.numpy()
-        #   3). for i, x in enumerate(VarBase|VarBase.numpy())
-        if not self.name_visitor.is_control_flow_loop(node):
-            return [node]
-
-        # 2. get key statements for different cases
-        # NOTE: three key statements:
+        # 1. get key statements for different cases
+        # NOTE 1: three key statements:
         #   1). init_stmts: list[node], prepare nodes of for loop, may not only one
         #   2). cond_stmt: node, condition node to judge whether continue loop
         #   3). body_stmts: list[node], updated loop body, sometimes we should change
         #       the original statement in body, not just append new statement
+        #
+        # NOTE 2: The following `for` statements will be transformed to `while` statements:
+        #   1). for x in range(*)
+        #   2). for x in iter_var
+        #   3). for i, x in enumerate(*)
+
         current_for_node_parser = ForNodeVisitor(node)
         stmts_tuple = current_for_node_parser.parse()
         if stmts_tuple is None:
             return [node]
         init_stmts, cond_stmt, body_stmts = stmts_tuple
 
-        # 3. get original loop vars
+        # 2. get original loop vars
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
         # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
@@ -402,7 +400,7 @@ class LoopTransformer(gast.NodeTransformer):
             if iter_var_name not in create_var_names:
                 loop_var_names.remove(iter_var_name)
 
-        # 4. prepare result statement list
+        # 3. prepare result statement list
         new_stmts = []
         # Python can create variable in loop and use it out of loop, E.g.
         #
@@ -415,13 +413,10 @@ class LoopTransformer(gast.NodeTransformer):
             if "." not in name:
                 new_stmts.append(create_static_variable_gast_node(name))
 
-        # 5. append init statements
+        # 4. append init statements
         new_stmts.extend(init_stmts)
-        # for x in range(10) in dygraph should be convert into static tensor + 1 <= 10
-        for name in loop_var_names:
-            new_stmts.append(to_static_variable_gast_node(name))
 
-        # 6. create & append condition function node
+        # 5. create & append condition function node
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_CONDITION_PREFIX),
             args=gast.arguments(
@@ -449,7 +444,7 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(condition_func_node)
 
-        # 7. create & append loop body function node
+        # 6. create & append loop body function node
         # append return values for loop body
         body_stmts.append(
             gast.Return(value=generate_name_node(
@@ -481,7 +476,7 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
 
-        # 8. create & append while loop node 
+        # 7. create & append while loop node
         while_loop_node = create_while_node(condition_func_node.name,
                                             body_func_node.name, loop_var_names)
         new_stmts.append(while_loop_node)
