@@ -109,7 +109,7 @@ class BarrierMonitor {
     PADDLE_ENFORCE_GT(workers, 0, platform::errors::InvalidArgument(
                                       "trainers must have one or more"));
 
-    this(workers, BarrierType::kRecvBarrier, kMaxWaitMS);
+    BarrierMonitor(workers, BarrierType::kRecvBarrier, kMaxWaitMS);
   }
 
   explicit BarrierMonitor(int workers, BarrierType type, int64_t max_wait_times)
