@@ -85,14 +85,12 @@ class FSTest(unittest.TestCase):
     def test_hdfs(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None)
         self._test_dirs(fs)
-        #self._test_upload_file(fs)
+        self._test_upload_file(fs)
 
-    """
     def test_local(self):
         fs = LocalFS()
         self._test_dirs(fs)
         self._test_touch_file(fs)
-    """
 
 
 if __name__ == '__main__':
