@@ -52,6 +52,10 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
 endif()
 
+if(APPLE OR WIN32)
+    LIST(REMOVE_ITEM TEST_OPS test_hdfs)
+endif()
+
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future

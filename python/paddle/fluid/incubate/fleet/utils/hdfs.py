@@ -24,7 +24,8 @@ import copy
 import errno
 import time
 import logging
-from fs import FS
+from . import fs
+from .fs import FS
 import paddle.fluid as fluid
 
 from pathlib import PurePosixPath
