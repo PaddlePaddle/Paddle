@@ -89,10 +89,10 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input("conv2d", "Input");
+          ->assert_is_op_input(conv_type(), "Input");
   patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
                                               name_scope_);
-  conv_ac_pattern(conv_input, false /*with_eltwise_add*/);
+  conv_ac_pattern(conv_input, conv_type(), false /*with_eltwise_add*/);
 
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -163,10 +163,10 @@ void ConvEltwiseAddAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
       gpd.mutable_pattern()
           ->NewNode(patterns::PDNodeName(name_scope_, "conv_input"))
           ->AsInput()
-          ->assert_is_op_input("conv2d", "Input");
+          ->assert_is_op_input(conv_type(), "Input");
   patterns::ConvAffineChannel conv_ac_pattern(gpd.mutable_pattern(),
                                               name_scope_);
-  conv_ac_pattern(conv_input, true /*with_eltwise_add*/);
+  conv_ac_pattern(conv_input, conv_type(), true /*with_eltwise_add*/);
 
   int found_conv_ac_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -216,3 +216,8 @@ REGISTER_PASS(conv_affine_channel_fuse_pass,
               paddle::framework::ir::ConvAffineChannelFusePass);
 REGISTER_PASS(conv_eltwiseadd_affine_channel_fuse_pass,
               paddle::framework::ir::ConvEltwiseAddAffineChannelFusePass);
+REGISTER_PASS(depthwise_conv_affine_channel_fuse_pass,
+              paddle::framework::ir::DepthwiseConvAffineChannelFusePass);
+REGISTER_PASS(
+    depthwise_conv_eltwiseadd_affine_channel_fuse_pass,
+    paddle::framework::ir::DepthwiseConvEltwiseAddAffineChannelFusePass);
