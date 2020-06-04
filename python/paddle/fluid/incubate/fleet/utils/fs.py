@@ -83,6 +83,10 @@ class FS(object):
     def upload_dir(self, local_dir, dest_dir, overwrite=False):
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def list_dirs(self, fs_path):
+        raise NotImplementedError
+
 
 class LocalFS(FS):
     def ls(self, fs_path):
@@ -131,3 +135,16 @@ class LocalFS(FS):
 
     def mv(self, src_path, dst_path, overwrite=False):
         return self.rename(src_path, dst_path, overwrite=overwrite)
+
+    def list_dirs(self, fs_path):
+        if not self.exists(fs_path):
+            return []
+
+        dirs = [
+            f for f in os.listdir(fs_path) if os.path.isdir(fs_path + "/" + f)
+        ]
+        files = [
+            f for f in os.listdir(fs_path) if os.path.isfile(fs_path + "/" + f)
+        ]
+
+        return dirs, files

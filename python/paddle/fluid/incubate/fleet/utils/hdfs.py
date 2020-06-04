@@ -142,7 +142,7 @@ class HDFSClient(FS):
         """
         exist_cmd = ['-test', '-e', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(
-            exist_cmd, retry_times=0)
+            exist_cmd, retry_times=1)
 
         if returncode:
             _logger.error("HDFS is_exist HDFS path: {} failed".format(
@@ -168,7 +168,7 @@ class HDFSClient(FS):
             return False
 
         dir_cmd = ['-test', '-d', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=0)
+        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
 
         if returncode:
             _logger.error("HDFS path: {} failed is not a directory".format(
@@ -194,7 +194,7 @@ class HDFSClient(FS):
             return False
 
         dir_cmd = ['-test', '-d', hdfs_path]
-        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=0)
+        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
 
         if returncode == 0:
             _logger.error("HDFS path: {} failed is not a file".format(
@@ -230,7 +230,7 @@ class HDFSClient(FS):
         else:
             del_cmd = ['-rm', hdfs_path]
 
-        returncode, output, errors = self.__run_hdfs_cmd(del_cmd, retry_times=0)
+        returncode, output, errors = self.__run_hdfs_cmd(del_cmd, retry_times=1)
 
         if returncode:
             _logger.error("HDFS path: {} delete files failure".format(
@@ -620,3 +620,28 @@ class HDFSClient(FS):
 
     def mv(self, src_path, dst_path, overwrite=False):
         return self.rename(src_path, dst_path, overwrite=overwrite)
+
+    def list_dir(self, fs_path):
+        """	
+        list directory under fs_path, and only give the pure name, not include the fs_path	
+        """
+        cmd = "{} -ls {}".format(self._base_cmd, fs_path)
+        lines = self.__run_hdfs_cmd(cmdi, retry_times=1)
+
+        dirs = []
+        files = []
+        for line in lines:
+            arr = line.split()
+            if len(arr) != 8:
+                continue
+
+            if fs_path not in arr[7]:
+                continue
+
+            p = PurePosixPath(arr[7])
+            if arr[0][0] == 'd':
+                dirs.append(p.name)
+            else:
+                files.append(p.name)
+
+        return dirs, files

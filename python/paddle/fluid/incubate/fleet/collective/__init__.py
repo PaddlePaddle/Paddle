@@ -185,7 +185,7 @@ class Collective(Fleet):
         """
         max_no = -1
         d = {}
-        dirs = fs.list_dirs(root_path)
+        dirs, _ = fs.list_dirs(root_path)
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
