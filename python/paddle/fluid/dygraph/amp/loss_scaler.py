@@ -15,20 +15,48 @@
 from __future__ import print_function
 from paddle.fluid import core, dygraph
 from paddle.fluid.framework import _varbase_creator
+import paddle.fluid.data_feeder as data_feeder
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
 import numpy as np
 
-__all__ = ['Scaler']
+__all__ = ['AmpScaler']
 
 
-class Scaler(object):
-    def __init__(self,
-                 init_scale=2.**16,
-                 growth_factor=2.0,
-                 backoff_factor=0.5,
-                 growth_interval=2000,
-                 enable=True):
+class AmpScaler(object):
+    def __init__(
+            self,
+            enable=True,
+            init_loss_scaling=2.**15,
+            incr_ratio=2.0,
+            decr_ratio=0.5,
+            incr_every_n_steps=1000,
+            decr_every_n_nan_or_inf=2, ):
+        """
+        :api_attr: imperative
+
+        AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
+        mode. It controls the scaling of loss, helps avoiding numerical overflow.
+        The object of this class has two methods `scale()`, `minimize()`.
+
+        `scale()` is used to multiply the loss by a scale ratio.
+        `minimize()` is similar as `Optimizer.minimize()`, performs parameters updating.
+
+        Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
+        imperative mode.
+
+        Args:
+            enable(bool, optional): Enable loss scaling or not. Default is True.
+            init_loss_scaling (float, optional): The initial loss scaling factor. Default is 2**15.
+            incr_ratio(float, optional): The multiplier to use when increasing the loss 
+                            scaling. Default is 2.0.
+            decr_ratio(float, optional): The less-than-one-multiplier to use when decreasing 
+                            the loss scaling. Default is 0.5.
+            incr_every_n_steps(int, optional): Increases loss scaling every n consecutive 
+                                    steps with finite gradients. Default is 1000.
+            decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n 
+                                        accumulated steps with nan or inf gradients. Default is 2.
+        """
         if enable and not core.is_compiled_with_cuda():
             warnings.warn(
                 'Auto Mixed Precision can only be enabled with Paddle compiled with CUDA.'
@@ -38,46 +66,65 @@ class Scaler(object):
             self._enable = enable
 
         if self._enable:
-            assert growth_factor > 1.0, "The growth factor must be > 1.0."
-            assert backoff_factor < 1.0, "The backoff factor must be < 1.0."
+            assert incr_ratio > 1.0, "The incr_ratio must be > 1.0."
+            assert decr_ratio < 1.0, "The decr_ratio must be < 1.0."
 
-            self._init_scale = init_scale
-            # self._scale will be lazily initialized during the first call to scale()
-            self._growth_factor = growth_factor
-            self._backoff_factor = backoff_factor
-            self._growth_interval = growth_interval
-            #self._init_growth_tracker = 0
-            # self._growth_tracker will be lazily initialized during the first call to scale()
-            self._growth_tracker = 0
-            # READY = self.READY
-            # self._per_optimizer_states = defaultdict(lambda: {"stage": READY, "found_inf_per_device": {}})
+            self._init_loss_scaling = init_loss_scaling
+            self._incr_ratio = incr_ratio
+            self._decr_ratio = decr_ratio
+            self._incr_every_n_steps = incr_every_n_steps
+            self._decr_every_n_nan_or_inf = decr_every_n_nan_or_inf
+            self._incr_count = 0
+            self._decr_count = 0
+
             self._found_inf = dygraph.to_variable(
                 np.array([0]).astype(np.int32))
             self._scale = dygraph.to_variable(
-                np.array([self._init_scale]).astype(np.float32))
+                np.array([self._init_loss_scaling]).astype(np.float32))
             self._cache_founf_inf = None
 
-    def scale(self, output):
+    def scale(self, var):
         """
-        Multiplies ('scales') a tensor or list of tensors by the scale factor.
-        Returns scaled outputs.  If this instance of :class:`Scaler` is not enabled, outputs are returned
-        unmodified.
-        Arguments:
-            outputs (Tensor or iterable of Tensors):  Outputs to scale.
+        Multiplies a variable(Tensor) by the scale factor and returns scaled outputs.  
+        If this instance of :class:`AmpScaler` is not enabled, output are returned unmodified.
+
+        Args:
+            var (Variable):  The variable to scale.
+        Returns:
+            The scaled variable or original variable.
+        """
+        data_feeder.check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
+
+        if not self._enable:
+            return var
+
+        return var * self._scale
+
+    def minimize(self, optimizer, new_loss_scaling=None, *args, **kwargs):
+        """
+        Similar as `Optimizer.minimize()`, performs parameters updating.
+        It first unscale the scaled gradients of paramers, then do one step parameter updating,
+        and finally update loss scaling ratio. 
+
+        Args:
+            optimizer(Optimizer):  The optimizer used to update parameters.
+            new_loss_scaling(float, optional):  New loss_scaling ratio.
         """
         if not self._enable:
-            return output
+            return
 
-        if isinstance(output, core.VarBase):
-            return output * self._scale
-        elif isinstance(outputs, list) or isinstance(outputs, tuple):
-            return [self.scale(var) for var in output]
+        #  unscale the grad
+        self._unscale(optimizer)
+
+        if self._found_inf:
+            self._cache_founf_inf = True
         else:
-            raise ValueError(
-                "output must be a Variable or an list/tuple of Variables")
+            optimizer.minimize(*args, **kwargs)
+            self._cache_founf_inf = False
 
-    @dygraph.no_grad
-    def unscale_(self, optimizer):
+        self.update(new_loss_scaling)
+
+    def _unscale(self, optimizer):
         if not self._enable:
             return
         inv_scale = 1.0 / self._scale
@@ -88,39 +135,30 @@ class Scaler(object):
         core.ops.amp_check_finite_and_scale(param_grads, inv_scale, param_grads,
                                             self._found_inf)
 
-    def step(self, optimizer, *args, **kwargs):
-        if not self._enable:
-            return
-
-        #  unscale the grad
-        self.unscale_(optimizer)
-
-        if self._found_inf:
-            self._cache_founf_inf = True
-        else:
-            optimizer.minimize(*args, **kwargs)
-            self._cache_founf_inf = False
-
-    def update(self, new_scale=None):
+    def _update(self, new_loss_scaling=None):
         """
-        Updates the scale factor.
+        Updates the loss_scaling.
         """
         if not self._enable:
             return
 
-        if new_scale is not None:
+        if new_loss_scaling is not None:
             self._scale = dygraph.to_variable(
-                np.array([new_scale]).astype(np.float32))
+                np.array([new_loss_scaling]).astype(np.float32))
             return
 
         if self._cache_founf_inf:
-            self._scale = self._scale * self._backoff_factor
-            self._growth_tracker = 0
+            self._incr_count = 0
+            self._decr_count = self._incr_count + 1
+            if self._decr_count == self.decr_every_n_nan_or_inf:
+                self._scale = self._scale * self._decr_ratio
+                self._decr_count
             print('found infinite', float(self._scale))
         else:
-            self._growth_tracker = self._growth_tracker + 1
-            if self._growth_tracker == self._growth_interval:
-                self._scale = self._scale * self._growth_factor
-                self._growth_tracker = 0
+            self._decr_count = 0
+            self._incr_count = self._incr_count + 1
+            if self._incr_count == self._incr_every_n_steps:
+                self._scale = self._scale * self._incr_ratio
+                self._incr_count = 0
 
         return

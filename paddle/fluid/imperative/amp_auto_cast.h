@@ -25,21 +25,21 @@ namespace imperative {
 class AutoCastGuard {
  public:
   AutoCastGuard(std::shared_ptr<Tracer> tracer, bool guard_mode)
-      : tracer_(tracer), guard_mode_(guard_mode) {
+      : tracer_(tracer) {
     pre_mode_ = tracer_->IsAutoCastEnabled();
     if (pre_mode_ != guard_mode) {
-      tracer_->SetEnableAutoCast(guard_mode_);
+      tracer_->SetEnableAutoCast(guard_mode);
     }
   }
 
   ~AutoCastGuard() { tracer_->SetEnableAutoCast(pre_mode_); }
 
+  // forbid copy and operator=
   AutoCastGuard(const AutoCastGuard& guard) = delete;
   AutoCastGuard& operator=(const AutoCastGuard& guard) = delete;
 
  private:
   std::shared_ptr<Tracer> tracer_;
-  bool guard_mode_;
   bool pre_mode_;
 };
 

@@ -16,15 +16,16 @@ from __future__ import print_function
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from paddle.fluid import core
 import contextlib
-from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only
+import paddle.fluid.framework as framework
+from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags
 import warnings
 import copy
 
-__all__ = ['autocast']
+__all__ = ['amp_guard']
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
-white_list = {
+WHITE_LIST = {
     'conv2d',
     'matmul',
     'mul',
@@ -32,7 +33,7 @@ white_list = {
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # dangerous and whose effects may also be observed in downstream ops.
-black_list = {
+BLACK_LIST = {
     'exp',
     'square',
     'log',
@@ -46,6 +47,18 @@ black_list = {
     'cross_entropy2',
 }
 
+AMP_RELATED_FLAGS = [
+    'FLAGS_cudnn_exhaustive_search',
+    'FLAGS_conv_workspace_size_limit',
+    'FLAGS_cudnn_batchnorm_spatial_persistent',
+]
+
+AMP_RELATED_FLAGS_SETTING = {
+    'FLAGS_cudnn_exhaustive_search': 1,
+    'FLAGS_conv_workspace_size_limit': 1000,
+    'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
+}
+
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
@@ -53,8 +66,8 @@ def _update_list(custom_white_list, custom_black_list):
     """
     Update black and white list according to users' custom list.
     """
-    _white_list = copy.copy(white_list)
-    _black_list = copy.copy(black_list)
+    _white_list = copy.copy(WHITE_LIST)
+    _black_list = copy.copy(BLACK_LIST)
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
@@ -75,7 +88,42 @@ def _update_list(custom_white_list, custom_black_list):
 
 @signature_safe_contextmanager
 @dygraph_only
-def autocast(enable=True, custom_white_list=None, custom_black_list=None):
+def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
+    """
+    :api_attr: imperative
+
+    Create a context which enables autocast of operators executed in imperative mode.
+    If enabled, the input data type (float32 or float16) of each operator is decided 
+    by autocast algorithm for better performance. 
+    
+    Commonly, it is used together with `AmpScaler` to achieve Auto-Mixed-Precision in 
+    imperative mode.
+
+    Args:
+        enable(bool, optional): Enable loss scaling or not. Default is True.
+        custom_white_list(set|list, optional): The custom white_list.
+        custom_black_list(set|list, optional): The custom black_list.
+        
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
+        with fluid.dygraph.guard():
+            conv2d = Conv2D(3, 2, 3)
+            data = to_variable(data)
+            with fluid.dygraph.amp_guard():
+                conv = conv2d(data)
+                print(conv.dtype) # FP16
+            with fluid.dygraph.amp_guard(enable=False):
+                conv = conv2d(data)
+                print(conv.dtype) # FP32
+
+    """
+
     if enable and not core.is_compiled_with_cuda():
         warnings.warn(
             'Auto Mixed Precision can only be enabled with Paddle compiled with CUDA.'
@@ -86,22 +134,29 @@ def autocast(enable=True, custom_white_list=None, custom_black_list=None):
         raise Exception(
             "current_tracer is None, maybe it is not in imperative mode.")
 
-    _white_list = white_list
-    _black_list = black_list
+    # use default white_list and black_list if no custom lists provided
+    _white_list = WHITE_LIST
+    _black_list = BLACK_LIST
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
                                                 custom_black_list)
 
     if tracer:
-        original_val = tracer._enable_autocast
+        # enable auto_cast
+        original_enable = tracer._enable_autocast
+        tracer._enable_autocast = original_enable
+        # set amp op list
         original_white_list, original_black_list = tracer._get_amp_op_list()
-
-        tracer._enable_autocast = enable
         tracer._set_amp_op_list(_white_list, _black_list)
+        # set amp related flags
+        original_flags = framework.get_flags(AMP_RELATED_FLAGS)
+        framework.set_flags(AMP_RELATED_FLAGS_SETTING)
 
+    # restore status
     try:
         yield
     finally:
         if tracer:
-            tracer._enable_autocast = original_val
+            tracer._enable_autocast = original_enable
             tracer._set_amp_op_list(original_white_list, original_black_list)
+            framework.set_flags(original_flags)
