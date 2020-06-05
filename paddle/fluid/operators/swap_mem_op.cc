@@ -75,19 +75,6 @@ class SwapMemCPUToGPUOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename T>
-class SwapMemCPUToGPUGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("swapmem_gpu2cpu");
-    op->SetInput("X", this->OutputGrad("Out"));
-    op->SetOutput("Out", this->InputGrad("X"));
-  }
-};
-
 class SwapMemGPUToCPUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -96,19 +83,6 @@ class SwapMemGPUToCPUOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       SwapMemGPUToCPU Operator.
       )DOC");
-  }
-};
-
-template <typename T>
-class SwapMemGPUToCPUGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("swapmem_cpu2gpu");
-    op->SetInput("X", this->OutputGrad("Out"));
-    op->SetOutput("Out", this->InputGrad("X"));
   }
 };
 
@@ -158,10 +132,10 @@ class SwapMemGPUToCPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(swapmem_cpu2gpu, ops::SwapMemCPUToGPUOp,
-                  ops::SwapMemCPUToGPUOpMaker,
-                  ops::SwapMemCPUToGPUGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SwapMemCPUToGPUGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    swapmem_cpu2gpu, ops::SwapMemCPUToGPUOp, ops::SwapMemCPUToGPUOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CUDA_KERNEL(
     swapmem_cpu2gpu,
@@ -170,10 +144,10 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SwapMemCPUToGPUKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SwapMemCPUToGPUKernel<paddle::platform::CUDADeviceContext, double>);
 
-REGISTER_OPERATOR(swapmem_gpu2cpu, ops::SwapMemGPUToCPUOp,
-                  ops::SwapMemGPUToCPUOpMaker,
-                  ops::SwapMemGPUToCPUGradOpMaker<paddle::framework::OpDesc>,
-                  ops::SwapMemGPUToCPUGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    swapmem_gpu2cpu, ops::SwapMemGPUToCPUOp, ops::SwapMemGPUToCPUOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CUDA_KERNEL(
     swapmem_gpu2cpu,
