@@ -13,11 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cuda.h>
+#include <limits>
 #include "paddle/fluid/operators/amp/amp_check_finite_and_scale_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
+
+// std::isfinite has some problem on windows msvc.
+// NOTE: x == x checks NAN, std::numeric_limits::infinity checks INF.
+// Use bitwise & instead of logical && for better performance.
+// Ref: https://stackoverflow.com/questions/14580168/stdisfinite-on-msvc
+template <typename T>
+inline bool __device__ isfinite(T x) {
+  return (x == x) & (std::fabs(x) != std::numeric_limits<T>::infinity());
+}
 
 template <typename T>
 __global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
@@ -25,7 +35,7 @@ __global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
-    if (!std::isfinite(in[idx])) {
+    if (!isfinite(in[idx])) {
       *found_inf = 1;
     }
     out[idx] = *found_inf ? in[idx] : in[idx] * scale[0];
