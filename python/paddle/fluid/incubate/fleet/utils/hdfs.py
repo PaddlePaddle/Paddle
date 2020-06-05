@@ -114,7 +114,6 @@ class HDFSClient(FS):
         cmd = "{} -test -e {} ; echo $?".format(self._base_cmd, fs_path)
 
         test = self._run_cmd(cmd)
-        print("test", test)
         if test[0].strip() == "0":
             return True
 
