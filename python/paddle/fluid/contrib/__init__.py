@@ -36,6 +36,7 @@ from . import mixed_precision
 from .mixed_precision import *
 from . import layers
 from .layers import *
+from .swap_memory import *
 
 __all__ = []
 __all__ += decoder.__all__
@@ -48,3 +49,4 @@ __all__ += utils.__all__
 __all__ += extend_optimizer.__all__
 __all__ += ['mixed_precision']
 __all__ += layers.__all__
+__all__ += swap_memory.__all__
