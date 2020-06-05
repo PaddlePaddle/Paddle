@@ -322,7 +322,6 @@ class Collective(Fleet):
         real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)
         load_path = real_path
         if fs.need_upload_download():
-            print("download {} to {}".format(real_path, cache_path))
             fs.download(real_path, cache_path)
             load_path = cache_path
 
