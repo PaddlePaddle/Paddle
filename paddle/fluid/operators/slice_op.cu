@@ -94,17 +94,17 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
     dim3 blocks((numel - 1) / PADDLE_CUDA_NUM_THREADS + 1);
     dim3 threads(PADDLE_CUDA_NUM_THREADS);
     auto stream = ctx.cuda_device_context().stream();
-
-    auto out_shape = framework::vectorize<int64_t>(out_dims);
-    thrust::device_vector<int64_t> out_dims_vec(out_shape.begin(),
-                                                out_shape.end());
-    auto in_shape = framework::vectorize<int64_t>(in_dims);
-    thrust::device_vector<int64_t> in_dims_vec(in_shape.begin(),
-                                               in_shape.end());
-    thrust::device_vector<int64_t> offsets_vec(offsets.begin(), offsets.end());
-    const int64_t* out_dims_ptr = thrust::raw_pointer_cast(out_dims_vec.data());
-    const int64_t* in_dims_ptr = thrust::raw_pointer_cast(in_dims_vec.data());
-    const int64_t* offsets_ptr = thrust::raw_pointer_cast(offsets_vec.data());
+    auto out_shape = framework::vectorize<int>(out_dims);
+    auto in_shape = framework::vectorize<int>(in_dims);
+    Tensor out_dims_tensor;
+    Tensor in_dims_tensor;
+    Tensor offsets_tensor;
+    framework::TensorFromVector<int>(out_shape, ctx.device_context(), &out_dims_tensor);
+    framework::TensorFromVector<int>(in_shape, ctx.device_context(), &in_dims_tensor);
+    framework::TensorFromVector<int>(offsets, ctx.device_context(), &offsets_tensor);
+    const int*  out_dims_ptr = out_dims_tensor.data<int>();
+    const int*  in_dims_ptr = in_dims_tensor.data<int>();
+    const int*  offsets_ptr = offsets_tensor.data<int>();
 
     switch (rank) {
       case 1:
