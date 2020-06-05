@@ -143,6 +143,7 @@ endif()
 
 if(WITH_NCCL)
      add_definitions("-DPADDLE_WITH_NCCL")
+     include(nccl)
 else()
      if(WITH_GPU)
          MESSAGE(WARNING "If the environment is multi-card, the WITH_NCCL option needs to be turned on, otherwise only a single card can be used.")
