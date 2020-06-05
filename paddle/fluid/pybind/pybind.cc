@@ -1511,13 +1511,13 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("cmd"), py::arg("time_out") = 1 * 60 * 1000,
       py::arg("sleep_inter") = -1, py::arg("print_cmd") = false);
   m.def("shell_execute_cmd",
-        [](const std::string &cmd, std::string &output,
-           int time_out = 1 * 60 * 1000, int sleep_inter = 3000,
-           bool print_cmd = false) -> int {
-          return paddle::framework::shell_execute_cmd(cmd, output, time_out,
+        [](const std::string &cmd, int time_out = 1 * 60 * 1000,
+           int sleep_inter = 3000,
+           bool print_cmd = false) -> std::vector<std::string> {
+          return paddle::framework::shell_execute_cmd(cmd, time_out,
                                                       sleep_inter, print_cmd);
         },
-        py::arg("cmd"), py::arg("output"), py::arg("time_out") = 1 * 60 * 1000,
+        py::arg("cmd"), py::arg("time_out") = 1 * 60 * 1000,
         py::arg("sleep_inter") = 3000, py::arg("print_cmd") = false);
 
 #ifdef PADDLE_WITH_CUDA

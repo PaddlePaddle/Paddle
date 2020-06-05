@@ -38,7 +38,7 @@ class HDFSClient(FS):
     def __init__(self,
                  hadoop_home,
                  configs,
-                 time_out=20 * 60 * 1000,
+                 time_out=10 * 60 * 1000,
                  sleep_inter=1000):
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
@@ -55,10 +55,9 @@ class HDFSClient(FS):
         self._base_cmd = " ".join(self.pre_commands)
 
     def _run_cmd(self, cmd):
-        output = ""
-        ret = fluid.core.shell_execute_cmd(cmd, output, self._time_out,
-                                           self._sleep_inter)
-        assert ret == 0, "execute cmd:{} error:{}".format(cmd, output)
+        ret, output = fluid.core.shell_execute_cmd(cmd, self._time_out,
+                                                   self._sleep_inter)
+        assert ret == "0", "execute cmd:{} error:{}".format(cmd, output)
         if len(output) <= 0:
             return []
 
@@ -115,6 +114,7 @@ class HDFSClient(FS):
         cmd = "{} -test -e {} ; echo $?".format(self._base_cmd, fs_path)
 
         test = self._run_cmd(cmd)
+        print("test", test)
         if test[0].strip() == "0":
             return True
 

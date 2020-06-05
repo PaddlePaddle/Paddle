@@ -301,8 +301,8 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 #endif
 }
 
-int shell_execute_cmd(const std::string& cmd, std::string& output,  // NOLINT
-                      int time_out, int sleep_inter, bool print_cmd) {
+static int _shell_execute_cmd(const std::string& cmd, std::string* output,
+                              int time_out, int sleep_inter, bool print_cmd) {
 #if defined _WIN32 || defined __APPLE__
   PADDLE_THROW(platform::errors::Unimplemented(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
@@ -311,7 +311,7 @@ int shell_execute_cmd(const std::string& cmd, std::string& output,  // NOLINT
   int err_no = 0;
   platform::Timer timer;
   do {
-    output = "";
+    *output = "";
     if (print_cmd) {
       LOG(INFO) << "exec cmd:[" << cmd << "]";
     }
@@ -322,7 +322,10 @@ int shell_execute_cmd(const std::string& cmd, std::string& output,  // NOLINT
     char* buf = reader.getdelim(&*pipe, 0);
     if (err_no == 0) {
       if (buf) {
-        output = reader.get();
+        *output = reader.get();
+        if (print_cmd) {
+          std::cout << "output:" << *output << std::endl;
+        }
       }
       return err_no;
     }
@@ -351,8 +354,15 @@ int shell_execute_cmd(const std::string& cmd, std::string& output,  // NOLINT
 std::string shell_get_command_output(const std::string& cmd, int time_out,
                                      int sleep_inter, bool print_cmd) {
   std::string output;
-  shell_execute_cmd(cmd, output, time_out, sleep_inter, print_cmd);
+  _shell_execute_cmd(cmd, &output, time_out, sleep_inter, print_cmd);
   return output;
+}
+
+std::vector<std::string> shell_execute_cmd(const std::string& cmd, int time_out,
+                                           int sleep_inter, bool print_cmd) {
+  std::string output;
+  int ret = _shell_execute_cmd(cmd, &output, time_out, sleep_inter, print_cmd);
+  return std::vector<std::string>({string::Sprintf("%d", ret), output});
 }
 
 }  // end namespace framework
