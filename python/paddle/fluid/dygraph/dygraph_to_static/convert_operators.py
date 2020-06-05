@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from paddle.fluid.framework import Variable
-from paddle.fluid.layers import control_flow, logical_and, logical_or, logical_not
+from paddle.fluid.layers import control_flow, logical_and, logical_or, logical_not, cast
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+from paddle.fluid.data_feeder import convert_dtype
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -30,6 +31,8 @@ def convert_while_loop(cond, body, loop_vars):
         A list or tuple of variables which returned by ``body`` .
     """
 
+    # NOTE: It may be slower if cond is very expensive, but usually cond is just O(1).
+    # If loop_vars is changed during cond callable, then it causes bug, but current logical_and/logical_not/... doesn't change the loop_vars.
     pred = cond(*loop_vars)
     if isinstance(pred, Variable):
         loop_vars = _run_paddle_while_loop(cond, body, loop_vars)
@@ -73,6 +76,8 @@ def convert_logical_and(x, y):
 
 
 def _run_paddle_logical_and(x, y):
+    x = cast_bool_if_necessary(x)
+    y = cast_bool_if_necessary(y)
     return logical_and(x, y)
 
 
@@ -104,6 +109,8 @@ def convert_logical_or(x, y):
 
 
 def _run_paddle_logical_or(x, y):
+    x = cast_bool_if_necessary(x)
+    y = cast_bool_if_necessary(y)
     return logical_or(x, y)
 
 
@@ -131,8 +138,45 @@ def convert_logical_not(x):
 
 
 def _run_paddle_logical_not(x):
+    x = cast_bool_if_necessary(x)
     return logical_not(x)
 
 
 def _run_py_logical_not(x):
     return not x
+
+
+def convert_ifelse(pred, true_fn, false_fn):
+    """
+    A function representation of a Python ``if/else`` statement.
+
+    Args:
+        pred(bool|Variable): A boolean variable which determines whether to return the result of ``true_fn`` or ``false_fn`` .
+        true_fn(callable): A callable to be performed if ``pred`` is true.
+        false_fn(callable): A callable to be performed if ``pred`` is false.
+
+    Returns:
+        ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
+
+    """
+    if isinstance(pred, Variable):
+        return _run_paddle_cond(pred, true_fn, false_fn)
+    else:
+        return _run_py_ifelse(pred, true_fn, false_fn)
+
+
+def _run_paddle_cond(pred, true_fn, false_fn):
+    pred = cast_bool_if_necessary(pred)
+    return control_flow.cond(pred, true_fn, false_fn)
+
+
+def _run_py_ifelse(pred, true_fn, false_fn):
+
+    return true_fn() if pred else false_fn()
+
+
+def cast_bool_if_necessary(var):
+    assert isinstance(var, Variable)
+    if convert_dtype(var.dtype) not in ['bool']:
+        var = cast(var, dtype="bool")
+    return var
