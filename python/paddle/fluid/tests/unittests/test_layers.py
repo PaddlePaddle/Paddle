@@ -2015,7 +2015,8 @@ class TestBook(LayerTest):
         if base.enabled():
             return base.to_variable(
                 value=self._get_np_data(shape, dtype, append_batch_size),
-                name=name)
+                name=name,
+                zero_copy=False)
         else:
             if set_feed_dict:
                 self._feed_dict[name] = self._get_np_data(shape, dtype,
