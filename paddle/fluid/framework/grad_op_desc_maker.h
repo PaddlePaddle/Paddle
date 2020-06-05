@@ -18,7 +18,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/imperative/dygraph_grad_maker.h"
@@ -161,7 +163,7 @@ class GradOpDescMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return boost::get<T>(GetAttr(name));
+    return BOOST_GET_CONST(T, GetAttr(name));
   }
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
@@ -195,7 +197,14 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
   std::vector<std::unique_ptr<OpDesc>> operator()() const final {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
-    this->Apply(retv.front().get());
+    try {
+      this->Apply(retv.front().get());
+    } catch (platform::EnforceNotMet& exception) {
+      framework::AppendErrorOpHint(retv.front().get()->Type(), &exception);
+      throw std::move(exception);
+    } catch (...) {
+      std::rethrow_exception(std::current_exception());
+    }
     return retv;
   }
 
@@ -213,7 +222,14 @@ class SingleGradOpMaker<imperative::OpBase>
     auto node = this->NewGradNode();
     {
       imperative::TracedGradOp traced_grad_op(node);
-      this->Apply(&traced_grad_op);
+      try {
+        this->Apply(&traced_grad_op);
+      } catch (platform::EnforceNotMet& exception) {
+        framework::AppendErrorOpHint(traced_grad_op.Type(), &exception);
+        throw std::move(exception);
+      } catch (...) {
+        std::rethrow_exception(std::current_exception());
+      }
     }
     return node->empty() ? nullptr : node;
   }

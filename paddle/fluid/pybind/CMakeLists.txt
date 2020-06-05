@@ -38,6 +38,11 @@ set(PYBIND_SRCS
   ir.cc
   inference_api.cc)
 
+if (WITH_CRYPTO)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_crypto)
+  set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
+endif (WITH_CRYPTO)
+
 if (WITH_DISTRIBUTE)
   list(APPEND PYBIND_SRCS communicator_py.cc)
 endif()
@@ -69,7 +74,6 @@ if(WITH_PYTHON)
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(TARGET op_function_generator POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
     else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)

@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+#include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_double(eager_delete_tensor_gb);
@@ -363,17 +364,17 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       } else {
         gc.reset(new StreamGarbageCollector(
-            boost::get<platform::CUDAPlace>(place), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place), max_memory_size));
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
     } else {
 #endif
       if (platform::is_cpu_place(place)) {
-        gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place),
-                                         max_memory_size));
+        gc.reset(new CPUGarbageCollector(
+            BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));
         VLOG(10) << "Created GarbageCollector at " << place;
       } else {
         PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -820,6 +821,8 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
+  platform::RecordEvent parallel_executor_event(
+      "ParallelExecutor::Run", paddle::platform::EventRole::kSpecial);
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();

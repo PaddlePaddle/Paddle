@@ -124,7 +124,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
         max_level, min_level, roi_batch_id_list_gpu.data<int>(),
         sub_lod_list_data, target_lvls_data);
     dev_ctx.Wait();
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
 
     Tensor index_in_t;
     int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());

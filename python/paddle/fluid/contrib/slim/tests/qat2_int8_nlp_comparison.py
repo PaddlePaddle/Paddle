@@ -42,10 +42,6 @@ def parse_args():
         help='Number of the first minibatches to skip in performance statistics.'
     )
     parser.add_argument(
-        '--debug',
-        action='store_true',
-        help='If used, the graph of QAT model is drawn.')
-    parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
     parser.add_argument(
         '--fp32_model',
@@ -68,10 +64,20 @@ def parse_args():
         default=0.01,
         help='Accepted accuracy difference threshold.')
     parser.add_argument(
-        '--quantized_ops',
+        '--ops_to_quantize',
         type=str,
         default='',
-        help='A comma separated list of quantized operators.')
+        help='A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
+    )
+    parser.add_argument(
+        '--op_ids_to_skip',
+        type=str,
+        default='',
+        help='A comma separated list of operator ids to skip in quantization.')
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='If used, the graph of QAT model is drawn.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
 
@@ -156,6 +162,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
             if (transform_to_int8):
                 transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
                     self._quantized_ops,
+                    _op_ids_to_skip=self._op_ids_to_skip,
                     _scope=inference_scope,
                     _place=place,
                     _core=core,
@@ -252,17 +259,30 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         skip_batch_num = test_case_args.skip_batch_num
         acc_diff_threshold = test_case_args.acc_diff_threshold
         self._debug = test_case_args.debug
-        self._quantized_ops = set(test_case_args.quantized_ops.split(','))
+
+        self._quantized_ops = set()
+        if test_case_args.ops_to_quantize:
+            self._quantized_ops = set(
+                op.strip() for op in test_case_args.ops_to_quantize.split(','))
+
+        self._op_ids_to_skip = set([-1])
+        if test_case_args.op_ids_to_skip:
+            self._op_ids_to_skip = set(
+                map(int, test_case_args.op_ids_to_skip.split(',')))
 
         _logger.info('FP32 & QAT INT8 prediction run.')
-        _logger.info('QAT model: {0}'.format(qat_model_path))
-        _logger.info('FP32 model: {0}'.format(fp32_model_path))
-        _logger.info('Dataset: {0}'.format(data_path))
-        _logger.info('Labels: {0}'.format(labels_path))
-        _logger.info('Batch size: {0}'.format(batch_size))
-        _logger.info('Batch number: {0}'.format(batch_num))
-        _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
-        _logger.info('Quantized ops: {0}.'.format(self._quantized_ops))
+        _logger.info('QAT model: {}'.format(qat_model_path))
+        _logger.info('FP32 model: {}'.format(fp32_model_path))
+        _logger.info('Dataset: {}'.format(data_path))
+        _logger.info('Labels: {}'.format(labels_path))
+        _logger.info('Batch size: {}'.format(batch_size))
+        _logger.info('Batch number: {}'.format(batch_num))
+        _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
+        _logger.info('Quantized ops: {}.'.format(','.join(
+            self._quantized_ops) if self._quantized_ops else 'all quantizable'))
+        _logger.info('Op ids to skip quantization: {}.'.format(','.join(
+            map(str, self._op_ids_to_skip)) if test_case_args.op_ids_to_skip
+                                                               else 'none'))
 
         _logger.info('--- FP32 prediction start ---')
         val_reader = paddle.batch(

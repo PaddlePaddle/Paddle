@@ -10,6 +10,8 @@ endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
@@ -49,6 +51,7 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+    LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -56,8 +59,18 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_batch_fc_op) # TODO(shenliang03): batch_fc_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+endif()
+
+if (WITH_NCCL)
+    if (${NCCL_VERSION} VERSION_LESS 2212)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_transformer)
+    endif()
 endif()
 
 if(NOT WITH_GPU OR WIN32)
@@ -91,7 +104,7 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
-if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
+if(WITH_COVERAGE OR WIN32 OR WITH_NV_JETSON)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
   list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
@@ -99,6 +112,10 @@ endif()
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
     LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
+endif()
+
+if(NOT WITH_CRYPTO)
+    LIST(REMOVE_ITEM TEST_OPS test_crypto)
 endif()
 
 function(py_test_modules TARGET_NAME)
@@ -171,7 +188,6 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)

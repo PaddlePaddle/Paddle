@@ -118,7 +118,8 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableV2GradOpNoBuffer, "W");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableV2GradOpNoBufferVarsInferer,
+                                    "W");
 
 template <typename T>
 class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -162,7 +163,7 @@ class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "lookup_table_v2_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
@@ -187,7 +188,7 @@ REGISTER_OPERATOR(lookup_table_v2, ops::LookupTableV2Op,
                   ops::LookupTableV2GradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lookup_table_v2_grad, ops::LookupTableV2OpGrad,
-                  ops::LookupTableV2GradOpNoBuffer,
+                  ops::LookupTableV2GradOpNoBufferVarsInferer,
                   ops::LookupTableV2OpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table_v2, ops::LookupTableV2Kernel<float>,

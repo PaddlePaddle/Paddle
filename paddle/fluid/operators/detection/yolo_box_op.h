@@ -29,9 +29,11 @@ template <typename T>
 HOSTDEVICE inline void GetYoloBox(T* box, const T* x, const int* anchors, int i,
                                   int j, int an_idx, int grid_size,
                                   int input_size, int index, int stride,
-                                  int img_height, int img_width) {
-  box[0] = (i + sigmoid<T>(x[index])) * img_width / grid_size;
-  box[1] = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
+                                  int img_height, int img_width, float scale,
+                                  float bias) {
+  box[0] = (i + sigmoid<T>(x[index]) * scale + bias) * img_width / grid_size;
+  box[1] = (j + sigmoid<T>(x[index + stride]) * scale + bias) * img_height /
+           grid_size;
   box[2] = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] * img_width /
            input_size;
   box[3] = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] *
@@ -89,6 +91,8 @@ class YoloBoxKernel : public framework::OpKernel<T> {
     float conf_thresh = ctx.Attr<float>("conf_thresh");
     int downsample_ratio = ctx.Attr<int>("downsample_ratio");
     bool clip_bbox = ctx.Attr<bool>("clip_bbox");
+    float scale = ctx.Attr<float>("scale_x_y");
+    float bias = -0.5 * (scale - 1.);
 
     const int n = input->dims()[0];
     const int h = input->dims()[2];
@@ -131,7 +135,7 @@ class YoloBoxKernel : public framework::OpKernel<T> {
             int box_idx =
                 GetEntryIndex(i, j, k * w + l, an_num, an_stride, stride, 0);
             GetYoloBox<T>(box, input_data, anchors_data, l, k, j, h, input_size,
-                          box_idx, stride, img_height, img_width);
+                          box_idx, stride, img_height, img_width, scale, bias);
             box_idx = (i * box_num + j * stride + k * w + l) * 4;
             CalcDetectionBox<T>(boxes_data, box, box_idx, img_height, img_width,
                                 clip_bbox);

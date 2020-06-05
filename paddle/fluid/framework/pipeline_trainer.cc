@@ -27,6 +27,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   VLOG(3) << "pipeline num: " << pipeline_num_;
 
   SetDataset(dataset);
+  ParseDumpConfig(trainer_desc);
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -103,8 +104,15 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
           this_worker->SetDataFeed(readers[reader_index++]);
           this_worker->SetReaderPlace(place);
         }
+        if (i == section_num_ - 1) {
+          this_worker->SetNeedDumpField(need_dump_field_);
+          this_worker->SetNeedDumpParam(need_dump_param_);
+          this_worker->SetDumpFieldVector(dump_fields_);
+          this_worker->SetDumpParamVector(dump_param_);
+        }
         this_worker->SetPlace(place);
         this_worker->Initialize(trainer_desc);
+        this_worker->InitRandomDumpConfig(trainer_desc);
       }
     }
   }
@@ -117,6 +125,33 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   }
   // set debug here
   SetDebug(trainer_desc.debug());
+}
+
+void PipelineTrainer::InitOtherEnv(const ProgramDesc& main_program) {
+  if (need_dump_field_) {
+    InitDumpEnv();
+  }
+  VLOG(3) << "init other env done.";
+}
+
+std::string PipelineTrainer::GetDumpPath(int tid) {
+  return string::format_string("%s/part-%05d", dump_fields_path_.c_str(), tid);
+}
+
+void PipelineTrainer::InitDumpEnv() {
+  queue_ = paddle::framework::MakeChannel<std::string>();
+  // Only set dump channel on the last section
+  for (int j = 0; j < pipeline_num_; ++j) {
+    for (size_t k = 0; k < workers_[section_num_ - 1][j].size(); ++k) {
+      workers_[section_num_ - 1][j][k]->SetChannelWriter(queue_.get());
+    }
+  }
+  // TODO(hutuxian): should make it as a config
+  dump_thread_num_ = 1;
+  for (int i = 0; i < dump_thread_num_; i++) {
+    dump_thread_.push_back(
+        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+  }
 }
 
 void PipelineTrainer::InitFirstScopeQueue(ScopeQueue* scope_queue,
@@ -270,6 +305,9 @@ void PipelineTrainer::Run() {
 void PipelineTrainer::Finalize() {
   for (auto& th : section_threads_) {
     th.join();
+  }
+  if (need_dump_field_) {
+    FinalizeDumpEnv();
   }
   for (const auto& var : persistable_vars_) {
     auto* root_tensor = root_scope_->Var(var)->GetMutable<LoDTensor>();

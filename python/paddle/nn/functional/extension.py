@@ -18,22 +18,30 @@ from ...fluid.layers import multiclass_nms  #DEFINE_ALIAS
 from ...fluid.layers import target_assign  #DEFINE_ALIAS
 from ...fluid.layers import temporal_shift  #DEFINE_ALIAS
 
+from ...fluid.layers import continuous_value_model  #DEFINE_ALIAS
+from ...fluid.layers import filter_by_instag  #DEFINE_ALIAS
+from ...fluid.layers import polygon_box_transform  #DEFINE_ALIAS
+from ...fluid.layers import random_crop  #DEFINE_ALIAS
+from ...fluid.layers import rpn_target_assign  #DEFINE_ALIAS
+from ...fluid.layers import similarity_focus  #DEFINE_ALIAS
+from ...fluid.layers import warpctc  #DEFINE_ALIAS
+
 __all__ = [
     'add_position_encoding',
     #       'autoincreased_step_counter',
-    #       'continuous_value_model',
-    #       'filter_by_instag',
+    'continuous_value_model',
+    'filter_by_instag',
     #       'linear_chain_crf',
     #       'merge_selected_rows',
     'multiclass_nms',
-    #       'polygon_box_transform',
-    #       'random_crop',
+    'polygon_box_transform',
+    'random_crop',
     'row_conv',
-    #       'rpn_target_assign',
-    #       'similarity_focus',
+    'rpn_target_assign',
+    'similarity_focus',
     'target_assign',
     'temporal_shift',
-    #       'warpctc',
+    'warpctc',
     'diag_embed'
 ]
 
@@ -48,6 +56,9 @@ from ...fluid.layers.layer_function_generator import templatedoc
 
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     """
+	:alias_main: paddle.nn.functional.diag_embed
+	:alias: paddle.nn.functional.diag_embed,paddle.nn.functional.extension.diag_embed
+
     This OP creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2) 
     are filled by ``input``. By default, a 2D plane formed by the last two dimensions 
     of the returned tensor will be selected.
@@ -165,6 +176,9 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 @templatedoc()
 def row_conv(input, weight, act=None):
     """
+	:alias_main: paddle.nn.functional.row_conv
+	:alias: paddle.nn.functional.row_conv,paddle.nn.functional.extension.row_conv
+
     ${comment}
 
     Args:

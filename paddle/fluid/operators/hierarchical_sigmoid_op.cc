@@ -239,7 +239,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
     }
 
     auto attr = ctx->GetAttr("is_sparse");
-    bool is_sparse = boost::get<bool>(attr);
+    bool is_sparse = BOOST_GET(bool, attr);
     if (is_sparse) {
       VLOG(3) << "hierarchical_sigmoid_grad op " << framework::GradVarName("W")
               << " is set to SelectedRows";
@@ -257,7 +257,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
 };
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    HierarchicalSigmoidGradOpNoNeedBufferVarInference, "Bias");
+    HierarchicalSigmoidGradOpNoNeedBufferVarInferer, "Bias");
 
 }  // namespace operators
 }  // namespace paddle
@@ -270,7 +270,7 @@ REGISTER_OPERATOR(
     ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
                   ops::HierarchicalSigmoidGradOpGradVarTypeInference,
-                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInference);
+                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,

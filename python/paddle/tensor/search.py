@@ -44,6 +44,9 @@ from paddle.common_ops_import import *
 
 def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
     """
+	:alias_main: paddle.argmax
+	:alias: paddle.argmax,paddle.tensor.argmax,paddle.tensor.search.argmax
+
     This OP computes the indices of the max elements of the input tensor's
     element along the provided axis.
 
@@ -134,6 +137,9 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
 
 def index_select(input, index, dim=0):
     """
+	:alias_main: paddle.index_select
+	:alias: paddle.index_select,paddle.tensor.index_select,paddle.tensor.search.index_select
+
     Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
     the entries in `index` which is a Tensor. The returned tensor has the same number 
     of dimensions as the original `input` tensor. The dim-th dimension has the same 
@@ -195,6 +201,9 @@ def index_select(input, index, dim=0):
 
 def nonzero(input, as_tuple=False):
     """
+	:alias_main: paddle.nonzero
+	:alias: paddle.nonzero,paddle.tensor.nonzero,paddle.tensor.search.nonzero
+
     Return a tensor containing the indices of all non-zero elements of the `input` 
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
     in `input`, each containing the indices (in that dimension) of all non-zero elements 
@@ -279,6 +288,9 @@ def nonzero(input, as_tuple=False):
 
 def sort(input, axis=-1, descending=False, out=None, name=None):
     """
+	:alias_main: paddle.sort
+	:alias: paddle.sort,paddle.tensor.sort,paddle.tensor.search.sort
+
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
     :attr:`input`.
@@ -368,6 +380,9 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
 
 def where(condition, x, y, name=None):
     """
+	:alias_main: paddle.where
+	:alias: paddle.where,paddle.tensor.where,paddle.tensor.search.where
+
     Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
@@ -443,6 +458,9 @@ def where(condition, x, y, name=None):
 
 def index_sample(x, index):
     """
+	:alias_main: paddle.index_sample
+	:alias: paddle.index_sample,paddle.tensor.index_sample,paddle.tensor.search.index_sample
+
     **IndexSample Layer**
 
     IndexSample OP returns the element of the specified location of X, 

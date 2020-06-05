@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <sstream>
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/commit.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -118,5 +119,13 @@ std::string get_version() {
   ss << "branch: " << framework::paddle_compile_branch() << "\n";
   return ss.str();
 }
+
+#if defined(_WIN32) && defined(PADDLE_ON_INFERENCE)
+
+std::string UpdateDllFlag(const char *name, const char *value) {
+  return google::SetCommandLineOption(name, value);
+}
+
+#endif
 
 }  // namespace paddle

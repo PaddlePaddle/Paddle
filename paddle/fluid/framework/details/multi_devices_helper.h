@@ -84,7 +84,7 @@ inline bool IsOpRole(const OpDesc &op, OpRole role) {
   const auto &attrs = op.GetAttrMap();
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleAttrName());
   if (iter == attrs.end()) return false;
-  return static_cast<bool>(boost::get<int>(iter->second) &
+  return static_cast<bool>(BOOST_GET_CONST(int, iter->second) &
                            static_cast<int>(role));
 }
 
@@ -92,13 +92,13 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   const auto &attrs = op.GetAttrMap();
   auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleVarAttrName());
   if (iter == attrs.end()) return {};
-  auto &ret = boost::get<std::vector<std::string>>(iter->second);
+  auto &ret = BOOST_GET_CONST(std::vector<std::string>, iter->second);
   PADDLE_ENFORCE_EQ(
       ret.size() % 2, 0,
       platform::errors::InvalidArgument(
           "The size of attribute %s must be an even number, but got %d",
           OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
-  return boost::get<std::vector<std::string>>(iter->second);
+  return BOOST_GET_CONST(std::vector<std::string>, iter->second);
 }
 
 bool IsDataParallelInferenceGraph(const ir::Graph &graph);

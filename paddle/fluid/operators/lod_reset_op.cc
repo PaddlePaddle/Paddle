@@ -82,7 +82,7 @@ class LoDResetOpVarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_var_name = Input(ctx, "X").front();
     auto out_var_name = Output(ctx, "Out").front();
-    bool append = boost::get<bool>(ctx->GetAttr("append"));
+    bool append = BOOST_GET_CONST(bool, ctx->GetAttr("append"));
     if (ctx->HasInput("Y")) {
       auto y_var_name = Input(ctx, "Y").front();
       auto y_lod_level = std::max(GetLoDLevel(ctx, y_var_name), 1);
@@ -223,7 +223,7 @@ DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -234,7 +234,7 @@ REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
                   ops::LoDResetGradMaker<paddle::imperative::OpBase>,
                   ops::LoDResetOpVarTypeInference, ops::LoDResetInplaceInferer);
 REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
-                  ops::LoDResetGradNoNeedBufferVarInference,
+                  ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(

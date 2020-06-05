@@ -81,15 +81,15 @@ Executor::Executor(const platform::Place& place) : place_(place) {}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
-  // Clear mkl-dnn cache, unless explicitly
-  // (as set in constructor) marked not to do so
+  // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   if (platform::is_cpu_place(place_)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place_);
     dev_ctx->ResetBlobMap();
-    platform::set_cur_paddle_data_layout(paddle::framework::DataLayout::kNCHW);
+    platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        paddle::framework::DataLayout::kNCHW);
   }
 #endif
 }
@@ -452,15 +452,15 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
         gc.reset(new UnsafeFastGPUGarbageCollector(
-            boost::get<platform::CUDAPlace>(place_), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       } else {
         gc.reset(new DefaultStreamGarbageCollector(
-            boost::get<platform::CUDAPlace>(place_), max_memory_size));
+            BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
       }
     } else if (platform::is_cpu_place(place_)) {
 #endif
-      gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place_),
-                                       max_memory_size));
+      gc.reset(new CPUGarbageCollector(
+          BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
@@ -522,7 +522,7 @@ void Executor::RunPreparedContext(
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       std::string feed_target_name = op->Output("Out")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       SetFeedVariable(scope, *(*feed_targets)[feed_target_name],
                       feed_holder_name, idx);
     }
@@ -534,7 +534,7 @@ void Executor::RunPreparedContext(
   for (auto* op : global_block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       std::string fetch_target_name = op->Input("X")[0];
-      int idx = boost::get<int>(op->GetAttr("col"));
+      int idx = BOOST_GET_CONST(int, op->GetAttr("col"));
       *(*fetch_targets)[fetch_target_name] =
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }

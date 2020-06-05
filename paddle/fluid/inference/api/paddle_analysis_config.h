@@ -31,9 +31,9 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle_infer_declare.h"  // NOLINT
 
 /*! \file */
-
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
@@ -60,7 +60,7 @@ struct MkldnnQuantizerConfig;
 /// AnalysisConfig,
 /// and loading it into AnalysisPredictor.
 ///
-struct AnalysisConfig {
+struct PD_INFER_DECL AnalysisConfig {
   AnalysisConfig() = default;
   ///
   /// \brief Construct a new AnalysisConfig from another
@@ -347,6 +347,8 @@ struct AnalysisConfig {
   ///
   /// \brief Set the cache capacity of different input shapes for MKLDNN.
   /// Default value 0 means not caching any shape.
+  /// Please see MKL-DNN Data Caching Design Document:
+  /// https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/design/mkldnn/caching/caching.md
   ///
   /// \param capacity The cache capacity.
   ///
@@ -395,6 +397,14 @@ struct AnalysisConfig {
   ///
   ///
   void EnableMkldnnQuantizer();
+
+  ///
+  /// \brief A boolean state telling whether the thread local CUDA stream is
+  /// enabled.
+  ///
+  /// \return bool Whether the thread local CUDA stream is enabled.
+  ///
+  bool thread_local_stream_enabled() const { return thread_local_stream_; }
 
   ///
   /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
@@ -486,6 +496,13 @@ struct AnalysisConfig {
   ///
   ///
   PassStrategy* pass_builder() const;
+
+  ///
+  /// \brief Enable the GPU multi-computing stream feature.
+  /// NOTE: The current behavior of this interface is to bind the computation
+  /// stream to the thread, and this behavior may be changed in the future.
+  ///
+  void EnableGpuMultiStream();
   void PartiallyRelease();
 
  protected:
@@ -562,6 +579,8 @@ struct AnalysisConfig {
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
+
+  bool thread_local_stream_{false};
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

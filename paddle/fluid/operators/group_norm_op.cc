@@ -122,12 +122,20 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 1.0f,
-                         "'epsilon' should be between 0.0 and 1.0.");
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 1.0f, true,
+                            platform::errors::InvalidArgument(
+                                "'epsilon' in Op(GroupNorm) should be between"
+                                "0.0 and 1.0f, But received [%s].",
+                                epsilon));
         });
     AddAttr<int>("groups", "The number of groups that divided from channels.")
         .AddCustomChecker([](const int &groups) {
-          PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
+          PADDLE_ENFORCE_GT(
+              groups, 0,
+              platform::errors::InvalidArgument(
+                  "'groups' in Op(GroupNorm) should be greater than zero,"
+                  "But received [%s].",
+                  groups));
         });
     AddAttr<std::string>("data_layout",
                          "An optional string from: \"NHWC\", \"NCHW\". ")
@@ -208,8 +216,8 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInToOut, {"X", "Y"});
-DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInToOut,
+DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInferer, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInferer,
                            {framework::GradVarName("Y"),
                             framework::GradVarName("X")});
 
@@ -231,9 +239,9 @@ REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
                   ops::GroupNormOpInferVarType,
                   ops::GroupNormGradMaker<paddle::framework::OpDesc>,
                   ops::GroupNormGradMaker<paddle::imperative::OpBase>,
-                  ops::GroupNormInplaceInToOut);
+                  ops::GroupNormInplaceInferer);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
-                  ops::GroupNormGradInplaceInToOut);
+                  ops::GroupNormGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     group_norm, ops::GroupNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::GroupNormKernel<paddle::platform::CPUDeviceContext, double>);

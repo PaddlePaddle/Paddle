@@ -27,16 +27,22 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of Unsqueeze operator should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of "
+                          "Unsqueeze operator should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of Unsqueeze operator should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of "
+                          "Unsqueeze operator should not be null."));
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     const auto &x_dims = ctx->GetInputDim("X");
     // Validity Check: input tensor dims (<6).
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "Invalid dimensions, the rank of Input(X) "
-                      "should be in the range of [1, 6] (Eigen limit)");
+                      platform::errors::InvalidArgument(
+                          "Invalid "
+                          "dimensions, the rank of Input(X) "
+                          "should be in the range of [1, 6] (Eigen limit)"));
     if (!axes.empty()) {
       auto out_dims = GetOutputShape(axes, x_dims);
       ctx->SetOutputDim("Out", out_dims);
@@ -49,24 +55,29 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       auto AxesTensorList = ctx->Inputs("AxesTensorList");
       int output_size = x_dims.size() + static_cast<int>(AxesTensorList.size());
       PADDLE_ENFORCE_LE(output_size, 6,
-                        "The output tensor's rank should be less than 6.");
+                        platform::errors::InvalidArgument(
+                            "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
     } else if (ctx->HasInput("AxesTensor")) {
       auto axes_dims = ctx->GetInputDim("AxesTensor");
-      PADDLE_ENFORCE_EQ(
-          axes_dims.size(), 1,
-          "Input(AxesTensor)'s dimension of Op(unsqueeze) must be 1. "
-          "But received AxesTensor's shape = [%s], "
-          "AxesTensor's dimension = %d.",
-          axes_dims, axes_dims.size());
-      PADDLE_ENFORCE_GE(axes_dims[0], 0,
-                        "Input(AxesTensor)'s shape must be known. But received "
-                        "AxesTensor's shape = [%s]",
-                        axes_dims);
+      PADDLE_ENFORCE_EQ(axes_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(AxesTensor)'s dimension of "
+                            "Op(unsqueeze) must be 1. "
+                            "But received AxesTensor's shape = [%s], "
+                            "AxesTensor's dimension = %d.",
+                            axes_dims, axes_dims.size()));
+      PADDLE_ENFORCE_GE(
+          axes_dims[0], 0,
+          platform::errors::InvalidArgument(
+              "Input(AxesTensor)'s shape must be known. But received "
+              "AxesTensor's shape = [%s]",
+              axes_dims));
       int output_size = x_dims.size() + static_cast<int>(axes_dims[0]);
       PADDLE_ENFORCE_LE(output_size, 6,
-                        "The output tensor's rank should be less than 6.");
+                        platform::errors::InvalidArgument(
+                            "The output tensor's rank should be less than 6."));
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
     }
@@ -80,13 +91,19 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
 
     // Validity Check: rank range.
     PADDLE_ENFORCE_LE(output_size, 6,
-                      "The output tensor's rank should be less than 6.");
+                      platform::errors::InvalidArgument(
+                          "The output tensor's rank should be less than 6."));
 
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
       // Vaildity Check: the axis bound
-      PADDLE_ENFORCE_GE(cur, 0);
-      PADDLE_ENFORCE_LE(cur, cur_output_size);
+      PADDLE_ENFORCE_GE(cur, 0, platform::errors::InvalidArgument(
+                                    "The insert dimension value should "
+                                    "not be less than 0"));
+      PADDLE_ENFORCE_LE(cur, cur_output_size,
+                        platform::errors::InvalidArgument(
+                            "The insert dimension value shoud not be larger "
+                            "than the dimension size of input tensor"));
       // Move old axis, and insert new axis
       for (int i = cur_output_size; i >= cur; --i) {
         if (output_shape[i] == 1) {
@@ -151,13 +168,17 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<int> &axes) {
           // Validity Check: axes dims (<6).
           PADDLE_ENFORCE_LT(static_cast<int>(axes.size()), 6,
-                            "Invalid dimensions, dynamic dimensions should be "
-                            "within [1, 6] dimensions (Eigen limit).");
+                            platform::errors::InvalidArgument(
+                                "Invalid "
+                                "dimensions, dynamic dimensions should be "
+                                "within [1, 6] dimensions (Eigen limit)."));
           // Validity Check: the range of unsqueeze axis.
           for (int axis : axes) {
             PADDLE_ENFORCE_LT(axis, 6,
-                              "Invalid dimensions, input axis should be"
-                              " within [1, 6] dimensions (Eigen limit).");
+                              platform::errors::InvalidArgument(
+                                  "Invalid "
+                                  "dimensions, input axis should be"
+                                  "within [1, 6] dimensions (Eigen limit)."));
           }
         });
     AddComment(R"DOC(
@@ -219,7 +240,8 @@ class Unsqueeze2Op : public UnsqueezeOp {
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("XShape"), true,
-        "Output(XShape) of Unsqueeze operator should not be null.");
+        platform::errors::InvalidArgument("Output(XShape) of Unsqueeze "
+                                          "operator should not be null."));
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < x_dims.size(); ++i) {
@@ -259,10 +281,12 @@ class Unsqueeze2GradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInput("XShape"), true,
-                      "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("XShape"), true,
+        platform::errors::InvalidArgument("Input(XShape) shouldn't be null."));
     PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shouldn't be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) shouldn't be null."));
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -282,8 +306,7 @@ DECLARE_INPLACE_OP_INFERER(UnsqueezeInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(UnsqueezeGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInference,
-                                    "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnsqueezeGradOpNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
@@ -292,7 +315,7 @@ REGISTER_OPERATOR(unsqueeze, ops::UnsqueezeOp, ops::UnsqueezeOpMaker,
                   ops::UnsqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::UnsqueezeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(unsqueeze_grad, ops::UnsqueezeGradOp,
-                  ops::UnsqueezeGradOpNoNeedBufferVarInference);
+                  ops::UnsqueezeGradOpNoNeedBufferVarInferer);
 
 REGISTER_OPERATOR(unsqueeze2, ops::Unsqueeze2Op, ops::Unsqueeze2OpMaker,
                   ops::Unsqueeze2GradOpMaker<paddle::framework::OpDesc>,

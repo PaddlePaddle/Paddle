@@ -179,6 +179,10 @@ def require_version(min_version, max_version=None):
 
 def in_dygraph_mode():
     """
+    :alias_main: paddle.in_dygraph_mode
+	:alias: paddle.in_dygraph_mode
+	:old_api: paddle.fluid.framework.in_dygraph_mode
+
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
     or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
@@ -436,6 +440,8 @@ _name_scope = NameScope()
 @signature_safe_contextmanager
 def name_scope(prefix=None):
     """
+    :api_attr: Static Graph
+
     Generate hierarchical name prefix for the operators.
 
     Note: 
@@ -487,8 +493,10 @@ def name_scope(prefix=None):
         assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
-        yield
-        _name_scope = _name_scope.parent()
+        try:
+            yield
+        finally:
+            _name_scope = _name_scope.parent()
 
 
 def _full_name_scope():
@@ -645,6 +653,7 @@ def _getitem_impl_(var, item):
     slice_step = []
     use_strided_slice = False
     reverse_axis = []
+    target_block = default_main_program().current_block()
 
     def fill_constant(shape, value, force_cpu=False, out=None):
         var.block.append_op(
@@ -656,8 +665,7 @@ def _getitem_impl_(var, item):
                 'dtype': out.dtype,
                 'value': float(value),
                 'force_cpu': force_cpu
-            },
-            stop_gradient=True)
+            })
         out.stop_gradient = True
         return out
 
@@ -697,10 +705,10 @@ def _getitem_impl_(var, item):
             slice_start.append(slice_item)
             slice_step.append(1)
             if isinstance(slice_item, Variable):
-                temp_1 = var.block.create_var(dtype='int32')
+                temp_1 = var.block.create_var(dtype=slice_item.dtype)
                 fill_constant([1], 1, force_cpu=True, out=temp_1)
-                temp_end = var.block.create_var(dtype='int32')
-                var.block.append_op(
+                temp_end = target_block.create_var(dtype=slice_item.dtype)
+                target_block.append_op(
                     type='elementwise_add',
                     inputs={'X': slice_item,
                             'Y': temp_1},
@@ -783,11 +791,11 @@ def _getitem_impl_(var, item):
     out = var
     if use_strided_slice == False and len(slice_axis) > 0:
         # append slice_op here
-        slice_out_var = var.block.create_var(
+        slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
             dtype=var.dtype)
 
-        var.block.append_op(
+        target_block.append_op(
             type="slice",
             inputs=inputs,
             outputs={'Out': [slice_out_var]},
@@ -795,11 +803,11 @@ def _getitem_impl_(var, item):
 
         out = slice_out_var
     elif use_strided_slice == True and len(slice_axis) > 0:
-        strided_slice_out_var = var.block.create_var(
+        strided_slice_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_strided_slice"),
             dtype=var.dtype)
-        var.block.append_op(
+        target_block.append_op(
             type="strided_slice",
             inputs=inputs,
             outputs={'Out': [strided_slice_out_var]},
@@ -808,11 +816,11 @@ def _getitem_impl_(var, item):
         out = strided_slice_out_var
 
     if len(reverse_axis) > 0:
-        reverse_out_var = var.block.create_var(
+        reverse_out_var = target_block.create_var(
             name=unique_name.generate_with_ignorable_key(var.name +
                                                          "_slice_reverse"),
             dtype=var.dtype)
-        var.block.append_op(
+        target_block.append_op(
             type="reverse",
             inputs={'X': out},
             outputs={'Out': [reverse_out_var]},
@@ -1687,10 +1695,9 @@ class ComplexVariable(object):
     holding the real part and imaginary part of complex numbers respectively.
     
     **Notes**:
-        **The constructor of Variable should not be invoked directly.**
+        **The constructor of ComplexVariable should not be invoked directly.**
 
-        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **
-          to create a dygraph ComplexVariable with complex number data.**
+        **Only support dygraph mode at present. Please use** :ref:`api_fluid_dygraph_to_variable` **to create a dygraph ComplexVariable with complex number data.**
 
     Args:
         real (Variable): The Variable holding real-part data.
@@ -1860,7 +1867,7 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream'
+        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
     }
 
     def __init__(self,
@@ -1959,7 +1966,7 @@ class Operator(object):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
                                 in_arg_names.append(arg.decode())
-                            elif isinstance(arg, Variable):
+                            elif isinstance(arg, (Variable, core.VarBase)):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise TypeError(
@@ -3334,8 +3341,6 @@ class IrOpNode(IrNode):
         """
         assert self.node.op() is not None, \
             "The node operator description can not be None."
-        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
-        ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -3558,6 +3563,12 @@ class IrGraph(object):
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
+
+    def create_control_dep_var(self):
+        """
+        create a control var
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
         """
@@ -3985,14 +3996,16 @@ class Program(object):
         """
         return self.__op_role_var
 
-    @contextlib.contextmanager
+    @signature_safe_contextmanager
     def _backward_role_guard(self):
         tmp_role = self._current_role
 
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Backward
-        yield
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _optimized_guard(self, param_and_grads):
@@ -4021,9 +4034,11 @@ class Program(object):
             var.name if isinstance(var, Variable) else var
             for var in param_and_grads
         ]
-        yield
-        self.__op_role_var = tmp_var
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self.__op_role_var = tmp_var
+            self._current_role = tmp_role
 
     @signature_safe_contextmanager
     def _lr_schedule_guard(self, is_with_opt=False):
@@ -4056,9 +4071,11 @@ class Program(object):
             self._current_role = int(OpRole.LRSched) | int(OpRole.Optimize)
         # TODO(typhoonzero): how to set target learning rate var
         self.__op_role_var = []
-        yield
-        self.__op_role_var = tmp_var
-        self._current_role = tmp_role
+        try:
+            yield
+        finally:
+            self.__op_role_var = tmp_var
+            self._current_role = tmp_role
 
     def __str__(self):
         """
@@ -4109,6 +4126,7 @@ class Program(object):
         program_str = ""
         for block in self.blocks:
             program_str += block._to_readable_code(skip_op_callstack)
+            program_str += '\n'
         return program_str
 
     def to_string(self, throw_on_error, with_details=False):
@@ -5134,10 +5152,9 @@ class ParamBase(core.VarBase):
                                                                bool)
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
-            return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
-                                                        self.shape, str(tensor))
+            return 'Parameter: %s\n%s' % (self.name, str(tensor))
         else:
-            return 'name %s, shape: %s, not inited' % (self.name, self.shape)
+            return 'Parameter: %s, not initialized' % (self.name)
 
     __repr__ = __str__
 
@@ -5269,6 +5286,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
+    :api_attr: Static Graph
+
     Change the global main program and startup program with `"with"` statement.
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
@@ -5312,10 +5331,12 @@ def program_guard(main_program, startup_program=None):
         check_type(startup_program, 'startup_program', Program,
                    'fluid.program_guard')
         startup_program = switch_startup_program(startup_program)
-    yield
-    switch_main_program(main_program)
-    if startup_program is not None:
-        switch_startup_program(startup_program)
+    try:
+        yield
+    finally:
+        switch_main_program(main_program)
+        if startup_program is not None:
+            switch_startup_program(startup_program)
 
 
 def _get_var(name, program=None):
@@ -5345,10 +5366,11 @@ def _dygraph_guard(tracer):
     _dygraph_tracer_ = tracer
     core._switch_tracer(tracer)
 
-    yield
-
-    core._switch_tracer(tmp_trace)
-    _dygraph_tracer_ = tmp_trace
+    try:
+        yield
+    finally:
+        core._switch_tracer(tmp_trace)
+        _dygraph_tracer_ = tmp_trace
 
 
 @signature_safe_contextmanager
@@ -5357,13 +5379,16 @@ def _dygraph_place_guard(place):
     tmp_place = _dygraph_current_expected_place_
     _dygraph_current_expected_place_ = place
 
-    yield
-
-    _dygraph_current_expected_place_ = tmp_place
+    try:
+        yield
+    finally:
+        _dygraph_current_expected_place_ = tmp_place
 
 
 def load_op_library(lib_filename):
     """
+    :api_attr: Static Graph
+    
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
@@ -5434,13 +5459,22 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
+    index = None
+    if device and ':' in device:
+        device, index = device.split(':')
+        if device == 'cpu':
+            raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
+    if index:
+        device = ":".join([device, index])
     pre_device = switch_device(device)
-    yield
-    switch_device(pre_device)
+    try:
+        yield
+    finally:
+        switch_device(pre_device)
 
 
 def set_flags(flags):

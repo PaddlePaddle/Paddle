@@ -31,6 +31,8 @@ from .. import functional
 
 class HSigmoid(layers.Layer):
     """
+	:alias_main: paddle.nn.HSigmoid
+	:alias: paddle.nn.HSigmoid,paddle.nn.layer.HSigmoid,paddle.nn.layer.activation.HSigmoid
 
     Hierarchical Sigmoid Layer.
     
@@ -165,6 +167,9 @@ class HSigmoid(layers.Layer):
 
 class ReLU(layers.Layer):
     """
+	:alias_main: paddle.nn.ReLU
+	:alias: paddle.nn.ReLU,paddle.nn.layer.ReLU,paddle.nn.layer.activation.ReLU
+
     ReLU Activation.
 
     .. math:
@@ -204,6 +209,9 @@ class ReLU(layers.Layer):
 
 class Sigmoid(layers.Layer):
     """
+	:alias_main: paddle.nn.Sigmoid
+	:alias: paddle.nn.Sigmoid,paddle.nn.layer.Sigmoid,paddle.nn.layer.activation.Sigmoid
+
     Sigmoid Activation.
     
     .. math:
@@ -246,6 +254,9 @@ class Sigmoid(layers.Layer):
 
 class LogSoftmax(layers.Layer):
     """
+	:alias_main: paddle.nn.LogSoftmax
+	:alias: paddle.nn.LogSoftmax,paddle.nn.layer.LogSoftmax,paddle.nn.layer.activation.LogSoftmax
+
     This operator implements the log_softmax layer. The calculation process is as follows:
 
     .. math::

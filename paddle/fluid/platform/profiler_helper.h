@@ -22,12 +22,12 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT
 #include <random>
+#include <set>
 #include <stack>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -283,7 +283,8 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
 void SetEvent(bool merge_thread, const Event &analyze_event,
               size_t *max_name_width, std::list<Event> *pushed_events,
               std::vector<EventItem> *event_items,
-              std::unordered_map<std::string, int> *event_idx) {
+              std::unordered_map<std::string, int> *event_idx,
+              const std::set<std::string> &main_thread_event_name) {
   if (analyze_event.type() == EventType::kPushRange) {
     pushed_events->push_back(analyze_event);
   } else if (analyze_event.type() == EventType::kPopRange) {
@@ -313,8 +314,35 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
       if (merge_thread) {
         event_name = rit->name();
       } else {
-        event_name =
-            "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+        if (!main_thread_event_name.empty()) {
+          auto origin_name = rit->name();
+          int index = 1;
+          int split_pos = 0;
+          while ((split_pos = FindNthReversePos(origin_name, '/', index)) !=
+                 -1) {
+            auto prefix_str = origin_name.substr(0, split_pos);
+            if (main_thread_event_name.count(prefix_str)) {
+              break;
+            }
+            index++;
+          }
+          if (split_pos == -1 && !main_thread_event_name.count(rit->name())) {
+            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
+                         rit->name();
+          } else {
+            if (!main_thread_event_name.count(rit->name())) {
+              event_name =
+                  origin_name.substr(0, split_pos + 1) + "thread" +
+                  std::to_string(rit->thread_id()) + "::" +
+                  origin_name.substr(split_pos + 1, origin_name.length() - 1);
+            } else {
+              event_name = rit->name();
+            }
+          }
+        } else {
+          event_name =
+              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+        }
       }
       auto print_name_size = event_name.size();
       int found_pos = 0;
@@ -382,17 +410,24 @@ void ComputeOverhead(const std::vector<EventItem> &main_event_items,
                            EventRole::kOrdinary};
   // GpuMemcpy may be in main_event_items
   for (auto &item : main_event_items) {
+    if (item.role != EventRole::kSpecial) {
+      overhead->accumulated_time += item.total_time;
+    }
     UpdateGpuMemcpy(item, &memcpy_async, &memcpy_sync);
   }
 
   for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
+    if (it->first == "ParallelExecutor::Run") {
+      overhead->accumulated_time += it->second.total_time;
+    }
     if (it->second.name.find("compute") != std::string::npos &&
         it->second.name.find("compute/") == std::string::npos) {
-      overhead->compute_ratio += it->second.ratio;
+      overhead->compute_time += it->second.total_time;
     }
     UpdateGpuMemcpy(it->second, &memcpy_async, &memcpy_sync);
   }
-  overhead->framework_ratio = 1.0f - overhead->compute_ratio;
+  overhead->framework_time =
+      overhead->accumulated_time - overhead->compute_time;
   overhead->memcpy_item.calls = memcpy_async.calls + memcpy_sync.calls;
   overhead->memcpy_item.total_time =
       memcpy_async.total_time + memcpy_sync.total_time;
@@ -458,16 +493,39 @@ void GetChildMap(const std::multimap<std::string, EventItem> &sub_child_map,
 }
 
 void PrintOverHead(const OverHead &overhead, const size_t data_width) {
-  double compute_time = overhead.total_time * overhead.compute_ratio;
-  double framework_time = overhead.total_time * overhead.framework_ratio;
+  float compute_ratio = overhead.compute_time / overhead.accumulated_time;
+  float framework_ratio = 1 - compute_ratio;
+  std::cout << "-------------------------"
+            << "     Overhead Summary      "
+            << "-------------------------\n\n";
+  if (overhead.print_explanation) {
+    std::cout
+        << "The Overhead Summary divides the cost of each event into framework "
+           "overhead or computation time."
+        << "\nThe `Accumulated time of events` is higher than the `Elapsed "
+           "time of events`."
+        << "\nBecause the OP is executed asynchronously. For example,"
+        << "\nEvent                   Timeline"
+        << "\nParallelExecutor::Run   "
+           "---------------------------------------------------------"
+        << "\n  thread1::OP1                 -----------------------------"
+        << "\n  thread2::OP2                      "
+           "---------------------------------------------"
+        << "\nOP1.time + OP2.time > ParallelExecutor::Run.time\n\n";
+    std::cout << "Elapsed time of events: " << overhead.elapsed_time
+              << std::endl;
+    std::cout << "Accumulated time of events: " << overhead.accumulated_time
+              << std::endl;
+  } else {
+    std::cout << "Total time: " << overhead.elapsed_time << std::endl;
+  }
   std::cout.setf(std::ios::left);
-  std::cout << "Total time: " << overhead.total_time << std::endl;
   std::cout << std::setw(25) << "  Computation time"
-            << "Total: " << std::setw(data_width) << compute_time
-            << "Ratio: " << overhead.compute_ratio * 100 << "%" << std::endl;
+            << "Total: " << std::setw(data_width) << overhead.compute_time
+            << "Ratio: " << compute_ratio * 100 << "%" << std::endl;
   std::cout << std::setw(25) << "  Framework overhead"
-            << "Total: " << std::setw(data_width) << framework_time
-            << "Ratio: " << overhead.framework_ratio * 100 << "%" << std::endl;
+            << "Total: " << std::setw(data_width) << overhead.framework_time
+            << "Ratio: " << framework_ratio * 100 << "%" << std::endl;
 
   std::cout << "\n-------------------------"
             << "     GpuMemCpy Summary     "
@@ -524,7 +582,7 @@ void PrintProfiler(
     std::cout << "Sorted by " << sorted_domain
               << " in descending order in the same thread\n\n";
 
-    if (overhead.print) {
+    if (overhead.print_overhead) {
       PrintOverHead(overhead, data_width);
     }
     std::cout << "\n-------------------------"
@@ -608,6 +666,16 @@ void AnalyzeEvent(
     std::function<bool(const EventItem &, const EventItem &)> sorted_func,
     EventSortingKey sorted_by, size_t *max_name_width, OverHead *overhead,
     bool merge_thread) {
+  // In oreder to deal with special event in main thread
+  std::set<std::string> main_thread_event_name;
+  for (size_t i = 0; i < (*analyze_events).size(); i++) {
+    for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
+      Event event = (*analyze_events)[i][j];
+      if (event.role() == EventRole::kSpecial) {
+        main_thread_event_name.insert(event.name());
+      }
+    }
+  }
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
@@ -618,8 +686,10 @@ void AnalyzeEvent(
 
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
       Event analyze_event = (*analyze_events)[i][j];
-      SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
-               &event_items, &event_idx);
+      if (!(analyze_event.role() == EventRole::kSpecial && !merge_thread)) {
+        SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
+                 &event_items, &event_idx, main_thread_event_name);
+      }
     }
 
     auto table_size = event_items.size();
@@ -641,7 +711,6 @@ void AnalyzeEvent(
         }
       }
     }
-
     for (size_t j = 0; j < table_size; ++j) {
       if (child_index[j] == 0) {
         main_event_items.push_back(event_items[j]);
@@ -659,8 +728,11 @@ void AnalyzeEvent(
     }
     // When multi-threaded, overhead are printed only if merge_thread is true
     if ((*analyze_events).size() == 1) {
-      overhead->total_time = total;
-      overhead->print = true;
+      if (!main_thread_event_name.empty()) {
+        overhead->print_explanation = true;
+      }
+      overhead->elapsed_time = total;
+      overhead->print_overhead = true;
       ComputeOverhead(main_event_items, sub_child_map, overhead);
     }
     // sort

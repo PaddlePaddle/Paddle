@@ -62,7 +62,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       // run time
       framework::Variable* x_var =
-          boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
+          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       const auto& x_lod = x_var->Get<LoDTensor>().lod();
       PADDLE_ENFORCE_EQ(x_lod.empty(), false,
                         platform::errors::NotFound(
@@ -251,7 +251,7 @@ class SequencePadGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePadGradOpNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePadGradOpNoNeedBufferVarsInferer,
                                     "X");
 
 }  // namespace operators
@@ -262,7 +262,7 @@ REGISTER_OPERATOR(sequence_pad, ops::SequencePadOp, ops::SequencePadOpMaker,
                   ops::SequencePadGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePadGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_pad_grad, ops::SequencePadGradOp,
-                  ops::SequencePadGradOpNoNeedBufferVarsInference);
+                  ops::SequencePadGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_pad,
     ops::SequencePadOpKernel<paddle::platform::CPUDeviceContext, float>,

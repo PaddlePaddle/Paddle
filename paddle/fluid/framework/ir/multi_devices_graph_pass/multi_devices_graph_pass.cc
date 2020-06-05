@@ -50,8 +50,8 @@ typedef std::vector<details::OpHandleBase *> GraphOps;
 const char kGraphOps[] = "ops";
 
 bool OpHaveRole(const ir::Node &node, const framework::OpRole &role) {
-  return boost::get<int>(
-             node.Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+  return BOOST_GET_CONST(int, node.Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) ==
          static_cast<int>(role);
 }
 
@@ -281,7 +281,9 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       loss_scale = 0;
       break;
     default:
-      LOG(FATAL) << "Unknown gradient scale strategy.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown gradient scale strategy. Now only supports One, "
+          "CoeffNumDevice and Customized strategies."));
       break;
   }
 
@@ -580,8 +582,8 @@ details::VarHandle *MultiDevSSAGraphBuilderBase::CreateReduceOp(
 
 bool MultiDevSSAGraphBuilderBase::IsScaleLossOp(ir::Node *node) const {
   return !loss_var_name_.empty() && node->Op() &&
-         boost::get<int>(
-             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+         BOOST_GET_CONST(int, node->Op()->GetAttr(
+                                  OpProtoAndCheckerMaker::OpRoleAttrName())) ==
              (static_cast<int>(OpRole::kBackward) |
               static_cast<int>(OpRole::kLoss));
 }
@@ -635,7 +637,8 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
   if (!OpHaveRole(*node, framework::OpRole::kOptimize)) {
     return -1;
   }
-  auto param_grad = boost::get<std::vector<std::string>>(
+  auto param_grad = BOOST_GET_CONST(
+      std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
   PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
@@ -729,7 +732,8 @@ int ReduceSSAGraphBuilder::GetOpDeviceID(
     return -1;
   }
 
-  auto param_grad = boost::get<std::vector<std::string>>(
+  auto param_grad = BOOST_GET_CONST(
+      std::vector<std::string>,
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
   PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
@@ -776,10 +780,10 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
       // This op runs on all devices, and its output may have parameter's
       // gradients.
       sorted_ops.emplace_back(node);
-      bool is_bk_op =
-          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kBackward));
+      bool is_bk_op = static_cast<bool>(
+          BOOST_GET_CONST(int, node->Op()->GetAttr(
+                                   OpProtoAndCheckerMaker::OpRoleAttrName())) &
+          static_cast<int>(OpRole::kBackward));
       if (!is_bk_op) continue;
       // Currently, we assume that once gradient is generated, it can be
       // broadcast, and each gradient is only broadcast once.
@@ -820,8 +824,9 @@ bool DistSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
                    "Can not schedule the RPC operator to the right place.");
     if (node->Op()->Type() == "recv") {
       auto recv_vars_attr =
-          boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+          BOOST_GET_CONST(std::vector<std::string>,
+                          node->Op()->GetNullableAttr(
+                              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE(recv_vars_attr.size() == 2UL);  // [parameter, gradient]
       if (recv_vars_attr[0].find(".block") == std::string::npos) {
         bcast_var_name_set_[op_dev_id].emplace(recv_vars_attr[0]);
@@ -885,7 +890,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
       for (ir::Node *n : node->inputs) {
         input_var_names.push_back(n->Name());
       }
-      auto send_param_grad = boost::get<std::vector<std::string>>(
+      auto send_param_grad = BOOST_GET_CONST(
+          std::vector<std::string>,
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
       PADDLE_ENFORCE_EQ(send_param_grad.size(), 2U);
       op_dev_id = GetAppropriateDeviceID({send_param_grad[1]});
@@ -901,7 +907,8 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
-    auto recv_param_grad = boost::get<std::vector<std::string>>(
+    auto recv_param_grad = BOOST_GET_CONST(
+        std::vector<std::string>,
         node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
     if (recv_param_grad.size() == 2U) {
       op_dev_id = GetVarDeviceID(recv_param_grad[1]);
@@ -1049,7 +1056,9 @@ void DistSSAGraphBuilder::InsertCollectiveOp(ir::Graph *result,
       }
       break;
     default:
-      LOG(FATAL) << "Unknown reduce strategy.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown reduce strategy. Now only supports Reduce and AllReduce "
+          "strategies."));
       break;
   }
 }

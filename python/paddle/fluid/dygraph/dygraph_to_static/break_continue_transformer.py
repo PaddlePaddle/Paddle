@@ -17,11 +17,8 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import NodeTestTransformer
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = ['BreakContinueTransformer']
@@ -64,87 +61,26 @@ class ForToWhileTransformer(gast.NodeTransformer):
         raise ValueError(
             "parent_node doesn't contain the loop_node in ForToWhileTransformer")
 
-    def get_for_range_node(self, node):
-        if not isinstance(node.iter, gast.Call):
-            return None
-        if not isinstance(node.iter.func, gast.Name):
-            return None
-        if node.iter.func.id != "range":
-            return None
-        return node.iter
-
-    def get_for_args_stmts(self, iter_name, args_list):
-        '''
-        Returns 3 gast stmt nodes for argument.
-        1. Initailize of iterate variable
-        2. Condition for the loop
-        3. Statement for changing of iterate variable during the loop
-        '''
-        len_range_args = len(args_list)
-        assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
-        if len_range_args == 1:
-            init_stmt = get_constant_variable_node(iter_name, 0)
-        else:
-            init_stmt = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=iter_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None)
-                ],
-                value=args_list[0])
-
-        range_max_node = args_list[0] if len_range_args == 1 else args_list[1]
-        step_node = args_list[2] if len_range_args == 3 else gast.Constant(
-            value=1, kind=None)
-
-        old_cond_stmt = gast.Compare(
-            left=gast.BinOp(
-                left=gast.Name(
-                    id=iter_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None),
-                op=gast.Add(),
-                right=step_node),
-            ops=[gast.LtE()],
-            comparators=[range_max_node])
-        cond_stmt = gast.BoolOp(
-            op=gast.And(), values=[old_cond_stmt, self.condition_node])
-
-        change_stmt = gast.AugAssign(
-            target=gast.Name(
-                id=iter_name,
-                ctx=gast.Store(),
-                annotation=None,
-                type_comment=None),
-            op=gast.Add(),
-            value=step_node)
-
-        return init_stmt, cond_stmt, change_stmt
-
     def get_for_stmt_nodes(self, node):
         assert isinstance(
             node, gast.For), "Input node is NOT gast.For in get_for_stmt_nodes"
 
-        # TODO: support non-range case
-        range_call_node = self.get_for_range_node(node)
-        if range_call_node is None:
+        # 1. parse current gast.For node
+        current_for_node_parser = ForNodeVisitor(node)
+        stmts_tuple = current_for_node_parser.parse()
+        if stmts_tuple is None:
             return [node]
+        init_stmts, cond_stmt, body_stmts = stmts_tuple
 
-        if not isinstance(node.target, gast.Name):
-            return [node]
-        iter_var_name = node.target.id
+        # 2. append break statement
+        new_cond_stmt = gast.BoolOp(
+            op=gast.And(), values=[cond_stmt, self.condition_node])
 
-        init_stmt, cond_stmt, change_stmt = self.get_for_args_stmts(
-            iter_var_name, range_call_node.args)
-
-        new_body = node.body
-        new_body.append(change_stmt)
+        # 3. construct gast.While node
         while_node = gast.While(
-            test=cond_stmt, body=new_body, orelse=node.orelse)
-        return [init_stmt, while_node]
+            test=new_cond_stmt, body=body_stmts, orelse=node.orelse)
+        init_stmts.append(while_node)
+        return init_stmts
 
 
 class BreakContinueTransformer(gast.NodeTransformer):

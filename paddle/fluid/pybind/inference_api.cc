@@ -117,7 +117,9 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
       dt = py::dtype::of<float>();
       break;
     default:
-      LOG(FATAL) << "unsupported dtype";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
   }
 
   return dt;
@@ -150,7 +152,9 @@ size_t PaddleGetDTypeSize(PaddleDType dt) {
       size = sizeof(float);
       break;
     default:
-      LOG(FATAL) << "unsupported dtype";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
   }
   return size;
 }
@@ -172,7 +176,9 @@ py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
       tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
       break;
     default:
-      LOG(FATAL) << "unsupported dtype";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported data type. Now only supports INT32, INT64 and "
+          "FLOAT32."));
   }
   return array;
 }
@@ -252,7 +258,9 @@ void BindPaddleBuf(py::module *m) {
                auto size = self.length() / sizeof(float);
                l = py::cast(std::vector<float>(data, data + size));
              } else {
-               LOG(FATAL) << "unsupported dtype";
+               PADDLE_THROW(platform::errors::Unimplemented(
+                   "Unsupported data type. Now only supports INT32, INT64 and "
+                   "FLOAT32."));
              }
              return l;
            })
@@ -371,7 +379,8 @@ void BindAnalysisConfig(py::module *m) {
       .value("Half", AnalysisConfig::Precision::kHalf)
       .export_values();
 
-  analysis_config.def(py::init<const AnalysisConfig &>())
+  analysis_config.def(py::init<>())
+      .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
       .def("set_model", (void (AnalysisConfig::*)(const std::string &)) &

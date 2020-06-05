@@ -14,6 +14,7 @@
 
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
+import paddle
 
 __all__ = [
     #       'NCELoss',
@@ -27,8 +28,11 @@ __all__ = [
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
-    This operator implements the cross entropy loss function. This OP combines ``softmax``,
-    ``cross_entropy``, and ``reduce_sum``/``reduce_mean`` together.
+	:alias_main: paddle.nn.CrossEntropyLoss
+	:alias: paddle.nn.CrossEntropyLoss,paddle.nn.layer.CrossEntropyLoss,paddle.nn.layer.loss.CrossEntropyLoss
+
+    This operator implements the cross entropy loss function. This OP combines ``LogSoftmax``,
+    and ``NLLLoss`` together.
 
     It is useful when training a classification problem with ``C`` classes.
     If provided, the optional argument ``weight`` should be a 1D Variable assigning
@@ -49,19 +53,23 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
         \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{input}_i)\\right)), j = 1,..., K
 
     Parameters:
-        input (Variable): Input tensor, the data type is float32,
-            float64, int32, int64.
-        label (Variable): Label tensor, the data type is float32,
-            float64, int32, int64.
+        input (Variable): Input tensor, the data type is float32, float64. Shape is
+	    (N, C), where C is number of classes, and if shape is more than 2D, this
+	    is (N, C, D1, D2,..., Dk), k >= 1. 
+        label (Variable): Label tensor, the data type is int64. Shape is (N), where each 
+	    value is 0 <= label[i] <= C-1, and if shape is more than 2D, this is
+	    (N, D1, D2,..., Dk), k >= 1.
         weight (Variable, optional): Weight tensor, a manual rescaling weight given
-            to each class. It has the same dimensions as class number and the data type
-            is float32, float64, int32, int64. Default is ``'None'``.
+            to each class and the shape is (C). It has the same dimensions as class
+	    number and the data type is float32, float64. Default is ``'None'``.
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned;
             If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
             If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
             Default is ``'mean'``.
+        ignore_index (int64, optional): Specifies a target value that is ignored
+            and does not contribute to the input gradient. Default is ``-100``.
 
     Returns:
         The tensor variable storing the cross_entropy_loss of input and label.
@@ -76,17 +84,17 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             import paddle.fluid as fluid
             import numpy as np
 
-            input = fluid.layers.data(name='input', shape=[5, 100], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[5, 1], dtype='int64')
-            weight = fluid.layers.data(name='weight', shape=[100], dtype='float32')
+            input = fluid.data(name='input', shape=[5, 100], dtype='float64')
+            label = fluid.data(name='label', shape=[5], dtype='int64')
+            weight = fluid.data(name='weight', shape=[100], dtype='float64')
             ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
-            output = ce_loss(input,label)
+            output = ce_loss(input, label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            input_data = np.random.random([5, 100]).astype("float32")
-            label_data = np.array([[1], [9], [40], [50], [90]]).astype("int64")
-            weight_data = np.random.random([100]).astype("float32")
+            input_data = np.random.random([5, 100]).astype("float64")
+            label_data = np.random.randint(0, 100, size=(5)).astype(np.int64)
+            weight_data = np.random.random([100]).astype("float64")
             output = exe.run(fluid.default_main_program(),
                         feed={"input": input_data, "label": label_data,"weight": weight_data},
                         fetch_list=[output],
@@ -104,45 +112,43 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                 print(output.numpy())
     """
 
-    def __init__(self, weight=None, reduction='mean'):
+    def __init__(self, weight=None, reduction='mean', ignore_index=-100):
         super(CrossEntropyLoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
+        self.ignore_index = ignore_index
 
     def forward(self, input, label):
         fluid.data_feeder.check_variable_and_dtype(
-            input, 'input', ['float32', 'float64', 'int32', 'int64'],
-            'cross_entropy_loss')
-        fluid.data_feeder.check_variable_and_dtype(
-            label, 'label', ['float32', 'float64', 'int32', 'int64'],
-            'cross_entropy_loss')
+            input, 'input', ['float32', 'float64'], 'cross_entropy_loss')
+        fluid.data_feeder.check_variable_and_dtype(label, 'label', ['int64'],
+                                                   'cross_entropy_loss')
 
         if self.reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
-                "The value of 'reduction' in cross_entropy_loss should be 'sum', 'mean' or 'none',"
-                " but received %s, which is not allowed." % self.reduction)
+                "The value of 'reduction' in cross_entropy_loss should be 'sum', 'mean' or"
+                " 'none', but received %s, which is not allowed." %
+                self.reduction)
 
-        softmax_out = fluid.layers.softmax(input)
-        if self.weight is not None:
-            if isinstance(self.weight, fluid.framework.Variable):
-                softmax_out = fluid.layers.elementwise_pow(
-                    softmax_out, self.weight, axis=-1)
-            else:
-                raise ValueError(
-                    "The weight' is not a Variable, please convert to Variable.")
+        log_softmax = paddle.nn.LogSoftmax()
+        log_softmax_out = log_softmax(input)
+        if self.weight is not None and not isinstance(self.weight,
+                                                      fluid.framework.Variable):
+            raise ValueError(
+                "The weight' is not a Variable, please convert to Variable.")
+        nll_loss = paddle.nn.loss.NLLLoss(
+            weight=self.weight,
+            reduction=self.reduction,
+            ignore_index=self.ignore_index)
 
-        out = fluid.layers.cross_entropy(softmax_out, label)
-
-        if self.reduction == 'sum':
-            return fluid.layers.reduce_sum(out)
-        elif self.reduction == 'mean':
-            return fluid.layers.reduce_mean(out)
-        else:
-            return out
+        return nll_loss(log_softmax_out, label)
 
 
 class MSELoss(fluid.dygraph.layers.Layer):
     """
+	:alias_main: paddle.nn.MSELoss
+	:alias: paddle.nn.MSELoss,paddle.nn.layer.MSELoss,paddle.nn.layer.loss.MSELoss
+
     **Mean Square Error Loss**
     Computes the mean square error (squared L2 norm) of given input and label.
 
@@ -244,6 +250,9 @@ class MSELoss(fluid.dygraph.layers.Layer):
 
 class L1Loss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.L1Loss
+	:alias: paddle.nn.L1Loss,paddle.nn.layer.L1Loss,paddle.nn.layer.loss.L1Loss
+
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the L1 Loss of input predictions and target 
     labels as follows.
@@ -331,6 +340,9 @@ class L1Loss(fluid.dygraph.Layer):
 
 class BCELoss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.BCELoss
+	:alias: paddle.nn.BCELoss,paddle.nn.layer.BCELoss,paddle.nn.layer.loss.BCELoss
+
     This interface is used to construct a callable object of the ``BCELoss`` class.
     The BCELoss layer measures the binary_cross_entropy loss between input predictions 
     and target labels. The binary_cross_entropy loss can be described as:
@@ -456,6 +468,9 @@ class BCELoss(fluid.dygraph.Layer):
 
 class NLLLoss(fluid.dygraph.Layer):
     """
+	:alias_main: paddle.nn.NLLLoss
+	:alias: paddle.nn.NLLLoss,paddle.nn.layer.NLLLoss,paddle.nn.layer.loss.NLLLoss
+
     This op accepts input and target label and returns negative log likelihood 
     cross error. It is useful to train a classification problem with C classes.
      
@@ -578,7 +593,6 @@ class NLLLoss(fluid.dygraph.Layer):
 
         inputs = {'X': input, 'Label': label}
         attrs = {'reduction': self.reduction, 'ignore_index': self.ignore_index}
-
         if self.weight is not None:
             if isinstance(self.weight, fluid.framework.Variable):
                 inputs['Weight'] = self.weight

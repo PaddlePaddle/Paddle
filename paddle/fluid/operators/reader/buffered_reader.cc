@@ -44,7 +44,7 @@ BufferedReader::BufferedReader(
   VLOG(1) << "BufferedReader";
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
-    int dev_idx = boost::get<platform::CUDAPlace>(place_).device;
+    int dev_idx = BOOST_GET_CONST(platform::CUDAPlace, place_).device;
     compute_stream_ =
         ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
                                              .Get(place_)))
@@ -62,7 +62,6 @@ BufferedReader::BufferedReader(
 }
 
 void BufferedReader::ReadTillBufferFullAsync() {
-  PADDLE_ENFORCE_EQ(position_.size(), 0U);
   for (size_t i = 0; i < buffer_size_; ++i) {
     ReadAsync(i);
   }
@@ -87,8 +86,10 @@ void BufferedReader::ReadAsync(size_t i) {
       if (gpu.empty()) {
         gpu.resize(cpu.size());
       } else {
-        PADDLE_ENFORCE_EQ(gpu.size(), cpu.size(),
-                          "Input tensor number not matched");
+        PADDLE_ENFORCE_EQ(
+            gpu.size(), cpu.size(),
+            platform::errors::InvalidArgument(
+                "Input tensor number on GPU and CPU devices are not matched."));
       }
 
       std::vector<void *> gpu_ptrs;
@@ -102,7 +103,8 @@ void BufferedReader::ReadAsync(size_t i) {
       // NOTE(zjl): cudaStreamWaitEvent() must be called after all
       // gpu[i].mutable_data() is called, since some ops release
       // gpu memory immediately without waiting gpu kernel ends
-      platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
+      platform::SetDeviceId(
+          BOOST_GET_CONST(platform::CUDAPlace, place_).device);
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaEventRecord(events_[i].get(), compute_stream_));
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -116,12 +118,12 @@ void BufferedReader::ReadAsync(size_t i) {
         auto size =
             cpu[i].numel() * paddle::framework::SizeOfType(cpu[i].type());
         if (platform::is_cuda_pinned_place(cpu_place)) {
-          memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
-                       boost::get<platform::CUDAPinnedPlace>(cpu_place),
+          memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
+                       BOOST_GET_CONST(platform::CUDAPinnedPlace, cpu_place),
                        cpu_ptr, size, stream_.get());
         } else if ((platform::is_gpu_place(cpu_place))) {
-          memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
-                       boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
+          memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
+                       BOOST_GET_CONST(platform::CUDAPlace, cpu_place), cpu_ptr,
                        size, stream_.get());
         } else {
           platform::CUDAPinnedPlace cuda_pinned_place;
@@ -130,9 +132,9 @@ void BufferedReader::ReadAsync(size_t i) {
           auto cuda_pinned_ptr =
               cuda_pinned_tensor.mutable_data(cuda_pinned_place, cpu[i].type());
           memory::Copy(cuda_pinned_place, cuda_pinned_ptr,
-                       boost::get<platform::CPUPlace>(cpu_place), cpu_ptr,
+                       BOOST_GET_CONST(platform::CPUPlace, cpu_place), cpu_ptr,
                        size);
-          memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
+          memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place_), gpu_ptr,
                        cuda_pinned_place, cuda_pinned_ptr, size, stream_.get());
           PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream_.get()));
         }

@@ -41,44 +41,44 @@ namespace paddle {
 namespace framework {
 
 void RecordCandidateList::ReSize(size_t length) {
-  _mutex.lock();
-  _capacity = length;
-  CHECK(_capacity > 0);  // NOLINT
-  _candidate_list.clear();
-  _candidate_list.resize(_capacity);
-  _full = false;
-  _cur_size = 0;
-  _total_size = 0;
-  _mutex.unlock();
+  mutex_.lock();
+  capacity_ = length;
+  CHECK(capacity_ > 0);  // NOLINT
+  candidate_list_.clear();
+  candidate_list_.resize(capacity_);
+  full_ = false;
+  cur_size_ = 0;
+  total_size_ = 0;
+  mutex_.unlock();
 }
 
 void RecordCandidateList::ReInit() {
-  _mutex.lock();
-  _full = false;
-  _cur_size = 0;
-  _total_size = 0;
-  _mutex.unlock();
+  mutex_.lock();
+  full_ = false;
+  cur_size_ = 0;
+  total_size_ = 0;
+  mutex_.unlock();
 }
 
 void RecordCandidateList::AddAndGet(const Record& record,
                                     RecordCandidate* result) {
-  _mutex.lock();
+  mutex_.lock();
   size_t index = 0;
-  ++_total_size;
+  ++total_size_;
   auto fleet_ptr = FleetWrapper::GetInstance();
-  if (!_full) {
-    _candidate_list[_cur_size++] = record;
-    _full = (_cur_size == _capacity);
+  if (!full_) {
+    candidate_list_[cur_size_++] = record;
+    full_ = (cur_size_ == capacity_);
   } else {
-    CHECK(_cur_size == _capacity);
-    index = fleet_ptr->LocalRandomEngine()() % _total_size;
-    if (index < _capacity) {
-      _candidate_list[index] = record;
+    CHECK(cur_size_ == capacity_);
+    index = fleet_ptr->LocalRandomEngine()() % total_size_;
+    if (index < capacity_) {
+      candidate_list_[index] = record;
     }
   }
-  index = fleet_ptr->LocalRandomEngine()() % _cur_size;
-  *result = _candidate_list[index];
-  _mutex.unlock();
+  index = fleet_ptr->LocalRandomEngine()() % cur_size_;
+  *result = candidate_list_[index];
+  mutex_.unlock();
 }
 
 void DataFeed::AddFeedVar(Variable* var, const std::string& name) {
@@ -813,6 +813,7 @@ void MultiSlotInMemoryDataFeed::Init(
   visit_.resize(all_slot_num, false);
   pipe_command_ = data_feed_desc.pipe_command();
   finish_init_ = true;
+  input_type_ = data_feed_desc.input_type();
 }
 
 void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
@@ -880,6 +881,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       uint32_t rank;
       GetMsgFromLogKey(log_key, &search_id, &cmatch, &rank);
 
+      instance->ins_id_ = log_key;
       instance->search_id = search_id;
       instance->cmatch = cmatch;
       instance->rank = rank;
@@ -1065,8 +1067,27 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
     }
     auto& slot_offset = offset_[i];
-    LoD data_lod{slot_offset};
-    feed_vec_[i]->set_lod(data_lod);
+    if (this->input_type_ == 0) {
+      LoD data_lod{slot_offset};
+      feed_vec_[i]->set_lod(data_lod);
+    } else if (this->input_type_ == 1) {
+      if (!use_slots_is_dense_[i]) {
+        std::vector<size_t> tmp_offset;
+        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+                          platform::errors::InvalidArgument(
+                              "In batch reader, the sparse tensor lod size "
+                              "must be 2, but received %d",
+                              slot_offset.size()));
+        const auto& max_size = slot_offset[1];
+        tmp_offset.reserve(max_size + 1);
+        for (unsigned int k = 0; k <= max_size; k++) {
+          tmp_offset.emplace_back(k);
+        }
+        slot_offset = tmp_offset;
+        LoD data_lod{slot_offset};
+        feed_vec_[i]->set_lod(data_lod);
+      }
+    }
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
@@ -1431,7 +1452,11 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
 int PaddleBoxDataFeed::GetCurrentPhase() {
 #ifdef PADDLE_WITH_BOX_PS
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
-  return box_ptr->PassFlag();  // join: 1, update: 0
+  if (box_ptr->Mode() == 1) {  // For AucRunner
+    return 1;
+  } else {
+    return box_ptr->Phase();
+  }
 #else
   LOG(WARNING) << "It should be complied with BOX_PS...";
   return current_phase_;

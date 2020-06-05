@@ -140,6 +140,8 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
+	:api_attr: Static Graph
+
     A configuration class that provide support for transpiler distributed jobs.
     Some important parameters are explained as follows:
 
@@ -253,6 +255,8 @@ class ServerRuntimeConfig(object):
 
 class DistributeTranspiler(object):
     """
+	:api_attr: Static Graph
+
     **DistributeTranspiler**
 
     Convert the fluid program to distributed data-parallelism programs.
