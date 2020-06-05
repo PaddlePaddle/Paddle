@@ -170,13 +170,19 @@ void FcParallelFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     auto padding_weights = fc_new_desc.GetAttrIfExists<bool>("padding_weights");
 
-    // Get weights tensors
+    // Verify if weights dims allow for concatenation
     auto* w1 = scope->FindVar(fc1_w->Name())->GetMutable<LoDTensor>();
     auto* w2 = scope->FindVar(fc2_w->Name())->GetMutable<LoDTensor>();
     auto* w3 = scope->FindVar(fc3_w->Name())->GetMutable<LoDTensor>();
+    if (w1->dims() != w2->dims() || w1->dims() != w3->dims()) return;
+
+    // Verify if bias dims allow for concatenation
+    auto* b1 = scope->FindVar(fc1_b->Name())->GetMutable<LoDTensor>();
+    auto* b2 = scope->FindVar(fc2_b->Name())->GetMutable<LoDTensor>();
+    auto* b3 = scope->FindVar(fc3_b->Name())->GetMutable<LoDTensor>();
+    if (b1->dims() != b2->dims() || b1->dims() != b3->dims()) return;
 
     // Infer combined weights shape
-    if (w1->dims() != w2->dims() || w1->dims() != w3->dims()) return;
     framework::DDim fc_new_weights_dims = w1->dims();
     fc_new_weights_dims[1] += w2->dims()[1] + w3->dims()[1];
     if (padding_weights) {
@@ -198,13 +204,7 @@ void FcParallelFusePass::ApplyImpl(ir::Graph* graph) const {
     fc_new_weights_tensor->Resize(fc_new_weights_dims);
     ConcatWeights(*w1, *w2, *w3, fc_new_weights_tensor, padding_weights);
 
-    // Get bias tensors
-    auto* b1 = scope->FindVar(fc1_b->Name())->GetMutable<LoDTensor>();
-    auto* b2 = scope->FindVar(fc2_b->Name())->GetMutable<LoDTensor>();
-    auto* b3 = scope->FindVar(fc3_b->Name())->GetMutable<LoDTensor>();
-
     // Infer combined biases shape
-    if (b1->dims() != b2->dims() || b1->dims() != b3->dims()) return;
     framework::DDim fc_new_bias_dims = b1->dims();
     fc_new_bias_dims[0] += b2->dims()[0] + b3->dims()[0];
 
