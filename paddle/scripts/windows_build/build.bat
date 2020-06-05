@@ -7,17 +7,13 @@ set WITH_MKL=%4
 set ON_INFER=%5
 set PADDLE_VERSION=%6
 set BATDIR=%7
-set release_dir=%8
-set CUDA_PATH=%9
+set CUDA_DIR=%8
 
 set RETRY_TIMES=5
 
+set CUDA_DIR_WIN=%CUDA_DIR:/=\%
+set PATH=%CUDA_DIR_WIN%\nvvm\bin\;%CUDA_DIR_WIN%\bin;%PATH%
 
-set CUDA_PATH_WIN=%CUDA_PATH:/=\%
-set PATH=%CUDA_PATH_WIN%\nvvm\bin\;%CUDA_PATH_WIN%\bin;%PATH%
-
-echo Init Visual Studio Env
-call "c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
 
 echo Set Net Proxy
 set http_proxy=http://172.19.57.45:3128
@@ -29,20 +25,20 @@ for /f "tokens=1,2,* delims=\\" %%a in ("%PYTHON_DIR%") do (
 )
 set PYTHONV=%c2%
 
-for /f "tokens=1,2,* delims=/" %%a in ("%CUDA_PATH%") do (
-	set x1=%%a
-	set x2=%%b
-)
-
-set CUDAV=%x2%
-
-if "%WITH_GPU%"=="ON" (
-    if "%CUDAV%"=="v8.0" (set PADDLE_VERSION=%PADDLE_VERSION%.post87)
-    if "%CUDAV%"=="v9.0" (set PADDLE_VERSION=%PADDLE_VERSION%.post97)
-    if "%CUDAV%"=="v9.2" (set PADDLE_VERSION=%PADDLE_VERSION%.post97)
-    if "%CUDAV%"=="v10.0" (set PADDLE_VERSION=%PADDLE_VERSION%)
-    set PLAT=GPU
-) else (
+echo %CUDA_DIR% | findstr 10.0 > NULL
+if %errorlevel% == 0 (set PADDLE_VERSION=%PADDLE_VERSION%
+set CUDAV=v10.0)
+echo %CUDA_DIR% | findstr 9.2 > NULL
+if %errorlevel% == 0 (set PADDLE_VERSION=%PADDLE_VERSION%.post97
+set CUDAV=v9.2)
+echo %CUDA_DIR% | findstr 9.0 > NULL
+if %errorlevel% == 0 (set PADDLE_VERSION=%PADDLE_VERSION%.post97
+set CUDAV=v9.0)
+echo %CUDA_DIR% | findstr 8.0 > NULL
+if %errorlevel% == 0 (set PADDLE_VERSION=%PADDLE_VERSION%.post87
+set CUDAV=v8.0)
+set PLAT=GPU
+if "%WITH_GPU%"=="OFF" (
     set PLAT=CPU
     set CUDAV=CPU
 )
@@ -81,8 +77,8 @@ echo "begin to do build noavx ..."
 
 echo Current directory : %cd%
 
-echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_PATH% -DCUDA_ARCH_NAME=All
-cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_PATH% -DCUDA_ARCH_NAME=All
+echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
+cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
 
 set  MSBUILDDISABLENODEREUSE=1
 
@@ -156,8 +152,8 @@ taskkill /f /im vctip.exe 2>NUL
 set INS=AVX
 echo "begin to do build avx ..."
 
-echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=ON -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_PATH% -DCUDA_ARCH_NAME=All -DNOAVX_CORE_FILE=%dst_path%_noavx\python\paddle\fluid\core_noavx.pyd
-cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=ON -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_PATH% -DCUDA_ARCH_NAME=All -DNOAVX_CORE_FILE=%dst_path%_noavx\python\paddle\fluid\core_noavx.pyd
+echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=ON -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All -DNOAVX_CORE_FILE=%dst_path%_noavx\python\paddle\fluid\core_noavx.pyd
+cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=ON -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All -DNOAVX_CORE_FILE=%dst_path%_noavx\python\paddle\fluid\core_noavx.pyd
 
 set  MSBUILDDISABLENODEREUSE=1
 
@@ -232,8 +228,8 @@ taskkill /f /im vctip.exe 2>NUL
 
 echo "begin to do build inference library ..."
 
-echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_PATH% -DCUDA_ARCH_NAME=All
-cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON  -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_PATH%  -DCUDA_ARCH_NAME=All
+echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
+cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON  -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR%  -DCUDA_ARCH_NAME=All
 
 set  MSBUILDDISABLENODEREUSE=1
 
@@ -279,8 +275,9 @@ echo PACKAGE INFERENCE LIBRARY
 
 mkdir inference_dist
 
-"%BATDIR%\7z.exe" a inference_dist\fluid_inference_install_dir.zip fluid_inference_install_dir -r
-"%BATDIR%\7z.exe" a inference_dist\fluid_install_dir.zip fluid_install_dir -r
+%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_inference_install_dir', 'zip', root_dir='fluid_inference_install_dir')"
+%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_install_dir', 'zip', root_dir='fluid_install_dir')"
+
 goto :END
 
 :FAILURE
