@@ -55,12 +55,14 @@ class HDFSClient(FS):
         self._base_cmd = " ".join(self.pre_commands)
 
     def _run_cmd(self, cmd):
-        ret = fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
-        if len(ret) <= 0:
+        output = ""
+        ret = fluid.core.shell_execute_cmd(cmd, output, self._time_out,
+                                           self._sleep_inter)
+        assert ret == 0, "execute cmd:{} error:{}".format(cmd, output)
+        if len(output) <= 0:
             return []
 
-        lines = ret.splitlines()
-        return lines
+        return output.splitlines()
 
     def list_dirs(self, fs_path):
         if not self.is_exist(fs_path):
@@ -123,7 +125,7 @@ class HDFSClient(FS):
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def download(self, fs_path, local_path):
-        cmd = "{} -get {} {}/".format(self._base_cmd, fs_path, local_path)
+        cmd = "{} -get {} {}".format(self._base_cmd, fs_path, local_path)
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def mkdirs(self, fs_path):
@@ -140,14 +142,14 @@ class HDFSClient(FS):
             return
 
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
-        return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def _rm(self, fs_path):
         if not self.is_exist(fs_path):
             return
 
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
-        return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def delete(self, fs_path):
         if not self.is_exist(fs_path):
