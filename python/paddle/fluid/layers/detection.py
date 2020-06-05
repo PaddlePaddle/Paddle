@@ -406,6 +406,22 @@ def rpn_target_assign(bbox_pred,
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
+
+    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'rpn_target_assign')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'rpn_target_assign')
+
     # Assign target label to anchors
     loc_index = helper.create_variable_for_type_inference(dtype='int32')
     score_index = helper.create_variable_for_type_inference(dtype='int32')
@@ -2662,6 +2678,13 @@ def generate_proposal_labels(rpn_rois,
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
+    check_variable_and_dtype(rpn_rois, 'rpn_rois', ['float32', 'float64'],
+                             'generate_proposal_labels')
+    check_variable_and_dtype(gt_classes, 'gt_classes', ['int32'],
+                             'generate_proposal_labels')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'generate_proposal_labels')
+
     rois = helper.create_variable_for_type_inference(dtype=rpn_rois.dtype)
     labels_int32 = helper.create_variable_for_type_inference(
         dtype=gt_classes.dtype)
@@ -2904,7 +2927,7 @@ def generate_proposals(scores,
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
             image information for N batch. Height and width are the input sizes 
             and scale is the ratio of network input size and original size. 
-            The data type must be int32.
+            The data type can be float32 or float64.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
             of [H, W, A, 4]. H and W are height and width of the feature map,
             num_anchors is the box count of each position. Each anchor is
@@ -2946,6 +2969,17 @@ def generate_proposals(scores,
 
     """
     helper = LayerHelper('generate_proposals', **locals())
+
+    check_variable_and_dtype(scores, 'scores', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(bbox_deltas, 'bbox_deltas', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'generate_proposals')
+    check_variable_and_dtype(anchors, 'anchors', ['float32'],
+                             'generate_proposals')
+    check_variable_and_dtype(variances, 'variances', ['float32'],
+                             'generate_proposals')
 
     rpn_rois = helper.create_variable_for_type_inference(
         dtype=bbox_deltas.dtype)
