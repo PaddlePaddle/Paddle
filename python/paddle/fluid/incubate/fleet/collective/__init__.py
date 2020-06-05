@@ -314,7 +314,7 @@ class Collective(Fleet):
         if fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache.{}".format(
                 local_cache_path, self._checkpoint_prefix, max_no, trainer_id)
-            if local_fs.stat(cache_path):
+            if local_fs.is_exist(cache_path):
                 local_fs.delete(cache_path)
 
         real_path = "{}/{}.{}".format(path, self._checkpoint_prefix, max_no)

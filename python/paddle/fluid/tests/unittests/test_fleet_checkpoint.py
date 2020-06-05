@@ -52,8 +52,6 @@ class FleetTest(unittest.TestCase):
         status = TrainStatus(2)
         fleet.save_checkpoint(exe, dir_path, train_status=status, fs=fs)
         n1 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
-        print("n1:", n1)
-        return
 
         status2 = fleet.load_checkpoint(exe, dir_path, trainer_id=0, fs=fs)
         self.assertEqual(status2, status)
@@ -63,11 +61,6 @@ class FleetTest(unittest.TestCase):
         self.assertEqual(n2, n1 + 1)
 
         fleet.clean_redundant_checkpoints(dir_path, fs=fs)
-
-    def setUp(self):
-        fs = LocalFS()
-        fs.mkdirs("./checkpoint_test_hdfs")
-        fs.mkdirs("./checkpoint_test_local")
 
     def test_hdfs_checkpoint(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7", None)
