@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/fc_parallel_fuse_pass.h"
@@ -153,7 +152,7 @@ void TestMain(bool padding_weights) {
   EXPECT_EQ(original_nodes_num - 4, current_nodes_num);
   auto split_ops = GetOpNodes(graph, "split");
   ASSERT_EQ(split_ops.size(), 1UL);
-  EXPECT_THAT(split_ops[0]->Op()->GetAttrIfExists<int>("num"), 3);
+  EXPECT_EQ(split_ops[0]->Op()->GetAttrIfExists<int>("num"), 3);
 
   // Order of 3 fc ops matched by fuse might be non-deterministic,
   // so infer order from values and store in block_order.
