@@ -212,7 +212,7 @@ def __bootstrap__():
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
             'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
-            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
+            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb', 'fix_dayid'
         ]
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

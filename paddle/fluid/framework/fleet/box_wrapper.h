@@ -48,6 +48,7 @@ limitations under the License. */
 
 extern void comlog_set_log_level(int log_level);
 extern int com_logstatus();
+DECLARE_int32(fix_dayid);
 namespace paddle {
 namespace framework {
 
@@ -446,7 +447,8 @@ class BoxWrapper {
     b.tm_year = year - 1900;
     b.tm_mon = month - 1;
     b.tm_mday = day;
-    b.tm_min = b.tm_hour = b.tm_sec = 0;
+    b.tm_hour = FLAGS_fix_dayid ? 8 : 0;
+    b.tm_min = b.tm_sec = 0;
     std::time_t seconds_from_1970 = std::mktime(&b);
 
     std::string ret_str;
@@ -999,7 +1001,8 @@ class BoxHelper {
     b.tm_year = year_ - 1900;
     b.tm_mon = month_ - 1;
     b.tm_mday = day_;
-    b.tm_min = b.tm_hour = b.tm_sec = 0;
+    b.tm_min = b.tm_sec = 0;
+    b.tm_hour = FLAGS_fix_dayid ? 8 : 0;
     std::time_t x = std::mktime(&b);
 
     auto box_ptr = BoxWrapper::GetInstance();
