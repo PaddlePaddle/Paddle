@@ -74,12 +74,10 @@ class FleetTest(unittest.TestCase):
         dir_path = "./checkpoint_test_hdfs"
         self._test_checkpoint(fs, os.path.abspath(dir_path))
 
-    """
     def test_local_checkpoint(self):
         fs = LocalFS()
         dir_path = "./checkpoint_test_local"
         self._test_checkpoint(fs, dir_path)
-    """
 
 
 if __name__ == '__main__':
