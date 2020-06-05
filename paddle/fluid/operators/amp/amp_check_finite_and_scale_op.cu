@@ -25,7 +25,7 @@ __global__ void AmpCheckFiniteAndScale(const T* in, const T* scale, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
   if (idx < num) {
-    if (!std::isfinite(in[idx])) {
+    if (!isfinite(in[idx])) {
       *found_inf = 1;
     }
     out[idx] = *found_inf ? in[idx] : in[idx] * scale[0];
