@@ -3409,11 +3409,11 @@ def matrix_nms(bboxes,
                                 categories will be considered. Default: 0
         normalized (bool): Whether detections are normalized. Default: True
         return_index(bool): Whether return selected index. Default: False
-        name(str): Name of the multiclass nms op. Default: None.
+        name(str): Name of the matrix nms op. Default: None.
 
     Returns:
         A tuple with two Variables: (Out, Index) if return_index is True,
-        otherwise, a tuple with one Variable(Out) is returned.
+        otherwise, one Variable(Out) is returned.
 
         Out (Variable): A 2-D LoDTensor with shape [No, 6] containing the
              detection results.
