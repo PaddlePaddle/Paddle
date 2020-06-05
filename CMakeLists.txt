@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -20,6 +20,19 @@ set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 include(system)
 
 project(paddle CXX C)
+
+include(init)
+
+# enable language CUDA
+# TODO(Shibo Tao): remove find_package(CUDA) completely.
+find_package(CUDA QUIET)
+option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
+if(WITH_GPU AND NOT APPLE)
+    enable_language(CUDA)
+    message(STATUS "CUDA compiler: ${CMAKE_CUDA_COMPILER}, version: "
+        "${CMAKE_CUDA_COMPILER_ID} ${CMAKE_CUDA_COMPILER_VERSION}")
+endif()
+
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
@@ -52,14 +65,12 @@ else(WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-deprecated-declarations")
 endif(WIN32)
 
-find_package(CUDA QUIET)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
 
 include(simd)
 
 ################################ Exposed Configurations #######################################
-option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
 option(WITH_AVX         "Compile PaddlePaddle with AVX intrinsics"      ${AVX_FOUND})
 option(WITH_PYTHON      "Compile PaddlePaddle with python interpreter"  ON)
