@@ -28,18 +28,24 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LabelSmoothOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LabelSmoothOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "The input 'X' of LabelSmoothOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "The output 'Out' of LabelSmoothOp is not found."));
     auto in_dims = ctx->GetInputDim("X");
     if (ctx->HasInput("PriorDist")) {
       auto noise_dims = ctx->GetInputDim("PriorDist");
       auto noise_numel = paddle::framework::product(noise_dims);
-      PADDLE_ENFORCE(
-          in_dims[in_dims.size() - 1] == noise_numel,
-          "The number of elements in Input(PriorDist) must be equal to the "
-          "dimension of each label.");
+      PADDLE_ENFORCE_EQ(
+          in_dims[in_dims.size() - 1], noise_numel,
+          platform::errors::InvalidArgument(
+              "The number of elements in input 'PriorDist' must be equal to "
+              "the "
+              "dimension of each label. But received each label's "
+              "dimension=[%d], number of elements in input 'PriorDist' is [%d]",
+              in_dims[in_dims.size() - 1], noise_numel));
     }
     ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("Out", in_dims);

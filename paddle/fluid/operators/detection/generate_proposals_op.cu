@@ -379,7 +379,11 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     float nms_thresh = context.Attr<float>("nms_thresh");
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
-    PADDLE_ENFORCE_GE(eta, 1., "Not support adaptive NMS.");
+    PADDLE_ENFORCE_GE(eta, 1.,
+                      platform::errors::InvalidArgument(
+                          "Not support adaptive NMS. The attribute 'eta' "
+                          "should not less than 1. But received eta=[%d]",
+                          eta));
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
 
