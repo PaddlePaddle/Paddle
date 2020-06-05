@@ -63,6 +63,7 @@ void BarrierMonitor::Reset(int workers, BarrierType type) {
 
   send_barrier_queue->Clear();
   recv_barrier_queue->Clear();
+  VLOG(2) << "reset monitor workers: " << workers_ << " type: " << barrier_type;
 }
 
 void BarrierMonitor::Monitor() {
@@ -77,7 +78,7 @@ void BarrierMonitor::Monitor() {
     if (IsReady()) {
       Swap(true);
     } else {
-      VLOG(3) << "running timer: " << timer << " barrier: " << barrier_type
+      VLOG(4) << "running timer: " << timer << " barrier: " << barrier_type
               << " sendQ:" << send_barrier_queue->Size()
               << " recvQ: " << recv_barrier_queue->Size();
 
@@ -108,17 +109,18 @@ void BarrierMonitor::Swap(bool is_valid) {
   release_ = true;
 
   if (barrier_type == BarrierType::kSendBarrier) {
-    ServerWeakup();
-    VLOG(4) << "barrier monitor server weak up sync to do";
-    WaitServerWeakup();
-    VLOG(4) << "barrier monitor server weak up sync done";
     barrier_type = BarrierType::kRecvBarrier;
     send_barrier_queue->Clear();
-    VLOG(4) << "barrier monitor server switch to recv barrier";
+    VLOG(3) << "barrier monitor server clean up queue and barrier";
+    ServerWeakup();
+    VLOG(3) << "barrier monitor server weak up sync to do";
+    WaitServerWeakup();
+    VLOG(3) << "barrier monitor server weak up sync done";
+
   } else {
     barrier_type = BarrierType::kSendBarrier;
     recv_barrier_queue->Clear();
-    VLOG(4) << "barrier monitor server switch to send barrier";
+    VLOG(3) << "barrier monitor server switch to send barrier";
   }
 
   worker_cv_.notify_all();

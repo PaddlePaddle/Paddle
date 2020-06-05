@@ -126,6 +126,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 
     VLOG(3) << "start getting nccl id from trainer 0...";
     barrier->WaitServerWeakup();
+    barrier->ServerWeakup();
     VLOG(3) << "got nccl id and stop server...";
     barrier->Stop();
     rpc_service->ShutDown();
