@@ -68,14 +68,15 @@ inline void shell_execute(const std::string& cmd) {
 // timeout:ms, default -1 means forever.
 // sleep_inter:ms, default -1 means not sleep.
 extern std::string shell_get_command_output(const std::string& cmd,
-                                            int time_out = 10 * 60 * 1000,
-                                            int sleep_inter = -1,
+                                            int time_out = 1 * 60 * 1000,
+                                            int sleep_inter = 1000,
                                             bool print_cmd = false);
 // timeout:ms, default -1 means forever.
 // sleep_inter:ms, default -1 means not sleep.
-extern int shell_execute_cmd(const std::string& cmd, std::string* output,
-                             int time_out = 10 * 60 * 1000,
-                             int sleep_inter = -1, bool print_cmd = false);
+extern int shell_execute_cmd(const std::string& cmd,
+                             std::string& output,  // NOLINT
+                             int time_out = 1 * 60 * 1000,
+                             int sleep_inter = 1000, bool print_cmd = false);
 
 }  // namespace framework
 }  // namespace paddle

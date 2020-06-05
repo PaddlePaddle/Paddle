@@ -1502,23 +1502,22 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
   m.def("run_cmd",
-        [](const std::string &cmd, int time_out = 10 * 60 * 1000,
-           int sleep_inter = -1) -> const std::string {
+        [](const std::string &cmd, int time_out = 1 * 60 * 1000,
+           int sleep_inter = 3000) -> const std::string {
           return paddle::framework::shell_get_command_output(cmd, time_out,
                                                              sleep_inter);
         },
-        py::arg("cmd"), py::arg("time_out") = -1,
-        py::arg("time_out") = 10 * 60 * 1000, py::arg("sleep_inter") = -1,
-        py::arg("print_cmd") = false);
+        py::arg("cmd"), py::arg("time_out") = 1 * 60 * 1000,
+        py::arg("sleep_inter") = -1, py::arg("print_cmd") = false);
   m.def("shell_execute_cmd",
-        [](const std::string &cmd, std::string *output,
-           int time_out = 10 * 60 * 1000, int sleep_inter = -1,
+        [](const std::string &cmd, std::string &output,
+           int time_out = 1 * 60 * 1000, int sleep_inter = 3000,
            bool print_cmd = false) -> int {
           return paddle::framework::shell_execute_cmd(cmd, output, time_out,
                                                       sleep_inter, print_cmd);
         },
-        py::arg("cmd"), py::arg("output"), py::arg("time_out") = 10 * 60 * 1000,
-        py::arg("sleep_inter") = -1, py::arg("print_cmd") = false);
+        py::arg("cmd"), py::arg("output"), py::arg("time_out") = 1 * 60 * 1000,
+        py::arg("sleep_inter") = 3000, py::arg("print_cmd") = false);
 
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
