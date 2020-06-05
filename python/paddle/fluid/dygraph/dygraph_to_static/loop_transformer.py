@@ -59,64 +59,15 @@ def create_while_node(condition_name, body_name, loop_var_names):
     ]
     while_args.append(gast.List(elts=assign_targets, ctx=gast.Param()))
 
-    while_func_id = gast.parse('fluid.layers.while_loop').body[0].value
+    while_func_id = gast.parse(
+        'fluid.dygraph.dygraph_to_static.convert_operators.convert_while_loop'
+    ).body[0].value
     while_node = gast.Call(func=while_func_id, args=while_args, keywords=[])
     assign_node = gast.Assign(
         targets=[gast.Tuple(
             elts=assign_targets, ctx=gast.Store())],
         value=while_node)
     return assign_node
-
-
-class LogicalOpTransformer(gast.NodeTransformer):
-    """
-    Transform python boolean op into Paddle logical op
-    """
-
-    def __init__(self, node):
-        self.root = node
-
-    def transform(self):
-        return self.visit(self.root)
-
-    def visit_UnaryOp(self, node):
-        self.generic_visit(node)
-        if isinstance(node.op, gast.Not):
-            arg = ast_to_source_code(node.operand)
-            new_node_str = "fluid.layers.logical_not({})".format(arg)
-            # gast.parse returns Module(body=[expr(value=...)])
-            new_node = gast.parse(new_node_str).body[0].value
-            return new_node
-        return node
-
-    def visit_BoolOp(self, node):
-        self.generic_visit(node)
-        if isinstance(node.op, gast.And):
-            new_node = self._create_bool_op_node(node.values, 'and')
-        elif isinstance(node.op, gast.Or):
-            new_node = self._create_bool_op_node(node.values, 'or')
-        else:
-            raise TypeError(
-                "Only supports and/or syntax in control flow if statement.")
-        return new_node
-
-    def _create_bool_op_node(self, nodes, api_type):
-        assert len(
-            nodes
-        ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
-            len(nodes))
-        if len(nodes) > 2:
-            # Creates logic_and/logic_or node recursively.
-            pre_logic_node = self._create_bool_op_node(nodes[:2], api_type)
-            post_logic_node = self._create_bool_op_node(nodes[2:], api_type)
-            nodes = [pre_logic_node] + [post_logic_node]
-
-        args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
-            api_type, args[0], args[1])
-        # gast.parse return Module(body=[expr(...)])
-        new_node = gast.parse(new_node_str).body[0].value
-        return new_node
 
 
 class NameVisitor(gast.NodeVisitor):
@@ -418,9 +369,9 @@ class LoopTransformer(gast.NodeTransformer):
 
         # 1. check whether need to transform
         # NOTE: Current need transform cases:
-        #   1). for x in range(VarBase.numpy()[0])
-        #   2). for x in VarBase.numpy()
-        #   3). for i, x in enumerate(VarBase.numpy())
+        #   1). for x in range(VarBase[0]|VarBase.numpy()[0])
+        #   2). for x in VarBase|VarBase.numpy()
+        #   3). for i, x in enumerate(VarBase|VarBase.numpy())
         if not self.name_visitor.is_control_flow_loop(node):
             return [node]
 
@@ -538,10 +489,6 @@ class LoopTransformer(gast.NodeTransformer):
         return new_stmts
 
     def get_while_stmt_nodes(self, node):
-        # TODO: consider while - else in python
-        if not self.name_visitor.is_control_flow_loop(node):
-            return [node]
-
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
         new_stmts = []
@@ -557,13 +504,6 @@ class LoopTransformer(gast.NodeTransformer):
         for name in create_var_names:
             if "." not in name:
                 new_stmts.append(create_static_variable_gast_node(name))
-
-        # while x < 10 in dygraph should be convert into static tensor < 10
-        for name in loop_var_names:
-            new_stmts.append(to_static_variable_gast_node(name))
-
-        logical_op_transformer = LogicalOpTransformer(node.test)
-        cond_value_node = logical_op_transformer.transform()
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
@@ -581,10 +521,11 @@ class LoopTransformer(gast.NodeTransformer):
                 kw_defaults=None,
                 kwarg=None,
                 defaults=[]),
-            body=[gast.Return(value=cond_value_node)],
+            body=[gast.Return(value=node.test)],
             decorator_list=[],
             returns=None,
             type_comment=None)
+
         for name in loop_var_names:
             if "." in name:
                 rename_transformer = RenameTransformer(condition_func_node)

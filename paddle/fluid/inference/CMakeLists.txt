@@ -17,10 +17,6 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake function for inference
 endif()
 
-if(WIN32)
-    add_definitions(-DPADDLE_DLL_INFERENCE)
-endif()
-
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
@@ -61,10 +57,6 @@ add_subdirectory(capi)
 
 if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
-endif()
-
-if(NOT ON_INFER)
-  return()
 endif()
 
 set(SHARED_INFERENCE_SRCS

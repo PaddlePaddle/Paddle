@@ -16,9 +16,8 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/op_teller.h"
-
-#include "lite/core/op_registry.h"
 
 namespace paddle {
 namespace inference {

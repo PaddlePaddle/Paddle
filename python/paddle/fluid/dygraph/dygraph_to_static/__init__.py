@@ -32,6 +32,8 @@ from .program_translator import *
 from . import convert_call_func
 from .convert_call_func import *
 
+from . import convert_operators
+
 __all__ = []
 __all__ += ast_transformer.__all__
 __all__ += loop_transformer.__all__
