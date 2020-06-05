@@ -349,6 +349,8 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.recompute_checkpoints = []
         self.use_amp = False  # use mixed precision optimizer
         self.amp_loss_scaling = 2**15
+        self.use_pipeline = False
+        self.num_microbatches = 0
 
         self.exec_strategy = fluid.ExecutionStrategy()
 
@@ -404,6 +406,8 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._use_amp = strategy.use_amp
         self._amp_loss_scaling = strategy.amp_loss_scaling
         self.print_config = False
+        self._use_pipeline = strategy.use_pipeline
+        self._num_microbatches = strategy.num_microbatches
 
     def backward(self,
                  loss,
@@ -435,6 +439,15 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
 
+        if strategy.use_pipeline:
+            strategy.mode = "collective"
+            strategy.collective_mode = "pipeline_grad_allreduce"
+            self._check_condition(
+                "use_pipeline",
+                use_dgc=main_program._enable_dgc,
+                use_dist_fc=strategy.use_dist_fc,
+                use_lamb=main_program._use_lamb)
+
         if strategy.use_dist_fc:
             self._check_condition(
                 "use_dist_fc",
@@ -452,7 +465,8 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_lamb=main_program._use_lamb)
 
         if self._strategy.collective_mode=="local_sgd" \
-                or self._strategy.collective_mode == "grad_allreduce":
+                or self._strategy.collective_mode == "grad_allreduce" \
+                or self._strategy.collective_mode == "pipeline_grad_allreduce":
             assert self._strategy.mode == "collective", \
                 "local_sgd and grad_allreduce can be used under collective mode"
 
@@ -641,14 +655,32 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
 
-        optimize_ops, param_grads = self._optimizer.minimize(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        if self._use_pipeline:
+            optimize_ops = None
+            param_grads = None
+            self._optimizer = fluid.optimizer.ModelParallelOptimizer(
+                self._optimizer,
+                num_macrobatches=self._num_microbatches,
+                start_cpu_core_id=0)
+            main_prog_list = self._optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
+        else:
+            optimize_ops, param_grads = self._optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
 
         fleet._origin_program = main_program.clone(for_test=False)
         fleet._transpiled_program = main_program
-        fleet.main_program = self._try_to_compile(startup_program, main_program)
+        if self._use_pipeline:
+            fleet.main_program = self._try_to_compile(startup_program,
+                                                      main_prog_list)
+        else:
+            fleet.main_program = self._try_to_compile(startup_program,
+                                                      main_program)
 
         return optimize_ops, param_grads

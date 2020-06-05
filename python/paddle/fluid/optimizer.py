@@ -4385,16 +4385,24 @@ class ModelParallelOptimizer(object):
             if not len(prev_op) == 1:
                 # For an op with more than one prev ops, all of its prev ops
                 # must have the same device spec
-                device = prev_op[0].attr(self._op_device_key)
-                device_index = prev_op[0].attr(self._op_device_index_key)
-                for i in range(1, len(prev_op), 1):
-                    dev = prev_op[i].attr(self._op_device_key)
-                    idx = prev_op[i].attr(self._op_device_index_key)
-                    assert dev == device and idx == device_index, (
-                        "For an op with more than one prev ops, all of its "
-                        "prev ops must have the same device spec.")
-                return prev_op[len(prev_op) - 1]
-            return prev_op[0]
+                #device = prev_op[0].attr(self._op_device_key)
+                #device_index = prev_op[0].attr(self._op_device_index_key)
+                #for i in range(1, len(prev_op), 1):
+                #    dev = prev_op[i].attr(self._op_device_key)
+                #    idx = prev_op[i].attr(self._op_device_index_key)
+                #    assert dev == device and idx == device_index, (
+                #        "For an op with more than one prev ops outputs the var "
+                #        "named {}, all of its prev ops ({}) must have the same "
+                #        "device spec.".format(var_name, prev_op))
+                #return prev_op[len(prev_op) - 1]
+                #print("WARN: For an op with more than one prev ops outputs the "
+                #      "var named {}, all of its prev ops ({}) must have the "
+                #      "same device spec.".format(var_name, prev_op))
+                print("WARN: For an op with more than one prev ops outputs the "
+                      "var named {}, all of its prev ops must have the "
+                      "same device spec.".format(var_name))
+            #return prev_op[0]
+            return prev_op[-1]
         return None
 
     def _rename_arg(self, op, old_name, new_name):
@@ -4592,7 +4600,8 @@ class ModelParallelOptimizer(object):
            of the first place (CPUPlace or CUDAPlace).
         2. Add default op_device attribute for ops that have no kernel.
            For these ops, the op_device_index attribute is set. So, we
-           can determine the op_device attribute based on it.
+           can determine the op_device attribute based on it. Now the only
+           supported op without kernal is conditional_block.
         3. Add default op_device_index attribute for sum ops added during
            optimization. For these ops, we set the op_device_index attribute
            as the one of its post op, i.e, which op has the output of the sum op
@@ -4641,7 +4650,9 @@ class ModelParallelOptimizer(object):
     def _check_validation(self, block):
         """
         Check whether ops in a block are all validate.
+        Then, return all device specifications in order.
         """
+        device_specs = []
         for op in block.ops:
             type = op.type
             # if op.type == "conditional_block":
@@ -4660,41 +4671,49 @@ class ModelParallelOptimizer(object):
             device = op.attr(self._op_device_key)
             assert device, ("op_device attribute for op "
                             "{} has not been set.".format(op.type))
-            if device == 'cpu': return
-            device_index = op.attr(self._op_device_index_key)
-            assert device_index, ("op_device_index attribute for op "
-                                  "{} has not been set.".format(op.type))
-
-    def _get_device_specs(self, block):
-        """
-        Get all device specs the program use by order.
-        """
-        device_specs = []
-        for op in block.ops:
-            type = op.type
-            #if not op._has_kernel(type):
-            #    continue
-            device = op.attr(self._op_device_key)
-            device_index = op.attr(self._op_device_index_key)
-            if device == "cpu":
-                dev_spec = device
+            if device == 'cpu':
+                dev_spec = "cpu"
             else:
+                device_index = op.attr(self._op_device_index_key)
+                assert device_index, ("op_device_index attribute for op "
+                                      "{} has not been set.".format(op.type))
                 dev_spec = device + ":" + device_index
-            if not dev_spec in device_specs: device_specs.append(dev_spec)
+            if not dev_spec in device_specs:
+                device_specs.append(dev_spec)
         return device_specs
 
-    def _insert_enq_deq_ops_for_boundaries(self, block, startup_program):
+    #def _get_device_specs(self, block):
+    #    """
+    #    Get all device specs the program use by order.
+    #    """
+    #    device_specs = []
+    #    for op in block.ops:
+    #        type = op.type
+    #        #if not op._has_kernel(type):
+    #        #    continue
+    #        device = op.attr(self._op_device_key)
+    #        device_index = op.attr(self._op_device_index_key)
+    #        if device == "cpu":
+    #            dev_spec = device
+    #        else:
+    #            dev_spec = device + ":" + device_index
+    #        if not dev_spec in device_specs: device_specs.append(dev_spec)
+    #    return device_specs
+
+    def _insert_enq_deq_ops_for_boundaries(self, block, origin_block,
+                                           startup_program):
         """
         Insert a pair of enqueue and dequeue ops for every two
         consecutive ops on different devices.
         """
         startup_block = startup_program.global_block()
+        extra_index = 0
 
         # A map from var to device spec where op takes it as input,
         # avoiding multiple enqueue and dequeue.
         var_devspec = dict()
 
-        for index, op in reversed(list(enumerate(block.ops))):
+        for index, op in list(enumerate(origin_block.ops)):
             cur_device = op.attr(self._op_device_key)
             cur_device_index = op.attr(self._op_device_index_key)
 
@@ -4704,7 +4723,14 @@ class ModelParallelOptimizer(object):
                 cur_device_spec = cur_device + ":" + cur_device_index
 
             for var_name in op.input_arg_names:
-                prev_op = self._find_real_prev_op(block.ops, op, var_name)
+                # i.e., lod_tensor_blocking_queue created by DataLoader,
+                # which only exists in startup program.
+                if not var_name in origin_block.vars: continue
+                var = block.var(var_name)
+                # skip data, because we will process it later
+                if var.is_data: continue
+                prev_op = self._find_real_prev_op(origin_block.ops, op,
+                                                  var_name)
                 if prev_op is None:
                     continue
                 prev_device = prev_op.attr(self._op_device_key)
@@ -4736,7 +4762,7 @@ class ModelParallelOptimizer(object):
                     op_role = op.all_attrs()[self._op_role_key]
                     var = block.vars[var_name]
                     block._insert_op(
-                        index=index,
+                        index=index + extra_index,
                         type='enqueue',
                         inputs={'X': var},
                         attrs={
@@ -4745,8 +4771,9 @@ class ModelParallelOptimizer(object):
                             self._op_device_index_key: prev_device_index,
                             self._op_role_key: op_role
                         })
+                    extra_index += 1
                     block._insert_op(
-                        index=index + 1,
+                        index=index + extra_index,
                         type='dequeue',
                         outputs={'Out': [var]},
                         attrs={
@@ -4755,7 +4782,72 @@ class ModelParallelOptimizer(object):
                             'queue_name': queue_name,
                             self._op_role_key: op_role
                         })
-        return device_specs
+                    extra_index += 1
+        # A map from var to device spec where op takes it as input,
+        # avoiding multiple enqueue and dequeue.
+        #var_devspec = dict()
+
+        #for index, op in reversed(list(enumerate(block.ops))):
+        #    cur_device = op.attr(self._op_device_key)
+        #    cur_device_index = op.attr(self._op_device_index_key)
+
+        #    if cur_device == "cpu":
+        #        cur_device_spec = cur_device
+        #    else:
+        #        cur_device_spec = cur_device + ":" + cur_device_index
+
+        #    for var_name in op.input_arg_names:
+        #        prev_op = self._find_real_prev_op(block.ops, op, var_name)
+        #        if prev_op is None:
+        #            continue
+        #        prev_device = prev_op.attr(self._op_device_key)
+        #        prev_device_index = prev_op.attr(self._op_device_index_key)
+
+        #        if prev_device == "cpu":
+        #            prev_device_spec = prev_device
+        #        else:
+        #            prev_device_spec = prev_device + ":" + prev_device_index
+
+        #        if prev_device_spec != cur_device_spec:
+        #            #if var_name not in var_devspec:
+        #            #    var_devspec[var_name] = []
+        #            #if cur_device_spec in var_devspec[var_name]: continue
+        #            #var_devspec[var_name].append(cur_device_spec)
+
+        #            queue_name = var_name + "@blocking_queue@"
+        #            queue_name = unique_name.generate(queue_name)
+        #            queue_var = startup_block.create_var(
+        #                name=queue_name,
+        #                persistable=True,
+        #                type=core.VarDesc.VarType.RAW)
+        #            startup_block.append_op(
+        #                type='queue_generator',
+        #                attrs={
+        #                    'names': [queue_name],
+        #                    'capacity': self._num_macrobatches
+        #                })
+        #            op_role = op.all_attrs()[self._op_role_key]
+        #            var = block.vars[var_name]
+        #            block._insert_op(
+        #                index=index,
+        #                type='enqueue',
+        #                inputs={'X': var},
+        #                attrs={
+        #                    'queue_name': queue_name,
+        #                    self._op_device_key: prev_device,
+        #                    self._op_device_index_key: prev_device_index,
+        #                    self._op_role_key: op_role
+        #                })
+        #            block._insert_op(
+        #                index=index + 1,
+        #                type='dequeue',
+        #                outputs={'Out': [var]},
+        #                attrs={
+        #                    self._op_device_key: cur_device,
+        #                    self._op_device_index_key: cur_device_index,
+        #                    'queue_name': queue_name,
+        #                    self._op_role_key: op_role
+        #                })
 
     def _insert_enq_deq_ops_for_update(self, block, startup_program):
         """
@@ -4886,9 +4978,10 @@ class ModelParallelOptimizer(object):
                                                     startup_prog, program_list):
         """
         Special Case: process persistable vars that exist in
-        multiple sections
+        multiple sections, e.g., shared weight
         """
-        # var_info = {var_name: [program1, program2...]}
+        # var_info = {var_name: [program1, program2...]},
+        # persistable var only
         var_info = dict()
         for prog_info in program_list:
             prog = prog_info['program']
@@ -4898,7 +4991,7 @@ class ModelParallelOptimizer(object):
                 if not var.persistable: continue
                 if not var_name in var_info:
                     var_info[var_name] = []
-                if not prog in var_info[var_name]:
+                if not prog in var_info[var_name] and var_name in block.vars:
                     var_info[var_name].append(prog)
         for var_name in var_info.keys():
             if len(var_info[var_name]) == 1:
@@ -4913,6 +5006,10 @@ class ModelParallelOptimizer(object):
                 for op in block.ops:
                     # Todo: how to deal with dequeue
                     if op.type == "dequeue": continue
+                    # We have processed lr related vars
+                    if op.attr(self._op_role_key) == int(
+                            self._op_role.Optimize.LRSched):
+                        continue
                     if var_name in op.desc.output_arg_names():
                         assert var_name not in write_info, (
                             "two sections write the same var({}): second "
@@ -4945,25 +5042,33 @@ class ModelParallelOptimizer(object):
                         'names': [queue_name],
                         'capacity': self._num_macrobatches
                     })
-                write_block.append_op(
+                write_block._insert_op(
+                    index=0,
                     type='enqueue',
                     inputs={'X': write_block.var(var_name), },
                     attrs={
                         'queue_name': queue_name,
                         self._op_device_key: write_device,
                         self._op_device_index_key: write_device_index,
-                        self._op_role_key: self._op_role.Optimize
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        #self._op_role_key: self._op_role.LRSched
+                        self._op_role_key: self._op_role.Forward
                     })
                 read_block = prog.block(0)
                 read_device, read_device_index = self._get_device_info(
                     read_block)
-                read_block.append_op(
+                read_block._insert_op(
+                    index=0,
                     type='dequeue',
                     outputs={'Out': [read_block.var(var_name)], },
                     attrs={
                         self._op_device_key: read_device,
                         self._op_device_index_key: read_device_index,
-                        self._op_role_key: self._op_role.Optimize,
+                        # A trick to make the role LRSched to avoid copy every
+                        # microbatch
+                        #self._op_role_key: self._op_role.LRSched,
+                        self._op_role_key: self._op_role.Forward,
                         'queue_name': queue_name,
                     })
 
@@ -4982,16 +5087,26 @@ class ModelParallelOptimizer(object):
         # Step1: add default op_device and op_device_index for optimizer
         # (lr) related ops, because we put Optimizer out of the scope
         # of device_guard.
+        start = time.time()
         self._add_default_opdevice_attr(main_block)
 
-        self._check_validation(main_block)
-        device_specs = self._get_device_specs(main_block)
+        device_specs = self._check_validation(main_block)
+        #device_specs = self._get_device_specs(main_block)
+        print("time for step1: ", time.time() - start)
+        start = time.time()
 
         # Step2: add enqueue and dequeue between the section boundaries
-        self._insert_enq_deq_ops_for_boundaries(main_block, startup_program)
+        origin_prog = main_block.program.clone(for_test=False)
+        origin_main_block = origin_prog.global_block()
+        self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
+                                                startup_program)
+        print("time for step2: ", time.time() - start)
+        start = time.time()
 
         # Step3: add a pair of enqueue and dequeueN for parameter gradients
         self._insert_enq_deq_ops_for_update(main_block, startup_program)
+        print("time for step3: ", time.time() - start)
+        start = time.time()
 
         main_program = main_block.program
 
@@ -5019,18 +5134,24 @@ class ModelParallelOptimizer(object):
                 "input_set": set(),
                 "output_set": set()
             }
+            main_program.random_seed = 32
             program_list.append(ptmp)
         else:
             program_list = self._split_program(main_program)
             for p in program_list:
+                p["program"].random_seed = 32
                 self._create_vars(p["program"].block(0), main_program)
         self._insert_enq_deq_for_data_var(main_block, program_list,
                                           startup_program, device_specs)
 
+        print("time for step4: ", time.time() - start)
+        start = time.time()
         # Step5: Special Case: process persistable vars that exist in
         # multiple sections
         self._process_persistable_vars_in_multi_sections(
             main_program, startup_program, program_list)
+        print("time for step5: ", time.time() - start)
+        start = time.time()
 
         device_spec = device_spec_list[-1]
         print("device_spec: ", device_spec)
@@ -5054,10 +5175,19 @@ class ModelParallelOptimizer(object):
         #print_list.append('fc_0.w_0_2@GRAD')
         #print_list.append('fc_0.w_0_3@GRAD')
         #print_list.append('fc_0.w_0@GRAD')
+        #print_list.append('tmp_34')
+        #to_name = "tmp_34"
+        #print_list.append(to_name)
         # Insert print op for debug
         for name in print_list:
             role = 2
             persistable = False
+            if to_name == name:
+                role = 1
+                persistable = False
+            #if 'tmp_34' == name:
+            #    role = 0
+            #    persistable = False
             if 'mean_0.tmp_0' == name:
                 role = 0
                 persistable = False
@@ -5129,7 +5259,7 @@ class ModelParallelOptimizer(object):
                     outputs={'Out': print_var},
                     attrs={
                         'first_n': -1,
-                        'summarize': 40,
+                        'summarize': -1,
                         'message': "",
                         'print_tensor_name': True,
                         'print_tensor_type': True,
@@ -5147,7 +5277,7 @@ class ModelParallelOptimizer(object):
                     outputs={'Out': print_var},
                     attrs={
                         'first_n': -1,
-                        'summarize': 40,
+                        'summarize': -1,
                         'message': "",
                         'print_tensor_name': True,
                         'print_tensor_type': True,
