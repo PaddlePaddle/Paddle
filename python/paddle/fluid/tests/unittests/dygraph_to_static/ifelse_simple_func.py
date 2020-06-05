@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import six
 import paddle.fluid as fluid
 
 
@@ -303,14 +302,6 @@ def if_tensor_case(x):
     # It is equivalent to `if mean != 0`
     if mean:
         for i in range(0, 10):
-            # TODO(liym27): Delete it if the type of parameter `i` can be resolved in "if" stmt
-            if six.PY2:
-                i = fluid.layers.fill_constant(
-                    shape=[1], value=i, dtype="int32")
-            else:
-                i = fluid.layers.fill_constant(
-                    shape=[1], value=i, dtype="int64")
-
             if i > 5:
                 x += 1
                 break
