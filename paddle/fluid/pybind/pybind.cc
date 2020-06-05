@@ -176,7 +176,8 @@ static T PyObjectCast(PyObject *obj) {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error &) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s", typeid(T).name()));
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(), obj->ob_type->tp_name));
   }
 }
 
@@ -671,22 +672,23 @@ PYBIND11_MODULE(core_noavx, m) {
 
         )DOC")
       .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
-      .def(
-          "__init__",
-          [](LoDTensor &instance, const std::vector<std::vector<size_t>>
-                                      &recursive_sequence_lengths) {
-            LoD new_lod;
-            new_lod.reserve(recursive_sequence_lengths.size());
-            std::copy(recursive_sequence_lengths.begin(),
-                      recursive_sequence_lengths.end(),
-                      std::back_inserter(new_lod));
-            LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-            PADDLE_ENFORCE_EQ(
-                CheckLoD(new_offset_lod, -1), true,
-                platform::errors::InvalidArgument(
-                    "The provided recursive_sequence_lengths info is invalid"));
-            new (&instance) LoDTensor(new_offset_lod);
-          })
+      .def("__init__",
+           [](LoDTensor &instance, const std::vector<std::vector<size_t>>
+                                       &recursive_sequence_lengths) {
+             LoD new_lod;
+             new_lod.reserve(recursive_sequence_lengths.size());
+             std::copy(recursive_sequence_lengths.begin(),
+                       recursive_sequence_lengths.end(),
+                       std::back_inserter(new_lod));
+             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+             PADDLE_ENFORCE_EQ(
+                 CheckLoD(new_offset_lod, -1), true,
+                 platform::errors::InvalidArgument(
+                     "The provided recursive_sequence_lengths info is invalid, "
+                     "the LoD converted by recursive_sequence_lengths is %s",
+                     new_lod));
+             new (&instance) LoDTensor(new_offset_lod);
+           })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
       // Python API. So we changed set_lod to set_recursive_sequence_lengths
@@ -703,7 +705,7 @@ PYBIND11_MODULE(core_noavx, m) {
              PADDLE_ENFORCE_EQ(
                  CheckLoD(new_lod, vectorize(self.dims()).front()), true,
                  platform::errors::InvalidArgument(
-                     "the provided lod info is invalid"));
+                     "The provided LoD is invalid, the LoD is %s", new_lod));
              self.set_lod(new_lod);
            },
            py::arg("lod"), R"DOC(
@@ -726,25 +728,27 @@ PYBIND11_MODULE(core_noavx, m) {
                  t.set_lod([[0, 2, 5]])
                  print(t.lod()) # [[0, 2, 5]]
            )DOC")
-      .def(
-          "set_recursive_sequence_lengths",
-          [](LoDTensor &self, const std::vector<std::vector<size_t>>
-                                  &recursive_sequence_lengths) {
-            // the input recursive_sequence_lengths is length-based
-            // level-of-detail info
-            LoD new_lod;
-            new_lod.reserve(recursive_sequence_lengths.size());
-            std::copy(recursive_sequence_lengths.begin(),
-                      recursive_sequence_lengths.end(),
-                      std::back_inserter(new_lod));
-            LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
-            PADDLE_ENFORCE_EQ(
-                CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
-                platform::errors::InvalidArgument(
-                    "the provided recursive_sequence_lengths info is invalid"));
-            self.set_lod(new_offset_lod);
-          },
-          py::arg("recursive_sequence_lengths"), R"DOC(
+      .def("set_recursive_sequence_lengths",
+           [](LoDTensor &self, const std::vector<std::vector<size_t>>
+                                   &recursive_sequence_lengths) {
+             // the input recursive_sequence_lengths is length-based
+             // level-of-detail info
+             LoD new_lod;
+             new_lod.reserve(recursive_sequence_lengths.size());
+             std::copy(recursive_sequence_lengths.begin(),
+                       recursive_sequence_lengths.end(),
+                       std::back_inserter(new_lod));
+             LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
+             PADDLE_ENFORCE_EQ(
+                 CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
+                 platform::errors::InvalidArgument(
+                     "The provided recursive_sequence_lengths info is invalid, "
+                     "the LoD converted by recursive_sequence_lengths is "
+                     "%s",
+                     new_lod));
+             self.set_lod(new_offset_lod);
+           },
+           py::arg("recursive_sequence_lengths"), R"DOC(
            Set LoD of the LoDTensor according to recursive sequence lengths.
 
            For example, if recursive_sequence_lengths=[[2, 3]], which means
@@ -1412,20 +1416,20 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<OperatorBase>(m, "Operator")
-      .def_static("create",
-                  [](py::bytes protobin) {
-                    proto::OpDesc desc;
-                    PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin),
-                                      true,
-                                      platform::errors::InvalidArgument(
-                                          "Cannot parse user input to OpDesc"));
-                    PADDLE_ENFORCE_EQ(
-                        desc.IsInitialized(), true,
-                        platform::errors::InvalidArgument(
-                            "User OpDesc is not initialized, the reason is: %s",
-                            desc.InitializationErrorString()));
-                    return OpRegistry::CreateOp(desc);
-                  })
+      .def_static(
+          "create",
+          [](py::bytes protobin) {
+            proto::OpDesc desc;
+            PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
+                              platform::errors::InvalidArgument(
+                                  "Cannot parse user input to OpDesc"));
+            PADDLE_ENFORCE_EQ(
+                desc.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "The provided OpDesc is not initialized, the reason is: %s",
+                    desc.InitializationErrorString()));
+            return OpRegistry::CreateOp(desc);
+          })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CPUPlace &place) { self.Run(scope, place); })

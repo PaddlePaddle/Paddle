@@ -132,17 +132,16 @@ inline std::string TensorDTypeToPyDTypeStr(
   _ForEachDataType_(TENSOR_DTYPE_TO_PY_DTYPE);
 #undef TENSOR_DTYPE_TO_PY_DTYPE
   PADDLE_THROW(platform::errors::Unimplemented(
-      "Unsupported data type %s", framework::DataTypeToString(type)));
+      "Unsupported tensor data type: %s", framework::DataTypeToString(type)));
 }
 
 }  // namespace details
 
 template <typename T>
 T TensorGetElement(const framework::Tensor &self, size_t offset) {
-  PADDLE_ENFORCE_LT(
-      offset, self.numel(),
-      platform::errors::InvalidArgument(
-          "The offset of item to get exceeds the size of tensor."));
+  PADDLE_ENFORCE_LT(offset, self.numel(),
+                    platform::errors::InvalidArgument(
+                        "The offset exceeds the size of tensor."));
   T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
     b = self.data<T>()[offset];
@@ -159,9 +158,9 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
 
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
-  PADDLE_ENFORCE_LT(
-      offset, self->numel(),
-      platform::errors::InvalidArgument("The offset exceed size of tensor."));
+  PADDLE_ENFORCE_LT(offset, self->numel(),
+                    platform::errors::InvalidArgument(
+                        "The offset exceeds the size of tensor."));
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
 #ifdef PADDLE_WITH_CUDA
@@ -205,10 +204,10 @@ void SetTensorFromPyArrayT(
                                       cudaMemcpyHostToDevice);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-                       "Incompatible place type: Tensor.set() supports "
-                       "CPUPlace, CUDAPlace "
-                       "and CUDAPinnedPlace, but got %s!"),
-                   place);
+          "Incompatible place type: Tensor.set() supports "
+          "CPUPlace, CUDAPlace "
+          "and CUDAPinnedPlace, but got %s!",
+          place));
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
@@ -403,7 +402,7 @@ void _sliceDapper(const framework::Tensor *in, framework::Tensor *out,
       break;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "dim size should be 1 to 9, current is %d", size));
+          "The dim size should be 1 to 9, current is %d", size));
       break;
   }
 }

@@ -96,9 +96,9 @@ class IterableDatasetWrapper {
     for (size_t i = 0; i < places_.size(); ++i) {
       data_feeds_[i]->AssignFeedVar(*scopes_[i]);
       data_feeds_[i]->SetPlace(platform::CPUPlace());
-      PADDLE_ENFORCE_EQ(
-          data_feeds_[i]->Start(), true,
-          platform::errors::Unavailable("Failed to start the reader."));
+      PADDLE_ENFORCE_EQ(data_feeds_[i]->Start(), true,
+                        platform::errors::Unavailable(
+                            "Failed to start the reader on device %d.", i));
     }
     is_started_ = true;
 
@@ -107,8 +107,10 @@ class IterableDatasetWrapper {
   }
 
   std::vector<std::unordered_map<std::string, framework::LoDTensor>> Next() {
-    PADDLE_ENFORCE_EQ(is_started_, true, platform::errors::PreconditionNotMet(
-                                             "Reader must be started"));
+    PADDLE_ENFORCE_EQ(
+        is_started_, true,
+        platform::errors::PreconditionNotMet(
+            "Reader must be started when getting next batch data."));
     size_t device_num = places_.size();
 
     std::vector<std::unordered_map<std::string, framework::LoDTensor>> result(
@@ -168,7 +170,7 @@ class IterableDatasetWrapper {
     auto &lod = tensor.lod();
     PADDLE_ENFORCE_LE(lod.size(), 1,
                       platform::errors::InvalidArgument(
-                          "lod level must be not larger than 1"));
+                          "LoD level must be not larger than 1"));
     if (!drop_last_) return true;
 
     if (lod.empty()) {
