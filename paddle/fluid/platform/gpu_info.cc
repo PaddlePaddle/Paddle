@@ -33,7 +33,14 @@ DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
-
+USE_STAT(STAT_gpu0_mem_size);
+USE_STAT(STAT_gpu1_mem_size);
+USE_STAT(STAT_gpu2_mem_size);
+USE_STAT(STAT_gpu3_mem_size);
+USE_STAT(STAT_gpu4_mem_size);
+USE_STAT(STAT_gpu5_mem_size);
+USE_STAT(STAT_gpu6_mem_size);
+USE_STAT(STAT_gpu7_mem_size);
 namespace paddle {
 namespace platform {
 

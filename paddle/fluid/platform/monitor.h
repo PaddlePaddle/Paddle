@@ -30,17 +30,29 @@ namespace platform {
 template <typename T>
 class StatRegistry;
 
+class MonitorRegistrar {
+ public:
+  // The design is followed by OperatorRegistrar: To avoid the removal of global
+  // name by the linkerr, we add Touch to all StatValue classes and make
+  // USE_STAT macros to call this method. So, as long as the callee code calls
+  // USE_STAT, the global registrar variable won't be removed by the linker.
+  void Touch() {}
+};
+
 template <typename T>
-class StatValue {
+class StatValue : public MonitorRegistrar {
   T v_{0};
   std::mutex mu_;
   // We use lock rather than atomic for generic values
  public:
   explicit StatValue(const std::string& n) {
+    fprintf(stderr, "register for %s\n", n.c_str());
     StatRegistry<T>::Instance().add(n, this);
   }
   T increase(T inc) {
+    fprintf(stderr, "increase1\n");
     std::lock_guard<std::mutex> lock(mu_);
+    fprintf(stderr, "increase2\n");
     return v_ += inc;
   }
   T decrease(T inc) {
@@ -78,7 +90,6 @@ class StatRegistry {
     if (it != stats_.end()) {
       return it->second;
     } else {
-      printf("not register\n");
       return nullptr;
     }
   }
@@ -86,12 +97,9 @@ class StatRegistry {
     std::lock_guard<std::mutex> lg(mutex_);
     auto it = stats_.find(name);
     if (it != stats_.end()) {
-      // LOG(WARNING) << name << " has been registerd before, please check it.";
       return -1;
     }
     stats_.insert(std::make_pair(name, stat));
-    // How to print log before Init VLOG?
-    // VLOG(4) << "STAT Register: " << name;
     return 0;
   }
 
@@ -118,13 +126,18 @@ class StatRegistry {
   std::unordered_map<std::string, StatValue<T>*> stats_;
 };
 
+}  // namespace platform
+}  // namespace paddle
+
 // Because we only support these two types in pybind
-#define REGISTER_FLOAT_STATUS(item) extern StatValue<float> _##item;
+#define REGISTER_FLOAT_STATUS(item) \
+  extern paddle::platform::StatValue<float> _##item;
 
-#define REGISTER_INT_STATUS(item) extern StatValue<int64_t> _##item;
+#define REGISTER_INT_STATUS(item) \
+  extern paddle::platform::StatValue<int64_t> _##item;
 
-#define STAT_ADD(item, t) paddle::platform::_##item.increase(t)
-#define STAT_SUB(item, t) paddle::platform::_##item.decrease(t)
+#define STAT_ADD(item, t) _##item.increase(t)
+#define STAT_SUB(item, t) _##item.decrease(t)
 
 // Support add stat value by string
 #define STAT_INT_ADD(item, t) \
@@ -137,11 +150,26 @@ class StatRegistry {
 #define STAT_FLOAT_SUB(item, t) \
   paddle::platform::StatRegistry<float>::Instance().get(item)->decrease(t)
 
-#define STAT_RESET(item, t) paddle::platform::_##item.reset(t)
+#define STAT_RESET(item, t) _##item.reset(t)
+#define STAT_GET(item) _##item.get()
 
-#define STAT_GET(item) paddle::platform::_##item.get()
+#define DEFINE_FLOAT_STATUS(item)                    \
+  paddle::platform::StatValue<float> _##item(#item); \
+  int TouchStatRegistrar_##item() {                  \
+    _##item.Touch();                                 \
+    return 0;                                        \
+  }
 
-// Register your own monitor stats here
+#define DEFINE_INT_STATUS(item)                        \
+  paddle::platform::StatValue<int64_t> _##item(#item); \
+  int TouchStatRegistrar_##item() {                    \
+    _##item.Touch();                                   \
+    return 0;                                          \
+  }
+
+#define USE_STAT(item)                    \
+  extern int TouchStatRegistrar_##item(); \
+  UNUSED static int use_stat_##item = TouchStatRegistrar_##item()
 
 REGISTER_INT_STATUS(STAT_total_feasign_num_in_mem)
 REGISTER_INT_STATUS(STAT_gpu0_mem_size)
@@ -152,6 +180,3 @@ REGISTER_INT_STATUS(STAT_gpu4_mem_size)
 REGISTER_INT_STATUS(STAT_gpu5_mem_size)
 REGISTER_INT_STATUS(STAT_gpu6_mem_size)
 REGISTER_INT_STATUS(STAT_gpu7_mem_size)
-
-}  // namespace platform
-}  // namespace paddle

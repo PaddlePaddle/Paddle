@@ -32,6 +32,7 @@
 #define _LINUX
 #endif
 
+USE_STAT(STAT_total_feasign_num_in_mem);
 namespace paddle {
 namespace framework {
 

@@ -16,10 +16,8 @@
 #include <utility>
 
 namespace paddle {
-namespace platform {
-#define DEFINE_FLOAT_STATUS(item) StatValue<float> _##item(#item);
-
-#define DEFINE_INT_STATUS(item) StatValue<int64_t> _##item(#item);
+namespace platform {}  // namespace platform
+}  // namespace paddle
 
 DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem)
 DEFINE_INT_STATUS(STAT_gpu0_mem_size)
@@ -30,6 +28,3 @@ DEFINE_INT_STATUS(STAT_gpu4_mem_size)
 DEFINE_INT_STATUS(STAT_gpu5_mem_size)
 DEFINE_INT_STATUS(STAT_gpu6_mem_size)
 DEFINE_INT_STATUS(STAT_gpu7_mem_size)
-
-}  // namespace platform
-}  // namespace paddle
