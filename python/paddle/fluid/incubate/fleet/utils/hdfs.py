@@ -27,11 +27,41 @@ import logging
 from . import fs
 from .fs import FS
 import paddle.fluid as fluid
+import functools
 
 from pathlib import PurePosixPath
 import shutil
 
 __all__ = ["HDFSClient"]
+
+
+class ExecuteError(Exception):
+    pass
+
+
+class FSFileExistsError(Exception):
+    pass
+
+
+class FSFileiNotExistsError(Exception):
+    pass
+
+
+def _handle_errors(f):
+    def handler(*args, **kwargs):
+        start = time.time()
+        while True:
+            try:
+                return f(*args, **kwargs)
+            except ExecuteError as e:
+                o = args[0]
+                time_out = float(o._time_out) / 1000.0
+                inter = float(o._sleep_inter) / 1000.0
+                if time.time() - start >= time_out:
+                    break
+                time.sleep(inter)
+
+    return functools.wraps(f)(handler)
 
 
 class HDFSClient(FS):
@@ -57,26 +87,31 @@ class HDFSClient(FS):
     def _run_cmd(self, cmd):
         ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0)
         print(ret, output)
-        return ""
-        assert ret == "0", "execute cmd:{} error:{}".format(cmd, output)
         if len(output) <= 0:
-            return []
+            return int(ret), []
 
-        return output.splitlines()
+        return int(ret), output.splitlines()
 
     def list_dirs(self, fs_path):
         if not self.is_exist(fs_path):
             return []
 
-        dirs, _ = self.ls_dir(fs_path)
+        dirs, _ = self._ls_dir(fs_path)
         return dirs
 
+    @_handle_errors
     def ls_dir(self, fs_path):
         """	
         list directory under fs_path, and only give the pure name, not include the fs_path	
         """
+        if not self.is_exist(fs_path):
+            return [], []
+
         cmd = "{} -ls {}".format(self._base_cmd, fs_path)
-        lines = self._run_cmd(cmd)
+        ret, lines = self._run_cmd(cmd)
+
+        if ret != 0:
+            raise ExecuteError
 
         dirs = []
         files = []
@@ -96,14 +131,17 @@ class HDFSClient(FS):
 
         return dirs, files
 
+    @_handle_errors
     def is_dir(self, fs_path):
+        if not self.is_exist(fs_path):
+            return False
+
         cmd = "{} -test -d {} ; echo $?".format(self._base_cmd, fs_path)
+        ret, lines = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
 
-        test = self._run_cmd(cmd)
-        if test[0].strip() == "0":
-            return True
-
-        return False
+        return True if ret == 0 else False
 
     def is_file(self, fs_path):
         if not self.is_exist(fs_path):
@@ -111,45 +149,88 @@ class HDFSClient(FS):
 
         return not self.is_dir(fs_path)
 
+    @_handle_errors
     def is_exist(self, fs_path):
-        cmd = "{} -test -e {} ; echo $?".format(self._base_cmd, fs_path)
+        cmd = "{{\n {} -test -e {} \n}} 2>&1".format(self._base_cmd, fs_path)
+        print("cmd:", cmd)
+        ret, lines = self._run_cmd(cmd)
+        if ret != 0:
+            for l in lines:
+                if "No such file or directory" in l:
+                    print(l)
+                    return False
+            raise ExecuteError
 
-        test = self._run_cmd(cmd)
-        if test[0].strip() == "0":
-            return True
+        return True
 
-        return False
-
+    @_handle_errors
     def upload(self, local_path, fs_path):
+        if self.is_exist(fs_path):
+            raise FSFileExistsError
+
+        if not self._local.is_exist(local_path):
+            raise FSFileNotExistsError
+
         cmd = "{} -put {} {}".format(self._base_cmd, local_path, fs_path)
-        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        ret, lines = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
 
+    @_handle_errors
     def download(self, fs_path, local_path):
-        cmd = "{} -get {} {}".format(self._base_cmd, fs_path, local_path)
-        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        if self.is_exist(local_path):
+            raise FSFileExistsError
 
-    def mkdirs(self, fs_path):
         if not self.is_exist(fs_path):
-            cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
-            fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+            raise FSFileNotExistsError
 
+        cmd = "{} -get {} {}".format(self._base_cmd, fs_path, local_path)
+        ret, lines = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
+
+    @_handle_errors
+    def mkdirs(self, fs_path):
+        if self.is_exist(fs_path):
+            return
+
+        cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
+        ret, lines = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
+
+    @_handle_errors
     def mv(self, fs_src_path, fs_dst_path):
-        cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
-        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        if self.is_exist(fs_dst_path):
+            raise FSFileExistsError
 
+        if not self.is_exist(fs_src_path):
+            raise FSFileNotExistsError
+
+        cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
+        self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
+
+    @_handle_errors
     def _rmr(self, fs_path):
         if not self.is_exist(fs_path):
             return
 
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
-        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
 
+    @_handle_errors
     def _rm(self, fs_path):
         if not self.is_exist(fs_path):
             return
 
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
-        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError
 
     def delete(self, fs_path):
         if not self.is_exist(fs_path):
