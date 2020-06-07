@@ -130,7 +130,8 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
 
   close_open_fds_internal();
   PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
-  exit(127);
+  // exit(127);
+  _exit(0);
 #endif
 }
 
@@ -146,9 +147,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
     return NULL;
   }
 
-  if (shell_verbose()) {
-    LOG(INFO) << "Opening pipe[" << cmd << "] with mode[" << mode << "]";
-  }
+  VLOG(3) << "Opening pipe[" << cmd << "] with mode[" << mode << "]";
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
@@ -178,15 +177,14 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
     return NULL;
   }
   return {fp, [child_pid, cmd, err_no](FILE* fp) {
-            if (shell_verbose()) {
-              LOG(INFO) << "Closing pipe[" << cmd << "]";
-            }
+            VLOG(3) << "Closing pipe[" << cmd << "]";
 
             if (fclose(fp) != 0) {
               *err_no = -1;
             }
             int wstatus = -1;
             waitpid(child_pid, &wstatus, 0);
+            printf("status code:%d", wstatus);
             if (wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
                 (wstatus == -1 && errno == ECHILD)) {
             } else {
@@ -302,7 +300,7 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 }
 
 static int _shell_execute_cmd(const std::string& cmd, std::string* output,
-                              int time_out, int sleep_inter, bool print_cmd) {
+                              int time_out, int sleep_inter) {
 #if defined _WIN32 || defined __APPLE__
   PADDLE_THROW(platform::errors::Unimplemented(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
@@ -311,57 +309,54 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
   int err_no = 0;
   platform::Timer timer;
   do {
+    VLOG(3) << "exec cmd:[" << cmd << "]";
+
     *output = "";
-    if (print_cmd) {
-      LOG(INFO) << "exec cmd:[" << cmd << "]";
-    }
     err_no = 0;
     std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no);
-    string::LineFileReader reader;
 
-    char* buf = reader.getdelim(&*pipe, 0);
+    string::LineFileReader reader;
     if (err_no == 0) {
+      char* buf = reader.getdelim(&*pipe, 0);
       if (buf) {
         *output = reader.get();
-        if (print_cmd) {
-          std::cout << "output:" << *output << std::endl;
-        }
       }
       return err_no;
     }
 
-    if (sleep_inter > 0) {
-      usleep(sleep_inter * 1000);
-    }
-
+    // time out
     timer.Pause();
-    if (time_out > 0 && timer.ElapsedMS() >= time_out) {
-      PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
-          "shell_get_command_output execute  error errno:%d and try until "
-          "timeout.",
-          err_no));
-      return err_no;
+    if ((time_out > 0 && timer.ElapsedMS() >= time_out) || time_out == 0) {
+      break;
     }
     timer.Resume();
 
+    // sleep
     pipe = nullptr;
+    if (sleep_inter > 0) {
+      usleep(sleep_inter * 1000);
+    }
   } while (err_no);
 
-  return 0;
+  if ((*output) == "") {
+    *output = string::Sprintf("_shell_execute_cmd execute cmd:%s ElapsedMS:%d",
+                              cmd, timer.ElapsedMS());
+  }
+  return err_no;
 #endif
 }
 
 std::string shell_get_command_output(const std::string& cmd, int time_out,
-                                     int sleep_inter, bool print_cmd) {
+                                     int sleep_inter) {
   std::string output;
-  _shell_execute_cmd(cmd, &output, time_out, sleep_inter, print_cmd);
+  _shell_execute_cmd(cmd, &output, time_out, sleep_inter);
   return output;
 }
 
 std::vector<std::string> shell_execute_cmd(const std::string& cmd, int time_out,
-                                           int sleep_inter, bool print_cmd) {
+                                           int sleep_inter) {
   std::string output;
-  int ret = _shell_execute_cmd(cmd, &output, time_out, sleep_inter, print_cmd);
+  int ret = _shell_execute_cmd(cmd, &output, time_out, sleep_inter);
   return std::vector<std::string>({string::Sprintf("%d", ret), output});
 }
 
