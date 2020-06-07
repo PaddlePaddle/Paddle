@@ -157,6 +157,31 @@ __global__ void SoftmaxKernelWithEltadd(T *qk_buf_, const T *bias_qk_,
 }
 
 template <typename T>
+__global__ void SoftmaxKernelWithEltadd2(T *qk_buf_, const T *bias_qk_,
+                                         const int batch_size,
+                                         const int head_num, const int seq_len,
+                                         const unsigned mask) {
+  int qk_offset = blockIdx.x * seq_len;
+  int idx = threadIdx.x;
+  assert(blockDim.x % 32 == 0);
+
+  float2 tmp =
+      idx < seq_len
+          ? ToFloat2<T>(qk_buf_[idx + qk_offset] + bias_qk_[idx + qk_offset])
+          : make_float2(-1e20f, -1e20f);
+  float max_val = blockReduceMax<float>(max(tmp.x, tmp.y), mask);
+  float2 qk_tmp = idx < seq_len ? make_float2(__expf(tmp.x - max_val),
+                                              __expf(tmp.y - max_val))
+                                : make_float2(0.f, 0.f);
+  float sum_val = blockReduceSum<float>(qk_tmp.x + qk_tmp.y, mask) + 1e-6f;
+
+  if (idx < seq_len) {
+    qk_buf_[idx + qk_offset] =
+        FloatsToPair<T>(qk_tmp.x / sum_val, qk_tmp.y / sum_val);
+  }
+}
+
+template <typename T>
 inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
                              int head_num, int seq_len, int size_per_head,
                              int batch_size, bool q_trans, bool k_trans,
@@ -185,9 +210,24 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
                                        "seq_len should <= 1024, "
                                        "but received seq_len is:%d",
                                        seq_len));
-  block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
-  SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
-      qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
+  if (seq_len % 2 == 0) {
+    block = (seq_len <= 64) ? 32 : ((seq_len + 63) / 64) * 32;
+    if (std::is_same<T, float>::value) {
+      SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
+          reinterpret_cast<float2 *>(qk_buf_),
+          reinterpret_cast<const float2 *>(bias_qk), batch_size, head_num,
+          seq_len / 2, FINAL_MASK);
+    } else {
+      SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
+          reinterpret_cast<__half2 *>(qk_buf_),
+          reinterpret_cast<const __half2 *>(bias_qk), batch_size, head_num,
+          seq_len / 2, FINAL_MASK);
+    }
+  } else {
+    block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
+    SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
+        qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
+  }
 }
 
 template <typename T>
