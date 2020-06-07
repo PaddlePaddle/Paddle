@@ -1512,7 +1512,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const std::string &cmd, int time_out = 0,
            int sleep_inter = 0) -> std::vector<std::string> {
           return paddle::framework::shell_execute_cmd(cmd, time_out,
-                                                      sleep_inter, print_cmd);
+                                                      sleep_inter);
         },
         py::arg("cmd"), py::arg("time_out") = 0, py::arg("sleep_inter") = 0);
 

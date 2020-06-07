@@ -130,13 +130,13 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
 
   close_open_fds_internal();
   PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
-  // exit(127);
-  _exit(0);
+  _exit(127);
 #endif
 }
 
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
-                                  const std::string& mode, int* err_no) {
+                                  const std::string& mode, int* err_no,
+                                  int* status) {
 #if defined _WIN32 || defined __APPLE__
   return nullptr;
 #else
@@ -167,34 +167,43 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
     child_end = pipe_fds[0];
   }
 
+  sighandler_t old_handler;
+  old_handler = signal(SIGCHLD, SIG_DFL);
   int child_pid = shell_popen_fork_internal(real_cmd.c_str(), do_read,
                                             parent_end, child_end);
+
   close(child_end);
   fcntl(parent_end, F_SETFD, FD_CLOEXEC);
-  FILE* fp;
+  FILE* fp = NULL;
   if ((fp = fdopen(parent_end, mode.c_str())) == NULL) {
     *err_no = -1;
+    signal(SIGCHLD, old_handler);
     return NULL;
   }
-  return {fp, [child_pid, cmd, err_no](FILE* fp) {
+
+  int wstatus = -1;
+  waitpid(child_pid, &wstatus, 0);
+  if (WIFEXITED(wstatus) || wstatus == (128 + SIGPIPE) * 256) {
+  } else {
+    PADDLE_ENFORCE_NE(errno, ECHILD, platform::errors::Fatal(
+                                         "Must not be ECHILD errno here!"));
+    *err_no = -1;
+    LOG(WARNING) << "status[" << wstatus << "], cmd[" << cmd << "]"
+                 << ", err_no[" << *err_no << "]";
+  }
+
+  signal(SIGCHLD, old_handler);
+
+  if (status) {
+    *status = wstatus;
+  }
+  printf("status code:%d exit status:%d\n", wstatus, wstatus >> 8);
+
+  return {fp, [child_pid, cmd, err_no, status](FILE* fp) {
             VLOG(3) << "Closing pipe[" << cmd << "]";
 
             if (fclose(fp) != 0) {
               *err_no = -1;
-            }
-            int wstatus = -1;
-            waitpid(child_pid, &wstatus, 0);
-            printf("status code:%d", wstatus);
-            if (wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
-                (wstatus == -1 && errno == ECHILD)) {
-            } else {
-              *err_no = -1;
-              LOG(WARNING) << "status[" << wstatus << "], cmd[" << cmd << "]"
-                           << ", err_no[" << *err_no << "]";
-            }
-            if (wstatus == -1 && errno == ECHILD) {
-              // temporarily remove this warning
-              // LOG(WARNING) << "errno is ECHILD";
             }
           }};
 #endif
@@ -299,6 +308,18 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 #endif
 }
 
+static int _get_err_no(int err_no, int status) {
+  printf("status2:%d\n", status);
+  if (err_no == 0) {
+    if (WIFEXITED(status)) {
+      return WEXITSTATUS(status);
+    }
+    return -1;
+  }
+
+  return err_no;
+}
+
 static int _shell_execute_cmd(const std::string& cmd, std::string* output,
                               int time_out, int sleep_inter) {
 #if defined _WIN32 || defined __APPLE__
@@ -307,13 +328,15 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
       "or __APPLE__."));
 #else
   int err_no = 0;
+  int status = 0;
   platform::Timer timer;
   do {
     VLOG(3) << "exec cmd:[" << cmd << "]";
 
-    *output = "";
     err_no = 0;
-    std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no);
+    status = 0;
+    *output = "";
+    std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no, &status);
 
     string::LineFileReader reader;
     if (err_no == 0) {
@@ -321,7 +344,7 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
       if (buf) {
         *output = reader.get();
       }
-      return err_no;
+      return _get_err_no(err_no, status);
     }
 
     // time out
@@ -342,7 +365,7 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     *output = string::Sprintf("_shell_execute_cmd execute cmd:%s ElapsedMS:%d",
                               cmd, timer.ElapsedMS());
   }
-  return err_no;
+  return _get_err_no(err_no, status);
 #endif
 }
 
@@ -357,6 +380,7 @@ std::vector<std::string> shell_execute_cmd(const std::string& cmd, int time_out,
                                            int sleep_inter) {
   std::string output;
   int ret = _shell_execute_cmd(cmd, &output, time_out, sleep_inter);
+  printf("shell_execute_cmd ret:%d\n", ret);
   return std::vector<std::string>({string::Sprintf("%d", ret), output});
 }
 

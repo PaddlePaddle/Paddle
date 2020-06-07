@@ -55,8 +55,9 @@ class HDFSClient(FS):
         self._base_cmd = " ".join(self.pre_commands)
 
     def _run_cmd(self, cmd):
-        ret, output = fluid.core.shell_execute_cmd(cmd, self._time_out,
-                                                   self._sleep_inter)
+        ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0)
+        print(ret, output)
+        return ""
         assert ret == "0", "execute cmd:{} error:{}".format(cmd, output)
         if len(output) <= 0:
             return []
