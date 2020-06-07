@@ -212,17 +212,21 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
                                        seq_len));
   if (seq_len % 2 == 0) {
     block = (seq_len <= 64) ? 32 : ((seq_len + 63) / 64) * 32;
+#ifdef SUPPORTS_CUDA_FP16
     if (std::is_same<T, float>::value) {
+#endif
       SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
           reinterpret_cast<float2 *>(qk_buf_),
           reinterpret_cast<const float2 *>(bias_qk), batch_size, head_num,
           seq_len / 2, FINAL_MASK);
+#ifdef SUPPORTS_CUDA_FP16
     } else {
       SoftmaxKernelWithEltadd2<__half2><<<grid, block, 0, stream>>>(
           reinterpret_cast<__half2 *>(qk_buf_),
           reinterpret_cast<const __half2 *>(bias_qk), batch_size, head_num,
           seq_len / 2, FINAL_MASK);
     }
+#endif
   } else {
     block = (seq_len <= 32) ? 32 : ((seq_len + 31) / 32) * 32;
     SoftmaxKernelWithEltadd<T><<<grid, block, 0, stream>>>(
