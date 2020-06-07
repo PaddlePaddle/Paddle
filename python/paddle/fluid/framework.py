@@ -179,6 +179,10 @@ def require_version(min_version, max_version=None):
 
 def in_dygraph_mode():
     """
+    :alias_main: paddle.in_dygraph_mode
+	:alias: paddle.in_dygraph_mode
+	:old_api: paddle.fluid.framework.in_dygraph_mode
+
     This function checks whether the program runs in dynamic graph mode or not.
     You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
     or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
@@ -436,6 +440,8 @@ _name_scope = NameScope()
 @signature_safe_contextmanager
 def name_scope(prefix=None):
     """
+    :api_attr: Static Graph
+
     Generate hierarchical name prefix for the operators.
 
     Note: 
@@ -659,8 +665,7 @@ def _getitem_impl_(var, item):
                 'dtype': out.dtype,
                 'value': float(value),
                 'force_cpu': force_cpu
-            },
-            stop_gradient=True)
+            })
         out.stop_gradient = True
         return out
 
@@ -700,9 +705,9 @@ def _getitem_impl_(var, item):
             slice_start.append(slice_item)
             slice_step.append(1)
             if isinstance(slice_item, Variable):
-                temp_1 = var.block.create_var(dtype='int32')
+                temp_1 = var.block.create_var(dtype=slice_item.dtype)
                 fill_constant([1], 1, force_cpu=True, out=temp_1)
-                temp_end = target_block.create_var(dtype='int32')
+                temp_end = target_block.create_var(dtype=slice_item.dtype)
                 target_block.append_op(
                     type='elementwise_add',
                     inputs={'X': slice_item,
@@ -1862,7 +1867,7 @@ class Operator(object):
         'conditional_block', 'while', 'send', 'recv', 'listen_and_serv',
         'fl_listen_and_serv', 'ncclInit', 'select', 'checkpoint_notify',
         'gen_nccl_id', 'c_gen_nccl_id', 'c_comm_init', 'c_sync_calc_stream',
-        'c_sync_comm_stream'
+        'c_sync_comm_stream', 'queue_generator', 'dequeue', 'enqueue'
     }
 
     def __init__(self,
@@ -3336,8 +3341,6 @@ class IrOpNode(IrNode):
         """
         assert self.node.op() is not None, \
             "The node operator description can not be None."
-        print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
-        ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
 
     def input(self, name):
@@ -3560,6 +3563,12 @@ class IrGraph(object):
         var_desc.set_shape(shape)
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
+
+    def create_control_dep_var(self):
+        """
+        create a control var
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
 
     def create_var_node_from_desc(self, var_desc):
         """
@@ -5277,6 +5286,8 @@ def switch_startup_program(program):
 @signature_safe_contextmanager
 def program_guard(main_program, startup_program=None):
     """
+    :api_attr: Static Graph
+
     Change the global main program and startup program with `"with"` statement.
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
@@ -5376,6 +5387,8 @@ def _dygraph_place_guard(place):
 
 def load_op_library(lib_filename):
     """
+    :api_attr: Static Graph
+    
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
@@ -5446,10 +5459,17 @@ def device_guard(device=None):
             result = exe.run(fetch_list=[out])
     """
 
+    index = None
+    if device and ':' in device:
+        device, index = device.split(':')
+        if device == 'cpu':
+            raise ValueError("Should not set device id for cpu.")
     if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
             "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device)
+    if index:
+        device = ":".join([device, index])
     pre_device = switch_device(device)
     try:
         yield

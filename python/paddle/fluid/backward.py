@@ -1196,6 +1196,8 @@ def append_backward(loss,
                     callbacks=None,
                     checkpoints=None):
     """
+    :api_attr: Static Graph
+
     This function appends backward part to main_program.
 
     A complete neural network training is made up of forward and backward
@@ -1724,6 +1726,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
 def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     """
+    :api_attr: Static Graph
+    
     Backpropagate the gradients of targets to inputs.
 
     Args:

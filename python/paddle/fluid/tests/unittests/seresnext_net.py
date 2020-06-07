@@ -172,7 +172,10 @@ def optimizer(learning_rate=0.01):
 model = SE_ResNeXt50Small
 
 
-def batch_size():
+def batch_size(use_cuda):
+    if use_cuda:
+        # Paddle uses 8GB P4 GPU for unittest so we decreased the batch size.
+        return 8
     return 12
 
 
@@ -183,9 +186,9 @@ def iter(use_cuda):
 
 
 gpu_img, gpu_label = init_data(
-    batch_size=batch_size(), img_shape=img_shape, label_range=999)
+    batch_size=batch_size(use_cuda=True), img_shape=img_shape, label_range=999)
 cpu_img, cpu_label = init_data(
-    batch_size=batch_size(), img_shape=img_shape, label_range=999)
+    batch_size=batch_size(use_cuda=False), img_shape=img_shape, label_range=999)
 feed_dict_gpu = {"image": gpu_img, "label": gpu_label}
 feed_dict_cpu = {"image": cpu_img, "label": cpu_label}
 

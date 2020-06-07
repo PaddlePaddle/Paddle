@@ -58,7 +58,12 @@ class HookRemoveHelper(object):
 
 
 class Layer(core.Layer):
-    """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
+    """
+    :alias_main: paddle.nn.Layer
+	:alias: paddle.nn.Layer
+	:old_api: paddle.fluid.dygraph.layers.Layer
+
+    Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
         name_scope (str, optional): prefix name used by the layer to name parameters.

@@ -59,7 +59,7 @@ TEST(RecordEvent, RecordEvent) {
       PushEvent(name, EventRole::kOrdinary);
       int counter = 1;
       while (counter != i * 1000) counter++;
-      PopEvent(name);
+      PopEvent(name, EventRole::kOrdinary);
     }
   }
 
@@ -109,7 +109,7 @@ TEST(RecordEvent, RecordEvent) {
 
   // Bad Usage:
   PushEvent("event_without_pop", EventRole::kOrdinary);
-  PopEvent("event_without_push");
+  PopEvent("event_without_push", EventRole::kOrdinary);
   std::vector<std::vector<Event>> events = paddle::platform::GetAllEvents();
 
   int cuda_startup_count = 0;

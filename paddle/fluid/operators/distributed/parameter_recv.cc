@@ -131,10 +131,12 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       }
     }
     auto numel = recv_tensor->numel();
-    if (recv_numel != numel) {
-      LOG(FATAL) << "recv_numel: " << recv_numel << " acture numel: " << numel;
-    }
-    PADDLE_ENFORCE_EQ(recv_numel, numel);
+    PADDLE_ENFORCE_EQ(
+        recv_numel, numel,
+        platform::errors::InvalidArgument(
+            "The number of receive tensor's elements are not valid. The "
+            "recevie tensor numel is %d, the actual tensor numel is %d.",
+            recv_numel, numel));
   } else if (recv_var->IsType<framework::SelectedRows>()) {
     auto cpu_place = platform::CPUPlace();
     auto *slr = recv_var->GetMutable<framework::SelectedRows>();

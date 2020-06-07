@@ -182,7 +182,9 @@ class DGCOpKernel : public framework::OpKernel<T> {
             static_cast<void*>(encode_grad_out_data), k, v_out_data,
             static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
             u_out_data)) {
-      LOG(FATAL) << "v_out numel:" << v_out->numel();
+      // TODO(weihang): owner should polish this error message
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "V_out numel error, V_out numel is %d.", v_out->numel()));
     }
 
     math::SetConstant<DeviceContext, T> tset;

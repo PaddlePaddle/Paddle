@@ -105,10 +105,9 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
-    LOG(FATAL) << "FATAL error: varname:" << name
-               << ", vlen:" << payload->memory_size()
-               << " >= std::numeric_limits<int>::max():"
-               << std::numeric_limits<int>::max() << ", so exit!";
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable %s length %d should less than %d.", name,
+        payload->memory_size(), std::numeric_limits<int>::max()));
   }
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows

@@ -28,8 +28,10 @@ from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
 
+from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+
 __all__ = [
-    #       'create_tensor',
+    'create_tensor',
     #       'create_lod_tensor',
     #       'create_random_int_lodtensor',
     'crop_tensor',
@@ -569,7 +571,7 @@ def full(shape,
                 'full')
     check_type(shape, 'shape', (Variable, list, tuple), 'full')
     if out is not None:
-        check_type(shape, 'out', (Variable), 'full')
+        check_type(out, 'out', (Variable), 'full')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)

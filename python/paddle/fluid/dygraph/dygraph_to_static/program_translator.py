@@ -25,6 +25,8 @@ from paddle.fluid import framework
 from paddle.fluid import executor
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph import layers
+from paddle.fluid.layers.utils import flatten
+from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
@@ -108,7 +110,7 @@ class FunctionSpec(object):
     def to_static_inputs(self, main_program):
         inputs = []
         block = main_program.global_block()
-        for input_var in self.args:
+        for input_var in flatten(self.args):
             if isinstance(input_var, np.ndarray):
                 feed_layer = block.create_var(
                     name=unique_name.generate('feed'),
@@ -127,7 +129,8 @@ class FunctionSpec(object):
                 feed_layer = input_var
 
             inputs.append(feed_layer)
-        return inputs
+        # Restores the nested structure as self.args
+        return pack_sequence_as(self.args, inputs)
 
     @property
     def dyfunc(self):
@@ -175,12 +178,12 @@ class ConcreteProgram(object):
         of program as fetch_list.
         """
         # Transforms dygraph function into static function and caches it.
-        dygaph_function = func_spec.dyfunc
-        static_func = convert_function_with_cache(dygaph_function)
+        dygraph_function = func_spec.dyfunc
+        static_func = convert_function_with_cache(dygraph_function)
 
         main_program, startup_program = framework.Program(), framework.Program()
         # Note: The random seed should be synchronized into cached program
-        # if set in `fluid.dygrap_guard` because some ops rely on it, such as
+        # if set in `fluid.dygraph_guard` because some ops rely on it, such as
         # `fluid.layers.dropout`.
         main_program.random_seed = framework.default_main_program().random_seed
         startup_program.random_seed = framework.default_startup_program(
@@ -203,7 +206,7 @@ class ConcreteProgram(object):
             inputs=inputs,
             outputs=outputs,
             parameters=all_parameters,
-            func=dygaph_function,
+            func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
 
@@ -368,9 +371,10 @@ class ProgramTranslator(object):
 
                 prog_trans = fluid.dygraph.ProgramTranslator()
 
-                x = np.ones([1, 2])
-                x_v = prog_trans.get_output(func, x)
-                print(x_v.numpy()) # [[0. 0.]]
+                with fluid.dygraph.guard():
+                    x = np.ones([1, 2])
+                    x_v = prog_trans.get_output(func, x)
+                    print(x_v.numpy()) # [[0. 0.]]
 
         """
         assert callable(
@@ -472,7 +476,7 @@ class ProgramTranslator(object):
                 x = np.ones([1, 2])
                 main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
                 print([i.name for i in inputs])
-                # ['x_0'] the feed input variable name representing x
+                # ['feed_0'] the feed input variable name representing x
                 print([o.name for o in outputs])
                 # ['_generated_var_4'] the fetch output variable name representing x_v        
 
@@ -549,6 +553,7 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
+    @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
         Saves current model as the inference model. It will prune the main_program
@@ -558,14 +563,14 @@ class ProgramTranslator(object):
 
         Args:
             dirname (str): the directory to save the inference model.
-            feed (list[int], optional): the input variable indices of the saved
-                inference model. If None, all input variables of the
-                ProgramTranslator would be the inputs of the saved inference
-                model. Default None.
-            fetch (list[int], optional): the output variable indices of the
-                saved inference model. If None, all output variables of the
-                TracedLayer object would be the outputs of the saved inference
-                model. Default None.
+            feed (list[int], optional): the indices of the input variables of the
+                dygraph functions which will be saved as input variables in
+                inference model. If None, all input variables of the dygraph function
+                would be the inputs of the saved inference model. Default None.
+            fetch (list[int], optional): the indices of the returned variable of the
+                dygraph functions which will be saved as output variables in
+                inference model. If None, all output variables of the dygraph function
+                would be the outputs of the saved inference model. Default None.
         Returns:
             None
         Examples:
@@ -573,6 +578,7 @@ class ProgramTranslator(object):
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
                 from paddle.fluid.dygraph import ProgramTranslator
 
                 class SimpleNet(fluid.dygraph.Layer):
@@ -597,12 +603,12 @@ class ProgramTranslator(object):
                         adam.minimize(loss)
                         net.clear_gradients()
                 # Save inference model.
-                # Note that fetch=[0] means we set 'y' as the inference output.
+                # Note that fetch=[0] means we set 'z' as the inference output.
                 prog_trans = ProgramTranslator()
                 prog_trans.save_inference_model("./dy2stat_infer_model", fetch=[0])
 
-                # In this example, the inference model will be pruned based on input (x) and
-                # output (y). The pruned inference program is going to be saved in the folder
+                # In this example, the inference model will be pruned based on output (z).
+                # The pruned inference program is going to be saved in the folder
                 # "./dy2stat_infer_model" and parameters are going to be saved in separate
                 # files in the folder.
         """

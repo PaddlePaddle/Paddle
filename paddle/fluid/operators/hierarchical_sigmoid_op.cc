@@ -257,7 +257,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
 };
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    HierarchicalSigmoidGradOpNoNeedBufferVarInference, "Bias");
+    HierarchicalSigmoidGradOpNoNeedBufferVarInferer, "Bias");
 
 }  // namespace operators
 }  // namespace paddle
@@ -270,7 +270,7 @@ REGISTER_OPERATOR(
     ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
                   ops::HierarchicalSigmoidGradOpGradVarTypeInference,
-                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInference);
+                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,

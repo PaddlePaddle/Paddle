@@ -34,7 +34,8 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc'
+    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler', 'batch_fc',
+    '_pull_box_extended_sparse'
 ]
 
 
@@ -1361,3 +1362,50 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
                 "Bias": b},
         outputs={"Out": pre_act})
     return helper.append_activation(pre_act)
+
+
+def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
+    """
+    **Pull Box Extended Sparse Layer**
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    BoxPS lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        extend_size(int): The embedding size parameter in extended dim, 
+            which indicates the size of each embedding vector respectively.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+      float32 now.
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+    Examples:
+        .. code-block:: python
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb, emb_ex = fluid.contrib.layers._pull_box_extended_sparse(input=data, size=8, extend_size=128)
+    """
+    helper = LayerHelper('pull_box_extended_sparse', **locals())
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    outs_extend = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    helper.append_op(
+        type='pull_box_extended_sparse',
+        inputs={'Ids': inputs},
+        outputs={'Out': outs,
+                 'OutExtend': outs_extend},
+        attrs={'emb_size': size,
+               'emb_extended_size': extend_size})
+    if len(outs) == 1:
+        return outs[0], outs_extend[0]
+    return outs, outs_extend

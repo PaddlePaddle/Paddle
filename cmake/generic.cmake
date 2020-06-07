@@ -380,8 +380,7 @@ function(cc_test_run TARGET_NAME)
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-	    COMMAND ${cc_test_COMMAND}
-	    ARGS ${cc_test_ARGS}
+	    COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
@@ -412,10 +411,14 @@ function(nv_library TARGET_NAME)
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     if(nv_library_SRCS)
+      # Attention:
+      # 1. cuda_add_library is deprecated after cmake v3.10, use add_library for CUDA please.
+      # 2. cuda_add_library does not support ccache.
+      # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
       if (nv_library_SHARED OR nv_library_shared) # build *.so
-        cuda_add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
+        add_library(${TARGET_NAME} SHARED ${nv_library_SRCS})
       else()
-        cuda_add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
+        add_library(${TARGET_NAME} STATIC ${nv_library_SRCS})
         find_fluid_modules(${TARGET_NAME})
       endif()
       if (nv_library_DEPS)
@@ -450,7 +453,7 @@ function(nv_binary TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_binary "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_binary_SRCS})
+    add_executable(${TARGET_NAME} ${nv_binary_SRCS})
     if(nv_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
@@ -464,7 +467,11 @@ function(nv_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    # Attention:
+    # 1. cuda_add_executable is deprecated after cmake v3.10, use cuda_add_executable for CUDA please.
+    # 2. cuda_add_executable does not support ccache.
+    # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
+    add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${os_dependency_modules})
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)

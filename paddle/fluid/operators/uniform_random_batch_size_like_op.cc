@@ -78,5 +78,5 @@ REGISTER_OPERATOR(
     paddle::operators::UniformRandomBatchSizeLikeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    paddle::operators::BatchSizeLikeNoNeedBufferVarsInference);
+    paddle::operators::BatchSizeLikeNoNeedBufferVarsInferer);
 // Kernels are registered in uniform_random_op.cc and uniform_random_op.cu

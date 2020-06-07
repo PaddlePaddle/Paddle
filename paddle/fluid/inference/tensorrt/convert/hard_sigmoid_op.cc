@@ -25,7 +25,7 @@ class HardSigmoidOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-#if IS_TRT_VERSION_GE(5000)
+#if IS_TRT_VERSION_GE(5130)
     VLOG(3) << "convert a fluid HardSigmoid op to tensorrt IActivationLayer "
                "layer without bias";
     framework::OpDesc op_desc(op, nullptr);
