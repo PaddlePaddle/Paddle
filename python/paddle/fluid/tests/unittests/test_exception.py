@@ -25,7 +25,8 @@ class TestException(unittest.TestCase):
         try:
             core.__unittest_throw_exception__()
         except core.EnforceNotMet as ex:
-            self.assertIn("test exception", cpt.get_exception_message(ex))
+            self.assertIn("This is a test of exception",
+                          cpt.get_exception_message(ex))
             exception = ex
 
         self.assertIsNotNone(exception)
