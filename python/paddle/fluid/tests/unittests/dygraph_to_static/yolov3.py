@@ -73,7 +73,7 @@ cfg.label_smooth = True
 # Model options
 #
 # input size
-cfg.input_size = 608 if fluid.is_compiled_with_cuda() else 416
+cfg.input_size = 608
 # pixel mean values
 cfg.pixel_means = [0.485, 0.456, 0.406]
 # pixel std values
@@ -90,7 +90,7 @@ cfg.ignore_thresh = .7
 # SOLVER options
 #
 # batch size
-cfg.batch_size = 8 if fluid.is_compiled_with_cuda() else 4
+cfg.batch_size = 4
 # derived learning rate the to get the final learning rate.
 cfg.learning_rate = 0.001
 # maximum number of iterations
@@ -113,7 +113,7 @@ cfg.momentum = 0.9
 # support both CPU and GPU
 cfg.use_gpu = fluid.is_compiled_with_cuda()
 # Class number
-cfg.class_num = 80 if fluid.is_compiled_with_cuda() else 10
+cfg.class_num = 80
 
 
 class YoloDetectionBlock(fluid.dygraph.Layer):
