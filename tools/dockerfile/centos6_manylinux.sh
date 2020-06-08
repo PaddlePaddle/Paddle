@@ -4,7 +4,7 @@ set -xe
 REPO="${REPO:-paddledocker}"
 
 function make_cuda9cudnn7(){
-  sed 's/<baseimg>/9.0-cudnn7-devel-centos6/g' Dockerfile.centos >Dockerfile.tmp.1
+  sed 's/<baseimg>/9.0-cudnn7-devel-centos6/g' Dockerfile.centos >Dockerfile.tmp
 }
 
 
