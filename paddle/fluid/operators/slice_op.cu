@@ -106,9 +106,9 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
                                      &in_dims_tensor);
     framework::TensorFromVector<int>(offsets, ctx.device_context(),
                                      &offsets_tensor);
-    const int* out_dims_ptr = out_dims_tensor.data<int>();
-    const int* in_dims_ptr = in_dims_tensor.data<int>();
-    const int* offsets_ptr = offsets_tensor.data<int>();
+    const int64_t* out_dims_ptr = out_dims_tensor.data<int>();
+    const int64_t* in_dims_ptr = in_dims_tensor.data<int>();
+    const int64_t* offsets_ptr = offsets_tensor.data<int>();
 
     switch (rank) {
       case 1:
