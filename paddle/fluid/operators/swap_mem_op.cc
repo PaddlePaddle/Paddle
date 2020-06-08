@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/swap_mem_op.h"
-#include <cuda.h>
 #include <string>
 
 namespace paddle {
