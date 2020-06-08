@@ -176,9 +176,6 @@ def build_batch(dataset, batch_size, epoch_num):
     eval_word_batch = []
 
     for epoch in range(epoch_num):
-
-        #random.shuffle(dataset)
-
         for center_word, target_word, label in dataset:
             center_word_batch.append([center_word])
             target_word_batch.append([target_word])
@@ -203,10 +200,6 @@ def build_batch(dataset, batch_size, epoch_num):
         yield np.array(center_word_batch).astype("int64"), np.array(
             target_word_batch).astype("int64"), np.array(label_batch).astype(
                 "float32"), np.array(eval_word_batch).astype("int64")
-
-
-#for _, batch in zip(range(10), build_batch(dataset, 128, 3)):
-#    print(batch)
 
 
 class SkipGram(fluid.dygraph.Layer):
@@ -257,18 +250,6 @@ epoch_num = 1
 embedding_size = 200
 learning_rate = 1e-3
 total_steps = len(dataset) * epoch_num // batch_size
-
-
-def get_similar_tokens(query_token, k, embed):
-    W = embed.numpy()
-    x = W[word2id_dict[query_token]]
-    cos = np.dot(W, x) / np.sqrt(np.sum(W * W, axis=1) * np.sum(x * x) + 1e-9)
-    flat = cos.flatten()
-    indices = np.argpartition(flat, -k)[-k:]
-    indices = indices[np.argsort(-flat[indices])]
-    for i in indices:  # Remove the input words
-        print('for word %s, the similar word is %s' %
-              (query_token, str(id2word_dict[i])))
 
 
 def train(to_static):
