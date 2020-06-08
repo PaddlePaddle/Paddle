@@ -65,11 +65,12 @@ def _handle_errors(f):
 
 
 class HDFSClient(FS):
-    def __init__(self,
-                 hadoop_home,
-                 configs,
-                 time_out=5 * 60 * 1000,
-                 sleep_inter=1000):
+    def __init__(
+            self,
+            hadoop_home,
+            configs,
+            time_out=5 * 60 * 1000,  #ms
+            sleep_inter=1000):  #ms
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
         self.pre_commands.append(hadoop_bin)
@@ -134,7 +135,7 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return False
 
-        cmd = "{} -test -d {} ; echo $?".format(self._base_cmd, fs_path)
+        cmd = "{} -test -d {} ".format(self._base_cmd, fs_path)
         ret, lines = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError
@@ -149,9 +150,9 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_exist(self, fs_path):
-        cmd = "{} -test -e {} ".format(self._base_cmd, fs_path)
+        cmd = "{} -ls {} ".format(self._base_cmd, fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
-        print("is exist return:", ret, out, err)
+        print("is exist return:", cmd, ret, out)
         if ret != 0:
             for l in out:
                 if "No such file or directory" in l:

@@ -126,12 +126,18 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
 
   if (child_end != child_std_end) {
     PCHECK(dup2(child_end, child_std_end) == child_std_end);
-    if (redirect_stderr) {
+    if (redirect_stderr && do_read) {
       PCHECK(dup2(child_end, 2) == 2);
     }
     close(child_end);
   }
 
+  /*
+  char err[256];
+  sprintf(err, "cmd:%s redirect_stderr:%d\n", real_cmd, redirect_stderr);
+  if(write(2, err, strlen(err))){
+  }
+  */
   close_open_fds_internal();
   PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
   // Note: just for compilation. the child don't run this line.
