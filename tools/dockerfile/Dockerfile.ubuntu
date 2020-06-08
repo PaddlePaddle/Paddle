@@ -33,16 +33,8 @@ RUN apt-get update && \
     net-tools libtool module-init-tools && \
     apt-get clean -y
 
-# gcc&&g++ 8.2
-WORKDIR /usr/bin
-COPY tools/dockerfile/build_scripts /build_scripts
-RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts
-RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++
-RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
-RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
-RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
-RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
-ENV PATH=/usr/local/gcc-8.2/bin:$PATH
+# Downgrade gcc&&g++
+<install_gcc>
 
 # install cmake
 WORKDIR /home
@@ -56,7 +48,7 @@ RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-a
     wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
     tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
-    make -j8 > /dev/null && make altinstall > /dev/null && ldconfig 
+    make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
 # Install Python3.7
 RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
@@ -69,6 +61,7 @@ RUN rm -r /root/python_build
 # Install Python2.7.15 to replace original python
 WORKDIR /home
 ENV version=2.7.15
+RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz &&     cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 &&     export LD_LIBRARY_PATH=/usr/local/lib/: && export PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin && cd .. &&     rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh &&     apt-get install libprotobuf-dev -y
 RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz && tar -xvf Python-$version.tgz
 WORKDIR /home/Python-$version
 RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15 && make && make install
@@ -87,7 +80,10 @@ RUN python setup.py build && python setup.py install
 WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/69/81/52b68d0a4de760a2f1979b0931ba7889202f302072cc7a0d614211bc7579/pip-18.0.tar.gz && tar -zxvf pip-18.0.tar.gz
 WORKDIR pip-18.0
-RUN python setup.py install
+RUN python setup.py install && \
+  python3 setup.py install && \
+  python3.6 setup.py install && \
+  python3.7 setup.py install 
 
 WORKDIR /home
 RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
@@ -162,36 +158,24 @@ RUN pip3 --no-cache-dir install -r /root/requirements.txt && pip3.6 --no-cache-d
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev && apt-get clean -y && pip3 --no-cache-dir install certifi urllib3[secure] && pip3.6 --no-cache-dir install certifi urllib3[secure] && pip3.7 --no-cache-dir install certifi urllib3[secure] && pip --no-cache-dir install certifi urllib3[secure]
 
-# Install woboq_codebrowser to /woboq
-RUN git clone https://github.com/woboq/woboq_codebrowser /woboq && \
-    (cd /woboq \
-     cmake -DLLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config-3.8 \
-           -DCMAKE_BUILD_TYPE=Release . \
-     make)
-
 # ar mishandles 4GB files
 # https://sourceware.org/bugzilla/show_bug.cgi?id=14625
 # remove them when apt-get support 2.27 and higher version
-#RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/2.27-9ubuntu1/binutils_2.27.orig.tar.gz && \
-#    tar -xzf binutils_2.27.orig.tar.gz && \
-#    cd binutils-2.27 && \
-#    ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
-#
-#RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
-#    cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 && \
-#    export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
-#    rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh && \
-#    apt-get install libprotobuf-dev -y
-#RUN pip --no-cache-dir install -U netifaces==0.10.9
-#
-## Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
-## https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
-## So install a newer version here.
-#RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0.10-2_amd64.deb && \
-#    dpkg -i patchelf_0.10-2_amd64.deb
-#
-## Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
-#RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-#CMD source ~/.bashrc
-#EXPOSE 22
+RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/2.27-9ubuntu1/binutils_2.27.orig.tar.gz && \
+    tar -xzf binutils_2.27.orig.tar.gz && \
+    cd binutils-2.27 && \
+    ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
 
+RUN pip --no-cache-dir install -U netifaces==0.10.9
+
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# So install a newer version here.
+RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0.10-2_amd64.deb && \
+    dpkg -i patchelf_0.10-2_amd64.deb
+
+# Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
+RUN mkdir /var/run/sshd && echo 'root:root' | chpasswd && sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config && sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+CMD source ~/.bashrc
+
+EXPOSE 22
