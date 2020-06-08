@@ -96,15 +96,19 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
     auto stream = ctx.cuda_device_context().stream();
     auto out_shape = framework::vectorize<int>(out_dims);
     auto in_shape = framework::vectorize<int>(in_dims);
+
     Tensor out_dims_tensor;
     Tensor in_dims_tensor;
     Tensor offsets_tensor;
-    framework::TensorFromVector<int>(out_shape, ctx.device_context(), &out_dims_tensor);
-    framework::TensorFromVector<int>(in_shape, ctx.device_context(), &in_dims_tensor);
-    framework::TensorFromVector<int>(offsets, ctx.device_context(), &offsets_tensor);
-    const int*  out_dims_ptr = out_dims_tensor.data<int>();
-    const int*  in_dims_ptr = in_dims_tensor.data<int>();
-    const int*  offsets_ptr = offsets_tensor.data<int>();
+    framework::TensorFromVector<int>(out_shape, ctx.device_context(),
+                                     &out_dims_tensor);
+    framework::TensorFromVector<int>(in_shape, ctx.device_context(),
+                                     &in_dims_tensor);
+    framework::TensorFromVector<int>(offsets, ctx.device_context(),
+                                     &offsets_tensor);
+    const int* out_dims_ptr = out_dims_tensor.data<int>();
+    const int* in_dims_ptr = in_dims_tensor.data<int>();
+    const int* offsets_ptr = offsets_tensor.data<int>();
 
     switch (rank) {
       case 1:
