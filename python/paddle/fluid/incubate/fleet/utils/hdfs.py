@@ -68,7 +68,7 @@ class HDFSClient(FS):
     def __init__(self,
                  hadoop_home,
                  configs,
-                 time_out=10 * 60 * 1000,
+                 time_out=5 * 60 * 1000,
                  sleep_inter=1000):
         self.pre_commands = []
         hadoop_bin = '%s/bin/hadoop' % hadoop_home
@@ -84,12 +84,9 @@ class HDFSClient(FS):
         self._sleep_inter = sleep_inter
         self._base_cmd = " ".join(self.pre_commands)
 
-    def _run_cmd(self, cmd):
-        ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0)
-        print(ret, output)
-        if len(output) <= 0:
-            return int(ret), []
-
+    def _run_cmd(self, cmd, redirect_stderr=False):
+        ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
+        print("run_cmd", ret, output)
         return int(ret), output.splitlines()
 
     def list_dirs(self, fs_path):
@@ -108,6 +105,7 @@ class HDFSClient(FS):
             return [], []
 
         cmd = "{} -ls {}".format(self._base_cmd, fs_path)
+        print("ls_dir cmd:", cmd)
         ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
@@ -151,11 +149,11 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_exist(self, fs_path):
-        cmd = "{{\n {} -test -e {} \n}} 2>&1".format(self._base_cmd, fs_path)
-        print("cmd:", cmd)
-        ret, lines = self._run_cmd(cmd)
+        cmd = "{} -test -e {} ".format(self._base_cmd, fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        print("is exist return:", ret, out, err)
         if ret != 0:
-            for l in lines:
+            for l in out:
                 if "No such file or directory" in l:
                     print(l)
                     return False

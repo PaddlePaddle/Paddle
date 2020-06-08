@@ -104,8 +104,7 @@ static int close_open_fds_internal() {
 
 static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
                                      int parent_end, int child_end,
-                                     int parent_end_stderr,
-                                     int child_end_stderr) {
+                                     bool redirect_stderr = false) {
 #if defined _WIN32 || defined __APPLE__
   return 0;
 #else
@@ -124,32 +123,25 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
 
   int child_std_end = do_read ? 1 : 0;
   close(parent_end);
-  close(parent_end_stderr);
 
   if (child_end != child_std_end) {
     PCHECK(dup2(child_end, child_std_end) == child_std_end);
+    if (redirect_stderr) {
+      PCHECK(dup2(child_end, 2) == 2);
+    }
     close(child_end);
   }
 
-  dup2(child_end_stderr, 2);
-  close(child_end_stderr);
-
   close_open_fds_internal();
   PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
+  // Note: just for compilation. the child don't run this line.
   _exit(0);
 #endif
 }
+
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                                   const std::string& mode, int* err_no,
-                                  int* status) {
-  auto pipes = shell_popen_stdout_stderr(cmd, "r", err_no, status);
-  fclose(&*pipes.second);
-  return pipes.first;
-}
-
-std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>>
-shell_popen_stdout_stderr(const std::string& cmd, const std::string& mode,
-                          int* err_no, int* status) {
+                                  int* status, bool redirect_stderr) {
 #if defined _WIN32 || defined __APPLE__
   return nullptr;
 #else
@@ -157,22 +149,20 @@ shell_popen_stdout_stderr(const std::string& cmd, const std::string& mode,
   bool do_write = mode == "w";
   if (!(do_read || do_write)) {
     *err_no = -1;
-    return {NULL, NULL};
+    return NULL;
   }
 
   VLOG(3) << "Opening pipe[" << cmd << "] with mode[" << mode << "]";
 
   std::string real_cmd = "set -o pipefail; " + cmd;
 
-  int pipe_fds[2], pipe_err_fds[2];
-  if (pipe(pipe_fds) != 0 || pipe(pipe_err_fds) != 0) {
+  int pipe_fds[2];
+  if (pipe(pipe_fds) != 0) {
     *err_no = -1;
-    return {NULL, NULL};
+    return NULL;
   }
   int parent_end = 0;
   int child_end = 0;
-  int parent_end_stderr = 0;
-  int child_end_stderr = 0;
 
   if (do_read) {
     parent_end = pipe_fds[0];
@@ -182,32 +172,18 @@ shell_popen_stdout_stderr(const std::string& cmd, const std::string& mode,
     child_end = pipe_fds[0];
   }
 
-  parent_end_stderr = pipe_err_fds[0];
-  child_end_stderr = pipe_err_fds[1];
-
   sighandler_t old_handler;
   old_handler = signal(SIGCHLD, SIG_DFL);
-  int child_pid =
-      shell_popen_fork_internal(real_cmd.c_str(), do_read, parent_end,
-                                child_end, parent_end_stderr, child_end_stderr);
+  int child_pid = shell_popen_fork_internal(
+      real_cmd.c_str(), do_read, parent_end, child_end, redirect_stderr);
 
   close(child_end);
-  close(child_end_stderr);
   fcntl(parent_end, F_SETFD, FD_CLOEXEC);
-  fcntl(parent_end_stderr, F_SETFD, FD_CLOEXEC);
   FILE* fp = NULL;
   if ((fp = fdopen(parent_end, mode.c_str())) == NULL) {
     *err_no = -1;
     signal(SIGCHLD, old_handler);
-    return {NULL, NULL};
-  }
-
-  FILE* fp_err = NULL;
-  if ((fp_err = fdopen(parent_end_stderr, "r")) == NULL) {
-    *err_no = -1;
-    fclose(fp);
-    signal(SIGCHLD, old_handler);
-    return {NULL, NULL};
+    return NULL;
   }
 
   int wstatus = -1;
@@ -226,17 +202,10 @@ shell_popen_stdout_stderr(const std::string& cmd, const std::string& mode,
   if (status) {
     *status = wstatus;
   }
-  printf("status code:%d exit status:%d\n", wstatus, wstatus >> 8);
-
-  return {{fp,
-           [cmd](FILE* fp) {
-             VLOG(3) << "Closing pipe[" << cmd << "]";
-             fclose(fp);
-           }},
-          {fp_err, [cmd](FILE* fp_err) {
-             VLOG(3) << "Closing pipe[" << cmd << "]";
-             fclose(fp_err);
-           }}};
+  return {fp, [cmd](FILE* fp) {
+            VLOG(3) << "Closing pipe[" << cmd << "]";
+            fclose(fp);
+          }};
 #endif
 }
 
@@ -352,8 +321,8 @@ static int _get_err_no(int err_no, int status) {
 }
 
 static int _shell_execute_cmd(const std::string& cmd, std::string* output,
-                              std::string* errors, int time_out,
-                              int sleep_inter) {
+                              int time_out, int sleep_inter,
+                              bool redirect_stderr = false) {
 #if defined _WIN32 || defined __APPLE__
   PADDLE_THROW(platform::errors::Unimplemented(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
@@ -368,19 +337,13 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     err_no = 0;
     status = 0;
     *output = "";
-    *errors = "";
-    auto pipes = shell_popen_stdout_stderr(cmd, "r", &err_no, &status);
+    auto pipe = shell_popen(cmd, "r", &err_no, &status, redirect_stderr);
 
-    string::LineFileReader reader;
     if (err_no == 0) {
-      char* buf = reader.getdelim(&*pipes.first, 0);
+      string::LineFileReader reader, reader_err;
+      char* buf = reader.getdelim(&*pipe, 0);
       if (buf) {
         *output = reader.get();
-      }
-
-      buf = reader.getdelim(&*pipes.second, 0);
-      if (buf) {
-        *errors = reader.get();
       }
 
       return _get_err_no(err_no, status);
@@ -394,14 +357,13 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     timer.Resume();
 
     // sleep
-    pipes.first = nullptr;
-    pipes.second = nullptr;
+    pipe = nullptr;
     if (sleep_inter > 0) {
       usleep(sleep_inter * 1000);
     }
   } while (err_no);
 
-  if ((*errors) == "") {
+  if ((*output) == "") {
     *output = string::Sprintf("_shell_execute_cmd execute cmd:%s ElapsedMS:%d",
                               cmd, timer.ElapsedMS());
   }
@@ -411,17 +373,18 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
 
 std::string shell_get_command_output(const std::string& cmd, int time_out,
                                      int sleep_inter) {
-  std::string output, errors;
-  _shell_execute_cmd(cmd, &output, &errors, time_out, sleep_inter);
+  std::string output;
+  _shell_execute_cmd(cmd, &output, time_out, sleep_inter);
   return output;
 }
 
 std::vector<std::string> shell_execute_cmd(const std::string& cmd, int time_out,
-                                           int sleep_inter) {
-  std::string output, errors;
-  int ret = _shell_execute_cmd(cmd, &output, &errors, time_out, sleep_inter);
-  printf("shell_execute_cmd ret:%d\n", ret);
-  return std::vector<std::string>({string::Sprintf("%d", ret), output, errors});
+                                           int sleep_inter,
+                                           bool redirect_stderr) {
+  std::string output;
+  int ret =
+      _shell_execute_cmd(cmd, &output, time_out, sleep_inter, redirect_stderr);
+  return std::vector<std::string>({string::Sprintf("%d", ret), output});
 }
 
 }  // end namespace framework

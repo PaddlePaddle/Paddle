@@ -52,12 +52,10 @@ inline void shell_set_verbose(bool x) { shell_verbose_internal() = x; }
 extern std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                          const std::string& mode);
 
-extern std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>>
-shell_popen_stdout_stderr(const std::string& cmd, const std::string& mode,
-                          int* err_no, int* status = NULL);
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                                   const std::string& mode, int* err_no,
-                                  int* status = NULL);
+                                  int* status = NULL,
+                                  bool redirect_stderr = false);
 
 extern std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
     const std::string& cmd);
@@ -79,7 +77,8 @@ extern std::string shell_get_command_output(const std::string& cmd,
 // sleep_inter:ms, default -1 means not sleep.
 extern std::vector<std::string> shell_execute_cmd(const std::string& cmd,
                                                   int time_out = 0,
-                                                  int sleep_inter = 0);
+                                                  int sleep_inter = 0,
+                                                  bool redirect_stderr = false);
 
 }  // namespace framework
 }  // namespace paddle
