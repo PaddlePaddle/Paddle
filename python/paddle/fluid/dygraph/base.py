@@ -76,7 +76,7 @@ def param_guard(parameters):
                 # `mask` Tensor or `hidden_0` in RNN layers, which is necessary for inferring.
                 # So we convert and save them into inference model.
                 if isinstance(var_base, framework.ParamBase):
-                    new_var = var_base._to_static_var(is_parameter=True)
+                    new_var = var_base._to_static_var(to_parameter=True)
                 else:
                     # A VarBase in self._buffers may be passed to initialize multiple sub_layers.
                     is_created = var_base.name in var_base.block.vars
@@ -90,7 +90,7 @@ def param_guard(parameters):
                                        var_base.shape))
                             new_var.desc.set_shape(var_base.shape)
                     else:
-                        new_var = var_base.to_variable(is_parameter=True)
+                        new_var = var_base._to_static_var(to_parameter=True)
                         new_var.trainable = False
 
                 parameters[name] = new_var

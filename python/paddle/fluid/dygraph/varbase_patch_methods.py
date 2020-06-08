@@ -23,7 +23,6 @@ from .math_op_patch import monkey_patch_math_varbase
 
 
 def monkey_patch_varbase():
-    @framework.dygraph_only
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
