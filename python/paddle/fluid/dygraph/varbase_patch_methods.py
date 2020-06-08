@@ -56,22 +56,21 @@ def monkey_patch_varbase():
             attr_names = [
                 name for name in dir(self)
                 if not (inspect.ismethod(getattr(self, name)) or
-                        name.startswith('__'))
+                        name.startswith('_'))
             ]
             attr_kwargs = {name: getattr(self, name) for name in attr_names}
+
+        attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
+        for attr in attr_keys:
+            attr_kwargs[attr] = getattr(self, attr, None)
 
         attr_kwargs.update(kwargs)
 
         if to_parameter or isinstance(self, ParamBase):
-            static_var = Parameter(
-                self.block,
-                self.shape,
-                self.dtype,
-                self.type,
-                name=self.name,
-                **attr_kwargs)
+            del attr_kwargs['persistable']
+            static_var = Parameter(**attr_kwargs)
         else:
-            static_var = Variable(self.block, name=self.name, **attr_kwargs)
+            static_var = Variable(**attr_kwargs)
         return static_var
 
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
