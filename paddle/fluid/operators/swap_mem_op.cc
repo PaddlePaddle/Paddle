@@ -111,7 +111,6 @@ class SwapMemGPUToCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     // in is in CUDA Place
-    // auto* x = context.Input<Tensor>("X");
     auto* in = context.Input<Tensor>("X");
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(in->place()), true,
