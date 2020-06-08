@@ -25,7 +25,7 @@ from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 
 class FSTest(unittest.TestCase):
     def _test_dirs(self, fs):
-        dir_path = "./test_dir"
+        dir_path = os.path.abspath("./test_dir")
         fs.delete(dir_path)
         self.assertTrue(not fs.is_exist(dir_path))
 
@@ -34,7 +34,7 @@ class FSTest(unittest.TestCase):
         self.assertTrue(not fs.is_file(dir_path))
         self.assertTrue(fs.is_dir(dir_path))
 
-        new_dir_path = "./new_test_dir"
+        new_dir_path = os.path.abspath("./new_test_dir")
         fs.mv(dir_path, new_dir_path)
         self.assertTrue(fs.is_exist(new_dir_path))
 
@@ -45,7 +45,7 @@ class FSTest(unittest.TestCase):
         self.assertTrue(not fs.is_exist(dir_path))
 
     def _test_touch_file(self, fs):
-        file_path = "./test_file"
+        file_path = os.path.abspath("./test_file")
 
         fs.delete(file_path)
         self.assertTrue(not fs.is_exist(file_path))
@@ -54,7 +54,7 @@ class FSTest(unittest.TestCase):
         self.assertTrue(fs.is_exist(file_path))
         self.assertTrue(not fs.is_dir(file_path) and fs.is_file(file_path))
 
-        new_file_path = "./new_test_file"
+        new_file_path = os.path.abspath("./new_test_file")
         fs.mv(file_path, new_file_path)
         self.assertTrue(fs.is_exist(new_file_path))
 
@@ -65,8 +65,8 @@ class FSTest(unittest.TestCase):
         self.assertTrue(not fs.is_exist(file_path))
 
     def _test_upload_file(self, fs):
-        src_file = "./test_upload.src"
-        dst_file = "./test_uolpad.dst"
+        src_file = os.path.abspath("./test_upload.src")
+        dst_file = os.path.abspath("./test_uolpad.dst")
 
         local = LocalFS()
         local.touch(src_file)
@@ -79,18 +79,24 @@ class FSTest(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
+    def test_exists(self):
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        #self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
+        #self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
+        #self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
+        dirs, files = fs.ls_dir(
+            os.path.abspath(
+                "/paddle/build/build_ubuntu_fixtypo_release_gpu_y_grpc_2.7/python/paddle/fluid/tests/unittests/test_hdfs.py"
+            ))
+        dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
+        print(dirs, files)
+
+    """
     def test_hdfs(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None)
-        fs.is_exist("./xxxx")
-        return
-        fs.ls_dir("./xxxx")
-        return
-        fs.ls_dir("./test_hdfs.py")
-        return
         self._test_dirs(fs)
         self._test_upload_file(fs)
 
-    """
     def test_local(self):
         fs = LocalFS()
         self._test_dirs(fs)

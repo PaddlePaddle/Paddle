@@ -135,7 +135,7 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
   /*
   char err[256];
   sprintf(err, "cmd:%s redirect_stderr:%d\n", real_cmd, redirect_stderr);
-  if(write(2, err, strlen(err))){
+  if (write(1, err, strlen(err))) {
   }
   */
   close_open_fds_internal();
@@ -191,6 +191,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
     signal(SIGCHLD, old_handler);
     return NULL;
   }
+  setlinebuf(fp);
 
   int wstatus = -1;
   waitpid(child_pid, &wstatus, 0);
@@ -346,13 +347,25 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     auto pipe = shell_popen(cmd, "r", &err_no, &status, redirect_stderr);
 
     if (err_no == 0) {
-      string::LineFileReader reader, reader_err;
-      char* buf = reader.getdelim(&*pipe, 0);
-      if (buf) {
-        *output = reader.get();
-      }
+      char buf[4096];
+      while (1) {
+        int n = read(fp, buf, 4096);
+        if (n == 0) {
+          break;
+        }
 
-      return _get_err_no(err_no, status);
+        if (n < 0) {
+          err_no = -1;
+          break;
+        }
+
+        outout->append(buf, n);
+      }
+      output->append(1, '\0');
+
+      if (err_no == 0) {
+        return _get_err_no(err_no, status);
+      }
     }
 
     // time out
