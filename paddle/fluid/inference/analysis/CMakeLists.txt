@@ -16,8 +16,7 @@ cc_library(analysis_pass INTERFACE SRCS analysis_pass.cc DEPS proto_desc)
 
 cc_library(analysis SRCS analyzer.cc
   DEPS ${analysis_deps} analysis_helper
-  analysis_pass ${INFER_IR_PASSES}
-  )
+  analysis_pass ${INFER_IR_PASSES})
 
 function(inference_analysis_test_build TARGET)
   if(WITH_TESTING)
