@@ -29,7 +29,7 @@ from .fs import FS
 import paddle.fluid as fluid
 import functools
 
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, Path
 import shutil
 
 __all__ = ["HDFSClient"]
@@ -43,7 +43,11 @@ class FSFileExistsError(Exception):
     pass
 
 
-class FSFileiNotExistsError(Exception):
+class FSFileNotExistsError(Exception):
+    pass
+
+
+class FSTimeOut(Exception):
     pass
 
 
@@ -58,7 +62,7 @@ def _handle_errors(f):
                 time_out = float(o._time_out) / 1000.0
                 inter = float(o._sleep_inter) / 1000.0
                 if time.time() - start >= time_out:
-                    break
+                    raise FSTimeOut
                 time.sleep(inter)
 
     return functools.wraps(f)(handler)
@@ -132,15 +136,24 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_dir(self, fs_path):
+        assert fs_path[0] == "/", "Please use absolute path:{}".format(fs_path)
         if not self.is_exist(fs_path):
             return False
 
+        parent_path = Path(fs_path)
+        dirs, files = self.ls_dir(parent_path.parent)
+
+        dir_name = os.path.basename(os.path.normpath('fs_path'))
+        true_1 = any(len(fs) == 5 for dir_name in dirs)
+
         cmd = "{} -test -d {} ".format(self._base_cmd, fs_path)
-        ret, lines = self._run_cmd(cmd)
-        if ret != 0:
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        true_2 = (ret == 0)
+
+        if not (true_1 and true_2):
             raise ExecuteError
 
-        return True if ret == 0 else False
+        return True
 
     def is_file(self, fs_path):
         if not self.is_exist(fs_path):
@@ -150,6 +163,7 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_exist(self, fs_path):
+        assert fs_path[0] == "/", "Please use absolute path:{}".format(fs_path)
         cmd = "{} -ls {} ".format(self._base_cmd, fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
         print("is exist return:", cmd, ret, out)
