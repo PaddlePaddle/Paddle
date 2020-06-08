@@ -119,8 +119,8 @@ class TestMultipleGpus(unittest.TestCase):
                 break
             time.sleep(3)
 
-    #def test_hapi_multiple_gpus_static(self):
-    #    self.run_mnist_2gpu('dist_hapi_mnist_static.py')
+    def test_hapi_multiple_gpus_static(self):
+        self.run_mnist_2gpu('dist_hapi_mnist_static.py')
 
     def test_hapi_multiple_gpus_dynamic(self):
         self.run_mnist_2gpu('dist_hapi_mnist_dynamic.py')
