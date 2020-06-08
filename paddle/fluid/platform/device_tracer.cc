@@ -646,7 +646,6 @@ DeviceTracer *GetDeviceTracer() {
 // so when event is not in same thread of PE event, we need add
 // father event(PE::run event) for this event
 void SetCurAnnotation(Event *event) {
-  std::string ret;
   if (!annotation_stack.empty()) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());

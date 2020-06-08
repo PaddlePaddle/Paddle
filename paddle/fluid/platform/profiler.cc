@@ -71,8 +71,8 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   role_ = role;
   is_enabled_ = true;
   // lock is not needed, the code below is thread-safe
-  Event *e = PushEvent(name, role);
   // Maybe need the same push/pop behavior.
+  Event *e = PushEvent(name, role);
   SetCurAnnotation(e);
   name_ = e->name();
 }
