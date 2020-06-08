@@ -3,19 +3,39 @@ set -xe
 
 REPO="${REPO:-paddledocker}"
 
-sed 's/<baseimg>/9.0-cudnn7-devel-centos6/g' Dockerfile.centos.gcc48 | \
-sed 's/<NCCL_MAKE_OPTS>/NVCC_GENCODE="-gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_60,code=compute_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_62,code=sm_62 -gencode=arch=compute_70,code=sm_70"/g'> Dockerfile.tmp
-#docker build -t tianshuo78520a/paddlepaddle:cuda9.0_cudnn7 -f Dockerfile.tmp .
-#docker build -t ${REPO}/paddle_manylinux_devel:cuda9.0_cudnn7 -f Dockerfile.tmp .
-#docker push ${REPO}/paddle_manylinux_devel:cuda9.0_cudnn7
+function make_cuda9cudnn7(){
+  sed 's/<baseimg>/9.0-cudnn7-devel-centos6/g' Dockerfile.centos
+}
 
-sed 's/<baseimg>/10.0-cudnn7-devel-centos6/g' Dockerfile.centos.gcc48 | \
-sed 's/<NCCL_MAKE_OPTS>/NVCC_GENCODE="-gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_60,code=compute_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_62,code=sm_62 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75"/g'> Dockerfile.tmp
-#docker build -t ${REPO}/paddle_manylinux_devel:cuda10.0_cudnn7 -f Dockerfile.tmp .
-#docker push ${REPO}/paddle_manylinux_devel:cuda10.0_cudnn7
 
-sed 's/<baseimg>/10.1-cudnn7-devel-centos6/g' Dockerfile.centos.gcc82 | \
-sed 's/<NCCL_MAKE_OPTS>/NVCC_GENCODE="-gencode=arch=compute_35,code=sm_35 -gencode=arch=compute_50,code=sm_50 -gencode=arch=compute_52,code=sm_52 -gencode=arch=compute_60,code=sm_60 -gencode=arch=compute_60,code=compute_60 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_62,code=sm_62 -gencode=arch=compute_70,code=sm_70 -gencode=arch=compute_75,code=sm_75"/g'> Dockerfile.tmp
-#docker build --no-cache -t tianshuo78520a/paddlepaddle:cuda10.1_cudnn7-manylinux -f Dockerfile.tmp .
-#docker build -t ${REPO}/paddle_manylinux_devel:cuda10.1_cudnn7 -f Dockerfile.tmp .
-#docker push ${REPO}/paddle_manylinux_devel:cuda10.1_cudnn7
+function make_cuda10cudnn7() {
+  sed 's/<baseimg>/10.0-cudnn7-devel-centos6/g' Dockerfile.centos
+}
+
+
+function make_cuda101cudnn7() {
+  sed 's/<baseimg>/10.1-cudnn7-devel-centos6/g' Dockerfile.centos
+  sed -i "s#COPY build_scripts /build_scripts#COPY build_scripts /build_scripts \nRUN bash build_scripts/install_gcc.sh gcc82 \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH#g" Dockerfile.tmp
+}
+
+
+function main() {
+  local CMD=$1 
+  case $CMD in
+    cuda9cudnn7)
+      make_cuda9cudnn7
+      ;;
+    cuda10cudnn7)
+      make_cuda10cudnn7
+      ;;
+    cuda101cudnn7)
+      make_cuda101cudnn7
+      ;;
+    *)
+      echo "Make dockerfile error, Without this paramet."
+      exit 1
+      ;;
+  esac
+}
+
+main $@
