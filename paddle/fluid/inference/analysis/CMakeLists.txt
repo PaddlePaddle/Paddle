@@ -19,8 +19,6 @@ cc_library(analysis SRCS analyzer.cc
   analysis_pass ${INFER_IR_PASSES}
   )
 
-cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
-
 function(inference_analysis_test_build TARGET)
   if(WITH_TESTING)
      set(options "")
