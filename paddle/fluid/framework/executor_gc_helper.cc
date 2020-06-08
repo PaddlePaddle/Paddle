@@ -174,6 +174,7 @@ void DeleteUnusedTensors(
       for (auto &t : *lod_tensor_arr) {
         garbages.emplace_back(t.MoveMemoryHolder());
       }
+      lod_tensor_arr->clear();
     } else {
       PADDLE_THROW("Type %s of %s is not supported eager deletion",
                    framework::ToTypeName(var->Type()), var_name);
