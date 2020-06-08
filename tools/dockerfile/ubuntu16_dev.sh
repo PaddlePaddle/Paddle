@@ -79,7 +79,7 @@ function install_gcc(){
 
 
 function make_dockerfile(){
-  sed "s/<baseimg>/${docker_name}/g" ./tools/dockerfile/Dockerfile.ubuntu.gcc48 >Dockerfile.tmp
+  sed "s/<baseimg>/${docker_name}/g" ./Dockerfile.ubuntu >Dockerfile.tmp
 # docker build -t tianshuo78520a/paddlepaddle: -f Dockerfile.tmp .
 #
 #  sed 's/<baseimg>/10.0-cudnn7-devel-ubuntu16.04/g' ./tools/dockerfile/Dockerfile.ubuntu.gcc48 >Dockerfile.tmp
@@ -91,10 +91,10 @@ function make_dockerfile(){
 }
 
 function main(){
+  make_dockerfile
   ref_whl
   install_whl
   install_gcc
-  make_dockerfile
 }
 
 main $@
