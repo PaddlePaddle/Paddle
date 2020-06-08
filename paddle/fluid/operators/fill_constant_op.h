@@ -85,13 +85,33 @@ class FillConstantKernel : public framework::OpKernel<T> {
               "When use Tensor as value to set Tensor value in fill_cosntant, "
               "value input(ValueTensor) size must be 1, but get %d",
               value_tensor->numel()));
-      const T *tensor_data = value_tensor->data<T>();
-      framework::Tensor cpu_tensor;
+
+      auto value_type = value_tensor->type();
+      framework::Tensor *cpu_tensor = nullptr;
       if (platform::is_gpu_place(value_tensor->place())) {
-        TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
-        tensor_data = cpu_tensor.data<T>();
+        TensorCopySync(*value_tensor, platform::CPUPlace(), cpu_tensor);
       }
-      value = tensor_data[0];
+      if (value_type == framework::proto::VarType::INT32) {
+        const auto *tensor_data =
+            cpu_tensor ? cpu_tensor->data<int>() : value_tensor->data<int>();
+        value = static_cast<T>(tensor_data[0]);
+      } else if (value_type == framework::proto::VarType::INT64) {
+        const auto *tensor_data = cpu_tensor ? cpu_tensor->data<int64_t>()
+                                             : value_tensor->data<int64_t>();
+        value = static_cast<T>(tensor_data[0]);
+      } else if (value_type == framework::proto::VarType::FP32) {
+        const auto *tensor_data = cpu_tensor ? cpu_tensor->data<float>()
+                                             : value_tensor->data<float>();
+        value = static_cast<T>(tensor_data[0]);
+      } else if (value_type == framework::proto::VarType::FP64) {
+        const auto *tensor_data = cpu_tensor ? cpu_tensor->data<double>()
+                                             : value_tensor->data<double>();
+        value = static_cast<T>(tensor_data[0]);
+      } else {
+        const auto *tensor_data =
+            cpu_tensor ? cpu_tensor->data<T>() : value_tensor->data<T>();
+        value = static_cast<T>(tensor_data[0]);
+      }
     }
     const std::string op_type = "fill_constant";
     auto shape = GetShape(ctx, op_type);

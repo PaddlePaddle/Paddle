@@ -220,45 +220,56 @@ class TestFillConstantOp1_ValueTensor(OpTest):
         '''
         self.op_type = "fill_constant"
         self.init_data()
-
-        self.inputs = {
-            "ShapeTensor": np.array(self.shape).astype("int32"),
-            'ValueTensor': np.array([self.value]).astype("float32")
-        }
-        self.attrs = {'value': self.value + 1.0}
+        self.init_inputs()
+        self.init_attrs()
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def init_data(self):
         self.shape = [123, 92]
         self.value = 3.8
-        self.dtype = np.float32
+
+    def init_inputs(self):
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor': np.array([self.value]).astype("float32")
+        }
+
+    def init_attrs(self):
+        self.attrs = {'value': self.value + 1.0}
 
     def test_check_output(self):
         self.check_output()
 
 
-# Situation 5: value is a tensor
-class TestFillConstantOp2_ValueTensor(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
-        self.op_type = "fill_constant"
-        self.init_data()
+class TestFillConstantOp2_ValueTensor(TestFillConstantOp1_ValueTensor):
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 3
 
+    def init_inputs(self):
         self.inputs = {
             "ShapeTensor": np.array(self.shape).astype("int32"),
             'ValueTensor': np.array([self.value]).astype("int32")
         }
+
+    def init_attrs(self):
         self.attrs = {'value': self.value, 'dtype': 2}
-        self.outputs = {'Out': np.full(self.shape, self.value)}
 
-    def init_data(self):
-        self.shape = [123, 92]
-        self.value = 3
-        self.dtype = np.int32
 
-    def test_check_output(self):
-        self.check_output()
+class TestFillConstantOp3_ValueTensor(TestFillConstantOp1_ValueTensor):
+    def init_inputs(self):
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor': np.array([self.value]).astype("float64")
+        }
+
+
+class TestFillConstantOp4_ValueTensor(TestFillConstantOp2_ValueTensor):
+    def init_inputs(self):
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor': np.array([self.value]).astype("int64")
+        }
 
 
 # Test python API
