@@ -456,7 +456,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
