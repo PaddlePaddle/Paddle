@@ -395,8 +395,6 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradMaker
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("fake_quantize_dequantize_moving_average_abs_max_grad");
-    grad_op->SetInput("X", this->Input("X"));
-    grad_op->SetInput("OutScale", this->Output("OutScale"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -409,19 +407,19 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxGradOp
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp");
-    OP_INOUT_CHECK(ctx->HasInput("OutScale"), "Input", "OutScale",
-                   "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"),
+    auto out_grad_name = framework::GradVarName("Out");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
                    "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp");
 
     auto x_grad_name = framework::GradVarName("X");
-    if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
-    }
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(x_grad_name), true,
+                      platform::errors::PreconditionNotMet(
+                          "FakeQuantOrWithDequantMovingAverageAbsMaxGradOp "
+                          "doesn't have the output named %s.",
+                          x_grad_name));
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
   }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
