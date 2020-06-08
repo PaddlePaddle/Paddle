@@ -131,6 +131,10 @@ class FunctionSpec(object):
         return self._args and isinstance(self._args[0], layers.Layer)
 
     def parameters(self, include_sublayer=True):
+        """
+        Returns parameters of decorated layers. If set `include_sublayer` True,
+        the parameters created in sub layers will be added.
+        """
         params = collections.OrderedDict()
         if self.is_method():
             if include_sublayer:
@@ -142,6 +146,10 @@ class FunctionSpec(object):
         return params
 
     def buffers(self, include_sublayer=True):
+        """
+        Returns VarBase buffers of decorated layers. If set `include_sublayer` True,
+        the VarBase buffers created in sub layers will be added.
+        """
         buffers = collections.OrderedDict()
         if self.is_method():
             if include_sublayer:

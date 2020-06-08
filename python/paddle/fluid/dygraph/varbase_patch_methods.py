@@ -12,16 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 from .. import framework
 from .. import core
 from . import BackwardStrategy
-from ..framework import Variable, _getitem_impl_
-from .. import unique_name
+from ..framework import Variable, Parameter, ParamBase
+from .base import switch_to_static_graph
 import numpy as np
 from .math_op_patch import monkey_patch_math_varbase
 
 
 def monkey_patch_varbase():
+    @framework.dygraph_only
+    @switch_to_static_graph
+    def _to_static_var(self, to_parameter=False, **kwargs):
+        """
+        **Notes**:
+            **This API is ONLY available in Dygraph mode**
+
+        Transform a VarBase into static Variable with same attributes. It's a low level interface used
+        in dy2static and shall not be called directly.
+
+        Args:
+            to_parameter (bool): It takes effect only if the input a VarBase but not ParamBase.If set True,
+                                 the VarBase will be converted into framework.Parameters. Otherwise, it will
+                                 be converted into framework.Variable. Default False.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                import numpy as np
+
+                data = np.ones([3, 1024], dtype='float32')
+                with fluid.dygraph.guard():
+                    varbase = to_variable(data)
+                    static_var = varbase._to_static()
+
+        """
+        if isinstance(self, ParamBase):
+            attr_kwargs = self.__dict__.copy()
+        else:
+            attr_names = [
+                name for name in dir(self)
+                if not (inspect.ismethod(getattr(self, name)) or
+                        name.startswith('__'))
+            ]
+            attr_kwargs = {name: getattr(self, name) for name in attr_names}
+
+        attr_kwargs.update(kwargs)
+
+        if to_parameter or isinstance(self, ParamBase):
+            static_var = Parameter(
+                self.block,
+                self.shape,
+                self.dtype,
+                self.type,
+                name=self.name,
+                **attr_kwargs)
+        else:
+            static_var = Variable(self.block, name=self.name, **attr_kwargs)
+        return static_var
+
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it
     @framework.dygraph_only
     def set_value(self, value):
@@ -214,8 +267,9 @@ def monkey_patch_varbase():
 
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
-        ("set_value", set_value), ("block", block), ("backward", backward),
-        ("gradient", gradient), ("__str__", __str__), ("to_string", to_string)):
+        ("_to_static_var", _to_static_var), ("set_value", set_value),
+        ("block", block), ("backward", backward), ("gradient", gradient),
+        ("__str__", __str__), ("to_string", to_string)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

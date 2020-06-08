@@ -90,7 +90,7 @@ class Layer(core.Layer):
         self._dtype = dtype
 
         self._parameters = collections.OrderedDict()
-        # Buffer the varBase (not ParamBase) created in layer
+        # Buffers the varBase (not ParamBase) created in layer
         self._buffers = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()

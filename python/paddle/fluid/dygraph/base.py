@@ -64,20 +64,35 @@ _functional_dygraph_context_manager = None
 
 @signature_safe_contextmanager
 def param_guard(parameters):
-    # Note: parameters is a reference of self._parameters
+    # Note: parameters is a reference of self._parameters or self._buffers
     if not framework.in_dygraph_mode() and parameters:
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, core.VarBase):
-                new_var = framework.Parameter(
-                    var_base.block,
-                    var_base.shape,
-                    var_base.dtype,
-                    var_base.type,
-                    name=var_base.name)
-                is_trainable = isinstance(
-                    var_base, framework.ParamBase) and var_base.trainable
-                new_var.trainable = is_trainable
+                # Note(Aurelius84): The var type in self._parameters is ParamBase,
+                # but VarBase in self._buffers. In dy2static, we convert all the VarBases from
+                # `self._parameters` and `self._buffers` into framework.Parameter.
+                # Because users can create a VarBase in `__init__` equivalent to a ParamBase like a
+                # `mask` Tensor or `hidden_0` in RNN layers, which is necessary for inferring.
+                # So we convert and save them into inference model.
+                if isinstance(var_base, framework.ParamBase):
+                    new_var = var_base._to_static_var(is_parameter=True)
+                else:
+                    # A VarBase in self._buffers may be passed to initialize multiple sub_layers.
+                    is_created = var_base.name in var_base.block.vars
+                    if is_created:
+                        new_var = var_base.block.vars[var_base.name]
+                        if -1 in new_var.shape:
+                            logging.warn(
+                                "The VarBase [{}] has been converted into Parameter in @declarative mode, "
+                                "but its shape is modified into: {}, we will reset it into {}.".
+                                format(var_base.name, new_var.shape,
+                                       var_base.shape))
+                            new_var.desc.set_shape(var_base.shape)
+                    else:
+                        new_var = var_base.to_variable(is_parameter=True)
+                        new_var.trainable = False
+
                 parameters[name] = new_var
         yield
         parameters.update(origin_parameters)
