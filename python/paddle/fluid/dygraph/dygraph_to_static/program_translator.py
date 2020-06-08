@@ -15,7 +15,7 @@
 from __future__ import print_function
 import gast
 import inspect
-import logging
+import warnings
 import textwrap
 import threading
 import collections
@@ -38,8 +38,6 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
-
-logger = logging.getLogger("fluid")
 
 
 class FunctionCache(object):
@@ -509,7 +507,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
                 "just return dygraph output.")
             return dygraph_func
@@ -562,7 +560,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
