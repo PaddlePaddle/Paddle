@@ -21,7 +21,7 @@ namespace framework {
 
 std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                   const std::string& mode) {
-#if defined _WIN32 || defined __APPLE__ || defined PADDLE_ARM
+#if defined(_WIN32) || defined(__APPLE__) || defined PADDLE_ARM
   return nullptr;
 #else
   if (shell_verbose()) {
@@ -48,7 +48,7 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
 // The implementation is async signal safe
 // Mostly copy from CPython code
 static int close_open_fds_internal() {
-#if defined _WIN32 || defined __APPLE__ || defined PADDLE_ARM
+#if defined(_WIN32) || defined(__APPLE__) || defined PADDLE_ARM
   return 0;
 #else
   struct linux_dirent {
@@ -105,7 +105,7 @@ static int close_open_fds_internal() {
 static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
                                      int parent_end, int child_end,
                                      bool redirect_stderr = false) {
-#if defined _WIN32 || defined __APPLE__
+#if defined(_WIN32) || defined(__APPLE__)
   return 0;
 #else
   int child_pid = -1;
@@ -160,7 +160,7 @@ static int read_from_pipe(FILE* fp, std::string* output) {
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                                   const std::string& mode, int* err_no,
                                   int* status, bool redirect_stderr) {
-#if defined _WIN32 || defined __APPLE__
+#if defined(_WIN32) || defined(__APPLE__)
   return nullptr;
 #else
   bool do_read = mode == "r";
@@ -237,7 +237,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
 static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
                                       int pipeout_fds[2]) {
-#if defined _WIN32 || defined __APPLE__
+#if defined(_WIN32) || defined(__APPLE__)
   return 0;
 #else
   int child_pid = -1;
@@ -276,7 +276,7 @@ static int shell_p2open_fork_internal(const char* real_cmd, int pipein_fds[2],
 
 std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
     const std::string& cmd) {
-#if defined _WIN32 || defined __APPLE__
+#if defined(_WIN32) || defined(__APPLE__)
   return {};
 #else
   if (shell_verbose()) {
@@ -334,7 +334,7 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 #endif
 }
 
-#if defined _WIN32 || defined __APPLE__
+#if defined(_WIN32) || defined(__APPLE__)
 #else
 static int _get_err_no(int err_no, int status) {
   if (err_no == 0) {
@@ -351,7 +351,7 @@ static int _get_err_no(int err_no, int status) {
 static int _shell_execute_cmd(const std::string& cmd, std::string* output,
                               int time_out, int sleep_inter,
                               bool redirect_stderr = false) {
-#if defined _WIN32 || defined __APPLE__
+#if defined(_WIN32) || defined(__APPLE__)
   PADDLE_THROW(platform::errors::Unimplemented(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
       "or __APPLE__."));
