@@ -124,7 +124,7 @@ class BarrierMonitor {
   }
 
   static BarrierMonitor *Init(int workers) {
-    std::call_once(init_flag_, &BarrierMonitor::InitImpl, workers);
+    InitImpl(workers);
     return GetInstance();
   }
 
@@ -157,9 +157,7 @@ class BarrierMonitor {
  private:
   // Init is called by GetInstance.
   static void InitImpl(int workers) {
-    if (monitor_ == nullptr) {
       monitor_.reset(new BarrierMonitor(workers));
-    }
   }
 
   static std::once_flag init_flag_;
