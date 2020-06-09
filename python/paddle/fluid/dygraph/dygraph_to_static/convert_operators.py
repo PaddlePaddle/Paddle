@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.framework import Variable
-from paddle.fluid.layers import control_flow, logical_and, logical_or, logical_not, cast
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable
+from paddle.fluid.framework import Variable, core
+from paddle.fluid.layers import cast, control_flow, logical_and, logical_not, logical_or, nn
 
 
 def convert_while_loop(cond, body, loop_vars):
@@ -173,6 +173,33 @@ def _run_paddle_cond(pred, true_fn, false_fn):
 def _run_py_ifelse(pred, true_fn, false_fn):
 
     return true_fn() if pred else false_fn()
+
+
+def convert_len(var):
+    """
+    Returns variable(length) from shape ops based on var.type
+
+    Note: In addition to some ast transformations, some block-related
+          operations are added in `len` transformation, such as appending
+          `shape_op` in var.block.
+    """
+    if isinstance(var, Variable):
+        if var.type in [
+                core.VarDesc.VarType.LOD_TENSOR,
+                core.VarDesc.VarType.SELECTED_ROWS
+        ]:
+            # Note: Length of var may be known ahead of time in dygraph,
+            # but it probably represents batch size which can be variant.
+            # so we return a variable dynamically inferred from var.shape.
+            return nn.shape(var)[0]
+        elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            return control_flow.array_length(var)
+        else:
+            raise TypeError(
+                'len(var) only supports LoDTensor/LoDTensorArray/SelectedRows, but received %s.'
+                % type(var))
+    else:
+        return len(var)
 
 
 def cast_bool_if_necessary(var):
