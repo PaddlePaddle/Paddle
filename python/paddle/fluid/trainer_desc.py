@@ -15,7 +15,6 @@
 
 import sys
 from os import path
-from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer', 'HeterXpuTrainer']
 
 
