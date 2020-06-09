@@ -29,7 +29,7 @@ echo %start_path%
 
 
 echo Init Visual Studio Env
-call "%vcvarsall_dir%" amd64
+call %vcvarsall_dir% amd64
 
 rem source_path PYTHON_DIR WITH_GPU WITH_MKL ON_INFER PADDLE_VERSION BATDIR CUDA_DIR
 

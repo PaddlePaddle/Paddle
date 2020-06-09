@@ -9,15 +9,11 @@ set PADDLE_VERSION=%6
 set BATDIR=%7
 set CUDA_DIR=%8
 
-set RETRY_TIMES=5
+set RETRY_TIMES=3
 
 set CUDA_DIR_WIN=%CUDA_DIR:/=\%
 set PATH=%CUDA_DIR_WIN%\nvvm\bin\;%CUDA_DIR_WIN%\bin;%PATH%
 
-
-echo Set Net Proxy
-set http_proxy=http://172.19.57.45:3128
-set https_proxy=http://172.19.57.45:3128
 
 for /f "tokens=1,2,* delims=\\" %%a in ("%PYTHON_DIR%") do (
 	set c1=%%a
@@ -53,171 +49,84 @@ if "%ON_INFER%"=="ON" (
     goto :INFERENCE_LIBRARY
 )
 
+echo "begin to do build noavx ..."
 
 set "dst_path=%source_path%\build_%PYTHONV%_%PLAT%_%BLAS%_%CUDAV%_noavx"
-echo %dst_path%
 
 if exist %dst_path% rmdir /q /s %dst_path%
 mkdir %dst_path%
 
 cd /d %dst_path%
-
-echo Reset Build Environment
-
-taskkill /f /im cmake.exe   2>NUL
-taskkill /f /im msbuild.exe 2>NUL
-taskkill /f /im git.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im git-remote-https.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-
-set INS=NOAVX
-echo "begin to do build noavx ..."
-
 echo Current directory : %cd%
+
+call:rest_env
 
 echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
 cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=OFF -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
 
 set  MSBUILDDISABLENODEREUSE=1
 
-set build_times=1
-:build_noavx_thirdparty
-
-echo Build NOAVX Third Party Libraries, Round : %build_times%
-
-echo MKL OPTION : %WITH_MKL%
-
-echo msbuild /p:Configuration=Release extern_protobuf.vcxproj ^>^> build_thirdparty_%build_times%.log
-msbuild /p:Configuration=Release extern_protobuf.vcxproj >> build_thirdparty_%build_times%.log
-
-if "%WITH_MKL%"=="ON" (
-    echo msbuild /p:Configuration=Release extern_mkldnn.vcxproj ^>^> build_thirdparty_%build_times%.log
-    msbuild /p:Configuration=Release extern_mkldnn.vcxproj >> build_thirdparty_%build_times%.log
-)
-
-echo msbuild /m /p:Configuration=Release third_party.vcxproj ^>^> build_thirdparty_%build_times%.log
-msbuild /m /p:Configuration=Release third_party.vcxproj >> build_thirdparty_%build_times%.log
-
-IF %ERRORLEVEL% NEQ 0 (
-    set /a build_times=%build_times%+1
-    
-    if %build_times% GTR %RETRY_TIMES% (
-        goto :FAILURE
-    ) else (
-        goto :build_noavx_thirdparty
-    )
-)
-
-set build_times=1
-:build_noavx_paddle
-
-echo Build NOAVX Paddle Solution, Round : %build_times%
-
-echo msbuild /m /p:Configuration=Release paddle.sln ^>^> build_%build_times%.log
-msbuild /m /p:Configuration=Release paddle.sln >> build_%build_times%.log
-
-IF NOT exist %dst_path%\python\paddle\fluid\core_noavx.pyd  (
-    echo  %dst_path%_noavx\python\paddle\fluid\core_noavx.pyd not exist
-    set /a build_times=%build_times%+1
-
-    if %build_times% GTR %RETRY_TIMES% (
-        goto :FAILURE
-    ) else (
-        goto :build_noavx_paddle
-    )
-)
+set BUILD_TYPE=NO_AVX
+call:Build
 
 REM -------------------------------------------------------------------------
 
+echo "begin to do build avx ..."
 set "dst_path=%source_path%\build_%PYTHONV%_%PLAT%_%BLAS%_%CUDAV%"
-echo %dst_path%
 
 if exist %dst_path% rmdir /q /s %dst_path%
 mkdir %dst_path%
 
 cd /d %dst_path%
+echo Current directory : %cd%
 
-echo Reset Build Environment
-
-taskkill /f /im cmake.exe   2>NUL
-taskkill /f /im msbuild.exe 2>NUL
-taskkill /f /im git.exe 2>NUL
-taskkill /f /im cl.exe 2>NUL
-taskkill /f /im lib.exe 2>NUL
-taskkill /f /im git-remote-https.exe 2>NUL
-taskkill /f /im vctip.exe 2>NUL
-
-set INS=AVX
-echo "begin to do build avx ..."
+call:rest_env
 
 echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=ON -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All -DNOAVX_CORE_FILE=%dst_path%_noavx\python\paddle\fluid\core_noavx.pyd
 cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DWITH_AVX=ON -DPYTHON_INCLUDE_DIR=%PYTHON_DIR%\include\ -DPYTHON_LIBRARY=%PYTHON_DIR%\libs\ -DPYTHON_EXECUTABLE=%PYTHON_DIR%\python.exe -DCMAKE_BUILD_TYPE=Release -DWITH_TESTING=OFF -DWITH_PYTHON=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All -DNOAVX_CORE_FILE=%dst_path%_noavx\python\paddle\fluid\core_noavx.pyd
 
 set  MSBUILDDISABLENODEREUSE=1
 
-set build_times=1
-:build_avx_thirdparty
+set BUILD_TYPE=AVX
+call:Build
 
-echo Build AVX Third Party Libraries, Round : %build_times%
-
-echo msbuild /p:Configuration=Release extern_protobuf.vcxproj ^>^> build_thirdparty_%build_times%.log
-msbuild /p:Configuration=Release extern_protobuf.vcxproj >> build_thirdparty_%build_times%.log
-
-if "%WITH_MKL%"=="ON" (
-    echo msbuild /p:Configuration=Release extern_mkldnn.vcxproj ^>^> build_thirdparty_%build_times%.log
-    msbuild /p:Configuration=Release extern_mkldnn.vcxproj >> build_thirdparty_%build_times%.log
-)
-
-echo msbuild /m /p:Configuration=Release third_party.vcxproj ^>^> build_thirdparty_%build_times%.log
-msbuild /m /p:Configuration=Release third_party.vcxproj >> build_thirdparty_%build_times%.log
-
-IF %ERRORLEVEL% NEQ 0 (
-  set /a build_times=%build_times%+1
-
-  if %build_times% GTR %RETRY_TIMES% (
-      goto :FAILURE
-  ) else (
-      goto :build_avx_thirdparty
-  )
-)
-
-set build_times=1
-:build_avx_paddle
-
-echo Build AVX Paddle Solution, Round : %build_times%
-
-echo msbuild /m /p:Configuration=Release paddle.sln ^>^> build_%build_times%.log
-msbuild /m /p:Configuration=Release paddle.sln >> build_%build_times%.log
-
-IF NOT exist %dst_path%\python\dist\*.whl  (
-    echo %dst_path%\python\dist\*.whl not exist
-
-   set /a build_times=%build_times%+1
-
-   if %build_times% GTR %RETRY_TIMES% (
-      goto :FAILURE
-  ) else (
-      goto :build_avx_paddle
-  )
-)
-
-echo BUILD COMPLETE
+echo BUILD WHL PACKAGE COMPLETE
 goto :END
 REM -------------------------------------------------------------------------
 
 :INFERENCE_LIBRARY
+
+echo "begin to do build inference library ..."
 set "dst_path=%source_path%\build_INFERENCE_LIBRARY_%PLAT%_%BLAS%_%CUDAV%"
-echo %dst_path%
 
 if exist %dst_path% rmdir /q /s %dst_path%
 mkdir %dst_path%
 
 cd /d %dst_path%
+echo Current directory : %cd%
 
-echo Reset Build Environment
+call:rest_env
 
+echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
+cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON  -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR%  -DCUDA_ARCH_NAME=All
+
+set  MSBUILDDISABLENODEREUSE=1
+
+set BUILD_TYPE=INFERENCE LIBRARY
+call:Build
+
+echo PACKAGE INFERENCE LIBRARY
+
+mkdir inference_dist
+%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_inference_install_dir', 'zip', root_dir='fluid_inference_install_dir')"
+%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_install_dir', 'zip', root_dir='fluid_install_dir')"
+
+echo BUILD INFERENCE LIBRARY COMPLETE
+goto :END
+
+
+:Rest_env
+echo "Reset Build Environment ..."
 taskkill /f /im cmake.exe   2>NUL
 taskkill /f /im msbuild.exe 2>NUL
 taskkill /f /im git.exe 2>NUL
@@ -225,26 +134,22 @@ taskkill /f /im cl.exe 2>NUL
 taskkill /f /im lib.exe 2>NUL
 taskkill /f /im git-remote-https.exe 2>NUL
 taskkill /f /im vctip.exe 2>NUL
+goto:eof
 
-echo "begin to do build inference library ..."
-
-echo cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR% -DCUDA_ARCH_NAME=All
-cmake %dst_path%\..\Paddle -G "Visual Studio 14 2015 Win64" -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% -DCMAKE_BUILD_TYPE=Release -DWITH_PYTHON=OFF -DON_INFER=ON  -DCUDA_TOOLKIT_ROOT_DIR=%CUDA_DIR%  -DCUDA_ARCH_NAME=All
-
-set  MSBUILDDISABLENODEREUSE=1
-
+:Build
 set build_times=1
 :build_thirdparty
 
-echo Build INFERENCE Third Party, Round : %build_times%
+echo Build %BUILD_TYPE% Third Party Libraries, Round : %build_times%
 
 echo msbuild /m /p:Configuration=Release third_party.vcxproj ^>^> build_thirdparty_%build_times%.log
 msbuild /m /p:Configuration=Release third_party.vcxproj >> build_thirdparty_%build_times%.log
 
 IF %ERRORLEVEL% NEQ 0 (
-  set /a build_times=%build_times%+1
+    echo Build %BUILD_TYPE% Third Party Libraries, Round : %build_times% Failed!
+    set /a build_times=%build_times%+1
 
-  if %build_times% GTR %RETRY_TIMES% (
+    if %build_times% GTR %RETRY_TIMES% (
       goto :FAILURE
   ) else (
       goto :build_thirdparty
@@ -252,33 +157,25 @@ IF %ERRORLEVEL% NEQ 0 (
 )
 
 set build_times=1
-:build_inference
+:build_paddle
 
-echo Build INFERENCE LIBRARY, Round : %build_times%
+echo Build %BUILD_TYPE% Paddle Solutions, Round : %build_times%
 
 echo msbuild /m /p:Configuration=Release paddle.sln ^>^> build_%build_times%.log
 msbuild /m /p:Configuration=Release paddle.sln >> build_%build_times%.log
 
 IF %ERRORLEVEL% NEQ 0 (
-   echo Build INFERENCE LIBRARY, Round : %build_times% Failed!
+    echo Build %BUILD_TYPE% Paddle Solutions, Round : %build_times% Failed!
+    set /a build_times=%build_times%+1
 
-   set /a build_times=%build_times%+1
-
-   if %build_times% GTR %RETRY_TIMES% (
+    if %build_times% GTR %RETRY_TIMES% (
       goto :FAILURE
   ) else (
-      goto :build_inference
+      goto :build_paddle
   )
 )
+goto:eof
 
-echo PACKAGE INFERENCE LIBRARY
-
-mkdir inference_dist
-
-%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_inference_install_dir', 'zip', root_dir='fluid_inference_install_dir')"
-%PYTHON_DIR%\python.exe -c "import shutil;shutil.make_archive('inference_dist/fluid_install_dir', 'zip', root_dir='fluid_install_dir')"
-
-goto :END
 
 :FAILURE
 echo BUILD FAILED
