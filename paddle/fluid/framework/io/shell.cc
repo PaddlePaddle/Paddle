@@ -180,38 +180,46 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   sighandler_t old_handler;
   old_handler = signal(SIGCHLD, SIG_DFL);
+
+  fcntl(parent_end, F_SETFD, FD_CLOEXEC);
+
   int child_pid = shell_popen_fork_internal(
       real_cmd.c_str(), do_read, parent_end, child_end, redirect_stderr);
 
   close(child_end);
-  fcntl(parent_end, F_SETFD, FD_CLOEXEC);
+
   FILE* fp = NULL;
   if ((fp = fdopen(parent_end, mode.c_str())) == NULL) {
     *err_no = -1;
     signal(SIGCHLD, old_handler);
     return NULL;
   }
-  setlinebuf(fp);
+  // setvbuf(fp, NULL, _IONBF, 0);
 
-  int wstatus = -1;
-  waitpid(child_pid, &wstatus, 0);
-  if (WIFEXITED(wstatus) || wstatus == (128 + SIGPIPE) * 256) {
-  } else {
-    PADDLE_ENFORCE_NE(errno, ECHILD, platform::errors::Fatal(
-                                         "Must not be ECHILD errno here!"));
-    *err_no = -1;
-    LOG(WARNING) << "status[" << wstatus << "], cmd[" << cmd << "]"
-                 << ", err_no[" << *err_no << "]";
-  }
-
-  signal(SIGCHLD, old_handler);
-
-  if (status) {
-    *status = wstatus;
-  }
-  return {fp, [cmd](FILE* fp) {
+  return {fp, [cmd, child_pid, old_handler, err_no, status](FILE* fp) {
             VLOG(3) << "Closing pipe[" << cmd << "]";
-            fclose(fp);
+            if (fclose(fp)) {
+              *err_no = -1;
+            }
+
+            int wstatus = -1;
+            waitpid(child_pid, &wstatus, 0);
+
+            if (status) {
+              *status = wstatus;
+            }
+
+            if (WIFEXITED(wstatus) || wstatus == (128 + SIGPIPE) * 256) {
+            } else {
+              PADDLE_ENFORCE_NE(
+                  errno, ECHILD,
+                  platform::errors::Fatal("Must not be ECHILD errno here!"));
+              *err_no = -1;
+              LOG(WARNING) << "status[" << wstatus << "], cmd[" << cmd << "]"
+                           << ", err_no[" << *err_no << "]";
+            }
+
+            signal(SIGCHLD, old_handler);
           }};
 #endif
 }
@@ -348,8 +356,10 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
 
     if (err_no == 0) {
       char buf[4096];
+      auto fp = fileno(&*pipe);
       while (1) {
         int n = read(fp, buf, 4096);
+        printf("read n:%d\n", n);
         if (n == 0) {
           break;
         }
@@ -359,13 +369,13 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
           break;
         }
 
-        outout->append(buf, n);
+        output->append(buf, n);
       }
       output->append(1, '\0');
-
-      if (err_no == 0) {
-        return _get_err_no(err_no, status);
-      }
+    }
+    pipe = nullptr;
+    if (err_no == 0) {
+      return _get_err_no(err_no, status);
     }
 
     // time out
