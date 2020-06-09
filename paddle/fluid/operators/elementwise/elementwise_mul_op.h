@@ -34,7 +34,7 @@ class ElementwiseMulOp : public ElementwiseOp {
 
 #ifdef PADDLE_WITH_MKLDNN
     using mkldnn::memory;
-    auto CanMKLDNNElementwiseAddBeUsed = [&]() {
+    auto CanMKLDNNElementwiseMulBeUsed = [&]() {
       int axis = ctx.Attr<int>("axis");
       auto x_dims = ctx.Input<Tensor>("X")->dims();
       auto y_dims = ctx.Input<Tensor>("Y")->dims();
@@ -49,7 +49,7 @@ class ElementwiseMulOp : public ElementwiseOp {
       return (rankdiff == 0) || (axis == -1) || (axis == rankdiff);
     };
 
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    if (platform::CanMKLDNNBeUsed(ctx) && CanMKLDNNElementwiseMulBeUsed()) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
