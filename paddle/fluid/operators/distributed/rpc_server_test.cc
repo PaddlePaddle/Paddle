@@ -166,6 +166,9 @@ TEST(PREFETCH, CPU) {
     }
   }
 
+  auto* barrier = distributed::BarrierMonitor::GetInstance();
+  barrier->Stop();
+
   g_rpc_service->ShutDown();
   server_thread.join();
   LOG(INFO) << "begin reset";
