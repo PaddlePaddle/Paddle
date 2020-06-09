@@ -15,7 +15,7 @@
 from __future__ import print_function
 from paddle.fluid import core, dygraph
 from paddle.fluid.framework import _varbase_creator
-import paddle.fluid.data_feeder as data_feeder
+from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import warnings
 import numpy as np
@@ -31,7 +31,7 @@ class AmpScaler(object):
             incr_ratio=2.0,
             decr_ratio=0.5,
             incr_every_n_steps=1000,
-            decr_every_n_nan_or_inf=2, ):
+            decr_every_n_nan_or_inf=1, ):
         """
         :api_attr: imperative
 
@@ -93,14 +93,14 @@ class AmpScaler(object):
         Returns:
             The scaled variable or original variable.
         """
-        data_feeder.check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
+        check_type(var, "var", core.VarBase, 'AmpScaler.scale()')
 
         if not self._enable:
             return var
 
         return var * self._scale
 
-    def minimize(self, optimizer, new_loss_scaling=None, *args, **kwargs):
+    def minimize(self, optimizer, *args, **kwargs):
         """
         Similar as `Optimizer.minimize()`, performs parameters updating.
         It first unscale the scaled gradients of paramers, then do one step parameter updating,
@@ -108,7 +108,6 @@ class AmpScaler(object):
 
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
-            new_loss_scaling(float, optional):  New loss_scaling ratio.
         """
         if not self._enable:
             return
@@ -122,7 +121,7 @@ class AmpScaler(object):
             optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 
-        self.update(new_loss_scaling)
+        self._update()
 
     def _unscale(self, optimizer):
         if not self._enable:
@@ -135,22 +134,17 @@ class AmpScaler(object):
         core.ops.amp_check_finite_and_scale(param_grads, inv_scale, param_grads,
                                             self._found_inf)
 
-    def _update(self, new_loss_scaling=None):
+    def _update(self):
         """
         Updates the loss_scaling.
         """
         if not self._enable:
             return
 
-        if new_loss_scaling is not None:
-            self._scale = dygraph.to_variable(
-                np.array([new_loss_scaling]).astype(np.float32))
-            return
-
         if self._cache_founf_inf:
             self._incr_count = 0
             self._decr_count = self._incr_count + 1
-            if self._decr_count == self.decr_every_n_nan_or_inf:
+            if self._decr_count == self._decr_every_n_nan_or_inf:
                 self._scale = self._scale * self._decr_ratio
                 self._decr_count
             print('found infinite', float(self._scale))

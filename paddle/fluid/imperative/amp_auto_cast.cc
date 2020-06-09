@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/imperative/amp_auto_cast.h"
+
 #include <algorithm>
 #include <memory>
 #include <set>
@@ -17,6 +18,7 @@ limitations under the License. */
 #include <tuple>
 #include <unordered_set>
 #include <utility>
+
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/variable_wrapper.h"
@@ -115,8 +117,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   NameVarBaseMap new_ins = {};
   if (g_white_ops.count(op_type)) {
     for (const auto& pair : ins) {
-      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << " to FP16";
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to float16";
       for (const auto& var : pair.second) {
         auto new_var = CastToFP16(var);
         new_ins[pair.first].emplace_back(new_var);
@@ -125,8 +127,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   } else if (g_black_ops.count(op_type)) {
     for (const auto& pair : ins) {
-      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << " to FP16";
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
+              << GetDtypeStr(*pair.second.cbegin()) << " to float";
       for (const auto& var : pair.second) {
         auto new_var = CastToFP32(var);
         new_ins[pair.first].emplace_back(new_var);
@@ -137,7 +139,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     auto dst_type = GetPromoteType(ins);
 
     for (const auto& pair : ins) {
-      VLOG(5) << "OpeCast " << pair.first << " "
+      VLOG(5) << "Op(" << op_type << "): Cast " << pair.first << " from "
               << GetDtypeStr(*pair.second.cbegin()) << " to "
               << framework::DataTypeToString(dst_type);
       for (const auto& var : pair.second) {

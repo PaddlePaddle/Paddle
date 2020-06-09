@@ -16,8 +16,7 @@ from __future__ import print_function
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 from paddle.fluid import core
 import contextlib
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags
+from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
 import warnings
 import copy
 
@@ -144,13 +143,13 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
     if tracer:
         # enable auto_cast
         original_enable = tracer._enable_autocast
-        tracer._enable_autocast = original_enable
+        tracer._enable_autocast = enable
         # set amp op list
         original_white_list, original_black_list = tracer._get_amp_op_list()
         tracer._set_amp_op_list(_white_list, _black_list)
         # set amp related flags
-        original_flags = framework.get_flags(AMP_RELATED_FLAGS)
-        framework.set_flags(AMP_RELATED_FLAGS_SETTING)
+        original_flags = get_flags(AMP_RELATED_FLAGS)
+        set_flags(AMP_RELATED_FLAGS_SETTING)
 
     # restore status
     try:
@@ -159,4 +158,4 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         if tracer:
             tracer._enable_autocast = original_enable
             tracer._set_amp_op_list(original_white_list, original_black_list)
-            framework.set_flags(original_flags)
+            set_flags(original_flags)
