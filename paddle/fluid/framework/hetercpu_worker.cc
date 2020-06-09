@@ -62,7 +62,6 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int 
 void HeterCpuWorker::GetXpuOpIndex() {
   xpu_begin_op_index_ = xpu_end_op_index_ = -1;
   for (size_t i = 0; i < ops_.size(); ++i) {
-    //if (!first && ops_[i]->Type() == "mul") {
     //  first = 1;
     //  xpu_begin_op_index_ = i;
     //  auto& in_map = ops_[i]->Inputs();
@@ -86,6 +85,8 @@ void HeterCpuWorker::GetXpuOpIndex() {
     //  //  }
     //  //}
     //}
+
+/*
     auto& out_map = ops_[i]->Outputs();
     
     {
@@ -121,10 +122,19 @@ void HeterCpuWorker::GetXpuOpIndex() {
       }
     }
   }
+  
   if (xpu_end_op_index_ == -1) {
     xpu_end_op_index_ = ops_.size() - 1;
-  }
+  }*/
+  xpu_begin_op_index_ = trainer_desc_.xpu_start_idx();
+  xpu_end_op_index_ = trainer_desc_.xpu_end_idx();
   VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
+  //CHECK(xpu_begin_op_index_ == trainer_desc_.xpu_start_idx());
+ // CHECK(xpu_end_op_index_ == trainer_desc_.xpu_end_idx());
+ // CHECK(trainer_desc_.op_run_start_idx() == 0);
+ // CHECK(trainer_desc_.op_run_end_idx() == xpu_begin_op_index_ - 1);
+ // CHECK(trainer_desc_.op_run_end_start_idx() == xpu_end_op_index_ + 1);
+ // CHECK(trainer_desc_.op_run_end_end_idx() == ops_.size() - 1);
 }
 
 void HeterCpuWorker::Schedule(int taskid) {
@@ -145,6 +155,7 @@ void HeterCpuWorker::JumpContext(std::shared_ptr<HeterTask> task) {
 void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
   mpi_rank_ = desc.mpi_rank();
+  trainer_desc_ = desc;
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -804,7 +815,11 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       else if (task->state_ == XPU) {
         timeline.Start();
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
+        std::vector<std::string> send_var_list;
+        for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
+            send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
+        }
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
         task->Update();
         JumpContext(task);
         timeline.Pause();
@@ -1071,7 +1086,11 @@ void HeterCpuWorker::TrainFiles() {
       }
       else if (task->state_ == XPU) {
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
+        std::vector<std::string> send_var_list;
+        for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
+            send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
+        }
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
         task->Update();
         JumpContext(task);
         break;

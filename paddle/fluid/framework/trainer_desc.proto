@@ -50,6 +50,21 @@ message TrainerDesc {
   optional bool thread_barrier = 22;
   repeated string loss_names = 23;
   repeated int32 worker_places = 24;
+  
+//  repeated string op_run_send_list = 25;
+//  repeated string op_run_recv_list = 26;
+//  repeated string op_run_start_idx = 27;
+//  repeated string op_run_end_idx = 28;
+  
+  repeated string xpu_send_list = 25;
+  repeated string xpu_recv_list = 26;
+  repeated string xpu_start_idx = 27;
+  repeated string xpu_end_idx = 28;
+
+//  repeated string op_run_end_send_list = 33;
+//  repeated string op_run_end_recv_list = 34;
+//  repeated string op_run_end_start_idx = 35;
+//  repeated string op_run_end_end_idx = 36;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

@@ -1276,6 +1276,10 @@ class Executor(object):
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        fu = FleetUtil()
+        ret = fu.split_program_by_device(program)
+        #start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
         if not compiled:
             # TODO: Need a better way to distinguish and specify different execution mode
             if program._pipeline_opt:
@@ -1284,7 +1288,11 @@ class Executor(object):
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
-            trainer._set_program(program)
+            if fleet.is_worker():            
+                trainer._set_program(program)
+            elif fleet.is_xpu() and ret is not None:
+                trainer._set_program(ret[4])
+            trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
                 trainer = TrainerFactory()._create_trainer(

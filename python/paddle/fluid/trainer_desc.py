@@ -15,6 +15,7 @@
 
 import sys
 from os import path
+from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer', 'HeterXpuTrainer']
 
 
@@ -44,6 +45,41 @@ class TrainerDesc(object):
         self._device_worker = None
         self._program = None
         self._infer = False
+
+    def _set_heter_info(self, ret):
+        #ret = = fu.split_program_by_device(program)
+        #start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
+        #if len(start_list) != 3:
+        #    print("start_list len=", len(start_list), " will not set heter info")
+        #    return
+        #for i in start_list[0]:
+        #    self.proto_desc.op_run_start_idx.append(i)
+        #for i in end_list[0]:
+        #    self.proto_desc.op_run_end_idx.append(i)
+        #for i in send_list[0]:
+        #    self.proto_desc.op_run_send_list.append(i)
+        #for i in recv_list[0]:
+        #    self.proto_desc.op_run_recv_list.append(i)
+        if ret is None:
+            return
+        for i in ret[0]: # start_list[1]:
+            self.proto_desc.xpu_start_idx.append(i)
+        for i in ret[1]:  #end_list[1]:
+            self.proto_desc.o_end_idx.append(i)
+        for i in ret[2]:  #send_list[1]:
+            self.proto_desc.op_run_send_list.append(i)
+        for i in ret[3]: # recv_list[1]:
+            self.proto_desc.op_run_recv_list.append(i)
+
+        #for i in start_list[2]:
+        #    self.proto_desc.op_run_end_start_idx.append(i)
+        #for i in end_list[2]:
+        #    self.proto_desc.op_run_end_idx.append(i)
+        #for i in send_list[2]:
+        #    self.proto_desc.op_run_end_send_list.append(i)
+        #for i in recv_list[2]:
+        #    self.proto_desc.op_run_end_recv_list.append(i)
+
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
