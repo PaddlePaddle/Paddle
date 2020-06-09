@@ -35,6 +35,7 @@ class FSTest(unittest.TestCase):
         self.assertTrue(fs.is_dir(dir_path))
 
         new_dir_path = os.path.abspath("./new_test_dir")
+        fs.delete(new_dir_path)
         fs.mv(dir_path, new_dir_path)
         self.assertTrue(fs.is_exist(new_dir_path))
 
@@ -85,21 +86,23 @@ class FSTest(unittest.TestCase):
         self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
         self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
         dirs, files = fs.ls_dir(os.path.abspath("./test_hdfs.py"))
-        self.assertTrue(dirs=[])
+        self.assertTrue(dirs == [])
         self.assertTrue(len(files) == 1)
         dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
 
     def test_hdfs(self):
-        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None)
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         self._test_dirs(fs)
         self._test_upload_file(fs)
 
-    """
     def test_local(self):
         fs = LocalFS()
         self._test_dirs(fs)
         self._test_touch_file(fs)
-    """
+
+    def test_exist2(self):
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        self.assertFalse(fs.is_dir("./test_hdfs.py"))
 
 
 if __name__ == '__main__':

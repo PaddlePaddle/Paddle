@@ -25,7 +25,7 @@ import errno
 import time
 import logging
 from . import fs
-from .fs import FS
+from .fs import FS, LocalFS
 import paddle.fluid as fluid
 import functools
 
@@ -91,14 +91,13 @@ class HDFSClient(FS):
 
     def _run_cmd(self, cmd, redirect_stderr=False):
         ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
-        print("run_cmd:", cmd, output.splitlines())
         return int(ret), output.splitlines()
 
     def list_dirs(self, fs_path):
         if not self.is_exist(fs_path):
             return []
 
-        dirs, _ = self._ls_dir(fs_path)
+        dirs, _ = self.ls_dir(fs_path)
         return dirs
 
     @_handle_errors
@@ -135,24 +134,35 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_dir(self, fs_path):
-        assert fs_path[0] == "/", "Please use absolute path:{}".format(fs_path)
         if not self.is_exist(fs_path):
             return False
 
-        parent_path = Path(fs_path)
-        dirs, files = self.ls_dir(parent_path.parent)
-
-        dir_name = os.path.basename(os.path.normpath('fs_path'))
-        true_1 = any(len(fs) == 5 for dir_name in dirs)
-
-        cmd = "{} -test -d {} ".format(self._base_cmd, fs_path)
-        ret, out = self._run_cmd(cmd)
-        true_2 = (ret == 0)
-
-        if not (true_1 and true_2):
+        cmd = "{} -test -d {} ; echo $? ".format(self._base_cmd, fs_path)
+        ret, lines = self._run_cmd(cmd)
+        if ret:
             raise ExecuteError
 
-        return True
+        # is a directory
+        if lines[0] == "0":
+            return True
+
+        # not or other error
+        cmd = "{} -test -d {}".format(
+            self._base_cmd, fs_path, redirect_stderr=True)
+        ret, lines = self._run_cmd(cmd)
+        if ret:
+            # other error
+            for l in lines:
+                m = re.match(
+                    r'responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:', s)
+                if m != None:
+                    raise ExecuteError
+
+            # also not a directory
+            return False
+
+        # conflict woth first test
+        raise ExecuteError
 
     def is_file(self, fs_path):
         if not self.is_exist(fs_path):
@@ -162,13 +172,11 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_exist(self, fs_path):
-        assert fs_path[0] == "/", "Please use absolute path:{}".format(fs_path)
         cmd = "{} -ls {} ".format(self._base_cmd, fs_path)
         ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
             for l in out:
                 if "No such file or directory" in l:
-                    print(l)
                     return False
             raise ExecuteError
 
@@ -179,7 +187,8 @@ class HDFSClient(FS):
         if self.is_exist(fs_path):
             raise FSFileExistsError
 
-        if not self._local.is_exist(local_path):
+        local = LocalFS()
+        if not local.is_exist(local_path):
             raise FSFileNotExistsError
 
         cmd = "{} -put {} {}".format(self._base_cmd, local_path, fs_path)
@@ -219,7 +228,7 @@ class HDFSClient(FS):
             raise FSFileNotExistsError
 
         cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
-        self._run_cmd(cmd)
+        ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError
 
@@ -229,7 +238,7 @@ class HDFSClient(FS):
             return
 
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
-        self._run_cmd(cmd)
+        ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError
 
@@ -239,7 +248,7 @@ class HDFSClient(FS):
             return
 
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
-        self._run_cmd(cmd)
+        ret, _ = self._run_cmd(cmd)
         if ret != 0:
             raise ExecuteError
 
