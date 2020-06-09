@@ -206,7 +206,6 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
     signal(SIGCHLD, old_handler);
     return NULL;
   }
-  // setvbuf(fp, NULL, _IONBF, 0);
 
   return {fp, [cmd, child_pid, old_handler, err_no, status](FILE* fp) {
             VLOG(3) << "Closing pipe[" << cmd << "]";
@@ -215,6 +214,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
             }
 
             int wstatus = -1;
+            // don't do this before parent read data from child pipe
+            // or when get the large data, it will hang!
             waitpid(child_pid, &wstatus, 0);
 
             if (status) {

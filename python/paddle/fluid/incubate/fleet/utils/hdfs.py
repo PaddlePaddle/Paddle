@@ -147,16 +147,6 @@ class HDFSClient(FS):
         if not self.is_exist(fs_path):
             return False
 
-        cmd = "{} -test -d {} ; echo $? ".format(self._base_cmd, fs_path)
-        ret, lines = self._run_cmd(cmd)
-        if ret:
-            raise ExecuteError
-
-        # is a directory
-        if lines[0] == "0":
-            return True
-
-        # not or other error
         cmd = "{} -test -d {}".format(
             self._base_cmd, fs_path, redirect_stderr=True)
         ret, lines = self._run_cmd(cmd)
@@ -165,11 +155,9 @@ class HDFSClient(FS):
             if self._test_match(lines) != None:
                 raise ExecuteError
 
-            # also not a directory
             return False
 
-        # conflict woth first test
-        raise ExecuteError
+        return True
 
     def is_file(self, fs_path):
         if not self.is_exist(fs_path):
