@@ -98,17 +98,23 @@ def monkey_patch_variable():
         block = current_block(ref_var)
         var = create_new_tmp_var(block, dtype)
         batch_dim = -1
+        out_shape = []
         for i, d in enumerate(ref_var.shape):
             if d < 0:
-                batch_dim = i
-                break
+                if batch_dim < 0:
+                    batch_dim = i
+                    out_shape.append(d)
+                else:
+                    out_shape.append(1)
+            else:
+                out_shape.append(d)
         assert batch_dim != -1
         block.append_op(
             type='fill_constant_batch_size_like',
             outputs={'Out': [var]},
             inputs={'Input': [ref_var]},
             attrs={
-                'shape': ref_var.shape,
+                'shape': out_shape,
                 'value': value,
                 'input_dim_idx': batch_dim,
                 'output_dim_idx': batch_dim
