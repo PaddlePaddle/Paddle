@@ -80,7 +80,6 @@ class FSTest(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
-    """
     def test_exists(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
@@ -100,7 +99,6 @@ class FSTest(unittest.TestCase):
         fs = LocalFS()
         self._test_dirs(fs)
         self._test_touch_file(fs)
-    """
 
     def test_is_dir(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
