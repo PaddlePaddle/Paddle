@@ -704,7 +704,7 @@ class ForNodeVisitor(object):
         #   - for x in var|var.numpy()
         #   - for i, x enumerate(var|var.numpy())
         #   - for x in var
-        self.iter_var_shape_name = unique_name.generate(FOR_ITER_VAR_LEN_PREFIX)
+        self.iter_var_len_name = unique_name.generate(FOR_ITER_VAR_LEN_PREFIX)
 
         # - var.numpy()/var
         #   - for x in var|var.numpy()
@@ -841,7 +841,7 @@ class ForNodeVisitor(object):
             iter_var_name = ast_to_source_code(self.iter_node).strip()
 
         convert_len_node_source_str = '{} = fluid.dygraph.dygraph_to_static.convert_operators.convert_len({})'.format(
-            self.iter_var_shape_name, iter_var_name)
+            self.iter_var_len_name, iter_var_name)
 
         convert_len_node = gast.parse(convert_len_node_source_str).body[0]
 
@@ -864,7 +864,7 @@ class ForNodeVisitor(object):
                 0] if self.args_length == 1 else self.iter_args[1]
         else:
             compare_node = gast.Name(
-                id=self.iter_var_shape_name,
+                id=self.iter_var_len_name,
                 ctx=gast.Load(),
                 annotation=None,
                 type_comment=None)
