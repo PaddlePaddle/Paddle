@@ -14,6 +14,7 @@
 """Fleet Utils."""
 
 import collections
+import copy
 import json
 import logging
 import math
@@ -1731,4 +1732,4 @@ class FleetUtil(object):
             return None
         else:
             return [start_list[heter_index], end_list[heter_index], send_list[heter_index], \
-                    recv_list[index], program_list[heter_index]]
+                    recv_list[heter_index], program_list[heter_index]]
