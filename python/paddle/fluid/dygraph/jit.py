@@ -20,8 +20,9 @@ import logging
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator, FunctionSpec
 from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.dygraph.static_runner import StaticModelRunner
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
@@ -166,6 +167,229 @@ def _declarative_(dygraph_func):
 
 
 declarative = wrap_decorator(_declarative_)
+
+
+class SaveLoadConfig(object):
+    """
+    SaveLoadConfig is used to specify additional configuration options in
+    `fluid.dygraph.jit.save`. Because fluid.dygraph.jit.save will call 
+    `fluid.io.save_inference_model`, save_inference_model have multiple
+    input arguments, some arguments may not be used often, we do not expose 
+    these arguments to users by default, but we need to retain the ability
+    to configure these arguments. 
+    """
+
+    def __init__(self):
+        self.model_filename = None
+        self.params_filename = None
+        self.export_for_deployment = True
+        self.program_only = False
+        self.pserver_endpoints = None
+
+
+@switch_to_static_graph
+def save(layer, model_path, feed=None, fetch=None, configs=None):
+    """
+    Saves input Layer as the inference model. It will prune the main_program
+    to build a new program especially for inference, and then save it and all
+    related parameters to given `dirname` . The saved inference model can be
+    loaded by follow api:
+        - :ref:`api_fluid_dygraph_jit_load
+        - :ref:`api_fluid_io_load_inference_model`
+        - C++ inference APIs
+
+    Args:
+        layer (Layer): the Layer to be saved. The Layer should be decorated by `declarative`.
+        model_path (str): the directory to save the inference model.
+        feed (list[Varibale], optional): the indices of the input variables of the
+            dygraph functions which will be saved as input variables in
+            inference model. If None, all input variables of the dygraph function
+            would be the inputs of the saved inference model. Default None.
+        fetch (list[Varibale], optional): the indices of the returned variable of the
+            dygraph functions which will be saved as output variables in
+            inference model. If None, all output variables of the dygraph function
+            would be the outputs of the saved inference model. Default None.
+        configs (SaveLoadConfig, optional): jit.SaveLoadConfig object that specifies 
+            additional configuration options. Default None.
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.fluid.dygraph import Linear
+            from paddle.fluid.dygraph import declarative
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self, in_size, out_size):
+                    super(SimpleNet, self).__init__()
+                    self._linear = Linear(in_size, out_size)
+
+                @declarative
+                def forward(self, x):
+                    y = self._linear(x)
+                    z = self._linear(y)
+                    loss = fluid.layers.mean(z)
+                    return z, loss
+
+            with fluid.dygraph.guard(fluid.CPUPlace()):
+                net = SimpleNet(8, 8)
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                for i in range(10):
+                    loss, out = net(x)
+                    loss.backward()
+                    adam.minimize(loss)
+                    net.clear_gradients()
+    
+            # save inference model
+            model_path = "./dy2stat_infer_model"
+            fluid.dygraph.jit.save(
+                layer=net,
+                model_path=model_path,
+                feed=[x],
+                fetch=[loss])
+    """
+
+    def get_feed_fetch_vars(all_vars, target_vars, return_name=False):
+        valid_vars = [var for var in all_vars if isinstance(var, Variable)]
+        valid_var_dict = {}
+        for var in valid_vars:
+            valid_var_dict[var.name] = var
+        if target_vars:
+            for i, var in enumerate(target_vars):
+                # check target var whether exists
+                if var.name not in valid_var_dict:
+                    raise RuntimeError(
+                        "The variable to feed/fetch are not exist.")
+                target_vars[i] = valid_var_dict[var.name]
+        else:
+            target_vars = valid_vars
+        if return_name:
+            target_vars = [var.name for var in target_vars]
+
+        return target_vars
+
+    # 1. input check
+    prog_translator = ProgramTranslator()
+    if not prog_translator.enable:
+        raise RuntimeError(
+            "The paddle.imperative.jit.save doesn't work when setting ProgramTranslator.enable=False."
+        )
+    if not isinstance(layer, Layer):
+        raise TypeError(
+            "The input layer of paddle.imperative.jit.save should be fluid.dygraph.Layer, but received layer type is %s."
+            % type(layer))
+    if feed is not None and not isinstance(feed, list):
+        raise TypeError(
+            "The input feed should be list type, but received feed type is %s."
+            % type(feed))
+    if fetch is not None and not isinstance(fetch, list):
+        raise TypeError(
+            "The input fetch should be list type, but received fetch type is %s."
+            % type(fetch))
+
+    # 2. get program of declarative Layer.forward
+    prog_cache = prog_translator.get_program_cache()
+    # make dummy args & kwargs, to get excepted FunctionSpec
+    layer_func = FunctionSpec(type(layer).forward, [layer], {})
+    concrete_program, _ = prog_cache.get_program(layer_func)
+
+    # 3. share parameters form Layer to scope
+    scope = core.Scope()
+    for param in layer.parameters():
+        param_tensor = scope.var(param.name).get_tensor()
+        src_tensor = param.value().get_tensor()
+        param_tensor._share_data_with(src_tensor)
+
+    # 4. build feed & fetch
+    feed_var_names = get_feed_fetch_vars(concrete_program.inputs, feed, True)
+    fetch_vars = get_feed_fetch_vars(concrete_program.outputs, fetch)
+
+    # 5. build other save config
+    if configs is None:
+        configs = SaveLoadConfig()
+
+    # 6. save inference model
+    from paddle.fluid.io import save_inference_model
+    with scope_guard(scope):
+        save_inference_model(
+            dirname=model_path,
+            feeded_var_names=feed_var_names,
+            target_vars=fetch_vars,
+            executor=Executor(_current_expected_place()),
+            main_program=concrete_program.main_program.clone(),
+            model_filename=configs.model_filename,
+            params_filename=configs.params_filename,
+            export_for_deployment=configs.export_for_deployment,
+            program_only=configs.program_only)
+
+
+def load(model_path, configs=None):
+    """
+    Load the inference model saved by `fluid.dygraph.jit.save`,
+    and then performing fine-tune training or inference.
+
+    .. note::
+        **1. Imperative mode do not support LoDTensor. 
+             All original static graph model's feed targets or parametars 
+             that depend on LoD are temporarily unavailable.**
+        **2. All saved inference model's feed targets need be given.**
+        **3. The ``stop_gradient`` information is lost and can not be recovered.**
+        **4. The parameter's ``trainable`` information is lost and can not be recovered.**
+        **5. Double gradient model is not supported now.**
+        **6. Now only supports loading models saved by `fluid.dygraph.jit.save`.**
+
+    Args:
+        model_path (str): The directory path where the model is saved.
+        configs (SaveLoadConfig, optional): jit.SaveLoadConfig object that specifies 
+            additional configuration options. Default None.
+
+    Returns:
+        Layer: A Layer object can run loaded model.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.fluid.dygraph import Linear
+            from paddle.fluid.dygraph import declarative
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self, in_size, out_size):
+                    super(SimpleNet, self).__init__()
+                    self._linear = Linear(in_size, out_size)
+
+                @declarative
+                def forward(self, x):
+                    y = self._linear(x)
+                    z = self._linear(y)
+                    loss = fluid.layers.mean(z)
+                    return z, loss
+
+            with fluid.dygraph.guard(fluid.CPUPlace()):
+                net = SimpleNet(8, 8)
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                for i in range(10):
+                    loss, out = net(x)
+                    loss.backward()
+                    adam.minimize(loss)
+                    net.clear_gradients()
+
+            # save inference model.
+            model_path = "./dy2stat_infer_model"
+            fluid.dygraph.jit.save(net, model_path, [x], [loss])
+
+            # load inference model in imperative mode
+            with fluid.dygraph.guard(fluid.CPUPlace()):
+                infer_net = fluid.dygraph.jit.load(model_path)
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                loss = infer_net(x)
+                print(loss.numpy())
+    """
+    return StaticModelRunner(model_path)
 
 
 @dygraph_only

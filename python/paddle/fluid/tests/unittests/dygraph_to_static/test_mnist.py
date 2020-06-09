@@ -201,6 +201,8 @@ class TestMNISTWithDeclarative(TestMNIST):
                         self.check_save_inference_model([dy_x_data, y_data],
                                                         prog_trans, to_static,
                                                         prediction)
+                        self.check_jit_save(mnist, [dy_x_data, y_data],
+                                            to_static, prediction)
                         break
         return loss_data
 
@@ -208,6 +210,13 @@ class TestMNISTWithDeclarative(TestMNIST):
         if to_static:
             infer_model_path = "./test_mnist_inference_model"
             prog_trans.save_inference_model(infer_model_path)
+            infer_out = self.load_and_run_inference(infer_model_path, inputs)
+            self.assertTrue(np.allclose(gt_out.numpy(), infer_out))
+
+    def check_jit_save(self, model, inputs, to_static, gt_out):
+        if to_static:
+            infer_model_path = "./test_mnist_inference_model_by_jit_save"
+            fluid.dygraph.jit.save(model, infer_model_path)
             infer_out = self.load_and_run_inference(infer_model_path, inputs)
             self.assertTrue(np.allclose(gt_out.numpy(), infer_out))
 
