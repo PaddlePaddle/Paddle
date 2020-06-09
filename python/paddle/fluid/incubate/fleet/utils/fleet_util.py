@@ -1716,7 +1716,7 @@ class FleetUtil(object):
                 program_list.append(prog)
             else:
                 program_list.append(prog)
-        recv_list = in_from_pre
+        recv_list = [list(i) for i in in_from_pre]
         found = False
         heter_index = None
         for i in range(len(merged_type_list)):
