@@ -94,8 +94,10 @@ class SliceGradKernel<paddle::platform::CUDADeviceContext,
     dim3 blocks((numel - 1) / PADDLE_CUDA_NUM_THREADS + 1);
     dim3 threads(PADDLE_CUDA_NUM_THREADS);
     auto stream = ctx.cuda_device_context().stream();
-    const std::vector<int> out_shape = framework::vectorize<int>(out_dims);
-    const std::vector<int> in_shape = framework::vectorize<int>(in_dims);
+    const std::vector<int64_t> out_shape =
+        framework::vectorize<int64_t>(out_dims);
+    const std::vector<int64_t> in_shape =
+        framework::vectorize<int64_t>(in_dims);
 
     framework::Tensor out_dims_tensor;
     framework::Tensor in_dims_tensor;
