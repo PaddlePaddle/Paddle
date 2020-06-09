@@ -252,11 +252,6 @@ package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
-if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
-    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_RT}'), libs_path)
-    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_PLUGIN_RT}'), libs_path)
-    package_data['paddle.libs'] += ['${TR_INFER_RT}', '${TR_INFER_PLUGIN_RT}']
-
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
