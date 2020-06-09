@@ -341,7 +341,6 @@ class Quant2Int8MkldnnPass(object):
     def _optimize_fp32_graph(self, graph):
         graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
-        self._pass_idx = 0
         graph = self._apply_pass(graph, 'attention_lstm_fuse_pass')
         graph = self._apply_pass(graph, 'seqconv_eltadd_relu_fuse_pass')
         #  graph = self._apply_pass(graph, 'seqpool_concat_fuse_pass')
