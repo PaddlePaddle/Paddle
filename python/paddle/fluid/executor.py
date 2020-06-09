@@ -1288,10 +1288,11 @@ class Executor(object):
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
                 trainer._set_thread_barrier(program._is_distributed)
-            if fleet.is_worker():            
-                trainer._set_program(program)
-            elif fleet.is_xpu() and ret is not None:
-                trainer._set_program(ret[4])
+            #if fleet.is_worker():            
+            #    trainer._set_program(program)
+            #elif fleet.is_xpu() and ret is not None:
+            #    trainer._set_program(ret[4])
+            trainer._set_program(program)
             trainer._set_heter_info(ret)
         else:
             if program._pipeline_opt:
