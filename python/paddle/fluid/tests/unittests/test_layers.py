@@ -3237,6 +3237,22 @@ class TestBook(LayerTest):
                 max_rank=3)
             return (out)
 
+    def test_cross_norm_layer_hadamard(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            param_attr = {
+                "batch_size": 1e4,
+                "batch_sum": 0.0,
+                "batch_square": 1e4
+            }
+            out = fluid.contrib.layers.cross_norm_layer_hadamard(
+                input=input,
+                param_dict=param_attr,
+                fields_num=1,
+                embed_dim=1,
+                name="cross")
+            return (out)
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
