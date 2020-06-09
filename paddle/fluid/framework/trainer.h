@@ -59,6 +59,7 @@ class TrainerBase {
   Scope* root_scope_;
   bool debug_;
   Dataset* dataset_ptr_;
+  TrainerDesc trainer_desc_;
 };
 
 // general trainer for async execution

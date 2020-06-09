@@ -100,7 +100,7 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   //  copy_streams_.push_back(stream);
   //  places_.push_back(place);
   //}
-        
+  trainer_desc_ = trainer_desc;        
 }
 
 void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
@@ -203,6 +203,7 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   
   xpu_begin_op_index_ = xpu_end_op_index_ = -1;
+/*
   for (size_t i = 0; i < ops_.size(); ++i) {
     //if (!first && ops_[i]->Type() == "mul") {
     //  first = 1; 
@@ -266,8 +267,12 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   if (xpu_end_op_index_ == -1) {
     xpu_end_op_index_ = ops_.size() - 1;
   }
-  
+  */
+  xpu_begin_op_index_ = trainer_desc_.xpu_start_idx;
+  xpu_end_op_index_ = trainer_desc_.xpu_end_idx;
   VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
+  //CHECK(xpu_begin_op_index_ == 0);
+  //CHECK(xpu_end_op_index_ = ops_.size() - 1);
   VLOG(3) << "init other env done.";
 }
 
@@ -419,10 +424,17 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
     bthread_yield();
   }
 
-  std::string varname = "concat_1.tmp_0@GRAD";
+  for (int i = 0; i < trainer_desc_.xpu_send_list_size(); ++i) {
+    string& varname = trainer_desc_.xpu_send_list(i); 
+    //CHECK(varname == "concat_1.tmp_0@GRAD");
+    auto* res_var = response->add_vars();
+    heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
+  }
 
-  auto* res_var = response->add_vars();
-  heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
+  //std::string varname = "concat_1.tmp_0@GRAD";
+  //
+  //auto* res_var = response->add_vars();
+  //heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
   
   for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
        ++i) {
