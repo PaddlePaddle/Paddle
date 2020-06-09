@@ -81,22 +81,20 @@ class FSTest(unittest.TestCase):
 
     def test_exists(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
-        #self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
-        #self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
-        #self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
-        dirs, files = fs.ls_dir(
-            os.path.abspath(
-                "/paddle/build/build_ubuntu_fixtypo_release_gpu_y_grpc_2.7/python/paddle/fluid/tests/unittests/test_hdfs.py"
-            ))
+        self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
+        self.assertFalse(fs.is_dir(os.path.abspath("./xxxx")))
+        self.assertTrue(fs.is_dir(os.path.abspath("./xxx/..")))
+        dirs, files = fs.ls_dir(os.path.abspath("./test_hdfs.py"))
+        self.assertTrue(dirs=[])
+        self.assertTrue(len(files) == 1)
         dirs, files = fs.ls_dir(os.path.abspath("./xxx/.."))
-        print(dirs, files)
 
-    """
     def test_hdfs(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None)
         self._test_dirs(fs)
         self._test_upload_file(fs)
 
+    """
     def test_local(self):
         fs = LocalFS()
         self._test_dirs(fs)

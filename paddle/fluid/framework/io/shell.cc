@@ -145,6 +145,27 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
 #endif
 }
 
+static int read_from_pipe(FILE* fp, std::string* output) {
+  char buf[4096];
+  while (1) {
+    int n = fread(buf, 1, 4096, fp);
+    if (n == 0) {
+      break;
+    }
+
+    if (n < 0) {
+      break;
+    }
+    output->append(buf, n);
+  }
+
+  if (!feof(fp)) {
+    return -1;
+  }
+
+  return 0;
+}
+
 std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                                   const std::string& mode, int* err_no,
                                   int* status, bool redirect_stderr) {
@@ -215,8 +236,6 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
                   errno, ECHILD,
                   platform::errors::Fatal("Must not be ECHILD errno here!"));
               *err_no = -1;
-              LOG(WARNING) << "status[" << wstatus << "], cmd[" << cmd << "]"
-                           << ", err_no[" << *err_no << "]";
             }
 
             signal(SIGCHLD, old_handler);
@@ -324,7 +343,6 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 }
 
 static int _get_err_no(int err_no, int status) {
-  printf("status2:%d\n", status);
   if (err_no == 0) {
     if (WIFEXITED(status)) {
       return WEXITSTATUS(status);
@@ -355,27 +373,16 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     auto pipe = shell_popen(cmd, "r", &err_no, &status, redirect_stderr);
 
     if (err_no == 0) {
-      char buf[4096];
-      auto fp = fileno(&*pipe);
-      while (1) {
-        int n = read(fp, buf, 4096);
-        printf("read n:%d\n", n);
-        if (n == 0) {
-          break;
-        }
-
-        if (n < 0) {
-          err_no = -1;
-          break;
-        }
-
-        output->append(buf, n);
-      }
-      output->append(1, '\0');
+      err_no = read_from_pipe(&*pipe, output);
     }
     pipe = nullptr;
     if (err_no == 0) {
       return _get_err_no(err_no, status);
+    }
+
+    if (err_no) {
+      LOG(WARNING) << "status[" << status << "], cmd[" << cmd << "]"
+                   << ", err_no[" << err_no << "]";
     }
 
     // time out

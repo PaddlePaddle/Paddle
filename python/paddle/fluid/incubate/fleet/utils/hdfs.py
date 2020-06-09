@@ -91,7 +91,7 @@ class HDFSClient(FS):
 
     def _run_cmd(self, cmd, redirect_stderr=False):
         ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
-        print("run_cmd", ret, output)
+        print("run_cmd:", cmd, output.splitlines())
         return int(ret), output.splitlines()
 
     def list_dirs(self, fs_path):
@@ -110,7 +110,6 @@ class HDFSClient(FS):
             return [], []
 
         cmd = "{} -ls {}".format(self._base_cmd, fs_path)
-        print("ls_dir cmd:", cmd)
         ret, lines = self._run_cmd(cmd)
 
         if ret != 0:
@@ -136,7 +135,6 @@ class HDFSClient(FS):
 
     @_handle_errors
     def is_dir(self, fs_path):
-        print(fs_path)
         assert fs_path[0] == "/", "Please use absolute path:{}".format(fs_path)
         if not self.is_exist(fs_path):
             return False
@@ -147,12 +145,10 @@ class HDFSClient(FS):
         dir_name = os.path.basename(os.path.normpath('fs_path'))
         true_1 = any(len(fs) == 5 for dir_name in dirs)
 
-        print("parent_path:{} base_name:{}".format(parent_path, dir_name))
         cmd = "{} -test -d {} ".format(self._base_cmd, fs_path)
-        ret, out = self._run_cmd(cmd, redirect_stderr=True)
+        ret, out = self._run_cmd(cmd)
         true_2 = (ret == 0)
 
-        print("parent_path:{} base_name:{}".format(parent_path, dir_name))
         if not (true_1 and true_2):
             raise ExecuteError
 
@@ -167,10 +163,8 @@ class HDFSClient(FS):
     @_handle_errors
     def is_exist(self, fs_path):
         assert fs_path[0] == "/", "Please use absolute path:{}".format(fs_path)
-        cmd = "stdbuf -oL {} -ls {} ".format(self._base_cmd, fs_path)
-        print("execute cmd", cmd)
-        ret, out = self._run_cmd(cmd, redirect_stderr=False)
-        print("is exist return:", cmd, ret, out)
+        cmd = "{} -ls {} ".format(self._base_cmd, fs_path)
+        ret, out = self._run_cmd(cmd, redirect_stderr=True)
         if ret != 0:
             for l in out:
                 if "No such file or directory" in l:
