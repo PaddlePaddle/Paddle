@@ -132,12 +132,6 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
     close(child_end);
   }
 
-  /*
-  char err[256];
-  sprintf(err, "cmd:%s redirect_stderr:%d\n", real_cmd, redirect_stderr);
-  if (write(1, err, strlen(err))) {
-  }
-  */
   close_open_fds_internal();
   PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
   // Note: just for compilation. the child don't run this line.
@@ -149,13 +143,10 @@ static int read_from_pipe(FILE* fp, std::string* output) {
   char buf[4096];
   while (1) {
     int n = fread(buf, 1, 4096, fp);
-    if (n == 0) {
+    if (n <= 0) {
       break;
     }
 
-    if (n < 0) {
-      break;
-    }
     output->append(buf, n);
   }
 
