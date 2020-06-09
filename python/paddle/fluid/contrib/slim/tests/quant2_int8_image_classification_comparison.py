@@ -384,7 +384,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         self._print_performance('INT8', int8_fps, int8_lat)
         self._print_accuracy('INT8', int8_acc1, int8_acc5)
 
-        fp32_acc1 = fp32_acc5 = fp32_pps = fp32_lat = -1
+        fp32_acc1 = fp32_acc5 = fp32_fps = fp32_lat = -1
         if fp32_model_path:
             _logger.info('--- FP32 prediction start ---')
             val_reader = paddle.batch(
