@@ -110,7 +110,17 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
 
         inference_program = paddle.fluid.default_main_program().clone()
 
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        decay = os.getenv("DECAY", "0")
+        if decay == "1":
+            sgd_optimizer = fluid.optimizer.SGD(
+                learning_rate=fluid.layers.exponential_decay(
+                    learning_rate=0.001,
+                    decay_steps=1000,
+                    decay_rate=0.999,
+                    staircase=True))
+        else:
+            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+
         sgd_optimizer.minimize(avg_cost)
 
         train_reader = paddle.batch(

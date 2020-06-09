@@ -237,39 +237,43 @@ bool RequestNotifyHandler::Handle(const std::string &varname,
                                   const std::string &table_name) {
   VLOG(3) << "async process var: " << varname << ", trainer_id: " << trainer_id;
 
-  if (varname == BATCH_BARRIER_MESSAGE) {
+  string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
+  string::Piece batch_piece(BATCH_BARRIER_MESSAGE);
+  string::Piece fetch_piece(FETCH_BARRIER_MESSAGE);
+  string::Piece complete_piece(COMPLETE_MESSAGE);
+
+  string::Piece var_name_piece = string::Piece(varname);
+
+  if (string::Contains(var_name_piece, batch_piece)) {
     return BarrierMonitor::GetInstance()->IncreaseBarrier(
         trainer_id, BATCH_BARRIER_MESSAGE);
-  } else if (varname == FETCH_BARRIER_MESSAGE) {
+  } else if (string::Contains(var_name_piece, fetch_piece)) {
     return BarrierMonitor::GetInstance()->IncreaseBarrier(
         trainer_id, FETCH_BARRIER_MESSAGE);
-  } else if (varname == COMPLETE_MESSAGE) {
+  } else if (string::Contains(var_name_piece, complete_piece)) {
     if (HeartBeatMonitor::GetInstance() != nullptr) {
       HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
     }
     rpc_server_->Complete();
     BarrierMonitor::GetInstance()->DecreaseWorker();
     return true;
-  } else if (varname == LEARNING_RATE_DECAY_COUNTER) {
-    string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
-    string::Piece var_name_piece = string::Piece(varname);
-    if (string::Contains(var_name_piece, decay_piece)) {
-      VLOG(3) << "LearningRate Decay Counter Update";
-      PADDLE_ENFORCE_NE(
-          lr_decay_block_id, -1,
-          platform::errors::InvalidArgument(
-              "when lr_decay_block_id = -1, there should be no RPC invoke."));
-      auto *origin_var = scope_->FindVar(varname);
-      auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
-      auto *send_var = scope->FindVar(varname);
-      auto send_var_tensor = send_var->Get<framework::LoDTensor>();
-      int64_t *origin_value =
-          origin_var_tensor.mutable_data<int64_t>(origin_var_tensor.place());
-      int64_t *send_value =
-          send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
-      origin_value[0] += send_value[0];
-      executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
-    }
+  } else if (string::Contains(var_name_piece, decay_piece)) {
+    VLOG(3) << "LearningRate Decay Counter Update";
+    PADDLE_ENFORCE_NE(
+        lr_decay_block_id, -1,
+        platform::errors::InvalidArgument(
+            "when lr_decay_block_id = -1, there should be no RPC invoke."));
+    auto *origin_var = scope_->FindVar(varname);
+    auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
+    auto *send_var = scope->FindVar(varname);
+    auto send_var_tensor = send_var->Get<framework::LoDTensor>();
+    int64_t *origin_value =
+        origin_var_tensor.mutable_data<int64_t>(origin_var_tensor.place());
+    int64_t *send_value =
+        send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
+    origin_value[0] += send_value[0];
+    executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
+
     return true;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(

@@ -17,6 +17,7 @@ import unittest
 from test_dist_base import TestDistBase
 
 import os
+
 flag_name = os.path.splitext(__file__)[0]
 
 
@@ -57,6 +58,31 @@ class TestDistW2V2x2Async(TestDistBase):
             "dist_word2vec.py",
             delta=100,
             check_error_log=True,
+            log_name=flag_name)
+
+
+class TestDistW2V2x2AsyncWithDecay(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._enforce_place = "CPU"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={},
+                         log_name=""):
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
+        tr0_losses, tr1_losses = self._run_cluster(
+            model_file, required_envs, check_error_log, log_name=log_name)
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_word2vec.py",
+            delta=100,
+            check_error_log=True,
+            need_envs={"DECAY": "1"},
             log_name=flag_name)
 
 
