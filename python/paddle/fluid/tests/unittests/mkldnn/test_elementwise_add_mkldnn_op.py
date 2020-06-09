@@ -58,6 +58,16 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
         pass
 
 
+class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
 ''' INT8 Tests '''
 
 

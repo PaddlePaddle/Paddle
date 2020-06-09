@@ -46,9 +46,11 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_y = ctx.Attr<float>("Scale_y");
     float scale_o = ctx.Attr<float>("Scale_out");
 
+    int axis = ctx.Attr<int>("axis");
+
     platform::BinaryMKLDNNHandler<T> handler(
-        BINARY_OP, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z, scale_x,
-        scale_y, scale_o, ctx.OutputName("Out"));
+        BINARY_OP, axis, dev_ctx, mkldnn_engine, ctx.GetPlace(), x, y, z,
+        scale_x, scale_y, scale_o, ctx.OutputName("Out"));
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);

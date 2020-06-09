@@ -409,7 +409,7 @@ class MKLDNNHandler {
 template <typename T>
 class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
-  BinaryMKLDNNHandler(const dnnl::algorithm algo,
+  BinaryMKLDNNHandler(const dnnl::algorithm algo, const int axis,
                       const MKLDNNDeviceContext& dev_ctx,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
@@ -452,9 +452,9 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
       auto src1_md = dnnl::memory::desc(
           src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
       if (rankdiff > 0) {
-        std::vector<int64_t> ones(rankdiff, 1);
-        std::vector<int64_t> dims1_ex(src_y_tz);
-        dims1_ex.insert(dims1_ex.begin(), ones.begin(), ones.end());
+        std::vector<int64_t> dims1_ex(rankdiff, 1);
+        dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
+                        src_y_tz.begin(), src_y_tz.end());
         src1_md = src1_md.reshape(dims1_ex);
       }
       const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),

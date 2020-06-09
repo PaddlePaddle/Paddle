@@ -100,15 +100,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNElementwiseAddBeUsed = [&]() {
-      int axis = ctx.Attr<int>("axis");
-      int rankdiff = ctx.Input<Tensor>("X")->dims().size() -
-                     ctx.Input<Tensor>("Y")->dims().size();
-      return (rankdiff == 0) || (axis == -1) || (axis == rankdiff);
-    };
-
-    if (platform::CanMKLDNNBeUsed(ctx) &&
-        (ctx.Type() != "elementwise_add" || CanMKLDNNElementwiseAddBeUsed())) {
+    if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
