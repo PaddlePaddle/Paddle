@@ -27,7 +27,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"         // NOLINT
 #include "paddle_infer_declare.h"  // NOLINT
 
 /*! \namespace paddle

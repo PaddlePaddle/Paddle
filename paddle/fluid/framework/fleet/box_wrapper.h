@@ -266,7 +266,7 @@ class AfsManager {
         fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
         fp_read = fdopen(fd_read[0], "r");
         PADDLE_ENFORCE_NE(
-            fp_read, 0,
+            fp_read, nullptr,
             platform::errors::External(
                 "Failed to open file descriptor via fdopen in AfsManager."));
       }
@@ -276,7 +276,7 @@ class AfsManager {
         fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
         fp_write = fdopen(fd_write[1], "w");
         PADDLE_ENFORCE_NE(
-            fp_write, 0,
+            fp_write, nullptr,
             platform::errors::External(
                 "Failed to open file descriptor via fdopen in AfsManager."));
       }

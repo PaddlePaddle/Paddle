@@ -379,7 +379,8 @@ void BindAnalysisConfig(py::module *m) {
       .value("Half", AnalysisConfig::Precision::kHalf)
       .export_values();
 
-  analysis_config.def(py::init<const AnalysisConfig &>())
+  analysis_config.def(py::init<>())
+      .def(py::init<const AnalysisConfig &>())
       .def(py::init<const std::string &>())
       .def(py::init<const std::string &, const std::string &>())
       .def("set_model", (void (AnalysisConfig::*)(const std::string &)) &
