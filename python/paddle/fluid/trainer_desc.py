@@ -69,9 +69,9 @@ class TrainerDesc(object):
         #    self.proto_desc.o_end_idx.append(i)
         self.proto_desc.xpu_end_idx = ret[1]
         for i in ret[2]:  #send_list[1]:
-            self.proto_desc.op_run_send_list.append(i)
+            self.proto_desc.xpu_send_list.append(i)
         for i in ret[3]: # recv_list[1]:
-            self.proto_desc.op_run_recv_list.append(i)
+            self.proto_desc.xpu_recv_list.append(i)
 
         #for i in start_list[2]:
         #    self.proto_desc.op_run_end_start_idx.append(i)

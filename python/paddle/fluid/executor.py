@@ -1277,6 +1277,7 @@ class Executor(object):
         assert len(fetch_list) == len(fetch_info)
         compiled = isinstance(program, compiler.CompiledProgram)
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
         fu = FleetUtil()
         ret = fu.split_program_by_device(program)
         #start_list, end_list, send_list, recv_list, program_list = fu.split_program_by_device(program)
