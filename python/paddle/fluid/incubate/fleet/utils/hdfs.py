@@ -88,6 +88,8 @@ class HDFSClient(FS):
         self._time_out = time_out
         self._sleep_inter = sleep_inter
         self._base_cmd = " ".join(self.pre_commands)
+        self._bd_err_re = re.compile(
+            r'\s?responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:')
 
     def _run_cmd(self, cmd, redirect_stderr=False):
         ret, output = fluid.core.shell_execute_cmd(cmd, 0, 0, redirect_stderr)
@@ -132,6 +134,14 @@ class HDFSClient(FS):
 
         return dirs, files
 
+    def _test_match(self, lines):
+        for l in lines:
+            m = self._bd_err_re.match(l)
+            if m != None:
+                return m
+
+        return None
+
     @_handle_errors
     def is_dir(self, fs_path):
         if not self.is_exist(fs_path):
@@ -152,11 +162,8 @@ class HDFSClient(FS):
         ret, lines = self._run_cmd(cmd)
         if ret:
             # other error
-            for l in lines:
-                m = re.match(
-                    r'responseErrorMsg\s?\:.*, errorCode\:\s?[0-9]+, path\:', s)
-                if m != None:
-                    raise ExecuteError
+            if self._test_match(lines) != None:
+                raise ExecuteError
 
             # also not a directory
             return False

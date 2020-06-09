@@ -80,6 +80,7 @@ class FSTest(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
+    """
     def test_exists(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         self.assertFalse(fs.is_exist(os.path.abspath("./xxxx")))
@@ -99,10 +100,28 @@ class FSTest(unittest.TestCase):
         fs = LocalFS()
         self._test_dirs(fs)
         self._test_touch_file(fs)
+    """
 
-    def test_exist2(self):
+    def test_is_dir(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         self.assertFalse(fs.is_dir("./test_hdfs.py"))
+        s = """
+java.io.IOException: Input/output error
+ responseErrorMsg : failed to getFileStatus, errorCode: 3, path: /user/PUBLIC_KM_Data/wangxi16/data/serving_model, lparam: d868f6bb6822c621, errorMessage: inner error
+	at org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)
+	at org.apache.hadoop.util.FileSystemUtil.dealWithResponse(FileSystemUtil.java:118)
+	at org.apache.hadoop.lite.client.LiteClientImpl.getFileStatus(LiteClientImpl.java:696)
+	at org.apache.hadoop.fs.LibDFileSystemImpl.getFileStatus(LibDFileSystemImpl.java:297)
+	at org.apache.hadoop.fs.LiteFileSystem.getFileStatus(LiteFileSystem.java:514)
+	at org.apache.hadoop.fs.FsShell.test(FsShell.java:1092)
+	at org.apache.hadoop.fs.FsShell.run(FsShell.java:2285)
+	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
+	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
+	at org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
+        """
+
+        print("split lines:", s.splitlines())
+        self.assertTrue(fs._test_match(s.splitlines()) != None)
 
 
 if __name__ == '__main__':
