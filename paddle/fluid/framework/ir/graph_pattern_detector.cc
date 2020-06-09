@@ -1881,8 +1881,16 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
-      "abs", "elementwise_mul", "elementwise_add", "gelu", "leaky_relu", "relu",
-      "softmax", "sqrt", "swish", "tanh"};
+      "abs",
+      "elementwise_mul",
+      "elementwise_add",
+      "gelu",
+      "leaky_relu",
+      "relu",
+      "softmax",
+      "sqrt",
+      "swish",
+      "tanh"};
 
   auto possible_inplace_op = pattern->NewNode(inplace_to_be_op_repr())
                                  ->assert_is_ops(supported_op_types);
