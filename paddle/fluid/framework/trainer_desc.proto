@@ -58,8 +58,11 @@ message TrainerDesc {
   
   repeated string xpu_send_list = 25;
   repeated string xpu_recv_list = 26;
-  repeated string xpu_start_idx = 27;
-  repeated string xpu_end_idx = 28;
+  optional int32 xpu_start_idx = 27;
+  optional int32 xpu_end_idx = 28;
+
+//repeated string xpu_start_idx = 27;
+  //repeated string xpu_end_idx = 28;
 
 //  repeated string op_run_end_send_list = 33;
 //  repeated string op_run_end_recv_list = 34;

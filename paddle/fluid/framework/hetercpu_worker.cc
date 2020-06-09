@@ -60,8 +60,8 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int 
 }
 
 void HeterCpuWorker::GetXpuOpIndex() {
-  xpu_begin_op_index_ = xpu_end_op_index_ = -1;
-  for (size_t i = 0; i < ops_.size(); ++i) {
+//  xpu_begin_op_index_ = xpu_end_op_index_ = -1;
+//  for (size_t i = 0; i < ops_.size(); ++i) {
     //  first = 1;
     //  xpu_begin_op_index_ = i;
     //  auto& in_map = ops_[i]->Inputs();
