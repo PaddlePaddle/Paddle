@@ -334,6 +334,8 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 #endif
 }
 
+#if defined _WIN32 || defined __APPLE__
+#else
 static int _get_err_no(int err_no, int status) {
   if (err_no == 0) {
     if (WIFEXITED(status)) {
@@ -344,6 +346,7 @@ static int _get_err_no(int err_no, int status) {
 
   return err_no;
 }
+#endif
 
 static int _shell_execute_cmd(const std::string& cmd, std::string* output,
                               int time_out, int sleep_inter,
