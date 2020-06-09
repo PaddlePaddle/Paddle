@@ -157,7 +157,7 @@ class BarrierMonitor {
  private:
   // Init is called by GetInstance.
   static void InitImpl(int workers) {
-      monitor_.reset(new BarrierMonitor(workers));
+    monitor_.reset(new BarrierMonitor(workers));
   }
 
   static std::once_flag init_flag_;
