@@ -529,7 +529,6 @@ class TestSetGlobalInitializer(unittest.TestCase):
             # default initilizer of param in layers.conv2d is NormalInitializer
             conv = fluid.layers.conv2d(x, 5, 3)
 
-        fluid.reset_global_initializer()
         block = startup_prog.global_block()
         self.assertEqual(len(block.ops), 2)
 
@@ -543,6 +542,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
+        fluid.set_global_initializer(None)
 
     def test_set_global_bias_initilizer(self):
         """Test Set Global Bias initilizer with NormalInitializer
@@ -559,7 +559,6 @@ class TestSetGlobalInitializer(unittest.TestCase):
             # default initilizer of bias in layers.conv2d is ConstantInitializer
             conv = fluid.layers.conv2d(x, 5, 3)
 
-        fluid.reset_global_initializer()
         block = startup_prog.global_block()
         self.assertEqual(len(block.ops), 2)
 
@@ -575,6 +574,7 @@ class TestSetGlobalInitializer(unittest.TestCase):
         self.assertAlmostEqual(param_init_op.attr('min'), -0.5, delta=DELTA)
         self.assertAlmostEqual(param_init_op.attr('max'), 0.5, delta=DELTA)
         self.assertEqual(param_init_op.attr('seed'), 0)
+        fluid.set_global_initializer(None)
 
 
 if __name__ == '__main__':

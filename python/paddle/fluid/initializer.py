@@ -26,12 +26,11 @@ __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
     'MSRA', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
     'TruncatedNormalInitializer', 'XavierInitializer', 'BilinearInitializer',
-    'MSRAInitializer', 'NumpyArrayInitializer', 'set_global_initializer',
-    'reset_global_initializer'
+    'MSRAInitializer', 'NumpyArrayInitializer', 'set_global_initializer'
 ]
 
-_global_weight_initializer = None
-_global_bias_initializer = None
+global_weight_initializer = None
+global_bias_initializer = None
 
 
 class Initializer(object):
@@ -932,9 +931,11 @@ def set_global_initializer(weight_init, bias_init=None):
     If the initializer is also set up by ``param_attr`` or ``bias_attr`` when creating a network layer,
     the global initializer setting here will not take effect because it has a lower priority.
 
+    If you want to cancel the global initializer in framework, please set global initializer to ``None`` .
+
     Args:
-        weight_init (Initializer) - set the global initializer for ``weight`` of model parameters.
-        bias_init (Initializer, optional) - set the global initializer for ``bias`` of model parameters. 
+        weight_init (Initializer): set the global initializer for ``weight`` of model parameters.
+        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters. 
             Default: None.
 
     Returns:
@@ -945,70 +946,50 @@ def set_global_initializer(weight_init, bias_init=None):
             import paddle.fluid as fluid
 
             fluid.set_global_initializer(fluid.initializer.Uniform())
-            print(fluid.initializer.global_weight_initializer())
+            print(fluid.initializer._global_weight_initializer())
             # <paddle.fluid.initializer.UniformInitializer object at 0x7fa444883290>
-            print(fluid.initializer.global_bias_initializer())
+            print(fluid.initializer._global_bias_initializer())
             # None
 
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
             conv1 = fluid.layers.conv2d(x, 5, 3)
-            # The weight of convolutional layer 1 are initialized by UniformInitializer
+            # The weight of conv-layer1 are initialized by UniformInitializer
 
             conv2 = fluid.layers.conv2d(conv1, 5, 3, 
                 param_attr=fluid.initializer.Xavier(), 
                 bias_attr=fluid.initializer.Normal())
-            # The weight of convolutional layer 2 are initialized by XavierInitializer
-            # The bias of convolutional layer 2 are initialized by NormalInitializer
+            # The weight of conv-layer2 are initialized by XavierInitializer
+            # The bias of conv-layer2 are initialized by NormalInitializer
 
-    """
-    check_type(weight_init, 'weight_init', Initializer,
-               'set_global_initializer')
-    global _global_weight_initializer
-    _global_weight_initializer = weight_init
-    if bias_init is not None:
-        check_type(bias_init, 'bias_init', Initializer,
-                   'set_global_initializer')
-        global _global_bias_initializer
-        _global_bias_initializer = bias_init
-
-
-def reset_global_initializer():
-    """
-    This API is used to cancel the global model parameter initializer in framework, 
-    which is set by :ref:`api_fluid_set_global_initializer` .
-
-    Examples:
-        .. code-block:: python
-            import paddle.fluid as fluid
-
-            fluid.set_global_initializer(fluid.initializer.Uniform())
-            print(fluid.initializer.global_weight_initializer())
-            # <paddle.fluid.initializer.UniformInitializer object at 0x7fa444883290>
-
-            fluid.reset_global_initializer()
-            print(fluid.initializer.global_weight_initializer())
+            # Cancel the global initializer in framework
+            fluid.set_global_initializer(None)
+            print(fluid.initializer._global_weight_initializer())
             # None
+
     """
-    global _global_weight_initializer
-    if _global_weight_initializer is not None:
-        _global_weight_initializer = None
-    global _global_bias_initializer
-    if _global_bias_initializer is not None:
-        _global_bias_initializer = None
+    check_type(weight_init, 'weight_init', (Initializer, type(None)),
+               'set_global_initializer')
+    global global_weight_initializer
+    global_weight_initializer = weight_init
+
+    check_type(bias_init, 'bias_init', (Initializer, type(None)),
+               'set_global_initializer')
+    global global_bias_initializer
+    global_bias_initializer = bias_init
 
 
-def global_weight_initializer():
+def _global_weight_initializer():
     """
     Return the global weight initializer, The user doesn't need to use it.
     """
-    return _global_weight_initializer
+    return global_weight_initializer
 
 
-def global_bias_initializer():
+def _global_bias_initializer():
     """
     Return the global weight initializer, The user doesn't need to use it.
     """
-    return _global_bias_initializer
+    return global_bias_initializer
 
 
 # We short the class name, since users will use the initializer with the package
