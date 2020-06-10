@@ -33,7 +33,7 @@ def monkey_patch_varbase():
         in dy2static and shall not be called directly.
 
         Args:
-            to_parameter (bool): It takes effect only if the input a VarBase but not ParamBase.If set True,
+            to_parameter (bool): It takes effect only if the input a VarBase. If set True,
                                  the VarBase will be converted into framework.Parameters. Otherwise, it will
                                  be converted into framework.Variable. Default False.
 
@@ -46,8 +46,8 @@ def monkey_patch_varbase():
 
                 data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    varbase = to_variable(data)
-                    static_var = varbase._to_static()
+                    var_base = to_variable(data)
+                    static_var = var_base._to_static_var()
 
         """
         if isinstance(self, ParamBase):
