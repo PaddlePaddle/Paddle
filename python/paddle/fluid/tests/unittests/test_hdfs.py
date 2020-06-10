@@ -21,6 +21,7 @@ import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.incubate.fleet.utils.hdfs import FSTimeOut
 
 
 class FSTest(unittest.TestCase):
@@ -99,6 +100,31 @@ class FSTest(unittest.TestCase):
         fs = LocalFS()
         self._test_dirs(fs)
         self._test_touch_file(fs)
+
+    def test_timeout(self):
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=6 * 1000,
+            sleep_inter=2000)
+        src = "hdfs_test_timeout"
+        dst = "new_hdfs_test_timeout"
+        fs.delete(dst)
+        fs.mkdirs(src)
+        fs.mkdirs(dst)
+        fs.mkdirs(dst + "/" + src)
+        output = ""
+        try:
+            fs.mv(src, dst, test_exists=False)
+            self.assertFalse(1, "can't execute cmd:{} output:{}".format(cmd,
+                                                                        output))
+        except FSTimeOut as e:
+            print("execute mv {} to {} timeout".format(src, dst))
+
+        cmd = "{} -mv {} {}".format(fs._base_cmd, src, dst)
+        ret, output = fluid.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
+        self.assertNotEqual(ret, 0)
+        print("second mv ret:{} output:{}".format(ret, output))
 
     def test_is_dir(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)

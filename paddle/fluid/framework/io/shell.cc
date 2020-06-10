@@ -358,6 +358,7 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
 #else
   int err_no = 0;
   int status = 0;
+  int cmd_status = 0;
   platform::Timer timer;
   do {
     VLOG(3) << "exec cmd:[" << cmd << "]";
@@ -368,16 +369,25 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     auto pipe = shell_popen(cmd, "r", &err_no, &status, redirect_stderr);
 
     if (err_no == 0) {
+      // read file
       err_no = read_from_pipe(&*pipe, output);
-    }
-    pipe = nullptr;
-    if (err_no == 0) {
-      return _get_err_no(err_no, status);
+      if (err_no) {
+        LOG(WARNING) << "status[" << status << "], cmd[" << cmd << "]"
+                     << ", err_no[" << err_no << "]";
+      }
     }
 
+    // close file and etc.
+    pipe = nullptr;
     if (err_no) {
       LOG(WARNING) << "status[" << status << "], cmd[" << cmd << "]"
                    << ", err_no[" << err_no << "]";
+    }
+
+    cmd_status = _get_err_no(err_no, status);
+    // cmd run ok!
+    if (cmd_status == 0) {
+      return cmd_status;
     }
 
     // time out
@@ -387,18 +397,21 @@ static int _shell_execute_cmd(const std::string& cmd, std::string* output,
     }
     timer.Resume();
 
-    // sleep
-    pipe = nullptr;
     if (sleep_inter > 0) {
       usleep(sleep_inter * 1000);
     }
-  } while (err_no);
+  } while (cmd_status);
 
-  if ((*output) == "") {
-    *output = string::Sprintf("_shell_execute_cmd execute cmd:%s ElapsedMS:%d",
-                              cmd, timer.ElapsedMS());
+  // log when check timeout!
+  if (time_out != 0) {
+    *output += string::Sprintf(
+        " _shell_execute_cmd execute cmd:%s ElapsedMS:%d, err_no:%d status:%d",
+        cmd, timer.ElapsedMS(), err_no, cmd_status);
+    LOG(WARNING) << *output;
   }
-  return _get_err_no(err_no, status);
+
+  return cmd_status;
+
 #endif
 }
 

@@ -215,12 +215,13 @@ class HDFSClient(FS):
             raise ExecuteError
 
     @_handle_errors
-    def mv(self, fs_src_path, fs_dst_path):
-        if self.is_exist(fs_dst_path):
-            raise FSFileExistsError
+    def mv(self, fs_src_path, fs_dst_path, test_exists=True):
+        if test_exists:
+            if self.is_exist(fs_dst_path):
+                raise FSFileExistsError
 
-        if not self.is_exist(fs_src_path):
-            raise FSFileNotExistsError
+            if not self.is_exist(fs_src_path):
+                raise FSFileNotExistsError
 
         cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
         ret, _ = self._run_cmd(cmd)
