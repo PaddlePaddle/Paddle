@@ -1,5 +1,4 @@
 #!/bin/bash
-
 function make_ubuntu_dockerfile(){
   sed 's/<baseimg>/10.1-cudnn7-devel-ubuntu16.04/g' ./Dockerfile.ubuntu >Dockerfile.cuda10_cudnn7_gcc48_ubuntu16
   dockerfile_line=`wc -l Dockerfile.ci_cuda10_cudnn7_gcc48_ubuntu16|awk '{print $1}'`
