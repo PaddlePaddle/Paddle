@@ -24,6 +24,7 @@
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -85,13 +86,19 @@ class TensorAddFunctor : public boost::static_visitor<> {
   }
 #else
   void operator()(const platform::CUDAPlace& place) {
-    PADDLE_THROW("Do NOT support gradient merge in place %s", place);
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
   }
 #endif
 
   // there is NO blas in CUDAPinnedPlace
   void operator()(const platform::CUDAPinnedPlace& place) {
-    PADDLE_THROW("Do NOT support gradient merge in place %s", place);
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Gradient accumulation on place (%s) "
+        "is not supported in imperative mode",
+        place));
   }
 
  private:
@@ -99,6 +106,16 @@ class TensorAddFunctor : public boost::static_visitor<> {
   const T* x_;
   T* y_;
 };
+
+template <typename DeviceContext, typename T>
+void TensorAddImpl(const framework::Tensor& src, framework::Tensor* dst,
+                   const platform::Place& place) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  paddle::platform::DeviceContext* ctx = pool.Get(place);
+  auto dev_ctx = dynamic_cast<DeviceContext*>(ctx);
+  operators::math::ElementwiseAddTo<DeviceContext, T> func;
+  func(dev_ctx, src, dst);
+}
 
 void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
@@ -133,8 +150,26 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
 
 #undef PADDLE_TENSOR_ADD
 
-  PADDLE_THROW("Not supported data type %s for AddTo",
-               framework::DataTypeToString(data_type));
+  if (data_type == framework::proto::VarType::FP16) {
+    if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+      return TensorAddImpl<platform::CUDADeviceContext, platform::float16>(
+          src_tensor, dst_tensor, place);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Gradient accumulation of data type (%s) on place (%s) is not "
+          "supported in imperative mode",
+          framework::DataTypeToString(data_type), place));
+#endif
+    } else if (platform::is_cpu_place(place)) {
+      return TensorAddImpl<platform::CPUDeviceContext, platform::float16>(
+          src_tensor, dst_tensor, place);
+    }
+  }
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Gradient accumulation of data type (%s) on place (%s) is not "
+      "supported in imperative mode",
+      framework::DataTypeToString(data_type), place));
 }
 
 void SelectedRowsAddToTensor(const framework::Variable& src,

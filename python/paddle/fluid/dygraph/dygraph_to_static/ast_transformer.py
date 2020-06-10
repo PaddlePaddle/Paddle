@@ -28,6 +28,7 @@ from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import BasicAp
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
+from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
@@ -74,6 +75,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform break/continue in loops
         BreakContinueTransformer(node_wrapper).transform()
+
+        # Transform logical and/or/not
+        LogicalTransformer(node_wrapper).transform()
 
         # Transform for loop and while loop
         LoopTransformer(node_wrapper).transform()

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -114,7 +115,9 @@ class MKLDNNHandlerT {
     const std::string key_pd = key_common_ + "@forward_pd";
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_pd));
-    return (fwd_pd_ != nullptr);
+
+    const std::string key_p = key_ + "@forward_p";
+    return (dev_ctx_.GetBlob(key_p) != nullptr);
   }
 
   template <typename... Args>
@@ -159,7 +162,7 @@ class MKLDNNHandlerT {
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
       mkldnn::memory::desc md, void* ptr, const std::string& suffix) {
-    auto local_key = key_ + suffix;
+    const auto local_key = key_ + suffix;
     auto mem_p =
         std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
     if (mem_p == nullptr) {
@@ -169,6 +172,24 @@ class MKLDNNHandlerT {
       mem_p->set_data_handle(ptr);
     }
     return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
+      mkldnn::memory::desc md, const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    auto mem_p =
+        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
+    if (mem_p == nullptr) {
+      mem_p = std::make_shared<mkldnn::memory>(md, engine_);
+      dev_ctx_.SetBlob(local_key, mem_p);
+    }
+    return mem_p;
+  }
+
+  std::shared_ptr<mkldnn::memory> AcquireMemory(const std::string& suffix) {
+    const auto local_key = key_ + suffix;
+    return std::static_pointer_cast<mkldnn::memory>(
+        dev_ctx_.GetBlob(local_key));
   }
 
   const MKLDNNDeviceContext& dev_ctx_;
@@ -367,7 +388,7 @@ class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
   BinaryMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
                       const mkldnn::engine engine, platform::Place cpu_place,
                       const Tensor* x, const Tensor* y, Tensor* z,
-                      const std::string uniq_name)
+                      const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, engine, cpu_place,
             platform::CreateKey(framework::vectorize(x->dims()), uniq_name)) {
@@ -532,21 +553,39 @@ template <typename T>
 class LRNMKLDNNHandler
     : public MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward> {
  public:
-  LRNMKLDNNHandler(const std::vector<int64_t>& dims, const int n,
-                   const float alpha, const float beta, const float k,
-                   const MKLDNNMemoryFormat fmt, bool is_test,
+  LRNMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const platform::MKLDNNDeviceContext& dev_ctx,
-                   platform::Place cpu_place, const std::string& unique_name)
+                   const mkldnn::engine mkldnn_engine,
+                   platform::Place cpu_place, const Tensor* input,
+                   const std::string& unique_name)
 
       : platform::MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward>(
-            dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, unique_name)) {
-    auto src_md =
-        mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
-    this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
-        mkldnn::algorithm::lrn_across_channels, src_md, n, alpha, beta, k);
+            dev_ctx, mkldnn_engine, cpu_place,
+            platform::CreateKey(framework::vectorize(input->dims()),
+                                unique_name)) {
+    if (!this->isCached()) {
+      const int n = ctx.Attr<int>("n");
+      // MKL-DNN implements LRN in a caffe way:
+      // http://caffe.berkeleyvision.org/tutorial/layers/lrn.html
+      // Where sum of squares is divided by size of normalization window
+      // this is not the case for PaddlePaddle LRN.
+      // Hence we need to compensate for this diffrence by
+      // multipliing alpha by size of window(n)
+      const float alpha = ctx.Attr<float>("alpha") * static_cast<float>(n);
+      const float beta = ctx.Attr<float>("beta");
+      const float k = ctx.Attr<float>("k");
+      bool is_test = ctx.Attr<bool>("is_test");
+
+      auto dims = paddle::framework::vectorize(input->dims());
+
+      auto src_md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(),
+                                         input->format());
+
+      this->AcquireForwardPrimitiveDescriptor(
+          is_test ? mkldnn::prop_kind::forward_inference
+                  : mkldnn::prop_kind::forward_training,
+          mkldnn::algorithm::lrn_across_channels, src_md, n, alpha, beta, k);
+    }
   }
 
   LRNMKLDNNHandler(const std::vector<int64_t>& dims, const int n,
@@ -590,41 +629,100 @@ template <typename T>
 class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                                    mkldnn::pooling_backward> {
  public:
-  PoolingMKLDNNHandler(
-      const std::vector<int64_t>& src_dims,
-      const std::vector<int64_t>& dst_dims, const std::vector<int64_t>& ksize,
-      const std::vector<int64_t>& strides, const std::vector<int64_t>& paddings,
-      const std::string& pooling_type, bool ceil_mode,
-      const MKLDNNMemoryFormat fmt, mkldnn::memory::data_type dt, bool is_test,
-      const platform::MKLDNNDeviceContext& dev_ctx, platform::Place cpu_place,
-      const std::string& unique_name, bool exclude_padding)
+  PoolingMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
+                       const MKLDNNDeviceContext& dev_ctx,
+                       const mkldnn::engine mkldnn_engine,
+                       platform::Place cpu_place, const Tensor* input,
+                       Tensor* output, const std::string& unique_name)
       : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                  mkldnn::pooling_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(src_dims, dt, unique_name)) {
-    auto src_md = mkldnn::memory::desc(src_dims, dt, fmt);
-    /* create memory descriptor for pooling without specified format
-     * ('any') which lets a primitive (pooling in this case) choose
-     * the memory format preferred for best performance
-     */
-    auto dst_md =
-        platform::MKLDNNMemDesc(dst_dims, dt, MKLDNNMemoryFormat::any);
+            platform::CreateKey(framework::vectorize(input->dims()),
+                                framework::ToMKLDNNDataType(input->type()),
+                                unique_name)) {
+    if (!this->isCached()) {
+      PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
+                        platform::errors::InvalidArgument(
+                            "Wrong layout set for Input tensor"));
+      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
+                        platform::errors::InvalidArgument(
+                            "Wrong format set for Input tensor"));
 
-    auto mkldnn_paddings = ToMkldnnPadding(paddings);
+      const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
-    if (ceil_mode) {
-      CorrectOutputSize(src_dims, dst_dims, ksize, paddings, strides,
-                        mkldnn_paddings[1]);
+      std::vector<int> ksize_temp = ctx.Attr<std::vector<int>>("ksize");
+      std::vector<int64_t> ksize(begin(ksize_temp), end(ksize_temp));
+
+      std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
+      std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
+
+      std::vector<int> paddings_temp = ctx.Attr<std::vector<int>>("paddings");
+      std::vector<int64_t> paddings(begin(paddings_temp), end(paddings_temp));
+
+      const bool global_pooling = ctx.Attr<bool>("global_pooling");
+      const std::string padding_algorithm =
+          ctx.Attr<std::string>("padding_algorithm");
+
+      // Only 2D pooling is supported now
+      PADDLE_ENFORCE_EQ(ksize.size(), 2,
+                        platform::errors::InvalidArgument(
+                            "ksize must be 2D, i.e. 2D pooling"));
+      PADDLE_ENFORCE_EQ(pooling_type == "max" || pooling_type == "avg", true,
+                        platform::errors::InvalidArgument(
+                            "pooling_type must be 'max' or 'avg'"));
+      PADDLE_ENFORCE_EQ(input->dims().size(), 4,
+                        platform::errors::InvalidArgument(
+                            "Input dim must be with 4, i.e. NCHW"));
+
+      const auto input_dims = input->dims();
+      framework::DDim data_dims =
+          framework::slice_ddim(input_dims, 2, input_dims.size());
+
+      if (global_pooling) {
+        operators::UpdateKsize(&ksize, data_dims);
+      }
+
+      operators::UpdatePadding(&paddings, global_pooling, 0, padding_algorithm,
+                               data_dims, strides, ksize);
+
+      const auto src_tz = paddle::framework::vectorize(input->dims());
+      const auto dst_tz = paddle::framework::vectorize(output->dims());
+
+      const auto is_test = ctx.Attr<bool>("is_test");
+
+      const auto dt = framework::ToMKLDNNDataType(input->type());
+      const auto fmt = input->format();
+
+      const auto exclude_padding = ctx.Attr<bool>("exclusive");
+
+      const auto src_md = mkldnn::memory::desc(src_tz, dt, fmt);
+      /* create memory descriptor for pooling without specified format
+       * ('any') which lets a primitive (pooling in this case) choose
+       * the memory format preferred for best performance
+       */
+
+      const auto dst_md =
+          platform::MKLDNNMemDesc(dst_tz, dt, MKLDNNMemoryFormat::any);
+
+      auto mkldnn_paddings = ToMkldnnPadding(paddings);
+
+      const bool ceil_mode = ctx.Attr<bool>("ceil_mode");
+
+      if (ceil_mode) {
+        CorrectOutputSize(src_tz, dst_tz, ksize, paddings, strides,
+                          mkldnn_paddings[1]);
+      }
+      this->AcquireForwardPrimitiveDescriptor(
+          is_test ? mkldnn::prop_kind::forward_inference
+                  : mkldnn::prop_kind::forward_training,
+          pooling_type == "max"
+              ? mkldnn::algorithm::pooling_max
+              : (exclude_padding
+                     ? mkldnn::algorithm::pooling_avg_exclude_padding
+                     : mkldnn::algorithm::pooling_avg_include_padding),
+          src_md, dst_md, strides, ksize, mkldnn_paddings[0],
+          mkldnn_paddings[1]);
     }
-    this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
-        pooling_type == "max"
-            ? mkldnn::algorithm::pooling_max
-            : (exclude_padding
-                   ? mkldnn::algorithm::pooling_avg_exclude_padding
-                   : mkldnn::algorithm::pooling_avg_include_padding),
-        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
   }
 
   PoolingMKLDNNHandler(
@@ -1188,8 +1286,11 @@ static std::shared_ptr<mkldnn::memory> SetDstMemory(
     const std::shared_ptr<ConvMKLDNNHandler>& handler,
     std::vector<mkldnn::primitive>* pipeline) {
   const T* residual_param_data = residual_param->data<T>();
-  PADDLE_ENFORCE(residual_param_data != nullptr,
-                 "Provide data if you want MKLDNN conv+elementwise_add fusion");
+  PADDLE_ENFORCE_NOT_NULL(
+      residual_param_data,
+      platform::errors::PreconditionNotMet("Residual parameter is required for "
+                                           "the DNNL conv+elementwise_add "
+                                           "fusion, but now it is missing"));
   std::shared_ptr<mkldnn::memory> user_residual_memory_p =
       handler->AcquireResidualDataMemory(user_residual_md,
                                          to_void_cast<T>(residual_param_data));

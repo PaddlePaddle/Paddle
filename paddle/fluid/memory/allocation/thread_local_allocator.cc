@@ -27,7 +27,8 @@ ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
                 BOOST_GET_CONST(platform::CUDAPlace, place_).device)),
         platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
   } else {
-    LOG(FATAL) << "Thread local allocator only supports CUDAPlace now.";
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Thread local allocator only supports CUDAPlace now."));
   }
 }
 

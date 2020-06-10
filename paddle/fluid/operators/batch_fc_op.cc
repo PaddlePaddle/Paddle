@@ -136,7 +136,7 @@ class BatchFCGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(BatchFCGradOpNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(BatchFCGradOpNoNeedBufferVarsInferer,
                                     "Bias");
 
 }  // namespace operators
@@ -148,7 +148,7 @@ REGISTER_OPERATOR(batch_fc, ops::BatchFCOp, ops::BatchFCOpMaker,
                   ops::BatchFCGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(batch_fc_grad, ops::BatchFCGradOp,
-                  ops::BatchFCGradOpNoNeedBufferVarsInference);
+                  ops::BatchFCGradOpNoNeedBufferVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(
     batch_fc, ops::BatchFCKernel<paddle::platform::CPUDeviceContext, float>,

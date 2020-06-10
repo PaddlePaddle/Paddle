@@ -169,8 +169,8 @@ class SequenceUnpadGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    SequenceUnpadGradOpNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceUnpadGradOpNoNeedBufferVarsInferer,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -181,7 +181,7 @@ REGISTER_OPERATOR(sequence_unpad, ops::SequenceUnpadOp,
                   ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceUnpadGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
-                  ops::SequenceUnpadGradOpNoNeedBufferVarsInference);
+                  ops::SequenceUnpadGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_unpad,
     ops::SequenceUnpadOpKernel<paddle::platform::CPUDeviceContext, float>,

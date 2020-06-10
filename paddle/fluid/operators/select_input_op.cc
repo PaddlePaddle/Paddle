@@ -80,12 +80,9 @@ specifying the output branchi.
 class SelectInputInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInputs("X"), true,
-                      "SelectInputOp must have input X.");
-    PADDLE_ENFORCE_EQ(context->HasInput("Mask"), true,
-                      "SelectInputOp must have input Mask.");
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
-                      "SelectInputOp must have output Out.");
+    OP_INOUT_CHECK(context->HasInputs("X"), "Input", "X", "SelectInput");
+    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask", "SelectInput");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "SelectInput");
   }
 };
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <sstream>
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/commit.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -117,6 +118,21 @@ std::string get_version() {
   ss << "commit: " << framework::paddle_commit() << "\n";
   ss << "branch: " << framework::paddle_compile_branch() << "\n";
   return ss.str();
+}
+
+std::string UpdateDllFlag(const char *name, const char *value) {
+  std::string ret;
+  LOG(WARNING)
+      << "The function \"UpdateDllFlag\" is only used to update the flag "
+         "on the Windows shared library";
+  ret = google::SetCommandLineOption(name, value);
+
+  PADDLE_ENFORCE_EQ(
+      ret.empty(), false,
+      platform::errors::InvalidArgument(
+          "Fail to update flag: %s, please make sure the flag exists.", name));
+  LOG(INFO) << ret;
+  return ret;
 }
 
 }  // namespace paddle

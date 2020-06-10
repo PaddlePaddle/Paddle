@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/jit/kernels.h"
 #include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/variant.h"  // for UNUSED
@@ -119,7 +120,8 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   // Test result from Get function
   auto tgt = jit::KernelFuncs<KernelTuple, PlaceType>::Cache().At(attr);
   if (!tgt) {
-    LOG(FATAL) << "Target can not be empty!";
+    PADDLE_THROW(
+        paddle::platform::errors::Fatal("Benchmark target can not be empty."));
   }
   infos.push_back(std::make_pair("Target", benchmark(tgt, args...)));
 

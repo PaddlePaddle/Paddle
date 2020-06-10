@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import unittest
 
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
+
+from test_program_translator import get_source_code
 
 
 class TestIndexInList(unittest.TestCase):
@@ -27,6 +30,35 @@ class TestIndexInList(unittest.TestCase):
         self.assertEqual(index_in_list(list_to_test, 5), 4)
         self.assertEqual(index_in_list(list_to_test, 0), -1)
         self.assertEqual(index_in_list(list_to_test, 6), -1)
+
+
+def dyfunc_assign(input):
+    a = b = 1
+    c, d = e, f = a, b
+    z = [3, 4]
+    [x, y] = m, n = z
+
+
+class StaticCode():
+    def dyfunc_assign(input):
+        b = 1
+        a = b
+        e = a
+        f = b
+        c = e
+        d = f
+        z = [3, 4]
+        m, n = z
+        x = m
+        y = n
+
+
+class TestSplitAssignTransformer(unittest.TestCase):
+    def test_code(self):
+        answer = get_source_code(StaticCode.dyfunc_assign)
+        program_translator = ProgramTranslator()
+        code = program_translator.get_code(dyfunc_assign)
+        self.assertEqual(answer, code)
 
 
 if __name__ == '__main__':

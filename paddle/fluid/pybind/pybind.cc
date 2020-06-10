@@ -91,6 +91,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communicator_py.h"
 #endif
 
+#ifdef PADDLE_WITH_CRYPTO
+#include "paddle/fluid/pybind/crypto.h"
+#endif
+
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -171,7 +175,9 @@ static T PyObjectCast(PyObject *obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error &) {
-    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(), obj->ob_type->tp_name));
   }
 }
 
@@ -185,7 +191,8 @@ static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
   for (auto &para : state_dict) {
     PyObject *py_obj = para.second.ptr();
     if (!py_obj || py_obj == Py_None) {
-      PADDLE_THROW("Save parameter [%s] is None", para.first);
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The parameter [%s] to save is None", para.first));
     }
     vec_res.emplace_back(
         PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_obj));
@@ -201,7 +208,8 @@ static std::vector<std::string> inline GetNameList(
   PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
   // Python None is not nullptr in C++!
   if (!py_obj || py_obj == Py_None) {
-    PADDLE_THROW("Save parameter list is None");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The parameter list to save is None"));
   }
 
   if (PyList_Check(py_obj)) {
@@ -214,14 +222,16 @@ static std::vector<std::string> inline GetNameList(
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_name =
           PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
-      PADDLE_ENFORCE_NOT_NULL(py_name);
+      PADDLE_ENFORCE_NOT_NULL(py_name,
+                              platform::errors::InvalidArgument(
+                                  "The name of parameter to save is None"));
       vec_res.emplace_back(PyObjectCast<std::string>(py_name));
       Py_DECREF(py_name);
     }
   } else {
-    PADDLE_THROW("Set parameter should be a list");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The parameters to save is not a list"));
   }
-
   return vec_res;
 }
 
@@ -233,7 +243,8 @@ static void inline CreateVariableIfNotExit(
   PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
   // Python None is not nullptr in C++!
   if (!py_obj || py_obj == Py_None) {
-    PADDLE_THROW("Save parameter list is None");
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("The parameter list to set is None"));
   }
 
   if (PyList_Check(py_obj)) {
@@ -247,19 +258,24 @@ static void inline CreateVariableIfNotExit(
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_name =
           PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
-      PADDLE_ENFORCE_NOT_NULL(py_name);
+      PADDLE_ENFORCE_NOT_NULL(py_name,
+                              platform::errors::InvalidArgument(
+                                  "The name of parameter to set is None"));
       auto para_name = PyObjectCast<std::string>(py_name);
       Py_DECREF(py_name);
 
       auto var = scope.FindVar(para_name);
       if (var == nullptr) {
-        PADDLE_ENFORCE_NE(exe, nullptr,
-                          "Parameter not Initialized, "
-                          "Please set argument [executor] not None "
-                          "or run startup program first");
+        PADDLE_ENFORCE_NOT_NULL(exe,
+                                platform::errors::InvalidArgument(
+                                    "Parameter not Initialized, "
+                                    "Please set argument [executor] not None "
+                                    "or run startup program first"));
         PyObject *py_var_desc =
             PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kVarDescField);
-        PADDLE_ENFORCE_NOT_NULL(py_var_desc);
+        PADDLE_ENFORCE_NOT_NULL(
+            py_var_desc, platform::errors::InvalidArgument(
+                             "The var_desc of parameter to set is None"));
         auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
         Py_DECREF(py_var_desc);
         var = const_cast<framework::Scope *>(&scope)->Var(para_name);
@@ -269,7 +285,8 @@ static void inline CreateVariableIfNotExit(
       }
     }
   } else {
-    PADDLE_THROW("Set parameter should be a list");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The parameters to set is not a list"));
   }
 
   return;
@@ -666,7 +683,10 @@ PYBIND11_MODULE(core_noavx, m) {
              LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
              PADDLE_ENFORCE_EQ(
                  CheckLoD(new_offset_lod, -1), true,
-                 "the provided recursive_sequence_lengths info is invalid");
+                 platform::errors::InvalidArgument(
+                     "The provided recursive_sequence_lengths info is invalid, "
+                     "the LoD converted by recursive_sequence_lengths is %s",
+                     new_lod));
              new (&instance) LoDTensor(new_offset_lod);
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
@@ -684,7 +704,8 @@ PYBIND11_MODULE(core_noavx, m) {
              std::copy(lod.begin(), lod.end(), std::back_inserter(new_lod));
              PADDLE_ENFORCE_EQ(
                  CheckLoD(new_lod, vectorize(self.dims()).front()), true,
-                 "the provided lod info is invalid");
+                 platform::errors::InvalidArgument(
+                     "The provided LoD is invalid, the LoD is %s", new_lod));
              self.set_lod(new_lod);
            },
            py::arg("lod"), R"DOC(
@@ -720,7 +741,11 @@ PYBIND11_MODULE(core_noavx, m) {
              LoD new_offset_lod = ConvertToOffsetBasedLoD(new_lod);
              PADDLE_ENFORCE_EQ(
                  CheckLoD(new_offset_lod, vectorize(self.dims()).front()), true,
-                 "the provided recursive_sequence_lengths info is invalid");
+                 platform::errors::InvalidArgument(
+                     "The provided recursive_sequence_lengths info is invalid, "
+                     "the LoD converted by recursive_sequence_lengths is "
+                     "%s",
+                     new_lod));
              self.set_lod(new_offset_lod);
            },
            py::arg("recursive_sequence_lengths"), R"DOC(
@@ -984,7 +1009,10 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
       .def("get_reader",
            [](Variable &self) -> framework::ReaderHolder * {
-             PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(), true);
+             PADDLE_ENFORCE_EQ(
+                 self.IsType<framework::ReaderHolder>(), true,
+                 platform::errors::InvalidArgument(
+                     "The variable is not type of ReaderHolder."));
              return self.GetMutable<framework::ReaderHolder>();
            },
            py::return_value_policy::reference)
@@ -1087,7 +1115,8 @@ All parameter, weight, gradient are variables in Paddle.
         std::string str;
         PADDLE_ENFORCE_EQ(
             info.Proto().SerializeToString(&str), true,
-            "Serialize OpProto Error. This could be a bug of Paddle.");
+            platform::errors::Fatal(
+                "Serialize OpProto Error. This could be a bug of Paddle."));
         ret_values.emplace_back(str);
       }
     }
@@ -1200,7 +1229,10 @@ All parameter, weight, gradient are variables in Paddle.
                   [](paddle::platform::CUDAPlace& place)
                       -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use CUDAPlace in CPU only version, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
                     return new paddle::platform::CUDADeviceContext(place);
 #endif
@@ -1209,8 +1241,10 @@ All parameter, weight, gradient are variables in Paddle.
                 [](paddle::platform::CUDAPinnedPlace& place)
                         -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                  PADDLE_THROW(
-                        "CUDAPinnedPlace is not supported in CPU device.");
+             PADDLE_THROW(
+                 platform::errors::PermissionDenied(
+                 "Cannot use CUDAPinnedPlace in CPU only version, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
 #else
                   return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
@@ -1331,7 +1365,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__init__",
            [](platform::CUDAPinnedPlace &self) {
 #ifndef PADDLE_WITH_CUDA
-             PADDLE_THROW("Cannot use CUDAPinnedPlace in CPU only version");
+             PADDLE_THROW(platform::errors::PermissionDenied(
+                 "Cannot use CUDAPinnedPlace in CPU only version, "
+                 "Please recompile or reinstall Paddle with CUDA support."));
 #endif
              new (&self) platform::CUDAPinnedPlace();
            })
@@ -1385,10 +1421,13 @@ All parameter, weight, gradient are variables in Paddle.
           [](py::bytes protobin) {
             proto::OpDesc desc;
             PADDLE_ENFORCE_EQ(desc.ParsePartialFromString(protobin), true,
-                              "Cannot parse user input to OpDesc");
-            PADDLE_ENFORCE_EQ(desc.IsInitialized(), true,
-                              "User OpDesc is not initialized, reason %s",
-                              desc.InitializationErrorString());
+                              platform::errors::InvalidArgument(
+                                  "Cannot parse user input to OpDesc"));
+            PADDLE_ENFORCE_EQ(
+                desc.IsInitialized(), true,
+                platform::errors::InvalidArgument(
+                    "The provided OpDesc is not initialized, the reason is: %s",
+                    desc.InitializationErrorString()));
             return OpRegistry::CreateOp(desc);
           })
       .def("run",
@@ -1560,7 +1599,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__len__", [](LoDTensorArray &self) { return self.size(); })
       .def("__setitem__",
            [](LoDTensorArray &self, size_t i, const LoDTensor &t) {
-             PADDLE_ENFORCE_LT(i, self.size());
+             PADDLE_ENFORCE_LT(i, self.size(),
+                               platform::errors::InvalidArgument(
+                                   "The index to set is larger than the size "
+                                   "of LoDTensorArray."));
              self[i].ShareDataWith(t);
              self[i].set_lod(t.lod());
            })
@@ -2095,7 +2137,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
             PADDLE_THROW(platform::errors::Unavailable(
-                "Windows has NO support to distribute mode."));
+                "Distribution mode is not supported on Windows platform."));
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -2320,7 +2362,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef WIN32
             if (b) {
               PADDLE_THROW(platform::errors::Unavailable(
-                  "Windows has NO support to distribute mode."));
+                  "Distribution mode is not supported on Windows platform."));
             }
 #else
             self.is_distribution_ = b;
@@ -2420,6 +2462,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindNode(&m);
   BindInferenceApi(&m);
   BindDataset(&m);
+#ifdef PADDLE_WITH_CRYPTO
+  BindCrypto(&m);
+#endif
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindCommunicator(&m);
 #endif

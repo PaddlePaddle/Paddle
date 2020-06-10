@@ -70,8 +70,8 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 
   size_t MAX_FAIL_NUM = 20;
   if (pull_dense_fail_times_ > MAX_FAIL_NUM) {
-    LOG(FATAL) << "Pull Dense Failed Times More Than " << MAX_FAIL_NUM
-               << " Times";
+    PADDLE_THROW(platform::errors::Fatal(
+        "Pull dense failed more than %d times.", MAX_FAIL_NUM));
     exit(-1);
   }
   status_vec->resize(0);

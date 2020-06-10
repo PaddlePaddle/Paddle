@@ -2015,7 +2015,8 @@ class TestBook(LayerTest):
         if base.enabled():
             return base.to_variable(
                 value=self._get_np_data(shape, dtype, append_batch_size),
-                name=name)
+                name=name,
+                zero_copy=False)
         else:
             if set_feed_dict:
                 self._feed_dict[name] = self._get_np_data(shape, dtype,
@@ -3055,8 +3056,7 @@ class TestBook(LayerTest):
             out, ids = layers.argsort(input=data, axis=1)
 
             theta = layers.data(name="theta", shape=[2, 3], dtype="float32")
-            out_shape = layers.data(
-                name="out_shape", shape=[-1], dtype="float32")
+            out_shape = layers.data(name="out_shape", shape=[-1], dtype="int32")
             data_0 = layers.affine_grid(theta, out_shape)
             data_1 = layers.affine_grid(theta, [5, 3, 28, 28])
 
