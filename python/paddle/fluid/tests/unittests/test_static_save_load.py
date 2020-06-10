@@ -1153,10 +1153,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                     # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            #fluid.load(test_program, "./test_1", None )
-            print("load 1")
             program_state = fluid.load_program_state("test_program_1")
-            print("fin 1")
             fluid.set_program_state(main_program, program_state)
 
             for var in main_program.list_vars():
@@ -1167,9 +1164,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                     self.assertTrue(np.array_equal(new_t, base_t))
 
         with fluid.dygraph.guard(place):
-            print("load 2")
             load_state = fluid.load_program_state("test_program_1")
-            print("fin 2")
             for k, v in load_state.items():
                 self.assertTrue(np.array_equal(base_map[k], v))
 
