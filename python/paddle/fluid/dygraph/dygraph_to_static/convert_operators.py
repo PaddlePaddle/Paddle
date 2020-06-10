@@ -43,6 +43,7 @@ def convert_while_loop(cond, body, loop_vars):
 
 
 def _run_paddle_while_loop(cond, body, loop_vars):
+    # NOTE: loop_vars of Paddle op `control_flow.while_loop` must be Paddle Variable.
     loop_vars = [to_static_variable(var) for var in loop_vars]
     loop_vars = control_flow.while_loop(cond, body, loop_vars)
     return loop_vars
@@ -146,7 +147,7 @@ def _run_py_logical_not(x):
     return not x
 
 
-def convert_ifelse(pred, true_fn, false_fn):
+def convert_ifelse(pred, true_fn, false_fn, true_args, false_args, return_vars):
     """
     A function representation of a Python ``if/else`` statement.
 
@@ -154,25 +155,45 @@ def convert_ifelse(pred, true_fn, false_fn):
         pred(bool|Variable): A boolean variable which determines whether to return the result of ``true_fn`` or ``false_fn`` .
         true_fn(callable): A callable to be performed if ``pred`` is true.
         false_fn(callable): A callable to be performed if ``pred`` is false.
+        true_args(tuple): Parameters of ``true_fn``.
+        false_args(tuple): Parameters of ``false_fn``.
+        return_vars(tuple): Return variables of ``true_fn`` and ``false_fn``.
 
     Returns:
-        ``true_fn()`` if the predicate ``pred`` is true else ``false_fn()`` .
+        ``true_fn(true_args)`` if the predicate ``pred`` is true else ``false_fn(false_args)`` .
 
     """
     if isinstance(pred, Variable):
-        return _run_paddle_cond(pred, true_fn, false_fn)
+        return _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
+                                return_vars)
     else:
-        return _run_py_ifelse(pred, true_fn, false_fn)
+        return _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args)
 
 
-def _run_paddle_cond(pred, true_fn, false_fn):
+def _run_paddle_cond(pred, true_fn, false_fn, true_args, false_args,
+                     return_vars):
+
+    return_var_ids = [id(var) for var in return_vars]
+    # NOTE 1: return vars of Paddle op `control_flow.cond` must be Paddle Variable
+    # NOTE 2: Here uses id(var) not var, because `if var in return_var` use operator `==`,
+    #  which will call `fluid.layers.equal` and causes error when var in return_vars is not initialized.
+    true_args = [
+        to_static_variable(var) if id(var) in return_var_ids else var
+        for var in true_args
+    ]
+    false_args = [
+        to_static_variable(var) if id(var) in return_var_ids else var
+        for var in false_args
+    ]
+
     pred = cast_bool_if_necessary(pred)
-    return control_flow.cond(pred, true_fn, false_fn)
+    return control_flow.cond(pred, lambda: true_fn(*true_args),
+                             lambda: false_fn(*false_args))
 
 
-def _run_py_ifelse(pred, true_fn, false_fn):
+def _run_py_ifelse(pred, true_fn, false_fn, true_args, false_args):
 
-    return true_fn() if pred else false_fn()
+    return true_fn(*true_args) if pred else false_fn(*false_args)
 
 
 def convert_len(var):
