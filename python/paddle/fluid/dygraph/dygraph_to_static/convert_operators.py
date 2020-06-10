@@ -202,6 +202,16 @@ def convert_len(var):
         return len(var)
 
 
+def convert_var_shape(x):
+    """
+    A function representation of the shape of variable.
+    """
+    if isinstance(x, Variable):
+        return nn.shape(x)
+    else:
+        return x.shape
+
+
 def cast_bool_if_necessary(var):
     assert isinstance(var, Variable)
     if convert_dtype(var.dtype) not in ['bool']:
