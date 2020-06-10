@@ -220,7 +220,7 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LayerNormGradNoNeedBufferVarInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LayerNormGradNoNeedBufferVarInferer,
                                     "Bias");
 
 }  // namespace operators
@@ -231,7 +231,7 @@ REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
                   ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp,
-                  ops::LayerNormGradNoNeedBufferVarInference);
+                  ops::LayerNormGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);

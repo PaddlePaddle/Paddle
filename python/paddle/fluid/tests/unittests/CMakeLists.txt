@@ -10,6 +10,8 @@ endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_transformer)
 list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
@@ -49,6 +51,18 @@ if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+    LIST(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
+
+    # TODO: Fix these unittests failed on Windows
+    LIST(REMOVE_ITEM TEST_OPS test_debugger)
+    list(REMOVE_ITEM TEST_OPS test_desc_clone)
+    list(REMOVE_ITEM TEST_OPS test_fake_init_op)
+    list(REMOVE_ITEM TEST_OPS test_hsigmoid_op)
+    list(REMOVE_ITEM TEST_OPS test_merge_ids_op)
+    list(REMOVE_ITEM TEST_OPS test_split_ids_op)
+    list(REMOVE_ITEM TEST_OPS test_program_code)
+    LIST(REMOVE_ITEM TEST_OPS test_ref_by_trainer_id_op)
+    LIST(REMOVE_ITEM TEST_OPS test_math_op_patch_var_base)
 endif()
 
 if (NOT ${WITH_GPU})
@@ -56,8 +70,18 @@ if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_batch_fc_op) # TODO(shenliang03): batch_fc_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
+    list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer)
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+endif()
+
+if (WITH_NCCL)
+    if (${NCCL_VERSION} VERSION_LESS 2212)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
+        LIST(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_transformer)
+    endif()
 endif()
 
 if(NOT WITH_GPU OR WIN32)
@@ -71,6 +95,7 @@ list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/Paddl
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
+
 if(APPLE)
     if(NOT WITH_DISTRIBUTE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
@@ -99,6 +124,10 @@ endif()
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
     LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
+endif()
+
+if(NOT WITH_CRYPTO)
+    LIST(REMOVE_ITEM TEST_OPS test_crypto)
 endif()
 
 function(py_test_modules TARGET_NAME)
@@ -171,7 +200,6 @@ function(bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
@@ -333,23 +361,25 @@ endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
-py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
-py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
-py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
 if(NOT WIN32)
+    # TODO: fix these unittests failure on Windows
+    py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
+    py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
+    py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+    py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
+    set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
+    set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
+    set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
+
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
     # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
     py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
     set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
-
-set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
-set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
-set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)

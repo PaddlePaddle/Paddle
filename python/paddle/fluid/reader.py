@@ -18,7 +18,7 @@ import six
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
@@ -671,12 +671,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
         if not iterable:
             logging.warning(
-                "Please NOTE: dygraph can support iterable mode only. Change to iterable mode."
+                "Please NOTE: imperative mode can support iterable mode only. Change to iterable mode."
             )
         self._iterable = True
         if not return_list:
             logging.warning(
-                "Please NOTE: dygraph can support return as list only. Change to return as list."
+                "Please NOTE: imperative mode can support return as list only. Change to return as list."
             )
         self._return_list = True
 
@@ -941,10 +941,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def set_batch_generator(self, reader, places=None):
         self._batch_reader = reader
-        assert places is not None, "Places cannot be None when DataLoader is iterable"
+        if places is None:
+            places = _current_expected_place()
         self._places = _convert_places(places)
         assert len(self._places) == 1, \
-            "Number of places must be 1 in dygraph mode"
+            "Number of places must be 1 in imperative mode"
         return self
 
 

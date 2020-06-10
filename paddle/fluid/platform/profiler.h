@@ -84,10 +84,12 @@ struct EventItem {
 };
 
 struct OverHead {
-  bool print = false;
-  double total_time = 0.;
-  float compute_ratio = 0.0f;
-  float framework_ratio = 0.0f;
+  bool print_overhead = false;
+  bool print_explanation = false;
+  double elapsed_time = 0.;      // the elapsed time of all events
+  double accumulated_time = 0.;  // the accumulated time of all events
+  double compute_time = 0.0;
+  double framework_time = 0.0;
   EventItem memcpy_item;
   std::vector<EventItem> sub_memcpy_items;
 };
@@ -197,7 +199,7 @@ void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
 void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                  const Place& place, const std::string& annotation);
 Event* PushEvent(const std::string& name, const EventRole role);
-void PopEvent(const std::string& name);
+void PopEvent(const std::string& name, const EventRole role);
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();

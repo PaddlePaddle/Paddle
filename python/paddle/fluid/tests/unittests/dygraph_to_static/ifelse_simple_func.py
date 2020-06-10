@@ -51,6 +51,51 @@ def dyfunc_with_if_else2(x, col=100):
     return y
 
 
+def dyfunc_with_if_else3(x):
+    # Create new var in parent scope, return it in true_fn and false_fn.
+    # The var is created only in one of If.body or If.orelse node, and it used as gast.Load firstly after gast.If node.
+    # The transformed code:
+    """
+    q = fluid.dygraph.dygraph_to_static.variable_trans_func.
+        data_layer_not_check(name='q', shape=[-1], dtype='float32')
+    z = fluid.dygraph.dygraph_to_static.variable_trans_func.
+            data_layer_not_check(name='z', shape=[-1], dtype='float32')
+
+    def true_fn_0(q, x, y):
+        x = x + 1
+        z = x + 2
+        q = x + 3
+        return q, x, y, z
+
+    def false_fn_0(q, x, y):
+        y = y + 1
+        z = x - 2
+        m = x + 2
+        n = x + 3
+        return q, x, y, z
+    q, x, y, z = fluid.layers.cond(fluid.layers.mean(x)[0] < 5, lambda :
+        fluid.dygraph.dygraph_to_static.convert_call(true_fn_0)(q, x, y),
+        lambda : fluid.dygraph.dygraph_to_static.convert_call(false_fn_0)(q,
+        x, y))
+    """
+    y = x + 1
+    # NOTE: x_v[0] < 5 is True
+    if fluid.layers.mean(x).numpy()[0] < 5:
+        x = x + 1
+        z = x + 2
+        q = x + 3
+    else:
+        y = y + 1
+        z = x - 2
+        m = x + 2
+        n = x + 3
+
+    q = q + 1
+    n = q + 2
+    x = n
+    return x
+
+
 def nested_if_else(x_v):
     batch_size = 16
     feat_size = x_v.shape[-1]

@@ -71,7 +71,9 @@ static void FlParallelExecuteBlocks(
                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
-        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
+        PADDLE_THROW(platform::errors::Fatal(
+            "Run %d-th sub program failed. The exception is:\n%s.", idx,
+            e.what()));
       }
     }));
   }

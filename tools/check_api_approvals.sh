@@ -157,8 +157,14 @@ if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 HAS_BOOST_GET=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "boost::get" || true`
-if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="boost::get is not recommended, because it may throw an bad_get exception without any stack information, so please use BOOST_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle boost::get and specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
+if [ ${HAS_BOOST_GET} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="boost::get is not recommended, because it may throw an bad_get exception without any stack information, so please use BOOST_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle boost::get and request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
+    check_approval 1 6836917 47554610 22561442
+fi
+
+HAS_LOG_FATAL=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -o -m 1 "LOG(FATAL)" || true`
+if [ ${HAS_LOG_FATAL} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="LOG(FATAL) is not recommended, because it will throw exception without standard stack information, so please use PADDLE_THROW macro here. If you have to use LOG(FATAL) here, please request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\n"
     check_approval 1 6836917 47554610 22561442
 fi
 
@@ -190,7 +196,7 @@ ALL_PADDLE_CHECK=`git diff -U0 upstream/$BRANCH |grep "^+" |grep -zoE "(PADDLE_E
 VALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
 INVALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" |grep -vxF "$VALID_PADDLE_CHECK" || true`
 if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDLE_ENFORCE{_**} or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
+    echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please request chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDLE_ENFORCE{_**} or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
     check_approval 1 6836917 47554610 22561442
 fi
 
@@ -220,7 +226,7 @@ fi
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, lanxianghit or XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
-    check_approval 1 47554610 46782768 22561442 6836917
+    check_approval 1 43953930 6836917 47554610 46782768
 fi
 
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
@@ -281,6 +287,16 @@ ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_gr
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
   check_approval 1 32832641 6836917
+fi
+
+# Get the list of PR authors with unresolved unit test issues
+pip install PyGithub
+# For getting PR related data
+wget https://paddle-ci.gz.bcebos.com/blk/block.txt
+HASUTFIXED=`python ${PADDLE_ROOT}/tools/check_ut.py | grep "has unit-test to be fixed" || true`
+if [ "${HASUTFIXED}" != "" ]; then
+  echo_line="${HASUTFIXED} You must have one RD (chalsliu (Recommend) or kolinwei) approval.\n"
+  check_approval 1 45041955 22165420
 fi
 
 if [ -n "${echo_list}" ];then

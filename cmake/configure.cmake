@@ -48,6 +48,7 @@ if(WIN32)
   SET(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
   SET(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
+  add_definitions(-DPADDLE_DLL_INFERENCE)
   # set definition for the dll export
   if (NOT MSVC)
     message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
@@ -76,7 +77,7 @@ if(WITH_GPU)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
-    if(${CUDA_VERSION_MAJOR} VERSION_LESS 7)
+    if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 7)
         message(FATAL_ERROR "Paddle needs CUDA >= 7.0 to compile")
     endif()
 
@@ -89,7 +90,7 @@ if(WITH_GPU)
     else()
         message(STATUS "Cannot find CUPTI, GPU Profiling is incorrect.")
     endif()
-    set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} "-Xcompiler ${SIMD_FLAG}")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=\"${SIMD_FLAG}\"")
 
     # Include cuda and cudnn
     include_directories(${CUDNN_INCLUDE_DIR})
@@ -97,11 +98,11 @@ if(WITH_GPU)
 
     if(TENSORRT_FOUND)
         if(WIN32)
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 9)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 9)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 9.0 to compile on Windows")
             endif()
         else()
-            if(${CUDA_VERSION_MAJOR} VERSION_LESS 8)
+            if(${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 8)
                 message(FATAL_ERROR "TensorRT needs CUDA >= 8.0 to compile")
             endif()
             if(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
@@ -154,3 +155,7 @@ endif(WITH_BRPC_RDMA)
 if(ON_INFER)
     add_definitions(-DPADDLE_ON_INFERENCE)
 endif(ON_INFER)
+
+if(WITH_CRYPTO)
+    add_definitions(-DPADDLE_WITH_CRYPTO)
+endif(WITH_CRYPTO)

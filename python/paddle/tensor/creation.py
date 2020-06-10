@@ -571,7 +571,7 @@ def full(shape,
                 'full')
     check_type(shape, 'shape', (Variable, list, tuple), 'full')
     if out is not None:
-        check_type(shape, 'out', (Variable), 'full')
+        check_type(out, 'out', (Variable), 'full')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)

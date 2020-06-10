@@ -771,14 +771,19 @@ class Pool2D(layers.Layer):
         ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default: False.
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            ``[batch_size, input_channels, input_height, input_width]``. When it is `"NHWC"`, the data is 
+            stored in the order of: ``[batch_size, input_height, input_width, input_channels]``
 
     Returns:
         None
 
     Raises:
-        ValueError: If 'pool_type' is not "max" nor "avg"
-        ValueError: If 'global_pooling' is False and 'pool_size' is -1
-        ValueError: If 'use_cudnn' is not a bool value.
+        ValueError: If ``pool_type`` is not "max" nor "avg".
+        ValueError: If ``global_pooling`` is False and ``pool_size`` is -1.
+        ValueError: If ``use_cudnn`` is not a bool value.
+        ValueError: If ``data_format`` is not "NCHW" nor "NHWC".
 
     Examples:
 
@@ -806,7 +811,10 @@ class Pool2D(layers.Layer):
                  global_pooling=False,
                  use_cudnn=True,
                  ceil_mode=False,
-                 exclusive=True):
+                 exclusive=True,
+                 data_format="NCHW"):
+        data_format = data_format.upper()  # supprt NHWC, nhwc, etc.
+        pool_type = pool_type.lower()  # supprt max, Max, etc.
         if pool_type not in ["max", "avg"]:
             raise ValueError(
                 "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -820,6 +828,11 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
+        if data_format not in ["NCHW", "NHWC"]:
+            raise ValueError(
+                "Attr(data_format) should be 'NCHW' or 'NHWC'. Received "
+                "Attr(data_format): %s." % str(data_format))
+
         super(Pool2D, self).__init__()
 
         self._pool_type = pool_type
@@ -831,6 +844,7 @@ class Pool2D(layers.Layer):
         self._use_cudnn = use_cudnn
         self._ceil_mode = ceil_mode
         self._exclusive = exclusive
+        self._data_format = data_format
         self._l_type = 'pool2d'
 
     def forward(self, input):
@@ -839,7 +853,8 @@ class Pool2D(layers.Layer):
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
-                     'use_mkldnn', False, 'exclusive', self._exclusive)
+                     'use_mkldnn', False, 'exclusive', self._exclusive,
+                     'data_format', self._data_format)
             return core.ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
@@ -856,6 +871,7 @@ class Pool2D(layers.Layer):
             "ceil_mode": self._ceil_mode,
             "use_mkldnn": False,
             "exclusive": self._exclusive,
+            "data_format": self._data_format,
         }
         inputs = {"X": [input]}
 
@@ -1294,9 +1310,10 @@ class BatchNorm(layers.Layer):
                      self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
-            batch_norm_out, _, _, _, _ = core.ops.batch_norm(
+            batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
+
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act)
 

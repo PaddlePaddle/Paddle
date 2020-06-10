@@ -27,7 +27,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -40,7 +40,7 @@ void SetOptimConfig(AnalysisConfig *cfg) {
   cfg->DisableGpu();
   cfg->SwitchIrOptim();
   cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
+  cfg->SetCpuMathLibraryNumThreads(FLAGS_cpu_num_threads);
 }
 
 // Easy for profiling independently.
