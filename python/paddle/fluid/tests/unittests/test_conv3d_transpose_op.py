@@ -110,7 +110,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv3dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
-        self.use_cudnn = False
+        self.use_cudnn = True
         self.data_format = 'NCHW'
         self.pad = [0, 0, 0]
         self.padding_algorithm = "EXPLICIT"
