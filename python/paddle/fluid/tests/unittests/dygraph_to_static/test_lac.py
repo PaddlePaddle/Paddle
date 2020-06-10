@@ -395,6 +395,7 @@ class Args(object):
 
 def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
     local_random = np.random.RandomState(SEED)
+    padding_id = np.int64(0)
 
     def __reader__():
         batch, init_lens = [], []
@@ -402,7 +403,8 @@ def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
             cur_len = local_random.randint(3, max_seq_len)
             word_ids = local_random.randint(0, vocab_size,
                                             [cur_len]).astype('int64').tolist()
-            label_ids = local_random.randint(0, num_labels, [cur_len]).tolist()
+            label_ids = local_random.randint(0, num_labels,
+                                             [cur_len]).astype('int64').tolist()
             batch.append((word_ids, label_ids))
             init_lens.append(cur_len)
             if len(batch) == batch_size:
@@ -411,9 +413,13 @@ def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
                 for words_len, (word_ids, label_ids) in zip(init_lens, batch):
                     word_ids = word_ids[0:batch_max_len]
                     words_len = np.int64(len(word_ids))
-                    word_ids += [0 for _ in range(batch_max_len - words_len)]
+                    word_ids += [
+                        padding_id for _ in range(batch_max_len - words_len)
+                    ]
                     label_ids = label_ids[0:batch_max_len]
-                    label_ids += [0 for _ in range(batch_max_len - words_len)]
+                    label_ids += [
+                        padding_id for _ in range(batch_max_len - words_len)
+                    ]
                     assert len(word_ids) == len(label_ids)
                     new_batch.append((word_ids, label_ids, words_len))
                 yield new_batch
