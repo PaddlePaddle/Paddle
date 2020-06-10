@@ -85,6 +85,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "fc_fuse_pass",                           //
       "tensorrt_subgraph_pass",                 //
       "conv_bn_fuse_pass",                      //
+      "graph_viz_pass",
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
       "conv_elementwise_add_act_fuse_pass",   //

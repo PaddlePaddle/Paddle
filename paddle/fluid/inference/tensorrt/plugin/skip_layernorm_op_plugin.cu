@@ -40,10 +40,6 @@ int SkipLayerNormPluginDynamic::initialize() {
   return 0;
 }
 
-size_t SkipLayerNormPluginDynamic::getSerializationSize() const { return 0; }
-
-void SkipLayerNormPluginDynamic::serialize(void *buffer) const {}
-
 nvinfer1::DimsExprs SkipLayerNormPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {

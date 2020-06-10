@@ -73,14 +73,6 @@ int EmbEltwiseLayernormPluginDynamic<T>::initialize() {
 }
 
 template <typename T>
-size_t EmbEltwiseLayernormPluginDynamic<T>::getSerializationSize() const {
-  return 0;
-}
-
-template <typename T>
-void EmbEltwiseLayernormPluginDynamic<T>::serialize(void *buffer) const {}
-
-template <typename T>
 nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {  // NOLINT

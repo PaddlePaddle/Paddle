@@ -75,8 +75,8 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
+  size_t getSerializationSize() const override { return 0; }
+  void serialize(void* buffer) const override {}
 
   nvinfer1::DimsExprs getOutputDimensions(
       int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
@@ -108,6 +108,45 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
 
   void destroy() override { delete this; }
 };
+
+class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  GeluPluginV2Creator() {}
+  const char* getPluginName() const override { return "gelu_pluginpaddle_trt"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &mFieldCollection;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    auto plugin = new GeluPluginDynamic();
+    return plugin;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serialData,
+                                         size_t serialLength) override {
+    auto plugin = new GeluPluginDynamic(serialData, serialLength);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* libNamespace) override {
+    mNamespace = libNamespace;
+  }
+
+  const char* getPluginNamespace() const override { return mNamespace.c_str(); }
+
+ private:
+  std::string mNamespace{"paddle_trt"};
+  std::string mPluginName;
+  nvinfer1::PluginFieldCollection mFieldCollection{0, nullptr};
+};
+
+REGISTER_TENSORRT_PLUGIN(GeluPluginV2Creator);
+
 #endif
 
 }  // namespace plugin
