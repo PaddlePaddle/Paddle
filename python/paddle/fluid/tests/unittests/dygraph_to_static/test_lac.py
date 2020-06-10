@@ -21,7 +21,6 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
-# from jit import declarative, ProgramTranslator
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 
 SEED = 2020
@@ -302,7 +301,6 @@ class LexNet(fluid.dygraph.Layer):
             args) else 1.0
         self.bigru_num = args.bigru_num
         self.init_bound = 0.1
-        # self.bigru_num = 1
 
         self.word_embedding = Embedding(
             size=[self.vocab_size, self.word_emb_dim],
@@ -392,14 +390,18 @@ class Args(object):
     save_steps = 50
     validation_steps = 25
     model_save_dir = "./lac_model"
+    dy_param_path = "./lac_dy_param"
 
 
 def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
+    local_random = np.random.RandomState(SEED)
+
     def __reader__():
         batch, init_lens = [], []
         for i in range(10 * batch_size):
             cur_len = local_random.randint(3, max_seq_len)
-            word_ids = local_random.randint(0, vocab_size, [cur_len]).tolist()
+            word_ids = local_random.randint(0, vocab_size,
+                                            [cur_len]).astype('int64').tolist()
             label_ids = local_random.randint(0, num_labels, [cur_len]).tolist()
             batch.append((word_ids, label_ids))
             init_lens.append(cur_len)
@@ -436,8 +438,6 @@ def do_train(args, to_static):
     with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
-        global local_random
-        local_random = np.random.RandomState(SEED)
 
         reader = get_random_input_data(args.batch_size, args.vocab_size,
                                        args.num_labels)
@@ -483,14 +483,24 @@ def do_train(args, to_static):
                            end_time - start_time))
 
                 step += 1
+        # save inference model
+        if to_static:
+            program_translator.save_inference_model(
+                dirname=args.model_save_dir, feed=[0, 2], fetch=[1])
+        else:
+            fluid.dygraph.save_dygraph(model.state_dict(), args.dy_param_path)
 
         return np.array(loss_data)
 
 
 class TestLACModel(unittest.TestCase):
+    def setUp(self):
+        self.args = Args()
+        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+
     def train(self, to_static):
-        args = Args()
-        out = do_train(args, to_static)
+        out = do_train(self.args, to_static)
         return out
 
     def test_train(self):
@@ -500,6 +510,54 @@ class TestLACModel(unittest.TestCase):
             np.allclose(dy_out, st_out),
             msg="dygraph output:\n{},\nstatic output:\n {}.".format(dy_out,
                                                                     st_out))
+        # Prediction needs trained models, so put `test_predict` at last of `test_train`
+        self.verify_predict()
+
+    def verify_predict(self):
+        reader = get_random_input_data(
+            self.args.batch_size, self.args.vocab_size, self.args.num_labels)
+        for batch in reader():
+            batch = [np.vstack(var) for var in zip(*batch)]
+            dy_pre = self.predict_dygraph(batch)
+            st_pre = self.predict_static(batch)
+            self.assertTrue(
+                np.allclose(dy_pre, st_pre),
+                msg="dy_pre:\n {}\n, st_pre: \n{}.".format(dy_pre, st_pre))
+
+    def predict_dygraph(self, batch):
+        words, targets, length = batch
+        program_translator.enable(False)
+        with fluid.dygraph.guard(self.place):
+            model = LexNet(self.args)
+            # load dygraph trained parameters
+            model_dict, _ = fluid.load_dygraph(self.args.dy_param_path +
+                                               ".pdparams")
+            model.set_dict(model_dict)
+            model.eval()
+
+            _, pred_res = model(
+                to_variable(words), to_variable(targets), to_variable(length))
+
+            return pred_res.numpy()
+
+    def predict_static(self, batch):
+        """
+        LAC model contains h_0 created in `__init__` that is necessary for inferring.
+        Load inference model to test it's ok for prediction.
+        """
+        exe = fluid.Executor(self.place)
+        # load inference model
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(
+             self.args.model_save_dir, executor=exe)
+
+        words, targets, length = batch
+        pred_res = exe.run(
+            inference_program,
+            feed={feed_target_names[0]: words,
+                  feed_target_names[1]: length},
+            fetch_list=fetch_targets)
+        return pred_res[0]
 
 
 if __name__ == "__main__":
