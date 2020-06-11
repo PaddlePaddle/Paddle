@@ -13,6 +13,13 @@
 # limitations under the License
 
 cmake_minimum_required(VERSION 3.10)
+
+if((${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.12) AND (${CMAKE_VERSION} VERSION_LESS 3.13))
+    message(INFO "cmake ${CMAKE_VERSION} is not supported because of bug https://tinyurl.com/ydbb9m7n")
+    message(INFO "cmake 3.16 is recommended. how to install: https://cmake.org/install/")
+    message(FATAL_ERROR)
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})

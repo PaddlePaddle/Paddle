@@ -205,13 +205,14 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # So, don't set these flags here.
 if (NOT WIN32) # windows msvc2015 support c++11 natively.
     # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++11")
+  set(CMAKE_CUDA_STANDARD 11)
 endif(NOT WIN32)
 
 # in cuda9, suppress cuda warning on eigen
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xlinker=\"--as-needed\"")
 
 if(WIN32)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"/wd4244 /wd4267 /wd4819 \"")
