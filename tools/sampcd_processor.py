@@ -134,9 +134,11 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
                     "Deprecated sample code style:\n\n    Examples:\n\n        >>>codeline\n        >>>codeline\n\n\n ",
                     "Please use '.. code-block:: python' to ",
                     "format sample code.\n")
+                print("Not sample code style: %s" % hname)
                 result = False
         else:
             print("Error: No sample code!\n")
+            print("No sample code: %s" % hname)
             result = False
 
     for y in range(1, len(sampcd_begins) + 1):
@@ -278,7 +280,6 @@ def srccoms_extract(srcfile, wlist):
     Returns:
         result: True or False
     """
-
     process_result = True
     srcc = srcfile.read()
     # 2. get defs and classes header line number
@@ -462,6 +463,8 @@ def get_filenames():
     whl_error = []
     get_incrementapi()
     API_spec = 'dev_pr_diff_api.spec'
+    exception_get_filename = []
+    exception_get_method = []
     with open(API_spec) as f:
         for line in f.readlines():
             api = line.replace('\n', '')
@@ -480,6 +483,7 @@ def get_filenames():
                 filename = ''
                 print("\nWARNING:----Exception in get api filename----\n")
                 print("\n" + api + ' module is ' + module + "\n")
+                exception_get_filename.append(api)
             if filename != '':
                 if filename not in filenames:
                     filenames.append(filename)
@@ -496,12 +500,16 @@ def get_filenames():
                 print("\nWARNING:----Exception in get api methods----\n")
                 print("\n" + line + "\n")
                 print("\n" + api + ' method is None!!!' + "\n")
+                exception_get_method.append(api)
             for j in range(2, len(module.split('.'))):
                 method = method + '%s.' % module.split('.')[j]
             method = method + name
             if method not in methods:
                 methods.append(method)
-    os.remove(API_spec)
+    #os.remove(API_spec)
+    print('methods: %s' % methods)
+    print('exception_get_filename: %s' % exception_get_filename)
+    print('exception_get_method: %s' % exception_get_method)
     return filenames
 
 
@@ -523,6 +531,7 @@ def get_incrementapi():
         return api_md5
 
     dev_api = get_api_md5('paddle/fluid/API_DEV.spec')
+    dev_api = []
     pr_api = get_api_md5('paddle/fluid/API_PR.spec')
     with open('dev_pr_diff_api.spec', 'w') as f:
         for key in pr_api:
@@ -560,6 +569,7 @@ def get_wlist():
 
 
 wlist = get_wlist()
+wlist = []
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
