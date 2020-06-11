@@ -84,7 +84,7 @@ def check_indent(cdline):
 
 
 # srccom: raw comments in the source,including ''' and original indent
-def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
+def sampcd_extract_and_run(srccom, name, htype="def", hname="", srcfile=""):
     """
     Extract and run sample codes from source comment and
     the result will be returned.
@@ -137,8 +137,9 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
                 print("Not sample code style: %s" % hname)
                 result = False
         else:
+
             print("Error: No sample code!\n")
-            print("No sample code: %s" % hname)
+            print("No sample code: %s, %s" % (srcfile, hname))
             result = False
 
     for y in range(1, len(sampcd_begins) + 1):
@@ -195,7 +196,8 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         err = "".join(error.decode(encoding='utf-8'))
 
         if subprc.returncode != 0:
-            print("\nSample code error found in ", name, ":\n")
+            #print("\nSample code error found in %s, %s" %(srcfile, name), ":\n")
+            print("Sample code error found in %s, %s" % (srcfile, name))
             sampcd_header_print(name, sampcd, htype, hname)
             print("subprocess return code: ", str(subprc.returncode))
             print("Error Raised from Sample Code ", name, " :\n")
@@ -363,7 +365,8 @@ def srccoms_extract(srcfile, wlist):
                               ", but it deserves.")
                         continue
                     else:
-                        if not sampcd_extract_and_run(fcombody, fn, "def", fn):
+                        if not sampcd_extract_and_run(fcombody, fn, "def", fn,
+                                                      srcfile.name):
                             process_result = False
 
             if srcls[i].startswith('class '):
@@ -380,8 +383,8 @@ def srccoms_extract(srcfile, wlist):
                     # class comment
                     classcom = single_defcom_extract(i, srcls, True)
                     if classcom != "":
-                        if not sampcd_extract_and_run(classcom, cn, "class",
-                                                      cn):
+                        if not sampcd_extract_and_run(classcom, cn, "class", cn,
+                                                      srcfile.name):
 
                             process_result = False
                     else:
@@ -432,7 +435,8 @@ def srccoms_extract(srcfile, wlist):
                                                                    thismethod)
                                 if thismtdcom != "":
                                     if not sampcd_extract_and_run(
-                                            thismtdcom, name, "method", name):
+                                            thismtdcom, name, "method", name,
+                                            srcfile.name):
                                         process_result = False
 
     return process_result
@@ -441,6 +445,7 @@ def srccoms_extract(srcfile, wlist):
 def test(file_list):
     process_result = True
     for file in file_list:
+
         with open(file, 'r') as src:
             if not srccoms_extract(src, wlist):
                 process_result = False
