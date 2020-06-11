@@ -299,7 +299,6 @@ void DatasetImpl<T>::WaitPreLoadDone() {
 template <typename T>
 void DatasetImpl<T>::ReleaseMemory() {
   release_thread_ = new std::thread(&DatasetImpl<T>::ReleaseMemoryFun, this);
-  release_thread_->detach();
 }
 template <typename T>
 void DatasetImpl<T>::ReleaseMemoryFun() {

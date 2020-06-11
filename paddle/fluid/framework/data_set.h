@@ -159,7 +159,11 @@ template <typename T>
 class DatasetImpl : public Dataset {
  public:
   DatasetImpl();
-  virtual ~DatasetImpl() {}
+  virtual ~DatasetImpl() {
+    if (release_thread_ != nullptr) {
+      release_thread_->join();
+    }
+  }
 
   virtual void SetFileList(const std::vector<std::string>& filelist);
   virtual void SetThreadNum(int thread_num);
@@ -267,7 +271,7 @@ class DatasetImpl : public Dataset {
   int64_t fleet_send_batch_size_;
   int64_t fleet_send_sleep_seconds_;
   std::vector<std::thread> preload_threads_;
-  std::thread* release_thread_;
+  std::thread* release_thread_ = nullptr;
   bool merge_by_insid_;
   bool parse_ins_id_;
   bool parse_content_;
