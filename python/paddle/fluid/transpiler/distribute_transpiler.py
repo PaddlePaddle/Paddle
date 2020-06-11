@@ -2144,6 +2144,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if op_type == "adam":
             if varkey in ["Moment1", "Moment2"]:
                 return param_shape
+        elif op_type == "adam_scale":
+            if varkey in ["Moment1", "Moment2"]:
+                return param_shape
         elif op_type == "adagrad":
             if varkey == "Moment":
                 return param_shape
