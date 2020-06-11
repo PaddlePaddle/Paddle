@@ -101,6 +101,9 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   //  places_.push_back(place);
   //}
   trainer_desc_ = trainer_desc;        
+  for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
+      xpu_recv_var_list_.push_back(trainer_desc_.xpu_recv_list(i));
+  }
 }
 
 void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
@@ -396,6 +399,10 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
         auto *ptr = context->scope_->Var(name + "pin");
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
       }
+    }
+    for (auto& name : xpu_recv_var_list_) {
+      auto *ptr = context->scope_->Var(name + "pin");
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
     }
     for (auto &op_desc : block.AllOps()) {
       std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);

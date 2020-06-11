@@ -158,12 +158,21 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_
       tensor->mutable_data(place, ToVarType(req_var.data_type()));
  
   #ifdef PADDLE_WITH_CUDA
+  Variable *pin_var = scope.FindVar(req_var.varname() + "pin");
+  LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+  pin_tensor->Resize(make_ddim(vec_dim));
+  float *pin_data = pin_tensor->mutable_data(platform::CUDAPinnedPlace(), ToVarType(req_var.data_type()));
+  
+  memcpy(pin_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
+  
+  auto* dev_ctx = static_cast<platform::CUDADeviceContext *>(
+                              platform::DeviceContextPool::Instance().Get(place));
   memory::Copy(
       boost::get<platform::CUDAPlace>(place),
       tensor_data,
-      platform::CPUPlace(),
-      req_var.data().data(), 
-      tensor->numel() * SizeOfType(tensor->type()), nullptr);
+      platform::CUDAPinnedPlace(),
+      pin_data, 
+      tensor->numel() * SizeOfType(tensor->type()), dev_ctx->stream());
   #else
   memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
   #endif
