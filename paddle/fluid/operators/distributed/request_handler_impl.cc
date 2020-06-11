@@ -49,7 +49,8 @@ bool RequestSendHandler::Handle(const std::string &varname,
   VLOG(4) << "RequestSendHandler:" << varname;
 
   if (invar == nullptr) {
-    LOG(FATAL) << "sync: Can not find server side var: " << varname;
+    PADDLE_THROW(platform::errors::NotFound(
+        "sync: Can not find server side var: %s", varname));
     return false;
   }
 
