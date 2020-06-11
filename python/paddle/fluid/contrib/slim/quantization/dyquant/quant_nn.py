@@ -22,51 +22,51 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.initializer import Constant
 from paddle.fluid.data_feeder import check_variable_and_dtype
 
-__all__ = ['FakeQuant', 'QuantizedConv2D', 'QuantizedLinear']
+__all__ = [
+    'FakeQuantMovingAverage', 'FakeQuantAbsMax', 'QuantizedConv2D',
+    'QuantizedLinear'
+]
 
 
-class FakeQuant(layers.Layer):
+class FakeQuantMovingAverage(layers.Layer):
     def __init__(self,
                  name=None,
                  moving_rate=0.9,
                  quant_bits=8,
                  dtype='float32'):
-        super(FakeQuant, self).__init__()
+        super(FakeQuantMovingAverage, self).__init__()
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
 
-        scale_prefix = "{}.quant_dequant.scale".format(
+        scale_prefix = "{}.scale".format(
             name) if name else 'quant_dequant.scale'
-        scale_attr = ParamAttr(name=unique_name.generate(scale_prefix))
-        self.scale = self.create_parameter(
-            shape=[1],
-            attr=scale_attr,
-            dtype=dtype,
-            is_bias=False,
-            default_initializer=Constant(0.001))
-        self.scale.stop_gradient = True
+        scale_attr = ParamAttr(
+            name=unique_name.generate(scale_prefix),
+            initializer=Constant(0.001),
+            trainable=False)
+        self._scale = self.create_parameter(
+            shape=[1], attr=scale_attr, dtype=dtype)
+        self._scale.stop_gradient = True
 
-        state_prefix = "{}.quant_dequant.state".format(
+        state_prefix = "{}.state".format(
             name) if name else 'quant_dequant.state'
-        state_attr = ParamAttr(name=unique_name.generate(state_prefix))
-        self.state = self.create_parameter(
-            shape=[1],
-            attr=state_attr,
-            dtype=dtype,
-            is_bias=False,
-            default_initializer=Constant(1))
-        self.state.stop_gradient = True
+        state_attr = ParamAttr(
+            name=unique_name.generate(state_prefix),
+            initializer=Constant(1),
+            trainable=False)
+        self._state = self.create_parameter(
+            shape=[1], attr=state_attr, dtype=dtype)
+        self._state.stop_gradient = True
 
-        accum_prefix = "{}.quant_dequant.accum".format(
+        accum_prefix = "{}.accum".format(
             name) if name else 'quant_dequant.accum'
-        accum_attr = ParamAttr(name=unique_name.generate(accum_prefix))
-        self.accum = self.create_parameter(
-            shape=[1],
-            attr=accum_attr,
-            dtype=dtype,
-            is_bias=False,
-            default_initializer=Constant(1))
-        self.accum.stop_gradient = True
+        accum_attr = ParamAttr(
+            name=unique_name.generate(accum_prefix),
+            initializer=Constant(1),
+            trainable=False)
+        self._accum = self.create_parameter(
+            shape=[1], attr=accum_attr, dtype=dtype)
+        self._accum.stop_gradient = True
 
     def forward(self, input):
         if in_dygraph_mode():
@@ -74,39 +74,39 @@ class FakeQuant(layers.Layer):
                      self._quant_bits, 'is_test', not self.training)
             quant_out = _varbase_creator(
                 type=input.type,
-                name="{}.quant_dequant".format(input.name),
+                name="{}.quantized.dequantized".format(input.name),
                 shape=input.shape,
                 dtype=input.dtype,
                 persistable=False)
-            state = self.state if self.training else None
-            accum = self.accum if self.training else None
+            state = self._state if self.training else None
+            accum = self._accum if self.training else None
 
             out, _, _, _ = core.ops.fake_quantize_dequantize_moving_average_abs_max(
-                input, self.scale, accum, state, quant_out, self.scale, state,
+                input, self._scale, accum, state, quant_out, self._scale, state,
                 accum, *attrs)
             return out
 
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 "FakeQuant")
+        check_variable_and_dtype(input, 'input', ['float32'],
+                                 "FakeQuantMovingAverage")
         attrs = {
             'moving_rate': self._moving_rate,
             'bit_length': self._quant_bits,
             'is_test': not self.training
         }
-        inputs = {"X": [input], "InScale": [self.scale]}
+        inputs = {"X": [input], "InScale": [self._scale]}
         quant_out = self._helper.create_variable(
-            name="{}.quant_dequant".format(input.name),
+            name="{}.quantized.dequantized".format(input.name),
             dtype=input.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=False)
-        outputs = {"Out": [quant_out], "OutScale": [self.scale]}
+        outputs = {"Out": [quant_out], "OutScale": [self._scale]}
 
         if self.training:
-            inputs['InState'] = [self.state]
-            inputs['InAccum'] = [self.accum]
-            outputs['OutState'] = [self.state]
-            outputs['OutAccum'] = [self.accum]
+            inputs['InState'] = [self._state]
+            inputs['InAccum'] = [self._accum]
+            outputs['OutState'] = [self._state]
+            outputs['OutAccum'] = [self._accum]
 
         self._helper.append_op(
             type="fake_quantize_dequantize_moving_average_abs_max",
@@ -117,9 +117,99 @@ class FakeQuant(layers.Layer):
         return quant_out
 
 
+class FakeQuantAbsMax(layers.Layer):
+    def __init__(self,
+                 name=None,
+                 quant_bits=8,
+                 dtype='float32',
+                 quant_on_weight=False):
+        super(FakeQuantAbsMax, self).__init__()
+        self._quant_bits = quant_bits
+        self._dtype = dtype
+        self._name = name
+        scale_prefix = "{}.scale".format(
+            name) if name else 'quant_dequant.scale'
+        self._scale_name = unique_name.generate(scale_prefix)
+        if quant_on_weight:
+            scale_attr = ParamAttr(
+                name=self._scale_name,
+                initializer=Constant(0.0),
+                trainable=False)
+            self._scale = self.create_parameter(
+                shape=[1], attr=scale_attr, dtype=self._dtype)
+            self._scale.stop_gradient = True
+        else:
+            self._scale = None
+
+    def forward(self, input):
+        if in_dygraph_mode():
+            attrs = ('bit_length', self._quant_bits)
+            quant_out = _varbase_creator(
+                type=input.type,
+                name="{}.quantized.dequantized".format(input.name),
+                shape=input.shape,
+                dtype=input.dtype,
+                persistable=False)
+            out_scale = self._scale
+            if not out_scale:
+                out_scale = _varbase_creator(
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    name=self._scale_name,
+                    shape=[1],
+                    dtype=self._dtype,
+                    persistable=False)
+                out_scale.stop_gradient = True
+            out, _, = core.ops.fake_quantize_dequantize_abs_max(
+                input, quant_out, out_scale, *attrs)
+            return out
+
+        check_variable_and_dtype(input, 'input', ['float32'], "FakeQuantAbsMax")
+        attrs = {'bit_length': self._quant_bits}
+        inputs = {"X": [input]}
+        quant_out = self._helper.create_variable(
+            name="{}.quantized.dequantized".format(input.name),
+            dtype=input.dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+        out_scale = self._scale
+        if not out_scale:
+            out_scale = self._helper.create_variable(
+                name=self._scale_name,
+                dtype=self._dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=True)
+        outputs = {"Out": [quant_out], "OutScale": [out_scale]}
+
+        self._helper.append_op(
+            type="fake_quantize_dequantize_abs_max",
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs)
+
+        return quant_out
+
+
+def _get_fake_quant_type(quant_type, name, moving_rate, quant_bits, dtype,
+                         quant_on_weight):
+    fake_quant_map = {
+        'abs_max':
+        lambda: FakeQuantAbsMax(name, quant_bits, dtype, quant_on_weight),
+        'moving_average_abs_max':
+        lambda: FakeQuantMovingAverage(name, moving_rate, quant_bits, dtype)
+    }
+    return fake_quant_map[quant_type]()
+
+
 class QuantizedConv2D(layers.Layer):
-    def __init__(self, layer, weight_bits=8, activation_bits=8,
-                 moving_rate=0.9):
+    def __init__(self,
+                 layer,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='abs_max'):
         super(QuantizedConv2D, self).__init__()
         # For Conv2D
         self._groups = getattr(layer, '_groups')
@@ -133,11 +223,12 @@ class QuantizedConv2D(layers.Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
-        self._fake_quant_input = FakeQuant(layer.full_name(), moving_rate,
-                                           activation_bits, self._dtype)
-
-        self._fake_quant_weight = FakeQuant(self.weight.name, moving_rate,
-                                            weight_bits, self._dtype)
+        self._fake_quant_weight = _get_fake_quant_type(
+            weight_quantize_type, self.weight.name, moving_rate, weight_bits,
+            self._dtype, True)
+        self._fake_quant_input = _get_fake_quant_type(
+            activation_quantize_type,
+            layer.full_name(), moving_rate, activation_bits, self._dtype, False)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
@@ -192,8 +283,13 @@ class QuantizedConv2D(layers.Layer):
 
 
 class QuantizedLinear(layers.Layer):
-    def __init__(self, layer, weight_bits=8, activation_bits=8,
-                 moving_rate=0.9):
+    def __init__(self,
+                 layer,
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='abs_max'):
         super(QuantizedLinear, self).__init__()
         # For Linear
         self._act = getattr(layer, '_act')
@@ -201,11 +297,12 @@ class QuantizedLinear(layers.Layer):
         self.weight = getattr(layer, 'weight')
         self.bias = getattr(layer, 'bias')
         # For FakeQuant
-        self._fake_quant_input = FakeQuant(layer.full_name(), moving_rate,
-                                           activation_bits, self._dtype)
-
-        self._fake_quant_weight = FakeQuant(self.weight.name, moving_rate,
-                                            weight_bits, self._dtype)
+        self._fake_quant_weight = _get_fake_quant_type(
+            weight_quantize_type, self.weight.name, moving_rate, weight_bits,
+            self._dtype, True)
+        self._fake_quant_input = _get_fake_quant_type(
+            activation_quantize_type,
+            layer.full_name(), moving_rate, activation_bits, self._dtype, False)
 
     def forward(self, input):
         quant_input = self._fake_quant_input(input)
