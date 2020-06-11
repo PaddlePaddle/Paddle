@@ -65,9 +65,16 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
 
 void PullDenseWorker::CreatePinVar() {
   #ifdef PADDLE_WITH_CUDA
-  for (auto& v : dense_value_names_) {
-    for (auto& name : v.second) {
+  //for (auto& v : dense_value_names_) {
+  //  for (auto& name : v.second) {
+  for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
+       ++i) {
+    uint64_t tid = static_cast<uint64_t>(
+        dwp_param_.program_config(0).pull_dense_table_id(i));
+    for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
+      auto& name =  dense_value_names_[tid][j];
       Variable* var = root_scope_->FindVar(name);
+      
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
       auto *ptr = root_scope_->Var(name + "pin");
       InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
@@ -99,8 +106,14 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
 
   for (size_t i = 0; i < places_.size(); ++i) {
     
-    for (auto& v : dense_value_names_) { 
-      for (auto& name : v.second) {
+    //for (auto& v : dense_value_names_) { 
+    //  for (auto& name : v.second) {
+    for (int x = 0; x < dwp_param_.program_config(0).pull_dense_table_id_size();
+         ++x) {
+      uint64_t tid = static_cast<uint64_t>(
+          dwp_param_.program_config(0).pull_dense_table_id(x));
+      for (size_t j = 0; j < dense_value_names_[tid].size(); j++) {
+        auto& name =  dense_value_names_[tid][j];
         
         Variable* pin_var = root_scope_->FindVar(name + "pin");
         LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();

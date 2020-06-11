@@ -166,6 +166,9 @@ void HeterXpuTrainer::InitTrainerEnv(const ProgramDesc &main_program,
   place_ = place;
   auto& profiler = paddle::ps::CostProfiler::instance();
   profiler.register_profiler("xpu_service_run_task");
+  profiler.register_profiler("xpu_service_deserial");
+  profiler.register_profiler("xpu_service_launch_kernel");
+  profiler.register_profiler("xpu_service_wait");
 }
 
 void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
@@ -268,8 +271,8 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     xpu_end_op_index_ = ops_.size() - 1;
   }
   */
-  xpu_begin_op_index_ = trainer_desc_.xpu_start_idx;
-  xpu_end_op_index_ = trainer_desc_.xpu_end_idx;
+  xpu_begin_op_index_ = trainer_desc_.xpu_start_idx();
+  xpu_end_op_index_ = trainer_desc_.xpu_end_idx();
   VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
   //CHECK(xpu_begin_op_index_ == 0);
   //CHECK(xpu_end_op_index_ = ops_.size() - 1);
@@ -407,25 +410,34 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
   
   context->Reset();
   auto place = places_[context->place_num_];
-  for (int i = 0; i < request->vars_size(); ++i) {
-    heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place);
+  {
+    auto deserial_timer = std::make_shared<paddle::ps::CostTimer>("xpu_service_deserial");
+    for (int i = 0; i < request->vars_size(); ++i) {
+      heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place);
+    }  
   }
   
-  for (int i = xpu_begin_op_index_; i <= xpu_end_op_index_; ++i) {
-    auto& op = (context->ops_)[i];
-    op->Run(*(context->scope_), place);
+  { 
+    auto launch_timer = std::make_shared<paddle::ps::CostTimer>("xpu_service_launch_kernel");
+    for (int i = xpu_begin_op_index_; i <= xpu_end_op_index_; ++i) {
+      auto& op = (context->ops_)[i];
+      op->Run(*(context->scope_), place);
+    }
   }
   auto* dev_ctx = static_cast<platform::CUDADeviceContext *>(
                               platform::DeviceContextPool::Instance().Get(place));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(context->event_, dev_ctx->stream()));
   //cudaEventSynchronize(context->event_);
-  while (cudaEventQuery(context->event_) != cudaSuccess) {
-    VLOG(3) << "wait for kernel";
-    bthread_yield();
+  {
+    auto wait_timer = std::make_shared<paddle::ps::CostTimer>("xpu_service_wait");
+    while (cudaEventQuery(context->event_) != cudaSuccess) {
+      VLOG(3) << "wait for kernel";
+      bthread_yield();
+    }
   }
 
   for (int i = 0; i < trainer_desc_.xpu_send_list_size(); ++i) {
-    string& varname = trainer_desc_.xpu_send_list(i); 
+    const std::string& varname = trainer_desc_.xpu_send_list(i); 
     //CHECK(varname == "concat_1.tmp_0@GRAD");
     auto* res_var = response->add_vars();
     heter_ptr_->SerializeToReq(varname, context->scope_, res_var);
