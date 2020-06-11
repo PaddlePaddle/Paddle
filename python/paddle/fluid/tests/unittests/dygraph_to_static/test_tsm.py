@@ -43,7 +43,7 @@ def parse_args():
         type=bool,
         default=fluid.is_compiled_with_cuda(),
         help='default use gpu.')
-    args = parser.parse_args()
+    args = parser.parse_args(['--config', 'tsm.yaml'])
     return args
 
 
@@ -327,8 +327,10 @@ def train(args, fake_data_reader, to_static):
         return ret
 
 
-class TestYolov3(unittest.TestCase):
+class TestTsm(unittest.TestCase):
     def test_dygraph_static_same_loss(self):
+        if fluid.is_compiled_with_cuda():
+            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
         args = parse_args()
         fake_data_reader = FakeDataReader("train", parse_config(args.config))
         dygraph_loss = train(args, fake_data_reader, to_static=False)
