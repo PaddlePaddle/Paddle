@@ -428,7 +428,7 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
     platform::RecordRPCEvent record_event(method);
 
     auto call = s->stub_g_.PrepareUnaryCall(
-        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", req,
+        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", buf,
         &cq_);
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
