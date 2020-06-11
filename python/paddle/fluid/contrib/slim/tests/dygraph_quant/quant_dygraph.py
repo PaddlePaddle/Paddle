@@ -27,7 +27,7 @@ import models
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.contrib.slim.quantization import DygraphQuantAware
-from paddle.fluid.optimizer import AdamOptimizer
+from paddle.fluid.optimizer import AdamOptimizer, SGD
 
 
 def make_optimizer(step_per_epoch, parameter_list=None):
@@ -57,11 +57,14 @@ def make_optimizer(step_per_epoch, parameter_list=None):
         start_lr=0.,
         end_lr=base_lr)
 
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=learning_rate,
-        momentum=momentum,
-        regularization=fluid.regularizer.L2Decay(weight_decay),
-        parameter_list=parameter_list)
+    # optimizer = fluid.optimizer.Momentum(
+    #     learning_rate=learning_rate,
+    #     momentum=momentum,
+    #     regularization=fluid.regularizer.L2Decay(weight_decay),
+    #     parameter_list=parameter_list)
+
+    optimizer = fluid.optimizer.AdamOptimizer(
+        learning_rate=0.001, parameter_list=parameter_list)
 
     return optimizer
 
@@ -81,25 +84,30 @@ def main():
     dygraph_qat.quantize(model)
 
     print("Prepare train ...")
-    adam = AdamOptimizer(
-        learning_rate=FLAGS.lr, parameter_list=model.parameters())
+    adam = SGD(learning_rate=0.1, parameter_list=model.parameters())
     train_reader = paddle.batch(
         reader.train(data_dir=FLAGS.data_path),
         batch_size=FLAGS.batch_size,
         drop_last=True)
     test_reader = paddle.batch(
-        reader.val(data_dir=FLAGS.data_path), batch_size=FLAGS.batch_size)
+        reader.val(data_dir=FLAGS.data_path), batch_size=128)
 
     print("Train and test ...")
     for epoch in range(FLAGS.epoch):
         if not FLAGS.action_only_eval:
             # Train
             model.train()
-            for batch_id, data in enumerate(train_reader()):
+            for batch_id, data in enumerate(test_reader()):
                 x_data = np.array(
                     [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
+                # x_data = np.ones_like(np.array(x_data)) * batch_id
+                # print(x_data[0][0][0][:10])
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                     -1, 1)
+                for p in model.parameters():
+                    if p.name == 'conv_bn_layer_0_weights':
+                        # print("weight check----------------", p.numpy()[0][0][0][:10])
+                        pass
                 img = fluid.dygraph.to_variable(x_data)
                 label = fluid.dygraph.to_variable(y_data)
                 out = model(img)
@@ -109,7 +117,7 @@ def main():
                 avg_loss.backward()
                 adam.minimize(avg_loss)
                 model.clear_gradients()
-                if batch_id % 10 == 0:
+                if batch_id % 1 == 0:
                     print("Train | At epoch {} step {}: loss = {:}, acc= {:}".
                           format(epoch, batch_id, avg_loss.numpy(), acc.numpy(
                           )))
@@ -168,7 +176,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Training on ImageNet")
     parser.add_argument(
         '--data_path',
-        default="/dataset/ILSVRC2012/",
+        default="/work/datasets/ILSVRC2012/",
         help='path to dataset '
         '(should have subdirectories named "train" and "val"')
     parser.add_argument(

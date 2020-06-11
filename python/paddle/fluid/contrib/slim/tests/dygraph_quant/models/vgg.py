@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
+from paddle.fluid.dygraph import declarative
 
 from download import get_weights_path_from_url
 
@@ -87,6 +88,7 @@ class VGG(fluid.dygraph.Layer):
             self.classifier = self.add_sublayer("classifier",
                                                 Sequential(classifier))
 
+    @declarative
     def forward(self, x):
         x = self.features(x)
 

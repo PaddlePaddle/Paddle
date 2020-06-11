@@ -25,7 +25,7 @@ np.random.seed(0)
 
 DATA_DIM = 224
 
-THREAD = 16
+THREAD = 1
 BUF_SIZE = 10240
 
 DATA_DIR = 'data/ILSVRC2012'
@@ -189,7 +189,7 @@ def train(data_dir=DATA_DIR):
     return _reader_creator(
         file_list,
         'train',
-        shuffle=True,
+        shuffle=False,
         color_jitter=False,
         rotate=False,
         data_dir=data_dir)

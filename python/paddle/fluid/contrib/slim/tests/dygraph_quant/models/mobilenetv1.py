@@ -20,6 +20,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph import declarative
 
 from download import get_weights_path_from_url
+import re
 
 __all__ = ['MobileNetV1', 'mobilenet_v1']
 
@@ -282,7 +283,35 @@ def _mobilenet(arch, pretrained=False, **kwargs):
         #model.load(weight_path)
         #paddle.imperative.save(model.state_dict(), "weight_path")
         model_dict, _ = fluid.load_dygraph(weight_path)
-        model.set_dict(model_dict)
+        # model.set_dict(model_dict)
+        dks = [v for v in model_dict.keys()]
+        new_dks = []
+        d_map = {}
+        for v in dks:
+            nv = re.sub("\.", "_", v)
+            nv = re.sub("__", "_", nv)
+            new_dks.append(nv)
+            d_map[nv] = v
+        new_dks = sorted(new_dks)
+
+        model_path = '/work/Develop/sync_work/models/PaddleSlim/pretrain/MobileNetV1_pretrained'
+        load_state = fluid.load_program_state(model_path)
+        sks = [v for v in load_state.keys()]
+        new_sks = []
+        s_map = {}
+        for v in sks:
+            nv = re.sub("offset", "bias", v)
+            nv = re.sub("scale", "weight", nv)
+            nv = re.sub("bn", "batch_norm", nv)
+            nv = re.sub("dw", "depthwise_conv", nv)
+            nv = re.sub("sep", "pointwise_conv", nv)
+            s_map[nv] = v
+            new_sks.append(nv)
+        new_sks = sorted(new_sks)
+        final_state = {}
+        for d, s in zip(new_dks, new_sks):
+            final_state[d_map[d]] = load_state[s_map[s]]
+        model.set_dict(final_state)
 
     return model
 
