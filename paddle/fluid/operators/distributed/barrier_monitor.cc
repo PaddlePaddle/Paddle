@@ -86,7 +86,7 @@ void BarrierMonitor::Monitor() {
       if (max_wait_ms == -1 || timer < max_wait_ms) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
       } else {
-        VLOG(1) << "time out of " << kMaxRetryTimes
+        VLOG(1) << "time out of " << max_wait_ms
                 << ", need barreir: " << barrier_type << " retry";
         Swap(false);
       }
@@ -111,16 +111,16 @@ void BarrierMonitor::Swap(bool is_valid) {
   if (barrier_type == BarrierType::kSendBarrier) {
     barrier_type = BarrierType::kRecvBarrier;
     send_barrier_queue->Clear();
-    VLOG(3) << "barrier monitor server clean up queue and barrier";
+    VLOG(4) << "barrier monitor server clean up queue and barrier";
     ServerWeakup();
-    VLOG(3) << "barrier monitor server weak up sync to do";
+    VLOG(4) << "barrier monitor server weak up sync to do";
     WaitServerWeakup();
-    VLOG(3) << "barrier monitor server weak up sync done";
+    VLOG(4) << "barrier monitor server weak up sync done";
 
   } else {
     barrier_type = BarrierType::kSendBarrier;
     recv_barrier_queue->Clear();
-    VLOG(3) << "barrier monitor server switch to send barrier";
+    VLOG(4) << "barrier monitor server switch to send barrier";
   }
 
   worker_cv_.notify_all();
