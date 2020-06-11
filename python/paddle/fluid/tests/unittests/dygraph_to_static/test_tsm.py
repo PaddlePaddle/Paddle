@@ -217,7 +217,7 @@ class FakeDataReader(object):
         for i in range(self.total_iter):
             batch_out = []
             for j in range(self.batch_size):
-                label = random.randint(0, self.num_classes - 1)
+                label = np.int64(random.randint(0, self.num_classes - 1))
                 random_mean = self.img_mean[0][0][0]
                 random_std = self.img_std[0][0][0]
                 imgs = np.random.normal(random_mean, random_std, [
