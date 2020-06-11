@@ -38,6 +38,7 @@ class Tracer(core.Tracer):
         super(Tracer, self).__init__()
 
         self._train_mode = True
+        self._has_grad = True
 
     def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
         self.trace(type, inputs, outputs, attrs,

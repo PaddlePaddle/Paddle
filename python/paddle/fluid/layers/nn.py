@@ -925,7 +925,7 @@ def cos_sim(X, Y):
 
 def dropout(x,
             dropout_prob,
-            is_test=False,
+            is_test=None,
             seed=None,
             name=None,
             dropout_implementation="downgrade_in_infer"):
@@ -947,7 +947,9 @@ def dropout(x,
     Args:
         x (Variable): The input tensor variable. The data type is float16 or float32 or float64.
         dropout_prob (float): Probability of setting units to zero.
-        is_test (bool): A flag indicating whether it is in test phrase or not.
+        is_test (bool|None): A flag indicating whether it is in test phrase or not. 
+                    In imperative mode, when is_test is None, it will use global tracer's model;
+                    In delcartive mode, when is_test is None, it means False;
         seed (int): A Python integer used to create random seeds. If this
                     parameter is set to None, a random seed is used.
                     NOTE: If an integer seed is given, always the same output
@@ -1000,7 +1002,8 @@ def dropout(x,
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        _is_test = not _dygraph_tracer()._train_mode
+        if _is_test is None:
+            _is_test = not _dygraph_tracer()._train_mode
         out, mask = core.ops.dropout(
             x, 'dropout_prob', dropout_prob, 'is_test', _is_test, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0,

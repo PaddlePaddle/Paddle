@@ -171,15 +171,15 @@ def disable_dygraph():
 
 
 @signature_safe_contextmanager
-def _switch_tracer_mode_guard_(is_train=True):
+def _switch_tracer_grad_guard_():
     tracer = framework._dygraph_tracer()
     if tracer:
-        mode = tracer._train_mode
-        tracer._train_mode = is_train
+        has_grad = tracer._has_grad
+        tracer._has_grad = False
         try:
             yield
         finally:
-            tracer._train_mode = mode
+            tracer._has_grad = has_grad
     else:
         yield
 
@@ -232,12 +232,12 @@ def no_grad(func=None):
 
     """
     if func is None:
-        return _switch_tracer_mode_guard_(is_train=False)
+        return _switch_tracer_grad_guard_()
     else:
 
         @decorator.decorator
         def __impl__(func, *args, **kwargs):
-            with _switch_tracer_mode_guard_(is_train=False):
+            with _switch_tracer_grad_guard_():
                 return func(*args, **kwargs)
 
         return __impl__(func)
