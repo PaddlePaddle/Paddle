@@ -103,9 +103,10 @@ static inline framework::proto::VarType::Type GetPromoteType(
     const NameVarBaseMap& ins) {
   auto dst_type = framework::proto::VarType::FP16;
   for (const auto& pair : ins) {
-    for (const auto& op : pair.second) {
-      if (op->DataType() == framework::proto::VarType::FP32) {
-        dst_type = op->DataType();
+    for (const auto& var : pair.second) {
+      if (var->DataType() == framework::proto::VarType::FP32) {
+        dst_type = var->DataType();
+        break;
       }
     }
   }
