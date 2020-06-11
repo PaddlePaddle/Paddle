@@ -110,7 +110,9 @@ class TestDygraphQat(unittest.TestCase):
     """
 
     def test_qat(self):
-        dygraph_qat = DygraphQuantAware()
+        dygraph_qat = DygraphQuantAware(
+            weight_quantize_type='abs_max',
+            activation_quantize_type='moving_average_abs_max')
         dygraph_qat.prepare()
 
         with fluid.dygraph.guard():

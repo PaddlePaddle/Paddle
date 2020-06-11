@@ -19,7 +19,6 @@ from paddle.fluid import dygraph
 from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
-from .quant_nn import FakeQuant
 from .quant_nn import QuantizedConv2D
 from .quant_nn import QuantizedLinear
 
@@ -33,16 +32,31 @@ class DygraphQuantAware(object):
     def __init__(self,
                  weight_bits=8,
                  activation_bits=8,
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
                  moving_rate=0.9,
-                 quantizable_layer_type=['Conv2D', 'Linear'],
-                 program_translator=None):
+                 quantizable_layer_type=['Conv2D', 'Linear']):
         super(DygraphQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
+
+        quant_type = {'abs_max', 'moving_average_abs_max'}
+        if activation_quantize_type not in quant_type:
+            raise ValueError(
+                "Unknown activation_quantize_type : '%s'. It can only be "
+                "'abs_max' or 'moving_average_abs_max' now." %
+                (str(activation_quantize_type)))
+        if weight_quantize_type not in quant_type:
+            raise ValueError(
+                "Unknown weight_quantize_type: '%s'. It can only be "
+                "'abs_max' or 'moving_average_abs_max' now." %
+                (str(weight_quantize_type)))
+        self._activation_quantize_type = activation_quantize_type
+        self._weight_quantize_type = weight_quantize_type
+
         self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
-        self._translator = (program_translator if program_translator else
-                            dygraph.ProgramTranslator())
+        self._translator = dygraph.ProgramTranslator()
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
             if layer in self._quant_layers_map else layer
@@ -87,7 +101,6 @@ class DygraphQuantAware(object):
                     input_dtype)
             input_var = dygraph.to_variable(input_data)
             out = model(input_var)
-
         self._translator.save_inference_model(dirname, feed, fetch)
 
     def _get_quantized_counterpart(self, layer):
@@ -108,5 +121,6 @@ class DygraphQuantAware(object):
 
         module = sys.modules[__name__]
         quantized_layer = getattr(module, quantized_counterpart[index])(
-            layer, self._weight_bits, self._activation_bits, self._moving_rate)
+            layer, self._weight_bits, self._activation_bits, self._moving_rate,
+            self._weight_quantize_type, self._activation_quantize_type)
         return quantized_layer

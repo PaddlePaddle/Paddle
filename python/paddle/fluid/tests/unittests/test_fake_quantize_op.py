@@ -244,5 +244,26 @@ class TestFakeQuantDequantMovingOp(TestMovingOpBase):
                         range_v) * out_scale / range_v
 
 
+@skip_check_grad_ci(reason="The gradient of this op is faked.")
+class TestFakeQuantDequantAbsOp(OpTest):
+    def setUp(self):
+        self.op_type = "fake_quantize_dequantize_abs_max"
+        self.attrs = {'bit_length': 8}
+        self.inputs = {'X': np.random.random((124, 240)).astype("float32"), }
+        scale = np.max(np.abs(self.inputs['X'])).astype("float32")
+        out_data = self.calc_output(scale)
+        self.outputs = {
+            'Out': out_data,
+            'OutScale': np.array(scale).astype("float32"),
+        }
+
+    def calc_output(self, scale):
+        range_v = (1 << (self.attrs['bit_length'] - 1)) - 1
+        return np.round(self.inputs['X'] / scale * range_v) * scale / range_v
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == "__main__":
     unittest.main()
