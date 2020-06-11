@@ -15,7 +15,7 @@ TRAIN:
     target_size: 224
     num_reader_threads: 12
     buf_size: 1024
-    batch_size: 16 #128
+    batch_size: 4 #128
     use_gpu: True
     num_gpus: 1 #8
     filelist: "./data/dataset/kinetics/train.list"
