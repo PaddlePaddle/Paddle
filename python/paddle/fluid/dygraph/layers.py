@@ -602,7 +602,7 @@ class Layer(core.Layer):
 
                 value.set_value(self._loaddict_holder[value.name])
 
-            _remove_if_exist(self.__dict__, self._sub_layers)
+            _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif params is not None and name in params:
             if value is not None:
@@ -618,7 +618,7 @@ class Layer(core.Layer):
                         "super(YourLayer, self).__init__() should be called first"
                     )
 
-                _remove_if_exist(self.__dict__, self._parameters)
+                _remove_if_exist(self.__dict__, self._parameters, self._buffers)
                 layers[name] = value
             elif layers is not None and name in layers:
                 if value is not None:
@@ -650,6 +650,8 @@ class Layer(core.Layer):
             del self._parameters[name]
         elif name in self._sub_layers:
             del self._sub_layers[name]
+        elif name in self._buffers[name]:
+            del self._buffers[name]
         else:
             object.__delattr__(self, name)
 

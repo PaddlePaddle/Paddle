@@ -73,7 +73,8 @@ class DynamicGRU(fluid.dygraph.Layer):
                 h_0 = to_variable(self.h_0)
             else:
                 h_0 = hidden
-
+            # See above explanation.
+            # input_ = inputs[:, i:i+1, :]  # original code
             input_ = fluid.layers.slice(
                 inputs, axes=[1], starts=[j], ends=[j + 1])
             input_ = fluid.layers.reshape(

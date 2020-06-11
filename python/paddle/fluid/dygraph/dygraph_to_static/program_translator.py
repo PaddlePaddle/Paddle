@@ -135,12 +135,13 @@ class FunctionSpec(object):
         """
         params = collections.OrderedDict()
         if self.is_method():
+            layer_instance = self._args[0]
             if include_sublayer:
-                params = self._args[0].parameters()
+                params = layer_instance.parameters()
                 names = [p.name for p in params]
                 params = collections.OrderedDict(zip(names, params))
             else:
-                params = self._args[0]._parameters
+                params = layer_instance._parameters
         return params
 
     def buffers(self, include_sublayer=True):
@@ -150,12 +151,13 @@ class FunctionSpec(object):
         """
         buffers = collections.OrderedDict()
         if self.is_method():
+            layer_instance = self._args[0]
             if include_sublayer:
-                buffers = self._args[0].buffers()
+                buffers = layer_instance.buffers()
                 names = [buffer.name for buffer in buffers]
                 buffers = collections.OrderedDict(zip(names, buffers))
             else:
-                buffers = self._args[0]._buffers
+                buffers = layer_instance._buffers
         return buffers
 
     @switch_to_static_graph
@@ -268,8 +270,9 @@ class ConcreteProgram(object):
                 # 1. Adds `fluid.data` layers for input if needed
                 inputs = func_spec.to_static_inputs(main_program)
 
-                # 2. Gets all ParamBases in the function
-                all_parameters = list(func_spec.parameters().values())
+                # 2. Gets all ParamBases and buffered VarBases in the function
+                all_parameters_and_buffers = list(func_spec.parameters().values(
+                )) + list(func_spec.buffers().values())
 
                 # 3. Builds program only once and returns the output Variables.
                 with param_guard(func_spec.parameters(False)):
@@ -280,7 +283,7 @@ class ConcreteProgram(object):
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
-            parameters=all_parameters_or_buffers,
+            parameters=all_parameters_and_buffers,
             func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)

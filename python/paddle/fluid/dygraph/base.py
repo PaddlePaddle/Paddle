@@ -78,10 +78,12 @@ def param_guard(parameters):
                 if isinstance(var_base, framework.ParamBase):
                     new_var = var_base._to_static_var(to_parameter=True)
                 else:
-                    # A VarBase in self._buffers may be passed to initialize multiple sub_layers.
-                    is_created = var_base.name in var_base.block.vars
-                    if is_created:
+                    # Check whether has been created before.
+                    if var_base.name in var_base.block.vars:
                         new_var = var_base.block.vars[var_base.name]
+                        # Note(Aurelius84): new_var can be updated as output of a Op
+                        # in Dy2stat, so its shape may contains -1, for example:
+                        # var = fluid.reshape([-1, var.shape[1]])
                         if -1 in new_var.shape:
                             logging.warn(
                                 "The VarBase [{}] has been converted into Parameter in @declarative mode, "
