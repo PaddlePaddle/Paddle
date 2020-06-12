@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/parameter_prefetch.h"
+#include "paddle/fluid/operators/distributed_ops/distributed_lookup_table_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -78,28 +76,6 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
-class DistributedLookupTableKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto ids_vars = context.MultiInputVar("Ids");
-    auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
-
-    auto id_names = context.InputNames("Ids");
-    auto embedding_name = context.InputNames("W").front();
-    auto out_names = context.OutputNames("Outputs");
-
-    auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
-    auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
-
-    operators::distributed::prefetchs(
-        id_names, out_names, embedding_name, false, lookup_tables, endpoints,
-        height_sections, context, context.scope());
-  }
-};
-
 class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -147,15 +123,12 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.
-
 This operator is used to perform lookup on parameter W,
 then concatenated into a sparse tensor.
-
 The type of Ids(Input) is SelectedRows, the rows of Ids contains
 the ids to be looked up in W;
 if the Id is not in the sparse table, this operator will return a
 random value and set the value into the table for the next looking up.
-
 )DOC");
   }
 };
@@ -168,4 +141,5 @@ REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
 REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
-                       ops::DistributedLookupTableKernel<float>);
+                       ops::DistributedLookupTableKernel<
+                           paddle::platform::CPUDeviceContext, float>);

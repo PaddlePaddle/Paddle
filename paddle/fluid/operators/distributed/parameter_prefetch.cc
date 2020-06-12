@@ -88,7 +88,8 @@ void prefetch_core(
     const framework::ExecutionContext& context, const framework::Scope& scope,
     std::unordered_map<int64_t, std::vector<float>>* recved_vec_map) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& actual_ctx = *pool.Get(context.GetPlace());
+  // auto& actual_ctx = *pool.Get(context.GetPlace());
+  auto& actual_ctx = *pool.Get(platform::CPUPlace());
 
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
@@ -104,8 +105,28 @@ void prefetch_core(
                                     local_scope.get());
 
   // create output var in local scope
-  for (auto& name : out_var_names) {
-    local_scope->Var(name)->GetMutable<framework::LoDTensor>();
+  // for (auto& name : out_var_names) {
+  //   out_var_tensor =
+  //   local_scope->Var(name)->GetMutable<framework::LoDTensor>();
+  // }
+
+  // create output var in local scope cpu place
+  auto embedding_name = context.InputNames("W").front();
+  framework::Variable* embedding_var = scope.FindVar(embedding_name);
+  auto embedding_var_dim_1 =
+      embedding_var->Get<framework::LoDTensor>().dims()[1];
+
+  for (size_t i = 0; i < out_var_names.size(); ++i) {
+    auto* out_var_tensor =
+        local_scope->Var(out_var_names[i])->GetMutable<framework::LoDTensor>();
+    // out_var_tensor->mutable_data<float>(platform::CPUPlace());
+    auto& ids = splited_ids[i];
+    if (!ids.empty()) {
+      out_var_tensor->mutable_data<float>(
+          framework::make_ddim({static_cast<int64_t>(ids.size()),
+                                static_cast<int64_t>(embedding_var_dim_1)}),
+          platform::CPUPlace());
+    }
   }
 
   distributed::RPCClient* rpc_client =
@@ -199,9 +220,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
 
-  if (!platform::is_cpu_place(place)) {
-    PADDLE_THROW("multi prefetch only support CPU currently");
-  }
+  // if (!platform::is_cpu_place(place)) {
+  //   PADDLE_THROW("multi prefetch only support CPU currently");
+  // }
 
   std::vector<std::vector<int64_t>> ids_group;
   std::vector<int64_t> ids_union;
@@ -210,13 +231,19 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
   for (auto& id_name : id_var_names) {
     auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
-    auto* id_data = id_tensor.data<int64_t>();
     std::vector<int64_t> ids;
+    std::vector<int64_t> ids_union_part;
+    TensorToVector(id_tensor, context.device_context(), &ids);
+    VLOG(1) << "Parameter Prefetch: size(): " << ids.size() << " ids[0] "
+            << ids[0];
+    ids_union.insert(ids_union.end(), ids.begin(), ids.end());
+    // auto* id_data = id_tensor.data<int64_t>();
+    // std::vector<int64_t> ids;
 
-    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
-      ids.push_back(id_data[i]);
-      ids_union.push_back(id_data[i]);
-    }
+    // for (int64_t i = 0; i < id_tensor.numel(); ++i) {
+    //   ids.push_back(id_data[i]);
+    //   ids_union.push_back(id_data[i]);
+    // }
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
   }
@@ -251,12 +278,29 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
     for (size_t idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
-
-      if (padding_idx != distributed::kNoPadding && id == padding_idx) {
-        memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
+      if (platform::is_cpu_place(out_t->place())) {
+        if (padding_idx != distributed::kNoPadding && id == padding_idx) {
+          memset(out_d + idx * vec_dim_1, 0, sizeof(float) * vec_dim_1);
+        } else {
+          std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
+                      out_d + idx * vec_dim_1);
+        }
       } else {
-        std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
-                    out_d + idx * vec_dim_1);
+        auto stream = context.cuda_device_context().stream();
+        if (padding_idx != distributed::kNoPadding && id == padding_idx) {
+          platform::GpuMemsetAsync(out_d + idx * vec_dim_1, 0,
+                                   sizeof(float) * vec_dim_1, stream);
+
+        } else {
+          auto& cpu_place =
+              BOOST_GET_CONST(platform::CPUPlace,
+                              paddle::platform::CPUDeviceContext().GetPlace());
+          auto& gpu_place =
+              BOOST_GET_CONST(platform::CUDAPlace, out_t->place());
+          memory::Copy(gpu_place, out_d + idx * vec_dim_1, cpu_place,
+                       &recved_vec_map[id][0], sizeof(float) * vec_dim_1,
+                       stream);
+        }
       }
     }
   }
