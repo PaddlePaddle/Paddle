@@ -93,7 +93,7 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
             stride=stride,
             padding=1,
             num_groups=int(num_groups * scale),
-            use_cudnn=False)
+            use_cudnn=True)
 
         self._pointwise_conv = ConvBNLayer(
             num_channels=int(num_filters1 * scale),
@@ -271,7 +271,7 @@ class InvertedResidualUnit(fluid.dygraph.Layer):
             padding=padding,
             num_groups=num_expfilter,
             act=None,
-            use_cudnn=False)
+            use_cudnn=True)
 
         self._linear_conv = ConvBNLayer(
             num_channels=num_expfilter,
