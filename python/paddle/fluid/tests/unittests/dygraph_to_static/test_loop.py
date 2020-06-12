@@ -84,6 +84,16 @@ def for_loop_dyfunc(max_len):
     return ret
 
 
+def for_loop_dyfunc2(max_len):
+    # Test case: a variable is used and created in loop, but used before created
+    for i in range(max_len):
+        if i > 1:
+            s = a
+        a = 1
+    ret = fluid.layers.fill_constant(shape=[1], dtype="int32", value=s)
+    return ret
+
+
 def while_loop_bool_op(x):
     i = fluid.dygraph.to_variable(x)
 
@@ -131,7 +141,6 @@ def for_loop_class_var(max_len):
     foo = Foo()
 
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
-    # TODO(liym27): Delete it if the type of parameter x can be resolved
     max_len = fluid.layers.fill_constant(
         shape=[1], value=max_len, dtype="int32")
 
@@ -296,6 +305,11 @@ class TestTransformForLoop(unittest.TestCase):
 
     def test_ast_to_func(self):
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestTransformForLoop2(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_dyfunc2
 
 
 class TestClassVarInForLoop(TestTransformForLoop):

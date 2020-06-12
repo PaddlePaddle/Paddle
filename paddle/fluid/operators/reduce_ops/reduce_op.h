@@ -68,6 +68,15 @@ struct ReduceKernelFunctor {
     } else {
       int ndim = input->dims().size();
       int rdim = dims.size();
+      HANDLE_DIM(6, 5);
+      HANDLE_DIM(6, 4);
+      HANDLE_DIM(6, 3);
+      HANDLE_DIM(6, 2);
+      HANDLE_DIM(6, 1);
+      HANDLE_DIM(5, 4);
+      HANDLE_DIM(5, 3);
+      HANDLE_DIM(5, 2);
+      HANDLE_DIM(5, 1);
       HANDLE_DIM(4, 3);
       HANDLE_DIM(4, 2);
       HANDLE_DIM(4, 1);
