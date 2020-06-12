@@ -63,20 +63,23 @@ class GeluPlugin : public PluginTensorRT {
 #if IS_TRT_VERSION_GE(6000)
 class GeluPluginDynamic : public DynamicPluginTensorRT {
  public:
-  GeluPluginDynamic() {}
-  GeluPluginDynamic(void const* serialData, size_t serialLength) {}
+  GeluPluginDynamic() { test = 1; }
+  explicit GeluPluginDynamic(int test_) : test(test_) {}
+  GeluPluginDynamic(void const* serialData, size_t serialLength) {
+    DeserializeValue(&serialData, &serialLength, &test);
+  }
 
   ~GeluPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new GeluPluginDynamic();
+    return new GeluPluginDynamic(test);
   }
 
   const char* getPluginType() const override { return "gelu_plugin"; }
   int getNbOutputs() const override { return 1; }
   int initialize() override { return 0; }
 
-  size_t getSerializationSize() const override { return 0; }
-  void serialize(void* buffer) const override {}
+  size_t getSerializationSize() const override { return sizeof(int); }
+  void serialize(void* buffer) const override { SerializeValue(&buffer, test); }
 
   nvinfer1::DimsExprs getOutputDimensions(
       int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
@@ -107,11 +110,17 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
                                        int nbInputs) const override;
 
   void destroy() override { delete this; }
+
+ private:
+  int test;
 };
 
 class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
  public:
-  GeluPluginV2Creator() {}
+  GeluPluginV2Creator() {
+    mPluginAttributes.emplace_back(nvinfer1::PluginField(
+        "test", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
+  }
   const char* getPluginName() const override { return "gelu_pluginpaddle_trt"; }
 
   const char* getPluginVersion() const override { return "1"; }
@@ -122,7 +131,16 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    auto plugin = new GeluPluginDynamic();
+    int test;
+    const nvinfer1::PluginField* fields = fc->fields;
+    for (int i = 0; i < fc->nbFields; ++i) {
+      const char* attrName = fields[i].name;
+      if (!strcmp(attrName, "test")) {
+        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
+        test = *(static_cast<const int*>(fields[i].data));
+      }
+    }
+    auto plugin = new GeluPluginDynamic(test);
     return plugin;
   }
 
@@ -143,6 +161,7 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
   std::string mNamespace{"paddle_trt"};
   std::string mPluginName;
   nvinfer1::PluginFieldCollection mFieldCollection{0, nullptr};
+  std::vector<nvinfer1::PluginField> mPluginAttributes;
 };
 
 REGISTER_TENSORRT_PLUGIN(GeluPluginV2Creator);
