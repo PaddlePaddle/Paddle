@@ -715,8 +715,8 @@ class Optimizer(object):
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
-        params_grads = append_regularization_ops(
-            params_grads, self.regularization, self._param_device_map)
+        params_grads = append_regularization_ops(params_grads,
+                                                 self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads)
         if table_optimize_op is not None:
