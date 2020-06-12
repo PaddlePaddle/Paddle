@@ -715,8 +715,17 @@ class Optimizer(object):
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
+        global_block = framework.default_main_program().global_block()
+        target_block = global_block
+        current_block = framework.default_main_program().current_block()
+        if current_block.idx != global_block.idx:
+            assert current_block.backward_block_idx != -1, \
+                "current block is not global_block, but it doesn't have backward block."
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx]
+        self._update_param_device_map(params_grads, target_block)
         params_grads = append_regularization_ops(
-            params_grads, self.regularization, self._param_device_map)
+            params_grads, self.regularization)
 
         optimize_ops = self._create_optimization_pass(params_grads)
         if table_optimize_op is not None:
