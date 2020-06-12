@@ -290,6 +290,7 @@ endif()
 # Since the tests for QAT FP32 & INT8 comparison support only testing on Linux 
 # with MKL-DNN, we remove it here to not test it on other systems.
 list(REMOVE_ITEM TEST_OPS
+    test_dygraph_qat
 	test_mkldnn_int8_quantization_strategy
 	qat_int8_image_classification_comparison
 	qat_int8_nlp_comparison)
@@ -300,3 +301,9 @@ LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
 endforeach()
+
+py_test(test_dygraph_qat SRCS test_dygraph_qat.py
+        ENVS CPU_NUM="1"
+	         FLAGS_cudnn_deterministic=1
+	         FLAGS_cudnn_exhaustive_search=0
+	         CUDA_VISIBLE_DEVICES="0")
