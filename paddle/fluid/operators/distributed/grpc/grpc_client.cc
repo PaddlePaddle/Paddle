@@ -49,6 +49,19 @@ void GRPCClient::SendComplete() {
   }
 }
 
+bool GRPCClient::Retry(const std::string& method, int error_code) {
+  if (error_code != grpc::StatusCode::DEADLINE_EXCEEDED ||
+      error_code != grpc::StatusCode::DEADLINE_EXCEEDED) {
+    return false;
+  }
+
+  if (method != kPrefetchRPC) {
+    return false;
+  }
+
+  return true;
+}
+
 GRPCClient::~GRPCClient() {
   stopped_ = true;
   Wait();
@@ -294,7 +307,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
       if (h->should_retry) {
-        VLOG(3) << "rpc call failed, retry times " << retry_times_;
+        VLOG(3) << "pull sparse variable failed, retry times " << retry_times_;
         retry_times_++;
         std::random_device rd;
         std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
@@ -463,22 +476,10 @@ void GRPCClient::Proceed() {
     if (c->status_.ok()) {
       VLOG(3) << c->GetVarHandlePtr()->String() << " process";
       c->Process();
-    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
-      PADDLE_THROW(platform::errors::External(
-          "%s meets grpc error, error_code is %d, error message is %s, error "
-          "details is %s.",
-          c->GetVarHandlePtr()->String(), c->status_.error_code(),
-          c->status_.error_message(), c->status_.error_details()));
-      {
-        std::lock_guard<std::mutex> lk(sync_mutex_);
-        ok_ = false;
-      }
-      c->Finish(false);
-    } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
-      VLOG(3) << c->GetVarHandlePtr()->String()
+    } else if (Retry(c->GetVarHandlePtr()->method(), c->status_.error_code())) {
+      VLOG(1) << c->GetVarHandlePtr()->String()
               << " meets grpc error, error_code:" << c->status_.error_code()
               << " error_message:" << c->status_.error_message()
-              << " error_details:" << c->status_.error_details()
               << " should retry!";
       c->GetVarHandlePtr()->should_retry = true;
       c->Finish(false);

@@ -242,6 +242,8 @@ class GRPCClient : public RPCClient {
  private:
   void Proceed();
 
+  bool Retry(const std::string& method, int error_code);
+
   std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
   VarHandlePtr _AsyncGetVar(
       const std::string& ep, const platform::DeviceContext& ctx,
