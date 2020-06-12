@@ -9,7 +9,7 @@ set -ex
 # remove others to expedite build and reduce docker image size. The original
 # manylinux docker image project builds many python versions.
 # NOTE We added back 3.5.1, since auditwheel requires python 3.3+
-CPYTHON_VERSIONS="3.7.0 3.6.0 3.5.1 2.7.15"
+CPYTHON_VERSIONS="3.8.0 3.7.0 3.6.0 3.5.1 2.7.15"
 
 # openssl version to build, with expected sha256 hash of .tar.gz
 # archive

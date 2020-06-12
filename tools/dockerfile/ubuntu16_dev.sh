@@ -1,10 +1,5 @@
 #!/bin/bash
-#PADDLE_BRANCH=0.0.0
-#WITH_GPU="ON"
-#WITH_MKL="ON"
-#ref_CUDA_MAJOR=10.1
-#CUDNN_MAJOR=7
-#gcc_version=8.2.0
+
 docker_name=$1
   
 function ref_whl(){
@@ -80,14 +75,6 @@ function install_gcc(){
 
 function make_dockerfile(){
   sed "s/<baseimg>/${docker_name}/g" tools/dockerfile/Dockerfile.ubuntu >Dockerfile.tmp
-# docker build -t tianshuo78520a/paddlepaddle: -f Dockerfile.tmp .
-#
-#  sed 's/<baseimg>/10.0-cudnn7-devel-ubuntu16.04/g' ./tools/dockerfile/Dockerfile.ubuntu.gcc48 >Dockerfile.tmp
-#  docker build -t tianshuo78520a/paddlepaddle:10.0-cudnn7-ubuntu16.04 -f Dockerfile.tmp .
-#
-#  sed 's/<baseimg>/10.1-cudnn7-devel-ubuntu16.04/g' ./tools/dockerfile/Dockerfile.ubuntu.gcc82 >Dockerfile.tmp
-#  docker build -t tianshuo78520a/paddlepaddle:10.1-cudnn7-ubuntu16.04 -f Dockerfile.tmp .
-#
 }
 
 function main(){
