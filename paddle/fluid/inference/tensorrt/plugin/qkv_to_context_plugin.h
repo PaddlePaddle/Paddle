@@ -43,6 +43,7 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
+  QkvToContextPluginDynamic() {}
   explicit QkvToContextPluginDynamic(int hidden, int head_number, int head_size,
                                      float scale, bool ban_fp16)
       : hidden_(hidden),
@@ -68,7 +69,9 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int initialize() override;
 
   size_t getSerializationSize() const override {
-    return 3 * sizeof(int) + sizeof(float) + sizeof(bool);
+    return SerializedSize(hidden_) + SerializedSize(head_number_) +
+           SerializedSize(head_size_) + SerializedSize(scale_) +
+           SerializedSize(ban_fp16_);
   }
   void serialize(void* buffer) const override {
     SerializeValue(&buffer, hidden_);
@@ -118,20 +121,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
 
 class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
  public:
-  QkvToContextPluginV2Creator() {
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "hidden_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "head_number_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "head_size_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "scale_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "ban_fp16_", nullptr, nvinfer1::PluginFieldType::kINT8, 1));
-    mFieldCollection.nbFields = mPluginAttributes.size();
-    mFieldCollection.fields = mPluginAttributes.data();
-  }
+  QkvToContextPluginV2Creator() {}
   const char* getPluginName() const override {
     return "qkv_to_context_pluginpaddle_trt";
   }
@@ -144,36 +134,7 @@ class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    int hidden_, head_number_, head_size_;
-    float scale_;
-    bool ban_fp16_;
-    const nvinfer1::PluginField* fields = fc->fields;
-    for (int i = 0; i < fc->nbFields; ++i) {
-      const char* attrName = fields[i].name;
-      if (!strcmp(attrName, "hidden_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        hidden_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "head_number_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        head_number_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "head_size_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        head_size_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "scale_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        scale_ = *(static_cast<const float*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "ban_fp16_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT8);
-        ban_fp16_ = *(static_cast<const bool*>(fields[i].data));
-      }
-    }
-
-    return new QkvToContextPluginDynamic(hidden_, head_number_, head_size_,
-                                         scale_, ban_fp16_);
+    return new QkvToContextPluginDynamic();
   }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,

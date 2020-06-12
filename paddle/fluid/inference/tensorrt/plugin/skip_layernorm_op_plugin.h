@@ -29,6 +29,7 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
+  SkipLayerNormPluginDynamic() {}
   explicit SkipLayerNormPluginDynamic(float* bias, float* scale, int bias_size,
                                       int scale_size, float eps, bool ban_fp16)
       : bias_(bias),
@@ -112,22 +113,7 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
 
 class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
  public:
-  SkipLayerNormPluginV2Creator() {
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "bias_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "scale_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "bias_size_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "scale_size_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "eps_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "ban_fp16_", nullptr, nvinfer1::PluginFieldType::kINT8, 1));
-    mFieldCollection.nbFields = mPluginAttributes.size();
-    mFieldCollection.fields = mPluginAttributes.data();
-  }
+  SkipLayerNormPluginV2Creator() {}
   const char* getPluginName() const override {
     return "skip_layernorm_pluginpaddle_trt";
   }
@@ -140,44 +126,7 @@ class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    float* bias_;
-    float* scale_;
-    int bias_size_, scale_size_;
-    float eps_;
-    bool ban_fp16_;
-    const nvinfer1::PluginField* fields = fc->fields;
-    for (int i = 0; i < fc->nbFields; ++i) {
-      const char* attrName = fields[i].name;
-      if (!strcmp(attrName, "bias_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        const float* temp_bias_ = (static_cast<const float*>(fields[i].data));
-        bias_ = const_cast<float*>(temp_bias_);
-      }
-      if (!strcmp(attrName, "scale_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        const float* temp_scale_ = (static_cast<const float*>(fields[i].data));
-        scale_ = const_cast<float*>(temp_scale_);
-      }
-      if (!strcmp(attrName, "bias_size_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        bias_size_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "scale_size_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        scale_size_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "eps_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        eps_ = *(static_cast<const float*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "ban_fp16_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT8);
-        ban_fp16_ = *(static_cast<const bool*>(fields[i].data));
-      }
-    }
-
-    return new SkipLayerNormPluginDynamic(bias_, scale_, bias_size_,
-                                          scale_size_, eps_, ban_fp16_);
+    return new SkipLayerNormPluginDynamic();
   }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,

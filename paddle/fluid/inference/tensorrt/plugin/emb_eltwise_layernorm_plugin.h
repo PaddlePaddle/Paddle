@@ -30,6 +30,7 @@ namespace plugin {
 template <typename T>
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
+  EmbEltwiseLayernormPluginDynamic() {}
   explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
                                             float* bias, float* scale,
                                             std::vector<int> emb_sizes,
@@ -131,26 +132,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
 class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
  public:
-  EmbEltwiseLayernormPluginV2Creator() {
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "embs_", nullptr, nvinfer1::PluginFieldType::kUNKNOWN, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "bias_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "scale_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "emb_sizes_", nullptr, nvinfer1::PluginFieldType::kUNKNOWN, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "bias_size_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "scale_size_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "hidden_size_", nullptr, nvinfer1::PluginFieldType::kINT32, 1));
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-        "eps_", nullptr, nvinfer1::PluginFieldType::kFLOAT32, 1));
-    mFieldCollection.nbFields = mPluginAttributes.size();
-    mFieldCollection.fields = mPluginAttributes.data();
-  }
+  EmbEltwiseLayernormPluginV2Creator() {}
   const char* getPluginName() const override {
     return "fused_embedding_eltwise_layernorm_pluginpaddle_trt";
   }
@@ -163,54 +145,7 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    std::vector<float*> embs_;
-    float* bias_;
-    float* scale_;
-    std::vector<int> emb_sizes_;
-    int bias_size_, scale_size_, hidden_size_;
-    float eps_;
-    const nvinfer1::PluginField* fields = fc->fields;
-    for (int i = 0; i < fc->nbFields; ++i) {
-      const char* attrName = fields[i].name;
-      if (!strcmp(attrName, "embs_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kUNKNOWN);
-        embs_ = *(static_cast<const std::vector<float*>*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "bias_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        const float* temp_bias_ = (static_cast<const float*>(fields[i].data));
-        bias_ = const_cast<float*>(temp_bias_);
-      }
-      if (!strcmp(attrName, "scale_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        const float* temp_scale_ = (static_cast<const float*>(fields[i].data));
-        scale_ = const_cast<float*>(temp_scale_);
-      }
-      if (!strcmp(attrName, "emb_sizes_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kUNKNOWN);
-        emb_sizes_ = *(static_cast<const std::vector<int>*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "bias_size_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        bias_size_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "scale_size_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        scale_size_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "hidden_size_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kINT32);
-        hidden_size_ = *(static_cast<const int*>(fields[i].data));
-      }
-      if (!strcmp(attrName, "eps_")) {
-        assert(fields[i].type == nvinfer1::PluginFieldType::kFLOAT32);
-        eps_ = *(static_cast<const float*>(fields[i].data));
-      }
-    }
-
-    return new EmbEltwiseLayernormPluginDynamic<float>(
-        embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
-        eps_);
+    return new EmbEltwiseLayernormPluginDynamic<float>();
   }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
