@@ -2657,7 +2657,7 @@ class PrePostProcessLayer(Layer):
                         layer_norm))
             elif cmd == "d":  # add dropout
                 self.functors.append(lambda x: layers.dropout(
-                    x, dropout_prob=dropout_rate, is_test=False)
+                    x, dropout_prob=dropout_rate, is_test=not self.training)
                                      if dropout_rate else x)
 
     def forward(self, x, residual=None):
@@ -2856,7 +2856,9 @@ class MultiHeadAttention(Layer):
         weights = layers.softmax(product)
         if self.dropout_rate:
             weights = layers.dropout(
-                weights, dropout_prob=self.dropout_rate, is_test=False)
+                weights,
+                dropout_prob=self.dropout_rate,
+                is_test=not self.training)
 
         out = layers.matmul(weights, v)
 
@@ -2949,7 +2951,9 @@ class FFN(Layer):
         hidden = self.fc1(x)
         if self.dropout_rate:
             hidden = layers.dropout(
-                hidden, dropout_prob=self.dropout_rate, is_test=False)
+                hidden,
+                dropout_prob=self.dropout_rate,
+                is_test=not self.training)
         out = self.fc2(hidden)
         return out
 
