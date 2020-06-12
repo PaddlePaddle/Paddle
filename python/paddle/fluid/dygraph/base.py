@@ -69,32 +69,21 @@ def param_guard(parameters):
         origin_parameters = parameters.copy()
         for name, var_base in parameters.items():
             if isinstance(var_base, core.VarBase):
-                # Note(Aurelius84): The var type in self._parameters is ParamBase,
-                # but VarBase in self._buffers. In dy2static, we convert all the VarBases from
-                # `self._parameters` and `self._buffers` into framework.Parameter.
-                # Because users can create a VarBase in `__init__` equivalent to a ParamBase like a
-                # `mask` Tensor or `hidden_0` in RNN layers, which is necessary for inferring.
-                # So we convert and save them into inference model.
+                # Convert ParamBase into Parameter with same attributes in dy2stat.
                 if isinstance(var_base, framework.ParamBase):
                     new_var = var_base._to_static_var(to_parameter=True)
                 else:
                     # Check whether has been created before.
                     if var_base.name in var_base.block.vars:
                         new_var = var_base.block.vars[var_base.name]
-                        # Note(Aurelius84): new_var can be updated as output of a Op
-                        # in Dy2stat, so its shape may contains -1, for example:
-                        # var = fluid.reshape([-1, var.shape[1]])
-                        if -1 in new_var.shape:
-                            logging.warn(
-                                "The VarBase [{}] has been converted into Parameter in @declarative mode, "
-                                "but its shape is modified into: {}, we will reset it into {}.".
-                                format(var_base.name, new_var.shape,
-                                       var_base.shape))
-                            new_var.desc.set_shape(var_base.shape)
+                    # Note(Aurelius84): Convert VarBase in self._buffers into Variabe with
+                    # same attributes and set persistable=True to allow saving this var.
+                    # Because users can create a VarBase in `__init__`  like a
+                    # `mask` Tensor or `hidden_0` in RNN layers, which is equivalent to a Parameter
+                    # and necessary for inferring. It will be pruned if it's not necessary for inferring.
                     else:
-                        new_var = var_base._to_static_var(to_parameter=True)
-                        new_var.trainable = False
-
+                        new_var = var_base._to_static_var(
+                            to_parameter=False, persistable=True)
                 parameters[name] = new_var
         yield
         parameters.update(origin_parameters)
