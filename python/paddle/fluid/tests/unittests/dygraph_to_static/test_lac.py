@@ -380,7 +380,7 @@ class LexNet(fluid.dygraph.Layer):
 class Args(object):
     epoch = 1
     batch_size = 4
-    vocab_size = 1000
+    vocab_size = 100
     num_labels = 10
     word_emb_dim = 128
     grnn_hidden_dim = 128
