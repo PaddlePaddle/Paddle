@@ -16,7 +16,7 @@ from __future__ import print_function
 import logging
 
 from . import framework
-from .framework import in_dygraph_mode, _varbase_creator
+from .framework import in_dygraph_mode, _varbase_creator, device_guard
 from . import core
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
@@ -62,7 +62,9 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     return new_grad
 
 
-def append_regularization_ops(parameters_and_grads, regularization=None):
+def append_regularization_ops(parameters_and_grads,
+                              regularization=None,
+                              param_device_map=None):
     """Create and add backward regularization Operators
 
     Creates and adds backward regularization operators in the BlockDesc.
@@ -93,16 +95,19 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         repeate_regularizer = False
         with framework.name_scope('regularization'):
             for param, grad in parameters_and_grads:
+                device = param_device_map[
+                    param.name] if param_device_map else None
                 if not repeate_regularizer and param.regularizer is not None and regularization is not None:
                     repeate_regularizer = True
                     logging.info(
                         "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
                         "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         % regularization.__str__())
-                with param.block.program._optimized_guard([param, grad]):
-                    new_grad = _create_regularization_of_grad(param, grad,
-                                                              regularization)
-                    params_and_grads.append((param, new_grad))
+                with device_guard(device):
+                    with param.block.program._optimized_guard([param, grad]):
+                        new_grad = _create_regularization_of_grad(
+                            param, grad, regularization)
+                        params_and_grads.append((param, new_grad))
     return params_and_grads
 
 
