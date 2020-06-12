@@ -201,8 +201,6 @@ class TensorRTEngine {
     freshDeviceId();
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
 #if IS_TRT_VERSION_GE(6000)
-    LOG(INFO) << "serialized data size is " << engine_serialized_data.size();
-    LOG(INFO) << "serialized data is " << engine_serialized_data.c_str();
     infer_engine_.reset(
         runtime->deserializeCudaEngine(engine_serialized_data.c_str(),
                                        engine_serialized_data.size(), nullptr));
