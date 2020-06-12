@@ -94,7 +94,7 @@ class TestCommunicatorHalfAsyncEnd2End(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.WORKER
             if training_role == "TRAINER" else role_maker.Role.SERVER,
-            worker_num=2,
+            worker_num=1,
             server_endpoints=["127.0.0.1:6002"])
 
         if training_role == "TRAINER":
