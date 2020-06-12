@@ -122,9 +122,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
 class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
  public:
   QkvToContextPluginV2Creator() {}
-  const char* getPluginName() const override {
-    return "qkv_to_context_pluginpaddle_trt";
-  }
+  const char* getPluginName() const override { return "qkv_to_context_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
 
@@ -151,7 +149,7 @@ class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
   const char* getPluginNamespace() const override { return mNamespace.c_str(); }
 
  private:
-  std::string mNamespace{"paddle_trt"};
+  std::string mNamespace;
   std::string mPluginName;
   nvinfer1::PluginFieldCollection mFieldCollection;
   std::vector<nvinfer1::PluginField> mPluginAttributes;

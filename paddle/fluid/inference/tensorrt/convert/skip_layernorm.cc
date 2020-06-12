@@ -45,8 +45,8 @@ class SkipLayerNormOpConverter : public OpConverter {
     };
 
     framework::DDim bias_dims, scale_dims;
-    auto* bias = get_persistable_data("Bias", &bias_dims);
-    auto* scale = get_persistable_data("Scale", &scale_dims);
+    const float* bias = get_persistable_data("Bias", &bias_dims);
+    const float* scale = get_persistable_data("Scale", &scale_dims);
     float eps = BOOST_GET_CONST(float, op_desc.GetAttr("epsilon"));
     int bias_size = framework::product(bias_dims);
     int scale_size = framework::product(scale_dims);
