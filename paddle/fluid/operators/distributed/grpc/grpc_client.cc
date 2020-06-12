@@ -268,9 +268,9 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
 
       ::grpc::ByteBuffer req;
       SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req,
-                            out_var_name_val, 0, table_name_val);
+                            out_var_name_val, trainer_id_, table_name_val);
 
-      VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+      VLOG(1) << s->GetVarHandlePtr()->String() << " begin";
 
       // stub context
       s->response_call_back_ = ProcGetResponse;
@@ -286,6 +286,8 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
       if (UNLIKELY(platform::IsProfileEnabled())) {
         h->Wait();
       }
+
+      VLOG(1) << s->GetVarHandlePtr()->String() << " done";
     });
     req_count_++;
 

@@ -332,8 +332,11 @@ class RequestPrefetch final : public RequestBase {
     std::string out_var_name = request_->OutVarname();
     std::string table_name = request_->TableName();
     int trainer_id = request_->GetTrainerId();
-    VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
-            << " out_var_name: " << out_var_name;
+
+    VLOG(1) << "RequestPrefetch, trainer_id:" << trainer_id
+            << " in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name
+            << " table_name: " << table_name << " begin";
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = scope->FindVar(in_var_name);
@@ -346,6 +349,10 @@ class RequestPrefetch final : public RequestBase {
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
     Finish(reply_, &responder_);
+
+    VLOG(1) << "RequestPrefetch, in_var_name: " << in_var_name
+            << " out_var_name: " << out_var_name
+            << " table_name: " << table_name << " done";
   }
 
  protected:
