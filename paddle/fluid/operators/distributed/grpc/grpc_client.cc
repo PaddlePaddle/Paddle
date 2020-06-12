@@ -275,6 +275,8 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
     VarHandlePtr h(new VarHandle(ep, method, out_var_name_val, p_ctx, p_scope));
     s->Prepare(h, time_out);
 
+    VLOG(1) << s->GetVarHandlePtr()->String() << " begin";
+
     framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope,
                         p_ctx, s, method, h, table_name_val, this] {
       auto* var = p_scope->FindVar(in_var_name_val);
@@ -282,8 +284,6 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
       ::grpc::ByteBuffer req;
       SerializeToByteBuffer(in_var_name_val, var, *p_ctx, &req,
                             out_var_name_val, trainer_id_, table_name_val);
-
-      VLOG(1) << s->GetVarHandlePtr()->String() << " begin";
 
       // stub context
       s->response_call_back_ = ProcGetResponse;
@@ -299,15 +299,13 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
       if (UNLIKELY(platform::IsProfileEnabled())) {
         h->Wait();
       }
-
-      VLOG(1) << s->GetVarHandlePtr()->String() << " done";
     });
     req_count_++;
 
     if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
       if (h->should_retry) {
-        VLOG(3) << "pull sparse variable failed, retry times " << retry_times_;
+        VLOG(1) << "pull sparse variable failed, retry times " << retry_times_;
         retry_times_++;
         std::random_device rd;
         std::this_thread::sleep_for(std::chrono::milliseconds(rd() % 5));
@@ -480,7 +478,7 @@ void GRPCClient::Proceed() {
       VLOG(1) << c->GetVarHandlePtr()->String()
               << " meets grpc error, error_code:" << c->status_.error_code()
               << " error_message:" << c->status_.error_message()
-              << " should retry!";
+              << ", should retry!";
       c->GetVarHandlePtr()->should_retry = true;
       c->Finish(false);
     } else {

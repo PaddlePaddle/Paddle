@@ -100,7 +100,7 @@ class VarHandle {
       wait_cond_.wait(lk, [this] { return status_ != kDefaultState; });
       ret = status_;
     }
-    VLOG(7) << "VarHandle wait:" << ret;
+    VLOG(1) << "VarHandle " << String() << "wait:" << ret << " done";
     return ret != kErrorState;
   }
 

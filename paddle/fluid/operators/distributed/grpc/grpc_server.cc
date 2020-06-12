@@ -152,12 +152,10 @@ class RequestGet final : public RequestBase {
     request_handler_->Handle(varname, tmp_scope_.get(), invar, &outvar,
                              trainer_id, out_varname, table_name);
 
-    VLOG(1) << "before SerializeToByteBuffer";
     if (outvar) {
       SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);
     }
-    VLOG(1) << "after SerializeToByteBuffer";
     Finish(reply_, &responder_);
   }
 
