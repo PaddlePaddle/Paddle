@@ -205,7 +205,8 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     helper.append_op(
         type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
 
-    return out
+    if True:
+        return out
 
 
 def elementwise_equal(x, y, name=None):
