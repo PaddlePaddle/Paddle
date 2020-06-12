@@ -217,23 +217,23 @@ class ListTransformer(gast.NodeTransformer):
         # Only one argument is supported in Python list.append()
         if len(node.args) != 1:
             return False
-        arg = node.args[0]
-        if isinstance(arg, gast.Name):
-            # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function
-            # Need a better way to confirm whether `arg.id` is a Tensor.
-            try:
-                var_type_set = self.scope_var_type_dict[arg.id]
-            except KeyError:
-                return False
-
-            if NodeVarType.NUMPY_NDARRAY in var_type_set:
-                return False
-            if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
-                return False
-        # else:
-        # Todo: Consider that `arg` may be a gast.Call about Paddle Api.
-        # eg: list_a.append(fluid.layers.reshape(x))
-        # return True
+        # arg = node.args[0]
+        # if isinstance(arg, gast.Name):
+        #     # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function
+        #     # Need a better way to confirm whether `arg.id` is a Tensor.
+        #     try:
+        #         var_type_set = self.scope_var_type_dict[arg.id]
+        #     except KeyError:
+        #         return False
+        #
+        #     if NodeVarType.NUMPY_NDARRAY in var_type_set:
+        #         return False
+        #     if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
+        #         return False
+        # # else:
+        # # Todo: Consider that `arg` may be a gast.Call about Paddle Api.
+        # # eg: list_a.append(fluid.layers.reshape(x))
+        # # return True
         self.list_name_to_updated[value_name.strip()] = True
         return True
 
