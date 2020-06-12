@@ -137,7 +137,6 @@ if(LINUX AND WITH_MKLDNN)
 	# Models should be already downloaded for INT8v2 unit tests
 
 	set(INT8_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-	set(INT8_IC_TEST_FILE "test_mkldnn_int8_quantization_strategy.py")
 	set(INT8_IC_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${INT8_IC_TEST_FILE}")
 
 	# googlenet int8
@@ -290,7 +289,6 @@ endif()
 # Since the tests for QAT FP32 & INT8 comparison support only testing on Linux 
 # with MKL-DNN, we remove it here to not test it on other systems.
 list(REMOVE_ITEM TEST_OPS
-	test_mkldnn_int8_quantization_strategy
 	qat_int8_image_classification_comparison
 	qat_int8_nlp_comparison)
 
