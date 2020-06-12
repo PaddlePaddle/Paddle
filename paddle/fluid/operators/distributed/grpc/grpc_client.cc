@@ -50,16 +50,16 @@ void GRPCClient::SendComplete() {
 }
 
 bool GRPCClient::Retry(const std::string& method, int error_code) {
-  if (error_code != grpc::StatusCode::DEADLINE_EXCEEDED ||
-      error_code != grpc::StatusCode::DEADLINE_EXCEEDED) {
+  if (error_code != grpc::StatusCode::DEADLINE_EXCEEDED &&
+      error_code != grpc::StatusCode::UNAVAILABLE) {
     return false;
   }
 
-  if (method != kPrefetchRPC) {
+  if (method == kPrefetchRPC || method == kSendRPC || method == kGetRPC) {
+    return true;
+  } else {
     return false;
   }
-
-  return true;
 }
 
 GRPCClient::~GRPCClient() {
