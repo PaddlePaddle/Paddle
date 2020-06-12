@@ -131,12 +131,16 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 
 class TSM_ResNet(fluid.dygraph.Layer):
-    def __init__(self, name_scope, config):
+    def __init__(self, name_scope, config, mode):
         super(TSM_ResNet, self).__init__(name_scope)
 
         self.layers = config.MODEL.num_layers
         self.seg_num = config.MODEL.seg_num
         self.class_dim = config.MODEL.num_classes
+        self.reshape_list = [
+            config.MODEL.seglen * 3, config[mode.upper()]['target_size'],
+            config[mode.upper()]['target_size']
+        ]
 
         if self.layers == 50:
             depth = [3, 4, 6, 3]
@@ -183,8 +187,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, inputs):
-        y = fluid.layers.reshape(
-            inputs, [-1, inputs.shape[2], inputs.shape[3], inputs.shape[4]])
+        y = fluid.layers.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
         y = self.pool2d_max(y)
         for bottleneck_block in self.bottleneck_block_list:
@@ -272,7 +275,7 @@ def train(args, fake_data_reader, to_static):
         fluid.default_startup_program().random_seed = 1000
         fluid.default_main_program().random_seed = 1000
 
-        video_model = TSM_ResNet("TSM", train_config)
+        video_model = TSM_ResNet("TSM", train_config, 'Train')
 
         optimizer = create_optimizer(train_config.TRAIN,
                                      video_model.parameters())
