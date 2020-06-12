@@ -1002,10 +1002,10 @@ def dropout(x,
         if (seed is None or
                 seed == 0) and default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
-        if _is_test is None:
-            _is_test = not _dygraph_tracer()._train_mode
+        if is_test is None:
+            is_test = not _dygraph_tracer()._train_mode
         out, mask = core.ops.dropout(
-            x, 'dropout_prob', dropout_prob, 'is_test', _is_test, 'fix_seed',
+            x, 'dropout_prob', dropout_prob, 'is_test', is_test, 'fix_seed',
             seed is not None, 'seed', seed if seed is not None else 0,
             'dropout_implementation', dropout_implementation)
         return out
