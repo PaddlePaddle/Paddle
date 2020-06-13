@@ -28,7 +28,7 @@ if(WITH_GRPC)
         collective_client.cc collective_server.cc
         ${GRPC_SRCS}
       PROTO send_recv.proto 
-      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS} async_sparse_param_update_recorder heart_beat_monitor barrier_monitor)
+      DEPS lod_tensor selected_rows_functor memory scope ${GRPC_DEPS} async_sparse_param_update_recorder heart_beat_monitor barrier_monitor device_context)
 
   set_source_files_properties(grpc_serde_test.cc rpc_server_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set(RPC_DEPS sendrecvop_rpc ${GRPC_DEPS})
