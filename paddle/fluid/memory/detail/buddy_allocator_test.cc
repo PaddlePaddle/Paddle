@@ -253,7 +253,7 @@ TEST(BuddyAllocator, SpeedAna) {
   TestBuddyAllocator(&buddy_allocator, 10 << 20);
 
   std::fstream in_file;
-  in_file.open("buddy_allocator_test_data", std::ios::in);
+  in_file.open("/root/.cache/dataset/buddy_allocator_test_data", std::ios::in);
 
   std::vector<void*> vec_ptr;
   std::vector<int> vec_size;
