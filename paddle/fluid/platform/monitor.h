@@ -46,13 +46,10 @@ class StatValue : public MonitorRegistrar {
   // We use lock rather than atomic for generic values
  public:
   explicit StatValue(const std::string& n) {
-    fprintf(stderr, "register for %s\n", n.c_str());
     StatRegistry<T>::Instance().add(n, this);
   }
   T increase(T inc) {
-    fprintf(stderr, "increase1\n");
     std::lock_guard<std::mutex> lock(mu_);
-    fprintf(stderr, "increase2\n");
     return v_ += inc;
   }
   T decrease(T inc) {
@@ -129,13 +126,6 @@ class StatRegistry {
 }  // namespace platform
 }  // namespace paddle
 
-// Because we only support these two types in pybind
-#define REGISTER_FLOAT_STATUS(item) \
-  extern paddle::platform::StatValue<float> _##item;
-
-#define REGISTER_INT_STATUS(item) \
-  extern paddle::platform::StatValue<int64_t> _##item;
-
 #define STAT_ADD(item, t) _##item.increase(t)
 #define STAT_SUB(item, t) _##item.decrease(t)
 
@@ -171,12 +161,28 @@ class StatRegistry {
   extern int TouchStatRegistrar_##item(); \
   UNUSED static int use_stat_##item = TouchStatRegistrar_##item()
 
-REGISTER_INT_STATUS(STAT_total_feasign_num_in_mem)
-REGISTER_INT_STATUS(STAT_gpu0_mem_size)
-REGISTER_INT_STATUS(STAT_gpu1_mem_size)
-REGISTER_INT_STATUS(STAT_gpu2_mem_size)
-REGISTER_INT_STATUS(STAT_gpu3_mem_size)
-REGISTER_INT_STATUS(STAT_gpu4_mem_size)
-REGISTER_INT_STATUS(STAT_gpu5_mem_size)
-REGISTER_INT_STATUS(STAT_gpu6_mem_size)
-REGISTER_INT_STATUS(STAT_gpu7_mem_size)
+#define USE_INT_STAT(item)                             \
+  extern paddle::platform::StatValue<int64_t> _##item; \
+  USE_STAT(item)
+
+#define USE_FLOAT_STAT(item)                         \
+  extern paddle::platform::StatValue<float> _##item; \
+  USE_STAT(item)
+
+#define USE_GPU_MEM_STAT             \
+  USE_INT_STAT(STAT_gpu0_mem_size);  \
+  USE_INT_STAT(STAT_gpu1_mem_size);  \
+  USE_INT_STAT(STAT_gpu2_mem_size);  \
+  USE_INT_STAT(STAT_gpu3_mem_size);  \
+  USE_INT_STAT(STAT_gpu4_mem_size);  \
+  USE_INT_STAT(STAT_gpu5_mem_size);  \
+  USE_INT_STAT(STAT_gpu6_mem_size);  \
+  USE_INT_STAT(STAT_gpu7_mem_size);  \
+  USE_INT_STAT(STAT_gpu8_mem_size);  \
+  USE_INT_STAT(STAT_gpu9_mem_size);  \
+  USE_INT_STAT(STAT_gpu10_mem_size); \
+  USE_INT_STAT(STAT_gpu11_mem_size); \
+  USE_INT_STAT(STAT_gpu12_mem_size); \
+  USE_INT_STAT(STAT_gpu13_mem_size); \
+  USE_INT_STAT(STAT_gpu14_mem_size); \
+  USE_INT_STAT(STAT_gpu15_mem_size)

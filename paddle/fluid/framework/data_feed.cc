@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 
-USE_STAT(STAT_total_feasign_num_in_mem);
+USE_INT_STAT(STAT_total_feasign_num_in_mem);
 namespace paddle {
 namespace framework {
 

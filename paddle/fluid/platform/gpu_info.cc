@@ -33,14 +33,8 @@ DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
-USE_STAT(STAT_gpu0_mem_size);
-USE_STAT(STAT_gpu1_mem_size);
-USE_STAT(STAT_gpu2_mem_size);
-USE_STAT(STAT_gpu3_mem_size);
-USE_STAT(STAT_gpu4_mem_size);
-USE_STAT(STAT_gpu5_mem_size);
-USE_STAT(STAT_gpu6_mem_size);
-USE_STAT(STAT_gpu7_mem_size);
+
+USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
@@ -372,7 +366,8 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         cur_size_ += size;
       }
-      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      // STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      UpdateGpuMemStat(0, dev_id_, size);
       return cudaSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -401,7 +396,8 @@ class RecordedCudaMallocHelper {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
       }
-      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      // STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
+      UpdateGpuMemStat(1, dev_id_, size);
     } else {
       cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
     }
@@ -474,6 +470,14 @@ uint64_t RecordedCudaMallocSize(int dev_id) {
 
 bool IsCudaMallocRecorded(int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->NeedRecord();
+}
+
+void UpdateGpuMemStat(int mode, int dev_id, size_t size) {
+  if (mode == 0) {
+    STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id) + "_mem_size", size);
+  } else if (mode == 1) {
+    STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id) + "_mem_size", size);
+  }
 }
 
 }  // namespace platform
