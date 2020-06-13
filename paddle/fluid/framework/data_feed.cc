@@ -1794,14 +1794,13 @@ void SlotPaddleBoxDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   pv_batch_size_ = data_feed_desc.pv_batch_size();
   // fprintf(stdout, "rank_offset_name: [%s]\n", rank_offset_name_.c_str());
 }
-void SlotPaddleBoxDataFeed::GetUsedSlot(
-    std::vector<bool>* used_slot_index_ptr) {
+void SlotPaddleBoxDataFeed::GetUsedSlotIndex(
+    std::vector<int>* used_slot_index) {
   auto boxps_ptr = BoxWrapper::GetInstance();
   // get feasigns that FeedPass doesn't need
   const std::unordered_set<std::string>& slot_name_omited_in_feedpass_ =
       boxps_ptr->GetOmitedSlot();
-  std::vector<bool>& used_slot_index = (*used_slot_index_ptr);
-  used_slot_index.assign(use_slot_size_, false);
+  used_slot_index->clear();
   for (int i = 0; i < use_slot_size_; ++i) {
     auto& info = used_slots_info_[i];
     if (info.type[0] != 'u') {
@@ -1809,7 +1808,7 @@ void SlotPaddleBoxDataFeed::GetUsedSlot(
     }
     if (slot_name_omited_in_feedpass_.find(info.slot) ==
         slot_name_omited_in_feedpass_.end()) {
-      used_slot_index[info.slot_value_idx] = true;
+      used_slot_index->push_back(info.slot_value_idx);
     }
   }
 }
