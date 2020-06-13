@@ -43,7 +43,6 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
-  QkvToContextPluginDynamic() {}
   explicit QkvToContextPluginDynamic(int hidden, int head_number, int head_size,
                                      float scale, bool ban_fp16)
       : hidden_(hidden),
@@ -132,7 +131,7 @@ class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return new QkvToContextPluginDynamic();
+    return nullptr;
   }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,

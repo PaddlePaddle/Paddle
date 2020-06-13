@@ -43,7 +43,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       input_ids.push_back(engine_->GetITensor(id_names[i]));
     }
 
-    std::vector<float*> input_embs;
+    std::vector<float const*> input_embs;
     std::vector<int> emb_sizes;
 
     // get the presistable var's data
@@ -61,6 +61,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     for (int i = 0; i < input_num; i++) {
       framework::DDim emb_dims;
       float* emb_data = get_persistable_data(emb_names[i], &emb_dims);
+
       int64_t emb_size = framework::product(emb_dims);
       input_embs.push_back(emb_data);
       emb_sizes.push_back(emb_size);
@@ -88,17 +89,17 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       if (use_fp16) {
 #ifdef SUPPORTS_CUDA_FP16
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic<half>(
-            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps);
+            emb_sizes, bias_size, scale_size, hidden, eps, true, input_embs,
+            bias, scale);
 #else
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps);
+            emb_sizes, bias_size, scale_size, hidden, eps, true, input_embs,
+            bias, scale);
 #endif
       } else {
         plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
-            input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
-            eps);
+            emb_sizes, bias_size, scale_size, hidden, eps, true, input_embs,
+            bias, scale);
       }
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {

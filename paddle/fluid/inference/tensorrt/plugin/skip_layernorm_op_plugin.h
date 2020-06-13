@@ -130,7 +130,7 @@ class SkipLayerNormPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    return new SkipLayerNormPluginDynamic();
+    return nullptr;
   }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
