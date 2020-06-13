@@ -111,10 +111,8 @@ class GeluPluginDynamic : public DynamicPluginTensorRT {
 
 class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
  public:
-  GeluPluginV2Creator() {
-    mPluginAttributes.emplace_back(nvinfer1::PluginField(
-  }
-  const char* getPluginName() const override { return "gelu_pluginpaddle_trt"; }
+  GeluPluginV2Creator() {}
+  const char* getPluginName() const override { return "gelu_plugin"; }
 
   const char* getPluginVersion() const override { return "1"; }
 
@@ -124,8 +122,7 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
 
   nvinfer1::IPluginV2* createPlugin(
       const char* name, const nvinfer1::PluginFieldCollection* fc) override {
-    auto plugin = new GeluPluginDynamic();
-    return plugin;
+    return nullptr;
   }
 
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
@@ -142,7 +139,7 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
   const char* getPluginNamespace() const override { return mNamespace.c_str(); }
 
  private:
-  std::string mNamespace{"paddle_trt"};
+  std::string mNamespace;
   std::string mPluginName;
   nvinfer1::PluginFieldCollection mFieldCollection{0, nullptr};
   std::vector<nvinfer1::PluginField> mPluginAttributes;
