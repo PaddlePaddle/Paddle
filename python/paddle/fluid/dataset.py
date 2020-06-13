@@ -1100,3 +1100,56 @@ class BoxPSDataset(InMemoryDataset):
         """
         slots_set = set(slots)
         self.boxps.slots_shuffle(slots_set)
+        
+        
+class PadBoxSlotDataset(BoxPSDataset):
+    """
+    PadBoxSlotDataset: derived from InMemoryDataset.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+    """
+
+    def __init__(self):
+        """
+        Initialize BoxPSDataset
+        This class should be created by DatasetFactory
+        """
+        # define class name here
+        # to decide whether we need create in memory instance
+        self.proto_desc = data_feed_pb2.DataFeedDesc()
+        self.proto_desc.pipe_command = "cat"
+        self.dataset = core.Dataset("PadBoxSlotDataset")
+        self.thread_num = 1
+        self.filelist = []
+        self.boxps = core.BoxPS(self.dataset)
+        self.proto_desc.name = "SlotPaddleBoxDataFeed"
+        self.fleet_send_batch_size = None
+        self.is_user_set_queue_num = False
+        self.queue_num = None
+        self.parse_ins_id = False
+        self.parse_content = False
+        self.parse_logkey = False
+        self.merge_by_sid = True
+        self.enable_pv_merge = False
+        self.merge_by_lineid = False
+        self.fleet_send_sleep_seconds = None
+
+    def load_into_memory(self):
+        """
+        Load next pass into memory and notify boxps to fetch its emb from SSD
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+        """
+        self._prepare_to_run()
+        self.boxps.read_ins_into_memory()
+        

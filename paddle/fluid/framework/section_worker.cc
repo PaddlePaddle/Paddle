@@ -21,7 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
-
+#ifdef PADDLE_WITH_BOX_PS
+#include "paddle/fluid/framework/fleet/box_wrapper.h"
+#endif
 namespace paddle {
 namespace framework {
 
@@ -106,6 +108,21 @@ void SectionWorker::Initialize(const TrainerDesc& desc) {
 }
 
 void SectionWorker::AutoSetCPUAffinity(bool reuse) {
+#ifdef PADDLE_WITH_BOX_PS
+  std::vector<int> &train_cores = boxps::get_train_cores();
+  if (train_cores.empty()) {
+    LOG(WARNING) << "not found binding train cores";
+    return;
+  }
+
+  int cpuid = train_cores[pipeline_id_];
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  CPU_SET(cpuid, &mask);
+  pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask);
+
+  //VLOG(0) << "binding card = " << pipeline_id_ << ", cpuid = " << cpuid;
+#else
   int thread_cpu_id = cpu_id_.fetch_add(1);
 
   unsigned concurrency_cap = std::thread::hardware_concurrency();
@@ -116,8 +133,8 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
       proc %= concurrency_cap;
     } else {
       LOG(INFO) << "All " << concurrency_cap
-                << " CPUs have been set affinities. Fail to set "
-                << thread_cpu_id << "th thread";
+          << " CPUs have been set affinities. Fail to set " << thread_cpu_id
+          << "th thread";
       return;
     }
   }
@@ -137,6 +154,7 @@ void SectionWorker::AutoSetCPUAffinity(bool reuse) {
     LOG(WARNING) << "Fail to set thread affinity to CPU " << proc;
   }
   SEC_LOG << "Set " << thread_cpu_id << "th thread affinity to CPU " << proc;
+#endif
 }
 
 void SectionWorker::TrainFiles() {

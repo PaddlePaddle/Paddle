@@ -25,9 +25,8 @@ namespace paddle {
 namespace framework {
 
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
+std::shared_ptr<boxps::PaddleShuffler> BoxWrapper::data_shuffle_ = nullptr;
 cudaStream_t BoxWrapper::stream_list_[8];
-std::shared_ptr<boxps::BoxPSBase> BoxWrapper::boxps_ptr_ = nullptr;
-AfsManager* BoxWrapper::afs_manager = nullptr;
 int BoxWrapper::embedx_dim_ = 8;
 int BoxWrapper::expand_embed_dim_ = 0;
 

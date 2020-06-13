@@ -317,5 +317,60 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual ~MultiSlotDataset() {}
 };
 
+#ifdef PADDLE_WITH_BOX_PS
+class PadBoxSlotDataset : public DatasetImpl<SlotRecord> {
+ public:
+  PadBoxSlotDataset();
+  virtual ~PadBoxSlotDataset();
+  // seperate train thread and dataset thread
+  virtual void DynamicAdjustChannelNum(int channel_num,
+                                       bool discard_remaining_ins = false) {
+    // not need to
+  }
+  // dynamic adjust reader num
+  virtual void DynamicAdjustReadersNum(int thread_num);
+  // set file list
+  virtual void SetFileList(const std::vector<std::string>& filelist);
+  // create input channel and output channel
+  virtual void CreateChannel();
+  // load all data into memory
+  virtual void LoadIntoMemory();
+  // release all memory data
+  virtual void ReleaseMemory();
+  // create readers
+  virtual void CreateReaders();
+  // destroy readers
+  virtual void DestroyReaders();
+  // merge pv instance
+  virtual void PreprocessInstance();
+  // restore
+  virtual void PostprocessInstance();
+  // prepare train do something
+  virtual void PrepareTrain(void);
+  virtual int64_t GetMemoryDataSize() { return input_records_.size(); }
+  virtual int64_t GetPvDataSize() { return input_pv_ins_.size(); }
+  virtual int64_t GetShuffleDataSize() { return input_records_.size(); }
+
+ protected:
+  // shuffle data
+  virtual void ShuffleData(std::vector<std::thread>* shuffle_threads,
+                           int thread_num = -1);
+  virtual void ReceiveSuffleData(int client_id, const char* msg, int len);
+
+ private:
+  void MergeInsKeys(const Channel<SlotRecord>& in);
+
+ private:
+  Channel<SlotRecord> shuffle_channel_ = nullptr;
+  std::vector<int> mpi_flags_;
+  std::atomic<int> finished_counter_{0};
+  int mpi_size_ = 1;
+  int mpi_rank_ = 0;
+  std::vector<SlotPvInstance> input_pv_ins_;
+  int shuffle_thread_num_ = 10;
+  std::atomic<int> shuffle_counter_{0};
+};
+#endif
+
 }  // end namespace framework
 }  // end namespace paddle

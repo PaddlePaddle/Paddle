@@ -62,5 +62,8 @@ std::unique_ptr<Dataset> DatasetFactory::CreateDataset(
 }
 
 REGISTER_DATASET_CLASS(MultiSlotDataset);
+#ifdef PADDLE_WITH_BOX_PS
+REGISTER_DATASET_CLASS(PadBoxSlotDataset);
+#endif
 }  // namespace framework
 }  // namespace paddle

@@ -13,9 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_BOX_PS
-#include <afs_filesystem.h>
+#include <boxps_extends.h>
 #include <boxps_public.h>
 #include <dirent.h>
 #include <signal.h>
@@ -46,8 +45,6 @@ limitations under the License. */
 #include "paddle/fluid/string/string_helper.h"
 #define BUF_SIZE 1024 * 1024
 
-extern void comlog_set_log_level(int log_level);
-extern int com_logstatus();
 DECLARE_int32(fix_dayid);
 namespace paddle {
 namespace framework {
@@ -132,210 +129,26 @@ class BasicAucCalculator {
   std::mutex _table_mutex;
 };
 
-class AfsStreamFile {
- public:
-  explicit AfsStreamFile(afs::AfsFileSystem* afsfile)
-      : afsfile_(afsfile), reader_(nullptr) {}
-  virtual ~AfsStreamFile() {
-    if (reader_ != NULL) {
-      afsfile_->CloseReader(reader_);
-      reader_ = NULL;
-    }
-  }
-  virtual int Open(const char* path) {
-    if (path == NULL) {
-      return -1;
-    }
-    reader_ = afsfile_->OpenReader(path);
-    PADDLE_ENFORCE_NE(reader_, nullptr,
-                      platform::errors::PreconditionNotMet(
-                          "OpenReader for file[%s] failed.", path));
-    return 0;
-  }
-  virtual int Read(char* buf, int len) {
-    int ret = reader_->Read(buf, len);
-    return ret;
-  }
-
- private:
-  afs::AfsFileSystem* afsfile_;
-  afs::Reader* reader_;
-};
-
-class AfsManager {
- public:
-  AfsManager(const std::string& fs_name, const std::string& fs_ugi,
-             const std::string& conf_path) {
-    auto split = fs_ugi.find(",");
-    std::string user = fs_ugi.substr(0, split);
-    std::string pwd = fs_ugi.substr(split + 1);
-    _afshandler = new afs::AfsFileSystem(fs_name.c_str(), user.c_str(),
-                                         pwd.c_str(), conf_path.c_str());
-    VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
-    int ret = _afshandler->Init(true, (com_logstatus() == 0));
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called AFSAPI Init Interface Failed."));
-    // Too high level will hurt the performance
-    comlog_set_log_level(4);
-    ret = _afshandler->Connect();
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called AFSAPI Connect Interface Failed"));
-  }
-  virtual ~AfsManager() {
-    if (_afshandler != NULL) {
-      _afshandler->DisConnect();
-      _afshandler->Destroy();
-      delete _afshandler;
-      _afshandler = nullptr;
-    }
-  }
-  static void ReadFromAfs(const std::string& path, FILE* wfp,
-                          afs::AfsFileSystem* _afshandler) {
-    AfsStreamFile* read_stream = new AfsStreamFile(_afshandler);
-    int ret = read_stream->Open(path.c_str());
-    PADDLE_ENFORCE_EQ(ret, 0,
-                      platform::errors::PreconditionNotMet(
-                          "Called AFSAPI Open file %s Failed.", path.c_str()));
-    // char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
-    char _buff[BUF_SIZE];
-    int size = 0;
-    while ((size = read_stream->Read(_buff, BUF_SIZE)) > 0) {
-      fwrite(_buff, 1, size, wfp);
-    }
-    fflush(wfp);
-    fclose(wfp);
-    // delete _buff;
-    delete read_stream;
-  }
-  int PopenBidirectionalInternal(const char* command,
-                                 FILE*& fp_read,               // NOLINT
-                                 FILE*& fp_write, pid_t& pid,  // NOLINT
-                                 bool read,                    // NOLINT
-                                 bool write) {
-    std::lock_guard<std::mutex> g(g_flock);
-    int fd_read[2];
-    int fd_write[2];
-    if (read) {
-      PADDLE_ENFORCE_EQ(
-          pipe(fd_read), 0,
-          platform::errors::External("Create read pipe failed in AfsManager."));
-    }
-    if (write) {
-      PADDLE_ENFORCE_EQ(pipe(fd_write), 0,
-                        platform::errors::External(
-                            "Create write pipe failed in AfsManager."));
-    }
-    pid = vfork();
-    PADDLE_ENFORCE_GE(
-        pid, 0,
-        platform::errors::External(
-            "Failed to create a child process via fork in AfsManager."));
-    if (pid == 0) {
-      if (read) {
-        PADDLE_ENFORCE_NE(
-            dup2(fd_read[1], STDOUT_FILENO), -1,
-            platform::errors::External(
-                "Failed to duplicate file descriptor via dup2 in AfsManager."));
-        close(fd_read[1]);
-        close(fd_read[0]);
-      }
-
-      if (write) {
-        PADDLE_ENFORCE_NE(
-            dup2(fd_write[0], STDIN_FILENO), -1,
-            platform::errors::External(
-                "Failed to duplicate file descriptor via dup2 in AfsManager."));
-        close(fd_write[0]);
-        close(fd_write[1]);
-      }
-
-      struct dirent* item;
-      DIR* dir = opendir("/proc/self/fd");
-      while ((item = readdir(dir)) != NULL) {
-        int fd = atoi(item->d_name);
-        if (fd >= 3) {
-          (void)close(fd);
-        }
-      }
-
-      closedir(dir);
-
-      execl("/bin/sh", "sh", "-c", command, NULL);
-      exit(127);
-    } else {
-      if (read) {
-        close(fd_read[1]);
-        fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
-        fp_read = fdopen(fd_read[0], "r");
-        PADDLE_ENFORCE_NE(
-            fp_read, nullptr,
-            platform::errors::External(
-                "Failed to open file descriptor via fdopen in AfsManager."));
-      }
-
-      if (write) {
-        close(fd_write[0]);
-        fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
-        fp_write = fdopen(fd_write[1], "w");
-        PADDLE_ENFORCE_NE(
-            fp_write, nullptr,
-            platform::errors::External(
-                "Failed to open file descriptor via fdopen in AfsManager."));
-      }
-      return 0;
-    }
-  }
-  std::shared_ptr<FILE> GetFile(const std::string& path,
-                                const std::string& pipe_command) {
-    pid_t pid = 0;
-    FILE* wfp = NULL;
-    FILE* rfp = NULL;
-
-    // Always use set -eo pipefail. Fail fast and be aware of exit codes.
-    std::string cmd = "set -eo pipefail; " + pipe_command;
-    int ret =
-        PopenBidirectionalInternal(cmd.c_str(), rfp, wfp, pid, true, true);
-
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "Called PopenBidirectionalInternal Failed"));
-    std::string filename(path);
-    if (strncmp(filename.c_str(), "afs:", 4) == 0) {
-      filename = filename.substr(4);
-    }
-    std::thread read_thread(&AfsManager::ReadFromAfs, filename, wfp,
-                            _afshandler);
-    read_thread.detach();
-    return {rfp, [pid, cmd](FILE* rfp) {
-              int wstatus = -1;
-              int ret = -1;
-              do {
-                ret = waitpid(pid, &wstatus, 0);
-              } while (ret == -1 && errno == EINTR);
-
-              fclose(rfp);
-              if (wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
-                  (wstatus == -1 && errno == ECHILD)) {
-                VLOG(3) << "pclose_bidirectional pid[" << pid << "], status["
-                        << wstatus << "]";
-              } else {
-                LOG(WARNING) << "pclose_bidirectional pid[" << pid << "]"
-                             << ", ret[" << ret << "] shell open fail";
-              }
-              if (wstatus == -1 && errno == ECHILD) {
-                LOG(WARNING) << "errno is ECHILD";
-              }
-            }};
-  }
-
- private:
-  afs::AfsFileSystem* _afshandler;
-  std::mutex g_flock;
-};
-
 class BoxWrapper {
  public:
-  virtual ~BoxWrapper() {}
-  BoxWrapper() {}
+  virtual ~BoxWrapper() {
+    if (file_manager_ != nullptr) {
+      file_manager_->destory();
+      file_manager_ = nullptr;
+    }
+    if (data_shuffle_ != nullptr) {
+      data_shuffle_->destory();
+      data_shuffle_ = nullptr;
+    }
+    if (p_agent_ != nullptr) {
+      delete p_agent_;
+      p_agent_ = nullptr;
+    }
+  }
+  BoxWrapper() {
+    fprintf(stdout, "init box wrapper\n");
+    boxps::MPICluster::Ins();
+  }
 
   void FeedPass(int date, const std::vector<uint64_t>& feasgin_to_box) const;
   void BeginFeedPass(int date, boxps::PSAgentBase** agent) const;
@@ -431,6 +244,17 @@ class BoxWrapper {
     }
   }
 
+  void ReleasePool(void) {
+    // after one day train release memory pool slot record
+    platform::Timer timer;
+    timer.Start();
+    size_t capacity = SlotRecordPool().capacity();
+    SlotRecordPool().clear();
+    timer.Pause();
+    LOG(WARNING) << "ReleasePool Size=" << capacity
+                 << ", Time=" << timer.ElapsedSec() << "sec";
+  }
+
   const std::string SaveBase(const char* batch_model_path,
                              const char* xbox_model_path,
                              const std::string& date) {
@@ -489,6 +313,11 @@ class BoxWrapper {
             boxps::BoxPSBase::GetIns(embedx_dim, expand_embed_dim));
         embedx_dim_ = embedx_dim;
         expand_embed_dim_ = expand_embed_dim;
+
+        if (boxps::MPICluster::Ins().size() > 1) {
+          data_shuffle_.reset(boxps::PaddleShuffler::New());
+          data_shuffle_->init(10);
+        }
       }
     } else {
       LOG(WARNING) << "You have already used SetInstance() before";
@@ -498,11 +327,41 @@ class BoxWrapper {
 
   void InitAfsAPI(const std::string& fs_name, const std::string& fs_ugi,
                   const std::string& conf_path) {
-    afs_manager = new AfsManager(fs_name, fs_ugi, conf_path);
+    file_manager_.reset(boxps::PaddleFileMgr::New());
+    auto split = fs_ugi.find(",");
+    std::string user = fs_ugi.substr(0, split);
+    std::string pwd = fs_ugi.substr(split + 1);
+    bool ret = file_manager_->initialize(fs_name, user, pwd, conf_path);
+    PADDLE_ENFORCE_EQ(ret, true, platform::errors::PreconditionNotMet(
+                                     "Called AFSAPI Init Interface Failed."));
     use_afs_api_ = true;
   }
 
   bool UseAfsApi() const { return use_afs_api_; }
+
+  std::shared_ptr<FILE> OpenReadFile(const std::string& path,
+                                     const std::string& pipe_command) {
+    return boxps::fopen_read(file_manager_.get(), path, pipe_command);
+  }
+
+  boxps::PaddleFileMgr* GetFileMgr(void) { return file_manager_.get(); }
+
+  // this performs better than rand_r, especially large data
+  static std::default_random_engine& LocalRandomEngine() {
+    struct engine_wrapper_t {
+      std::default_random_engine engine;
+      engine_wrapper_t() {
+        struct timespec tp;
+        clock_gettime(CLOCK_REALTIME, &tp);
+        double cur_time = tp.tv_sec + tp.tv_nsec * 1e-9;
+        static std::atomic<uint64_t> x(0);
+        std::seed_seq sseq = {x++, x++, x++, (uint64_t)(cur_time * 1000)};
+        engine.seed(sseq);
+      }
+    };
+    thread_local engine_wrapper_t r;
+    return r.engine;
+  }
 
   const std::unordered_set<std::string>& GetOmitedSlot() const {
     return slot_name_omited_in_feedpass_;
@@ -823,7 +682,7 @@ class BoxWrapper {
 
  private:
   static cudaStream_t stream_list_[8];
-  static std::shared_ptr<boxps::BoxPSBase> boxps_ptr_;
+  std::shared_ptr<boxps::BoxPSBase> boxps_ptr_ = nullptr;
   boxps::PSAgentBase* p_agent_ = nullptr;
   // TODO(hutuxian): magic number, will add a config to specify
   const int feedpass_thread_num_ = 30;  // magic number
@@ -842,8 +701,10 @@ class BoxWrapper {
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
   bool use_afs_api_ = false;
 
+  std::shared_ptr<boxps::PaddleFileMgr> file_manager_ = nullptr;
+
  public:
-  static AfsManager* afs_manager;
+  static std::shared_ptr<boxps::PaddleShuffler> data_shuffle_;
 
   // Auc Runner
  public:
@@ -920,6 +781,51 @@ class BoxHelper {
     box_ptr->EndPass(need_save_delta);
 #endif
   }
+
+  void ReadData2Memory() {
+    platform::Timer timer;
+    VLOG(3) << "Begin ReadData2Memory(), dataset[" << dataset_ << "]";
+    double feed_pass_span = 0.0;
+    double read_ins_span = 0.0;
+
+    timer.Start();
+#ifdef PADDLE_WITH_BOX_PS
+    struct std::tm b;
+    b.tm_year = year_ - 1900;
+    b.tm_mon = month_ - 1;
+    b.tm_mday = day_;
+    b.tm_min = b.tm_hour = b.tm_sec = 0;
+    std::time_t x = std::mktime(&b);
+
+    auto box_ptr = BoxWrapper::GetInstance();
+    boxps::PSAgentBase* agent = box_ptr->GetAgent();
+    VLOG(3) << "Begin call BeginFeedPass in BoxPS";
+    box_ptr->BeginFeedPass(x / 86400, &agent);
+    timer.Pause();
+
+    feed_pass_span = timer.ElapsedSec();
+
+    timer.Start();
+    // add 0 key
+    agent->AddKey(0ul, 0);
+    dataset_->LoadIntoMemory();
+    timer.Pause();
+    read_ins_span = timer.ElapsedSec();
+
+    timer.Start();
+    // auc runner
+    if (box_ptr->Mode() == 1) {
+      box_ptr->AddReplaceFeasign(agent, box_ptr->GetFeedpassThreadNum());
+    }
+    box_ptr->EndFeedPass(agent);
+#endif
+    timer.Pause();
+
+    VLOG(0) << "begin feedpass: " << feed_pass_span
+            << "s, download + parse cost: " << read_ins_span
+            << "s, end feedpass:" << timer.ElapsedSec() << "s";
+  }
+
   void LoadIntoMemory() {
     platform::Timer timer;
     VLOG(3) << "Begin LoadIntoMemory(), dataset[" << dataset_ << "]";

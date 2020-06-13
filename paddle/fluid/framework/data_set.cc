@@ -26,6 +26,8 @@
 #include "paddle/fluid/platform/timer.h"
 #include "xxhash.h"  // NOLINT
 
+#include "paddle/fluid/framework/fleet/box_wrapper.h"
+
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
@@ -1374,5 +1376,598 @@ void MultiSlotDataset::SlotsShuffle(
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
 }
 
+#ifdef PADDLE_WITH_BOX_PS
+// paddlebox
+PadBoxSlotDataset::PadBoxSlotDataset() {
+  mpi_size_ = boxps::MPICluster::Ins().size();
+  mpi_rank_ = boxps::MPICluster::Ins().rank();
+
+  if (mpi_size_ > 1) {
+    finished_counter_ = mpi_size_;
+    mpi_flags_.assign(mpi_size_, 1);
+    VLOG(3) << "RegisterClientToClientMsgHandler";
+    BoxWrapper::data_shuffle_->register_handler(
+        [this](int client_id, const char* buf, int len) {
+          return this->ReceiveSuffleData(client_id, buf, len);
+        });
+    VLOG(3) << "RegisterClientToClientMsgHandler done";
+  }
+  SlotRecordPool();
+}
+PadBoxSlotDataset::~PadBoxSlotDataset() {}
+// create input channel and output channel
+void PadBoxSlotDataset::CreateChannel() {
+  if (input_channel_ == nullptr) {
+    input_channel_ = MakeChannel<SlotRecord>();
+  }
+  if (shuffle_channel_ == nullptr) {
+    shuffle_channel_ = MakeChannel<SlotRecord>();
+  }
+}
+// set filelist, file_idx_ will reset to zero.
+void PadBoxSlotDataset::SetFileList(const std::vector<std::string>& filelist) {
+  VLOG(3) << "filelist size: " << filelist.size();
+  if (mpi_size_ > 1) {
+    // dualbox
+    int num = static_cast<int>(filelist.size());
+    for (int i = mpi_rank_; i < num; i = i + mpi_size_) {
+      filelist_.push_back(filelist[i]);
+    }
+  } else {
+    filelist_ = filelist;
+  }
+  file_idx_ = 0;
+}
+
+static void SetCPUAffinity(int tid, bool one_by_one = false) {
+  std::vector<int>& cores = boxps::get_readins_cores();
+  if (cores.empty()) {
+    VLOG(0) << "not found binding read ins thread cores";
+    return;
+  }
+
+  size_t core_num = cores.size();
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  if (one_by_one) {
+    CPU_SET(cores[tid % core_num], &mask);
+  } else {
+    for (size_t i = 0; i < core_num; ++i) {
+      CPU_SET(cores[i], &mask);
+    }
+  }
+  pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask);
+  // VLOG(0) << "binding read ins thread_id = " << tid << ", cpunum = " <<
+  // core_num;
+}
+// load all data into memory
+void PadBoxSlotDataset::LoadIntoMemory() {
+  VLOG(3) << "DatasetImpl<T>::LoadIntoMemory() begin";
+  platform::Timer timeline;
+  timeline.Start();
+  std::vector<std::thread> load_threads;
+  std::vector<std::thread> shuffle_threads;
+
+  std::atomic<int> ref(thread_num_);
+  for (int64_t i = 0; i < thread_num_; ++i) {
+    load_threads.push_back(std::thread([this, i, &ref]() {
+      SetCPUAffinity(i, false);
+      readers_[i]->LoadIntoMemory();
+      if (--ref == 0) {
+        input_channel_->Close();
+      }
+    }));
+  }
+
+  // dualbox global data shuffle
+  if (mpi_size_ > 1) {
+    ShuffleData(&shuffle_threads, shuffle_thread_num_);
+    MergeInsKeys(shuffle_channel_);
+  } else {
+    MergeInsKeys(input_channel_);
+  }
+
+  for (std::thread& t : load_threads) {
+    t.join();
+  }
+
+  if (!shuffle_threads.empty()) {
+    for (std::thread& t : shuffle_threads) {
+      t.join();
+    }
+  }
+
+  //  shuffle_channel_->Clear();
+  //  input_channel_->Clear();
+
+  timeline.Pause();
+  VLOG(1) << "PadBoxSlotDataset::LoadIntoMemory() end"
+          << ", memory data size=" << input_records_.size()
+          << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
+// add fea keys
+void PadBoxSlotDataset::MergeInsKeys(const Channel<SlotRecord>& in) {
+  platform::Timer timeline;
+  timeline.Start();
+
+  std::vector<std::thread> feed_threads;
+  auto boxps_ptr = BoxWrapper::GetInstance();
+  //  std::vector<bool> used_fea_index;
+  //  ((SlotPaddleBoxDataFeed*)readers_[0].get())->GetUsedSlot(used_fea_index);
+
+  input_records_.clear();
+  boxps::PSAgentBase* agent = boxps_ptr->GetAgent();
+
+  int thread_num = boxps_ptr->GetFeedpassThreadNum();
+  if (thread_num > 10) {
+    thread_num = 10;
+  }
+  std::mutex mutex;
+  for (int tid = 0; tid < thread_num; ++tid) {
+    feed_threads.push_back(std::thread([this, &in, agent, tid,
+                                        &mutex /**, &used_fea_index*/]() {
+      SetCPUAffinity(tid, false);
+      std::vector<SlotRecord> datas;
+      auto feed_obj =
+          reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[tid].get());
+      while (in->Read(datas)) {
+        for (auto& rec : datas) {
+          agent->AddKeys(rec->slot_uint64_feasigns_.slot_values.data(),
+                         rec->slot_uint64_feasigns_.slot_values.size(), tid);
+          //          for (size_t i = 0; i < rec->slot_uint64_feasigns_.size();
+          //          ++i) {
+          //            if (!used_fea_index[i]) {
+          //              continue;
+          //            }
+          //            auto &feas = rec->slot_uint64_feasigns_[i];
+          //            agent->AddKeys(feas.data(), feas.size(), tid);
+          //          }
+          feed_obj->ExpandSlotRecord(&rec);
+        }
+
+        mutex.lock();
+        for (auto& t : datas) {
+          input_records_.push_back(std::move(t));
+        }
+        mutex.unlock();
+        datas.clear();
+      }
+      datas.shrink_to_fit();
+    }));
+  }
+
+  for (auto& t : feed_threads) {
+    t.join();
+  }
+  timeline.Pause();
+  VLOG(1) << "PadBoxSlotDataset::MergeInsKeys end"
+          << ", memory data size=" << input_records_.size()
+          << ", cost time=" << timeline.ElapsedSec() << " seconds";
+}
+// release all memory data
+void PadBoxSlotDataset::ReleaseMemory() {
+  VLOG(3) << "DatasetImpl<T>::ReleaseMemory() begin";
+  platform::Timer timeline;
+  timeline.Start();
+
+  if (input_channel_) {
+    input_channel_->Clear();
+    input_channel_ = nullptr;
+  }
+
+  if (shuffle_channel_) {
+    shuffle_channel_->Clear();
+    shuffle_channel_ = nullptr;
+  }
+
+  readers_.clear();
+  readers_.shrink_to_fit();
+
+  SlotRecordPool().put(&input_records_);
+  input_records_.clear();
+  input_records_.shrink_to_fit();
+
+  if (!input_pv_ins_.empty()) {
+    for (auto& pv : input_pv_ins_) {
+      delete pv;
+    }
+    input_pv_ins_.clear();
+  }
+  timeline.Pause();
+  VLOG(1) << "DatasetImpl<T>::ReleaseMemory() end, cost time="
+          << timeline.ElapsedSec()
+          << " seconds, object pool size=" << SlotRecordPool().capacity();
+}
+// shuffle data
+void PadBoxSlotDataset::ShuffleData(std::vector<std::thread>* shuffle_threads,
+                                    int thread_num) {
+  if (thread_num == -1) {
+    thread_num = thread_num_;
+  }
+  VLOG(3) << "start global shuffle threads, num = " << thread_num;
+  shuffle_counter_ = thread_num;
+  for (int tid = 0; tid < thread_num; ++tid) {
+    shuffle_threads->push_back(std::thread([this, tid]() {
+      SetCPUAffinity(tid, false);
+      std::vector<SlotRecord> data;
+      std::vector<SlotRecord> loc_datas;
+      std::vector<SlotRecord> releases;
+      std::vector<paddle::framework::BinaryArchive> ars(mpi_size_);
+      std::vector<std::future<int32_t>> rets(mpi_size_);
+
+      while (input_channel_->Read(data)) {
+        for (auto& t : data) {
+          int client_id = 0;
+          if (enable_pv_merge_) {  // shuffle by pv
+            client_id = t->search_id % mpi_size_;
+          } else if (merge_by_insid_) {  // shuffle by lineid
+            client_id =
+                XXH64(t->ins_id_.data(), t->ins_id_.length(), 0) % mpi_size_;
+          } else {  // shuffle
+            client_id = BoxWrapper::LocalRandomEngine()() % mpi_size_;
+          }
+          if (client_id == mpi_rank_) {
+            loc_datas.push_back(std::move(t));
+            continue;
+          }
+          ars[client_id] << t;
+          releases.push_back(t);
+        }
+        SlotRecordPool().put(&releases);
+        releases.clear();
+
+        shuffle_channel_->Write(std::move(loc_datas));
+
+        for (int i = 0; i < mpi_size_; ++i) {
+          if (i == mpi_rank_) {
+            continue;
+          }
+          if (ars[i].Length() == 0) {
+            continue;
+          }
+          rets[i] = BoxWrapper::data_shuffle_->send_message(i, ars[i].Buffer(),
+                                                            ars[i].Length());
+        }
+
+        for (int i = 0; i < mpi_size_; ++i) {
+          if (i == mpi_rank_) {
+            continue;
+          }
+          rets[i].wait();
+          ars[i].Clear();
+        }
+        data.clear();
+        loc_datas.clear();
+      }
+
+      // only one thread send finish notify
+      if (--shuffle_counter_ == 0) {
+        // send closed
+        paddle::framework::BinaryArchive ar;
+        for (int i = 0; i < mpi_size_; ++i) {
+          if (i == mpi_rank_) {
+            continue;
+          }
+          rets[i] = BoxWrapper::data_shuffle_->send_message(i, ar.Buffer(),
+                                                            ar.Length());
+        }
+
+        for (int i = 0; i < mpi_size_; ++i) {
+          if (i == mpi_rank_) {
+            continue;
+          }
+          rets[i].wait();
+        }
+        // local closed channel
+        if (--finished_counter_ == 0) {
+          shuffle_channel_->Close();
+        }
+      }
+    }));
+  }
+}
+void PadBoxSlotDataset::ReceiveSuffleData(int client_id, const char* buf,
+                                          int len) {
+  VLOG(3) << "ReceiveFromClient client_id=" << client_id
+          << ", msg length=" << len;
+  if (len == 0) {
+    return;
+  }
+
+  paddle::framework::BinaryArchive ar;
+  ar.SetReadBuffer(const_cast<char*>(buf), len, nullptr);
+  if (ar.Cursor() == ar.Finish()) {
+    if (mpi_flags_[client_id]) {
+      mpi_flags_[client_id] = 0;
+      --finished_counter_;
+    }
+    if (finished_counter_ == 0) {
+      shuffle_channel_->Close();
+    }
+    return;
+  }
+
+  int offset = 0;
+  const int max_fetch_num = 1000;
+  std::vector<SlotRecord> data;
+  SlotRecordPool().get(&data, max_fetch_num);
+  while (ar.Cursor() < ar.Finish()) {
+    ar >> data[offset++];
+    if (offset >= max_fetch_num) {
+      shuffle_channel_->Write(std::move(data));
+      data.clear();
+      offset = 0;
+      SlotRecordPool().get(&data, max_fetch_num);
+    }
+  }
+  CHECK(ar.Cursor() == ar.Finish());
+  if (offset > 0) {
+    shuffle_channel_->WriteMove(offset, &data[0]);
+    if (offset < max_fetch_num) {
+      SlotRecordPool().put(&data[offset], (max_fetch_num - offset));
+    }
+  } else {
+    SlotRecordPool().put(&data);
+  }
+
+  data.clear();
+  data.shrink_to_fit();
+}
+// create readers
+void PadBoxSlotDataset::CreateReaders() {
+  VLOG(3) << "Calling CreateReaders()"
+          << "thread num in Dataset: " << thread_num_
+          << "Filelist size in Dataset: " << filelist_.size()
+          << "readers size: " << readers_.size();
+  if (readers_.size() != 0) {
+    VLOG(3) << "readers_.size() = " << readers_.size()
+            << ", will not create again";
+    return;
+  }
+  VLOG(3) << "data feed class name: " << data_feed_desc_.name();
+  for (int i = 0; i < thread_num_; ++i) {
+    readers_.push_back(
+        DataFeedFactory::CreateDataFeed("SlotPaddleBoxDataFeed"));
+    readers_[i]->Init(data_feed_desc_);
+    readers_[i]->SetThreadId(i);
+    readers_[i]->SetThreadNum(thread_num_);
+    readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
+    readers_[i]->SetFileListIndex(&file_idx_);
+    readers_[i]->SetFileList(filelist_);
+    readers_[i]->SetParseInsId(parse_ins_id_);
+    readers_[i]->SetParseContent(parse_content_);
+    readers_[i]->SetParseLogKey(parse_logkey_);
+    readers_[i]->SetEnablePvMerge(enable_pv_merge_);
+    // Notice: it is only valid for untest of test_paddlebox_datafeed.
+    // In fact, it does not affect the train process when paddle is
+    // complied with Box_Ps.
+    readers_[i]->SetCurrentPhase(current_phase_);
+    if (input_channel_ != nullptr) {
+      readers_[i]->SetInputChannel(input_channel_.get());
+    }
+  }
+  VLOG(3) << "readers size: " << readers_.size();
+}
+// destroy readers
+void PadBoxSlotDataset::DestroyReaders() {
+  readers_.clear();
+  readers_.shrink_to_fit();
+}
+
+// merge pv instance
+void PadBoxSlotDataset::PreprocessInstance() {
+  if (input_records_.empty()) {
+    return;
+  }
+  if (!enable_pv_merge_) {  // means to use Record
+    return;
+  }
+
+  size_t all_records_num = input_records_.size();
+  std::sort(input_records_.data(), input_records_.data() + all_records_num,
+            [](const SlotRecord& lhs, const SlotRecord& rhs) {
+              return lhs->search_id < rhs->search_id;
+            });
+  if (merge_by_sid_) {
+    uint64_t last_search_id = 0;
+    for (size_t i = 0; i < all_records_num; ++i) {
+      auto& ins = input_records_[i];
+      if (i == 0 || last_search_id != ins->search_id) {
+        SlotPvInstance pv_instance = make_slotpv_instance();
+        pv_instance->merge_instance(ins);
+        input_pv_ins_.push_back(pv_instance);
+        last_search_id = ins->search_id;
+        continue;
+      }
+      input_pv_ins_.back()->merge_instance(ins);
+    }
+  } else {
+    for (size_t i = 0; i < all_records_num; ++i) {
+      auto& ins = input_records_[i];
+      SlotPvInstance pv_instance = make_slotpv_instance();
+      pv_instance->merge_instance(ins);
+      input_pv_ins_.push_back(pv_instance);
+    }
+  }
+}
+// restore
+void PadBoxSlotDataset::PostprocessInstance() {}
+
+/**
+ * @Brief
+ * Split the remaining data to each thread
+ */
+static void compute_left_batch_num(const int ins_num, const int thread_num,
+                                   std::vector<std::pair<int, int>>* offset,
+                                   const int start_pos) {
+  int cur_pos = start_pos;
+  int batch_size = ins_num / thread_num;
+  int left_num = ins_num % thread_num;
+  for (int i = 0; i < thread_num; ++i) {
+    int batch_num_size = batch_size;
+    if (i == 0) {
+      batch_num_size = batch_num_size + left_num;
+    }
+    offset->push_back(std::make_pair(cur_pos, batch_num_size));
+    cur_pos += batch_num_size;
+  }
+}
+
+/**
+ * @brief
+ * distributed to each thread according to the amount of data
+ */
+static void compute_batch_num(const int64_t ins_num, const int batch_size,
+                              const int thread_num,
+                              std::vector<std::pair<int, int>>* offset) {
+  int thread_batch_num = batch_size * thread_num;
+  // less data
+  if (static_cast<int64_t>(thread_batch_num) > ins_num) {
+    compute_left_batch_num(ins_num, thread_num, offset, 0);
+    return;
+  }
+
+  int cur_pos = 0;
+  int offset_num = static_cast<int>(ins_num / thread_batch_num) * thread_num;
+  int left_ins_num = static_cast<int>(ins_num % thread_batch_num);
+  if (left_ins_num > 0 && left_ins_num < thread_num) {
+    offset_num = offset_num - thread_num;
+    left_ins_num = left_ins_num + thread_batch_num;
+    for (int i = 0; i < offset_num; ++i) {
+      offset->push_back(std::make_pair(cur_pos, batch_size));
+      cur_pos += batch_size;
+    }
+    // split data to thread avg two rounds
+    compute_left_batch_num(left_ins_num, thread_num * 2, offset, cur_pos);
+  } else {
+    for (int i = 0; i < offset_num; ++i) {
+      offset->push_back(std::make_pair(cur_pos, batch_size));
+      cur_pos += batch_size;
+    }
+    if (left_ins_num > 0) {
+      compute_left_batch_num(left_ins_num, thread_num, offset, cur_pos);
+    }
+  }
+}
+
+static int compute_thread_batch_nccl(
+    const int thr_num, const int64_t total_instance_num,
+    const int minibatch_size, std::vector<std::pair<int, int>>* nccl_offsets) {
+  int thread_avg_batch_num = 0;
+  if (total_instance_num < static_cast<int64_t>(thr_num)) {
+    VLOG(1) << "compute_thread_batch_nccl total ins num:[" << total_instance_num
+            << "], less thread num:[" << thr_num << "]";
+    return thread_avg_batch_num;
+  }
+
+  auto& offset = (*nccl_offsets);
+  // split data avg by thread num
+  compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
+  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
+
+  auto& mpi = boxps::MPICluster::Ins();
+  if (mpi.size() > 1) {
+    // 这里主要针对NCCL需要相同的minibatch才能正常处理
+    int thread_max_batch_num = mpi.allreduce(thread_avg_batch_num, 0);
+    int diff_batch_num = thread_max_batch_num - thread_avg_batch_num;
+    if (diff_batch_num == 0) {
+      VLOG(1) << "thread_num " << thr_num << ", ins num " << total_instance_num
+              << ", batch num " << offset.size() << ", thread avg batch num "
+              << thread_avg_batch_num;
+      return thread_avg_batch_num;
+    }
+
+    int need_ins_num = thread_max_batch_num * thr_num;
+    // data is too less
+    if ((int64_t)need_ins_num > total_instance_num) {
+      LOG(FATAL) << "error instance num:[" << total_instance_num
+                 << "] less need ins num:[" << need_ins_num << "]";
+      return thread_avg_batch_num;
+    }
+
+    int need_batch_num = (diff_batch_num + 1) * thr_num;
+    int offset_split_index = static_cast<int>(offset.size() - thr_num);
+    int split_left_num = total_instance_num - offset[offset_split_index].first;
+    while (split_left_num < need_batch_num) {
+      need_batch_num += thr_num;
+      offset_split_index -= thr_num;
+      split_left_num = total_instance_num - offset[offset_split_index].first;
+    }
+    int split_start = offset[offset_split_index].first;
+    offset.resize(offset_split_index);
+    compute_left_batch_num(split_left_num, need_batch_num, &offset,
+                           split_start);
+    VLOG(1) << "thread_num " << thr_num << ", ins num " << total_instance_num
+            << ", batch num " << offset.size() << ", thread avg batch num "
+            << thread_avg_batch_num << ", thread max batch num "
+            << thread_max_batch_num
+            << ", need batch num: " << (need_batch_num / thr_num)
+            << "split begin (" << split_start << ")" << split_start << ", num "
+            << split_left_num;
+    thread_avg_batch_num = thread_max_batch_num;
+  }
+  LOG(WARNING) << "thread_num " << thr_num << ", ins num " << total_instance_num
+               << ", batch num " << offset.size() << ", thread avg batch num "
+               << thread_avg_batch_num;
+  return thread_avg_batch_num;
+}
+
+// dynamic adjust reader num
+void PadBoxSlotDataset::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    PrepareTrain();
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
+  thread_num_ = thread_num;
+  readers_.clear();
+  readers_.shrink_to_fit();
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+  PrepareTrain();
+}
+
+// prepare train do something
+void PadBoxSlotDataset::PrepareTrain(void) {
+  auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
+
+  std::vector<std::pair<int, int>> offset;
+  // join or aucrunner mode enable pv
+  if (enable_pv_merge_ && (box_ptr->Phase() == 1 || box_ptr->Mode() == 1)) {
+    std::shuffle(input_pv_ins_.begin(), input_pv_ins_.end(),
+                 BoxWrapper::LocalRandomEngine());
+    // 分数据到各线程里面
+    int batchsize = reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[0].get())
+                        ->GetPvBatchSize();
+    compute_thread_batch_nccl(thread_num_, GetPvDataSize(), batchsize, &offset);
+    for (int i = 0; i < thread_num_; ++i) {
+      reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[i].get())
+          ->SetPvInstance(&input_pv_ins_[0]);
+    }
+    for (size_t i = 0; i < offset.size(); ++i) {
+      reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[i % thread_num_].get())
+          ->AddBatchOffset(offset[i]);
+    }
+  } else {
+    std::shuffle(input_records_.begin(), input_records_.end(),
+                 BoxWrapper::LocalRandomEngine());
+    // 分数据到各线程里面
+    int batchsize = reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[0].get())
+                        ->GetBatchSize();
+    compute_thread_batch_nccl(thread_num_, GetMemoryDataSize(), batchsize,
+                              &offset);
+    for (int i = 0; i < thread_num_; ++i) {
+      reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[i].get())
+          ->SetSlotRecord(&input_records_[0]);
+    }
+    for (size_t i = 0; i < offset.size(); ++i) {
+      reinterpret_cast<SlotPaddleBoxDataFeed*>(readers_[i % thread_num_].get())
+          ->AddBatchOffset(offset[i]);
+    }
+  }
+}
+#endif
 }  // end namespace framework
 }  // end namespace paddle
