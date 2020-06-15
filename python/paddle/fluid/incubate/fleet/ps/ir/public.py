@@ -47,6 +47,22 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 
+def is_sparse_op(op):
+    if op.type == "lookup_table" and op.attr('is_sparse') is True:
+        return True
+
+    if op.type == "distributed_lookup_table":
+        return True
+
+    return False
+
+
+def get_sparse_tablename(op):
+    if is_sparse_op(op):
+        return op.input("W")[0]
+    return None
+
+
 def pretty_print_envs(envs, header=None):
     spacing = 5
     max_k = 45

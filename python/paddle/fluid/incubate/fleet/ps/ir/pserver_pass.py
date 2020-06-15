@@ -37,18 +37,12 @@ from paddle.fluid.framework import Block
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import _orig_varname
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_varname_parts
-from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
+from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
+from paddle.fluid.incubate.fleet.ps.ir.public import is_sparse_op
 
-LOOKUP_TABLE_TYPE = "lookup_table"
-LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
-OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "@CLIP"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
-)
+RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
-RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
-DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
 LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 
 
@@ -647,6 +641,14 @@ def large_scale_sparse_pass(program, config):
     opt_init_map["uniform_random"] = ["seed", "min", "max"]
     opt_init_map["truncated_gaussian_random"] = ["seed", "mean", "std"]
 
+    def get_entry_attr(param_name):
+        origin_name = _orig_varname(param_name)
+        o_main_program = config.get_origin_main_program()
+        for op in o_main_program.global_block().ops:
+            if get_sparse_tablename(op) == origin_name:
+                entry = op.attr("entry")
+                return entry
+
     def get_initializer_attrs(acture_value_names):
         l_sep = ","
         l_in = "&"
@@ -764,10 +766,11 @@ def large_scale_sparse_pass(program, config):
         dims_str = ",".join([str(dim) for dim in value_dims])
         cached_str = ",".join(acture_names + ["kSparseIDs"])
         init_attr_str = get_initializer_attrs(acture_names)
+        entry_attr = get_entry_attr(param)
 
         meta_str = ":".join([
             param, names_str, dims_str, mode, grad.name, cached_str,
-            init_attr_str
+            init_attr_str, entry_attr
         ])
         print("large_scale_meta: {}".format(meta_str))
         large_scale_kv_metas.append(meta_str)

@@ -106,6 +106,15 @@ class UniformInitializer : public Initializer {
   std::uniform_real_distribution<float> dist_;
 };
 
+template <typename T>
+bool entry(const T count, const T threshold);
+
+bool entry(const int count, const int threshold) { return count >= threshold; }
+bool entry(const float count, const float threshold) {
+  UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
+  return uniform.GetValue() >= threshold;
+}
+
 class GaussianInitializer : public Initializer {
  public:
   explicit GaussianInitializer(const std::vector<std::string> &attrs) {
@@ -151,6 +160,7 @@ struct SparseMeta {
   std::vector<int> value_dims;
   std::vector<std::string> cached_varnames;
   std::vector<std::string> initializer_attrs;
+  std::string entry;
   Mode mode;
 
   std::string ToString() {
@@ -170,17 +180,20 @@ struct SparseMeta {
       ss << cached_varnames[i] << " ";
     }
 
-    ss << " initializer attrs";
+    ss << " initializer attrs: ";
     for (int i = 0; i < static_cast<int>(initializer_attrs.size()); i++) {
       ss << initializer_attrs[i] << " ";
     }
+
+    ss << " entry attrs: " << entry;
 
     return ss.str();
   }
 };
 
 struct VALUE {
-  explicit VALUE(const std::vector<std::string> &names) : names_(names) {
+  explicit VALUE(const std::vector<std::string> &names)
+      : names_(names), count_(0), keep_days_(0) {
     values_.resize(names.size());
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
       places[names[i]] = i;
@@ -210,6 +223,11 @@ struct VALUE {
     return pts;
   }
 
+  int64_t fetch_count() { return ++count_; }
+
+  void set_entry(bool is_entry) { is_entry_ = is_entry; }
+  bool get_entry() { return is_entry_; }
+
   std::vector<std::vector<float> *> get(const std::vector<std::string> names) {
     auto pts = std::vector<std::vector<float> *>();
     pts.reserve(values_.size());
@@ -220,6 +238,9 @@ struct VALUE {
     return pts;
   }
 
+  bool is_entry_;
+  int64_t count_;
+  int keep_days_;
   std::vector<std::string> names_;
   std::vector<std::vector<float>> values_;
   std::unordered_map<std::string, int> places;
@@ -229,8 +250,10 @@ class ValueBlock {
  public:
   explicit ValueBlock(const std::vector<std::string> value_names,
                       const std::vector<int> value_dims, const Mode &mode,
-                      const std::vector<std::string> &attrs)
+                      const std::vector<std::string> &init_attrs,
+                      const std::string &entry_attr)
       : value_names_(value_names), value_dims_(value_dims), mode_(mode) {
+    // for Initializer
     for (size_t i = 0; i < value_names.size(); i++) {
       auto name = value_names[i];
       auto slices = string::split_string<std::string>(attrs[i], "&");
@@ -244,6 +267,18 @@ class ValueBlock {
       } else {
         PADDLE_THROW(
             platform::errors::InvalidArgument("%s can not be supported", name));
+      }
+    }
+
+    // for Entry
+    {
+      auto slices = string::split_string<std::string>(entry_attr, "&");
+      if (slices[0] == "count_filter") {
+        int threshold = std::stoi(slices[1]);
+        entry_func_ = std::bind(entry<int>, std::placeholders::_1, threshold);
+      } else if (slices[0] == "probability") {
+        float threshold = std::stof(slices[1]);
+        entry_func_ = std::bind(entry<float>, std::placeholders::_1, threshold);
       }
     }
 
@@ -307,6 +342,7 @@ class ValueBlock {
   std::vector<std::vector<float> *> GetAndInit(
       const int64_t &id, const std::vector<std::string> &value_names) {
     Init(id);
+    Entry(id);
     return Get(id, value_names);
   }
 
@@ -328,6 +364,19 @@ class ValueBlock {
     }
   }
 
+  void Entry(const int64_t id) {
+    rwlock_->WRLock();
+    auto *value = values_.at(id);
+    auto count = value->fetch_count();
+    auto is_entry = value->get_entry();
+
+    if (!is_entry) {
+      value->set_entry(entry_func_(count));
+    }
+
+    rwlock_->UNLock();
+  }
+
  public:
   std::unordered_map<int64_t, VALUE *> values_;
 
@@ -335,6 +384,7 @@ class ValueBlock {
   std::vector<std::string> value_names_;
   std::vector<int> value_dims_;
   Mode mode_;
+  std::function<bool(int64_t)> entry_func_;
   std::unordered_map<std::string, Initializer *> initializers_;
   std::unique_ptr<framework::RWLock> rwlock_{nullptr};
 };
@@ -349,6 +399,7 @@ class SparseVariable {
     meta_.grad_name = meta.grad_name;
     meta_.cached_varnames = meta.cached_varnames;
     meta_.initializer_attrs = meta.initializer_attrs;
+    meta_.entry = meta.entry;
 
     for (int i = 0; i < static_cast<int>(meta_.value_names.size()); i++) {
       values_dims_[meta_.value_names[i]] = meta_.value_dims[i];

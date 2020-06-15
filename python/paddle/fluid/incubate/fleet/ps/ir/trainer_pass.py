@@ -18,6 +18,7 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.ps.ir.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
 from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
@@ -244,12 +245,12 @@ def fake_init_ops_pass(program, config):
 
     def _get_sparse_table_names():
         sparse_table_names = []
-        for op in origin_program.global_block().ops:
-            if op.type == "lookup_table" and op.attr('is_sparse') is True:
-                sparse_table_names.append(op.input("W")[0])
 
-            if op.type == "distributed_lookup_table":
-                sparse_table_names.append(op.input("W")[0])
+        for op in origin_program.global_block().ops:
+            table_name = get_sparse_tablename(op)
+
+            if table_name is not None:
+                sparse_table_names.append(table_name)
 
         return list(set(sparse_table_names))
 
