@@ -134,7 +134,7 @@ class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
             tmp_1 = layers.cast(tmp_0, dtype="float16")
             zero = layers.fill_constant(shape=[128], dtype="float16", value=0)
-            # softmax of float16 may cause precision problem.
+            # TODO(xreki): fix precision problem when using softmax of float16.
             # tmp_2 = layers.softmax(tmp_1)
             tmp_2 = layers.elementwise_add(tmp_1, zero)
             tmp_3 = layers.mul(tmp_0, self.feed_vars[2])
