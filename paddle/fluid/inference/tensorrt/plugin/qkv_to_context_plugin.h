@@ -37,7 +37,14 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
         scale_(scale),
         ban_fp16_(ban_fp16) {}
 
-  QkvToContextPluginDynamic(void const* serialData, size_t serialLength) {}
+  QkvToContextPluginDynamic(void const* serialData, size_t serialLength) {
+    DeserializeValue(&serialData, &serialLength, &hidden_);
+    DeserializeValue(&serialData, &serialLength, &head_number_);
+    DeserializeValue(&serialData, &serialLength, &head_size_);
+    DeserializeValue(&serialData, &serialLength, &scale_);
+    DeserializeValue(&serialData, &serialLength, &ban_fp16_);
+  }
+
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new QkvToContextPluginDynamic(hidden_, head_number_, head_size_,
                                          scale_, ban_fp16_);
@@ -47,8 +54,18 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int getNbOutputs() const override { return 1; }
   int initialize() override;
 
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
+  size_t getSerializationSize() const override {
+    return SerializedSize(hidden_) + SerializedSize(head_number_) +
+           SerializedSize(head_size_) + SerializedSize(scale_) +
+           SerializedSize(ban_fp16_);
+  }
+  void serialize(void* buffer) const override {
+    SerializeValue(&buffer, hidden_);
+    SerializeValue(&buffer, head_number_);
+    SerializeValue(&buffer, head_size_);
+    SerializeValue(&buffer, scale_);
+    SerializeValue(&buffer, ban_fp16_);
+  }
 
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
@@ -87,6 +104,43 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   float scale_;
   bool ban_fp16_;
 };
+
+class QkvToContextPluginV2Creator : public nvinfer1::IPluginCreator {
+ public:
+  QkvToContextPluginV2Creator() {}
+  const char* getPluginName() const override { return "qkv_to_context_plugin"; }
+
+  const char* getPluginVersion() const override { return "1"; }
+
+  const nvinfer1::PluginFieldCollection* getFieldNames() override {
+    return &mFieldCollection;
+  }
+
+  nvinfer1::IPluginV2* createPlugin(
+      const char* name, const nvinfer1::PluginFieldCollection* fc) override {
+    return nullptr;
+  }
+
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         const void* serialData,
+                                         size_t serialLength) override {
+    auto plugin = new QkvToContextPluginDynamic(serialData, serialLength);
+    return plugin;
+  }
+
+  void setPluginNamespace(const char* libNamespace) override {
+    mNamespace = libNamespace;
+  }
+
+  const char* getPluginNamespace() const override { return mNamespace.c_str(); }
+
+ private:
+  std::string mNamespace;
+  std::string mPluginName;
+  nvinfer1::PluginFieldCollection mFieldCollection;
+  std::vector<nvinfer1::PluginField> mPluginAttributes;
+};
+REGISTER_TENSORRT_PLUGIN(QkvToContextPluginV2Creator);
 #endif
 
 }  // namespace plugin

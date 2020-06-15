@@ -141,10 +141,6 @@ inline void TransposeQKV(const int batch, const int seq_len,
 
 int QkvToContextPluginDynamic::initialize() { return 0; }
 
-size_t QkvToContextPluginDynamic::getSerializationSize() const { return 0; }
-
-void QkvToContextPluginDynamic::serialize(void *buffer) const {}
-
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {
@@ -167,7 +163,7 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   ret.nbDims = 5;
   ret.d[0] = inputs[0].d[0];
   ret.d[1] = inputs[0].d[1];
-  ret.d[2] = expr_builder.constant(hidden_);
+  ret.d[2] = expr_builder.constant(head_number_ * head_size_);
   ret.d[3] = expr_builder.constant(1);
   ret.d[4] = expr_builder.constant(1);
   return ret;
