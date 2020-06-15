@@ -329,7 +329,8 @@ class BaseModel(fluid.dygraph.Layer):
 
         # beam search
         batch_beam_shape = (self.batch_size, self.beam_size)
-        vocab_size_tensor = to_variable(np.full((1), self.tar_vocab_size))
+        vocab_size_tensor = to_variable(
+            np.full((1), self.tar_vocab_size).astype("int64"))
         start_token_tensor = to_variable(
             np.full(
                 batch_beam_shape, self.beam_start_token, dtype='int64'))
@@ -401,6 +402,7 @@ class BaseModel(fluid.dygraph.Layer):
                 log_probs, [-1, self.beam_size * self.tar_vocab_size])
             topk_scores, topk_indices = fluid.layers.topk(
                 input=scores, k=self.beam_size)
+
             beam_indices = fluid.layers.elementwise_floordiv(topk_indices,
                                                              vocab_size_tensor)
             token_indices = fluid.layers.elementwise_mod(topk_indices,
