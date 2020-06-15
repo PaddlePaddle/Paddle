@@ -256,6 +256,53 @@ bool InMemoryDataFeed<T>::Start() {
 }
 
 template <typename T>
+void InMemoryDataFeed<T>::PutToQueue(std::vector<T>& ins_vec) {
+//  thread_local std::vector<T> item_vec;
+//  item_vec.clear();
+//  ins_vec.resize(ins_vec.size());
+  for (int i = 0; i < ins_vec.size(); ++i) {
+    T record;
+    uint64_t nid;
+    for (FeatureItem& fi : ins_vec[i].uint64_feasigns_) {
+      if (fi.slot() == nid_slot_) {
+        nid = fi.sign().uint64_feasign_;
+      }
+      if (item_map_.find(fi.slot()) != item_map_.end()) {
+      //if (item_map_.find(fi.sign().uint64_feasign_) != item_map_.end()) {
+        //item_vec[i].uint64_feasigns_.push_back(fi);
+        record.uint64_feasigns_.push_back(fi);
+      }
+    }
+    for(FeatureItem* fi : ins_vec[i].float_feasigns_) {
+      if (item_map_.find(fi.sign().float_feasigns_) != item_map_.end()) {
+        //item_vec[i].float_feasigns_.push_back(fi);
+        record.float_feasigns_.push_back(fi);
+      }
+    }
+
+    record.ins_id_ = ins_vec[i].ins_id_;
+    record.content_ = ins_vec[i].content_;
+    lru_.Put(nid, record);
+    //item_vec[i].ins_id_ = ins_vec[i].ins_id_;
+    //item_vec[i].content_ = ins_vec[i].content_;
+  }
+//  T tmp;
+//  while(sample_queue_.Size() > sample_queue_limit_ - item_vec.size()) {
+//    sample_queue_.Get(tmp);
+//  }
+  //sample_queue_.write(item_vec);
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SampleFromQueue(std::vector<T>& ins_vec) {
+  for (size_t i = 0; i < ins_vec.size(); ++i) {
+    T record = lru_.GetRandom();
+    ins_vec[i].uint64_feasigns_.insert(ins_vec[i].uint64_feasigns_.end(), record.uint64_feasigns_.begin(), record.uint64_feasigns_.end());
+    ins_vec[i].float_feasigns_.insert(ins_vec[i].float_feasigns_.end(), record.float_feasigns_.begin(), record.float_feasigns_.end());
+  }
+}
+
+template <typename T>
 int InMemoryDataFeed<T>::Next() {
 #ifdef _LINUX
   this->CheckStart();
@@ -266,7 +313,8 @@ int InMemoryDataFeed<T>::Next() {
           << ", thread_id=" << thread_id_;
   int index = 0;
   T instance;
-  std::vector<T> ins_vec;
+  thread_local std::vector<T> ins_vec;
+  ins_vec.clear();
   ins_vec.reserve(this->default_batch_size_);
   while (index < this->default_batch_size_) {
     if (output_channel_->Size() == 0) {
@@ -280,6 +328,11 @@ int InMemoryDataFeed<T>::Next() {
   this->batch_size_ = index;
   VLOG(3) << "batch_size_=" << this->batch_size_
           << ", thread_id=" << thread_id_;
+  
+  PutToQueue(ins_vec);
+  
+  SampleFromQueue(ins_vec);
+
   if (this->batch_size_ != 0) {
     PutToFeedVec(ins_vec);
   } else {

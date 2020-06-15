@@ -48,6 +48,14 @@ class TrainerDesc(object):
         self._program = None
         self._infer = False
 
+
+    def _set_nid_slot(self, nid_slot):
+        self.proto_desc.nid_slot = nid_slot
+
+    def _set_sample_slots(self, sample_slots)
+        for x in sample_slots:
+            self.proto_desc.sample_slots.append(x)
+
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
             self.proto_desc.fetch_config.fetch_var_names.extend([v.name])

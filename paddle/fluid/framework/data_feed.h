@@ -30,7 +30,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
+#include "paddle/fluid/framework/lru.h"
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
@@ -182,6 +182,9 @@ class DataFeed {
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
+  virtual void SetLRU(void* lru) {}
+  virtual void SetSampleSlotsIndex(std::vector<int>& sample_slots_index) {}
+
  protected:
   // The following three functions are used to check if it is executed in this
   // order:
@@ -303,6 +306,14 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
+  virtual void PutToQueue(std::vector<T>& ins_vec);
+  virtual void SampleFromQueue(std::vector<T>& ins_vec);
+  virtual void SetLRU(void* lru) {
+    lru_ = lru;
+  }
+  virtual void SetSampleSlotsIndex(std::vector<int>& sample_slots_index) {
+    sample_slots_index_ = sample_slots_index;
+  }
 
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
@@ -325,6 +336,9 @@ class InMemoryDataFeed : public DataFeed {
   paddle::framework::ChannelObject<PvInstance>* input_pv_channel_;
   paddle::framework::ChannelObject<PvInstance>* output_pv_channel_;
   paddle::framework::ChannelObject<PvInstance>* consume_pv_channel_;
+
+  LRUCache<uint64_t, T>* lru_ = nullptr;
+  std::vector<int> sample_slots_index_
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
@@ -652,11 +666,12 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
+  virtual void SetLRU(void* lru) {};
 
  protected:
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
-  virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
+  ivirtual void PutToFeedVec(const std::vector<Record>& ins_vec);
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);
   std::vector<std::vector<float>> batch_float_feasigns_;

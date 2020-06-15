@@ -610,6 +610,9 @@ void DatasetImpl<T>::CreateReaders() {
   }
   VLOG(3) << "data feed class name: " << data_feed_desc_.name();
   int channel_idx = 0;
+
+  lru_ = std::make_shared<LRUCache<uint64_t, T>>(lru_cap_);
+
   for (int i = 0; i < thread_num_; ++i) {
     readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
     readers_[i]->Init(data_feed_desc_);
@@ -622,6 +625,8 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
+    readers_[i]->SetLRU(lru_.get());
+    readers_[i]->SetSampleSlotsIndex(sample_slots_index_);
     // Notice: it is only valid for untest of test_paddlebox_datafeed.
     // In fact, it does not affect the train process when paddle is
     // complied with Box_Ps.
