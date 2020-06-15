@@ -914,12 +914,18 @@ class MultiStepDecay(LearningRateDecay):
                     learning_rate = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5]),
                     parameter_list = linear.parameters())
 
-                for step in range(10):
+                for step in range(6):
                     out = linear(input)
                     loss = fluid.layers.reduce_mean(out)
                     adam.minimize(loss)                 
                     lr = adam.current_step_lr()
                     print("step:{}, current lr is {}" .format(step, lr))
+                    # step:0, current lr is 0.5
+                    # step:1, current lr is 0.5
+                    # step:2, current lr is 0.5
+                    # step:3, current lr is 0.05
+                    # step:4, current lr is 0.05
+                    # step:5, current lr is 0.005
 
     """
 
@@ -935,7 +941,10 @@ class MultiStepDecay(LearningRateDecay):
                    'MultiStepDecay')
         if isinstance(learning_rate, (float, int)):
             learning_rate = self.create_lr_var(learning_rate)
-        if all([a[i] < a[i + 1] for i in range(len(a) - 1)]):
+        if not all([
+                milestones[i] < milestones[i + 1]
+                for i in range(len(milestones) - 1)
+        ]):
             raise ValueError('The elements of milestones must be incremented')
         if decay_rate >= 1.0:
             raise ValueError('decay_rate should be < 1.0.')
