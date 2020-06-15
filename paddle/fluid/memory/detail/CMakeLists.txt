@@ -23,6 +23,7 @@ cc_test(buddy_allocator_test SRCS buddy_allocator_test.cc DEPS buddy_allocator)
 function(download_and_uncompress INSTALL_DIR URL FILENAME)
   message(STATUS "Download test stuff from ${URL}/${FILENAME}")
   ExternalProject_Add(
+      buddy_allocator_data
       PREFIX                ${INSTALL_DIR}
       DOWNLOAD_COMMAND      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} &&
                             ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
