@@ -825,7 +825,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
         param.gradient_clip_attr = copy.deepcopy(clip)
 
 
-def append_gradient_clip_ops(param_grads):
+def append_gradient_clip_ops(param_grads, param_device_map=None):
     context = dict()
     for p, g in param_grads:
         if g is None:
@@ -846,11 +846,13 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('graident_clip_@CLIP'):
-            param, new_grad = clip_attr._create_operators(param=p, grad=g)
-            param_new_grad_name_dict[param.name] = new_grad.name
-            res.append([param, new_grad])
+        device = param_device_map[param.name] if param_device_map else None
+        with device_guard(device):
+            with p.block.program._optimized_guard(
+                [p, g]), framework.name_scope('graident_clip_@CLIP'):
+                param, new_grad = clip_attr._create_operators(param=p, grad=g)
+                param_new_grad_name_dict[param.name] = new_grad.name
+                res.append([param, new_grad])
 
     _correct_clip_op_role_var(res, param_new_grad_name_dict)
     return res
