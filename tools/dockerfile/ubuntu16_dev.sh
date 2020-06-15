@@ -16,6 +16,10 @@ function ref_whl(){
   else
       ref_mkl=openblas
   fi
+
+  if [[ ${gcc_version} == "8.2.0" ]];then
+    ref_gcc=_gcc8.2
+  fi
   
   ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}"
   
@@ -79,9 +83,9 @@ function make_dockerfile(){
 
 function main(){
   make_dockerfile
+  install_gcc
   ref_whl
   install_whl
-  install_gcc
 }
 
 main $@
