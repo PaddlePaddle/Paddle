@@ -19,8 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Functor>
-class CompareOpKernel<platform::CPUDeviceContext, Functor>
+template <typename Functor, typename InverseFunctor>
+class CompareOpKernel<platform::CPUDeviceContext, Functor, InverseFunctor>
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -36,8 +36,13 @@ class CompareOpKernel<platform::CPUDeviceContext, Functor>
       bool* z_data = z->mutable_data<bool>(context.GetPlace());
       z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);
     } else {
-      ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
-          context, x, y, axis, Functor(), z);
+      if (x->dims().size() >= y->dims().size()) {
+        ElementwiseComputeEx<Functor, platform::CPUDeviceContext, T, bool>(
+            context, x, y, axis, Functor(), z);
+      } else {
+        ElementwiseComputeEx<InverseFunctor, platform::CPUDeviceContext, T,
+                             bool>(context, x, y, axis, InverseFunctor(), z);
+      }
     }
   }
 };
@@ -82,14 +87,24 @@ class CompareOp : public framework::OperatorWithKernel {
     OpComment comment;
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
     OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", comment.type);
+
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
-    PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
-                      platform::errors::InvalidArgument(
-                          "The size of dim_y should not be greater than "
-                          "dim_x's, but received dim_y: %d > dim_x: %d.\n",
-                          dim_y.size(), dim_x.size()));
+    // Note(zhouwei): if x is scalar tensor with shape[], y'dim size must <= 1
+    if (dim_x.size() == 0) {
+      PADDLE_ENFORCE_LE(dim_y.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The size of dim_y should not be greater than "
+                            "dim_x's, but received dim_y: %d > dim_x: %d.\n",
+                            dim_y.size(), dim_x.size()));
+    } else {
+      PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
+                        platform::errors::InvalidArgument(
+                            "The size of dim_y should not be greater than "
+                            "dim_x's, but received dim_y: %d > dim_x: %d.\n",
+                            dim_y.size(), dim_x.size()));
+    }
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
@@ -123,16 +138,22 @@ class CompareOp : public framework::OperatorWithKernel {
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_COMPARE_OP(less_than, "Out = X < Y");
-REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);
+REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor,
+                        paddle::operators::InverseLessThanFunctor);
 REGISTER_COMPARE_OP(less_equal, "Out = X <= Y");
-REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor);
+REGISTER_COMPARE_KERNEL(less_equal, CPU, paddle::operators::LessEqualFunctor,
+                        paddle::operators::InverseLessEqualFunctor);
 REGISTER_COMPARE_OP(greater_than, "Out = X > Y");
 REGISTER_COMPARE_KERNEL(greater_than, CPU,
-                        paddle::operators::GreaterThanFunctor);
+                        paddle::operators::GreaterThanFunctor,
+                        paddle::operators::InverseGreaterThanFunctor);
 REGISTER_COMPARE_OP(greater_equal, "Out = X >= Y");
 REGISTER_COMPARE_KERNEL(greater_equal, CPU,
-                        paddle::operators::GreaterEqualFunctor);
+                        paddle::operators::GreaterEqualFunctor,
+                        paddle::operators::InverseGreaterEqualFunctor);
+
 REGISTER_COMPARE_OP(equal, "Out = X == Y");
-REGISTER_COMPARE_KERNEL(equal, CPU, paddle::operators::EqualFunctor);
+REGISTER_COMPARE_EQUAL_KERNEL(equal, CPU, paddle::operators::EqualFunctor);
 REGISTER_COMPARE_OP(not_equal, "Out = X != Y");
-REGISTER_COMPARE_KERNEL(not_equal, CPU, paddle::operators::NotEqualFunctor);
+REGISTER_COMPARE_EQUAL_KERNEL(not_equal, CPU,
+                              paddle::operators::NotEqualFunctor);

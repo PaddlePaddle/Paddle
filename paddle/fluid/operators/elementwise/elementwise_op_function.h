@@ -125,7 +125,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LE(axis, max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim, axis));
@@ -179,17 +179,26 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
 
   const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
                                        1, std::multiplies<int>());
+  VLOG(3) << " z ddim " << z->dims().size();
+  VLOG(3) << " z numl " << z->numel();
+  VLOG(3) << " z out_size " << out_size;
   int x_index, y_index;
   for (int out_index = 0; out_index < out_size; ++out_index) {
     x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
     y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+
     if (is_xsize_larger) {
+      VLOG(3) << " z out_index " << out_index;
       out_data[out_index] = func(x_data[x_index], y_data[y_index]);
     } else {
+      VLOG(3) << " z out_index " << out_index;
       out_data[out_index] = func(y_data[y_index], x_data[x_index]);
     }
 
     UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
+    VLOG(3) << "after CommonForwardBroadcastCPU " << *x_data << " " << *y_data
+            << " " << *out_data << " " << *(out_data + 1) << " "
+            << *(out_data + 2);
   }
 }
 
@@ -1371,6 +1380,8 @@ class TransformFunctor {
 
   inline void RunRowWise(int n, int pre) const {
     platform::Transform<DeviceContext> trans;
+    VLOG(3) << "before RunRowWise " << *x_ << " " << *y_ << " " << *z_ << " "
+            << *(z_ + 1) << " " << *(z_ + 2);
     if (is_xsize_larger_) {
       trans(ctx_, x_, x_ + nx_,
             RowwiseTransformIterator<T, DeviceContext>(y_, n), z_, func_);
@@ -1378,6 +1389,8 @@ class TransformFunctor {
       trans(ctx_, y_, y_ + nx_,
             RowwiseTransformIterator<T, DeviceContext>(x_, n), z_, func_);
     }
+    VLOG(3) << "after RunRowWise " << *x_ << " " << *y_ << " " << *z_ << " "
+            << *(z_ + 1) << " " << *(z_ + 2);
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
@@ -1708,7 +1721,7 @@ void ElemwiseGradComputeWithBroadcast(
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LE(axis, max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim, axis));
@@ -1783,7 +1796,7 @@ void CommonElementwiseBroadcastForward(
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LE(axis, max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim, axis));
@@ -1858,6 +1871,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
+  VLOG(3) << "run ElementwiseComputeEx";
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -1880,32 +1894,42 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
-  PADDLE_ENFORCE_LT(axis, max_dim,
+  PADDLE_ENFORCE_LE(axis, max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim, axis));
-
+  VLOG(3) << "x_dims" << x_dims.size() << "x numel" << x->numel();
+  VLOG(3) << "y_dims" << y_dims.size() << "y numel" << y->numel();
+  VLOG(3) << "z_dims" << z->dims().size() << "z numel" << z->numel();
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
     auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
+    VLOG(3) << " y_dims_trimed " << y_dims_trimed.size();
     axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
     get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
   } else {
     auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
+    VLOG(3) << " x_dims_trimed " << x_dims_trimed.size();
     axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
     get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
   }
+  VLOG(3) << "pre " << pre << "n " << n << "post " << post
+          << "is_run_common_broadcast " << is_run_common_broadcast
+          << "axis_trim " << axis_trim;
   // special case for common implementation.
   // case 1: x=[2,3,1,5], y=[2,1,4,1]
   // case 2: x=[2,3,4], y=[1,1,4]
   if (is_run_common_broadcast == 1) {
+    VLOG(3) << "run CommonElementwiseBroadcastForward, is_xsize_larger"
+            << is_xsize_larger;
     CommonElementwiseBroadcastForward<Functor, DeviceContext, T, OutType>(
         ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);
     return;
   }
   if (post == 1) {
+    VLOG(3) << "run RunRowWise, is_xsize_larger" << is_xsize_larger;
     functor.RunRowWise(n, pre);
     return;
   } else {

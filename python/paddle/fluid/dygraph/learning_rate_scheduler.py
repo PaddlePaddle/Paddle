@@ -771,7 +771,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         super(ReduceLROnPlateau, self).__init__(dtype=dtype)
         mode = mode.lower()
         if mode not in ['min', 'max']:
-            raise ValueError('mode ' + mode + ' is unknown!')
+            raise ValueError('mode: ' + mode + ' is unknown!')
         self.mode = mode
 
         if decay_rate >= 1.0:

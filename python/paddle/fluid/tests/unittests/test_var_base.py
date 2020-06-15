@@ -47,6 +47,160 @@ class TestVarBase(unittest.TestCase):
                 linear = fluid.dygraph.Linear(32, 64)
                 var = linear._helper.to_variable("test", name="abc")
 
+    def test_scalar_to_variable(self):
+        with fluid.dygraph.guard():
+            scalar = 10
+            scalar_var = fluid.dygraph.to_variable(scalar, dtype='int32')
+            self.assertTrue(np.array_equal(scalar_var.numpy(), scalar))
+            self.assertEqual(scalar_var.shape, [])
+            self.assertEqual(scalar_var.dtype, core.VarDesc.VarType.INT32)
+            self.assertEqual(scalar_var.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            scalar = 10.0
+            var = fluid.dygraph.to_variable(scalar, dtype='float32')
+            self.assertTrue(np.array_equal(var.numpy(), scalar))
+            self.assertEqual(var.shape, [])
+            self.assertEqual(var.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+
+            np_var = fluid.dygraph.to_variable(
+                np.array([scalar]), dtype='int32')
+            other_var = fluid.dygraph.to_variable(
+                np.array([[1, 2, 3], [4, 5, 6]]), dtype='int32')
+            scalar_var2 = fluid.dygraph.to_variable(5, dtype='int32')
+            # test __add__ __sub__ __mul__ __div__ __mod__ __floordiv__ __pow__ , scalar_Tensor with Tensor
+            self.assertTrue(
+                np.array_equal(scalar_var + other_var, np_var + other_var))
+            self.assertTrue(
+                np.array_equal(scalar_var - other_var, np_var - other_var))
+            self.assertTrue(
+                np.array_equal(scalar_var * other_var, np_var * other_var))
+            self.assertTrue(
+                np.array_equal(scalar_var / other_var, np_var / other_var))
+            self.assertTrue(
+                np.array_equal(scalar_var // other_var, np_var // other_var))
+            self.assertTrue(
+                np.array_equal(scalar_var % other_var, np_var % other_var))
+            self.assertTrue(
+                np.array_equal(scalar_var**other_var, np_var**other_var))
+            self.assertTrue(
+                np.array_equal(other_var + scalar_var, other_var + np_var))
+            self.assertTrue(
+                np.array_equal(other_var - scalar_var, other_var - np_var))
+            self.assertTrue(
+                np.array_equal(other_var * scalar_var, other_var * np_var))
+            self.assertTrue(
+                np.array_equal(other_var / scalar_var, other_var / np_var))
+            self.assertTrue(
+                np.array_equal(other_var // scalar_var, other_var // np_var))
+            self.assertTrue(
+                np.array_equal(other_var**scalar_var, other_var**np_var))
+            # test __add__ __sub__ __mul__ __div__ __mod__ __floordiv__ __pow__ , scalar_Tensor with scalar_Tensor
+            self.assertEqual(scalar_var + scalar_var2, np_var + scalar_var2)
+            self.assertEqual(scalar_var - scalar_var2, np_var - scalar_var2)
+            self.assertEqual(scalar_var * scalar_var2, np_var * scalar_var2)
+            self.assertEqual(scalar_var / scalar_var2, np_var / scalar_var2)
+            self.assertEqual(scalar_var // scalar_var2, np_var // scalar_var2)
+            self.assertEqual(scalar_var % scalar_var2, np_var % scalar_var2)
+            self.assertEqual(scalar_var**scalar_var2, np_var**scalar_var2)
+            # test __add__ __sub__ __mul__ __div__ __mod__ __floordiv__ __pow__ , scalar_Tensor with scalar
+            self.assertEqual(scalar_var + 10, np_var + 10)
+            self.assertEqual(scalar_var - 10, np_var - 10)
+            self.assertEqual(scalar_var * 10, np_var * 10)
+            self.assertEqual(scalar_var / 10, np_var / 10)
+            self.assertEqual(scalar_var // 10, np_var // 10)
+            self.assertEqual(scalar_var % 10, np_var % 10)
+            self.assertEqual(scalar_var**10, np_var**10)
+            #  test elementwise OP, scalar_Tensor with Tensor
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_add(scalar_var, other_var), np_var
+                    + other_var))
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_sub(scalar_var, other_var), np_var
+                    - other_var))
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_mul(scalar_var, other_var), np_var
+                    * other_var))
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_div(scalar_var, other_var), np_var
+                    / other_var))
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_floordiv(scalar_var, other_var),
+                    np_var // other_var))
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_mod(scalar_var, other_var), np_var
+                    % other_var))
+            self.assertTrue(
+                np.array_equal(
+                    fluid.layers.elementwise_pow(scalar_var, other_var), np_var
+                    **other_var))
+
+            other_var = fluid.dygraph.to_variable(
+                np.array([1, 2, 3, 4, 5, 6]), dtype='int32')
+            # test __lt__ __le__ __gt__ __ge__ __eq__ __ne__, scalar_Tensor with Tensor
+            self.assertEqual(scalar_var < other_var, np_var < other_var)
+            self.assertEqual(scalar_var <= other_var, np_var <= other_var)
+            self.assertEqual(scalar_var > other_var, np_var > other_var)
+            self.assertEqual(scalar_var >= other_var, np_var >= other_var)
+            self.assertEqual(scalar_var == other_var, np_var == other_var)
+            self.assertEqual(scalar_var != other_var, np_var != other_var)
+            # test __lt__ __le__ __gt__ __ge__ __eq__ __ne__, scalar_Tensor with scalar
+            self.assertEqual(scalar_var < 10, np_var < 10)
+            self.assertEqual(scalar_var <= 10, np_var <= 10)
+            self.assertEqual(scalar_var > 10, np_var > 10)
+            self.assertEqual(scalar_var >= 10, np_var >= 10)
+            self.assertEqual(scalar_var == 10, np_var == 10)
+            self.assertEqual(scalar_var != 10, np_var != 10)
+            # test __lt__ __le__ __gt__ __ge__ __eq__ __ne__, scalar_Tensor with scalar_Tensor
+            self.assertEqual(scalar_var < scalar_var2, np_var < scalar_var2)
+            self.assertEqual(scalar_var <= scalar_var2, np_var <= scalar_var2)
+            self.assertEqual(scalar_var > scalar_var2, np_var > scalar_var2)
+            self.assertEqual(scalar_var >= scalar_var2, np_var >= scalar_var2)
+            self.assertEqual(scalar_var == scalar_var2, np_var == scalar_var2)
+            self.assertEqual(scalar_var != scalar_var2, np_var != scalar_var2)
+            #  test compare OP, scalar_Tensor with Tensor
+            self.assertEqual(
+                fluid.layers.less_than(scalar_var, other_var),
+                np_var < other_var)
+            self.assertEqual(
+                fluid.layers.less_equal(scalar_var, other_var),
+                np_var <= other_var)
+            self.assertEqual(
+                fluid.layers.greater_than(scalar_var, other_var),
+                np_var > other_var)
+            self.assertEqual(
+                fluid.layers.greater_equal(scalar_var, other_var),
+                np_var >= other_var)
+            self.assertEqual(
+                fluid.layers.equal(scalar_var, other_var), np_var == other_var)
+            self.assertEqual(
+                fluid.layers.not_equal(scalar_var, other_var),
+                other_var != np_var)
+
+    def test_list_to_variable(self):
+        with fluid.dygraph.guard():
+            array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]
+            var = fluid.dygraph.to_variable(array, dtype='int32')
+            self.assertTrue(np.array_equal(var.numpy(), array))
+            self.assertEqual(var.shape, [2, 3, 2])
+            self.assertEqual(var.dtype, core.VarDesc.VarType.INT32)
+            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+
+    def test_tuple_to_variable(self):
+        with fluid.dygraph.guard():
+            array = (((1, 2), (1, 2), (1, 2)), ((1, 2), (1, 2), (1, 2)))
+            var = fluid.dygraph.to_variable(array, dtype='float32')
+            self.assertTrue(np.array_equal(var.numpy(), array))
+            self.assertEqual(var.shape, [2, 3, 2])
+            self.assertEqual(var.dtype, core.VarDesc.VarType.FP32)
+            self.assertEqual(var.type, core.VarDesc.VarType.LOD_TENSOR)
+
     def test_tensor_to_variable(self):
         with fluid.dygraph.guard():
             t = fluid.Tensor()

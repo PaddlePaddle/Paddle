@@ -72,7 +72,11 @@ struct Transform<platform::CPUDeviceContext> {
   void operator()(const platform::CPUDeviceContext& context, InputIter1 first1,
                   InputIter1 last1, InputIter2 first2, OutputIter result,
                   BinaryOperation op) {
+    VLOG(3) << "before Transform " << *first1 << " " << *last1 << " " << *first2
+            << " " << *result;
     std::transform(first1, last1, first2, result, op);
+    VLOG(3) << "after Transform " << *first1 << " " << *last1 << " " << *first2
+            << " " << *result;
   }
 };
 

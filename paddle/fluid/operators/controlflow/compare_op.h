@@ -23,30 +23,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct LessThanFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a < b; }
-};
-
-template <typename T>
-struct LessEqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a <= b; }
-};
-
-template <typename T>
-struct GreaterThanFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a > b; }
-};
-
-template <typename T>
-struct GreaterEqualFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a, const T& b) const { return a >= b; }
-};
-
-template <typename T>
 struct EqualFunctor {
   using ELEM_TYPE = T;
   HOSTDEVICE bool operator()(const T& a, const T& b) const {
@@ -68,7 +44,30 @@ struct NotEqualFunctor {
   }
 };
 
-template <typename DeviceContext, typename Functor>
+#define DEFINE_COMPARE_FUNCTOR(Func, expr)                     \
+  template <typename T>                                        \
+  struct Func##Functor {                                       \
+    using ELEM_TYPE = T;                                       \
+    HOSTDEVICE bool operator()(const T& a, const T& b) const { \
+      return a expr b;                                         \
+    }                                                          \
+  };                                                           \
+  template <typename T>                                        \
+  struct Inverse##Func##Functor {                              \
+    using ELEM_TYPE = T;                                       \
+    HOSTDEVICE bool operator()(const T& a, const T& b) const { \
+      return b expr a;                                         \
+    }                                                          \
+  };
+
+DEFINE_COMPARE_FUNCTOR(LessThan, <)
+DEFINE_COMPARE_FUNCTOR(LessEqual, <=)
+DEFINE_COMPARE_FUNCTOR(GreaterThan, >)
+DEFINE_COMPARE_FUNCTOR(GreaterEqual, >=)
+#undef DEFINE_COMPARE_FUNCTOR
+
+template <typename DeviceContext, typename Functor,
+          typename InverseFunctor = Functor>
 class CompareOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
@@ -80,15 +79,36 @@ class CompareOpKernel
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
     int axis = context.Attr<int>("axis");
-    ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
-                                                          Functor(), z);
+
+    if (x->dims().size() >= y->dims().size()) {
+      ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, axis,
+                                                            Functor(), z);
+    } else {
+      ElementwiseComputeEx<InverseFunctor, DeviceContext, T, bool>(
+          context, x, y, axis, InverseFunctor(), z);
+    }
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_KERNEL(op_type, dev, functor)                    \
+#define REGISTER_COMPARE_KERNEL(op_type, dev, functor, inversefunctor)       \
+  REGISTER_OP_##dev##_KERNEL(op_type,                                        \
+                             ::paddle::operators::CompareOpKernel<           \
+                                 ::paddle::platform::dev##DeviceContext,     \
+                                 functor<int>, inversefunctor<int>>,         \
+                             ::paddle::operators::CompareOpKernel<           \
+                                 ::paddle::platform::dev##DeviceContext,     \
+                                 functor<int64_t>, inversefunctor<int64_t>>, \
+                             ::paddle::operators::CompareOpKernel<           \
+                                 ::paddle::platform::dev##DeviceContext,     \
+                                 functor<float>, inversefunctor<float>>,     \
+                             ::paddle::operators::CompareOpKernel<           \
+                                 ::paddle::platform::dev##DeviceContext,     \
+                                 functor<double>, inversefunctor<double>>);
+
+#define REGISTER_COMPARE_EQUAL_KERNEL(op_type, dev, functor)              \
   REGISTER_OP_##dev##_KERNEL(                                             \
       op_type, ::paddle::operators::CompareOpKernel<                      \
                    ::paddle::platform::dev##DeviceContext, functor<int>>, \
@@ -97,4 +117,6 @@ class CompareOpKernel
       ::paddle::operators::CompareOpKernel<                               \
           ::paddle::platform::dev##DeviceContext, functor<float>>,        \
       ::paddle::operators::CompareOpKernel<                               \
-          ::paddle::platform::dev##DeviceContext, functor<double>>);
+          ::paddle::platform::dev##DeviceContext, functor<double>>,       \
+      ::paddle::operators::CompareOpKernel<                               \
+          ::paddle::platform::dev##DeviceContext, functor<bool>>);

@@ -179,6 +179,7 @@ void SetTensorFromPyArrayT(
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
     const P &place, bool zero_copy) {
   std::vector<int64_t> dims;
+  VLOG(1) << "array.ndim() " << array.ndim();
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
