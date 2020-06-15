@@ -9632,12 +9632,12 @@ def prelu(x, mode, param_attr=None, name=None):
         assert len(
             x.shape
         ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
-        alpha_shape = [1, x.shape[1]] + list(input_shape)[2:]
+        alpha_shape = [1, x.shape[1]] + list(x.shape)[2:]
     elif mode == 'element':
         assert len(
             x.shape
         ) >= 1, "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
-        alpha_shape = [1] + list(input_shape)[1:]
+        alpha_shape = [1] + list(x.shape)[1:]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
