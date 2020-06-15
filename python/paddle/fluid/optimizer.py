@@ -3826,7 +3826,7 @@ class PipelineOptimizer(object):
                     inputs={'X': first_block.var(var_name)},
                     attrs={
                         'queue_name': queue_name,
-                        self._op_device_key: first_device_spec,
+                        self._op_device_key: first_dev_spec,
                         self._op_role_key: self._op_role.Forward
                     })
                 # Get the device that that data on
@@ -3845,7 +3845,7 @@ class PipelineOptimizer(object):
                     type='dequeue',
                     outputs={'Out': [new_var]},
                     attrs={
-                        self._op_device_key: dev_spec,
+                        self._op_device_key: device,
                         self._op_role_key: self._op_role.Forward,
                         'queue_name': queue_name,
                     })
