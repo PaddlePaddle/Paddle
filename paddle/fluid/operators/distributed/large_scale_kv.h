@@ -303,14 +303,7 @@ class ValueBlock {
   }
 
   void Init(const int64_t &id) {
-    //    if (Has(id)) {
-    //      return;
-    //    }
-
-    rwlock_->WRLock();
-
     if (Has(id)) {
-      rwlock_->UNLock();
       return;
     }
 
@@ -332,8 +325,6 @@ class ValueBlock {
     auto value = new VALUE(value_names_);
     value->set(&rets);
     values_[id] = value;
-
-    rwlock_->UNLock();
   }
 
   std::vector<std::vector<float> *> Get(
@@ -346,9 +337,19 @@ class ValueBlock {
 
   std::vector<std::vector<float> *> GetAndInit(
       const int64_t &id, const std::vector<std::string> &value_names) {
+    rwlock_->WRLock();
     Init(id);
     Entry(id);
+    rwlock_->UNLock();
     return Get(id, value_names);
+  }
+
+  bool GetEntry(const int64_t &id) {
+    rwlock_->RDLock();
+    auto value = values_.at(id);
+    auto entry = value->get_entry();
+    rwlock_->UNLock();
+    return entry;
   }
 
   void Set(const int64_t &id, const std::vector<std::string> &value_names,
@@ -452,6 +453,29 @@ class SparseVariable {
           }));
     }
 
+    for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+  }
+
+  void GetEntry(const std::vector<int64_t> &ids, std::vector<int> *values) {
+    values->resize(ids.size());
+
+    auto buckets = bucket(ids.size(), 8);
+    std::vector<std::future<void>> fs;
+
+    for (int j = 0; j < 8; ++j) {
+      auto begin = buckets[j];
+      auto end = buckets[j + 1];
+
+      fs.push_back(
+          framework::Async([begin, end, &values, &ids, &value_names, this]() {
+            for (int x = begin; x < end; x++) {
+              auto id = ids[x];
+              auto *block = GetShard(id);
+              auto is_entry = block->GetEntry(id);
+              (*values)[x] = static_cast<int>(is_entry);
+            }
+          }));
+    }
     for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
   }
 
