@@ -14,6 +14,7 @@ if [ "$1" == "gcc82" ]; then
   ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
   make -j8 && make install
   cd .. && rm -rf temp_gcc82
+  cp /usr/lib64/libstdc++.so.6 /usr/lib64/libstdc++.so.6.bak && rm -f /usr/lib64/libstdc++.so.6 && ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 /usr/lib64/libstdc++.so.6 && cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 /usr/lib64
   #cd /usr/bin && wget -q http://mirror.linux-ia64.org/gnu/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.xz && \
   #tar -xvf gcc-8.2.0.tar.xz && \
   #cd gcc-8.2.0 && \
