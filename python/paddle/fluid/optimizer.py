@@ -3727,7 +3727,7 @@ class PipelineOptimizer(object):
 
         For ModelParallelTrainer, all data vars are binded to
         minibatch scope, so we have to feed them to the macromatch
-        to avoid conflicts. The vars feeded to macrobatch have to
+        to avoid conflicts. The vars feeded to microbatch have to
         be renamed.
         """
         # A dict map from var name to the renamed name.
