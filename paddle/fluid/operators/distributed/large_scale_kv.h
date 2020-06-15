@@ -107,10 +107,15 @@ class UniformInitializer : public Initializer {
 };
 
 template <typename T>
-bool entry(const T count, const T threshold);
+inline bool entry(const T count, const T threshold);
 
-bool entry(const int count, const int threshold) { return count >= threshold; }
-bool entry(const float count, const float threshold) {
+template <>
+inline bool entry<int>(const int count, const int threshold) {
+  return count >= threshold;
+}
+
+template <>
+inline bool entry<float>(const float count, const float threshold) {
   UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
@@ -223,7 +228,7 @@ struct VALUE {
     return pts;
   }
 
-  int64_t fetch_count() { return ++count_; }
+  int fetch_count() { return ++count_; }
 
   void set_entry(bool is_entry) { is_entry_ = is_entry; }
   bool get_entry() { return is_entry_; }
@@ -238,10 +243,10 @@ struct VALUE {
     return pts;
   }
 
-  bool is_entry_;
-  int64_t count_;
-  int keep_days_;
   std::vector<std::string> names_;
+  int count_;
+  int keep_days_;
+  bool is_entry_;
   std::vector<std::vector<float>> values_;
   std::unordered_map<std::string, int> places;
 };
@@ -256,7 +261,7 @@ class ValueBlock {
     // for Initializer
     for (size_t i = 0; i < value_names.size(); i++) {
       auto name = value_names[i];
-      auto slices = string::split_string<std::string>(attrs[i], "&");
+      auto slices = string::split_string<std::string>(init_attrs[i], "&");
 
       if (slices[0] == "gaussian_random") {
         initializers_[name] = new GaussianInitializer(slices);
@@ -325,7 +330,7 @@ class ValueBlock {
     }
 
     auto value = new VALUE(value_names_);
-    value->set(rets);
+    value->set(&rets);
     values_[id] = value;
 
     rwlock_->UNLock();
@@ -407,7 +412,8 @@ class SparseVariable {
 
     for (size_t i = 0; i < shard_num_; i++) {
       auto block = std::make_shared<ValueBlock>(
-          meta.value_names, meta.value_dims, meta.mode, meta.initializer_attrs);
+          meta.value_names, meta.value_dims, meta.mode, meta.initializer_attrs,
+          meta.entry);
       shard_blocks_.emplace_back(block);
     }
   }
