@@ -32,10 +32,8 @@ from paddle.fluid.dygraph import declarative
 from paddle.fluid.log_helper import get_logger
 
 os.environ["CPU_NUM"] = "1"
-fluid.set_flags({
-    "FLAGS_cudnn_deterministic": True,
-    "FLAGS_cudnn_exhaustive_search": False
-})
+if core.is_compiled_with_cuda():
+    fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
