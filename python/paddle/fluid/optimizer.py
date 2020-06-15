@@ -3563,17 +3563,14 @@ class PipelineOptimizer(object):
         start_cpu_core_id (int): The first cpu core id if cpu is used. [Optional. Default:0].
     """
 
-    def __init__(self,
-                 optimizer,
-                 num_microbatches=1,
-                 start_cpu_core_id=0):
+    def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
-            raise Exception("Don't support PipelineOptimizer in dygraph "
+            raise Exception("We don't support PipelineOptimizer in dygraph "
                             "mode now.")
         if not isinstance(optimizer, Optimizer):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
-                             "Optimizer, but the type is {}.".format(
+                             "Optimizer, but the given type is {}.".format(
                                  type(optimizer)))
         self._optimizer = optimizer
         assert num_microbatches >= 1, (
@@ -3603,8 +3600,7 @@ class PipelineOptimizer(object):
                 used_var_set.add(var)
                 source_var = main_program.block(0).var(str(var))
                 if source_var.type == core.VarDesc.VarType.READER:
-                    block.create_var(
-                        name=var, type=core.VarDesc.VarType.READER)
+                    block.create_var(name=var, type=core.VarDesc.VarType.READER)
                 else:
                     block._clone_variable(source_var, False)
 
@@ -3639,9 +3635,7 @@ class PipelineOptimizer(object):
             device = op.attr(self._op_device_key)
 
             if device not in device_program_map:
-                program = {
-                    "program": Program()
-                }
+                program = {"program": Program()}
                 device_program_map[device] = program
             program = device_program_map[device]
             op_desc = op.desc
@@ -3681,7 +3675,7 @@ class PipelineOptimizer(object):
                 raise ValueError("Can only have one post op.")
             return post_op[0]
         return None
-    
+
     def _find_post_op(self, ops, cur_op, var_name):
         """
         Find the real post op that has variable named var_name as input.
@@ -3968,7 +3962,7 @@ class PipelineOptimizer(object):
                     op.type, self._op_device_index_key))
             dev_spec = op.attr(self._op_device_key)
             assert dev_spec, ("op_device attribute for op "
-                            "{} has not been set.".format(op.type))
+                              "{} has not been set.".format(op.type))
             if not dev_spec in device_specs:
                 device_specs.append(dev_spec)
         return device_specs
