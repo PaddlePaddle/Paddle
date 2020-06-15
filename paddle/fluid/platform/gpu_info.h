@@ -119,8 +119,6 @@ uint64_t RecordedCudaMallocSize(int dev_id);
 
 bool IsCudaMallocRecorded(int dev_id);
 
-void UpdateGpuMemStat(int mode, int dev_id, size_t size);  // mode[0:add, 1:sub]
-
 }  // namespace platform
 }  // namespace paddle
 

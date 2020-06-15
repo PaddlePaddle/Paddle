@@ -366,8 +366,7 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         cur_size_ += size;
       }
-      // STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      UpdateGpuMemStat(0, dev_id_, size);
+      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return cudaSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -396,8 +395,7 @@ class RecordedCudaMallocHelper {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
       }
-      // STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
-      UpdateGpuMemStat(1, dev_id_, size);
+      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
       cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
     }
@@ -470,14 +468,6 @@ uint64_t RecordedCudaMallocSize(int dev_id) {
 
 bool IsCudaMallocRecorded(int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->NeedRecord();
-}
-
-void UpdateGpuMemStat(int mode, int dev_id, size_t size) {
-  if (mode == 0) {
-    STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id) + "_mem_size", size);
-  } else if (mode == 1) {
-    STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id) + "_mem_size", size);
-  }
 }
 
 }  // namespace platform
