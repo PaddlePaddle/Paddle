@@ -212,7 +212,6 @@ endif(NOT WIN32)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr")
-#set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xlinker=\"--as-needed\"")
 
 if(WIN32)
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler \"/wd4244 /wd4267 /wd4819 \"")
