@@ -52,6 +52,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
 std::map<std::string, std::set<std::string>> op_outs_map = {
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
+    {"batch_norm",
+     {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
+      "ReserveSpace"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are

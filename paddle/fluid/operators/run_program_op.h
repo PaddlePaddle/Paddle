@@ -198,7 +198,11 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
 
+    // get scope and clear old vars
     framework::Scope &scope = *(out_scope_vec->front());
+    auto local_vars = scope.LocalVarNames();
+    scope.EraseVars(local_vars);
+
     // share input_vars & parameters into scope
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
     details::ShareVarsIntoScope(param_vars, param_names, &scope);

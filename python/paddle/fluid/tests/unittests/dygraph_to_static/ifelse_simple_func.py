@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import six
 import paddle.fluid as fluid
 
 
@@ -43,7 +42,10 @@ def dyfunc_with_if_else(x_v, label=None):
 def dyfunc_with_if_else2(x, col=100):
     row = 0
     if abs(col) > x.shape[-1]:
-        col = -1
+        # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
+        #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
+        # col = -1
+        col = fluid.layers.fill_constant(shape=[1], value=-1, dtype="int64")
     if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
@@ -102,7 +104,12 @@ def nested_if_else(x_v):
     feat_size = x_v.shape[-1]
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
-        batch_size = x_v.shape[0]
+        # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
+        #  `x_v.shape[0]` is not Tensor, and `batch_size` is the return value of `true_fn` after transformed.
+        # col = -1
+        # batch_size = x_v.shape[0]
+        batch_size = fluid.layers.shape(x_v)[0]
+
     # if tensor.shape is [1], now support to compare with numpy.
     if fluid.layers.mean(x_v).numpy() < 0:
         y = x_v + bias
@@ -303,14 +310,6 @@ def if_tensor_case(x):
     # It is equivalent to `if mean != 0`
     if mean:
         for i in range(0, 10):
-            # TODO(liym27): Delete it if the type of parameter `i` can be resolved in "if" stmt
-            if six.PY2:
-                i = fluid.layers.fill_constant(
-                    shape=[1], value=i, dtype="int32")
-            else:
-                i = fluid.layers.fill_constant(
-                    shape=[1], value=i, dtype="int64")
-
             if i > 5:
                 x += 1
                 break

@@ -38,7 +38,7 @@ dygraph_class_to_static_api = {
 }
 
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
-FOR_ITER_VAR_SHAPE_PREFIX = '__for_loop_var_shape'
+FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 
 
 def _is_api_in_module_helper(obj, module_prefix):
@@ -668,7 +668,7 @@ class ForNodeVisitor(object):
 
     In this process, the semantics of for does not change.
 
-    Now only can parse 3 type statements (Here var is VarBase(Tensor)):
+    Now only can parse 3 type statements (Here var is VarBase(Tensor) or python variable):
         1). for x in range(var[*]|var.numpy()[*])
         2). for x in var|var.numpy()
         3). for i, x enumerate(var|var.numpy())
@@ -700,12 +700,11 @@ class ForNodeVisitor(object):
         #   - for i, x enumerate(var|var.numpy())
         self.iter_idx_name = unique_name.generate(FOR_ITER_INDEX_PREFIX)
 
-        # - created shape var to build loop condition: __for_loop_var_shape_0
+        # - created shape var to build loop condition: __for_loop_var_len_0
         #   - for x in var|var.numpy()
         #   - for i, x enumerate(var|var.numpy())
         #   - for x in var
-        self.iter_var_shape_name = unique_name.generate(
-            FOR_ITER_VAR_SHAPE_PREFIX)
+        self.iter_var_len_name = unique_name.generate(FOR_ITER_VAR_LEN_PREFIX)
 
         # - var.numpy()/var
         #   - for x in var|var.numpy()
@@ -728,7 +727,7 @@ class ForNodeVisitor(object):
         elif self.is_for_enumerate_iter():
             return self._parse_for_enumerate_stmts()
         else:
-            raise None
+            return None
 
     def is_for_range_iter(self):
         return isinstance(self.node.iter, gast.Call) and isinstance(
@@ -736,7 +735,7 @@ class ForNodeVisitor(object):
             gast.Name) and self.node.iter.func.id == "range"
 
     def is_for_iter(self):
-        if isinstance(self.node.iter, gast.Name):
+        if isinstance(self.node.iter, (gast.Name, gast.Attribute)):
             return True
         elif isinstance(self.node.iter, gast.Call) and isinstance(
                 self.node.iter.func,
@@ -776,7 +775,7 @@ class ForNodeVisitor(object):
     def _parse_for_stmts(self):
         init_stmts = []
         init_stmts.append(self._build_index_init_node())
-        init_stmts.append(self._build_var_shape_assign_node())
+        init_stmts.append(self._build_var_len_assign_node())
 
         compare_node = self._build_compare_node()
         step_node = self._build_step_node()
@@ -794,7 +793,7 @@ class ForNodeVisitor(object):
     def _parse_for_enumerate_stmts(self):
         init_stmts = []
         init_stmts.append(self._build_index_init_node())
-        init_stmts.append(self._build_var_shape_assign_node())
+        init_stmts.append(self._build_var_len_assign_node())
         init_stmts.append(self._build_enum_init_node())
 
         compare_node = self._build_compare_node()
@@ -814,51 +813,49 @@ class ForNodeVisitor(object):
     def _build_index_init_node(self):
         if self.is_for_range_iter():
             if self.args_length == 1:
-                index_init_node = get_constant_variable_node(self.iter_var_name,
-                                                             0)
+                index_init_value_str = '0'
             else:
-                index_init_node = gast.Assign(
-                    targets=[
-                        gast.Name(
-                            id=self.iter_var_name,
-                            ctx=gast.Store(),
-                            annotation=None,
-                            type_comment=None)
-                    ],
-                    value=self.iter_args[0])
+                index_init_value_str = ast_to_source_code(self.iter_args[
+                    0]).strip()
+
+            index_init_var_name = self.iter_var_name
         else:
-            index_init_node = get_constant_variable_node(self.iter_idx_name, 0)
+            index_init_value_str = '0'
+            index_init_var_name = self.iter_idx_name
+
+        index_init_node_source_str = "{target} = {value}".format(
+            target=index_init_var_name, value=index_init_value_str)
+
+        index_init_node = gast.parse(index_init_node_source_str).body[0]
+
         return index_init_node
 
-    def _build_var_shape_assign_node(self):
-        # get variable shape as iter length
-        if isinstance(self.iter_node, gast.Call):
-            iter_var = self.iter_node.func
+    def _build_var_len_assign_node(self):
+        # get the length of iterable variable
+        if isinstance(self.iter_node, gast.Call) and isinstance(
+                self.iter_node.func,
+                gast.Attribute) and self.iter_node.func.attr == 'numpy':
+            iter_var_name = ast_to_source_code(self.iter_node.func.value).strip(
+            )
         else:
-            iter_var = self.iter_node
-        return gast.Assign(
-            targets=[
-                gast.Name(
-                    id=self.iter_var_shape_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None)
-            ],
-            value=create_api_shape_node(iter_var))
+            iter_var_name = ast_to_source_code(self.iter_node).strip()
+
+        convert_len_node_source_str = '{} = fluid.dygraph.dygraph_to_static.convert_operators.convert_len({})'.format(
+            self.iter_var_len_name, iter_var_name)
+
+        convert_len_node = gast.parse(convert_len_node_source_str).body[0]
+
+        return convert_len_node
 
     def _build_enum_init_node(self):
-        enum_init_node = get_constant_variable_node(
-            name=self.enum_idx_name, value=0)
         if self.is_for_enumerate_iter() and self.args_length != 1:
-            enum_init_node = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=self.enum_idx_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None)
-                ],
-                value=self.iter_args[1])
+            init_value_str = ast_to_source_code(self.iter_args[1]).strip()
+        else:
+            init_value_str = '0'
+
+        enum_init_node_source_str = "{} = {}".format(self.enum_idx_name,
+                                                     init_value_str)
+        enum_init_node = gast.parse(enum_init_node_source_str).body[0]
         return enum_init_node
 
     def _build_compare_node(self):
@@ -866,15 +863,11 @@ class ForNodeVisitor(object):
             compare_node = self.iter_args[
                 0] if self.args_length == 1 else self.iter_args[1]
         else:
-            compare_node = gast.Subscript(
-                value=gast.Name(
-                    id=self.iter_var_shape_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None),
-                slice=gast.Index(value=gast.Constant(
-                    value=0, kind=None)),
-                ctx=gast.Load())
+            compare_node = gast.Name(
+                id=self.iter_var_len_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None)
         return compare_node
 
     def _build_step_node(self):
