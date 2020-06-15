@@ -3593,9 +3593,9 @@ class PipelineOptimizer(object):
             op_desc = block.desc.op(op_idx)
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var in vars:
-                # a var whose name contains "@blocking_queue@" 
+                # a var whose name contains "blocking_queue" 
                 # only exists in startup program 
-                if var in used_var_set or "@blocking_queue@" in var:
+                if var in used_var_set or "_blocking_queue" in var:
                     continue
                 used_var_set.add(var)
                 source_var = main_program.block(0).var(str(var))
@@ -3804,7 +3804,7 @@ class PipelineOptimizer(object):
             for device in data_devices_map[var_name]:
                 # step1: generate queue for each pair of data var and device
                 # that that data on
-                queue_name = var_name + "@blocking_queue@"
+                queue_name = var_name + "_blocking_queue"
                 queue_name = unique_name.generate(queue_name)
                 queue_var = startup.block(0).create_var(
                     name=queue_name,
@@ -3814,17 +3814,16 @@ class PipelineOptimizer(object):
                     type='queue_generator',
                     attrs={
                         'names': [queue_name],
-                        'capacity': self._num_macrobatches
+                        'capacity': self._num_microbatches
                     })
                 main_var = main_block.var(var_name)
                 assert main_var.is_data
                 if not var_name in first_block.vars:
                     self._create_var(first_block, main_var, var_name)
                 first_block._insert_op(
-                    #index=0,
                     index=enqueue_index,
                     type='enqueue',
-                    inputs={'X': first_block.var(var_name), },
+                    inputs={'X': first_block.var(var_name)},
                     attrs={
                         'queue_name': queue_name,
                         self._op_device_key: first_device_spec,
@@ -3832,11 +3831,11 @@ class PipelineOptimizer(object):
                     })
                 # Get the device that that data on
                 assert device in devices
-                dev_spec = device
-                prog = programs[index]['program']
+                prog_index = devices.index(device)
+                prog = programs[prog_index]['program']
                 block = prog.block(0)
                 index = 0
-                if dev_spec == first_dev_spec:
+                if device == first_dev_spec:
                     index = enqueue_index + 1
                 new_name = raw_name_new_name_map[var_name]
                 source_var = main_program.block(0).var(var_name)
@@ -3844,7 +3843,7 @@ class PipelineOptimizer(object):
                 block._insert_op(
                     index=index,
                     type='dequeue',
-                    outputs={'Out': [new_var], },
+                    outputs={'Out': [new_var]},
                     attrs={
                         self._op_device_key: dev_spec,
                         self._op_role_key: self._op_role.Forward,
@@ -3887,7 +3886,8 @@ class PipelineOptimizer(object):
         assert first_device
 
         # set op_device attr for optimizer related ops
-        # Todo: deal with ops that have no kernel and not optimizer related
+        # Todo (sandyhouse): deal with ops that have no kernel and not
+        #                    optimizer related
         lrsched_role = int(self._op_role.LRSched)
         for op in block.ops:
             if not op.has_attr(self._op_device_key) or (
@@ -3967,7 +3967,7 @@ class PipelineOptimizer(object):
                     if cur_device_spec in var_devspec[var_name]: continue
                     var_devspec[var_name].append(cur_device_spec)
 
-                    queue_name = var_name + "@blocking_queue@"
+                    queue_name = var_name + "_blocking_queue"
                     queue_name = unique_name.generate(queue_name)
                     queue_var = startup_block.create_var(
                         name=queue_name,
@@ -3977,7 +3977,7 @@ class PipelineOptimizer(object):
                         type='queue_generator',
                         attrs={
                             'names': [queue_name],
-                            'capacity': self._num_macrobatches
+                            'capacity': self._num_microbatches
                         })
                     op_role = op.all_attrs()[self._op_role_key]
                     var = block.vars[var_name]
@@ -4004,7 +4004,7 @@ class PipelineOptimizer(object):
 
     def _insert_enq_deq_ops_for_update(self, block, startup_program):
         """
-        Insert enqueue op for gradients of parameters and dequeue_N ops.
+        Insert enqueue and dequeue ops for gradients of parameters.
         """
         startup_block = startup_program.global_block()
         grad_queue_map = dict()
@@ -4016,7 +4016,7 @@ class PipelineOptimizer(object):
             # Backward pass
             if self._is_loss_grad_op(op):
                 loss_grad_var = block.vars[op.output_arg_names[0]]
-                scale_factor = self._num_macrobatches
+                scale_factor = self._num_microbatches
                 block._insert_op(
                     index=index + 1,
                     type='scale',
@@ -4058,7 +4058,7 @@ class PipelineOptimizer(object):
                 grad_name = op_role_var[1]
                 grad_names = []
                 grads = []
-                queue_name = grad_name + "@blocking_queue@"
+                queue_name = grad_name + "_blocking_queue"
                 queue_name = unique_name.generate(queue_name)
                 grad_queue_map[grad_name] = queue_name
                 ref_var = block.vars[grad_name]
@@ -4070,10 +4070,10 @@ class PipelineOptimizer(object):
                     type='queue_generator',
                     attrs={
                         'names': [queue_name],
-                        'capacity': self._num_macrobatches
+                        'capacity': self._num_microbatches
                     })
                 orig_var_name = self._strip_grad_suffix(grad_name)
-                for _ in range(self._num_macrobatches):
+                for _ in range(self._num_microbatches):
                     u_name = unique_name.generate(orig_var_name)
                     u_grad_name = self._append_grad_suffix(u_name)
                     grad_var = self._create_var(block, ref_var, u_grad_name)
@@ -4171,13 +4171,12 @@ class PipelineOptimizer(object):
             # Case 2: one write multiple reads
             write_prog = write_info[var_name]
             write_block = write_prog.block(0)
-            write_device, write_device_index = self._get_device_info(
-                write_block)
+            write_device = self._get_device_info(write_block)
             all_progs = var_info[var_name]
             for prog in all_progs:
                 if prog == write_prog: continue
 
-                queue_name = var_name + "@blocking_queue@"
+                queue_name = var_name + "_blocking_queue"
                 queue_name = unique_name.generate(queue_name)
                 queue_var = startup_prog.block(0).create_var(
                     name=queue_name,
@@ -4187,7 +4186,7 @@ class PipelineOptimizer(object):
                     type='queue_generator',
                     attrs={
                         'names': [queue_name],
-                        'capacity': self._num_macrobatches
+                        'capacity': self._num_microbatches
                     })
                 write_block._insert_op(
                     index=0,
@@ -4203,12 +4202,11 @@ class PipelineOptimizer(object):
                         self._op_role_key: self._op_role.Forward
                     })
                 read_block = prog.block(0)
-                read_device, read_device_index = self._get_device_info(
-                    read_block)
+                read_device = self._get_device_info(read_block)
                 read_block._insert_op(
                     index=0,
                     type='dequeue',
-                    outputs={'Out': [read_block.var(var_name)], },
+                    outputs={'Out': [read_block.var(var_name)]},
                     attrs={
                         self._op_device_key: read_device,
                         self._op_device_index_key: read_device_index,
@@ -4241,21 +4239,15 @@ class PipelineOptimizer(object):
         origin_main_block = origin_prog.global_block()
         self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
                                                 startup_program)
-        print("time for step2: ", time.time() - start)
-        start = time.time()
 
         # Step3: add a pair of enqueue and dequeueN for parameter gradients
         self._insert_enq_deq_ops_for_update(main_block, startup_program)
-        print("time for step3: ", time.time() - start)
-        start = time.time()
 
         main_program = main_block.program
 
         place_list = []
         place_id_list = []
-        device_spec_list = []
         for dev_spec in device_specs:
-            device_spec_list.append(dev_spec)
             if dev_spec == "cpu":
                 place_list.append(core.CPUPlace())
                 place_id_list.append(-1)
@@ -4275,34 +4267,30 @@ class PipelineOptimizer(object):
                 "input_set": set(),
                 "output_set": set()
             }
-            main_program.random_seed = 32
             program_list.append(ptmp)
         else:
             program_list = self._split_program(main_program)
             for p in program_list:
-                p["program"].random_seed = 32
                 self._create_vars(p["program"].block(0), main_program)
         self._insert_enq_deq_for_data_var(main_block, program_list,
                                           startup_program, device_specs)
 
-        print("time for step4: ", time.time() - start)
-        start = time.time()
         # Step5: Special Case: process persistable vars that exist in
         # multiple sections
         self._process_persistable_vars_in_multi_sections(
             main_program, startup_program, program_list)
-        print("time for step5: ", time.time() - start)
-        start = time.time()
+
+        # Step6: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
-        print(place_list, place_id_list)
+
         main_program._pipeline_opt = {
-            "trainer": "ModelParallelTrainer",
-            "device_worker": "ModelParallel",
+            "trainer": "PipelineTrainer",
+            "device_worker": "Section",
             "section_program_list": program_list,
             "place_list": place_list,
             "place_id_list": place_id_list,
             "sync_steps": -1,
-            "queue_size": self._num_macrobatches,
+            "queue_size": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
         }
         return optimize_ops, params_grads
