@@ -382,7 +382,7 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(sequence)
-add_subdirectory(dygraph_to_static)
+add_subdirectory(jit)
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
