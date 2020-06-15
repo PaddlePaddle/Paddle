@@ -3676,33 +3676,6 @@ class PipelineOptimizer(object):
             return post_op[0]
         return None
 
-    def _find_post_op(self, ops, cur_op, var_name):
-        """
-        Find the real post op that has variable named var_name as input.
-
-        Args:
-            ops (list): A list of ops.
-            cur_op (Operator): Current operator which has variable named
-                               var_name as input.
-            var_name (string): Variable name.
-        """
-        post_op = []
-        before = True
-        for op in ops:
-            if op == cur_op:
-                before = False
-                continue
-            if before:
-                continue
-            for in_var_name in op.input_arg_names:
-                if in_var_name == var_name:
-                    post_op.append(op)
-        if post_op:
-            if not len(post_op) == 1:
-                raise ValueError("Can only have one post op.")
-            return post_op[0]
-        return None
-
     def _find_real_prev_op(self, ops, cur_op, var_name):
         """
         Find the real previous op that outputs variable named var_name.
@@ -3894,15 +3867,10 @@ class PipelineOptimizer(object):
 
     def _add_default_opdevice_attr(self, block):
         """
-        1. Add default op_device and op_device_index attribute for
-           optimizer (lr) related ops. The default values are the ones that
-           of the first place (CPUPlace or CUDAPlace).
-        2. Add default op_device attribute for ops that have no kernel.
-           For these ops, the op_device_index attribute is set. So, we
-           can determine the op_device attribute based on it. Now the only
-           supported op without kernal is conditional_block.
-        3. Add default op_device_index attribute for sum ops added during
-           optimization. For these ops, we set the op_device_index attribute
+        1. Add default op_device attribute for optimizer (lr) related ops.
+           The default value is the one that of the first place.
+        2. Add default op_device attribute for sum ops added during
+           optimization. For these ops, we set the op_device attribute
            as the one of its post op, i.e, which op has the output of the sum op
            as an input.
         """
@@ -3943,7 +3911,8 @@ class PipelineOptimizer(object):
 
     def _check_validation(self, block):
         """
-        Check whether ops in a block are all validate.
+        Check whether ops in a block are all validate (i.e., the 
+        op_device attribute has been set).
         Then, return all device specifications in order.
         """
         device_specs = []
@@ -3957,9 +3926,6 @@ class PipelineOptimizer(object):
             assert op.has_attr(self._op_device_key), (
                 "op ({}) has no {} attribute.".format(op.type,
                                                       self._op_device_key))
-            assert op.has_attr(self._op_device_index_key), (
-                "op ({}) has no {} attribute.".format(
-                    op.type, self._op_device_index_key))
             dev_spec = op.attr(self._op_device_key)
             assert dev_spec, ("op_device attribute for op "
                               "{} has not been set.".format(op.type))
@@ -4262,19 +4228,13 @@ class PipelineOptimizer(object):
         main_block = loss.block
         if startup_program is None:
             startup_program = default_startup_program()
-        _, params_grads = self._optimizer.minimize(loss, startup_program,
-                                                   parameter_list, no_grad_set)
+        optimize_ops, params_grads = self._optimizer.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
 
-        # Step1: add default op_device and op_device_index for optimizer
-        # (lr) related ops, because we put Optimizer out of the scope
-        # of device_guard.
-        start = time.time()
+        # Step1: add default op_device attribute for ops whose op_device
+        # attribute have not been set yet.
         self._add_default_opdevice_attr(main_block)
-
         device_specs = self._check_validation(main_block)
-        #device_specs = self._get_device_specs(main_block)
-        print("time for step1: ", time.time() - start)
-        start = time.time()
 
         # Step2: add enqueue and dequeue between the section boundaries
         origin_prog = main_block.program.clone(for_test=False)
@@ -4345,7 +4305,7 @@ class PipelineOptimizer(object):
             "queue_size": self._num_macrobatches,
             "start_cpu_core_id": self._start_cpu_core_id,
         }
-        return program_list
+        return optimize_ops, params_grads
 
 
 class RecomputeOptimizer(Optimizer):
