@@ -715,8 +715,8 @@ class Optimizer(object):
             params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
-        params_grads = append_regularization_ops(params_grads,
-                                                 self.regularization)
+        params_grads = append_regularization_ops(
+            params_grads, self.regularization, self._param_device_map)
 
         optimize_ops = self._create_optimization_pass(params_grads)
         if table_optimize_op is not None:
@@ -3555,6 +3555,8 @@ class ExponentialMovingAverage(object):
 
 class PipelineOptimizer(object):
     """
+	:api_attr: Static Graph
+
     Pipeline Optimizer: Main program will be split by devices where ops run.
 
     Args:
