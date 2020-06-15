@@ -92,6 +92,7 @@ class Layer(core.Layer):
         self._parameters = collections.OrderedDict()
         # Buffers the varBase (not ParamBase) created in layer
         self._buffers = collections.OrderedDict()
+        self._non_persistable_buffer_names_set = set()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
 
@@ -416,6 +417,52 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
+    def register_buffer(self, name, var_base, persistable=True):
+        """Adds a buffer to the layer.
+
+        This is typically used to register a buffer that should not be
+        considered as a parameter and it will also not be updated by optimizer.
+        The registered buffer is persistable by default, and will be saved into
+        state_dict alongside parameters. If set persistable=False, it registers
+        a non-persistable buffer, so that it will not be a part of state_dict.
+
+        Buffers can be accessed as attributes using given names.
+
+        Parameters:
+            name (string): name of the buffer. The buffer can be accessed
+                from this layer using the given name
+            var_base (VarBase): buffer to be registered.
+            persistable (bool): whether the buffer is part of this layer's
+                state_dict.
+
+        Returns:
+            None
+        """
+
+        if '_buffers' not in self.__dict__:
+            raise ValueError(
+                "super(YourLayer, self).__init__() should be called first")
+        elif not isinstance(name, six.string_types):
+            raise TypeError(
+                "The name of buffer should be a string, but received {}.".
+                format(type(name).__name__))
+        elif '.' in name:
+            raise KeyError("The name of buffer can not contain \".\"")
+        elif name == '':
+            raise KeyError("The name of buffer can not be empty.")
+        elif hasattr(self, name) and not name in self._buffers:
+            raise KeyError("attribute '{}' already exists.".format(name))
+        elif var_base is not None and not type(var_base) == core.VarBase:
+            raise TypeError(
+                "The registered buffer should be a core.VarBase, but received {}.".
+                format(type(var_base).__name__))
+        else:
+            self._buffers[name] = var_base
+            if persistable:
+                self._non_persistable_buffer_names_set.discard(name)
+            else:
+                self._non_persistable_buffer_names_set.add(name)
+
     def buffers(self, include_sublayers=True):
         """Returns a list of all buffers from current layer and its sub-layers.
 
@@ -628,19 +675,25 @@ class Layer(core.Layer):
                 layers[name] = None
             else:
                 _buffers = self.__dict__.get('_buffers', None)
-                if isinstance(value, core.VarBase):
+                if type(value) == core.VarBase:
                     if _buffers is None:
                         raise ValueError(
                             "super(YourLayer, self).__init__() should be called first"
                         )
                     _remove_if_exist(self.__dict__, self._parameters,
                                      self._sub_layers)
+                    # Set persistable=False by default. Only `register_buffer` can
+                    # add a persistable buffer.
+                    if name not in self._buffers:
+                        self._non_persistable_buffer_names_set.add(name)
                     _buffers[name] = value
                 elif _buffers is not None and name in _buffers:
                     if value is not None:
                         raise TypeError(
-                            "assignment to varBase_buffers '{}' should be of type core.VarBase or None, but got '{}'"
+                            "assignment to buffers '{}' should be of type core.VarBase or None, but got '{}'"
                             .format(name, type(value).__name__))
+                    # Assigning None will remove the buffer, but if re-assign a new varBase to it,
+                    # it will be remarked as a buffer with same `persistable` attribute.
                     _buffers[name] = None
                 else:
                     object.__setattr__(self, name, value)
@@ -650,8 +703,9 @@ class Layer(core.Layer):
             del self._parameters[name]
         elif name in self._sub_layers:
             del self._sub_layers[name]
-        elif name in self._buffers[name]:
+        elif name in self._buffers:
             del self._buffers[name]
+            self._non_persistable_buffer_names_set.discard(name)
         else:
             object.__delattr__(self, name)
 
@@ -660,14 +714,14 @@ class Layer(core.Layer):
                    include_sublayers=True,
                    structured_name_prefix=""):
         '''
-        Get all parameters of current layer and its sub-layers. And set all the parameters into a dict
+        Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
             destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
 
         Retruns:
-            dict: a dict contains all the parameters
+            dict: a dict contains all the parameters and persistable buffers.
 
         Examples:
             .. code-block:: python
@@ -686,6 +740,9 @@ class Layer(core.Layer):
         for name, data in self._parameters.items():
             if data is not None:
                 destination[structured_name_prefix + name] = data
+        for name, buffer in self._buffers.items():
+            if buffer is not None and name not in self._non_persistable_buffer_names_set:
+                destination[structured_name_prefix + name] = buffer
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
@@ -768,10 +825,10 @@ class Layer(core.Layer):
 
         inner_state_dict = self.state_dict()
 
-        for name, para in inner_state_dict.items():
-            key_name = name if use_structured_name else para.name
+        for name, param_or_buffer in inner_state_dict.items():
+            key_name = name if use_structured_name else param_or_buffer.name
             if key_name in stat_dict:
-                para.set_value(stat_dict[key_name])
+                param_or_buffer.set_value(stat_dict[key_name])
             else:
                 raise RuntimeError(
                     "Parameter not found, Can't not find [ {} ] in stat_dict"
