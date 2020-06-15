@@ -134,23 +134,24 @@ int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   const float *alpha = p_gpu_weight_;
   const float *input = static_cast<const float *>(inputs[0]);
   float *output = static_cast<float *>(outputs[0]);
-
+  int numel = 1;
   std::vector<int> input_shape;
   for (int i = 0; i < input_dims.nbDims; i++) {
-    input_shape.push_back(input_dims.d[i]);
+    numel *= input_dims.d[i];
   }
 
   if (mode_ == "channel") {
     operators::math::PreluChannelWiseDirectCUDAFunctor<float>
         prelu_channel_wise;
-    prelu_channel_wise(stream, input, alpha, output, input_shape);
+    prelu_channel_wise(stream, input, alpha, output, input_dims.d[0],
+                       input_dims.d[1], numel);
   } else if (mode_ == "element") {
     operators::math::PreluElementWiseDirectCUDAFunctor<float>
         prelu_element_wise;
-    prelu_element_wise(stream, input, alpha, output, input_shape);
+    prelu_element_wise(stream, input, alpha, output, input_dims.d[0], numel);
   } else {
     operators::math::PreluScalarDirectCUDAFunctor<float> prelu_scalar;
-    prelu_scalar(stream, input, alpha, output, input_shape);
+    prelu_scalar(stream, input, alpha, output, numel);
   }
   return cudaGetLastError() != cudaSuccess;
 }
