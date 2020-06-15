@@ -935,6 +935,10 @@ class MultiStepDecay(LearningRateDecay):
                    'MultiStepDecay')
         if isinstance(learning_rate, (float, int)):
             learning_rate = self.create_lr_var(learning_rate)
+        if all([a[i] < a[i + 1] for i in range(len(a) - 1)]):
+            raise ValueError('The elements of milestones must be incremented')
+        if decay_rate >= 1.0:
+            raise ValueError('decay_rate should be < 1.0.')
 
         self.learning_rate = learning_rate
         check_type(milestones, 'milestones', (tuple, list), 'MultiStepDecay')

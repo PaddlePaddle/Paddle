@@ -173,6 +173,14 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                     msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
                     format(step, right_result, fluid_result[0]))
 
+            with self.assertRaises(ValueError):
+                lr = fluid.layers.multi_step_decay(learning_rate, [30, 50, 20],
+                                                   0.1)
+
+            with self.assertRaises(ValueError):
+                lr = fluid.layers.multi_step_decay(learning_rate, [20, 30, 50],
+                                                   1)
+
 
 class TestLearningRateDecay(unittest.TestCase):
     def check_decay(self, python_decay_fn, fluid_decay_fn, kwargs):
