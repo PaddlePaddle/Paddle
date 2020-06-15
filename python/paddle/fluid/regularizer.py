@@ -62,8 +62,7 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     return new_grad
 
 
-def append_regularization_ops(parameters_and_grads,
-                              regularization=None):
+def append_regularization_ops(parameters_and_grads, regularization=None):
     """Create and add backward regularization Operators
 
     Creates and adds backward regularization operators in the BlockDesc.
@@ -101,8 +100,8 @@ def append_regularization_ops(parameters_and_grads,
                         "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         % regularization.__str__())
                 with param.block.program._optimized_guard([param, grad]):
-                    new_grad = _create_regularization_of_grad(
-                        param, grad, regularization)
+                    new_grad = _create_regularization_of_grad(param, grad,
+                                                              regularization)
                     params_and_grads.append((param, new_grad))
     return params_and_grads
 
