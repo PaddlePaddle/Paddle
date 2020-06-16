@@ -25,7 +25,7 @@ from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid import core
 from paddle.fluid.contrib.slim.quantization import DygraphQuantAware
-from paddle.fluid.optimizer import AdamOptimizer, SGDOptimizer
+from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph import declarative
@@ -280,6 +280,7 @@ class TestDygraphQat(unittest.TestCase):
         activation_quant_type = 'moving_average_abs_max'
         param_init_map = {}
         seed = 1000
+        lr = 0.1
 
         # dygraph train
         _logger.info(
@@ -311,7 +312,7 @@ class TestDygraphQat(unittest.TestCase):
 
             dygraph_qat.quantize(lenet)
             adam = AdamOptimizer(
-                learning_rate=0.001, parameter_list=lenet.parameters())
+                learning_rate=lr, parameter_list=lenet.parameters())
             dynamic_loss_rec = []
             lenet.train()
             for batch_id, data in enumerate(reader()):
@@ -331,7 +332,7 @@ class TestDygraphQat(unittest.TestCase):
                 lenet.clear_gradients()
                 dynamic_loss_rec.append(avg_loss.numpy()[0])
                 if batch_id % 100 == 0:
-                    _logger.info('{}: {}'.format('loss', avg_loss.numpy()[0]))
+                    _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
         dygraph_qat.save_infer_quant_model(
             dirname="./dynamic_mnist",
@@ -359,9 +360,10 @@ class TestDygraphQat(unittest.TestCase):
             main, startup, False, seed)
         infer_img, _, infer_pre = _build_static_lenet(infer, startup, True,
                                                       seed)
-        with fluid.program_guard(main, startup):
-            opt = fluid.optimizer.Adam(learning_rate=0.001)
-            opt.minimize(static_loss)
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, startup):
+                opt = AdamOptimizer(learning_rate=lr)
+                opt.minimize(static_loss)
 
         scope = core.Scope()
         with fluid.scope_guard(scope):
@@ -394,15 +396,29 @@ class TestDygraphQat(unittest.TestCase):
                                   fetch_list=[static_loss])
                 static_loss_rec.append(loss_v[0])
                 if batch_id % 100 == 0:
-                    _logger.info('{}: {}'.format('loss', loss_v[0]))
+                    _logger.info('{}: {}'.format('loss', loss_v))
 
         save_program = infer_graph.to_program()
         with fluid.scope_guard(scope):
             fluid.io.save_inference_model("./static_mnist", [infer_img.name],
                                           [infer_pre], exe, save_program)
+        rtol = 1e-05
+        atol = 1e-08
+        for i, (loss_d,
+                loss_s) in enumerate(zip(dynamic_loss_rec, static_loss_rec)):
+            diff = np.abs(loss_d - loss_s)
+            if diff > (atol + rtol * np.abs(loss_s)):
+                _logger.info(
+                    "diff({}) at {}, dynamic loss = {}, static loss = {}".
+                    format(diff, i, loss_d, loss_s))
+                break
 
         self.assertTrue(
-            np.allclose(np.array(dynamic_loss_rec), np.array(static_loss_rec)),
+            np.allclose(
+                np.array(dynamic_loss_rec),
+                np.array(static_loss_rec),
+                rtol=rtol,
+                atol=atol),
             msg='Failed to do the dygraph qat.')
 
 

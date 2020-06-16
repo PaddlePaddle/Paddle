@@ -82,7 +82,7 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(*ctx.eigen_device()) =
-        (s / bin_cnt) * (bin_cnt * inv_s * out_e).round();
+        (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
