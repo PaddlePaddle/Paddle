@@ -21,7 +21,7 @@ set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir
   
 if(WIN32)
     #todo: remove the option 
-    option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
+    option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   OFF)
     if(NOT PYTHON_EXECUTABLE)
         FIND_PACKAGE(PythonInterp REQUIRED)
     endif()
@@ -128,7 +128,11 @@ function(copy_part_of_thrid_party TARGET DST)
 endfunction()
 
 # inference library for only inference
-set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
+if(WIN32)
+  set(inference_lib_deps third_party  paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
+else()
+  set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
+endif()
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 
@@ -194,6 +198,12 @@ endif(WIN32)
 copy(inference_lib_dist
         SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
         DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+
+if(WIN32)
+  copy(inference_lib_dist
+          SRCS  ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/paddle_fluid.dll
+          DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
