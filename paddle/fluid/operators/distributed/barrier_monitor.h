@@ -28,7 +28,6 @@
 #include <vector>
 
 #include <thread>  // NOLINT
-
 #include <ThreadPool.h>
 
 #include "paddle/fluid/operators/distributed/rpc_server.h"
