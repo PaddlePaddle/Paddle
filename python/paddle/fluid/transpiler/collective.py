@@ -267,6 +267,195 @@ class GradAllReduce(Collective):
                 break
 
 
+class PipelineGradAllReduce(Collective):
+    '''
+    '''
+
+    def __init__(self, nrings=2):
+        Collective.__init__(self, nrings)
+        self.mode = "pipeline_grad_allreduce"
+
+    def _init_communicator(self, program, current_endpoint, endpoints, rank,
+                           ring_id, wait_port):
+        nranks = len(endpoints)
+        other_endpoints = endpoints[:]
+        other_endpoints.remove(current_endpoint)
+        if rank == 0 and wait_port:
+            wait_server_ready(other_endpoints)
+
+        block = program.global_block()
+        nccl_id_var = block.create_var(
+            name=unique_name.generate('nccl_id'),
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
+        block.append_op(
+            type='c_gen_nccl_id',
+            inputs={},
+            outputs={'Out': nccl_id_var},
+            attrs={
+                'rank': rank,
+                'endpoint': current_endpoint,
+                'other_endpoints': other_endpoints,
+                self.op_role_key: OpRole.Forward
+            })
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': nccl_id_var},
+            outputs={},
+            attrs={
+                'nranks': nranks,
+                'rank': rank,
+                'ring_id': ring_id,
+                'device_id': ring_id,
+                self.op_role_key: OpRole.Forward
+            })
+
+    def transpile(self, startup_program, main_program, rank, endpoints,
+                  current_endpoint, wait_port):
+        # in case of ['127.0.0.1:6700,127.0.0.2:6700,...', ...]
+        if isinstance(endpoints, str):
+            endpoints = endpoints.split(',')
+
+        self.startup_program = startup_program
+        if startup_program is None:
+            self.startup_program = default_startup_program()
+
+        assert main_program
+        self.main_program_list = main_program
+        nranks = len(endpoints)
+
+        self.nranks = nranks
+        self.nrings = len(self.main_program_list)
+        if self.nranks == 1:
+            raise ValueError('the number of ranks must > 1')
+
+        if rank < 0:
+            raise ValueError('rank must >= 0')
+        self.rank = rank
+
+        self.endpoints = endpoints
+        self.current_endpoint = current_endpoint
+
+        self.wait_port = wait_port
+
+        self.startup_program._origin_program = self.startup_program.clone()
+        self._transpile_startup_program()
+
+        #self.main_program._origin_program = self.main_program.clone()
+        self._transpile_main_program()
+
+    def _transpile_main_program(self):
+        self._insert_scale_loss_grad_ops()
+        for ring_id in range(self.nrings):
+            self._insert_allreduce_ops(ring_id)
+
+    def _transpile_startup_program(self):
+        for ring_id in range(self.nrings):
+            self._init_communicator(self.startup_program, self.current_endpoint,
+                                    self.endpoints, self.rank, ring_id,
+                                    self.wait_port)
+        self._broadcast_params()
+
+    def _insert_scale_loss_grad_ops(self):
+        '''
+        In order to keep the learning rate consistent in different numbers of
+        training workers, we scale the loss grad by the number of workers
+        '''
+        block = self.main_program_list[self.nrings - 1]['program'].global_block(
+        )
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                block._insert_op(
+                    idx + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / self.nranks,
+                        self.op_role_key: OpRole.Backward
+                    })
+
+    def _broadcast_params(self):
+        block = self.startup_program.global_block()
+        for param in block.iter_parameters():
+            if param.is_distributed:
+                continue
+
+            ring_id = 0
+            block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': 0,
+                    self.op_role_key: OpRole.Forward
+                })
+
+        block.append_op(
+            type='c_sync_comm_stream',
+            inputs={'X': param},
+            outputs={'Out': param},
+            attrs={'ring_id': ring_id,
+                   self.op_role_key: OpRole.Forward})
+
+    def _insert_allreduce_ops(self, ring_id):
+        block = self.main_program_list[ring_id]['program'].global_block()
+        grad = None
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if self._is_backward_op(op) and \
+                    self.op_role_var_key in op.attr_names:
+                op_role_var = op.all_attrs()[self.op_role_var_key]
+
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+
+                offset = idx
+                for i in range(0, len(op_role_var), 2):
+                    param = block.vars[op_role_var[i]]
+                    grad = block.vars[op_role_var[i + 1]]
+                    if param.is_distributed:
+                        continue
+
+                    if offset == idx:
+                        offset += 1
+                        block._insert_op(
+                            offset,
+                            type='c_sync_calc_stream',
+                            inputs={'X': grad},
+                            outputs={'Out': grad},
+                            attrs={self.op_role_key: OpRole.Backward})
+                        offset += 1
+
+                    block._insert_op(
+                        offset,
+                        type='c_allreduce_sum',
+                        inputs={'X': grad},
+                        outputs={'Out': grad},
+                        attrs={
+                            'ring_id': ring_id,
+                            self.op_role_key: OpRole.Backward
+                        })
+
+        if grad is None:
+            return
+
+        for idx, op in enumerate(block.ops):
+            if self._is_optimizer_op(op):
+                block._insert_op(
+                    idx + ring_id,
+                    type='c_sync_comm_stream',
+                    inputs={'X': grad},
+                    outputs={'Out': grad},
+                    attrs={
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Backward
+                    })
+                break
+
+
 class LocalSGD(Collective):
     '''
     '''
