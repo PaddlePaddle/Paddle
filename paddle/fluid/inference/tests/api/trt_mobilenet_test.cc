@@ -43,8 +43,8 @@ TEST(AnalysisPredictor, use_gpu) {
   std::vector<PaddleTensor> outputs;
   for (auto& input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
+    predictor->ClearIntermediateTensor();
   }
-  predictor->ClearIntermediateTensor();
 }
 
 }  // namespace inference
