@@ -18,20 +18,21 @@ import logging
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
 
+from . import converter
+from . import transformer
+
 from . import traced_layer
 from .traced_layer import *
 
-from paddle.fluid.dygraph.jit.program_translator import ProgramTranslator
-
-from . import converter
-
-from . import transformer
+from . import program_translator
+from .program_translator import ProgramTranslator
 
 logger = logging.getLogger("fluid")
 
 __all__ = traced_layer.__all__ + [
-    "ProgramTranslator"
-    "declarative", "dygraph_to_static_func"
+    "ProgramTranslator",
+    "declarative",
+    "dygraph_to_static_func",
 ]
 
 

@@ -27,7 +27,7 @@ import types
 import numpy
 import six
 
-from paddle.fluid.dygraph.jit import ProgramTranslator
+from paddle.fluid.dygraph.jit.program_translator import ProgramTranslator
 from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.dygraph.jit.converter.convert_operators import convert_len
 
@@ -75,7 +75,7 @@ def convert_call(func):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          from paddle.fluid.dygraph.jit import convert_call
+          from paddle.fluid.dygraph.jit.converter import convert_call
 
           def dyfunc(x):
               if fluid.layers.mean(x) < 0:
