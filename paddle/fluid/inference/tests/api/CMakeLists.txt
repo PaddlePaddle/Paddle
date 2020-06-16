@@ -400,6 +400,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
+    set(TRT_MODEL_QUANT_YOLOV3_DIR "${INFERENCE_DEMO_INSTALL_DIR}/yolov3_r50_quant_aware")
+    if (NOT EXISTS ${TRT_MODEL_QUANT_YOLOV3_DIR})
+        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "yolov3_r50_quant_aware.tgz")
+    endif()
+    inference_analysis_test(trt_quant_int8_yolov3_r50_test SRCS trt_quant_int8_yolov3_r50_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_QUANT_YOLOV3_DIR})
+
     set(TEST_TRT_DYNAMIC_MODEL2 "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
     if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2})
         inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL2} ${INFERENCE_URL}/tensorrt_test "complex_model_dynamic2.tar.gz")

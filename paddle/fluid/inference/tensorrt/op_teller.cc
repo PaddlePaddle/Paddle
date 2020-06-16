@@ -53,7 +53,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "elementwise_add",
                                                   "leaky_relu",
                                                   "fc",
-                                                  "relu6"};
+                                                  "relu6",
+                                                  "concat"};
   std::unordered_set<std::string> teller_set{
       "mul",
       "conv2d",
