@@ -13,7 +13,6 @@
 # limitations under the License
 
 cmake_minimum_required(VERSION 3.10)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -32,7 +31,7 @@ option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_F
 # cmake 3.12, 3.13, 3.14 will append gcc link options to nvcc, and nvcc doesn't recognize them.
 if(WITH_GPU AND (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.12) AND (${CMAKE_VERSION} VERSION_LESS 3.15))
     message(FATAL_ERROR "cmake ${CMAKE_VERSION} is not supported when WITH_GPU=ON because of bug https://tinyurl.com/ydbb9m7n. "
-       "cmake 3.16 is recommended. how to install: https://cmake.org/install/")
+       "You can use cmake 3.16 (recommended), 3.10, 3.11 or 3.17. Please refer to the install document: https://cmake.org/install/")
 endif()
 
 if(WITH_GPU AND NOT APPLE)
