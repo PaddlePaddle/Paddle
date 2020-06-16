@@ -6,3 +6,4 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach(TEST_OP)
 
 set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
+set_tests_properties(test_yolov3 PROPERTIES TIMEOUT 900)
