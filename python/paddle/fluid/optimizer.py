@@ -3567,8 +3567,7 @@ class PipelineOptimizer(object):
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
-            raise Exception("We don't support PipelineOptimizer in dygraph "
-                            "mode now.")
+            raise Exception("In dygraph, don't support PipelineOptimizer.")
         if not isinstance(optimizer, Optimizer):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
