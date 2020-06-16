@@ -41,6 +41,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+
+#include "paddle/fluid/platform/monitor.h"
+
+USE_INT_STAT(STAT_total_feasign_num_in_mem);
+USE_INT_STAT(STAT_slot_pool_size);
 namespace paddle {
 namespace framework {
 
@@ -121,6 +126,8 @@ class DataFeed {
   DataFeed() {
     mutex_for_pick_file_ = nullptr;
     file_idx_ = nullptr;
+    mutex_for_fea_num_ = nullptr;
+    total_fea_num_ = nullptr;
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
@@ -180,7 +187,9 @@ class DataFeed {
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
+  virtual void SetFeaNumMutex(std::mutex* mutex) { mutex_for_fea_num_ = mutex; }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual void SetFeaNum(uint64_t* fea_num) { total_fea_num_ = fea_num; }
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
@@ -213,6 +222,9 @@ class DataFeed {
   std::vector<std::string> filelist_;
   size_t* file_idx_;
   std::mutex* mutex_for_pick_file_;
+  std::mutex* mutex_for_fea_num_ = nullptr;
+  uint64_t* total_fea_num_ = nullptr;
+  uint64_t fea_num_ = 0;
 
   // the alias of used slots, and its order is determined by
   // data_feed_desc(proto object)
@@ -737,6 +749,12 @@ struct SlotValues {
   }
   void add_slot_feasigns(const std::vector<std::vector<T>>& slot_feasigns,
                          uint32_t fea_num) {
+    if (slot_values.capacity() < fea_num) {
+      // Only pipe mode will call this
+      // The calling of lib mode is in the islotparser.h, so we update stat in
+      // LoadIntoMemoryByLib
+      STAT_ADD(STAT_total_feasign_num_in_mem, fea_num - slot_values.capacity());
+    }
     slot_values.reserve(fea_num);
     int slot_num = static_cast<int>(slot_feasigns.size());
     slot_offsets.resize(slot_num + 1);
@@ -865,6 +883,7 @@ class SlotObjPool {
     for (int i = size; i < n; ++i) {
       output[i] = make_slotrecord();
     }
+    STAT_ADD(STAT_slot_pool_size, n - size);
   }
   void put(std::vector<SlotRecord>* input) {
     size_t size = input->size();

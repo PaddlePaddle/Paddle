@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -251,6 +252,8 @@ class BoxWrapper {
     size_t capacity = SlotRecordPool().capacity();
     SlotRecordPool().clear();
     timer.Pause();
+    STAT_RESET(STAT_total_feasign_num_in_mem, 0);
+    STAT_RESET(STAT_slot_pool_size, 0);
     LOG(WARNING) << "ReleasePool Size=" << capacity
                  << ", Time=" << timer.ElapsedSec() << "sec";
   }

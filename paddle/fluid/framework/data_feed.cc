@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 
 #ifdef PADDLE_WITH_BOX_PS
@@ -46,6 +47,7 @@ typedef void (*MyPadBoxFreeObject)(paddle::framework::ISlotParser*);
 }
 #endif
 
+// USE_INT_STAT(STAT_total_feasign_num_in_mem);
 namespace paddle {
 namespace framework {
 using platform::Timer;
@@ -419,6 +421,12 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     while (ParseOneInstanceFromPipe(&instance)) {
       writer << std::move(instance);
       instance = T();
+    }
+    STAT_ADD(STAT_total_feasign_num_in_mem, fea_num_);
+    {
+      std::lock_guard<std::mutex> flock(*mutex_for_fea_num_);
+      *total_fea_num_ += fea_num_;
+      fea_num_ = 0;
     }
     writer.Flush();
     timeline.Pause();
@@ -970,6 +978,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     }
     instance->float_feasigns_.shrink_to_fit();
     instance->uint64_feasigns_.shrink_to_fit();
+    fea_num_ += instance->uint64_feasigns_.size();
     return true;
   }
 #else
@@ -2333,9 +2342,19 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
     reader =
         boxps::PaddleDataReader::New(BoxWrapper::GetInstance()->GetFileMgr());
   }
-
+  auto total_fea_num = [&](const std::vector<SlotRecord>& slot_record,
+                           size_t len) -> int {
+    int num = 0;
+    size_t size = len < slot_record.size() ? len : slot_record.size();
+    for (size_t i = 0; i < size; ++i) {
+      num += slot_record[i]->slot_uint64_feasigns_.slot_values.capacity();
+    }
+    return num;
+  };
   std::string filename;
   BufferedLineFileReader line_reader;
+
+  int from_pool_num = 0;
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
@@ -2346,6 +2365,7 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
     int offset = 0;
 
     SlotRecordPool().get(&record_vec, max_fetch_num);
+    from_pool_num = total_fea_num(record_vec, max_fetch_num);
     auto func = [this, &parser, &record_vec, &offset,
                  &max_fetch_num](const std::string& line) {
       int old_offset = offset;
@@ -2392,6 +2412,9 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
     }
     if (offset > 0) {
       input_channel_->WriteMove(offset, &record_vec[0]);
+      // FIXME: max_fetch_num is enough, so we only add state here
+      STAT_ADD(STAT_total_feasign_num_in_mem,
+               total_fea_num(record_vec, max_fetch_num) - from_pool_num);
       if (offset < max_fetch_num) {
         SlotRecordPool().put(&record_vec[offset], (max_fetch_num - offset));
       }
