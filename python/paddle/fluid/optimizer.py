@@ -299,8 +299,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def set_lr(self, value):
         """
-        .. note::
-          **This API is ONLY available in Dygraph mode**
+        :api_attr: imperative
         
         Set the value of the learning rate manually in the optimizer. If the optimizer use LearningRateDecay,
         this API cannot be invoked, because it will lead to conflict.
@@ -377,8 +376,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def current_step_lr(self):
         """
-        .. note::
-          **This API is ONLY available in Dygraph mode**
+        :api_attr: imperative
         
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
