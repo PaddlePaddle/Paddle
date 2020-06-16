@@ -29,8 +29,8 @@ __all__ = [
     'MSRAInitializer', 'NumpyArrayInitializer', 'set_global_initializer'
 ]
 
-global_weight_initializer = None
-global_bias_initializer = None
+_global_weight_initializer_ = None
+_global_bias_initializer_ = None
 
 
 class Initializer(object):
@@ -923,6 +923,8 @@ def set_global_initializer(weight_init, bias_init=None):
     """
     This API is used to set up global model parameter initializer in framework.
 
+    After this API is invoked, the global initializer will takes effect in subsequent code.
+
     The model parameters include ``weight`` and ``bias`` . In the framework, they correspond 
     to ``fluid.Parameter`` , which is inherited from ``fluid.Variable`` , and is a persistable Variable.
     This API only takes effect for model parameters, not for variables created through apis such as 
@@ -945,51 +947,48 @@ def set_global_initializer(weight_init, bias_init=None):
         .. code-block:: python
             import paddle.fluid as fluid
 
-            fluid.set_global_initializer(fluid.initializer.Uniform())
-            print(fluid.initializer._global_weight_initializer())
-            # <paddle.fluid.initializer.UniformInitializer object at 0x7fa444883290>
-            print(fluid.initializer._global_bias_initializer())
-            # None
-
+            fluid.set_global_initializer(fluid.initializer.Uniform(), fluid.initializer.Constant())
             x = fluid.data(name="x", shape=[1, 3, 32, 32])
-            conv1 = fluid.layers.conv2d(x, 5, 3)
-            # The weight of conv-layer1 are initialized by UniformInitializer
 
+            # The weight of conv1 is initialized by Uniform
+            # The bias of conv1 is initialized by Constant
+            conv1 = fluid.layers.conv2d(x, 5, 3)
+
+            # If set param_attr/bias_attr too, global initializer will not take effect
+            # The weight of conv2 is initialized by Xavier
+            # The bias of conv2 is initialized by Normal
             conv2 = fluid.layers.conv2d(conv1, 5, 3, 
                 param_attr=fluid.initializer.Xavier(), 
                 bias_attr=fluid.initializer.Normal())
-            # The weight of conv-layer2 are initialized by XavierInitializer
-            # The bias of conv-layer2 are initialized by NormalInitializer
 
-            # Cancel the global initializer in framework
+            # Cancel the global initializer in framework, it will takes effect in subsequent code
             fluid.set_global_initializer(None)
-            print(fluid.initializer._global_weight_initializer())
-            # None
+
 
     """
     check_type(weight_init, 'weight_init', (Initializer, type(None)),
                'set_global_initializer')
-    global global_weight_initializer
-    global_weight_initializer = weight_init
+    global _global_weight_initializer_
+    _global_weight_initializer_ = weight_init
 
     check_type(bias_init, 'bias_init', (Initializer, type(None)),
                'set_global_initializer')
-    global global_bias_initializer
-    global_bias_initializer = bias_init
+    global _global_bias_initializer_
+    _global_bias_initializer_ = bias_init
 
 
 def _global_weight_initializer():
     """
     Return the global weight initializer, The user doesn't need to use it.
     """
-    return global_weight_initializer
+    return _global_weight_initializer_
 
 
 def _global_bias_initializer():
     """
     Return the global weight initializer, The user doesn't need to use it.
     """
-    return global_bias_initializer
+    return _global_bias_initializer_
 
 
 # We short the class name, since users will use the initializer with the package
