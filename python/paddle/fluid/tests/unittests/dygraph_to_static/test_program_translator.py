@@ -72,10 +72,8 @@ class StaticCode1():
             return x_v
 
         x_v = fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
-            fluid.layers.mean(x_v)[0] > 5,
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(true_fn_0)(x_v),
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(false_fn_0)(x_v)
-        )
+            fluid.layers.mean(x_v)[0] > 5, true_fn_0, false_fn_0, (x_v, ),
+            (x_v, ), (x_v, ))
 
         def true_fn_1(label, x_v):
             loss = fluid.layers.cross_entropy(x_v, label)
@@ -86,9 +84,7 @@ class StaticCode1():
             return
 
         fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
-            label is not None,
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(true_fn_1)(label, x_v),
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(false_fn_1)())
+            label is not None, true_fn_1, false_fn_1, (label, x_v), (), ())
         return x_v
 
 
@@ -104,10 +100,8 @@ class StaticCode2():
             return x_v
 
         x_v = fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
-            fluid.layers.mean(x_v)[0] > 5,
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(true_fn_2)(x_v),
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(false_fn_2)(x_v)
-        )
+            fluid.layers.mean(x_v)[0] > 5, true_fn_2, false_fn_2, (x_v, ),
+            (x_v, ), (x_v, ))
 
         def true_fn_3(label, x_v):
             loss = fluid.layers.cross_entropy(x_v, label)
@@ -118,9 +112,7 @@ class StaticCode2():
             return
 
         fluid.dygraph.dygraph_to_static.convert_operators.convert_ifelse(
-            label is not None,
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(true_fn_3)(label, x_v),
-            lambda: fluid.dygraph.dygraph_to_static.convert_call(false_fn_3)())
+            label is not None, true_fn_3, false_fn_3, (label, x_v), (), ())
         return x_v
 
 
@@ -138,7 +130,6 @@ class TestDygraphToStaticCode(unittest.TestCase):
         self.maxDiff = None
 
     def test_decorator(self):
-        x_v = None
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
         answer = get_source_code(StaticCode1.dyfunc_with_if_else)
