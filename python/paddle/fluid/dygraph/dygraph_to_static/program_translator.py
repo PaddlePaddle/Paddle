@@ -146,8 +146,8 @@ class FunctionSpec(object):
 
     def buffers(self, include_sublayer=True):
         """
-        Returns VarBase buffers of decorated layers. If set `include_sublayer` True,
-        the VarBase buffers created in sub layers will be added.
+        Returns Variable buffers of decorated layers. If set `include_sublayer` True,
+        the Variable buffers created in sub layers will be added.
         """
         buffers = collections.OrderedDict()
         if self.is_method():

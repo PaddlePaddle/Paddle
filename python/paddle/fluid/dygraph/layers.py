@@ -90,7 +90,7 @@ class Layer(core.Layer):
         self._dtype = dtype
 
         self._parameters = collections.OrderedDict()
-        # Buffers the varBase (not ParamBase) created in layer
+        # Buffers the variable (not parameter) created in layer
         self._buffers = collections.OrderedDict()
         self._non_persistable_buffer_names_set = set()
         self._sub_layers = collections.OrderedDict()
@@ -417,21 +417,21 @@ class Layer(core.Layer):
                         layers_set=layers_set):
                     yield p, l
 
-    def register_buffer(self, name, var_base, persistable=True):
-        """Adds a buffer to the layer.
+    def register_buffer(self, name, variable, persistable=True):
+        """
+        Registers a variable as buffer into the layer.
 
-        This is typically used to register a buffer that should not be
-        considered as a parameter and it will also not be updated by optimizer.
+        `buffer` is a non-parameteric variable and will not be updated by optimizer.
         The registered buffer is persistable by default, and will be saved into
-        state_dict alongside parameters. If set persistable=False, it registers
-        a non-persistable buffer, so that it will not be a part of state_dict.
+        `state_dict` alongside parameters. If set persistable=False, it registers
+        a non-persistable buffer, so that it will not be a part of `state_dict` .
 
         Buffers can be accessed as attributes using given names.
 
         Parameters:
             name (string): name of the buffer. The buffer can be accessed
                 from this layer using the given name
-            var_base (VarBase): buffer to be registered.
+            variable (Variable): the variable to be registered as buffer.
             persistable (bool): whether the buffer is part of this layer's
                 state_dict.
 
@@ -450,21 +450,22 @@ class Layer(core.Layer):
             raise KeyError("The name of buffer can not contain \".\"")
         elif name == '':
             raise KeyError("The name of buffer can not be empty.")
-        elif hasattr(self, name) and not name in self._buffers:
+        elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists.".format(name))
-        elif var_base is not None and not type(var_base) == core.VarBase:
+        elif variable is not None and not type(variable) == core.VarBase:
             raise TypeError(
                 "The registered buffer should be a core.VarBase, but received {}.".
-                format(type(var_base).__name__))
+                format(type(variable).__name__))
         else:
-            self._buffers[name] = var_base
+            self._buffers[name] = variable
             if persistable:
                 self._non_persistable_buffer_names_set.discard(name)
             else:
                 self._non_persistable_buffer_names_set.add(name)
 
     def buffers(self, include_sublayers=True):
-        """Returns a list of all buffers from current layer and its sub-layers.
+        """
+        Returns a list of all buffers from current layer and its sub-layers.
 
         Parameters:
             include_sublayers(bool, optional): Whether include the buffers of sublayers. If True, also include the buffers from sublayers. Default: True
@@ -489,7 +490,7 @@ class Layer(core.Layer):
                 If True, also include the named buffers from sublayers. Default: True.
 
         Yields:
-            (string, VarBase): Tuple of name and VarBase
+            (string, Variable): Tuple of name and Variable
         """
         buffers_set = set()
         named_sublayers = self.named_sublayers(
