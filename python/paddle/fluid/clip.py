@@ -846,7 +846,7 @@ def append_gradient_clip_ops(param_grads, param_device_map=None):
     for p, g in param_grads:
         if g is None:
             continue
-        device = param_device_map[param.name] if param_device_map else None
+        device = param_device_map[p.name] if param_device_map else None
         with device_guard(device):
             with p.block.program._optimized_guard(
                 [p, g]), framework.name_scope('graident_clip_@CLIP'):
