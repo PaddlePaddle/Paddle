@@ -19,8 +19,6 @@ from __future__ import print_function
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 import gast
-import inspect
-import textwrap
 
 from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import AssertTransformer
 from paddle.fluid.dygraph.dygraph_to_static.call_transformer import CallTransformer
@@ -35,6 +33,7 @@ from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import Tens
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
@@ -54,7 +53,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
         )
         self.decorate_func_name = None
-        self.arg_name_to_idx = {}
+        # self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
 
@@ -65,7 +64,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Transform basic api of dygraph to static graph and get feed_name_to_arg_name
         basic_api_trans = BasicApiTransformer(node_wrapper)
         basic_api_trans.transform()
-        self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
+        # self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
         # Transform Tensor.shape into fluid.layers.shape(Tensor)
         TensorShapeTransformer(node_wrapper).transform()
@@ -97,8 +96,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
             self.decorate_func_name = node.name
-            for idx, arg in enumerate(node.args.args):
-                self.arg_name_to_idx[arg.id] = idx
 
         self.generic_visit(node)
         # Remove the decorated name of dygraph_to_static
@@ -133,23 +130,13 @@ class DygraphToStaticAst(gast.NodeTransformer):
         assert self.decorate_func_name, "decorate_func_name shall not be None."
         return self.decorate_func_name
 
-    def get_feed_name_to_idx(self):
-        feed_name_to_idx = {}
-        for feed_name, arg_name in self.feed_name_to_arg_name.items():
-            feed_name_to_idx[feed_name] = self.arg_name_to_idx.get(arg_name)
-        return feed_name_to_idx
-
 
 def convert_to_static(dyfunc):
     """
     Converts dygraph function into static function.
     """
     # Get AST from dygraph function
-    # Note: In Python2, it will raise OSError when inspect function
-    # with decorator directly and dyfunc.__wrapped__ holds the actual function.
-    dyfunc = getattr(dyfunc, '__wrapped__', dyfunc)
-    raw_code = inspect.getsource(dyfunc)
-    code = textwrap.dedent(raw_code)
+    code = func_to_source_code(dyfunc)
     root = gast.parse(code)
 
     # Transform AST

@@ -28,9 +28,10 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
@@ -46,31 +47,43 @@ class FunctionCache(object):
     """
 
     def __init__(self):
-        self._dycode_to_static_func = dict()
-        self._static_func_to_transformer = dict()
+        # Caches the converted static functions. {dygraph_func: static_func}
+        self._converted_static_func_caches = dict()
+        # Caches the converted ast node for same source code. {raw_code: root_node}
+        self._code_to_ast_caches = dict()
+        self.dygraph_to_static = DygraphToStaticAst()
 
     def get_or_cache_func(self, func):
-        # code = self._get_dedent_code_string(func)
-        static_func = self._dycode_to_static_func.get(func, None)
+        """
+        Returns the cached static function or converts it when first encounter the function.
+        """
+        static_func = self._converted_static_func_caches.get(func, None)
 
         if static_func is None:
-            static_func, dygraph_to_static_transformer = convert_to_static(func)
-            self._dycode_to_static_func[func] = static_func
-            self._static_func_to_transformer[
-                func] = dygraph_to_static_transformer
+            static_func, _ = self.convert_to_static(func)
+            self._converted_static_func_caches[func] = static_func
 
         return static_func
 
-    def get_transformer(self, func):
-        return self._static_func_to_transformer.get(func, None)
+    def convert_to_static(self, func):
+        """
+        Converts function with dygraph layers into static function.
+        """
+        source_code = func_to_source_code(func)
+        if source_code in self._code_to_ast_caches:
+            root_wrapper = self._code_to_ast_caches[source_code]
+        else:
+            ast_root = gast.parse(source_code)
+            root_wrapper = self.dygraph_to_static.get_static_ast(ast_root)
+            # Caches the converted ast node to reuse it.
+            self._code_to_ast_caches[source_code] = root_wrapper
 
-    def _get_dedent_code_string(self, func):
-        raw_code = inspect.getsource(func)
-        dedent_code = textwrap.dedent(raw_code)
-        return dedent_code
+        # Get static_func from AST
+        static_func, file_name = ast_to_func(root_wrapper.node, func)
+        return static_func, file_name
 
     def exist(self, func):
-        return self._dycode_to_static_func.get(func, None) is not None
+        return func in self._converted_static_func_caches
 
 
 _CACHE_LOCK = threading.Lock()

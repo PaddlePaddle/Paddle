@@ -37,7 +37,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.class_node_dict = {}
 
         # Used for transformation of data feed
-        self.feed_name_to_arg_id = {}
+        # self.feed_name_to_arg_id = {}
         self.name_to_tensor_shape = {}
 
     def transform(self):
@@ -69,7 +69,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         assert isinstance(node, gast.Call)
         # Replace API `to_variable` with `fluid.layers.assign`
         if is_to_variable(node):
-            self._update_feed_dict(node)
+            # self._update_feed_dict(node)
             node = to_assign_node(node)
             return node
 
@@ -107,23 +107,23 @@ class BasicApiTransformer(gast.NodeTransformer):
             # TODO: node.value is not dygraph class
         return False
 
-    def _update_feed_dict(self, node):
-        assert isinstance(node, gast.Call)
-
-        value_node = None
-        for kw in node.keywords:
-            if kw.arg == 'value':
-                value_node = kw.value  # eg: `a` for "value=a "
-        if not value_node:
-            value_node = node.args[0]
-
-        if not isinstance(value_node, gast.Name):
-            return
-        else:
-            var_name = value_node.id
-            feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
-            self.feed_name_to_arg_id[
-                feed_var_name] = var_name  # eg: "a_0" : "a"
-
-    def get_feed_name_to_arg_id(self):
-        return self.feed_name_to_arg_id
+    # def _update_feed_dict(self, node):
+    #     assert isinstance(node, gast.Call)
+    #
+    #     value_node = None
+    #     for kw in node.keywords:
+    #         if kw.arg == 'value':
+    #             value_node = kw.value  # eg: `a` for "value=a "
+    #     if not value_node:
+    #         value_node = node.args[0]
+    #
+    #     if not isinstance(value_node, gast.Name):
+    #         return
+    #     else:
+    #         var_name = value_node.id
+    #         feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
+    #         self.feed_name_to_arg_id[
+    #             feed_var_name] = var_name  # eg: "a_0" : "a"
+    #
+    # def get_feed_name_to_arg_id(self):
+    #     return self.feed_name_to_arg_id
