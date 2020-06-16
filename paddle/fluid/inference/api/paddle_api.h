@@ -313,6 +313,12 @@ class PD_INFER_DECL PaddlePredictor {
   /// \return Whether the run is successful
   virtual bool ZeroCopyRun() { return false; }
 
+  ///
+  /// \brief Clear the intermediate tensors of the predictor
+  ///
+  ///
+  virtual void ClearIntermediateTensor() {}
+
   /// \brief Clone an existing predictor
   /// When using clone, the same network will be created,
   /// and the parameters between them are shared.

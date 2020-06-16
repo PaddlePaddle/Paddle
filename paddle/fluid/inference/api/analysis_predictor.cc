@@ -828,6 +828,25 @@ bool AnalysisPredictor::LoadParameters() {
   return true;
 }
 
+void AnalysisPredictor::ClearIntermediateTensor() {
+  PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
+                          platform::errors::PreconditionNotMet(
+                              "The inference program should be loaded first."));
+  const auto &global_block = inference_program_->MutableBlock(0);
+  for (auto *var : global_block->AllVars()) {
+    if (!IsPersistable(var)) {
+      const std::string name = var->Name();
+      auto *variable = executor_->scope()->FindVar(name);
+      if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
+          name != "feed" && name != "fetch") {
+        VLOG(3) << "Clear Intermediate Tensor: " << name;
+        auto *t = variable->GetMutable<framework::LoDTensor>();
+        t->clear();
+      }
+    }
+  }
+}
+
 #if PADDLE_WITH_TENSORRT
 bool AnalysisPredictor::SaveTrtCalibToDisk() {
   PADDLE_ENFORCE(config_.tensorrt_engine_enabled(),
