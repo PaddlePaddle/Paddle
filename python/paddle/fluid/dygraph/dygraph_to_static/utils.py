@@ -412,7 +412,7 @@ def func_to_source_code(function, dedent=True):
     """
     Transforms function into raw string of source code.
     """
-    if not inspect.isfunction(function) or not inspect.ismethod(function):
+    if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
             "The type of 'function' should be a function or method, but received {}.".
             format(type(function).__name__))
