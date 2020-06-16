@@ -20,7 +20,7 @@ import warnings
 
 import functools
 from . import layers
-from . import framework
+from . import framework, device_guard
 from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
