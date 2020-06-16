@@ -27,8 +27,8 @@
 #include <utility>
 #include <vector>
 
-#include <thread>  // NOLINT
 #include <ThreadPool.h>
+#include <thread>  // NOLINT
 
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/platform/enforce.h"
