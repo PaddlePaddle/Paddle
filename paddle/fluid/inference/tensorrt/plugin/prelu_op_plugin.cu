@@ -135,7 +135,6 @@ int PReluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   const float *input = static_cast<const float *>(inputs[0]);
   float *output = static_cast<float *>(outputs[0]);
   int numel = 1;
-  std::vector<int> input_shape;
   for (int i = 0; i < input_dims.nbDims; i++) {
     numel *= input_dims.d[i];
   }

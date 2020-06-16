@@ -51,6 +51,9 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
     int numel = x->numel();
     auto dim = x->dims();
 
+    VLOG(4) << "dim[0]:" << dim[0] << ", dim[1]:" << dim[1]
+            << ", numel:" << numel;
+
     if (mode == "channel") {
       math::PreluChannelWiseDirectCUDAFunctor<T> prelu_channel_wise;
       prelu_channel_wise(context.cuda_device_context().stream(), x_ptr,
@@ -63,7 +66,6 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
       math::PreluScalarDirectCUDAFunctor<T> prelu_scalar;
       prelu_scalar(context.cuda_device_context().stream(), x_ptr, alpha_ptr,
                    o_ptr, numel);
-      VLOG(4) << dim[0] << " " << dim[1] << " " << numel;
     }
   }
 };
@@ -175,16 +177,6 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       if (mode == "channel" && i == 1) continue;
       if (mode == "element" && i != 0) continue;
       reduce_dims.push_back(i);
-    }
-    cudaDeviceSynchronize();
-
-    // check for error
-    cudaError_t error = cudaGetLastError();
-    if (error != cudaSuccess) {
-      // print the CUDA error message and exit
-      PADDLE_THROW("CUDA error: %s\n", cudaGetErrorString(error));
-    } else {
-      VLOG(4) << "success";
     }
 
     TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(

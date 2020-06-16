@@ -88,7 +88,6 @@ template <typename T>
 void PreluScalarDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
                                                  const T *input, const T *alpha,
                                                  T *output, size_t numel) {
-  VLOG(4) << PADDLE_GET_BLOCKS(numel) << " " << CUDA_NUM_THREADS;
   PReluScalarKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
       input, alpha, output, numel);
 }
