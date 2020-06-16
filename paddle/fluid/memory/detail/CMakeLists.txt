@@ -1,10 +1,4 @@
 include(ExternalProject)
-include_directories(${INSTALL_DIR})
-
-set(URL "https://paddle-ci.cdn.bcebos.com")
-set(FILENAME "buddy_allocator_test_data.tar")
-set(INSTALL_DIR ${THIRD_PARTY_PATH}/buddy_allocator)
-
 
 cc_library(memory_block SRCS memory_block.cc memory_block_desc.cc meta_cache.cc DEPS place)
 
@@ -20,27 +14,27 @@ cc_library(buddy_allocator SRCS buddy_allocator.cc DEPS memory_block system_allo
 
 cc_test(buddy_allocator_test SRCS buddy_allocator_test.cc DEPS buddy_allocator)
 
-function(download_and_uncompress INSTALL_DIR URL FILENAME)
-  message(STATUS "Download test stuff from ${URL}/${FILENAME}")
+FUNCTION(file_download_and_uncompress URL NAME)
+  MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
+  SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME} PARENT_SCOPE)
   ExternalProject_Add(
-      buddy_allocator_data
-      PREFIX                ${INSTALL_DIR}
-      DOWNLOAD_COMMAND      wget --no-check-certificate -q -O ${INSTALL_DIR}/${FILENAME} ${URL}/${FILENAME} &&
-                            ${CMAKE_COMMAND} -E tar xzf ${INSTALL_DIR}/${FILENAME}
-      DOWNLOAD_DIR          ${INSTALL_DIR}
+      extern_download_${NAME}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      PREFIX                ${THIRD_PARTY_PATH}/${NAME}
+      URL                   ${URL}
+      DOWNLOAD_DIR          ${THIRD_PARTY_PATH}/${NAME}
+      SOURCE_DIR            ${THIRD_PARTY_PATH}/${NAME}
       DOWNLOAD_NO_PROGRESS  1
       CONFIGURE_COMMAND     ""
       BUILD_COMMAND         ""
-      INSTALL_COMMAND       ""
       UPDATE_COMMAND        ""
-  )
-endfunction()
-
+      INSTALL_COMMAND       ""
+    )
+  set(third_party_deps ${third_party_deps} extern_download_${NAME} PARENT_SCOPE)
+ENDFUNCTION()
 
 if(WITH_TESTING)
   set_tests_properties(buddy_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-  if (NOT EXISTS ${INSTALL_DIR}/${FILENAME})
-      add_dependencies(buddy_allocator buddy_allocator_data)
-      download_and_uncompress(${INSTALL_DIR} ${URL} ${FILENAME})
-  endif()
+  set(URL "https://paddle-ci.cdn.bcebos.com/buddy_allocator_test_data.tar")
+  file_download_and_uncompress(URL "buddy_allocator")
 endif()
