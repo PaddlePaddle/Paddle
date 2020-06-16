@@ -9632,7 +9632,9 @@ def prelu(x, mode, param_attr=None, name=None):
         assert len(
             x.shape
         ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
-        alpha_shape = [1, x.shape[1]] + list(x.shape)[2:]
+        #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        alpha_shape = [1, x.shape[1]]
     elif mode == 'element':
         assert len(
             x.shape
