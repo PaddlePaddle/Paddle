@@ -78,11 +78,12 @@ build_cpythons $CPYTHON_VERSIONS
 PY35_BIN=/opt/python/cp35-cp35m/bin
 PY36_BIN=/opt/python/cp36-cp36m/bin
 PY37_BIN=/opt/python/cp37-cp37m/bin
+PY38_BIN=/opt/python/cp38-cp38m/bin
 # NOTE Since our custom manylinux image builds pythons with shared
 # libpython, we need to add libpython's dir to LD_LIBRARY_PATH before running
 # python.
 ORIGINAL_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
-LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib:$(dirname ${PY36_BIN})/lib:$(dirname ${PY37_BIN})/lib"
+LD_LIBRARY_PATH="${ORIGINAL_LD_LIBRARY_PATH}:$(dirname ${PY35_BIN})/lib:$(dirname ${PY36_BIN})/lib:$(dirname ${PY37_BIN})/lib:$(dirname ${PY38_BIN})/lib"
 
 # Our openssl doesn't know how to find the system CA trust store
 #   (https://github.com/pypa/manylinux/issues/53)
