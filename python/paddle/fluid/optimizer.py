@@ -67,7 +67,7 @@ class Optimizer(object):
                  regularization=None,
                  grad_clip=None,
                  name=None):
-        self._parameter_list = list(parameter_list)
+        self._parameter_list = list(parameter_list) if parameter_list else None
         self._name = name
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
