@@ -15,7 +15,7 @@ function make_ubuntu_dockerfile(){
 
 function make_centos_dockerfile(){
   sed 's/<baseimg>/9.0-cudnn7-devel-centos6/g' Dockerfile.centos >Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
-  sed 's#COPY build_scripts /build_scripts#COPY tools/manylinux1/build_scripts ./build_scripts#g' Dockerfile.centos >Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
+  sed -i 's#COPY build_scripts /build_scripts#COPY tools/manylinux1/build_scripts ./build_scripts#g' Dockerfile.cuda9_cudnn7_gcc48_py35_centos6
 }
 
 
