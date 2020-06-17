@@ -27,7 +27,13 @@ template <typename T>
 __device__ __forceinline__ float ToFloat(T a);
 
 template <typename T>
+__device__ __forceinline__ float2 ToFloat2(T a);
+
+template <typename T>
 __device__ __forceinline__ T exp_func(T a);
+
+template <typename T>
+__device__ __forceinline__ T FloatsToPair(const float a, const float b);
 
 template <typename T>
 struct KeyValuePair;
@@ -54,10 +60,34 @@ __device__ __forceinline__ float ToFloat<float>(float a) {
   return a;
 }
 
+template <>
+__device__ __forceinline__ float2 ToFloat2<float2>(float2 a) {
+  return a;
+}
+
+template <>
+__device__ __forceinline__ float2 FloatsToPair(const float a, const float b) {
+  return make_float2(a, b);
+}
+
+__inline__ __device__ float2 operator+(const float2 &a, const float2 &b) {
+  return make_float2(a.x + b.x, a.y + b.y);
+}
+
 #ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ float ToFloat<half>(half a) {
   return __half2float(a);
+}
+
+template <>
+__device__ __forceinline__ float2 ToFloat2<__half2>(__half2 a) {
+  return __half22float2(a);
+}
+
+template <>
+__device__ __forceinline__ __half2 FloatsToPair(const float a, const float b) {
+  return __floats2half2_rn(a, b);
 }
 #endif
 
@@ -148,7 +178,7 @@ __inline__ __device__ T blockReduceSum(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  val = (lane < block_span) ? shared[lane] : static_cast<T>(0.0f);
   val = warpReduceSum<T>(val, mask);
 
   return val;
@@ -180,7 +210,7 @@ __inline__ __device__ T blockReduceMax(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : -1e10f;
+  val = (lane < block_span) ? shared[lane] : -1e10f;
   val = warpReduceMax(val, mask);
 
   return val;
