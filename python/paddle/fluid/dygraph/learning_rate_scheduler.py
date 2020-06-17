@@ -487,6 +487,7 @@ class CosineDecay(LearningRateDecay):
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
             The default value is 1.
+        min_lr(float, optional): The minimum learning rate. Default: 0.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
 
@@ -509,17 +510,19 @@ class CosineDecay(LearningRateDecay):
                  epochs,
                  begin=0,
                  step=1,
+                 min_lr=0,
                  dtype='float32'):
         super(CosineDecay, self).__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.step_each_epoch = step_each_epoch
         self.epochs = epochs
+        self.min_lr = min_lr
 
     def step(self):
         from .. import layers
         cur_epoch = layers.floor(
             self.create_lr_var(self.step_num / self.step_each_epoch))
-        decayed_lr = self.learning_rate * 0.5 * (
+        decayed_lr = self.min_lr + (self.learning_rate - self.min_lr) * 0.5 * (
             layers.cos(cur_epoch * math.pi / self.epochs) + 1)
         return decayed_lr
 

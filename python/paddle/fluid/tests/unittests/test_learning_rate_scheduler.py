@@ -83,10 +83,10 @@ def piecewise_decay(global_step, boundaries, values):
     return values[len(values) - 1]
 
 
-def cosine_decay(global_step, learning_rate, step_each_epoch, epochs):
+def cosine_decay(global_step, learning_rate, step_each_epoch, epochs, min_lr):
     cur_epoch = math.floor(global_step / step_each_epoch)
-    decayed_lr = learning_rate * 0.5 * (
-        math.cos(cur_epoch * math.pi / epochs) + 1)
+    decayed_lr = min_lr + (learning_rate - min_lr) * 0.5 * (math.cos(
+        cur_epoch * math.pi / epochs) + 1)
     return decayed_lr
 
 
@@ -187,9 +187,10 @@ class TestLearningRateDecay(unittest.TestCase):
                 "values": [0.1, 0.2, 0.3, 0.4]
             }),
             (cosine_decay, layers.cosine_decay, {
-                "learning_rate": 0.1,
+                "learning_rate": 0.5,
                 "step_each_epoch": 100,
-                "epochs": 120
+                "epochs": 120,
+                "min_lr": 0.1
             }),
             (noam_decay, layers.noam_decay, {
                 "d_model": 0.01,

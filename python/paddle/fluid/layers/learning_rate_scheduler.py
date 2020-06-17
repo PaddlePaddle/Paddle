@@ -448,7 +448,7 @@ Applies piecewise decay to the initial learning rate.
             return lr
 
 
-def cosine_decay(learning_rate, step_each_epoch, epochs):
+def cosine_decay(learning_rate, step_each_epoch, epochs, min_lr=0):
     """
 	:alias_main: paddle.nn.functional.cosine_decay
 	:alias: paddle.nn.functional.cosine_decay,paddle.nn.functional.learning_rate.cosine_decay
@@ -468,6 +468,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
         learning_rate(Variable|float): The initial learning rate.
         step_each_epoch(int): the number of steps in an epoch.
         epochs(int): the number of epochs.
+        min_lr(float, optional): The minimum learning rate. Default: 0.
 
     Returns:
         Variable: The decayed learning rate.
@@ -492,8 +493,8 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
             global_step = _decay_step_counter()
 
             cur_epoch = ops.floor(global_step / step_each_epoch)
-            decayed_lr = learning_rate * 0.5 * (
-                ops.cos(cur_epoch * math.pi / epochs) + 1)
+            decayed_lr = min_lr + (learning_rate - min_lr) * 0.5 * (ops.cos(
+                cur_epoch * math.pi / epochs) + 1)
             return decayed_lr
 
 
