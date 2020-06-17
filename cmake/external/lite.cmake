@@ -28,6 +28,10 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
     set(LITE_GIT_TAG 34c29406c27ee00cef033a98887403443eb2565f)
   endif()
 
+  if(NOT CUDA_ARCH_NAME)
+    set(CUDA_ARCH_NAME "Auto")
+  endif()
+
   # No quotes, so cmake can resolve it as a command with arguments.
   set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
   set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
