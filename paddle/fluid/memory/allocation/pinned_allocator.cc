@@ -22,23 +22,12 @@ namespace memory {
 namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::FreeImpl(Allocation *allocation) {
-  cudaError_t error = cudaFreeHost(allocation->ptr());
-  PADDLE_ENFORCE_EQ(error, 0,
-                    platform::errors::ResourceExhausted(
-                        "Free memory allocation failed using cudaFreeHost, "
-                        "error code is %d",
-                        error));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaFreeHost(allocation->ptr()));
   delete allocation;
 }
 Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
-  cudaError_t error = cudaHostAlloc(&ptr, size, cudaHostAllocPortable);
-  PADDLE_ENFORCE_EQ(
-      error, 0,
-      platform::errors::ResourceExhausted(
-          "Alloc memory allocation of size %d failed using cudaHostAlloc, "
-          "error code is %d",
-          size, error));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
 }
 }  // namespace allocation

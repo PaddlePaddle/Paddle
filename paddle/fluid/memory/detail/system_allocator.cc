@@ -225,9 +225,9 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   // process is terminating, in which case we don't care if
   // cudaFreeHost succeeds.
   if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err,
-                   platform::errors::Fatal(
-                       "cudaFreeHost failed in GPUPinnedAllocator::Free."));
+    PADDLE_ENFORCE_NE(err, 0,
+                      platform::errors::Fatal(
+                          "cudaFreeHost failed in GPUPinnedAllocator::Free."));
   }
 }
 
