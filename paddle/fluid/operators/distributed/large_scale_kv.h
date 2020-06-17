@@ -456,9 +456,7 @@ class SparseVariable {
     for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
   }
 
-  void GetEntry(const std::vector<int64_t> &ids, std::vector<int> *values) {
-    values->resize(ids.size());
-
+  void GetEntry(const std::vector<int64_t> &ids, std::vector<int64_t> *values) {
     auto buckets = bucket(ids.size(), 8);
     std::vector<std::future<void>> fs;
 
@@ -466,15 +464,17 @@ class SparseVariable {
       auto begin = buckets[j];
       auto end = buckets[j + 1];
 
-      fs.push_back(
-          framework::Async([begin, end, &values, &ids, &value_names, this]() {
-            for (int x = begin; x < end; x++) {
-              auto id = ids[x];
-              auto *block = GetShard(id);
-              auto is_entry = block->GetEntry(id);
-              (*values)[x] = static_cast<int>(is_entry);
-            }
-          }));
+      fs.push_back(framework::Async([begin, end, &values, &ids, this]() {
+        for (int x = begin; x < end; x++) {
+          auto id = ids[x];
+          auto *block = GetShard(id);
+          auto is_entry = block->GetEntry(id);
+
+          if (!is_entry) {
+            values->push_back(id);
+          }
+        }
+      }));
     }
     for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
   }

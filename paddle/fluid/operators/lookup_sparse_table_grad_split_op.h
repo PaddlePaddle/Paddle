@@ -19,9 +19,11 @@ limitations under the License. */
 #include <iterator>
 #include <random>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 
 namespace paddle {
 namespace operators {
@@ -46,6 +48,27 @@ class LookupSparseTableGradSplitKernel : public framework::OpKernel<T> {
     std::vector<T> ins_vector;
     framework::TensorToVector(in_value, context.device_context(), &ins_vector);
     auto dims = in_value.dims();
+
+    auto is_entry = context.Attr<bool>("is_entry");
+    auto tablename = context.Attr<std::string>("tablename");
+
+    if (is_entry) {
+      auto* ins = distributed::LargeScaleKV::GetInstance();
+      std::vector<int64_t> ids;
+      ins->Get(tablename)->GetEntry(in_rows, &ids);
+
+      for (auto& id : ids) {
+        auto it = std::find(in_rows.begin(), in_rows.end(), id);
+        if (it == in_rows.end()) {
+          PADDLE_THROW(platform::errors::OutOfRange("id %s not in table", id));
+        }
+
+        auto distance =
+            static_cast<int64_t>(std::distance(in_rows.begin(), it));
+        std::fill(ins_vector.data() + distance * dims[1],
+                  ins_vector.data() + dims[1], 0.0);
+      }
+    }
 
     auto* out_v = context.OutputVar("Value");
     out_v->Clear();

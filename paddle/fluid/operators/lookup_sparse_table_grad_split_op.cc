@@ -13,11 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lookup_sparse_table_grad_split_op.h"
-#include <algorithm>
-
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -37,6 +32,15 @@ class LookupSparseTableGradSplitOpMaker
     AddInput("Grad",
              "(SelectedRows) Ids's type should be SelectedRows"
              "THe ids to be looked up in W.");
+
+    AddAttr<bool>("is_entry",
+                  "(bool)"
+                  "sparse table need entry");
+
+    AddAttr<std::string>("tablename",
+                         "(string)"
+                         "sparse table name");
+
     AddOutput("Row",
               "(LoDTensor) The lookup results, which have the "
               "same type as W.");
