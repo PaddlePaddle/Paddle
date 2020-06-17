@@ -36,7 +36,7 @@ from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
-__all__ = ['ProgramTranslator']
+__all__ = ['ProgramTranslator', 'convert_to_static']
 
 logger = logging.getLogger("fluid")
 

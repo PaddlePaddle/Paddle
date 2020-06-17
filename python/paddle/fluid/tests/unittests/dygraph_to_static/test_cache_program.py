@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static import convert_function_with_cache
+from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 
 from test_fetch_feed import Pool2D, Linear
 
@@ -116,9 +116,9 @@ def simple_func(x):
 
 class TestConvertWithCache(unittest.TestCase):
     def test_cache(self):
-        static_func = convert_function_with_cache(simple_func)
+        static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
-        cached_func = convert_function_with_cache(simple_func)
+        cached_func = convert_to_static(simple_func)
         self.assertTrue(id(static_func), id(cached_func))
 
 
