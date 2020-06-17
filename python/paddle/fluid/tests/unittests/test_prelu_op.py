@@ -51,11 +51,17 @@ class PReluTest(OpTest):
         if self.attrs == {'mode': "all"}:
             alpha_np = np.random.uniform(-1, -0.5, (1))
         elif self.attrs == {'mode': "channel"}:
-            alpha_np = np.random.uniform(-1, -0.5, (1, x_np.shape[1], 1, 1))
+            alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1]])
         else:
-            alpha_np = np.random.uniform(-1, -0.5, \
-                (1, x_np.shape[1], x_np.shape[2], x_np.shape[3]))
+            alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
+
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
+
+        # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100] to [1, 100, 1, 1] since np operands could not be broadcast together with shapes (2,100,3,4) (1,100) 
+        if self.attrs == {'mode': "channel"}:
+            self.inputs['Alpha'] = np.reshape(
+                self.inputs['Alpha'],
+                [1, self.x_shape[1]] + [1] * len(self.x_shape[2:]))
 
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'],
@@ -64,7 +70,7 @@ class PReluTest(OpTest):
         self.outputs = {'Out': out_np}
 
     def init_input_shape(self):
-        self.x_shape = (2, 100, 3, 4)
+        self.x_shape = [2, 100, 3, 4]
 
     def init_attr(self):
         self.attrs = {'mode': "channel"}
@@ -81,7 +87,7 @@ class PReluTest(OpTest):
 )
 class TestModeAll(PReluTest):
     def init_input_shape(self):
-        self.x_shape = (2, 3, 4, 5)
+        self.x_shape = [2, 3, 4, 5]
 
     def init_attr(self):
         self.attrs = {'mode': "all"}
@@ -89,7 +95,61 @@ class TestModeAll(PReluTest):
 
 class TestModeElt(PReluTest):
     def init_input_shape(self):
-        self.x_shape = (3, 2, 5, 10)
+        self.x_shape = [3, 2, 5, 10]
+
+    def init_attr(self):
+        self.attrs = {'mode': "element"}
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllRank3(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 200, 3]
+
+    def init_attr(self):
+        self.attrs = {'mode': "all"}
+
+
+@skip_check_grad_ci(
+    reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+)
+class TestModeAllRank6(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 2, 3, 4, 5, 6]
+
+    def init_attr(self):
+        self.attrs = {'mode': "all"}
+
+
+class TestModeChannelRank3(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 200, 3]
+
+    def init_attr(self):
+        self.attrs = {'mode': "channel"}
+
+
+class TestModeChannelRank6(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [1, 100, 2, 2, 2, 2]
+
+    def init_attr(self):
+        self.attrs = {'mode': "channel"}
+
+
+class TestModeElementRank3(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 10, 10]
+
+    def init_attr(self):
+        self.attrs = {'mode': "element"}
+
+
+class TestModeElementRank6(PReluTest):
+    def init_input_shape(self):
+        self.x_shape = [3, 2, 2, 4, 5, 2]
 
     def init_attr(self):
         self.attrs = {'mode': "element"}
