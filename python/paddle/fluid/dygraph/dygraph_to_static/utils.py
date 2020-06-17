@@ -416,9 +416,6 @@ def func_to_source_code(function, dedent=True):
         raise TypeError(
             "The type of 'function' should be a function or method, but received {}.".
             format(type(function).__name__))
-    # Note: In Python2, it will raise OSError when inspect function
-    # with decorator directly and function.__wrapped__ holds the actual function.
-    function = getattr(function, '__wrapped__', function)
     source_code = inspect.getsource(function)
     if dedent:
         source_code = textwrap.dedent(source_code)

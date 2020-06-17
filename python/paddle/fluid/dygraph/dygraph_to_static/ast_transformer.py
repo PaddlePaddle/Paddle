@@ -32,11 +32,9 @@ from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransf
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
-from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 
-__all__ = ['DygraphToStaticAst', 'convert_to_static']
+__all__ = ['DygraphToStaticAst']
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 
@@ -53,7 +51,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
         )
         self.decorate_func_name = None
-        # self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
 
@@ -64,7 +61,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Transform basic api of dygraph to static graph and get feed_name_to_arg_name
         basic_api_trans = BasicApiTransformer(node_wrapper)
         basic_api_trans.transform()
-        # self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
         # Transform Tensor.shape into fluid.layers.shape(Tensor)
         TensorShapeTransformer(node_wrapper).transform()
@@ -129,20 +125,3 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Should consider BaseAPITransformer which add new module name in Yamei's PR.
         assert self.decorate_func_name, "decorate_func_name shall not be None."
         return self.decorate_func_name
-
-
-def convert_to_static(dyfunc):
-    """
-    Converts dygraph function into static function.
-    """
-    # Get AST from dygraph function
-    code = func_to_source_code(dyfunc)
-    root = gast.parse(code)
-
-    # Transform AST
-    dygraph_to_static = DygraphToStaticAst()
-    root_wrapper = dygraph_to_static.get_static_ast(root)
-
-    # Get static_func from AST
-    static_func, file_name = ast_to_func(root_wrapper.node, dyfunc)
-    return static_func, dygraph_to_static
