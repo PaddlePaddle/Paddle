@@ -71,7 +71,6 @@ def make_optimizer(step_per_epoch, parameter_list=None):
 
 def main():
     dygraph_qat = DygraphQuantAware()
-    dygraph_qat.prepare()
     paddle.enable_imperative()
 
     print("Load model ...")
@@ -164,8 +163,8 @@ def main():
         dygraph_qat.save_infer_quant_model(
             dirname=save_path,
             model=model,
-            input_shape=(3, 224, 224),
-            input_dtype='float32',
+            input_shape=[(3, 224, 224)],
+            input_dtype=['float32'],
             feed=[0],
             fetch=[0])
         print("Finish quantization, and save quantized model to " + save_path +

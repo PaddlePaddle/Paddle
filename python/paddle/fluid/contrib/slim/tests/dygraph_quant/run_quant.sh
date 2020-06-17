@@ -1,5 +1,6 @@
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 export FLAGS_fraction_of_gpu_memory_to_use=0.8
+export FLAGS_cudnn_deterministic=1
 
 data_dir='/work/datasets/ILSVRC2012/'
 out_dir='output_0610'
