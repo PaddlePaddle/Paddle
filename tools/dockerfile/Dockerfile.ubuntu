@@ -62,6 +62,8 @@ RUN wget -q https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tgz && \
     CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
     make -j8 > /dev/null && make altinstall > /dev/null && ldconfig
 
+# Install Python3.5
+
 RUN rm -r /root/python_build
 
 # Install Python2.7.15 to replace original python
