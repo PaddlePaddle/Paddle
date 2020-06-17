@@ -107,6 +107,11 @@ function(copy_part_of_thrid_party TARGET DST)
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
+    set(dst_dir "${DST}/third_party/install/cryptopp")
+    copy(${TARGET}
+        SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)
+
     set(dst_dir "${DST}/third_party/install/xxhash")
     copy(${TARGET}
         SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
@@ -178,6 +183,14 @@ endif()
 copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
+
+copy(inference_lib_dist
+        SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher.h
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/)
+
+copy(inference_lib_dist
+        SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher_utils.h
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/)
 
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
@@ -272,6 +285,11 @@ set(dst_dir "${FLUID_INSTALL_DIR}/third_party/boost")
 copy(inference_lib_dist
         SRCS ${BOOST_INCLUDE_DIR}/boost
         DSTS ${dst_dir})
+
+    #set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/cryptopp")
+    #copy(inference_lib_dist
+    #    SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
+    #    DSTS ${dst_dir} ${dst_dir}/lib)
 
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/dlpack")
 copy(inference_lib_dist
