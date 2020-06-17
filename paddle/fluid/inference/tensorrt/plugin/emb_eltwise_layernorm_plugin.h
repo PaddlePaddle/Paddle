@@ -32,15 +32,13 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit EmbEltwiseLayernormPluginDynamic(
       std::vector<int> emb_sizes, int bias_size, int scale_size,
-      int hidden_size, float eps, bool with_fp16,
-      std::vector<float const*> input_embs = {}, float const* bias = nullptr,
-      float const* scale = nullptr)
+      int hidden_size, float eps, std::vector<float const*> input_embs = {},
+      float const* bias = nullptr, float const* scale = nullptr)
       : emb_sizes_(emb_sizes),
         bias_size_(bias_size),
         scale_size_(scale_size),
         hidden_size_(hidden_size),
         eps_(eps),
-        with_fp16_(with_fp16),
         embs_(input_embs),
         bias_(bias),
         scale_(scale) {}
@@ -82,8 +80,8 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   }
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new EmbEltwiseLayernormPluginDynamic(
-        emb_sizes_, bias_size_, scale_size_, hidden_size_, eps_, with_fp16_,
-        embs_, bias_, scale_);
+        embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
+        eps_);
   }
 
   const char* getPluginType() const override {
@@ -167,7 +165,6 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   int bias_size_;
   int hidden_size_;
   float eps_;
-  bool with_fp16_;
 
   std::vector<float const*> embs_;
   float const* bias_;

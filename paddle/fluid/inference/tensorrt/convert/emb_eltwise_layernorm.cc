@@ -106,6 +106,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                   eps);
             }
       */
+
       plugin = new plugin::EmbEltwiseLayernormPluginDynamic<float>(
           input_embs, bias, scale, emb_sizes, bias_size, scale_size, hidden,
           eps);

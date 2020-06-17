@@ -49,6 +49,7 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &ban_fp16_);
   }
+
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new SkipLayerNormPluginDynamic(
         bias_.data(), scale_.data(), bias_size_, scale_size_, eps_, ban_fp16_);
