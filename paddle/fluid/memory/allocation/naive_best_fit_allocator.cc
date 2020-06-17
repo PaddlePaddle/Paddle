@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "glog/logging.h"
-#include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -125,7 +126,11 @@ class GPUBuddyAllocatorList {
   BuddyAllocator *Get(int gpu_id) {
     auto pos = std::distance(
         devices_.begin(), std::find(devices_.begin(), devices_.end(), gpu_id));
-    PADDLE_ENFORCE_LT(pos, devices_.size());
+    PADDLE_ENFORCE_LT(pos, devices_.size(),
+                      platform::errors::OutOfRange(
+                          "The index exceeds the size of devices, the size of "
+                          "devices is %d, the index is %d",
+                          devices_.size(), pos));
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetDeviceId(devices_[pos]);

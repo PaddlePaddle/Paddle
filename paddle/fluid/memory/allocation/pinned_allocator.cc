@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -21,12 +22,23 @@ namespace memory {
 namespace allocation {
 bool CPUPinnedAllocator::IsAllocThreadSafe() const { return true; }
 void CPUPinnedAllocator::FreeImpl(Allocation *allocation) {
-  PADDLE_ENFORCE(cudaFreeHost(allocation->ptr()));
+  cudaError_t error = cudaFreeHost(allocation->ptr());
+  PADDLE_ENFORCE_EQ(error, 0,
+                    platform::errors::ResourceExhausted(
+                        "Free memory allocation failed using cudaFreeHost, "
+                        "error code is %d",
+                        error));
   delete allocation;
 }
 Allocation *CPUPinnedAllocator::AllocateImpl(size_t size) {
   void *ptr;
-  PADDLE_ENFORCE(cudaHostAlloc(&ptr, size, cudaHostAllocPortable));
+  cudaError_t error = cudaHostAlloc(&ptr, size, cudaHostAllocPortable);
+  PADDLE_ENFORCE_EQ(
+      error, 0,
+      platform::errors::ResourceExhausted(
+          "Alloc memory allocation of size %d failed using cudaHostAlloc, "
+          "error code is %d",
+          size, error));
   return new Allocation(ptr, size, platform::CUDAPinnedPlace());
 }
 }  // namespace allocation
