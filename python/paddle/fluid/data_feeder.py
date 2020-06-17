@@ -102,8 +102,8 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         expected_type += (core.VarBase, )
     elif isinstance(input, core.VarBase):
         raise TypeError(
-            "Please use fluid.dygraph.guard() as context to run it in imperative Mode."
-            "Because the type of '{}' in {} is a imperative Variable.".format(
+            "Please use `with fluid.dygraph.guard()` as context or `fluid.enable_dygraph()` to switch to imperative mode firstly. "
+            "Because received '{}' in {} is a imperative Variable.".format(
                 input_name, op_name))
 
     if not isinstance(input, expected_type):
