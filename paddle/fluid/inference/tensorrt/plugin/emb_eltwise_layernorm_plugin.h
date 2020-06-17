@@ -51,7 +51,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
     embs_gpu_.resize(emb_sizes_.size());
     embs_.resize(emb_sizes_.size());
-    for (int i = 0; i < emb_sizes_.size(); i++) {
+    for (size_t i = 0; i < emb_sizes_.size(); i++) {
       cudaMalloc(&embs_gpu_[i], sizeof(float) * emb_sizes_[i]);
       cudaMemcpy(embs_gpu_[i], serialData, emb_sizes_[i] * sizeof(float),
                  cudaMemcpyHostToDevice);
@@ -93,12 +93,10 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   int initialize() override;
 
   size_t getSerializationSize() const override {
-    // return sizeof(float*) * embs_.size() + sizeof(float*) * 2 +
-    //       sizeof(int) * emb_sizes_.size() + sizeof(int) * 3 + sizeof(float);
     int sum_num = 0;
     sum_num += SerializedSize(emb_sizes_);
 
-    for (int i = 0; i < emb_sizes_.size(); i++) {
+    for (size_t i = 0; i < emb_sizes_.size(); i++) {
       sum_num += emb_sizes_[i] * sizeof(float);
     }
 
@@ -108,15 +106,15 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     sum_num += (bias_size_ + scale_size_) * sizeof(float);
     sum_num += SerializedSize(hidden_size_);
     sum_num += SerializedSize(eps_);
-    sum_num += SerializedSize(with_fp16_);
+    // sum_num += SerializedSize(with_fp16_);
 
     return sum_num;
   }
 
   void serialize(void* buffer) const override {
-    SerializeValue(&buffer, with_fp16_);
+    // SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, emb_sizes_);
-    for (int i = 0; i < emb_sizes_.size(); i++) {
+    for (size_t i = 0; i < emb_sizes_.size(); i++) {
       SerializeCudaPointer(&buffer, embs_gpu_[i], emb_sizes_[i]);
     }
     SerializeValue(&buffer, bias_size_);
@@ -158,9 +156,15 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 
  private:
+  float* scale_;
+
+  // data on devices
+  float* bias_gpu_;
+  float* scale_gpu_;
+  std::vector<float*> embs_gpu_;
+
   std::vector<int> emb_sizes_;
   int bias_size_;
-  int scale_size_;
   int hidden_size_;
   float eps_;
   bool with_fp16_;
@@ -196,22 +200,8 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serialData,
                                          size_t serialLength) override {
-    bool with_fp16;
-    DeserializeValue(&serialData, &serialLength, &with_fp16);
-
-    if (with_fp16) {
-#ifdef SUPPORTS_CUDA_FP16
-      return new EmbEltwiseLayernormPluginDynamic<half>(serialData,
-                                                        serialLength);
-#else
-      return new EmbEltwiseLayernormPluginDynamic<float>(serialData,
-                                                         serialLength);
-#endif
-
-    } else {
-      return new EmbEltwiseLayernormPluginDynamic<float>(serialData,
-                                                         serialLength);
-    }
+    return new EmbEltwiseLayernormPluginDynamic<float>(serialData,
+                                                       serialLength);
   }
 
   void setPluginNamespace(const char* libNamespace) override {

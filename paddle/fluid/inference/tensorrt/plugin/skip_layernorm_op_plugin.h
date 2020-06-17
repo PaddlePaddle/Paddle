@@ -30,8 +30,8 @@ namespace plugin {
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SkipLayerNormPluginDynamic(const float* bias, const float* scale,
-                                      int bias_size, int scale_size, float eps,
-                                      bool ban_fp16)
+                                      int bias_size, int scale_size,
+                                      const float eps, bool ban_fp16)
       : bias_size_(bias_size),
         scale_size_(scale_size),
         eps_(eps),

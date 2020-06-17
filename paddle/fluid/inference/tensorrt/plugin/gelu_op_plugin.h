@@ -146,7 +146,6 @@ class GeluPluginV2Creator : public nvinfer1::IPluginCreator {
 };
 
 REGISTER_TENSORRT_PLUGIN(GeluPluginV2Creator);
-
 #endif
 
 }  // namespace plugin
