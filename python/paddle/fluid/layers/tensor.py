@@ -607,7 +607,7 @@ def assign(input, output=None):
                              "saving it to file and 'load_op' to load it")
         if output is None:
             output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+                dtype=input.dtype, stop_gradient=True)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
