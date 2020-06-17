@@ -358,11 +358,24 @@ void OpDesc::SetInput(const std::string &param_name,
   inputs_[param_name] = args;
 }
 
+void OpDesc::ResetInputs(const std::string &from, const std::string &to) {
+  need_update_ = true;
+  for (auto &item : this->inputs_) {
+    for (auto &var : item.second) {
+      if (var == from) var = to;
+    }
+  }
+}
+
 const std::vector<std::string> &OpDesc::Output(const std::string &name) const {
   auto it = outputs_.find(name);
   PADDLE_ENFORCE(it != outputs_.end(), "Output %s cannot be found in Op %s",
                  name, Type());
   return it->second;
+}
+
+bool OpDesc::HasOutput(const std::string &name) const {
+  return outputs_.find(name) != outputs_.end();
 }
 
 std::vector<std::string> OpDesc::OutputArgumentNames() const {
