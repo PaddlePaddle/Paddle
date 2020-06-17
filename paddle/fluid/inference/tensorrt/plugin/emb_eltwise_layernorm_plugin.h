@@ -216,7 +216,6 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection mFieldCollection;
   std::vector<nvinfer1::PluginField> mPluginAttributes;
 };
-
 REGISTER_TENSORRT_PLUGIN(EmbEltwiseLayernormPluginV2Creator);
 
 #endif
