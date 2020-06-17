@@ -650,7 +650,7 @@ class TestDygraphGuardWithError(unittest.TestCase):
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(np.zeros([10, 10]))
         with self.assertRaisesRegexp(TypeError,
-                                     "Please use fluid.dygraph.guard"):
+                                     "Please use `with fluid.dygraph.guard()"):
             y = fluid.layers.matmul(x, x)
 
 
