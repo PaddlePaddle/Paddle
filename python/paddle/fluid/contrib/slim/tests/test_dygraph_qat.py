@@ -159,7 +159,6 @@ class TestDygraphQat(unittest.TestCase):
         dygraph_qat = DygraphQuantAware(
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max')
-        dygraph_qat.prepare()
 
         with fluid.dygraph.guard():
             lenet = DynamicLenet()
@@ -235,8 +234,8 @@ class TestDygraphQat(unittest.TestCase):
         dygraph_qat.save_infer_quant_model(
             dirname=path,
             model=lenet,
-            input_shape=(1, 28, 28),
-            input_dtype='float32',
+            input_shape=[(1, 28, 28)],
+            input_dtype=['float32'],
             feed=[0],
             fetch=[0])
         if core.is_compiled_with_cuda():
@@ -289,7 +288,6 @@ class TestDygraphQat(unittest.TestCase):
         dygraph_qat = DygraphQuantAware(
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quant_type)
-        dygraph_qat.prepare()
 
         with fluid.dygraph.guard():
             np.random.seed(seed)
@@ -337,8 +335,8 @@ class TestDygraphQat(unittest.TestCase):
         dygraph_qat.save_infer_quant_model(
             dirname="./dynamic_mnist",
             model=lenet,
-            input_shape=(1, 28, 28),
-            input_dtype='float32',
+            input_shape=[(1, 28, 28)],
+            input_dtype=['float32'],
             feed=[0],
             fetch=[0])
 
@@ -418,7 +416,8 @@ class TestDygraphQat(unittest.TestCase):
                 np.array(dynamic_loss_rec),
                 np.array(static_loss_rec),
                 rtol=rtol,
-                atol=atol),
+                atol=atol,
+                equal_nan=True),
             msg='Failed to do the dygraph qat.')
 
 

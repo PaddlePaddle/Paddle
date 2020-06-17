@@ -56,7 +56,6 @@ class DygraphQuantAware(object):
         self._weight_quantize_type = weight_quantize_type
 
         self._quant_layers_map = {'Conv2D': Conv2D, 'Linear': Linear}
-        self._translator = dygraph.ProgramTranslator()
         self._quantizable_layer_type = tuple(
             self._quant_layers_map[layer]
             if layer in self._quant_layers_map else layer
@@ -64,8 +63,7 @@ class DygraphQuantAware(object):
         for layer in self._quantizable_layer_type:
             assert not isinstance(
                 layer, str), "{} is unspported to be quantized.".format(layer)
-
-    def prepare(self):
+        self._translator = dygraph.ProgramTranslator()
         self._translator.enable_declarative = False
 
     def quantize(self, model):
@@ -88,19 +86,34 @@ class DygraphQuantAware(object):
                                dirname,
                                model,
                                input_shape,
-                               input_dtype='float32',
-                               feed=None,
-                               fetch=None,
+                               input_dtype,
+                               feed,
+                               fetch,
                                append_batch_size=True):
+        assert isinstance(
+            input_shape, list), "The parameter `input_shape` shoubld be a list."
+        assert isinstance(
+            input_dtype, list), "The parameter `input_dtype` shoubld be a list."
+        assert isinstance(feed, list), "The parameter `feed` shoubld be a list."
+        assert isinstance(fetch,
+                          list), "The parameter `fetch` shoubld be a list."
+        assert len(input_shape) == len(
+            input_dtype
+        ), "The length of input_shape should be equal to  input_dtype's."
+        assert len(input_dtype) == len(
+            feed), "The length of input_shape should be equal to  feed's."
+
         with dygraph.guard():
             self._translator.enable_declarative = True
             model.eval()
-            raw_data = np.random.random(input_shape)
-            input_data = raw_data[np.newaxis, :].astype(
-                input_dtype) if append_batch_size else raw_data.astype(
-                    input_dtype)
-            input_var = dygraph.to_variable(input_data)
-            out = model(input_var)
+            input_vars = []
+            for shape, dtype in zip(input_shape, input_dtype):
+                raw_data = np.random.random(shape)
+                input_data = raw_data[np.newaxis, :].astype(
+                    dtype) if append_batch_size else raw_data.astype(dtype)
+                input_var = dygraph.to_variable(input_data)
+                input_vars.append(input_var)
+            model(*input_vars)
         self._translator.save_inference_model(dirname, feed, fetch)
 
     def _get_quantized_counterpart(self, layer):
