@@ -4003,12 +4003,80 @@ class PipelineOptimizer(object):
                         })
                     extra_index += 1
 
+    def _add_dequeue_ops_for_optimize(self, block, startup_program):
+        startup_block = startup_program.global_block()
+        grad_queue_map = dict()
+        grad_device_map = dict()
+        optimize_index = None
+        grad_names_to_dequeue = []
+
+        for index, op in reversed(list(enumerate(block.ops))):
+            device = op.attr(self._op_device_key)
+            # Optimizer pass
+            if not self._is_update_op(op):
+                optimize_index = index + 1
+                break
+            assert self._op_role_var_key in op.attr_names
+            op_role_var = op.all_attrs()[self._op_role_var_key]
+            assert len(op_role_var) == 2
+            grad_name = op_role_var[1]
+            assert grad_name not in grad_device_map
+            assert grad_name not in grad_names_to_dequeue
+            grad_device_map[grad_name] = device
+            grad_names.append(grad_name)
+
+        for grad_name in grad_names_to_dequeue:
+            device = grad_device_map[grad_name]
+            grad_names = []
+            grads = []
+            queue_name = grad_name + "_blocking_queue"
+            queue_name = unique_name.generate(queue_name)
+            grad_queue_map[grad_name] = queue_name
+            ref_var = block.vars[grad_name]
+            queue_var = startup_block.create_var(
+                name=queue_name,
+                persistable=True,
+                type=core.VarDesc.VarType.RAW)
+            startup_block.append_op(
+                type='queue_generator',
+                attrs={
+                    'names': [queue_name],
+                    'capacity': self._num_microbatches
+                })
+            orig_var_name = self._strip_grad_suffix(grad_name)
+            for _ in range(self._num_microbatches):
+                u_name = unique_name.generate(orig_var_name)
+                u_grad_name = self._append_grad_suffix(u_name)
+                grad_var = self._create_var(block, ref_var, u_grad_name)
+                grad_names.append(u_grad_name)
+                grads.append(grad_var)
+            block._insert_op(
+                index=optimize_index,
+                type='dequeue',
+                outputs={'Out': grads},
+                attrs={
+                    self._op_device_key: device,
+                    'queue_name': queue_name,
+                    self._op_role_key: self._op_role.Optimize
+                })
+            block._insert_op(
+                index=optimize_index + 1,
+                type='sum',
+                inputs={'X': grad_names},
+                outputs={'Out': ref_var},
+                attrs={
+                    self._op_device_key: device,
+                    self._op_role_key: self._op_role.Optimize
+                })
+        return grad_queue_map
+
     def _insert_enq_deq_ops_for_update(self, block, startup_program):
         """
         Insert enqueue and dequeue ops for gradients of parameters.
         """
         startup_block = startup_program.global_block()
-        grad_queue_map = dict()
+        grad_queue_map = self._add_dequeue_ops_for_optimize(block,
+                                                            startup_program)
 
         for index, op in reversed(list(enumerate(block.ops))):
             offset = index
@@ -4051,53 +4119,6 @@ class PipelineOptimizer(object):
                             self._op_role_key: self._op_role.Backward
                         })
                     offset += 1
-            # Optimizer pass
-            if self._is_update_op(op):
-                assert self._op_role_var_key in op.attr_names
-                op_role_var = op.all_attrs()[self._op_role_var_key]
-                assert len(op_role_var) == 2
-                grad_name = op_role_var[1]
-                grad_names = []
-                grads = []
-                queue_name = grad_name + "_blocking_queue"
-                queue_name = unique_name.generate(queue_name)
-                grad_queue_map[grad_name] = queue_name
-                ref_var = block.vars[grad_name]
-                queue_var = startup_block.create_var(
-                    name=queue_name,
-                    persistable=True,
-                    type=core.VarDesc.VarType.RAW)
-                startup_block.append_op(
-                    type='queue_generator',
-                    attrs={
-                        'names': [queue_name],
-                        'capacity': self._num_microbatches
-                    })
-                orig_var_name = self._strip_grad_suffix(grad_name)
-                for _ in range(self._num_microbatches):
-                    u_name = unique_name.generate(orig_var_name)
-                    u_grad_name = self._append_grad_suffix(u_name)
-                    grad_var = self._create_var(block, ref_var, u_grad_name)
-                    grad_names.append(u_grad_name)
-                    grads.append(grad_var)
-                block._insert_op(
-                    index=offset,
-                    type='dequeue',
-                    outputs={'Out': grads, },
-                    attrs={
-                        self._op_device_key: device,
-                        'queue_name': queue_name,
-                        self._op_role_key: self._op_role.Optimize
-                    })
-                block._insert_op(
-                    index=offset + 1,
-                    type='sum',
-                    inputs={'X': grad_names, },
-                    outputs={'Out': ref_var},
-                    attrs={
-                        self._op_device_key: device,
-                        self._op_role_key: self._op_role.Optimize
-                    })
 
     def _add_sub_blocks(self, main_block, program_list):
         main_program = main_block.program
@@ -4294,7 +4315,7 @@ class PipelineOptimizer(object):
             "queue_size": self._num_microbatches,
             "start_cpu_core_id": self._start_cpu_core_id,
         }
-        return optimize_ops, params_grads
+        return optimize_ops, params_grads, program_list
 
 
 class RecomputeOptimizer(Optimizer):
