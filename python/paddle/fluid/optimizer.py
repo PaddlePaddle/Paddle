@@ -719,7 +719,7 @@ class Optimizer(object):
                 current_block.backward_block_idx]
         self._update_param_device_map(params_grads, target_block)
         if self._grad_clip is not None:
-            # Todo (sandyhouse): how to add op_device attr for op under this case
+            # TODO (sandyhouse): how to add op_device attr for op in this case
             params_grads = self._grad_clip(params_grads)
         else:
             params_grads = append_gradient_clip_ops(params_grads,
