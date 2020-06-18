@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+#Copyright(c) 2018 PaddlePaddle Authors.All Rights Reserved.
+#
+#Licensed under the Apache License, Version 2.0(the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#http:  // www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
 
 from __future__ import print_function
 
@@ -216,17 +230,20 @@ def init_from_server_pass(program, config):
         name=framework.generate_control_dev_var_name())
 
     recv_ctx = config.get_communicator_recv_context(recv_type=1)
+    recv_varnames = []
 
     for name, ctxs in recv_ctx.items():
-        program.global_block().append_op(
-            type="recv",
-            inputs={"X": []},
-            outputs={"Out": []},
-            attrs={
-                "recv_varnames": ctxs.origin_varnames(),
-                "trainer_id": config.get_role_id(),
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        recv_varnames.extend(ctxs.origin_varnames())
+
+    program.global_block().append_op(
+        type="recv",
+        inputs={"X": []},
+        outputs={"Out": []},
+        attrs={
+            "recv_varnames": recv_varnames,
+            "trainer_id": config.get_role_id(),
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        })
 
     program.global_block().append_op(
         type="fetch_barrier",
@@ -255,7 +272,7 @@ def fake_init_ops_pass(program, config):
         return list(set(sparse_table_names))
 
     def _fake_init_sparsetable(sparse_table_names):
-        # delete table init op
+        #delete table init op
         for table_name in sparse_table_names:
             table_var = program.global_block().vars[table_name]
             table_param_init_op = []

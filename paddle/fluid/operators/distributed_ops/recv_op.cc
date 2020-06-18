@@ -42,6 +42,7 @@ class RecvOp : public framework::OperatorBase {
       VLOG(3) << "recv do not run!";
       return;
     }
+
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::vector<std::string> varnames =
         Attr<std::vector<std::string>>("varnames");

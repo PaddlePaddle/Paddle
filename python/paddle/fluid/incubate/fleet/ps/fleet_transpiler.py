@@ -469,11 +469,13 @@ class FleetTranspiler(Fleet):
 
     def _save_dense_params(self, executor, dirname, context, main_program):
         local_vars = []
+
         for name, var_ctx in context.items():
             for varname in var_ctx.origin_varnames():
                 local_vars.append(main_program.global_block().vars[varname])
 
-        self._communicator.recv()
+        # todo: find why?
+        #self._communicator.recv()
 
         fluid.io.save_vars(
             executor,

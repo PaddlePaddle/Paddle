@@ -426,11 +426,12 @@ class CompileTimeStrategy(object):
         blocks = []
         for var in var_list:
             if not uniform:
+                var_numel = reduce(lambda x, y: x * y, var.shape)
+
                 if min_block_size == -1:
                     split_count = 1
                 else:
                     split_count = slice_count
-                    var_numel = reduce(lambda x, y: x * y, var.shape)
                     max_pserver_count = int(
                         math.floor(var_numel / float(min_block_size)))
                     if max_pserver_count == 0:

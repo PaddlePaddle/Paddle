@@ -68,7 +68,6 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
   if (rpc_ctx.origin_varnames.size() == 1 &&
       rpc_ctx.splited_varnames.size() == 1) {
     auto varname = rpc_ctx.origin_varnames[0];
-    auto *var = scope.FindVar(varname);
     VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0];
     rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], cpu_ctx,
                                                     scope, varname, varname));
