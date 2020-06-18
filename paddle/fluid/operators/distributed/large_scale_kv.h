@@ -107,7 +107,12 @@ class UniformInitializer : public Initializer {
 };
 
 template <typename T>
-inline bool entry(const T count, const T threshold);
+inline bool entry(const int count, const T threshold);
+
+template <>
+inline bool entry<std::string>(const int count, const std::string threshold) {
+  return true;
+}
 
 template <>
 inline bool entry<int>(const int count, const int threshold) {
@@ -115,7 +120,7 @@ inline bool entry<int>(const int count, const int threshold) {
 }
 
 template <>
-inline bool entry<float>(const float count, const float threshold) {
+inline bool entry<float>(const int count, const float threshold) {
   UniformInitializer uniform = UniformInitializer({"0", "0", "1"});
   return uniform.GetValue() >= threshold;
 }
@@ -277,13 +282,19 @@ class ValueBlock {
 
     // for Entry
     {
-      auto slices = string::split_string<std::string>(entry_attr, "&");
-      if (slices[0] == "count_filter") {
-        int threshold = std::stoi(slices[1]);
-        entry_func_ = std::bind(entry<int>, std::placeholders::_1, threshold);
-      } else if (slices[0] == "probability") {
-        float threshold = std::stof(slices[1]);
-        entry_func_ = std::bind(entry<float>, std::placeholders::_1, threshold);
+      if (entry_attr == "") {
+        entry_func_ =
+            std::bind(entry<std::string>, std::placeholders::_1, "None");
+      } else {
+        auto slices = string::split_string<std::string>(entry_attr, "&");
+        if (slices[0] == "count_filter") {
+          int threshold = std::stoi(slices[1]);
+          entry_func_ = std::bind(entry<int>, std::placeholders::_1, threshold);
+        } else if (slices[0] == "probability") {
+          float threshold = std::stof(slices[1]);
+          entry_func_ =
+              std::bind(entry<float>, std::placeholders::_1, threshold);
+        }
       }
     }
 

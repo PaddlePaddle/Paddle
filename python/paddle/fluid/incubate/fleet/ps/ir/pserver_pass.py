@@ -697,7 +697,7 @@ def large_scale_sparse_pass(program, config):
         return grad, opt_idx, value_names, value_dims, acture_names
 
     def add_large_scale_op(block, global_block, table_name, value_names,
-                           acture_names, grad, opt_idx):
+                           acture_names, grad, is_entry, opt_idx):
         ids = global_block.create_var(
             name="kSparseIDs",
             persistable=False,
@@ -713,7 +713,7 @@ def large_scale_sparse_pass(program, config):
             outputs={"Row": ids,
                      "Value": grad},
             attrs={"tablename": table_name,
-                   "value_names": value_names})
+                   "is_entry": is_entry})
 
         # insert read at first
         vars = [global_block.vars[acture_name] for acture_name in acture_names]
@@ -755,10 +755,13 @@ def large_scale_sparse_pass(program, config):
         opt_block = program.block(blockid)
         grad, opt_idx, value_names, value_dims, acture_names = get_optimizer_values(
             opt_block)
+        entry_attr = get_entry_attr(param)
+
+        is_entry = False if entry_attr == "" else True
 
         add_large_scale_op(opt_block,
                            program.global_block(), param, value_names,
-                           acture_names, grad, opt_idx)
+                           acture_names, grad, is_entry, opt_idx)
 
         # training/infer
         mode = "0"
@@ -766,7 +769,6 @@ def large_scale_sparse_pass(program, config):
         dims_str = ",".join([str(dim) for dim in value_dims])
         cached_str = ",".join(acture_names + ["kSparseIDs"])
         init_attr_str = get_initializer_attrs(acture_names)
-        entry_attr = get_entry_attr(param)
 
         meta_str = ":".join([
             param, names_str, dims_str, mode, grad.name, cached_str,
