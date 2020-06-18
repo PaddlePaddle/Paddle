@@ -55,7 +55,6 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
         platform::errors::InvalidArgument("Only support LodTensor now"));
   }
 
-  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto cpu_place = platform::CPUPlace();
   auto &cpu_ctx = *pool.Get(cpu_place);
@@ -64,6 +63,27 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   std::vector<distributed::VarHandlePtr> rets;
+
+  // variable do not spilt
+  if (rpc_ctx.origin_varnames.size() == 1 &&
+      rpc_ctx.splited_varnames.size() == 1) {
+    auto varname = rpc_ctx.origin_varnames[0];
+    auto *var = scope.FindVar(varname);
+    VLOG(4) << "recv " << varname << " from " << rpc_ctx.epmap[0];
+    rets.push_back(rpc_client->AsyncGetVarNoBarrier(rpc_ctx.epmap[0], cpu_ctx,
+                                                    scope, varname, varname));
+
+    for (size_t i = 0; i < rets.size(); i++) {
+      PADDLE_ENFORCE_NE(
+          rets[i]->Wait(), 0U,
+          platform::errors::ExecutionTimeout("internal error in RPCClient"));
+    }
+
+    VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
+    return;
+  }
+
+  std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   if (barrier) {
     for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
@@ -114,7 +134,6 @@ void ParameterRecv<T>::operator()(const CommContext &rpc_ctx,
     framework::Tensor *origin_t = origin_v->GetMutable<framework::LoDTensor>();
     auto size = origin_t->numel() * framework::SizeOfType(origin_t->type());
     memory::Copy(cpu_place, origin_t->data<void>(), cpu_place, src_ptr, size);
-
     src_ptr = reinterpret_cast<char *>(const_cast<void *>(src_ptr)) + size;
   }
   VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;

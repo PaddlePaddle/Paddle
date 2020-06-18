@@ -426,14 +426,17 @@ class CompileTimeStrategy(object):
         blocks = []
         for var in var_list:
             if not uniform:
-                split_count = slice_count
-                var_numel = reduce(lambda x, y: x * y, var.shape)
-                max_pserver_count = int(
-                    math.floor(var_numel / float(min_block_size)))
-                if max_pserver_count == 0:
-                    max_pserver_count = 1
-                if max_pserver_count < slice_count:
-                    split_count = max_pserver_count
+                if min_block_size == -1:
+                    split_count = 1
+                else:
+                    split_count = slice_count
+                    var_numel = reduce(lambda x, y: x * y, var.shape)
+                    max_pserver_count = int(
+                        math.floor(var_numel / float(min_block_size)))
+                    if max_pserver_count == 0:
+                        max_pserver_count = 1
+                    if max_pserver_count < slice_count:
+                        split_count = max_pserver_count
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
@@ -460,7 +463,7 @@ class CompileTimeStrategy(object):
                     blocks.append(str(block))
         return blocks
 
-    def _get_param_grad_blocks(self, pairs, uniform=False):
+    def _get_param_grad_blocks(self, pairs, min_block_size, uniform=False):
         param_list = []
         grad_list = []
         param_grad_set = set()
@@ -482,11 +485,11 @@ class CompileTimeStrategy(object):
                 # pserver services' count. A pserver may have two or more listening ports.
         grad_blocks = self._slice_variable(grad_list,
                                            len(self.get_ps_endpoints()),
-                                           self.min_block_size, uniform)
+                                           min_block_size, uniform)
 
         param_blocks = self._slice_variable(param_list,
                                             len(self.get_ps_endpoints()),
-                                            self.min_block_size, uniform)
+                                            min_block_size, uniform)
         return param_blocks, grad_blocks
 
     def _var_slice_and_distribute(self):
@@ -496,8 +499,10 @@ class CompileTimeStrategy(object):
         # 3. grad_param_mapping : grad.blockx->param.blockx
         # 4. param_grad_ep_mapping : ep->{"params" : [], "grads" : [] }
 
-        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs, False)
-        sps, sgs = self._get_param_grad_blocks(self.merged_sparse_pairs, True)
+        dps, dgs = self._get_param_grad_blocks(self.merged_dense_pairs, -1,
+                                               False)
+        sps, sgs = self._get_param_grad_blocks(self.merged_sparse_pairs,
+                                               self.min_block_size, True)
 
         param_blocks = dps + sps
         grad_blocks = dgs + sgs
