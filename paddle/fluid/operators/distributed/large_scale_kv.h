@@ -506,6 +506,7 @@ class SparseVariable {
   }
 
   void Save(const std::string &dirname) {
+    std::lock_guard<std::mutex> lock(mutex_);
     VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " begin";
 
     MkDirRecursively(dirname.c_str());
@@ -530,7 +531,6 @@ class SparseVariable {
 
   void SaveToSelectedRows(const std::vector<std::string> &filenames,
                           const std::vector<std::string> &valuenames) {
-    std::lock_guard<std::mutex> lock(mutex_);
     for (auto &value_name : valuenames) {
       auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
                           value_name);
@@ -541,7 +541,6 @@ class SparseVariable {
     }
 
     auto place = platform::CPUPlace();
-    // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
@@ -593,7 +592,6 @@ class SparseVariable {
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
       auto &filename = filenames[i];
-
       auto &selectedRows = variables[i]->Get<framework::SelectedRows>();
 
       std::ofstream fout(filename, std::ios::binary);
@@ -608,8 +606,6 @@ class SparseVariable {
 
   void SaveToText(const std::vector<std::string> &filenames,
                   const std::vector<std::string> &valuenames) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     for (auto &value_name : valuenames) {
       auto it = std::find(meta_.value_names.begin(), meta_.value_names.end(),
                           value_name);
