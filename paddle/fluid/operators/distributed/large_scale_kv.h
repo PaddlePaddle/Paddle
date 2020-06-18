@@ -282,9 +282,9 @@ class ValueBlock {
 
     // for Entry
     {
-      if (entry_attr == "") {
+      if (entry_attr == "none") {
         entry_func_ =
-            std::bind(entry<std::string>, std::placeholders::_1, "None");
+            std::bind(entry<std::string>, std::placeholders::_1, "none");
       } else {
         auto slices = string::split_string<std::string>(entry_attr, "&");
         if (slices[0] == "count_filter") {
@@ -382,7 +382,6 @@ class ValueBlock {
   }
 
   void Entry(const int64_t id) {
-    rwlock_->WRLock();
     auto *value = values_.at(id);
     auto count = value->fetch_count();
     auto is_entry = value->get_entry();
@@ -390,8 +389,6 @@ class ValueBlock {
     if (!is_entry) {
       value->set_entry(entry_func_(count));
     }
-
-    rwlock_->UNLock();
   }
 
  public:

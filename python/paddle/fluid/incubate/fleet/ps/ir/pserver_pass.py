@@ -757,7 +757,7 @@ def large_scale_sparse_pass(program, config):
             opt_block)
         entry_attr = get_entry_attr(param)
 
-        is_entry = False if entry_attr == "" else True
+        is_entry = False if entry_attr == "none" else True
 
         add_large_scale_op(opt_block,
                            program.global_block(), param, value_names,
