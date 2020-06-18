@@ -49,25 +49,41 @@ class FunctionCache(object):
     def __init__(self):
         # Caches the converted static functions. {dygraph_func: static_func}
         self._converted_static_func_caches = dict()
-        # Caches the converted ast node for same source code.
+        # Caches the converted ast node for same source code. {source_code: ast_root}
         self._code_to_ast_caches = dict()
         self._dygraph_to_static = DygraphToStaticAst()
 
-    def get_or_cache_func(self, func):
+    def convert_with_cache(self, func):
         """
-        Returns the cached static function or converts it when first encounter the function.
+        Returns the cached static function or converts it when first encounters the function.
         """
+        # If hit cache, return it directly.
         static_func = self._converted_static_func_caches.get(func, None)
 
         if static_func is None:
-            static_func = self.convert_to_static_with_cache(func)
+            static_func = self._convert(func)
             self._converted_static_func_caches[func] = static_func
 
         return static_func
 
-    def convert_to_static_with_cache(self, func):
+    def _convert(self, func):
         """
-        Converts dygraph function into static function.
+        Converts dygraph function into static function. For two functions with same dedent code,
+        the second function will reuse the transformed ast node of previous one.
+
+        For example:
+            # A.py
+            def foo(x, y):
+                z = x + y
+                return z
+
+            # B.py
+            def foo(x, y):
+                z = x + y
+                return z
+
+        If the conversion of A.foo happens after B.foo, it will reuse the transformed ast node of B.foo
+        to speed up the conversion.
         """
         # Note: In Python2, it will raise OSError when inspect function
         # with decorator directly and function.__wrapped__ holds the actual function.
@@ -80,7 +96,7 @@ class FunctionCache(object):
             root_wrapper = self._dygraph_to_static.get_static_ast(root)
             self._code_to_ast_caches[source_code] = root_wrapper
 
-        # Get static_func from AST
+        # Get static function from AST
         static_func, file_name = ast_to_func(root_wrapper.node, func)
         return static_func
 
@@ -100,7 +116,7 @@ def convert_to_static(function):
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
     with _CACHE_LOCK:
-        static_func = _FUNCTION_CACHE.get_or_cache_func(function)
+        static_func = _FUNCTION_CACHE.convert_with_cache(function)
         return static_func
 
 
