@@ -55,6 +55,7 @@ from .linalg import cross  #DEFINE_ALIAS
 from .linalg import cholesky  #DEFINE_ALIAS
 # from .linalg import tensordot        #DEFINE_ALIAS
 from .linalg import bmm  #DEFINE_ALIAS
+from .linalg import histogram  #DEFINE_ALIAS
 from .logic import equal  #DEFINE_ALIAS
 from .logic import greater_equal  #DEFINE_ALIAS
 from .logic import greater_than  #DEFINE_ALIAS

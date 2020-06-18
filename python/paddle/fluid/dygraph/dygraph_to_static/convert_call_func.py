@@ -29,6 +29,7 @@ import six
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 program_translator = ProgramTranslator()
@@ -47,6 +48,12 @@ def is_builtin(func):
         return True
     else:
         return False
+
+
+def is_builtin_len(func):
+    if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
+        return True
+    return False
 
 
 def is_paddle_func(func):
@@ -91,10 +98,10 @@ def convert_call(func):
     func_self = None
     converted_call = None
 
-    if is_builtin(func):
-        return func
+    if is_builtin_len(func):
+        return convert_len
 
-    if is_paddle_func(func):
+    if is_builtin(func) or is_paddle_func(func):
         return func
 
     if inspect.isfunction(func):

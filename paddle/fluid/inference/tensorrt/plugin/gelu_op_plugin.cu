@@ -63,7 +63,7 @@ __global__ void gelu_kernel(const T a, int n, const T* input, T* output) {
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];
-    const T cdf = 0.5 * (1.0 + erf(in * 0.5 * a));
+    const T cdf = 0.5f * (1.0f + erff(in * 0.5f * a));
     output[idx] = in * cdf;
   }
 }

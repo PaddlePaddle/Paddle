@@ -105,6 +105,7 @@ class TestBoxPSPreload(unittest.TestCase):
                 name='x', shape=[1], dtype='int64', lod_level=0)
             y = fluid.layers.data(
                 name='y', shape=[1], dtype='int64', lod_level=0)
+            z = layers.data(name='z', shape=[1], dtype='int64')
             emb_x, emb_y = _pull_box_sparse([x, y], size=2)
             emb_xp = _pull_box_sparse(x, size=2)
             concat = layers.concat([emb_x, emb_y], axis=1)
@@ -114,7 +115,6 @@ class TestBoxPSPreload(unittest.TestCase):
                            num_flatten_dims=1,
                            bias_attr=False)
             loss = layers.reduce_mean(fc)
-            layers.Print(loss)
             place = fluid.CPUPlace(
             ) if is_cpu or not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
@@ -161,8 +161,14 @@ class TestBoxPSPreload(unittest.TestCase):
                 sync_steps=-1)
             optimizer.minimize(loss)
 
-            program._pipeline_opt[
-                "dump_fields"] = ["fc.tmp_0", "fc.tmp_0@GRAD", "hehe"]
+            program._pipeline_opt["dump_fields"] = [
+                "fc.tmp_0", "fc.tmp_0@GRAD", "fake_var", "z",
+                "reduce_mean_3.tmp_0"
+            ]
+            # fake_var: not in scope
+            # z: in scope, but no initialized
+            # reduce_mean_0.tmp_0, dimension is not right
+
             program._pipeline_opt["dump_fields_path"] = "./dump_log/"
             program._pipeline_opt["dump_param"] = ["fc.w_0"]
             program._pipeline_opt["enable_random_dump"] = True
@@ -172,6 +178,7 @@ class TestBoxPSPreload(unittest.TestCase):
             exe.run(fluid.default_startup_program())
             datasets[0].load_into_memory()
             datasets[0].begin_pass()
+            datasets[0].slots_shuffle([])
             datasets[1].preload_into_memory()
             exe.train_from_dataset(
                 program=fluid.default_main_program(),

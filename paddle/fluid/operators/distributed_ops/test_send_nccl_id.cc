@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
@@ -42,6 +40,7 @@ namespace string = paddle::string;
 
 std::unique_ptr<distributed::RPCServer> g_rpc_service;
 std::unique_ptr<distributed::RequestHandler> g_req_handler;
+std::unique_ptr<distributed::RequestNotifyHandler> g_notify_handler;
 
 void StartServer() {
   f::Scope scope;
@@ -52,21 +51,35 @@ void StartServer() {
 
   f::ProgramDesc empty_program;
   f::Executor executor(dev_ctx.GetPlace());
+
   g_req_handler->SetScope(&scope);
   g_req_handler->SetDevCtx(&dev_ctx);
   g_req_handler->SetProgram(&empty_program);
   g_req_handler->SetExecutor(&executor);
+  g_req_handler->SetRPCServer(g_rpc_service.get());
+
+  g_notify_handler.SetRPCServer(rpc_service.get());
+  g_notify_handler.SetScope(scope);
+  g_notify_handler.SetDevCtx(&dev_ctx);
+  g_notify_handler.SetProgram(&empty_program);
+  g_notify_handler.SetExecutor(&executor);
 
   g_rpc_service->RegisterRPC(distributed::kRequestSend, g_req_handler.get());
-  g_req_handler->SetRPCServer(g_rpc_service.get());
+  g_rpc_service->RegisterRPC(distributed::RequestNotifyHandler,
+                             g_notify_handler.get());
+
+  distributed::BarrierMonitor::Init(1);
+  auto* barrier = distributed::BarrierMonitor::GetInstance();
+  barrier->Reset(1, distributed::BarrierType::kSendBarrier);
 
   std::thread server_thread(
       std::bind(&distributed::RPCServer::StartServer, g_rpc_service.get()));
 
-  g_rpc_service->SetCond(distributed::kRequestSend);
-  g_rpc_service->WaitBarrier(distributed::kRequestSend);
+  barrier->WaitServerWeakup();
+  barrier->ServerWeakup();
 
   LOG(INFO) << "got nccl id and stop server...";
+  barrier->Stop();
   g_rpc_service->ShutDown();
   server_thread.join();
 }
@@ -74,6 +87,10 @@ void StartServer() {
 TEST(SendNcclId, RPCServer) {
   g_req_handler.reset(
       new distributed::RequestSendHandler(distributed::DistributedMode::kSync));
+
+  g_notify_handler.reset(new distributed::RequestNotifyHandler(
+      distributed::DistributedMode::kSync, -1));
+
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);
@@ -104,4 +121,5 @@ TEST(SendNcclId, RPCServer) {
   server_thread.join();
   g_rpc_service.reset(nullptr);
   g_req_handler.reset(nullptr);
+  g_notify_handler.reset(nullptr);
 }

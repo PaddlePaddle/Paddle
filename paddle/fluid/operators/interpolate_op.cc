@@ -585,7 +585,7 @@ class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateGradNoNeedBufferVarsInferer,
                                     "X");
 
 }  // namespace operators
@@ -596,22 +596,22 @@ REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad,
-                  ops::InterpolateGradNoNeedBufferVarsInference);
+                  ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
-                  ops::InterpolateGradNoNeedBufferVarsInference);
+                  ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
-                  ops::InterpolateGradNoNeedBufferVarsInference);
+                  ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OPERATOR(bicubic_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bicubic_interp_grad, ops::InterpolateOpGrad,
-                  ops::InterpolateGradNoNeedBufferVarsInference);
+                  ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
@@ -631,7 +631,7 @@ REGISTER_OPERATOR(linear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::framework::OpDesc>,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(linear_interp_grad, ops::InterpolateOpGrad,
-                  ops::InterpolateGradNoNeedBufferVarsInference);
+                  ops::InterpolateGradNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(linear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);

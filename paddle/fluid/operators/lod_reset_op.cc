@@ -223,7 +223,7 @@ DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -234,7 +234,7 @@ REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
                   ops::LoDResetGradMaker<paddle::imperative::OpBase>,
                   ops::LoDResetOpVarTypeInference, ops::LoDResetInplaceInferer);
 REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
-                  ops::LoDResetGradNoNeedBufferVarInference,
+                  ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(

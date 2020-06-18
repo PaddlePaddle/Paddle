@@ -47,6 +47,13 @@ class TestVarBase(unittest.TestCase):
                 linear = fluid.dygraph.Linear(32, 64)
                 var = linear._helper.to_variable("test", name="abc")
 
+    def test_tensor_to_variable(self):
+        with fluid.dygraph.guard():
+            t = fluid.Tensor()
+            t.set(np.random.random((1024, 1024)), fluid.CPUPlace())
+            var = fluid.dygraph.to_variable(t)
+            self.assertTrue(np.array_equal(t, var.numpy()))
+
     def test_write_property(self):
         with fluid.dygraph.guard():
             var = fluid.dygraph.to_variable(self.array)

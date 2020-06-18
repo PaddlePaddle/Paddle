@@ -43,14 +43,21 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Scores"), "Input(Scores) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("BboxDeltas"),
-                   "Input(BboxDeltas) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Anchors"),
-                   "Input(Anchors) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Variances"),
-                   "Input(Variances) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Scores"), true,
+        platform::errors::NotFound("Input(Scores) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("BboxDeltas"), true,
+        platform::errors::NotFound("Input(BboxDeltas) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("ImInfo"), true,
+        platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Anchors"), true,
+        platform::errors::NotFound("Input(Anchors) shouldn't be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Variances"), true,
+        platform::errors::NotFound("Input(Variances) shouldn't be null."));
 
     ctx->SetOutputDim("RpnRois", {-1, 4});
     ctx->SetOutputDim("RpnRoiProbs", {-1, 1});
@@ -247,7 +254,6 @@ static inline Tensor VectorToTensor(const std::vector<T> &selected_indices,
 template <class T>
 static inline Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox,
                          Tensor *scores, T nms_threshold, float eta) {
-  PADDLE_ENFORCE_NOT_NULL(bbox);
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];

@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 
 #include "paddle/fluid/operators/distributed/async_sparse_param_update_recorder.h"
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed_ops/listen_and_serv_op.h"
@@ -38,10 +36,13 @@ DEFINE_int32(rpc_prefetch_thread_num, 12, "number of threads for rpc prefetch");
 namespace paddle {
 namespace operators {
 
+volatile sig_atomic_t gSignalStatus;
+
 void RunServer(std::shared_ptr<distributed::RPCServer> service) {
   service->StartServer();
   VLOG(4) << "RunServer thread end";
 }
+
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
   pieces->clear();
@@ -74,7 +75,9 @@ static void ParallelExecuteBlocks(
                 << "pointer: " << prepared[run_block].get();
         executor->RunPreparedContext(prepared[run_block].get(), scope);
       } catch (const std::exception &e) {
-        LOG(FATAL) << "run sub program:" << idx << " error " << e.what();
+        PADDLE_THROW(platform::errors::Fatal(
+            "Run %d-th sub program failed. The exception is:\n%s.", idx,
+            e.what()));
       }
     }));
   }
@@ -124,6 +127,7 @@ void ListenAndServOp::RunSyncLoop(
   for (size_t i = 1; i < program->Size(); ++i) {
     optimize_blocks_list.push_back(i);
   }
+
   auto optimize_prepared = executor->Prepare(*program, optimize_blocks_list);
   // Insert placeholder for block0 which holds current op itself,
   // NOTE the first block in `optimize_prepared` should never be ran.
@@ -133,21 +137,15 @@ void ListenAndServOp::RunSyncLoop(
 
   // Trainers will get all parameters from pserver in the
   // startup program, so we will wait RequestGet first
-  rpc_service_->SetCond(distributed::kRequestGet);
-  rpc_service_->WaitBarrier(distributed::kRequestGet);
-  rpc_service_->ResetBarrierCounter();
+  auto *barrier = distributed::BarrierMonitor::GetInstance();
 
   while (true) {
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
-    VLOG(3) << "wait all clients to send gradient";
-    rpc_service_->SetCond(distributed::kRequestSend);
-    VLOG(3) << "wait all clients to send send_barrier";
-    rpc_service_->WaitBarrier(distributed::kRequestSend);
+    barrier->WaitServerWeakup();
 
-    if (rpc_service_->IsExit()) {
+    if (gSignalStatus != 0) {
       LOG(WARNING) << "get exit!rpc_processor break!";
-      rpc_service_->SetCond(distributed::kRequestGet);
       break;
     }
 
@@ -178,12 +176,8 @@ void ListenAndServOp::RunSyncLoop(
     VLOG(3) << "ResetReceivedVars";
     ResetReceivedVars(recv_scope, dev_ctx, rpc_service_->NeedResetAllVars());
 
-    VLOG(3) << "wait all clients to get parameters back";
-    rpc_service_->SetCond(distributed::kRequestGet);
-    VLOG(3) << "wait all clients to send fetch_barrier";
-    rpc_service_->WaitBarrier(distributed::kRequestGet);
-    VLOG(3) << "ResetBarrierCounter";
-    rpc_service_->ResetBarrierCounter();
+    barrier->ServerWeakup();
+    VLOG(3) << "kRecvBarrier to push params to trainers";
   }  // while(true)
 }
 
@@ -279,7 +273,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   request_prefetch_handler_->SetGradToPreparedCtx(&grad_to_prepared_ctx);
 
   while (true) {
-    if (rpc_service_->IsExit()) {
+    if (gSignalStatus != 0) {
       VLOG(4) << "get exit!rpc_processor break!";
       break;
     }
@@ -315,8 +309,9 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
                                     const framework::Scope &scope) const {
   for (const auto &varname : varnames) {
     auto var = scope.FindVar(varname);
-    PADDLE_ENFORCE(var != nullptr,
-                   "Received var should be initialized in the received scope.");
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::PreconditionNotMet(
+                 "Received var is not initialized in the received scope."));
     if (var->IsType<framework::SelectedRows>()) {
       sparse_vars_.push_back(varname);
     } else if (var->IsType<framework::LoDTensor>() ||
@@ -344,7 +339,9 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto pserver_id = Attr<int>("pserver_id");
   auto inputs = Inputs("X");
 
-  PADDLE_ENFORCE(!rpc_service_);
+  PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
+                    platform::errors::PreconditionNotMet(
+                        "RPC service has been created unexpectedly."));
   std::string endpoint = Attr<std::string>("endpoint");
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
   int lr_decay_block_id = Attr<int>(kLRDecayBlockId);
@@ -386,12 +383,14 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_->RegisterRPC(distributed::kRequestGetNoBarrier,
                             request_get_no_barrier_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
-                            request_notify_handler_.get(), rpc_send_thread_num);
+                            request_notify_handler_.get(), fan_in * 2);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
-  PADDLE_ENFORCE(optimize_blocks.size() >= 1,
-                 "optimize blocks should be 1 at least on the pserver side.");
+  PADDLE_ENFORCE_GE(optimize_blocks.size(), 1,
+                    platform::errors::PreconditionNotMet(
+                        "optimize blocks is less than 1. Optimize blocks "
+                        "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
@@ -433,6 +432,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       prefetch_var_name_to_prepared_ctx;
+
   for (size_t i = 0; i < prefetch_block_id_list.size(); ++i) {
     auto block_id = prefetch_block_id_list[i];
     auto prefetch_var_name = block_id_to_prefetch_var_name[block_id];
@@ -441,8 +441,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   // parse attr of kSparseGradToParam  sparse_grad_name -> param_name
   std::unordered_map<std::string, std::string> sparse_grad_name_to_param_name;
+
   auto sparse_grad_name_to_param_name_str =
       Attr<std::vector<std::string>>(kSparseGradToParam);
+
   for (const auto &sparse_grad_name_and_param_name :
        sparse_grad_name_to_param_name_str) {
     std::vector<std::string> pieces;
@@ -470,16 +472,17 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
+  distributed::BarrierMonitor::Init(fan_in);
+
   if (distributed_mode == distributed::DistributedMode::kSync) {
     // start the server listening after all member initialized.
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
     rpc_service_->WaitServerReady();
-
-    CacheVarsType(inputs, recv_scope);
-
     // Write to a file of server selected port for python use.
     SavePort();
+
+    CacheVarsType(inputs, recv_scope);
 
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);
@@ -567,9 +570,8 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 void SignalHandler::StopAndExit(int signal_num) {
   // Do not use VLOG here for the device for printing maybe already released.
   // exit will release interal allocated resoureces.
-  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
-  remove(file_path.c_str());
-  exit(0);
+  distributed::BarrierMonitor::GetInstance()->Stop();
+  gSignalStatus = signal_num;
 }
 
 }  // namespace operators
