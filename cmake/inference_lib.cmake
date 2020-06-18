@@ -286,11 +286,6 @@ copy(inference_lib_dist
         SRCS ${BOOST_INCLUDE_DIR}/boost
         DSTS ${dst_dir})
 
-    #set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/cryptopp")
-    #copy(inference_lib_dist
-    #    SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
-    #    DSTS ${dst_dir} ${dst_dir}/lib)
-
 set(dst_dir "${FLUID_INSTALL_DIR}/third_party/dlpack")
 copy(inference_lib_dist
         SRCS ${DLPACK_INCLUDE_DIR}/dlpack
