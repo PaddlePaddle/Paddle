@@ -471,29 +471,20 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
         framework::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
     auto combined_bias_dims = framework::make_ddim({3, bq_tensor->dims()[0]});
 
-    // create a new var in scope
-    VarDesc combined_w_desc(
-        patterns::PDNodeName(name_scope, "multi_head_combined_weight"));
-    combined_w_desc.SetShape({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
-    combined_w_desc.SetDataType(wq_tensor->type());
-    combined_w_desc.SetLoDLevel(mul0_w->Var()->GetLoDLevel());
-    combined_w_desc.SetPersistable(true);
+    // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
+    auto* combined_w_desc = mul0_w->Var();
+    combined_w_desc->SetShape({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
+    combined_w_desc->SetPersistable(true);
 
-    // create a new var in scope
-    VarDesc combined_bias_desc(
-        patterns::PDNodeName(name_scope, "multi_head_combined_bias"));
-    combined_bias_desc.SetShape({3, bq_tensor->dims()[0]});
-    combined_bias_desc.SetDataType(bq_tensor->type());
-    combined_bias_desc.SetLoDLevel(eltadd0_b->Var()->GetLoDLevel());
-    combined_bias_desc.SetPersistable(true);
+    auto* combined_bias_desc = eltadd0_b->Var();
+    combined_bias_desc->SetShape({3, bq_tensor->dims()[0]});
+    combined_bias_desc->SetPersistable(true);
 
-    auto* combined_w_node = graph->CreateVarNode(&combined_w_desc);
-    auto* combined_w_tensor =
-        scope->Var(combined_w_node->Name())->GetMutable<LoDTensor>();
+    framework::LoDTensor tmp_combined_w_tensor;
+    tmp_combined_w_tensor.Resize(combined_w_dims);
+    auto* tmp_combined_w_data =
+        tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
 
-    combined_w_tensor->Resize(combined_w_dims);
-    auto* combined_w_data =
-        combined_w_tensor->mutable_data<float>(platform::CPUPlace());
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
     int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
     // Combine the three fc weights together.
@@ -502,25 +493,38 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
         for (int k = 0; k < dims_w; k++) {
           int out_index = i * (3 * dims_w) + j * dims_w + k;
           int in_index = i * dims_w + k;
-          combined_w_data[out_index] = w_vec[j][in_index];
+          tmp_combined_w_data[out_index] = w_vec[j][in_index];
         }
       }
     }
-    scope->EraseVars({mul0_w->Name(), mul1_w->Name(), mul2_w->Name()});
-    auto* combined_bias_node = graph->CreateVarNode(&combined_bias_desc);
-    auto* combined_bias_tensor =
-        scope->Var(combined_bias_node->Name())->GetMutable<LoDTensor>();
 
-    combined_bias_tensor->Resize(combined_bias_dims);
-    auto* combined_bias_data =
-        combined_bias_tensor->mutable_data<float>(platform::CPUPlace());
+    wq_tensor->Resize(combined_w_dims);
+    auto* new_combined_w_data =
+        wq_tensor->mutable_data<float>(platform::CPUPlace());
+    memcpy(new_combined_w_data, tmp_combined_w_data,
+           sizeof(float) * wq_tensor->numel());
+
+    scope->EraseVars({mul1_w->Name(), mul2_w->Name()});
+
+    framework::LoDTensor tmp_combined_bias_tensor;
+    tmp_combined_bias_tensor.Resize(combined_bias_dims);
+    auto* tmp_combined_bias_data =
+        tmp_combined_bias_tensor.mutable_data<float>(platform::CPUPlace());
+
     size_t bias_size = bq_tensor->numel();
-    memcpy(combined_bias_data, bq_data, sizeof(float) * bias_size);
-    memcpy(combined_bias_data + bias_size, bk_data, sizeof(float) * bias_size);
-    memcpy(combined_bias_data + 2 * bias_size, bv_data,
+    memcpy(tmp_combined_bias_data, bq_data, sizeof(float) * bias_size);
+    memcpy(tmp_combined_bias_data + bias_size, bk_data,
+           sizeof(float) * bias_size);
+    memcpy(tmp_combined_bias_data + 2 * bias_size, bv_data,
            sizeof(float) * bias_size);
 
-    scope->EraseVars({eltadd0_b->Name(), eltadd1_b->Name(), eltadd2_b->Name()});
+    bq_tensor->Resize(combined_bias_dims);
+    auto* new_combined_bias_data =
+        bq_tensor->mutable_data<float>(platform::CPUPlace());
+    memcpy(new_combined_bias_data, tmp_combined_bias_data,
+           sizeof(float) * bq_tensor->numel());
+
+    scope->EraseVars({eltadd1_b->Name(), eltadd2_b->Name()});
 
     auto reshape_desc = reshape2->Op();
     int head_number =
@@ -530,8 +534,8 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     multihead_op_desc.SetType("multihead_matmul");
 
     multihead_op_desc.SetInput("Input", {layer_norm_out->Name()});
-    multihead_op_desc.SetInput("W", {combined_w_node->Name()});
-    multihead_op_desc.SetInput("Bias", {combined_bias_node->Name()});
+    multihead_op_desc.SetInput("W", {mul0_w->Name()});
+    multihead_op_desc.SetInput("Bias", {eltadd0_b->Name()});
     multihead_op_desc.SetInput("BiasQK", {eltadd_qk_b->Name()});
 
     multihead_op_desc.SetOutput("Out", {reshape2_qkv_out->Name()});
@@ -541,8 +545,8 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
     IR_NODE_LINK_TO(layer_norm_out, multihead);
-    IR_NODE_LINK_TO(combined_w_node, multihead);
-    IR_NODE_LINK_TO(combined_bias_node, multihead);
+    IR_NODE_LINK_TO(mul0_w, multihead);
+    IR_NODE_LINK_TO(eltadd0_b, multihead);
     IR_NODE_LINK_TO(eltadd_qk_b, multihead);
 
     IR_NODE_LINK_TO(multihead, reshape2_qkv_out);
@@ -631,7 +635,6 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     std::unordered_set<const Node*> marked_nodes({eltadd0,
                                                   eltadd1,
                                                   eltadd2,
-                                                  eltadd0_b,
                                                   eltadd1_b,
                                                   eltadd2_b,
                                                   eltadd0_out,
@@ -665,7 +668,6 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
                                                   mul0_out,
                                                   mul1_out,
                                                   mul2_out,
-                                                  mul0_w,
                                                   mul1_w,
                                                   mul2_w,
                                                   reshape2_qkv,
