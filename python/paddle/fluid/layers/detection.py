@@ -230,9 +230,9 @@ def retinanet_target_assign(bbox_pred,
           gt_boxes = fluid.data(name='gt_boxes', shape=[10, 4],
                             dtype='float32')
           gt_labels = fluid.data(name='gt_labels', shape=[10, 1],
-                            dtype='float32')
+                            dtype='int32')
           is_crowd = fluid.data(name='is_crowd', shape=[1],
-                            dtype='float32')
+                            dtype='int32')
           im_info = fluid.data(name='im_info', shape=[1, 3],
                             dtype='float32')
           score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
