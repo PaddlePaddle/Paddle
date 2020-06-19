@@ -41,8 +41,9 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   // make sure the split fits
   PADDLE_ENFORCE_GE(desc->total_size, size,
                     platform::errors::InvalidArgument(
-                        "The size of memory block to split is "
-                        "not larger than size of request memory"));
+                        "The size of memory block (%d) to split is "
+                        "not larger than size of request memory (%d)",
+                        desc->total_size, size));
 
   // bail out if there is no room for another partition
   if (desc->total_size - size <= sizeof(MemoryBlock::Desc)) {

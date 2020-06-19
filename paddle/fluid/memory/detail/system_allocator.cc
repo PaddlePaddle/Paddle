@@ -60,11 +60,10 @@ void* AlignedMalloc(size_t size) {
   PADDLE_ENFORCE_EQ(
       error, 0,
       platform::errors::ResourceExhausted(
-          "Alloc memory of %ld size failed, error code is!", size, error));
+          "Fail to alloc memory of %ld size, error code is %d.", size, error));
 #endif
-  PADDLE_ENFORCE_NOT_NULL(
-      p, platform::errors::ResourceExhausted(
-             "Fail to allocate CPU memory: size = %d .", size));
+  PADDLE_ENFORCE_NOT_NULL(p, platform::errors::ResourceExhausted(
+                                 "Fail to alloc memory of %ld size.", size));
   return p;
 }
 
