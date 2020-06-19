@@ -454,7 +454,7 @@ class Args(object):
     image_shape = [3, 256, 256]
     max_images_num = step_per_epoch
     log_step = 1
-    train_step = 10
+    train_step = 3
 
 
 def optimizer_setting(parameters):
