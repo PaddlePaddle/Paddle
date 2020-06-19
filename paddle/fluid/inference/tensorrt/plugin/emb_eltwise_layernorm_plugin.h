@@ -30,18 +30,19 @@ namespace plugin {
 template <typename T>
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit EmbEltwiseLayernormPluginDynamic(
-      std::vector<int> emb_sizes, int bias_size, int scale_size,
-      int hidden_size, float eps, std::vector<float const*> input_embs = {},
-      float const* bias = nullptr, float const* scale = nullptr)
-      : emb_sizes_(emb_sizes),
+  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
+                                            float* bias, float* scale,
+                                            std::vector<int> emb_sizes,
+                                            int bias_size, int scale_size,
+                                            int hidden_size, float eps)
+      : embs_(input_embs),
+        bias_(bias),
+        scale_(scale),
+        emb_sizes_(emb_sizes),
         bias_size_(bias_size),
         scale_size_(scale_size),
         hidden_size_(hidden_size),
-        eps_(eps),
-        embs_(input_embs),
-        bias_(bias),
-        scale_(scale) {}
+        eps_(eps) {}
 
   EmbEltwiseLayernormPluginDynamic(void const* serialData,
                                    size_t serialLength) {
@@ -78,6 +79,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &hidden_size_);
     DeserializeValue(&serialData, &serialLength, &eps_);
   }
+
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
@@ -154,6 +156,8 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 
  private:
+  std::vector<float*> embs_;
+  float* bias_;
   float* scale_;
 
   // data on devices
@@ -163,17 +167,9 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
 
   std::vector<int> emb_sizes_;
   int bias_size_;
+  int scale_size_;
   int hidden_size_;
   float eps_;
-
-  std::vector<float const*> embs_;
-  float const* bias_;
-  float const* scale_;
-
-  // data on devices
-  float* bias_gpu_;
-  float* scale_gpu_;
-  std::vector<float*> embs_gpu_;
 };
 
 class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
@@ -213,6 +209,7 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::PluginFieldCollection mFieldCollection;
   std::vector<nvinfer1::PluginField> mPluginAttributes;
 };
+
 REGISTER_TENSORRT_PLUGIN(EmbEltwiseLayernormPluginV2Creator);
 
 #endif
