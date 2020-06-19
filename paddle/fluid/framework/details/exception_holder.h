@@ -18,6 +18,7 @@
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -32,6 +33,8 @@ class ExceptionHolder {
     } catch (platform::EOFException& exp) {
       Catch(exp);
     } catch (platform::EnforceNotMet& exp) {
+      Catch(exp);
+    } catch (memory::allocation::BadAlloc& exp) {
       Catch(exp);
     } catch (std::exception& ex) {
       PADDLE_THROW(platform::errors::Fatal(
@@ -59,6 +62,11 @@ class ExceptionHolder {
         auto e = *static_cast<platform::EOFException*>(exception_.get());
         throw e;
       }
+      case kBadAlloc: {
+        auto e = *static_cast<paddle::memory::allocation::BadAlloc*>(
+            exception_.get());
+        throw e;
+      }
     }
     ClearImpl();
   }
@@ -79,6 +87,9 @@ class ExceptionHolder {
       case kEOF: {
         return "EOF";
       }
+      case kBadAlloc: {
+        return "BadAlloc";
+      }
     }
     return "unknown";
   }
@@ -95,6 +106,12 @@ class ExceptionHolder {
     type_ = kEnforceNotMet;
   }
 
+  void Catch(const memory::allocation::BadAlloc& exp) {
+    std::lock_guard<std::mutex> lock(mu_);
+    exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
+    type_ = kBadAlloc;
+  }
+
   void Catch(const platform::EOFException& exp) {
     std::lock_guard<std::mutex> lock(mu_);
     // EOFException will not cover up existing EnforceNotMet.
@@ -104,7 +121,7 @@ class ExceptionHolder {
     }
   }
 
-  enum ExceptionType { kNone, kEnforceNotMet, kEOF };
+  enum ExceptionType { kNone, kEnforceNotMet, kEOF, kBadAlloc };
   ExceptionType type_{kNone};
 
   std::unique_ptr<std::exception> exception_;
