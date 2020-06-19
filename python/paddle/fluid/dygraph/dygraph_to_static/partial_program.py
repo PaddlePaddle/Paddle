@@ -136,6 +136,16 @@ class PartialProgramLayer(layers.Layer):
         if targets and self._params:
             backward.gradients(targets=targets, inputs=[])
 
+        needed_params = []
+        for param in self._params:
+            for block in program.blocks:
+                if param.name in block.vars:
+                    needed_params.append(param)
+                    break
+            # print("param: {} is unused.".format(param.name))
+
+        self._params = needed_params
+
         return program
 
     def train(self):

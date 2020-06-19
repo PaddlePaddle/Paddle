@@ -28,12 +28,13 @@ from __future__ import division
 from __future__ import print_function
 import time
 import random
+import unittest
 import numpy as np
 from PIL import Image, ImageOps
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable, declarative
+from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
 from paddle.fluid.dygraph.nn import Conv2D, Conv2DTranspose, BatchNorm
 
 use_cudnn = False
@@ -42,6 +43,8 @@ lambda_A = 10.0
 lambda_B = 10.0
 lambda_identity = 0.5
 SEED = 2020
+
+program_translator = ProgramTranslator()
 
 
 class Cycle_Gan(fluid.dygraph.Layer):
@@ -58,57 +61,65 @@ class Cycle_Gan(fluid.dygraph.Layer):
             self.build_gen_discriminator_b = build_gen_discriminator(
                 input_channel)
 
-    # @declarative
+    @declarative
     def forward(self, input_A, input_B, is_G, is_DA, is_DB):
+        """
+        Generator of GAN model.
+        """
+        # if is_G:
+        fake_B = self.build_generator_resnet_9blocks_a(input_A)
+        fake_A = self.build_generator_resnet_9blocks_b(input_B)
+        cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
+        cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
 
-        if is_G:
-            fake_B = self.build_generator_resnet_9blocks_a(input_A)
-            fake_A = self.build_generator_resnet_9blocks_b(input_B)
-            cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
-            cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
+        diff_A = fluid.layers.abs(
+            fluid.layers.elementwise_sub(
+                x=input_A, y=cyc_A))
+        diff_B = fluid.layers.abs(
+            fluid.layers.elementwise_sub(
+                x=input_B, y=cyc_B))
+        cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
+        cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
+        cyc_loss = cyc_A_loss + cyc_B_loss
 
-            diff_A = fluid.layers.abs(
-                fluid.layers.elementwise_sub(
-                    x=input_A, y=cyc_A))
-            diff_B = fluid.layers.abs(
-                fluid.layers.elementwise_sub(
-                    x=input_B, y=cyc_B))
-            cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
-            cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
-            cyc_loss = cyc_A_loss + cyc_B_loss
+        fake_rec_A = self.build_gen_discriminator_a(fake_B)
+        g_A_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_A - 1))
 
-            fake_rec_A = self.build_gen_discriminator_a(fake_B)
-            g_A_loss = fluid.layers.reduce_mean(
-                fluid.layers.square(fake_rec_A - 1))
+        fake_rec_B = self.build_gen_discriminator_b(fake_A)
+        g_B_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_B - 1))
+        G = g_A_loss + g_B_loss
+        idt_A = self.build_generator_resnet_9blocks_a(input_B)
+        idt_loss_A = fluid.layers.reduce_mean(
+            fluid.layers.abs(fluid.layers.elementwise_sub(
+                x=input_B, y=idt_A))) * lambda_B * lambda_identity
 
-            fake_rec_B = self.build_gen_discriminator_b(fake_A)
-            g_B_loss = fluid.layers.reduce_mean(
-                fluid.layers.square(fake_rec_B - 1))
-            Ggit = g_A_loss + g_B_loss
-            idt_A = self.build_generator_resnet_9blocks_a(input_B)
-            idt_loss_A = fluid.layers.reduce_mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(
-                        x=input_B, y=idt_A))) * lambda_B * lambda_identity
+        idt_B = self.build_generator_resnet_9blocks_b(input_A)
+        idt_loss_B = fluid.layers.reduce_mean(
+            fluid.layers.abs(fluid.layers.elementwise_sub(
+                x=input_A, y=idt_B))) * lambda_A * lambda_identity
+        idt_loss = fluid.layers.elementwise_add(idt_loss_A, idt_loss_B)
+        g_loss = cyc_loss + G + idt_loss
+        return fake_A, fake_B, cyc_A, cyc_B, g_A_loss, g_B_loss, idt_loss_A, idt_loss_B, cyc_A_loss, cyc_B_loss, g_loss
 
-            idt_B = self.build_generator_resnet_9blocks_b(input_A)
-            idt_loss_B = fluid.layers.reduce_mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(
-                        x=input_A, y=idt_B))) * lambda_A * lambda_identity
-            idt_loss = fluid.layers.elementwise_add(idt_loss_A, idt_loss_B)
-            g_loss = cyc_loss + G + idt_loss
-            return fake_A, fake_B, cyc_A, cyc_B, g_A_loss, g_B_loss, idt_loss_A, idt_loss_B, cyc_A_loss, cyc_B_loss, g_loss
+    @declarative
+    def disriminatorA(self, input_A, input_B):
+        """
+        Discriminator A of GAN model.
+        """
+        # if is_DA:
+        rec_B = self.build_gen_discriminator_a(input_A)
+        fake_pool_rec_B = self.build_gen_discriminator_a(input_B)
 
-        if is_DA:
-            rec_B = self.build_gen_discriminator_a(input_A)
-            fake_pool_rec_B = self.build_gen_discriminator_a(input_B)
+        return rec_B, fake_pool_rec_B
 
-            return rec_B, fake_pool_rec_B
-
-        if is_DB:
-            rec_A = self.build_gen_discriminator_b(input_A)
-            fake_pool_rec_A = self.build_gen_discriminator_b(input_B)
+    @declarative
+    def discriminatorB(self, input_A, input_B):
+        """
+        Discriminator B of GAN model.
+        """
+        # if is_DB:
+        rec_A = self.build_gen_discriminator_b(input_A)
+        fake_pool_rec_A = self.build_gen_discriminator_b(input_B)
 
         return rec_A, fake_pool_rec_A
 
@@ -138,8 +149,6 @@ class build_resnet_block(fluid.dygraph.Layer):
         out_res = fluid.layers.pad2d(inputs, [1, 1, 1, 1], mode="reflect")
         out_res = self.conv0(out_res)
 
-        # if self.use_dropout:
-        #    out_res = fluid.layers.dropout(out_res,dropout_prod=0.5)
         out_res = fluid.layers.pad2d(out_res, [1, 1, 1, 1], mode="reflect")
         out_res = self.conv1(out_res)
         return out_res + inputs
@@ -379,10 +388,7 @@ class DeConv2D(fluid.dygraph.Layer):
         self.relu = relu
 
     def forward(self, inputs):
-        # if self.use_bias==False:
         conv = self._deconv(inputs)
-        # else:
-        #    conv = self._deconv(inputs)
         conv = fluid.layers.pad2d(
             conv, paddings=self.outpadding, mode='constant', pad_value=0.0)
 
@@ -448,6 +454,7 @@ class Args(object):
     image_shape = [3, 256, 256]
     max_images_num = step_per_epoch
     log_step = 1
+    train_step = 10
 
 
 def optimizer_setting(parameters):
@@ -464,8 +471,13 @@ def optimizer_setting(parameters):
     return optimizer
 
 
-def train(args):
-    with fluid.dygraph.guard():
+def train(args, to_static):
+    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+        else fluid.CPUPlace()
+
+    program_translator.enable(to_static)
+
+    with fluid.dygraph.guard(place):
         max_images_num = args.max_images_num
         data_shape = [-1] + args.image_shape
 
@@ -480,7 +492,6 @@ def train(args):
         B_reader = paddle.batch(reader_creater(), args.batch_size)()
         cycle_gan = Cycle_Gan(input_channel=data_shape[1], istrain=True)
 
-        losses = [[], []]
         t_time = 0
         vars_G = cycle_gan.build_generator_resnet_9blocks_a.parameters(
         ) + cycle_gan.build_generator_resnet_9blocks_b.parameters()
@@ -491,6 +502,7 @@ def train(args):
         optimizer2 = optimizer_setting(vars_da)
         optimizer3 = optimizer_setting(vars_db)
 
+        loss_data = []
         for epoch in range(args.epoch):
             for batch_id in range(max_images_num):
 
@@ -509,7 +521,6 @@ def train(args):
                 fake_A, fake_B, cyc_A, cyc_B, g_A_loss, g_B_loss, idt_loss_A, idt_loss_B, cyc_A_loss, cyc_B_loss, g_loss = cycle_gan(
                     data_A, data_B, True, False, False)
 
-                g_loss_out = g_loss.numpy()
                 g_loss.backward()
                 optimizer1.minimize(g_loss)
                 cycle_gan.clear_gradients()
@@ -525,8 +536,8 @@ def train(args):
                 fake_pool_A = to_variable(fake_pool_A)
 
                 # optimize the d_A network
-                rec_B, fake_pool_rec_B = cycle_gan(data_B, fake_pool_B, False,
-                                                   True, False)
+                rec_B, fake_pool_rec_B = cycle_gan.disriminatorA(data_B,
+                                                                 fake_pool_B)
                 d_loss_A = (fluid.layers.square(fake_pool_rec_B) +
                             fluid.layers.square(rec_B - 1)) / 2.0
                 d_loss_A = fluid.layers.reduce_mean(d_loss_A)
@@ -536,8 +547,8 @@ def train(args):
                 cycle_gan.clear_gradients()
 
                 # optimize the d_B network
-                rec_A, fake_pool_rec_A = cycle_gan(data_A, fake_pool_A, False,
-                                                   False, True)
+                rec_A, fake_pool_rec_A = cycle_gan.discriminatorB(data_A,
+                                                                  fake_pool_A)
                 d_loss_B = (fluid.layers.square(fake_pool_rec_A) +
                             fluid.layers.square(rec_A - 1)) / 2.0
                 d_loss_B = fluid.layers.reduce_mean(d_loss_B)
@@ -547,26 +558,42 @@ def train(args):
 
                 cycle_gan.clear_gradients()
 
+                # Log generator loss and discriminator loss
+                cur_batch_loss = [
+                    g_loss, d_loss_A, d_loss_B, g_A_loss, cyc_A_loss,
+                    idt_loss_A, g_B_loss, cyc_B_loss, idt_loss_B
+                ]
+                cur_batch_loss = [x.numpy()[0] for x in cur_batch_loss]
+                loss_data.append(cur_batch_loss)
+
                 batch_time = time.time() - s_time
                 t_time += batch_time
                 if batch_id % args.log_step == 0:
                     print(
                         "batch: {}\t Batch_time_cost: {}\n g_loss: {}\t d_A_loss: {}\t d_B_loss:{}\n g_A_loss: {}\t g_A_cyc_loss: {}\t g_A_idt_loss: {}\n g_B_loss: {}\t g_B_cyc_loss: {}\t g_B_idt_loss: {}".
-                        format(batch_id, batch_time, g_loss_out[0],
-                               d_loss_A.numpy()[0],
-                               d_loss_B.numpy()[0],
-                               g_A_loss.numpy()[0],
-                               cyc_A_loss.numpy()[0],
-                               idt_loss_A.numpy()[0],
-                               g_B_loss.numpy()[0],
-                               cyc_B_loss.numpy()[0], idt_loss_B.numpy()[0]))
+                        format(batch_id, batch_time, *cur_batch_loss))
 
-                losses[0].append(g_A_loss[0])
-                losses[1].append(d_loss_A[0])
-                if batch_id > 3:
+                if batch_id > args.train_step:
                     break
+
+        return np.array(loss_data)
+
+
+class TestCycleGANModel(unittest.TestCase):
+    def setUp(self):
+        self.args = Args()
+
+    def train(self, to_static):
+        out = train(self.args, to_static)
+        return out
+
+    def test_train(self):
+        st_out = self.train(to_static=True)
+        dy_out = self.train(to_static=False)
+        self.assertTrue(
+            np.allclose(dy_out, st_out),
+            msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out))
 
 
 if __name__ == "__main__":
-    args = Args()
-    train(args)
+    unittest.main()
