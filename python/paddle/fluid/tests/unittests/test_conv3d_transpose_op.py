@@ -111,6 +111,8 @@ class TestConv3dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
         self.use_cudnn = False
+        self.check_no_input = False
+        self.check_no_filter = False
         self.data_format = 'NCHW'
         self.pad = [0, 0, 0]
         self.padding_algorithm = "EXPLICIT"
@@ -155,11 +157,17 @@ class TestConv3dTransposeOp(OpTest):
             self.check_grad(
                 set(['Input', 'Filter']), 'Output', max_relative_error=0.03)
 
-    def test_check_grno_filter(self):
+    def test_check_grad_no_filter(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
+        elif self.check_no_filter:
+            self.check_grad(
+                ['Input'],
                 'Output',
                 max_relative_error=0.03,
                 no_grad_set=set(['Filter']))
@@ -169,6 +177,12 @@ class TestConv3dTransposeOp(OpTest):
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place, ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
+        elif self.check_no_input:
+            self.check_grad(
+                ['Filter'],
                 'Output',
                 max_relative_error=0.03,
                 no_grad_set=set(['Input']))
@@ -188,6 +202,7 @@ class TestConv3dTransposeOp(OpTest):
 
 class TestWithSymmetricPad(TestConv3dTransposeOp):
     def init_test_case(self):
+        self.check_no_input = True
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
@@ -232,6 +247,7 @@ class TestWithVALIDPad(TestConv3dTransposeOp):
 
 class TestWithStride(TestConv3dTransposeOp):
     def init_test_case(self):
+        self.check_no_filter = True
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
         self.dilations = [1, 1, 1]
