@@ -49,7 +49,14 @@ class DotKernel : public framework::OpKernel<T> {
       auto y = EigenMatrix<T>::From(*tensor_y);
 
       auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-      out.device(dev) = (x * y).sum(Eigen::DSizes<int, 1>(1));
+// The IndexList requires a c++11 compliant compiler. If the compiler
+// is older we need to use arrays of indices instead.
+#ifndef EIGEN_HAS_INDEX_LIST
+      Eigen::DSizes<int, 2> axis(1);
+#else
+      Eigen::IndexList<Eigen::type2index<1>> axis;
+#endif
+      out.device(dev) = (x * y).sum(axis);
     }
 #else
     const auto* data_x = tensor_x->data<T>();
