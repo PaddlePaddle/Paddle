@@ -820,3 +820,19 @@ function(brpc_library TARGET_NAME)
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
+
+# copy_if_different from src_file to dst_file before barrier_target.
+function(copy_if_different src_file dst_file barrier_target)
+  # this is a dummy target, should always be run to update ${pybind_file_final}
+  add_custom_target(before_${barrier_target} ALL
+      DEPENDS before_${barrier_target}_custom_command
+  )
+  add_dependencies(${barrier_target} before_${barrier_target})
+
+  add_custom_command(
+      OUTPUT before_${barrier_target}_custom_command
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${src_file} ${dst_file}
+      COMMENT "copy_if_different ${dst_file}"
+      VERBATIM
+  )
+endfunction()

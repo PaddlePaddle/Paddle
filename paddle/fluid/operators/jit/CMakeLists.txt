@@ -12,18 +12,7 @@ file(GLOB jit_kernel_cc_srcs RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*.cc")
 list(REMOVE_ITEM jit_kernel_cc_srcs test.cc benchmark.cc)
 cc_library(jit_kernel_base SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
 
-# this is a dummy target, should always be run to update ${jit_file_final}
-add_custom_target(update_jit_kernels ALL
-    DEPENDS update_jit_kernels_always_rebuild
-)
-add_dependencies(jit_kernel_base update_jit_kernels)
-
-add_custom_command(
-    OUTPUT update_jit_kernels_always_rebuild
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${jit_file} ${jit_file_final}
-    COMMENT "copy_if_different ${jit_file_final}"
-    VERBATIM
-)
+copy_if_different(${jit_file} ${jit_file_final} jit_kernel_base)
 
 # refer must go first
 add_subdirectory(refer)
