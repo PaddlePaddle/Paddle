@@ -23,7 +23,39 @@ from op_test import OpTest
 from test_conv3d_transpose_op import conv3dtranspose_forward_naive, TestConv3dTransposeOp
 
 
-class TestWithSymmetricPad_NHWC(TestConv3dTransposeOp):
+class TestConv3dTransposeOpPart2(TestConv3dTransposeOp):
+    def test_check_grad_no_filter(self):
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']))
+
+    def test_check_grad_no_input(self):
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']))
+
+
+class TestWithSymmetricPad_NHWC(TestConv3dTransposeOpPart2):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -35,7 +67,7 @@ class TestWithSymmetricPad_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithAsymmetricPad_NHWC(TestConv3dTransposeOp):
+class TestWithAsymmetricPad_NHWC(TestConv3dTransposeOpPart2):
     def init_test_case(self):
         self.pad = [1, 0, 1, 0, 1, 2]
         self.stride = [1, 1, 1]
@@ -47,7 +79,7 @@ class TestWithAsymmetricPad_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithGroups_NHWC(TestConv3dTransposeOp):
+class TestWithGroups_NHWC(TestConv3dTransposeOpPart2):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
@@ -59,7 +91,7 @@ class TestWithGroups_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithStride_NHWC(TestConv3dTransposeOp):
+class TestWithStride_NHWC(TestConv3dTransposeOpPart2):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [2, 2, 2]
@@ -71,7 +103,7 @@ class TestWithStride_NHWC(TestConv3dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestWithDilation_NHWC(TestConv3dTransposeOp):
+class TestWithDilation_NHWC(TestConv3dTransposeOpPart2):
     def init_test_case(self):
         self.pad = [1, 1, 1]
         self.stride = [1, 1, 1]
