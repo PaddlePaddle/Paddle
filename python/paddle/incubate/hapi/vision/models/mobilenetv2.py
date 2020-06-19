@@ -17,6 +17,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph import declarative
 
 from ...model import Model
 from ...download import get_weights_path_from_url
@@ -229,6 +230,7 @@ class MobileNetV2(Model):
                 param_attr=tmp_param,
                 bias_attr=ParamAttr(name="fc10_offset"))
 
+    @declarative
     def forward(self, inputs):
         y = self._conv1(inputs, if_act=True)
         for inv in self._invl:

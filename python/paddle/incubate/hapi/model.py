@@ -500,14 +500,14 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(* [to_variable(x) for x in inputs])
+            outputs = self.model.forward(*[to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -516,9 +516,9 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -530,7 +530,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.forward(* [to_variable(x) for x in inputs])
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -560,9 +560,9 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(*(to_list(outputs) + to_list(
-                labels)))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(*(
+                to_list(outputs) + to_list(labels)))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -1130,6 +1130,8 @@ class Model(fluid.dygraph.Layer):
             train_data=None,
             eval_data=None,
             batch_size=1,
+            train_batchs=-1,
+            test_batchs=-1,
             epochs=1,
             eval_freq=1,
             log_freq=10,
@@ -1316,7 +1318,8 @@ class Model(fluid.dygraph.Layer):
         for epoch in range(epochs):
 
             cbks.on_epoch_begin(epoch)
-            logs = self._run_one_epoch(train_loader, cbks, 'train')
+            logs = self._run_one_epoch(train_loader, cbks, 'train',
+                                       train_batchs)
             cbks.on_epoch_end(epoch, logs)
 
             if do_eval and epoch % eval_freq == 0:
@@ -1327,7 +1330,8 @@ class Model(fluid.dygraph.Layer):
                     'metrics': self._metrics_name()
                 })
 
-                eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval')
+                eval_logs = self._run_one_epoch(eval_loader, cbks, 'eval',
+                                                test_batchs)
 
                 cbks.on_end('eval', eval_logs)
 
@@ -1595,7 +1599,7 @@ class Model(fluid.dygraph.Layer):
             params_filename=params_filename,
             program_only=model_only)
 
-    def _run_one_epoch(self, data_loader, callbacks, mode, logs={}):
+    def _run_one_epoch(self, data_loader, callbacks, mode, batchs, logs={}):
         outputs = []
         for step, data in enumerate(data_loader):
             # data might come from different types of data_loader and have
@@ -1612,6 +1616,10 @@ class Model(fluid.dygraph.Layer):
             data = flatten(data)
             # LoDTensor.shape is callable, where LoDTensor comes from
             # DataLoader in static graph
+
+            if batchs >= 0 and step >= batchs:
+                break
+
             batch_size = data[0].shape()[0] if callable(data[
                 0].shape) else data[0].shape[0]
 
