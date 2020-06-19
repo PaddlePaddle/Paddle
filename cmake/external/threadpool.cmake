@@ -41,12 +41,6 @@ ExternalProject_Add(
     TEST_COMMAND      ""
 )
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/threadpool_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy_threadpool = \"${dummyfile}\";")
-    add_library(simple_threadpool STATIC ${dummyfile})
-else()
-    add_library(simple_threadpool INTERFACE)
-endif()
+add_library(simple_threadpool INTERFACE)
 
 add_dependencies(simple_threadpool extern_threadpool)
