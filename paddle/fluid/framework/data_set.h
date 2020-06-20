@@ -357,7 +357,9 @@ class PadBoxSlotDataset : public DatasetImpl<SlotRecord> {
   // shuffle data
   virtual void ShuffleData(std::vector<std::thread>* shuffle_threads,
                            int thread_num = -1);
-  virtual void ReceiveSuffleData(int client_id, const char* msg, int len);
+
+ public:
+  virtual void ReceiveSuffleData(const int client_id, const char* msg, int len);
 
  private:
   void MergeInsKeys(const Channel<SlotRecord>& in);
@@ -371,6 +373,7 @@ class PadBoxSlotDataset : public DatasetImpl<SlotRecord> {
   std::vector<SlotPvInstance> input_pv_ins_;
   int shuffle_thread_num_ = 10;
   std::atomic<int> shuffle_counter_{0};
+  void* data_consumer_ = nullptr;
 };
 #endif
 

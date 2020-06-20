@@ -733,6 +733,10 @@ struct SlotValues {
   std::vector<T> slot_values;
   std::vector<uint32_t> slot_offsets;
 
+  ~SlotValues() {
+    slot_values.shrink_to_fit();
+    slot_offsets.shrink_to_fit();
+  }
   void add_values(const T* values, uint32_t num) {
     if (slot_offsets.empty()) {
       slot_offsets.push_back(0);
@@ -797,6 +801,10 @@ inline SlotRecord make_slotrecord() { return new SlotRecordObject(); }
 
 struct SlotPvInstanceObject {
   std::vector<SlotRecord> ads;
+  ~SlotPvInstanceObject() {
+    ads.clear();
+    ads.shrink_to_fit();
+  }
   void merge_instance(SlotRecord ins) { ads.push_back(ins); }
 };
 

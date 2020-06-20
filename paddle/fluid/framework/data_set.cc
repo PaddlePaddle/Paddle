@@ -1389,6 +1389,20 @@ void MultiSlotDataset::SlotsShuffle(
 }
 
 #ifdef PADDLE_WITH_BOX_PS
+class PadBoxSlotDataConsumer : public boxps::DataConsumer {
+ public:
+  explicit PadBoxSlotDataConsumer(PadBoxSlotDataset* dataset)
+      : _dataset(dataset) {
+    BoxWrapper::data_shuffle_->register_handler(this);
+  }
+  virtual ~PadBoxSlotDataConsumer() {}
+  virtual void on_receive(const int client_id, const char* buff, int len) {
+    _dataset->ReceiveSuffleData(client_id, buff, len);
+  }
+
+ private:
+  PadBoxSlotDataset* _dataset;
+};
 // paddlebox
 PadBoxSlotDataset::PadBoxSlotDataset() {
   mpi_size_ = boxps::MPICluster::Ins().size();
@@ -1398,15 +1412,17 @@ PadBoxSlotDataset::PadBoxSlotDataset() {
     finished_counter_ = mpi_size_;
     mpi_flags_.assign(mpi_size_, 1);
     VLOG(3) << "RegisterClientToClientMsgHandler";
-    BoxWrapper::data_shuffle_->register_handler(
-        [this](int client_id, const char* buf, int len) {
-          return this->ReceiveSuffleData(client_id, buf, len);
-        });
+    data_consumer_ = reinterpret_cast<void*>(new PadBoxSlotDataConsumer(this));
     VLOG(3) << "RegisterClientToClientMsgHandler done";
   }
   SlotRecordPool();
 }
-PadBoxSlotDataset::~PadBoxSlotDataset() {}
+PadBoxSlotDataset::~PadBoxSlotDataset() {
+  if (data_consumer_ != nullptr) {
+    delete reinterpret_cast<PadBoxSlotDataConsumer*>(data_consumer_);
+    data_consumer_ = nullptr;
+  }
+}
 // create input channel and output channel
 void PadBoxSlotDataset::CreateChannel() {
   if (input_channel_ == nullptr) {
@@ -1529,7 +1545,9 @@ void PadBoxSlotDataset::MergeInsKeys(const Channel<SlotRecord>& in) {
         for (auto& rec : datas) {
           for (auto& idx : used_fea_index) {
             uint64_t* feas = rec->slot_uint64_feasigns_.get_values(idx, &num);
-            agent->AddKeys(feas, num, tid);
+            if (num > 0) {
+              agent->AddKeys(feas, num, tid);
+            }
           }
           feed_obj->ExpandSlotRecord(&rec);
         }
@@ -1581,6 +1599,7 @@ void PadBoxSlotDataset::ReleaseMemory() {
       delete pv;
     }
     input_pv_ins_.clear();
+    input_pv_ins_.shrink_to_fit();
   }
   timeline.Pause();
   VLOG(1) << "DatasetImpl<T>::ReleaseMemory() end, cost time="
@@ -1602,7 +1621,6 @@ void PadBoxSlotDataset::ShuffleData(std::vector<std::thread>* shuffle_threads,
       std::vector<SlotRecord> loc_datas;
       std::vector<SlotRecord> releases;
       std::vector<paddle::framework::BinaryArchive> ars(mpi_size_);
-      std::vector<std::future<int32_t>> rets(mpi_size_);
 
       while (input_channel_->Read(data)) {
         for (auto& t : data) {
@@ -1631,41 +1649,26 @@ void PadBoxSlotDataset::ShuffleData(std::vector<std::thread>* shuffle_threads,
           if (i == mpi_rank_) {
             continue;
           }
-          if (ars[i].Length() == 0) {
+          auto& ar = ars[i];
+          if (ar.Length() == 0) {
             continue;
           }
-          rets[i] = BoxWrapper::data_shuffle_->send_message(i, ars[i].Buffer(),
-                                                            ars[i].Length());
+          BoxWrapper::data_shuffle_->send_message(i, ar.Buffer(), ar.Length());
+          ar.Clear();
         }
 
-        for (int i = 0; i < mpi_size_; ++i) {
-          if (i == mpi_rank_) {
-            continue;
-          }
-          rets[i].wait();
-          ars[i].Clear();
-        }
         data.clear();
         loc_datas.clear();
       }
-
+      VLOG(3) << "end shuffle thread id = " << tid;
       // only one thread send finish notify
       if (--shuffle_counter_ == 0) {
         // send closed
-        paddle::framework::BinaryArchive ar;
         for (int i = 0; i < mpi_size_; ++i) {
           if (i == mpi_rank_) {
             continue;
           }
-          rets[i] = BoxWrapper::data_shuffle_->send_message(i, ar.Buffer(),
-                                                            ar.Length());
-        }
-
-        for (int i = 0; i < mpi_size_; ++i) {
-          if (i == mpi_rank_) {
-            continue;
-          }
-          rets[i].wait();
+          BoxWrapper::data_shuffle_->send_message(i, NULL, 0);
         }
         // local closed channel
         if (--finished_counter_ == 0) {
@@ -1680,12 +1683,6 @@ void PadBoxSlotDataset::ReceiveSuffleData(int client_id, const char* buf,
   VLOG(3) << "ReceiveFromClient client_id=" << client_id
           << ", msg length=" << len;
   if (len == 0) {
-    return;
-  }
-
-  paddle::framework::BinaryArchive ar;
-  ar.SetReadBuffer(const_cast<char*>(buf), len, nullptr);
-  if (ar.Cursor() == ar.Finish()) {
     if (mpi_flags_[client_id]) {
       mpi_flags_[client_id] = 0;
       --finished_counter_;
@@ -1695,6 +1692,9 @@ void PadBoxSlotDataset::ReceiveSuffleData(int client_id, const char* buf,
     }
     return;
   }
+
+  paddle::framework::BinaryArchive ar;
+  ar.SetReadBuffer(const_cast<char*>(buf), len, nullptr);
 
   int offset = 0;
   const int max_fetch_num = 1000;

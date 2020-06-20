@@ -32,6 +32,10 @@ int BoxWrapper::expand_embed_dim_ = 0;
 
 void BasicAucCalculator::compute() {
   double* table[2] = {&_table[0][0], &_table[1][0]};
+  if (boxps::MPICluster::Ins().size() > 1) {
+    boxps::MPICluster::Ins().allreduce_sum(table[0], _table_size);
+    boxps::MPICluster::Ins().allreduce_sum(table[1], _table_size);
+  }
 
   double area = 0;
   double fp = 0;
@@ -51,10 +55,21 @@ void BasicAucCalculator::compute() {
     _auc = area / (fp * tp);
   }
 
-  _mae = _local_abserr / (fp + tp);
-  _rmse = sqrt(_local_sqrerr / (fp + tp));
+  if (boxps::MPICluster::Ins().size() > 1) {
+    // allreduce sum
+    double local_err[3] = {_local_abserr, _local_sqrerr, _local_pred};
+    boxps::MPICluster::Ins().allreduce_sum(local_err, 3);
+
+    _mae = local_err[0] / (fp + tp);
+    _rmse = sqrt(local_err[1] / (fp + tp));
+    _predicted_ctr = local_err[2] / (fp + tp);
+  } else {
+    _mae = _local_abserr / (fp + tp);
+    _rmse = sqrt(_local_sqrerr / (fp + tp));
+    _predicted_ctr = _local_pred / (fp + tp);
+  }
   _actual_ctr = tp / (fp + tp);
-  _predicted_ctr = _local_pred / (fp + tp);
+
   _size = fp + tp;
 }
 
