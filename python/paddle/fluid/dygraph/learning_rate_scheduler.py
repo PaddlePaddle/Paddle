@@ -699,7 +699,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             rate will reduce when ``loss`` stops ascending. Default: ``'min'`` .
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
-        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learing rate will be reduced. 
+        patience (int, optional): When ``loss`` doesn't improve for this number of epochs, learning rate will be reduced.
             Default: 10.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False``.
         threshold (float, optional): ``threshold`` and ``threshold_mode`` will determine the minimum change of ``loss`` . 

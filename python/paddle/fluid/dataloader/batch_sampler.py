@@ -45,7 +45,7 @@ class BatchSampler(object):
                 :attr:`dataset` either :attr:`dataset` or
                 :attr:`indices` should be set, give the whole
                 indices to sampler from directly. Default None.
-        shuffle(bool): whether to shuffle indices order before genrating
+        shuffle(bool): whether to shuffle indices order before generating
                 batch indices. Default False.
         batch_size(int): sample indice number in a mini-batch indices.
         drop_last(bool): whether drop the last incomplete batch dataset size

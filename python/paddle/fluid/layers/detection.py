@@ -356,7 +356,7 @@ def rpn_target_assign(bbox_pred,
         gt_boxes (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input. The data type can be float32 or float64.
-        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        is_crowd (Variable): A 1-D LoDTensor which indicates ground-truth is crowd.
                              The data type must be int32.
         im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
         3 is the height, width and scale.
@@ -560,7 +560,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                 output = fluid.layers.fc(
                     input=output,
                     size=num_classes,
-                    # Notice: size is set to be the number of target classes (excluding backgorund)
+                    # Notice: size is set to be the number of target classes (excluding background)
                     # because sigmoid activation will be done in the sigmoid_focal_loss op.
                     act=None)
                 if mode == 'train':
@@ -1019,7 +1019,7 @@ def yolov3_loss(x,
 
     Args:
         x (Variable): ${x_comment}The data type is float32 or float64. 
-        gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
+        gt_box (Variable): ground truth boxes, should be in shape of [N, B, 4],
                           in the third dimension, x, y, w, h should be stored. 
                           x,y is the center coordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by 
@@ -1820,7 +1820,7 @@ def prior_box(input,
         num_priors is the total box count of each position of input.
 
         variances(Variable): the expanded variances of PriorBox.
-    	4-D tensor, the layput is [H, W, num_priors, 4].
+    	4-D tensor, the layout is [H, W, num_priors, 4].
         H is the height of input, W is the width of input
         num_priors is the total box count of each position of input
 
@@ -2748,7 +2748,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
     RoI, which encodes K binary masks of resolution M x M, one for each of the
     K classes. This mask targets are used to compute loss of mask branch.
 
-    Please note, the data format of groud-truth segmentation, assumed the
+    Please note, the data format of ground-truth segmentation, assumed the
     segmentations are as follows. The first instance has two gt objects.
     The second instance has one gt object, this object has two gt segmentations.
 
@@ -3261,10 +3261,10 @@ def multiclass_nms(bboxes,
     In the NMS step, this operator greedily selects a subset of detection bounding
     boxes that have high scores larger than score_threshold, if providing this
     threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-    is larger than -1. Then this operator pruns away boxes that have high IOU
+    is larger than -1. Then this operator prunes away boxes that have high IOU
     (intersection over union) overlap with already selected boxes by adaptive
     threshold NMS based on parameters of nms_threshold and nms_eta.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     See below for an example:
@@ -3417,7 +3417,7 @@ def locality_aware_nms(bboxes,
     IOU overlap with already selected boxes by adaptive threshold NMS based on parameters
     of nms_threshold and nms_eta.
 
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     Args:

@@ -67,7 +67,7 @@ def data(name,
 
         The default :code:`stop_gradient` attribute of the Variable created by
         this API is true, which means the gradient won't be passed backward
-        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        through the data Variable. Set :code:`var.stop_gradient = False` If
         user would like to pass backward gradient.
 
     Args:
@@ -609,7 +609,7 @@ def py_reader(capacity,
          import paddle.dataset.mnist as mnist
 
          def network(image, label):
-             # user defined network, here a softmax regession example
+             # user defined network, here a softmax regression example
              predict = fluid.layers.fc(input=image, size=10, act='softmax')
              return fluid.layers.cross_entropy(input=predict, label=label)
 

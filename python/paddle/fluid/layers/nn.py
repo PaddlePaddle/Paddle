@@ -1439,7 +1439,7 @@ def conv2d(input,
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
         ValueError: If `data_format` is not "NCHW" or "NHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
@@ -1709,7 +1709,7 @@ def conv3d(input,
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
         ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If the channel dimension of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
             or the element corresponding to the input's channel is not 0.
@@ -6966,7 +6966,7 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
         input (Variable): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_D]`, where :math:`N_1` is
                           the batch_size, :math:`N_D` is 1. It is usually the output predictions of sigmoid activation.
                           The data type can be float32 or float64.
-        label (Variable): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`.
+        label (Variable): Tensor, the ground truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_D]`.
                           where :math:`N_1` is the batch_size, :math:`N_D` is 1. The data type can be float32 or float64.
         epsilon (float): The epsilon will be added to the numerator and denominator.
                          If both input and label are empty, it makes sure dice is 1.
@@ -6978,7 +6978,7 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     Returns:
         The dice loss with shape [1], data type is the same as `input` .
     Return Type:
-        Varaible
+        Variable
 
     Example:
         .. code-block:: python
@@ -7216,7 +7216,7 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the fomula in the 
+        align_mode(int)  :  An optional for linear/bilinear/trilinear interpolation. Refer to the formula in the
                             the example code above, it can be \'0\' for src_idx = scale*(dst_indx+0.5)-0.5 , 
                             can be \'1\' for src_idx = scale*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output
@@ -12176,7 +12176,7 @@ def logical_not(x, out=None, name=None):
             # Graph organizing
             x = fluid.layers.data(name='x', shape=[2], dtype='bool')
             res = fluid.layers.logical_not(x)
-            # The comment lists another avaliable method.
+            # The comment lists another available method.
             # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
             # fluid.layers.logical_not(x, out=res)
 
@@ -12487,7 +12487,7 @@ def space_to_depth(x, blocksize, name=None):
     - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
     - The Y, X coordinates within each block of the input become the high order component of the output channel index
     - channel should be divisible by square of blocksize
-    - height, width should be divsible by blocksize
+    - height, width should be divisible by blocksize
 
     This OP is useful for resizing the activations between convolutions \
         (but keeping all data)
@@ -12903,7 +12903,7 @@ def grid_sampler(x, grid, name=None):
 
     Returns:
         Variable: Output of shape [N, C, H, W] data samples input X
-                  using bilnear interpolation based on input grid.
+                  using bilinear interpolation based on input grid.
                   The data type is same as input tensor.
 
     Examples:
@@ -13145,7 +13145,7 @@ def get_tensor_from_selected_rows(x, name=None):
            x.height = 20
            x.value = [[1, 1] [2, 2] [2, 2] [3, 3] [6, 6]]
 
-        Ouput is LoDTensor:
+        Output is LoDTensor:
            out.shape = [5, 2]
            out.data = [[1, 1],
                        [2, 2],
@@ -13210,7 +13210,7 @@ def shuffle_channel(x, group, name=None):
                           [[0.7, 0.8],
                            [0.8, 0.9]]]]
             Given group: 2
-            then we get a 4-D tensor out whth the same shape of input:
+            then we get a 4-D tensor out with the same shape of input:
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
@@ -13418,7 +13418,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             numpy API arbitrarily. If not, some operations of numpy may not be compatible.
         x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``.
             It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or
-            Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
+            Tensor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
             or list[Variale].
         out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``,
             it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
@@ -14069,7 +14069,7 @@ def unique_with_counts(x, dtype='int32'):
 
     Args:
         x(Variable): A 1-D input tensor with input shape of :math:`[N]` , the input data type is float32, float64, int32, int64.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of count and index tensor, it could be int32, int64. Defalut value is int32.
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of count and index tensor, it could be int32, int64. Default value is int32.
 
     Returns:
         tuple, the variable type in tuple is Tensor, the output :attr:`out` data type is the same as input :attr:`x`, \
@@ -14376,7 +14376,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Parameters:
-        x(Varaible):              4-D Tensor, input tensor of format [N, C, H, W],
+        x(Variable):              4-D Tensor, input tensor of format [N, C, H, W],
                                   data type can be float32 or float64
         kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
@@ -14653,7 +14653,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         shard_size = (index_num + nshards - 1) // nshards
         y = x % shard_size if x // shard_size == shard_id else ignore_value
 
-    NOTE: If the length of indices cannot be evely divided by the shard number,
+    NOTE: If the length of indices cannot be evenly divided by the shard number,
     the size of the last shard will be less than the calculated `shard_size`
 
     Examples:

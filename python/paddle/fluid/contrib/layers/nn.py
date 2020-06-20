@@ -531,10 +531,10 @@ def multiclass_nms2(bboxes,
     In the NMS step, this operator greedily selects a subset of detection bounding
     boxes that have high scores larger than score_threshold, if providing this
     threshold, then selects the largest nms_top_k confidences scores if nms_top_k
-    is larger than -1. Then this operator pruns away boxes that have high IOU
+    is larger than -1. Then this operator prunes away boxes that have high IOU
     (intersection over union) overlap with already selected boxes by adaptive
     threshold NMS based on parameters of nms_threshold and nms_eta.
-    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    After NMS step, at most keep_top_k number of total bboxes are to be kept
     per image if keep_top_k is larger than -1.
 
     Args:
@@ -1067,7 +1067,7 @@ def tdm_sampler(x,
         tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
             has shape (node_num, 1), dtype support int32/int64.
-        output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
+        output_positive (bool): Whether to output positive samples (include label and mask )at the same time.
         output_list (bool): Whether to divide the output into layers and organize it into list format.
         seed (int): The number of random seed.
         tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
@@ -1075,7 +1075,7 @@ def tdm_sampler(x,
 
     Returns:
         tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
-            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
+            result  will include both positive and negative samples. If sampling result is a positive sample, the label is 1,
             and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
             sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
             If output_list = True, the result will organize into list format specified by layer information.

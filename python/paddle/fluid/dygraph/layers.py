@@ -156,7 +156,7 @@ class Layer(core.Layer):
 
               # the forward_post_hook change the output of the layer: output = output * 2 
               def forward_post_hook(layer, input, output):
-                  # user can use layer, input and output for information statistis tasks
+                  # user can use layer, input and output for information statistic tasks
 
                   # change the output 
                   return output * 2
@@ -208,7 +208,7 @@ class Layer(core.Layer):
 
               # the forward_post_hook change the input of the layer: input = input * 2
               def forward_pre_hook(layer, input):
-                  # user can use layer and input for information statistis tasks
+                  # user can use layer and input for information statistic tasks
 
                   # change the input
                   input_return = (input[0] * 2)
@@ -602,7 +602,7 @@ class Layer(core.Layer):
             destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters
 
         Examples:

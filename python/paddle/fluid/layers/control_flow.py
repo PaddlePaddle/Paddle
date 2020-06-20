@@ -239,7 +239,7 @@ def Print(input,
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
-        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_type (bool, optional): Print the tensor type. Default: True.
         print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
         print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
         print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
@@ -1022,7 +1022,7 @@ class While(object):
             loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
             one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
             data = fluid.data(name='data', shape=[1], dtype='float32')
-            sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+            sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained outside of While, which name should be different from the variable inside the While to be obtained
 
             cond = fluid.layers.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
@@ -1133,7 +1133,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     Returns:
         A list or tuple of tensors or LoDTensorArrays which returned by ``body`` .
     
-    Returen type:
+    Return type:
         list(Variable)|tuple(Variable).
 
     Raises:
@@ -1233,7 +1233,7 @@ def lod_rank_table(x, level=0):
     LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
-    a length, both of which are int type. Refering to specified level of LoD,
+    a length, both of which are int type. Referring to specified level of LoD,
     the index is the sequence index number and the length represents the
     sequence length. Please note that the list is ranked in descending order by
     the length. The following is an example:
@@ -1594,7 +1594,7 @@ def less_than(x, y, force_cpu=None, cond=None):
         force_cpu(${force_cpu_type}): ${force_cpu_comment}.
         cond(Variable, optional): Optional output which can be any created Variable
             that meets the requirements to store the result of *less_than*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Variable will be created to store the result.
     Returns:
         ${out_comment}.
 
@@ -1661,7 +1661,7 @@ def less_equal(x, y, cond=None):
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *less_equal*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Variable will be created to store the result.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
@@ -1713,7 +1713,7 @@ def greater_than(x, y, cond=None):
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_than*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Variable will be created to store the result.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
@@ -1764,7 +1764,7 @@ def greater_equal(x, y, cond=None):
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *greater_equal*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Variable will be created to store the result.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
@@ -1813,7 +1813,7 @@ def equal(x, y, cond=None):
         y(Variable): Tensor, data type is float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of *equal*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Variable will be created to store the result.
 
     Returns:
         Variable: output Tensor, it's shape is the same as the input's Tensor,
@@ -1861,7 +1861,7 @@ def not_equal(x, y, cond=None):
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of *not_equal*.
-            if cond is None, a new Varibale will be created to store the result.
+            if cond is None, a new Variable will be created to store the result.
 
     Returns:
         Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
@@ -2204,7 +2204,7 @@ class ConditionalBlock(object):
         `conditional_block_grad` is appended manually.
 
         Args:
-            parent_block (Block): The block that `conditional_block_op` blongs to.
+            parent_block (Block): The block that `conditional_block_op` belongs to.
             inside_block (Block): The sub block of `conditional_block_op`.
             conditional_block_op (Operator): The forward op conditional_block.
         '''

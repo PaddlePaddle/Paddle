@@ -230,7 +230,7 @@ class LightNASNet(object):
                                name=None):
         """Build inverted residual unit.
         Args:
-            input(Variable): Theinput.
+            input(Variable): The input.
             num_in_filter(int): The number of input filters.
             num_filters(int): The number of filters.
             ifshortcut(bool): Whether to use shortcut.

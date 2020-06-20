@@ -37,7 +37,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
      Note: 
         The default :code:`stop_gradient` attribute of the Variable created by
         this API is true, which means the gradient won't be passed backward
-        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        through the data Variable. Set :code:`var.stop_gradient = False` If
         user would like to pass backward gradient.
 
     Args:

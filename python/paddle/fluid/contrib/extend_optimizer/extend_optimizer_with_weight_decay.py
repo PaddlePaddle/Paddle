@@ -105,7 +105,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     optimizer class with decoupled weight decay. The returned optimizer will
     apply weight decay on the optimized parameters with the parameters before
     optimization, i.e: new_parameter = optimized_parameter - parameter * coeff.
-    The details of decoupled weight decay yplease refer to this
+    The details of decoupled weight decay please refer to this
     `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
 
     Args:

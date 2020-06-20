@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Defination of Role Makers."""
+"""Definition of Role Makers."""
 
 from __future__ import print_function
 from multiprocessing import Process, Manager
@@ -32,7 +32,7 @@ class Role:
 
 class MockBarrier(object):
     """
-    MockBarrier is a empty impletation for barrier
+    MockBarrier is a empty implementation for barrier
     mock as a real barrier for never-barrier in a specific scenario
     """
 
@@ -828,7 +828,7 @@ class GeneralRoleMaker(RoleMakerBase):
 
     def worker_num(self):
         """
-        retrun the current number of worker
+        return the current number of worker
         """
         if not self._role_is_generated:
             self.generate_role()

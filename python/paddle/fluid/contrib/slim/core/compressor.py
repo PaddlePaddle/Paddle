@@ -533,7 +533,7 @@ class Compressor(object):
 
     def _eval(self, context):
         """
-        Runing evaluation.
+        Running evaluation.
         """
         if self.eval_func is not None:
             for key in self.eval_func:

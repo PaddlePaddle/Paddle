@@ -115,7 +115,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         super(_DataLoaderIterSingleProcess, self).__init__(loader)
 
         # NOTE: len(self._places) batch data compose as an output
-        # iteration, set blocking_queue can cache 2 iteration datas
+        # iteration, set blocking_queue can cache 2 iteration data
         # at most here
         self._blocking_queue_capacity = 2 * len(self._places)
 

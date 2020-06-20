@@ -332,7 +332,7 @@ def simple_transform(im,
                      mean=None):
     """
     Simply data argumentation for training. These operations include
-    resizing, croping and flipping.
+    resizing, cropping and flipping.
 
     Example usage:
 

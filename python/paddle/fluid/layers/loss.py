@@ -77,7 +77,7 @@ def center_loss(input,
 
     Args:
         input (Variable): a 2-D tensor with shape[N x M]. Its dtype should be float32 or float64.
-        label (Variable): the groud truth which is a 2-D tensor
+        label (Variable): the ground truth which is a 2-D tensor
                          with shape[N x 1],where N is the batch size. Its dtype should be int32.
         num_classes (int): the number of classification categories.
         alpha (float|Variable): learning rate of centers.
@@ -528,7 +528,7 @@ def warpctc(input,
     (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
     It can be aliased as softmax with CTC, since a native softmax activation is
-    interated to the Warp-CTC library to normalize values for each row of the
+    integrated to the Warp-CTC library to normalize values for each row of the
     input tensor.
 
     Args:
@@ -543,7 +543,7 @@ def warpctc(input,
          input logit sequence. The data type must be float32.
        label (Variable): The ground truth of variable-length sequence,
          which must be a 2-D Tensor with LoD information or a 3-D Tensor without
-         LoD information, needs to be consistent with the coressponding input. 
+         LoD information, needs to be consistent with the corresponding input.
          When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum 
          of all labels' length. When it is a 3-D Tensor, its shape is 
          `[batch_size, max_label_length]`, where `max_label_length` is the longest
@@ -1097,7 +1097,7 @@ def sampled_softmax_with_cross_entropy(logits,
             accidentally hits true labels, then the corresponding 
             sampled_logits[i, j] is minus by 1e20 to make its softmax result 
             close to zero. Default is True.
-        use_customized_samples (bool): Whether to use custom samples and probabities to sample
+        use_customized_samples (bool): Whether to use custom samples and probabilities to sample
             logits.
         customized_samples (Variable): User defined samples, which is a 2-D tensor
             with shape [N, T + S]. S is the num_samples, and T is the number of true 
@@ -1339,7 +1339,7 @@ def rank_loss(label, left, right, name=None):
       \\tilde{P_{i,j}} &= \\left \{0, 0.5, 1 \\right \} \ or \ \\left \{0, 1 \\right \}
 
     Parameters:
-        label (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32, batch indicates the size of the data. Indicats whether A ranked higher than B or not.
+        label (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32, batch indicates the size of the data. Indicates whether A ranked higher than B or not.
         left (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32. RankNet's output score for doc A.
         right (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32. RankNet's output score for doc B.
         name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .

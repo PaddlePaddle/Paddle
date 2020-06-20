@@ -117,7 +117,7 @@ def _apply_pass(scope,
 
 class PostTrainingQuantization(object):
     """
-    Utilizing post training quantization methon to quantize the FP32 model,
+    Utilizing post training quantization method to quantize the FP32 model,
     and it uses calibrate data to get the quantization information for all 
     quantized variables.
     """
@@ -162,11 +162,11 @@ class PostTrainingQuantization(object):
             batch_generator(Python Generator): The batch generator provides 
                 calibrate data for DataLoader, and it returns a batch every
                 time. Note that, sample_generator and batch_generator, only one
-                should be set. Beisdes, batch_generator supports lod tensor.
+                should be set. Besides, batch_generator supports lod tensor.
             sample_generator(Python Generator): The sample generator provides
                 calibrate data for DataLoader, and it only returns a sample every
                 time. Note that, sample_generator and batch_generator, only one
-                should be set. Beisdes, sample_generator dose not support lod tensor.
+                should be set. Besides, sample_generator dose not support lod tensor.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of 
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use 
@@ -208,7 +208,7 @@ class PostTrainingQuantization(object):
                 all temp data will be saved in memory. If set is_use_cache_file as True,
                 it will save temp data to disk. When the fp32 model is complex or
                 the number of calibrate data is large, we should set is_use_cache_file
-                as True. Defalut is False.
+                as True. Default is False.
             cache_dir(str, optional): When is_use_cache_file is True, set cache_dir as
                 the directory for saving temp data. Default is ./temp_post_training.
         Returns:
@@ -380,7 +380,7 @@ class PostTrainingQuantization(object):
                 save the model to '__model__'. Otherwise, save the model
                 to the specified filename. Default: None.
             params_filename(str, optional): If the params_filename is None,
-                save params to separted files. Otherwise, save all params
+                save params to separated files. Otherwise, save all params
                 to the specified filename.
         Returns:
             None
@@ -821,7 +821,7 @@ class WeightQuantization(object):
     def __init__(self, model_dir, model_filename=None, params_filename=None):
         '''
         This class quantizes the weight of some ops to reduce the size of model
-        or improve the perforemace.
+        or improve the performance.
 
         Args:
             model_dir(str): The path of the fp32 model that will be quantized,
@@ -874,7 +874,7 @@ class WeightQuantization(object):
                 as True, it saves a fake quantized model, in which the weights 
                 are quantized and dequantized. We can use PaddlePaddle to load 
                 the fake quantized model and test the accuracy on GPU or CPU.
-            threshold_rate(float, optional): This api uses abs_max methd to 
+            threshold_rate(float, optional): This api uses abs_max method to
                 quantize the weight from float32 to int8/16, and the abs max 
                 value is important for quantization diff. When the abs_max 
                 value is far away from the center of the numerical distribution, 

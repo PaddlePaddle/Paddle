@@ -63,7 +63,7 @@ def is_paddle_func(func):
 
 def convert_call(func):
     """
-    Converts a function call which needs to be transformed to static fucntion.
+    Converts a function call which needs to be transformed to static function.
 
     Args:
         func (callable): A callable function or method to convert.

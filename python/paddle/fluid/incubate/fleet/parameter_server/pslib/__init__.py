@@ -10,7 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
-"""Defination of PSLib."""
+"""Definition of PSLib."""
 
 import os
 import sys
@@ -272,7 +272,7 @@ class PSLib(Fleet):
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
-        save presistable parameters,
+        save persistable parameters,
         when using fleet, it will save sparse and dense feature
 
         Args:

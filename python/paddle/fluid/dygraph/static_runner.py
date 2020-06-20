@@ -60,7 +60,7 @@ class StaticModelRunner(layers.Layer):
 
     .. note::
         **1. Dynamic graph mode do not support LoDTensor. 
-             All original static graph model's feed targets or parametars 
+             All original static graph model's feed targets or parameters
              that depend on LoD are temporarily unavailable.**
         **2. All saved inference model's feed targets need be given.**
         **3. The ``stop_gradient`` information is lost and can not be recovered.**

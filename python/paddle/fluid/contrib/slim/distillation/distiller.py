@@ -114,7 +114,7 @@ class FSPDistiller(object):
                                         have the same feature map size.
             teacher_pairs(list<tuple>): Each tuple, with two variable names, in teacher_pairs indicates
                                         a section in teacher network. The variables in a tuple should
-                                        have the same feature map size. Varibale named teacher_pairs[i][j]
+                                        have the same feature map size. Variable named teacher_pairs[i][j]
                                         should has the save channel number with that of variable named 
                                         student_pairs[i][j].
 
@@ -152,7 +152,7 @@ class FSPDistillerPass(object):
                                         have the same feature map size.
             t_pairs(list<tuple>): Each tuple, with two variable names, in teacher_pairs indicates
                                         a section in teacher network. The variables in a tuple should
-                                        have the same feature map size. Varibale named teacher_pairs[i][j]
+                                        have the same feature map size. Variable named teacher_pairs[i][j]
                                         should has the save channel number with that of variable named 
                                         student_pairs[i][j].
 

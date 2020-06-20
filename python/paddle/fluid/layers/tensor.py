@@ -643,7 +643,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         force_cpu(bool): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
+            if out is None, a new Variable will be create to store the result.
 
     Returns:
         Variable: Tensor which is created according to shape and dtype.
@@ -748,7 +748,7 @@ def fill_constant_batch_size_like(input,
                                   output_dim_idx=0,
                                   force_cpu=False):
     """
-    This OP creates a Tesnor according the shape and dtype, and initializes the
+    This OP creates a Tensor according the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
     of the batch_size input by the input, the Stop_gradient attribute of the created
@@ -941,7 +941,7 @@ def argsort(input, axis=-1, descending=False, name=None):
 	:old_api: paddle.fluid.layers.argsort
 
     This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as
+    data Variable and its corresponding index Variable with the same shape as
     :attr:`input`.
 
     Args:

@@ -479,7 +479,7 @@ class DataParallel(layers.Layer):
             structured_name_prefix(str, optional): If not empty str, all the key in state dict will start 
                                                  with structured_name_prefix
 
-        Retruns:
+        Returns:
             dict: a dict contains all the parameters of self._layers
 
         Examples:

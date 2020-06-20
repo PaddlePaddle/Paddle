@@ -480,7 +480,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     gast.For must meet at least one of the requirements 4 to 8:
         6. calls `range` function in `for` statement and the argument of range is Tensor.
         7. calls `enumerate` function in `for` statement and the argument of enumerate is Tensor.
-        8. the iterable varaible in `for` statement is Tensor.
+        8. the iterable variable in `for` statement is Tensor.
         TODO: Support non-range case
 
     The following examples should not be considered as control_flow_if:

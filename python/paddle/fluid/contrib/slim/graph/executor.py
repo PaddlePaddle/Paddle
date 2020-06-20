@@ -31,7 +31,7 @@ class SlimGraphExecutor(object):
 
     def run(self, graph, scope, data=None):
         """
-        Runing a graph with a batch of data.
+        Running a graph with a batch of data.
         Args:
             graph(GraphWrapper): The graph to be executed.
             scope(fluid.core.Scope): The scope to be used.
