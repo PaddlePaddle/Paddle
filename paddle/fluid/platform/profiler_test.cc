@@ -29,6 +29,7 @@ TEST(Event, CpuElapsedTime) {
     counter++;
   }
   Event stop_event(EventType::kPopRange, "test", 0);
+  LOG(INFO) << "elapsed time:" << start_event.CpuElapsedMs(stop_event);
   EXPECT_GT(start_event.CpuElapsedMs(stop_event), 0);
 }
 

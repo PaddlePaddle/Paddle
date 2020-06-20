@@ -51,6 +51,7 @@ Event::Event(EventType type, std::string name, uint32_t thread_id,
 const EventType &Event::type() const { return type_; }
 
 double Event::CpuElapsedMs(const Event &e) const {
+  LOG(INFO) << "end:" << e.cpu_ns_ << ", start: " << cpu_ns_;
   return (e.cpu_ns_ - cpu_ns_) / (1000000.0);
 }
 
