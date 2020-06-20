@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/distributed/large_scale_kv.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
@@ -31,20 +32,29 @@ namespace operators {
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class LookupSparseTableGradSplitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const SelectedRows* in_grad = context.Input<SelectedRows>("Grad");
 
-    auto in_rows = in_grad->rows();
+    // merge duplicated rows if any.
+    // The rows of grad_merge_ptr have been sorted inside MergeAdd functor
+    framework::SelectedRows tmp_grad_merge;
+    const framework::SelectedRows* grad_merge_ptr;
+    math::scatter::MergeAdd<DeviceContext, T> merge_func;
+    merge_func(context.template device_context<DeviceContext>(), *in_grad,
+               &tmp_grad_merge, true);
+    grad_merge_ptr = &tmp_grad_merge;
+
+    auto in_rows = grad_merge_ptr->rows();
     auto* out_row = context.Output<Tensor>("Row");
     out_row->Resize(
         framework::make_ddim({static_cast<int64_t>(in_rows.size()), 1}));
     out_row->mutable_data<int64_t>(context.GetPlace());
     framework::TensorFromVector(in_rows, context.device_context(), out_row);
 
-    auto in_value = in_grad->value();
+    auto in_value = grad_merge_ptr->value();
     std::vector<T> ins_vector;
     framework::TensorToVector(in_value, context.device_context(), &ins_vector);
     auto dims = in_value.dims();

@@ -73,5 +73,7 @@ REGISTER_OPERATOR(
 
 REGISTER_OP_CPU_KERNEL(
     lookup_sparse_table_grad_split,
-    paddle::operators::LookupSparseTableGradSplitKernel<float>,
-    paddle::operators::LookupSparseTableGradSplitKernel<double>);
+    ops::LookupSparseTableGradSplitKernel<paddle::platform::CPUDeviceContext,
+                                          float>,
+    ops::LookupSparseTableGradSplitKernel<paddle::platform::CPUDeviceContext,
+                                          double>);
