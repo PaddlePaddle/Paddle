@@ -101,6 +101,8 @@ class BasicAucCalculator {
   double& local_abserr() { return _local_abserr; }
   double& local_sqrerr() { return _local_sqrerr; }
   double& local_pred() { return _local_pred; }
+
+ private:
   void calculate_bucket_error();
 
  protected:
@@ -668,7 +670,6 @@ class BoxWrapper {
                           "The metric name you provided is not registered."));
     std::vector<float> metric_return_values_(8, 0.0);
     auto* auc_cal_ = iter->second->GetCalculator();
-    auc_cal_->calculate_bucket_error();
     auc_cal_->compute();
     metric_return_values_[0] = auc_cal_->auc();
     metric_return_values_[1] = auc_cal_->bucket_error();

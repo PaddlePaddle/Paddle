@@ -71,6 +71,8 @@ void BasicAucCalculator::compute() {
   _actual_ctr = tp / (fp + tp);
 
   _size = fp + tp;
+
+  calculate_bucket_error();
 }
 
 void BoxWrapper::CheckEmbedSizeIsValid(int embedx_dim, int expand_embed_dim) {
