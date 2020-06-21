@@ -139,7 +139,8 @@ class MKLDNNHandlerT {
       fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
           dev_ctx_.GetBlob(key_pd));
       if (fwd_pd_ == nullptr) {
-        CreateForwardPrimitiveDescriptor(first_arg, std::forward<Args>(args)...);
+        CreateForwardPrimitiveDescriptor(first_arg,
+                                         std::forward<Args>(args)...);
         dev_ctx_.SetBlob(key_pd, fwd_pd_);
       }
     }
@@ -209,16 +210,17 @@ class MKLDNNHandlerT {
     return mem_p;
   }
 
-  void AcquireReorder(
-      const std::shared_ptr<mkldnn::memory>& user_memory_p,
-      const std::shared_ptr<mkldnn::memory>& target_memory_p,
-      const std::string& suffix) {
+  void AcquireReorder(const std::shared_ptr<mkldnn::memory>& user_memory_p,
+                      const std::shared_ptr<mkldnn::memory>& target_memory_p,
+                      const std::string& suffix) {
     const auto key_reorder_p = key_ + suffix + "reorder_p";
 
-    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(key_reorder_p));
+    auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+        dev_ctx_.GetBlob(key_reorder_p));
 
     if (reorder_p == nullptr) {
-      reorder_p = std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
+      reorder_p =
+          std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
       dev_ctx_.SetBlob(key_reorder_p, reorder_p);
     }
 
@@ -230,20 +232,22 @@ class MKLDNNHandlerT {
 
   std::shared_ptr<mkldnn::memory> AcquireMemoryWithReorder(
       const mkldnn::memory::desc& user_md,
-      const mkldnn::memory::desc& target_md, 
-      void* ptr, const std::string& suffix,
-      bool is_persistent = false) {
+      const mkldnn::memory::desc& target_md, void* ptr,
+      const std::string& suffix, bool is_persistent = false) {
     const auto target_key = key_ + suffix + "_target";
     const auto key_reorder_p = key_ + suffix + "reorder_p";
     const auto user_key = key_ + suffix + "_user";
 
-    auto target_memory_p = std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
+    auto target_memory_p =
+        std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(target_key));
 
     if (target_memory_p == nullptr) {
-      auto user_memory_p = std::make_shared<dnnl::memory>(user_md, engine_, ptr);
+      auto user_memory_p =
+          std::make_shared<dnnl::memory>(user_md, engine_, ptr);
       if (user_md != target_md) {
         target_memory_p = std::make_shared<mkldnn::memory>(target_md, engine_);
-        auto reorder_p = std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
+        auto reorder_p =
+            std::make_shared<dnnl::reorder>(*user_memory_p, *target_memory_p);
         dev_ctx_.SetBlob(key_reorder_p, reorder_p);
 
         mkldnn::stream astream(engine_);
@@ -258,13 +262,15 @@ class MKLDNNHandlerT {
     } else if (!is_persistent) {
       mkldnn::stream astream(engine_);
 
-      auto user_memory_p = std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
+      auto user_memory_p =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(user_key));
       user_memory_p->set_data_handle(ptr);
 
-      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(key_reorder_p));
+      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
+          dev_ctx_.GetBlob(key_reorder_p));
       if (reorder_p != nullptr) {
         reorder_p->execute(astream, {{MKLDNN_ARG_FROM, *user_memory_p},
-                                      {MKLDNN_ARG_TO, *target_memory_p}});
+                                     {MKLDNN_ARG_TO, *target_memory_p}});
         astream.wait();
       }
     }
