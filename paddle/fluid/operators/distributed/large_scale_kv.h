@@ -313,9 +313,38 @@ class ValueBlock {
     //    }
   }
 
-  void Init(const int64_t &id) {
+  void Init(const int64_t &id, std::vector<std::vector<float>> *values,
+            int count) {
     if (Has(id)) {
-      return;
+      PADDLE_THROW(platform::errors::AlreadyExists("id already exist, error"));
+    }
+
+    if (values.size() != value_names_.size()) {
+      PADDLE_THROW(
+          platform::errors::AlreadyExists("values can not match, error"));
+    }
+
+    auto value = new VALUE(value_names_);
+    value->set(values);
+    value->count_ = count;
+    values_[id] = value;
+  }
+
+  std::vector<std::vector<float> *> Get(
+      const int64_t &id, const std::vector<std::string> &value_names) {
+    rwlock_->RDLock();
+    auto ret_values = values_.at(id)->get(value_names);
+    rwlock_->UNLock();
+    return ret_values;
+  }
+
+  void InitFromInitializer(const int64_t &id,
+                           const std::vector<std::string> &value_names) {
+    rwlock_->WRLock();
+
+    if (Has(id)) {
+      Entry(id);
+      rwlock_->UNLock();
     }
 
     auto rets = std::vector<std::vector<float>>();
@@ -333,26 +362,9 @@ class ValueBlock {
       }
     }
 
-    auto value = new VALUE(value_names_);
-    value->set(&rets);
-    values_[id] = value;
-  }
-
-  std::vector<std::vector<float> *> Get(
-      const int64_t &id, const std::vector<std::string> &value_names) {
-    rwlock_->RDLock();
-    auto ret_values = values_.at(id)->get(value_names);
-    rwlock_->UNLock();
-    return ret_values;
-  }
-
-  std::vector<std::vector<float> *> GetAndInit(
-      const int64_t &id, const std::vector<std::string> &value_names) {
-    rwlock_->WRLock();
-    Init(id);
+    Init(id, &rets, 0);
     Entry(id);
     rwlock_->UNLock();
-    return Get(id, value_names);
   }
 
   bool GetEntry(const int64_t &id) {
@@ -433,7 +445,8 @@ class SparseVariable {
     for (auto &id : ids) {
       std::vector<std::vector<float> *> id_values;
       auto *block = GetShard(id);
-      id_values = block->GetAndInit(id, value_names);
+      block->InitFromInitializer(id, value_names);
+      id_values = block->Get(id);
       values->push_back(id_values);
     }
   }
@@ -505,6 +518,81 @@ class SparseVariable {
     return meta_.cached_varnames;
   }
 
+  void Load(const std::string &dirname) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    VLOG(1) << "load " << meta_.name << " from dir: " << dirname << " begin";
+
+    std::vector<std::string> filenames;
+    for (auto &value_name : meta_.value_names) {
+      auto filename = string::Sprintf("%s/%s.txt", dirname, value_name);
+      filenames.push_back(filename);
+    }
+  }
+
+  void LoadFromSelectedRows(const std::vector<std::string> &filenames,
+                            const std::vector<std::string> &valuenames) {
+    std::vector<std::unique_ptr<std::ifstream>> fins;
+
+    for (auto filename : filenames) {
+      std::unique_ptr<std::ifstream> fin(new std::ifstream(filename));
+      fins.push_back(std::move(fin));
+    }
+
+    std::vector<std::shared_ptr<framework::Variable>> variables;
+    std::vector<float *> tensors;
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
+      auto var = std::make_shared<framework::Variable>();
+      auto *slr = var->GetMutable<framework::SelectedRows>();
+      auto *src_t = slr->mutable_value();
+      auto *value = src_t->mutable_data<float>(place);
+      variables.push_back(var);
+      tensors.push_back(value);
+    }
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
+      auto &fin = fins[i];
+      auto *selectedRows = variables[i]->GetMutable<framework::SelectedRows>();
+
+      auto place = platform::CPUPlace();
+      platform::DeviceContextPool &pool =
+          platform::DeviceContextPool::Instance();
+      auto &dev_ctx = *pool.Get(place);
+
+      framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
+      selectedRows->SyncIndex();
+    }
+
+    for (int i = 1; i < static_cast<int>(filenames.size()); i++) {
+      auto rows_0 = variables[0]->Get<framework::SelectedRows>().rows();
+      auto rows_i = variables[i]->Get<framework::SelectedRows>().rows();
+
+      bool is_equal = std::equal(rows_0.begin(), rows_0.end(), rows_i.begin());
+
+      if (!is_equal) {
+        PADDLE_THROW(platform::errors::InvalidArgument("load error"));
+      }
+    }
+
+    auto rows = variables[0]->Get<framework::SelectedRows>().rows();
+
+    for (auto i = 0; i < static_cast<int64_t>(rows.size()); i++) {
+      auto id = rows[i];
+      std::vector<std::vector<float>> values;
+      values.resize(filenames.size());
+
+      for (int j = 0; j < static_cast<int>(filenames.size()); ++j) {
+        values[j].resize(meta_.value_dims[i]);
+        std::memcpy(values[j].data(), tensors[j] + i * dims[i],
+                    sizeof(float) * dims[j]);
+      }
+
+      auto *block = GetShard(id);
+      block->Init(id, &values, 0);
+      block->Entry(id);
+    }
+  }
+
   void Save(const std::string &dirname) {
     std::lock_guard<std::mutex> lock(mutex_);
     VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " begin";
@@ -551,19 +639,13 @@ class SparseVariable {
 
     std::vector<std::shared_ptr<framework::Variable>> variables;
     std::vector<float *> tensors;
-    std::vector<int64_t> ids;
     std::vector<int64_t> dims;
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
-      auto dim = values_dims_.at(valuenames[i]);
       auto var = std::make_shared<framework::Variable>();
       auto *slr = var->GetMutable<framework::SelectedRows>();
       auto *src_t = slr->mutable_value();
-
-      src_t->Resize({ids_num, dim});
       auto *value = src_t->mutable_data<float>(place);
-
-      dims.push_back(dim);
       variables.push_back(var);
       tensors.push_back(value);
     }
