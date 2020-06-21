@@ -331,7 +331,7 @@ def glu(input, dim=-1):
 
     The Gated Linear Units(GLU) composed by :ref:`api_fluid_layers_split` , 
     :ref:`api_fluid_layers_sigmoid`  and :ref:`api_fluid_layers_elementwise_mul` . 
-    Specifically, GLU will plit the input into two equal-sized parts,
+    Specifically, GLU will split the input into two equal-sized parts,
     :math:`a` and :math:`b`, along the given dimension and then compute as
     following:
 

@@ -616,7 +616,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                             more details.
         dirname(str, optional): The saving directory path.
                             When you need to save the parameter to the memory, set it to None.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                          be saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will 
@@ -1159,7 +1159,7 @@ def save_inference_model(dirname,
 
             path = "./infer_model"
 
-            # User defined network, here a softmax regession example
+            # User defined network, here a softmax regression example
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())

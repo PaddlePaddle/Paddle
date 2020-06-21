@@ -342,7 +342,7 @@ def kron(x, y, name=None):
     and :attr:`y` must be a ComplexVariable. See the detailed description for 
     the function and other arguments in :ref:`api_paddle_tensor_kron` . 
 
-    Let $x = a + ib$, and $y = c + id$, the euqation is 
+    Let $x = a + ib$, and $y = c + id$, the equation is
 
     .. math::
        kron(x, y) = kron(a, c) - kron(b, d) + i(kron(a, d) + kron(b, c))

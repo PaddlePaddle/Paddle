@@ -100,7 +100,7 @@ class DataLoaderBase(object):
 
 class DataLoader(object):
     """
-    DataLoader prodives an iterator which iterates given dataset
+    DataLoader provides an iterator which iterates given dataset
     once by the batch_sampler.
 
     DataLoader supports single-process and multi-prcess data loading,
@@ -139,7 +139,7 @@ class DataLoader(object):
             is not set, a default `paddle.io.BatchSampler` will be used
             and initialize by :attr:`batch_size`, :attr:`shuffle` and
             :attr:`drop_last`. Default 1.
-        shuffle(bool): whther to shuffle indices order before genrate
+        shuffle(bool): whether to shuffle indices order before generate
             batch indices, a substitution parameter for :attr:`batch_sampler`
             see :attr:`batch_size`. Default False.
         drop_last(bool): whether drop the last incomplete batch dataset size
@@ -150,7 +150,7 @@ class DataLoader(object):
             0(same as :attr::`np.stack(..., axis=0)`). Default None
         num_workers(int): the number of subprocess to load data, 0 for no
             subprocess used and loading data in main process. Default 0
-        use_buffer_reader (bool): whether to use bufferred reader. 
+        use_buffer_reader (bool): whether to use buffered reader.
             If use_buffer_reader=True, the DataLoader would prefetch next 
             batch data asynchronously, so it would speed up data feeding 
             and occupies a little more CPU or GPU memory, i.e., the memory
@@ -158,13 +158,13 @@ class DataLoader(object):
         use_shared_memory (bool): whether to use shared memory to speed up
             putting data into inter-process queue, set :attr:`use_shared_memory`
             as True only when the shared memory space on your machine(e.g.
-            space of '/dev/shm' on Linux operating sysytem) is large enough.
+            space of '/dev/shm' on Linux operating system) is large enough.
             Shared memory will only be enabled in multi-process mode(num_workers
             > 0). Default True.
         timeout(int): the timeout value for getting data form output queue
             of subprocesses. Default 0.
         worker_init_fn(callable): init function which will be called with
-            worker id on each subproces starting if not set as None. Default
+            worker id on each subprocess starting if not set as None. Default
             None.
 
     Returns:

@@ -22,7 +22,7 @@ __all__ = ["DatasetFolder", "ImageFolder"]
 
 
 def has_valid_extension(filename, extensions):
-    """Checks if a file is a vilid extension.
+    """Checks if a file is a valid extension.
 
     Args:
         filename (str): path to a file

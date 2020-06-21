@@ -102,7 +102,7 @@ class TestListenAndServOp(unittest.TestCase):
             trainer._gen_trainer_desc()
 
     def test_device_work(self):
-        """This function is test devicve worker."""
+        """This function is test device worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:

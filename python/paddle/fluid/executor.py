@@ -667,7 +667,7 @@ class Executor(object):
                 fetch_list = [([sgd, sgd], [(param, grad)]), 'loss']
 
         Returns:
-            optimize_ops(list): The optimize operators splited from fetch_list.
+            optimize_ops(list): The optimize operators split from fetch_list.
             fetch_list(list):  The updated fetch_list which does not contain optimize operators.  
         """
         _optimize_ops = []
@@ -948,7 +948,7 @@ class Executor(object):
                 results will not be merged. The default is True, but it is just for the compatibility, and may
                 use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
-                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
+                If the parameter is True, the program will be pruned according to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not 
                 needed to generate :code:`fetch_list` will be pruned. The default is False, which means the 
                 program will not pruned and all the operators and variables will be executed during running.

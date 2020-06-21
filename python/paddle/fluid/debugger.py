@@ -287,7 +287,7 @@ def prepare_fast_nan_inf_debug(_program):
     Given a program to run, insert a (reduce) sum op for every var in that program.
     Instead of checking all vars originally defined in the program,
     only those inserted ops will be checked in the c++ end, to detect if it contains NAN or INF.
-    Thereforce, the speed of nan/inf checking could be improved.
+    Therefore, the speed of nan/inf checking could be improved.
     Please set ``FLAGS_fast_check_nan_inf" to open the fast nan/inf feature.
     """
 

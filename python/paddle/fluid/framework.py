@@ -1353,7 +1353,7 @@ class Variable(object):
         """
         Indicating name of current Variable
 
-        **Notes: If it has two or more Varaible share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
+        **Notes: If it has two or more Variable share the same name in the same** :ref:`api_guide_Block_en` **, it means these Variable will share content in no-** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode. This is how we achieve Parameter sharing**
 
         Examples:
           .. code-block:: python
@@ -4563,7 +4563,7 @@ class Program(object):
 
         Args:
 
-            binary_str_type (str): the binary prootbuf string.
+            binary_str_type (str): the binary protobuf string.
 
         Returns:
             Program: A deserialized Program.
@@ -4904,7 +4904,7 @@ class Program(object):
         Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
 
         Returns:
-            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+            list[ :ref:`api_guide_parameter_en` ]: The list contains all parameters in this program.
 
         Examples:
             .. code-block:: python

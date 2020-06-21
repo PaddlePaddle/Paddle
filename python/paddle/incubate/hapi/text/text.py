@@ -174,7 +174,7 @@ class RNNCell(Layer):
         Used to initialize states.
         A (possiblely nested structure of) data types[s]. The structure must be
         same as that of `shape`, except when all tensors' in states has the same
-        data type, a signle data type can be used.
+        data type, a single data type can be used.
         Not necessary to be implemented if states are not initialized
         by `get_initial_states` or the `dtype` argument is provided when using
         `get_initial_states`.
@@ -1012,7 +1012,7 @@ class BidirectionalRNN(Layer):
     Parameters:
         cell_fw (RNNCell): A RNNCell instance used for forward RNN.
         cell_bw (RNNCell): A RNNCell instance used for backward RNN.
-        merge_mode (str|None, optional): The way to merget outputs of forward and
+        merge_mode (str|None, optional): The way to merge outputs of forward and
             backward RNN. It can be `concat`, `sum`, `ave`, `mul`, `zip` and None,
             where None stands for make the two `outputs` as a tuple, `zip` stands
             for make each two corresponding tensors of the two `outputs` as a tuple.
@@ -1184,7 +1184,7 @@ class BidirectionalLSTM(Layer):
         dropout(float|list|tuple, optional): The dropout probability after each
             LSTM. It also can be a list or tuple, including dropout probabilities
             for the corresponding LSTM. Default 0.0
-        merge_mode (str|None, optional): The way to merget outputs of forward and
+        merge_mode (str|None, optional): The way to merge outputs of forward and
             backward RNN. It can be `concat`, `sum`, `ave`, `mul`, `zip` and None,
             where None stands for make the two `outputs` as a tuple, `zip` stands
             for make each two corresponding tensors of the two `outputs` as a tuple.
@@ -1613,7 +1613,7 @@ class BidirectionalGRU(Layer):
         dropout(float|list|tuple, optional): The dropout probability after each
             GRU. It also can be a list or tuple, including dropout probabilities
             for the corresponding GRU. Default 0.0
-        merge_mode (str|None, optional): The way to merget outputs of forward and
+        merge_mode (str|None, optional): The way to merge outputs of forward and
             backward RNN. It can be `concat`, `sum`, `ave`, `mul`, `zip` and None,
             where None stands for make the two `outputs` as a tuple, `zip` stands
             for make each two corresponding tensors of the two `outputs` as a tuple.
@@ -2261,7 +2261,7 @@ class TransformerCell(RNNCell):
         embedding_fn(function, optional): A callable that accepts ids and position
             as arguments and return embeddings as input of `decoder`. It can be
             None if `decoder` includes a embedding layer. Default None.
-        output_fn(callable, optional): A callable applid on `decoder` output to
+        output_fn(callable, optional): A callable applied on `decoder` output to
             transform decoder output features to get logits. Mostly it is a Linear
             layer with vocabulary size. It can be None if `decoder` includes a
             output layer. Default None.
@@ -2686,7 +2686,7 @@ class PrePostProcessLayer(Layer):
 
 class MultiHeadAttention(Layer):
     """
-    MultiHead Attention mapps queries and a set of key-value pairs to outputs
+    MultiHead Attention maps queries and a set of key-value pairs to outputs
     by jointly attending to information from different representation subspaces,
     as what multi-head indicates it performs multiple attention in parallel.
 
@@ -2739,7 +2739,7 @@ class MultiHeadAttention(Layer):
 
     def _prepare_qkv(self, queries, keys, values, cache=None):
         """
-        Prapares linear projected queries, keys and values for usage of subsequnt
+        Prepares linear projected queries, keys and values for usage of subsequent
         multiple attention in parallel. If `cache` is not None, using cached
         results to reduce redundant calculations.
 
@@ -2759,7 +2759,7 @@ class MultiHeadAttention(Layer):
                 with `static_k` and `statkc_v` as keys, and values stores intermediate
                 results of encoder output for decoder-encoder cross attention.
                 If it is for decoder self attention, values for `k` and `v` would
-                be updated by new tensors concatanating raw tensors with intermediate
+                be updated by new tensors concatenating raw tensors with intermediate
                 results of current step. It is only used for inference and should
                 be None for training. Default None
 
@@ -2837,7 +2837,7 @@ class MultiHeadAttention(Layer):
                 with `static_k` and `statkc_v` as keys, and values stores intermediate
                 results of encoder output for decoder-encoder cross attention.
                 If it is for decoder self attention, values for `k` and `v` would
-                be updated by new tensors concatanating raw tensors with intermediate
+                be updated by new tensors concatenating raw tensors with intermediate
                 results of current step. It is only used for inference and should
                 be None for training. Default None
 
@@ -2907,7 +2907,7 @@ class FFN(Layer):
         d_inner_hid (int): The hidden size in the feedforward network(FFN).
         d_model (int): The expected feature size in the input and output.
         dropout_rate (float, optional): The dropout probability used after
-            activition. Default 0.1
+            activation. Default 0.1
         ffn_fc1_act (str, optional): The activation function in the feedforward
             network. Default relu.
 
@@ -2973,7 +2973,7 @@ class TransformerEncoderLayer(Layer):
         attention_dropout (float, optional): The dropout probability used
             in MHA to drop some attention target. Default 0.1
         relu_dropout (float, optional): The dropout probability used after FFN
-            activition. Default 0.1
+            activation. Default 0.1
         preprocess_cmd (str, optional): The process applied before each MHA and
             FFN sub-layer, and it also would be applied on output of the last
             stacked layer. It should be a string composed of `d`, `a`, `n`,
@@ -3076,7 +3076,7 @@ class TransformerEncoder(Layer):
         attention_dropout (float, optional): The dropout probability used
             in MHA to drop some attention target. Default 0.1
         relu_dropout (float, optional): The dropout probability used after FFN
-            activition. Default 0.1
+            activation. Default 0.1
         preprocess_cmd (str, optional): The process applied before each MHA and
             FFN sub-layer, and it also would be applied on output of the last
             stacked layer. It should be a string composed of `d`, `a`, `n`,
@@ -3187,7 +3187,7 @@ class TransformerDecoderLayer(Layer):
         attention_dropout (float, optional): The dropout probability used
             in MHA to drop some attention target. Default 0.1
         relu_dropout (float, optional): The dropout probability used after FFN
-            activition. Default 0.1
+            activation. Default 0.1
         preprocess_cmd (str, optional): The process applied before each MHA and
             FFN sub-layer, and it also would be applied on output of the last
             stacked layer. It should be a string composed of `d`, `a`, `n`,
@@ -3329,7 +3329,7 @@ class TransformerDecoder(Layer):
         attention_dropout (float, optional): The dropout probability used
             in MHA to drop some attention target. Default 0.1
         relu_dropout (float, optional): The dropout probability used after FFN
-            activition. Default 0.1
+            activation. Default 0.1
         preprocess_cmd (str, optional): The process applied before each MHA and
             FFN sub-layer, and it also would be applied on output of the last
             stacked layer. It should be a string composed of `d`, `a`, `n`,
@@ -3505,7 +3505,7 @@ class TransformerDecoder(Layer):
 
 class LinearChainCRF(Layer):
     """
-    Computes the negtive log-likelihood of tag sequences in a linear chain CRF. 
+    Computes the negative log-likelihood of tag sequences in a linear chain CRF.
     Using terminologies of undirected probabilistic graph model, it calculates
     probability using unary potentials (for emission) and binary potentials 
     (for transition). 
@@ -3622,7 +3622,7 @@ class LinearChainCRF(Layer):
                 length of each sequence for correctness.
 
         Returns:
-            Variable: The negtive log-likelihood of tag sequences. It is a tensor \
+            Variable: The negative log-likelihood of tag sequences. It is a tensor \
                 with shape `[batch_size, 1]` and has float32 or float64 data type.
         """
         alpha = self._helper.create_variable_for_type_inference(
@@ -3837,8 +3837,8 @@ class SequenceTagging(Layer):
     Parameters:
         vocab_size (int): The size of vocabulary.
         num_labels (int): The number of labels.
-        word_emb_dim (int, optional): The embedding size. Defalut 128
-        grnn_hidden_dim (int, optional): The hidden size of GRU. Defalut 128
+        word_emb_dim (int, optional): The embedding size. Default 128
+        grnn_hidden_dim (int, optional): The hidden size of GRU. Default 128
         emb_learning_rate (int, optional): The partial learning rate for embedding.
             The actual learning rate for embedding would multiply it with the global
             learning rate. Default 0.1

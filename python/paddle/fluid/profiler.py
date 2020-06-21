@@ -40,7 +40,7 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     """
     The CUDA profiler.
     
-    This fuctions is used to profile CUDA program by CUDA runtime application
+    This function is used to profile CUDA program by CUDA runtime application
     programming interface. The profiling result will be written into
     `output_file`. The users can set the output mode by `output_mode` argument 
     and set the nvidia profiling config by `config` argument. 
@@ -130,7 +130,7 @@ def reset_profiler():
 
 def start_profiler(state, tracer_option='Default'):
     """
-    Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
+    Enable the profiler. Users can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
     of `fluid.profiler.profiler` interface.
 
@@ -197,7 +197,7 @@ def start_profiler(state, tracer_option='Default'):
 
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     """
-    Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
+    Stop the profiler. Users can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
     of `fluid.profiler.profiler` interface.
 

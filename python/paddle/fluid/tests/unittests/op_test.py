@@ -731,7 +731,7 @@ class OpTest(unittest.TestCase):
 
     def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
         """Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
-        An op needs to run druing inplace check if,
+        An op needs to run during inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
 
@@ -778,7 +778,7 @@ class OpTest(unittest.TestCase):
                                place,
                                no_check_set=None,
                                inplace_atol=None):
-        """Chech the inplace correctness of given op (self.op_type).
+        """Check the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
 
         Args:
@@ -858,7 +858,7 @@ class OpTest(unittest.TestCase):
                             fwd_res,
                             grad_op_desc,
                             inplace_atol=None):
-        """Chech the inplace correctness of given grad_op_desc.
+        """Check the inplace correctness of given grad_op_desc.
 
         Run the grad op twice with same inputs, one enable inplace and another disable, compare their outputs.
         It works like _check_forward_inplace, but the way to construct program and feed_map differs.
@@ -891,7 +891,7 @@ class OpTest(unittest.TestCase):
                                         place,
                                         no_check_set=None,
                                         inplace_atol=None):
-        """Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
+        """Check the inplace correctness of given op, its grad op, its grad_grad op, etc.
 
         (1) Get all ops need to run. (see conditions in _get_need_run_ops())
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
