@@ -2360,6 +2360,7 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindCommunicator(&m);
   BindCommunicatorContext(&m);
+  BindLargeScaleKV(&m);
 #endif
 }
 }  // namespace pybind

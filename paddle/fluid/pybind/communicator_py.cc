@@ -24,6 +24,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/communicator_common.h"
+#include "paddle/fluid/operators/distributed/large_scale_kv.h"
 
 namespace py = pybind11;
 
@@ -37,6 +38,8 @@ using paddle::operators::distributed::SyncCommunicator;
 
 using paddle::operators::distributed::CommContext;
 using paddle::operators::distributed::RpcCtxMap;
+
+using paddle::operators::distributed::LargeScaleKV;
 
 namespace paddle {
 namespace pybind {
@@ -108,6 +111,15 @@ void BindCommunicator(py::module* m) {
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning)
       .def("recv", &Communicator::RecvNoBarrier);
+}
+
+void BindLargeScaleKV(py::module* m) {
+  py::class_<LargeScaleKV, std::shared_ptr<LargeScaleKV>>(*m, "LargeScaleKV")
+      .def("get_instance", []() { return LargeScaleKV::GetInstantcePtr(); })
+      .def("load", [](const std::string& table_name, const std::string& dir) {
+        auto* sparse_variable = &LargeScaleKV::Get(table_name);
+        sparse_variable->Load(dir);
+      });
 }
 }  // namespace pybind
 }  // namespace paddle

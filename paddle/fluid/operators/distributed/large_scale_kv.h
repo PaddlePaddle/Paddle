@@ -770,6 +770,8 @@ class LargeScaleKV {
 
   ~LargeScaleKV() {}
 
+  static std::shared_ptr<LargeScaleKV> GetInstantcePtr() { return scale_kv_; }
+
   static LargeScaleKV *GetInstance() { return scale_kv_.get(); }
 
   static LargeScaleKV *InitInstance(
