@@ -375,6 +375,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
         """
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
+
 class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
     """
     test class for data norm op
