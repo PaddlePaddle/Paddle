@@ -319,7 +319,7 @@ class ValueBlock {
       PADDLE_THROW(platform::errors::AlreadyExists("id already exist, error"));
     }
 
-    if (values.size() != value_names_.size()) {
+    if (values->size() != value_names_.size()) {
       PADDLE_THROW(
           platform::errors::AlreadyExists("values can not match, error"));
     }
@@ -383,16 +383,6 @@ class ValueBlock {
     rwlock_->UNLock();
   }
 
- private:
-  bool Has(const int64_t id) {
-    auto got = values_.find(id);
-    if (got == values_.end()) {
-      return false;
-    } else {
-      return true;
-    }
-  }
-
   void Entry(const int64_t id) {
     auto *value = values_.at(id);
     auto count = value->fetch_count();
@@ -400,6 +390,16 @@ class ValueBlock {
 
     if (!is_entry) {
       value->set_entry(entry_func_(count));
+    }
+  }
+
+ private:
+  bool Has(const int64_t id) {
+    auto got = values_.find(id);
+    if (got == values_.end()) {
+      return false;
+    } else {
+      return true;
     }
   }
 
@@ -446,7 +446,7 @@ class SparseVariable {
       std::vector<std::vector<float> *> id_values;
       auto *block = GetShard(id);
       block->InitFromInitializer(id, value_names);
-      id_values = block->Get(id);
+      id_values = block->Get(id, value_names);
       values->push_back(id_values);
     }
   }
@@ -540,6 +540,7 @@ class SparseVariable {
 
     std::vector<std::shared_ptr<framework::Variable>> variables;
     std::vector<float *> tensors;
+    auto place = platform::CPUPlace();
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
       auto var = std::make_shared<framework::Variable>();
@@ -551,10 +552,10 @@ class SparseVariable {
     }
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
-      auto &fin = fins[i];
+      auto &filename = filenames[i];
+      std::ifstream fin(filename, std::ios::binary);
       auto *selectedRows = variables[i]->GetMutable<framework::SelectedRows>();
 
-      auto place = platform::CPUPlace();
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
       auto &dev_ctx = *pool.Get(place);
@@ -583,8 +584,8 @@ class SparseVariable {
 
       for (int j = 0; j < static_cast<int>(filenames.size()); ++j) {
         values[j].resize(meta_.value_dims[i]);
-        std::memcpy(values[j].data(), tensors[j] + i * dims[i],
-                    sizeof(float) * dims[j]);
+        std::memcpy(values[j].data(), tensors[j] + i * meta_.value_dims[i],
+                    sizeof(float) * meta_.value_dims[j]);
       }
 
       auto *block = GetShard(id);
@@ -640,6 +641,7 @@ class SparseVariable {
     std::vector<std::shared_ptr<framework::Variable>> variables;
     std::vector<float *> tensors;
     std::vector<int64_t> dims;
+    std::vector<int64_t> ids;
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
       auto var = std::make_shared<framework::Variable>();
@@ -786,12 +788,12 @@ class LargeScaleKV {
     }
   }
 
-  SparseVariable *Get(std::string name) {
+  SparseVariable *Get(const std::string &name) {
     auto variable = sparse_variables.at(name);
     return variable.get();
   }
 
-  SparseVariable *GetByGrad(std::string name) {
+  SparseVariable *GetByGrad(const std::string &name) {
     return Get(grad_to_variables[name]);
   }
 
