@@ -106,6 +106,67 @@ class ConvMKLDNNHandlerT
             platform::CreateKey(framework::vectorize(input->dims()),
                                 unique_name)) {
     if (!this->isCached()) {
+      PADDLE_ENFORCE_EQ(
+          input->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The input tensor's layout should be %d, but got %d.",
+              DataLayout::kMKLDNN, input->layout()));
+      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
+                        platform::errors::InvalidArgument(
+                            "Wrong format set for Input tensor"));
+
+      PADDLE_ENFORCE_EQ(
+          filter->layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument(
+              "The Filter tensor's layout should be %d, but got %d.",
+              DataLayout::kMKLDNN, filter->layout()));
+      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
+                        platform::errors::InvalidArgument(
+                            "Wrong format set for Filter tensor"));
+
+      PADDLE_ENFORCE_GE(
+          input->dims().size(), 4,
+          platform::errors::InvalidArgument(
+              "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+              "NCDHW, but got dimension = %d .",
+              input->dims().size()));
+      PADDLE_ENFORCE_LE(
+          input->dims().size(), 5,
+          platform::errors::InvalidArgument(
+              "Input must be with 4 or 5 dimensions, i.e. NCHW or "
+              "NCDHW, but got dimension = %d .",
+              input->dims().size()));
+
+      PADDLE_ENFORCE_GE(
+          filter->dims().size(), 4,
+          platform::errors::InvalidArgument(
+              "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
+              "OIDHW, but got dimension = %d .",
+              filter->dims().size()));
+      PADDLE_ENFORCE_LE(
+          filter->dims().size(), 5,
+          platform::errors::InvalidArgument(
+              "Filter must be with 4 or 5 dimensions, i.e. OIHW or "
+              "OIDHW, but got dimension = %d .",
+              filter->dims().size()));
+
+      if (bias) {
+        PADDLE_ENFORCE_EQ(
+            bias->layout(), DataLayout::kMKLDNN,
+            platform::errors::InvalidArgument(
+                "The Bias tensor's layout should be %d, but got %d.",
+                DataLayout::kMKLDNN, bias->layout()));
+        PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
+                          platform::errors::InvalidArgument(
+                              "Got wrong format for Bias tensor."));
+
+        PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                          platform::errors::InvalidArgument(
+                              "Bias must only have 1 dimension, "
+                              "i.e. X, but got dimension = %d .",
+                              bias->dims().size()));
+      }
+
       const std::string fuse_activation =
           ctx.Attr<std::string>("fuse_activation");
       const float fuse_alpha = ctx.Attr<float>("fuse_alpha");
@@ -139,6 +200,14 @@ class ConvMKLDNNHandlerT
       UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                                data_dims, strides, ksize);
       const bool is_conv3d = strides.size() == 3U;
+
+      PADDLE_ENFORCE_EQ(
+          is_conv3d
+              ? dilations.size() == 3 && dilations[0] == 1 &&
+                    dilations[1] == 1 && dilations[2] == 1
+              : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
+          true, platform::errors::Unimplemented(
+                    "Dilation in oneDNN convolution is not implemented yet"));
 
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
