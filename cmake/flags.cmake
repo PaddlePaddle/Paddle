@@ -220,9 +220,11 @@ endforeach()
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${SAFE_GPU_COMMON_FLAGS}")
 
 
-if(WIN32 AND MSVC_STATIC_CRT)
+if(WIN32)
     # windows build turn off warnings.
-    safe_set_static_flag()
+    if(MSVC_STATIC_CRT)
+        safe_set_static_flag()
+    endif()
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO

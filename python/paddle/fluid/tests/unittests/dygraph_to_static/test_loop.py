@@ -169,15 +169,28 @@ def nested_for_loop_dyfunc():
     return b
 
 
+def for_loop_dufunc_with_listcomp(array):
+    a = 1
+    for j in range(array):
+        res = [x + a for x in array]
+        res = [i for i in array]
+        x = 1
+    b = [i for i in array]
+    print(x)
+    return res
+
+
 class TestNameVisitor(unittest.TestCase):
     def setUp(self):
         self.loop_funcs = [
-            while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none
+            while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none,
+            for_loop_dufunc_with_listcomp
         ]
         self.loop_var_names = [
-            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"])
+            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"]),
+            set(["j", "array", "res", "x"])
         ]
-        self.create_var_names = [set(), set(["ret"]), set()]
+        self.create_var_names = [set(), set(["ret"]), set(), set(["res", "x"])]
 
         self.nested_for_loop_func = nested_for_loop_dyfunc
 
@@ -211,7 +224,6 @@ class TestNameVisitor(unittest.TestCase):
             if isinstance(node, (gast.While, gast.For)):
                 loop_var_names, create_var_names = name_visitor.get_loop_var_names(
                     node)
-                # print(loop_var_names)
                 self.assertEqual(loop_var_names, self.loop_var_names[i])
                 self.assertEqual(create_var_names, self.create_var_names[i])
                 i += 1
