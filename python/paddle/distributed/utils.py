@@ -21,6 +21,7 @@ import signal
 import copy
 import sys
 import subprocess
+import threading
 from contextlib import closing
 import socket
 
@@ -370,7 +371,29 @@ def start_local_trainers(cluster,
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
-            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+            if idx == 0:
+                proc = subprocess.Popen(
+                    cmd,
+                    env=current_env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+
+                def shell_tee(proc, fn):
+                    BUF_SIZE = 512
+                    while True:
+                        buf = proc.stdout.read(BUF_SIZE)
+                        if len(buf) == 0:
+                            break
+
+                        sys.stdout.buffer.write(buf)
+                        fn.buffer.write(buf)
+                        sys.stdout.flush()
+                        fn.flush()
+
+                threading.Thread(target=shell_tee, args=(proc, fn)).start()
+            else:
+                proc = subprocess.Popen(
+                    cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
 
