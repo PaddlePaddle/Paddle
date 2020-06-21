@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <unordered_map>
-
 namespace paddle {
 namespace framework {
 
