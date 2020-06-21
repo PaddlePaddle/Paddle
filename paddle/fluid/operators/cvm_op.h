@@ -72,13 +72,12 @@ class CVMOpKernel : public framework::OpKernel<T> {
         for (int i = 0; i < batch_size; i++) {
           int cursor = i * item_size;
           y_data[cursor] = log(x_data[cursor] + 1);
-          y_data[cursor+1] = log(x_data[cursor+1] + 1) - y_data[cursor];
+          y_data[cursor + 1] = log(x_data[cursor + 1] + 1) - y_data[cursor];
           for (int j = 2; j < item_size; j++) {
-            y_data[cursor+j] = x_data[cursor+j];
+            y_data[cursor + j] = x_data[cursor + j];
           }
         }
       } else {
-
         for (int i = 0; i < batch_size; i++) {
           CvmComputeKernel(use_cvm, item_size, &x_data, &y_data);
         }
