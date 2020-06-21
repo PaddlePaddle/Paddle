@@ -361,10 +361,7 @@ class TestDataNormOpWithoutEnableScaleAndShift(OpTest):
             "bias": bias
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
-        self.attrs = {
-            "epsilon": epsilon,
-            "use_mkldnn": self.use_mkldnn
-        }
+        self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
 
     def test_check_output(self):
         """
