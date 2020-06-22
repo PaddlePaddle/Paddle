@@ -345,6 +345,7 @@ class ValueBlock {
     if (Has(id)) {
       Entry(id);
       rwlock_->UNLock();
+      return;
     }
 
     auto rets = std::vector<std::vector<float>>();
