@@ -792,6 +792,20 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     return program
 
 
+def delete_unused_vars_pass(program, config):
+    op = get_op_by_type(program.global_block(), "listen_and_serv")
+
+    sparse_params = []
+    grad_to_params = op.attr('sparse_grad_to_param')
+    for grad_to_param in grad_to_params:
+        _, param = grad_to_param.split(":")
+        sparse_params.append(param)
+
+    for var in sparse_params:
+        if program.global_block().has_var(var):
+            program.global_block()._remove_var(var)
+
+
 def build_pserver_startup_program_pass(program, p_main_program, config):
     ps_endpoint = config.get_ps_endpoint()
     o_startup_program = config.get_origin_startup_program()

@@ -906,6 +906,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = server.add_optimizer_pass(_main, compiled_config)
         _main = server.large_scale_sparse_pass(_main, _main, compiled_config,
                                                False)
+        _main = server.delete_unused_vars_pass(_main, compiled_config)
 
         _startup = server.build_pserver_startup_program_pass(_startup, _main,
                                                              compiled_config)

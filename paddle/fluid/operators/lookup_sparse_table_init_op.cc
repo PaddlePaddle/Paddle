@@ -26,6 +26,24 @@ namespace operators {
 constexpr char kLargeScaleKV[] = "large_scale_metas";
 constexpr int64_t kNoPadding = -1;
 
+static void split(const std::string &str, char sep,
+                  std::vector<std::string> *pieces) {
+  pieces->clear();
+  if (str.empty()) {
+    return;
+  }
+  size_t pos = 0;
+  size_t next = str.find(sep, pos);
+  while (next != std::string::npos) {
+    pieces->push_back(str.substr(pos, next - pos));
+    pos = next + 1;
+    next = str.find(sep, pos);
+  }
+  if (!str.substr(pos).empty()) {
+    pieces->push_back(str.substr(pos));
+  }
+}
+
 class LookupSparseTableInitInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {}
