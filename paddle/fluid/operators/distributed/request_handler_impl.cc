@@ -95,19 +95,23 @@ bool RequestSendHandler::Handle(const std::string& varname,
       auto* var = scope->FindVar(run_varname);
 
       // for sparse ids
-      if (var->IsType<framework::SelectedRows>() &&
-          distributed_mode_ != DistributedMode::kSync) {
+      if (var->IsType<framework::SelectedRows>()) {
         auto* ins = distributed::LargeScaleKV::GetInstance();
         auto varnames = ins->GetByGrad(run_varname)->CachedVarnames();
 
-        for (auto name : varnames) {
-          scope->Var(name);
+        if (distributed_mode_ == DistributedMode::kSync) {
+          for (auto name : varnames) {
+            scope()->Var(name);
+          }
+        } else {
+          for (auto name : varnames) {
+            scope->Var(name);
+          }
         }
       }
 
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[run_varname].get(),
                                     scope);
-
       return true;
     } else {  // sync
       rpc_server_->WaitCond(kRequestSend);
