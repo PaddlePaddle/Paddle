@@ -1529,8 +1529,8 @@ void PadBoxSlotDataset::MergeInsKeys(const Channel<SlotRecord>& in) {
   boxps::PSAgentBase* agent = boxps_ptr->GetAgent();
 
   int thread_num = boxps_ptr->GetFeedpassThreadNum();
-  if (thread_num > 10) {
-    thread_num = 10;
+  if (thread_num > FLAGS_padbox_dataset_merge_thread_num) {
+    thread_num = FLAGS_padbox_dataset_merge_thread_num;
   }
   std::mutex mutex;
   for (int tid = 0; tid < thread_num; ++tid) {

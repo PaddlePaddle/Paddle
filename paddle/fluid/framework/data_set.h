@@ -26,6 +26,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
+DECLARE_int32(padbox_dataset_shuffle_thread_num);
+DECLARE_int32(padbox_dataset_merge_thread_num);
 
 namespace paddle {
 namespace framework {
@@ -371,7 +373,7 @@ class PadBoxSlotDataset : public DatasetImpl<SlotRecord> {
   int mpi_size_ = 1;
   int mpi_rank_ = 0;
   std::vector<SlotPvInstance> input_pv_ins_;
-  int shuffle_thread_num_ = 10;
+  int shuffle_thread_num_ = FLAGS_padbox_dataset_shuffle_thread_num;
   std::atomic<int> shuffle_counter_{0};
   void* data_consumer_ = nullptr;
 };

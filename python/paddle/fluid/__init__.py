@@ -207,12 +207,23 @@ def __bootstrap__():
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
-            'fraction_of_gpu_memory_to_use', 'initial_gpu_memory_in_mb',
-            'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
-            'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
-            'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
-            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
-            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb', 'fix_dayid'
+            'fraction_of_gpu_memory_to_use',
+            'initial_gpu_memory_in_mb',
+            'reallocate_gpu_memory_in_mb',
+            'cudnn_deterministic',
+            'enable_cublas_tensor_op_math',
+            'conv_workspace_size_limit',
+            'cudnn_exhaustive_search',
+            'selected_gpus',
+            'sync_nccl_allreduce',
+            'cudnn_batchnorm_spatial_persistent',
+            'gpu_allocator_retry_time',
+            'local_exe_sub_scope_limit',
+            'gpu_memory_limit_mb',
+            'fix_dayid',
+            'padbox_record_pool_max_size',
+            'padbox_dataset_shuffle_thread_num',
+            'padbox_dataset_merge_thread_num',
         ]
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

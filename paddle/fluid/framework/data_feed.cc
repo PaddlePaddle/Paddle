@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
-
+#include "paddle/fluid/string/string_helper.h"
 #ifdef PADDLE_WITH_BOX_PS
 #include <dlfcn.h>
 extern "C" {
@@ -1801,7 +1801,22 @@ void SlotPaddleBoxDataFeed::Init(const DataFeedDesc& data_feed_desc) {
 
   rank_offset_name_ = data_feed_desc.rank_offset();
   pv_batch_size_ = data_feed_desc.pv_batch_size();
+
   // fprintf(stdout, "rank_offset_name: [%s]\n", rank_offset_name_.c_str());
+  size_t pos = pipe_command_.find(".so");
+  if (pos != std::string::npos) {
+    pos = pipe_command_.rfind('|');
+    if (pos == std::string::npos) {
+      parser_so_path_ = pipe_command_;
+      pipe_command_.clear();
+    } else {
+      parser_so_path_ = pipe_command_.substr(pos + 1);
+      pipe_command_ = pipe_command_.substr(0, pos);
+    }
+    parser_so_path_ = paddle::string::erase_spaces(parser_so_path_);
+  } else {
+    parser_so_path_.clear();
+  }
 }
 void SlotPaddleBoxDataFeed::GetUsedSlotIndex(
     std::vector<int>* used_slot_index) {
@@ -2325,7 +2340,7 @@ SlotInsParserMgr& global_parser_pool() {
 
 void SlotPaddleBoxDataFeed::LoadIntoMemory() {
   VLOG(3) << "LoadIntoMemory() begin, thread_id=" << thread_id_;
-  if (this->pipe_command_.find(".so") != std::string::npos) {
+  if (!parser_so_path_.empty()) {
     LoadIntoMemoryByLib();
   } else {
     LoadIntoMemoryByCommand();
@@ -2334,11 +2349,11 @@ void SlotPaddleBoxDataFeed::LoadIntoMemory() {
 
 void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
   paddle::framework::ISlotParser* parser =
-      global_parser_pool().Get(this->pipe_command_, all_slots_info_);
+      global_parser_pool().Get(parser_so_path_, all_slots_info_);
   CHECK(parser != nullptr);
 
   boxps::PaddleDataReader* reader = nullptr;
-  if (BoxWrapper::GetInstance()->UseAfsApi()) {
+  if (BoxWrapper::GetInstance()->UseAfsApi() && pipe_command_.empty()) {
     reader =
         boxps::PaddleDataReader::New(BoxWrapper::GetInstance()->GetFileMgr());
   }
@@ -2394,15 +2409,20 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
       }
     };
     int lines = 0;
-    if (BoxWrapper::GetInstance()->UseAfsApi()) {
+    if (BoxWrapper::GetInstance()->UseAfsApi() && pipe_command_.empty()) {
       while (reader->open(filename) < 0) {
         sleep(1);
       }
       lines = line_reader.read_api(reader, func);
       reader->close();
     } else {
-      int err_no = 0;
-      this->fp_ = fs_open_read(filename, &err_no, "");
+      if (BoxWrapper::GetInstance()->UseAfsApi()) {
+        this->fp_ = BoxWrapper::GetInstance()->OpenReadFile(
+            filename, this->pipe_command_);
+      } else {
+        int err_no = 0;
+        this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      }
       CHECK(this->fp_ != nullptr);
       __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
       lines = line_reader.read_file(this->fp_.get(), func);
