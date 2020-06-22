@@ -88,7 +88,7 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
             "Unsupported quantized op type %s", quantized_op_type));
       }
       op_desc->SetAttr("bit_length", bit_length);
-      op_desc->ResetInputs(output_act_name, input_act_name);
+      op_desc->RenameInput(output_act_name, input_act_name);
       op_desc->Flush();
       IR_NODE_LINK_TO(input_act, quantized_node);
     }

@@ -55,8 +55,6 @@ class OpDesc {
   void SetInput(const std::string &param_name,
                 const std::vector<std::string> &args);
 
-  void ResetInputs(const std::string &from, const std::string &to);
-
   const std::vector<std::string> &Output(const std::string &name) const;
 
   bool HasOutput(const std::string &name) const;
