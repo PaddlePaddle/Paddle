@@ -115,11 +115,17 @@ void BindCommunicator(py::module* m) {
 
 void BindLargeScaleKV(py::module* m) {
   py::class_<LargeScaleKV, std::shared_ptr<LargeScaleKV>>(*m, "LargeScaleKV")
-      .def("get_instance", []() { return LargeScaleKV::GetInstantcePtr(); })
-      .def("load", [](LargeScaleKV& self, const std::string& table_name,
+      .def(py::init([]() { return LargeScaleKV::GetInstantcePtr(); }))
+      .def("load",
+           [](LargeScaleKV& self, const std::string& table_name,
+              const std::string& dir) {
+             auto* sparse_variable = self.Get(table_name);
+             sparse_variable->Load(dir);
+           })
+      .def("save", [](LargeScaleKV& self, const std::string& table_name,
                       const std::string& dir) {
         auto* sparse_variable = self.Get(table_name);
-        sparse_variable->Load(dir);
+        sparse_variable->Save(dir);
       });
 }
 }  // namespace pybind

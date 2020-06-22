@@ -526,20 +526,16 @@ class SparseVariable {
 
     std::vector<std::string> filenames;
     for (auto &value_name : meta_.value_names) {
-      auto filename = string::Sprintf("%s/%s.txt", dirname, value_name);
+      auto filename = string::Sprintf("%s/%s", dirname, value_name);
       filenames.push_back(filename);
     }
+
+    LoadFromSelectedRows(filenames, meta_.value_names);
+    VLOG(1) << "load " << meta_.name << " in dir: " << dirname << " done";
   }
 
   void LoadFromSelectedRows(const std::vector<std::string> &filenames,
                             const std::vector<std::string> &valuenames) {
-    std::vector<std::unique_ptr<std::ifstream>> fins;
-
-    for (auto filename : filenames) {
-      std::unique_ptr<std::ifstream> fin(new std::ifstream(filename));
-      fins.push_back(std::move(fin));
-    }
-
     std::vector<std::shared_ptr<framework::Variable>> variables;
     std::vector<float *> tensors;
     auto place = platform::CPUPlace();

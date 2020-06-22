@@ -99,14 +99,8 @@ bool RequestSendHandler::Handle(const std::string& varname,
         auto* ins = distributed::LargeScaleKV::GetInstance();
         auto varnames = ins->GetByGrad(run_varname)->CachedVarnames();
 
-        if (distributed_mode_ == DistributedMode::kSync) {
-          for (auto name : varnames) {
-            scope()->Var(name);
-          }
-        } else {
-          for (auto name : varnames) {
-            scope->Var(name);
-          }
+        for (auto name : varnames) {
+          scope->Var(name);
         }
       }
 
