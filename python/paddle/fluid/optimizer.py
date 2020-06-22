@@ -3562,7 +3562,7 @@ class PipelineOptimizer(object):
     Args:
         optimizer (Optimizer): The optimizer to use, such as SGD.
         num_microbatches (int): Number of microbatches. [Optional. Default:1].
-        start_cpu_core_id (int): The first cpu core id if cpu is used. [Optional. Default:0].
+        start_cpu_core_id (int): The first cpu core id to use. [Optional. Default:0].
     """
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
@@ -3586,6 +3586,7 @@ class PipelineOptimizer(object):
         self._op_role_key = op_maker.kOpRoleAttrName()
         self._op_role_var_key = op_maker.kOpRoleVarAttrName()
         self._op_device_key = op_maker.kOpDeviceAttrName()
+        self._param_device_map = dict()
 
     def _create_vars(self, block, main_program):
         # Create vars for block, copied from main_program's global block
@@ -3615,6 +3616,10 @@ class PipelineOptimizer(object):
     def _is_backward_op(self, op):
         return self._op_role_key in op.attr_names and int(op.all_attrs()[
             self._op_role_key]) & int(self._op_role.Backward)
+
+    def _is_optimize_op(self, op):
+        return self._op_role_key in op.attr_names and int(op.all_attrs()[
+            self._op_role_key]) & int(self._op_role.Optimize)
 
     def _is_update_op(self, op):
         return 'Param' in op.input_names and 'Grad' in op.input_names and (
@@ -3657,7 +3662,7 @@ class PipelineOptimizer(object):
         Args:
             ops (list): A list of ops.
             cur_op (Operator): Current operator which has variable named
-                               var_name as input.
+                               var_name as output.
             var_name (string): Variable name.
         """
         post_op = []
@@ -3673,7 +3678,7 @@ class PipelineOptimizer(object):
                     post_op.append(op)
         if post_op:
             if not len(post_op) == 1:
-                raise ValueError("Can only have one post op.")
+                raise ValueError("Each op can only have one post op.")
             return post_op[0]
         return None
 
@@ -3695,6 +3700,9 @@ class PipelineOptimizer(object):
                 if out_var_name == var_name:
                     prev_op.append(op)
         if prev_op:
+            # A op may have more than one prev op,
+            # e.g., for 'learning_rate', there may be multiple ops have it as
+            # output.
             return prev_op[-1]
         return None
 
@@ -3726,12 +3734,12 @@ class PipelineOptimizer(object):
         """
         Get all vars whose is_data attribute are true and then rename them.
 
-        For ModelParallelTrainer, all data vars are binded to
-        minibatch scope, so we have to feed them to the macromatch
+        For PipelineTrainer, all data vars are binded to
+        minibatch scope, so we have to feed them to the microbatch
         to avoid conflicts. The vars feeded to microbatch have to
         be renamed.
         """
-        # A dict map from var name to the renamed name.
+        # A map from var name to the renamed name.
         raw_name_new_name_map = dict()
         # Because we will create vars in block, it is more safe
         # to get all var_names before iteration.
@@ -3741,7 +3749,7 @@ class PipelineOptimizer(object):
             if not var.is_data:
                 continue
             assert var_name not in raw_name_new_name_map, (
-                "{} has already processed.".format(var_name))
+                "{} has already been processed.".format(var_name))
             new_name = unique_name.generate(var_name)
             raw_name_new_name_map[var_name] = new_name
             new_var = self._create_var(block, var, new_name)
@@ -3759,7 +3767,7 @@ class PipelineOptimizer(object):
                 if not dev_spec in data_devices_map[var_name]:
                     data_devices_map[var_name].append(dev_spec)
                 new_name = raw_name_new_name_map[var_name]
-                self._rename_arg(op, var_name, new_name)
+                #self._rename_arg(op, var_name, new_name)
         return data_devices_map, raw_name_new_name_map
 
     def _rename_var_in_block(self, block, raw_name_new_name_map):
@@ -3865,14 +3873,44 @@ class PipelineOptimizer(object):
         """
         return name + core.grad_var_suffix()
 
+    def _update_param_device_map(self, params_grads, block):
+        for param_grad in params_grads:
+            if not param_grad[0].trainable: continue
+            param_name = param_grad[0].name
+            ops = block.ops
+            for op in ops:
+                input_arg_names = op.input_arg_names
+                if param_name in input_arg_names:
+                    self._param_device_map[param_name] = op.attr(
+                        self._op_device_key)
+                    break
+
+    def _add_opdevice_attr_for_regularization_clip(self, block):
+        """
+        Add op_device attribute for regulization and clip ops.
+        """
+        for op in block.ops:
+            # role for regularization and clip ops is optimize
+            if int(op.attr(self._op_role_key)) != int(self._op_role.Optimize):
+                continue
+            if op.has_attr(self._op_device_key) and (
+                    op.attr(self._op_device_key) != ""):
+                continue
+            assert self._op_role_var_key in op.attr_names
+            op_role_var = op.all_attrs()[self._op_role_var_key]
+            assert len(op_role_var) == 2
+            param_name = block.vars[op_role_var[0]].name
+            device = self._param_device_map[param_name]
+            op._set_attr(self._op_device_key, device)
+
     def _add_default_opdevice_attr(self, block):
         """
-        1. Add default op_device attribute for optimizer (lr) related ops.
+        1. Add default op_device attribute for lr-related ops.
            The default value is the one that of the first place.
         2. Add default op_device attribute for sum ops added during
-           optimization. For these ops, we set the op_device attribute
-           as the one of its post op, i.e, which op has the output of the sum op
-           as an input.
+           backward. For these ops, we set the op_device attribute
+           as the one of its post op, i.e, which op has the output of the
+           sum op as an input.
         """
         first_devcie = ""
 
@@ -3886,9 +3924,7 @@ class PipelineOptimizer(object):
                 break
         assert first_device
 
-        # set op_device attr for optimizer related ops
-        # Todo (sandyhouse): deal with ops that have no kernel and not
-        #                    optimizer related
+        # set op_device attr for lr-related ops
         lrsched_role = int(self._op_role.LRSched)
         for op in block.ops:
             if not op.has_attr(self._op_device_key) or (
@@ -3906,8 +3942,8 @@ class PipelineOptimizer(object):
                     continue
 
                 assert op.attr(self._op_role_key) == lrsched_role, (
-                    "Op whose op_device attr has not been set for model"
-                    " parallel must be of the role LRSched.")
+                    "Op whose op_device attr has not been set for pipeline"
+                    " must be of the role LRSched.")
                 op._set_attr(self._op_device_key, first_device)
 
     def _check_validation(self, block):
@@ -3944,7 +3980,7 @@ class PipelineOptimizer(object):
         extra_index = 0
 
         # A map from var to device spec where op takes it as input,
-        # avoiding multiple enqueue and dequeue.
+        # avoiding multiple enqueue and dequeue ops.
         var_devspec = dict()
 
         for index, op in list(enumerate(origin_block.ops)):
@@ -4013,9 +4049,10 @@ class PipelineOptimizer(object):
         for index, op in reversed(list(enumerate(block.ops))):
             device = op.attr(self._op_device_key)
             # Optimizer pass
-            if not self._is_update_op(op):
+            if not self._is_optimize_op(op):
                 optimize_index = index + 1
                 break
+            if not self._is_update_op(op): continue
             assert self._op_role_var_key in op.attr_names
             op_role_var = op.all_attrs()[self._op_role_var_key]
             assert len(op_role_var) == 2
@@ -4023,7 +4060,7 @@ class PipelineOptimizer(object):
             assert grad_name not in grad_device_map
             assert grad_name not in grad_names_to_dequeue
             grad_device_map[grad_name] = device
-            grad_names.append(grad_name)
+            grad_names_to_dequeue.append(grad_name)
 
         for grad_name in grad_names_to_dequeue:
             device = grad_device_map[grad_name]
@@ -4096,7 +4133,7 @@ class PipelineOptimizer(object):
                         self._op_device_key: device,
                         self._op_role_key: self._op_role.Backward
                     })
-                continue
+                break
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
                 op_role_var = op.all_attrs()[self._op_role_var_key]
@@ -4160,7 +4197,7 @@ class PipelineOptimizer(object):
                 if not var.persistable: continue
                 if not var_name in var_info:
                     var_info[var_name] = []
-                if not prog in var_info[var_name] and var_name in block.vars:
+                if not prog in var_info[var_name]:
                     var_info[var_name].append(prog)
         for var_name in var_info.keys():
             if len(var_info[var_name]) == 1:
@@ -4173,7 +4210,6 @@ class PipelineOptimizer(object):
             for prog in var_info[var_name]:
                 block = prog.block(0)
                 for op in block.ops:
-                    # Todo: how to deal with dequeue
                     if op.type == "dequeue": continue
                     # We have processed lr related vars
                     if op.attr(self._op_role_key) == int(
@@ -4217,11 +4253,9 @@ class PipelineOptimizer(object):
                     attrs={
                         'queue_name': queue_name,
                         self._op_device_key: write_device,
-                        self._op_device_index_key: write_device_index,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
-                        #self._op_role_key: self._op_role.LRSched
-                        self._op_role_key: self._op_role.Forward
+                        self._op_role_key: self._op_role.LRSched
                     })
                 read_block = prog.block(0)
                 read_device = self._get_device_info(read_block)
@@ -4231,11 +4265,9 @@ class PipelineOptimizer(object):
                     outputs={'Out': [read_block.var(var_name)]},
                     attrs={
                         self._op_device_key: read_device,
-                        self._op_device_index_key: read_device_index,
                         # A trick to make the role LRSched to avoid copy every
                         # microbatch
-                        #self._op_role_key: self._op_role.LRSched,
-                        self._op_role_key: self._op_role.Forward,
+                        self._op_role_key: self._op_role.LRSched,
                         'queue_name': queue_name,
                     })
 
@@ -4243,26 +4275,29 @@ class PipelineOptimizer(object):
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None,
-                 print_list=list()):
+                 no_grad_set=None):
         main_block = loss.block
         if startup_program is None:
             startup_program = default_startup_program()
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
+        self._update_param_device_map(params_grads, main_block)
 
-        # Step1: add default op_device attribute for ops whose op_device
+        # Step1: add default op_device attribute for regulization and clip ops
+        self._add_opdevice_attr_for_regularization_clip(main_block)
+
+        # Step2: add default op_device attribute for ops whose op_device
         # attribute have not been set yet.
         self._add_default_opdevice_attr(main_block)
         device_specs = self._check_validation(main_block)
 
-        # Step2: add enqueue and dequeue between the section boundaries
+        # Step3: add enqueue and dequeue ops between section boundaries
         origin_prog = main_block.program.clone(for_test=False)
         origin_main_block = origin_prog.global_block()
         self._insert_enq_deq_ops_for_boundaries(main_block, origin_main_block,
                                                 startup_program)
 
-        # Step3: add a pair of enqueue and dequeueN for parameter gradients
+        # Step4: add a pair of enqueue and dequeueN for parameter gradients
         self._insert_enq_deq_ops_for_update(main_block, startup_program)
 
         main_program = main_block.program
@@ -4280,7 +4315,7 @@ class PipelineOptimizer(object):
             else:
                 raise ValueError("Unknown device type: %s", dev_spec)
 
-        # Step4: split program into sections and add pairs of
+        # Step5: split program into sections and add pairs of
         # enqueue and dequeue ops for data var.
         if len(place_list) == 0:
             program_list = []
@@ -4297,12 +4332,12 @@ class PipelineOptimizer(object):
         self._insert_enq_deq_for_data_var(main_block, program_list,
                                           startup_program, device_specs)
 
-        # Step5: Special Case: process persistable vars that exist in
+        # Step6: Special Case: process persistable vars that exist in
         # multiple sections
         self._process_persistable_vars_in_multi_sections(
             main_program, startup_program, program_list)
 
-        # Step6: Add sub blocks for section programs
+        # Step7: Add sub blocks for section programs
         self._add_sub_blocks(main_block, program_list)
 
         main_program._pipeline_opt = {
