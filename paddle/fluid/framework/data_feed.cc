@@ -2342,15 +2342,7 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
     reader =
         boxps::PaddleDataReader::New(BoxWrapper::GetInstance()->GetFileMgr());
   }
-  auto total_fea_num = [&](const std::vector<SlotRecord>& slot_record,
-                           size_t len) -> int {
-    int num = 0;
-    size_t size = len < slot_record.size() ? len : slot_record.size();
-    for (size_t i = 0; i < size; ++i) {
-      num += slot_record[i]->slot_uint64_feasigns_.slot_values.capacity();
-    }
-    return num;
-  };
+
   std::string filename;
   BufferedLineFileReader line_reader;
 
@@ -2365,15 +2357,17 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
     int offset = 0;
 
     SlotRecordPool().get(&record_vec, max_fetch_num);
-    from_pool_num = total_fea_num(record_vec, max_fetch_num);
-    auto func = [this, &parser, &record_vec, &offset,
-                 &max_fetch_num](const std::string& line) {
+    from_pool_num = GetTotalFeaNum(record_vec, max_fetch_num);
+    auto func = [this, &parser, &record_vec, &offset, &max_fetch_num,
+                 &from_pool_num](const std::string& line) {
       int old_offset = offset;
       if (!parser->ParseOneInstance(
               line, [this, &offset, &record_vec, &max_fetch_num, &old_offset](
                         std::vector<SlotRecord>& vec, int num) {
                 vec.resize(num);
                 if (offset + num > max_fetch_num) {
+                  // Considering the prob of show expanding is low, so we don't
+                  // update STAT here
                   input_channel_->WriteMove(offset, &record_vec[0]);
                   SlotRecordPool().get(&record_vec[0], offset);
                   record_vec.resize(max_fetch_num);
@@ -2391,8 +2385,11 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
       }
       if (offset >= max_fetch_num) {
         input_channel_->Write(std::move(record_vec));
+        STAT_ADD(STAT_total_feasign_num_in_mem,
+                 GetTotalFeaNum(record_vec, max_fetch_num) - from_pool_num);
         record_vec.clear();
         SlotRecordPool().get(&record_vec, max_fetch_num);
+        from_pool_num = GetTotalFeaNum(record_vec, max_fetch_num);
         offset = 0;
       }
     };
@@ -2412,9 +2409,8 @@ void SlotPaddleBoxDataFeed::LoadIntoMemoryByLib(void) {
     }
     if (offset > 0) {
       input_channel_->WriteMove(offset, &record_vec[0]);
-      // FIXME: max_fetch_num is enough, so we only add state here
       STAT_ADD(STAT_total_feasign_num_in_mem,
-               total_fea_num(record_vec, max_fetch_num) - from_pool_num);
+               GetTotalFeaNum(record_vec, max_fetch_num) - from_pool_num);
       if (offset < max_fetch_num) {
         SlotRecordPool().put(&record_vec[offset], (max_fetch_num - offset));
       }

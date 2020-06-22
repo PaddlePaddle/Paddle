@@ -813,6 +813,16 @@ inline SlotPvInstance make_slotpv_instance() {
   return new SlotPvInstanceObject();
 }
 
+inline int GetTotalFeaNum(const std::vector<SlotRecord>& slot_record,
+                          size_t len) {
+  int num = 0;
+  size_t size = len < slot_record.size() ? len : slot_record.size();
+  for (size_t i = 0; i < size; ++i) {
+    num += slot_record[i]->slot_uint64_feasigns_.slot_values.capacity();
+  }
+  return num;
+}
+
 template <class T>
 class SlotObjAllocator {
  public:
@@ -913,6 +923,9 @@ class SlotObjPool {
       }
       // over max capacity
       if (input.size() + capacity() > max_capacity_) {
+        STAT_SUB(STAT_total_feasign_num_in_mem,
+                 GetTotalFeaNum(input, input.size()));
+        STAT_SUB(STAT_slot_pool_size, input.size());
         for (auto& t : input) {
           delete t;
         }
