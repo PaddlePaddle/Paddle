@@ -178,6 +178,7 @@ __all__ = [
     'fsp_matrix',
     'continuous_value_model',
     'where',
+    'topk_in_label',
     'sign',
     'deformable_conv',
     'unfold',
@@ -1902,7 +1903,7 @@ def pool2d(input,
                              None by default.
         exclusive (bool): Whether to exclude padding points in average pooling
                           mode, default is `true`.
-        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+        data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NDHW"`.
                 The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
                 `[batch_size, input_channels, input_height, input_width]`.
 
@@ -5582,8 +5583,6 @@ def im2sequence(input,
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
 
-    check_variable_and_dtype(input, 'input', ['float32'], 'im2sequence')
-
     if isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
     if isinstance(stride, int):
@@ -6177,7 +6176,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -6197,9 +6196,9 @@ def squeeze(input, axes, name=None):
 
     """
     helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(
-        input, 'input',
-        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int8', 'int32', 'int64'],
+                             'squeeze')
     check_type(axes, 'axes', list, 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6729,7 +6728,7 @@ def label_smooth(label,
         label(Variable): The input variable containing the label data. The
                         label data should use one-hot representation. It's
                         a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
+                        :math:`[N_1, ..., Depth]`, where Depth is class number.
         prior_dist(Variable, optional): The prior distribution to be used to smooth
                         labels. If not provided, an uniform distribution
                         is used. It's a multidimensional tensor with a shape of
@@ -6752,7 +6751,7 @@ def label_smooth(label,
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            label = layers.data(name="label", shape=[1], dtype="int32")
+            label = layers.data(name="label", shape=[1], dtype="float32")
             one_hot_label = layers.one_hot(input=label, depth=10)
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
@@ -6763,9 +6762,6 @@ def label_smooth(label,
     if in_dygraph_mode():
         return core.ops.label_smooth(label, prior_dist, 'epsilon',
                                      float(epsilon))
-
-    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
-                             'label_smooth')
 
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
@@ -9126,9 +9122,6 @@ def affine_grid(theta, out_shape, name=None):
     """
     helper = LayerHelper('affine_grid')
 
-    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
-                             'affine_grid')
-
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
             isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Variable.")
@@ -9141,8 +9134,6 @@ def affine_grid(theta, out_shape, name=None):
     attrs = {}
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
-        check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
-                                 'affine_grid')
     else:
         attrs['output_shape'] = out_shape
 
@@ -9626,20 +9617,10 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
-    # NOTE(): The input of this API should be ``N,C,...`` format, 
-    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
-        assert len(
-            x.shape
-        ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
-        #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
-        # To be consistent with Prelu, it is simplified.
-        alpha_shape = [1, x.shape[1]]
+        alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        assert len(
-            x.shape
-        ) >= 1, "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
-        alpha_shape = [1] + list(x.shape)[1:]
+        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -11065,26 +11046,8 @@ def shape(input):
 
     Get the shape of the input.
 
-    .. code-block:: text
-
-        Case1:
-            Given N-D Tensor:
-                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
-
-            Then:
-                input.shape = [2, 4]
-
-        Case2:
-            Given SelectedRows:
-                input.rows = [0, 4, 19]
-                input.height = 20
-                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
-            Then:
-                input.shape = [3, 2]
-
     Args:
-        input (Variable): The input can be N-D Tensor or SelectedRows with data type float32, float64, int32, int64.
-                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
+        input (Variable): The input N-D Tensor. Datatype can be float32, float64, int32, int64.
 
     Returns:
         Variable (Tensor): The shape of the input variable.
@@ -11095,7 +11058,7 @@ def shape(input):
             import paddle.fluid as fluid
             import numpy as np
 
-            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
+            inputs = fluid.layers.data(name="x", shape=[3, 100, 100], dtype="float32")
             output = fluid.layers.shape(inputs)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -11907,10 +11870,8 @@ for func in [
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
         ],
-        skip_attrs_set={
-            "x_data_format", "y_data_format", "axis", "use_quantizer",
-            "Scale_x", "Scale_y", "Scale_out"
-        }) + """\n""" + str(func.__doc__)
+        skip_attrs_set={"x_data_format", "y_data_format", "axis"
+                        }) + """\n""" + str(func.__doc__)
 
 for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
@@ -13976,6 +13937,83 @@ def where(condition):
         inputs={'Condition': condition},
         outputs={'Out': [out]})
     return out
+    
+def topk_in_label(condition, x, y, name=None):
+    """
+	:alias_main: paddle.where
+	:alias: paddle.where,paddle.tensor.where,paddle.tensor.search.where
+
+    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+
+    .. math::
+
+      out_i =
+      \\begin{cases}
+      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
+      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
+      \\end{cases}
+
+
+    Args:
+        condition(Variable): The condition to choose x or y.
+        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
+        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: A Tensor with the same data dype as x. 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import numpy as np
+          import paddle.fluid as fluid
+
+          x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+          y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+
+          with fluid.dygraph.guard():
+              x = fluid.dygraph.to_variable(x_i)
+              y = fluid.dygraph.to_variable(y_i)
+              out = paddle.where(x>1, x, y)
+
+          print(out.numpy())
+          #out: [1.0, 1.0, 3.2, 1.2]
+    """
+    if not in_dygraph_mode():
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'topk_in_label')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'topk_in_label')
+        check_variable_and_dtype(
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'topk_in_label')
+
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape:
+        if in_dygraph_mode():
+            return core.ops.topk_in_label(condition, x, y)
+        else:
+            helper = LayerHelper("topk_in_label", **locals())
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+            helper.append_op(
+                type='topk_in_label',
+                inputs={'Condition': condition,
+                        'X': x,
+                        'Y': y},
+                outputs={'Out': [out]})
+            return out
+    else:
+        cond_int = layers.cast(condition, x.dtype)
+        cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
+        out1 = layers.elementwise_mul(x, cond_int)
+        out2 = layers.elementwise_mul(y, cond_not_int)
+        out = layers.elementwise_add(out1, out2)
+        return out
 
 
 def sign(x):
