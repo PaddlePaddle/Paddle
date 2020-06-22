@@ -30,6 +30,10 @@ if(NOT DEFINED DEMO_NAME)
   message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
 endif()
 
+if(DEMO_NAME MATCHES "vis_demo")
+  option(USE_TENSORRT "Compile demo with TensorRT."   ON)
+endif()
+
 include_directories("${PADDLE_LIB}/")
 set(PADDLE_LIB_THIRD_PARTY_PATH "${PADDLE_LIB}/third_party/install/")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
