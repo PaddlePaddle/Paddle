@@ -421,7 +421,8 @@ class Layer(core.Layer):
         """
         Registers a variable as buffer into the layer.
 
-        `buffer` is a non-parameteric variable and will not be updated by optimizer.
+        `buffer` is a non-parameteric variable and will not be updated by optimizer,
+        but is necessary for evaluation and inference. For example, the mean and variance in BatchNorm layers.
         The registered buffer is persistable by default, and will be saved into
         `state_dict` alongside parameters. If set persistable=False, it registers
         a non-persistable buffer, so that it will not be a part of `state_dict` .

@@ -275,7 +275,7 @@ class ConcreteProgram(object):
                 )) + list(func_spec.buffers().values())
 
                 # 3. Builds program only once and returns the output Variables.
-                with param_guard(func_spec.parameters(False)):
+                with param_guard(func_spec.parameters(False)), param_guard(func_spec.buffers(False)):
                     outputs = static_func(*inputs)
                 if not isinstance(outputs, (tuple, list)):
                     outputs = [outputs] if outputs else []
