@@ -42,6 +42,9 @@ step_per_epoch = 10
 lambda_A = 10.0
 lambda_B = 10.0
 lambda_identity = 0.5
+# TODO(Aurlius84): Modify it into 256 when we move it into CE.
+# It will lead to timeout if set 256 in CI.
+IMAGE_SIZE = 64
 SEED = 2020
 
 program_translator = ProgramTranslator()
@@ -251,14 +254,14 @@ class build_gen_discriminator(fluid.dygraph.Layer):
             relufactor=0.2)
         self.conv2 = conv2d(
             num_channels=128,
-            num_filters=256,
+            num_filters=IMAGE_SIZE,
             filter_size=4,
             stride=2,
             stddev=0.02,
             padding=1,
             relufactor=0.2)
         self.conv3 = conv2d(
-            num_channels=256,
+            num_channels=IMAGE_SIZE,
             num_filters=512,
             filter_size=4,
             stride=1,
@@ -425,14 +428,15 @@ def reader_creater():
     # local_random = np.random.RandomState(SEED)
     def reader():
         while True:
-            fake_image = np.uint8(np.random.random((286, 286, 3)) * 255)
+            fake_image = np.uint8(
+                np.random.random((IMAGE_SIZE + 30, IMAGE_SIZE + 30, 3)) * 255)
             image = Image.fromarray(fake_image)
             # Resize
             image = image.resize((286, 286), Image.BICUBIC)
             # RandomCrop
             i = np.random.randint(0, 30)
             j = np.random.randint(0, 30)
-            image = image.crop((i, j, i + 256, j + 256))
+            image = image.crop((i, j, i + IMAGE_SIZE, j + IMAGE_SIZE))
             # RandomHorizontalFlip
             sed = np.random.rand()
             if sed > 0.5:
@@ -451,7 +455,7 @@ def reader_creater():
 class Args(object):
     epoch = 1
     batch_size = 4
-    image_shape = [3, 256, 256]
+    image_shape = [3, IMAGE_SIZE, IMAGE_SIZE]
     max_images_num = step_per_epoch
     log_step = 1
     train_step = 3
@@ -511,9 +515,11 @@ def train(args, to_static):
 
                 s_time = time.time()
                 data_A = np.array(
-                    [data_A[0].reshape(3, 256, 256)]).astype("float32")
+                    [data_A[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
+                        "float32")
                 data_B = np.array(
-                    [data_B[0].reshape(3, 256, 256)]).astype("float32")
+                    [data_B[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
+                        "float32")
                 data_A = to_variable(data_A)
                 data_B = to_variable(data_B)
 
@@ -527,12 +533,14 @@ def train(args, to_static):
 
                 fake_pool_B = B_pool.pool_image(fake_B).numpy()
                 fake_pool_B = np.array(
-                    [fake_pool_B[0].reshape(3, 256, 256)]).astype("float32")
+                    [fake_pool_B[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
+                        "float32")
                 fake_pool_B = to_variable(fake_pool_B)
 
                 fake_pool_A = A_pool.pool_image(fake_A).numpy()
                 fake_pool_A = np.array(
-                    [fake_pool_A[0].reshape(3, 256, 256)]).astype("float32")
+                    [fake_pool_A[0].reshape(3, IMAGE_SIZE, IMAGE_SIZE)]).astype(
+                        "float32")
                 fake_pool_A = to_variable(fake_pool_A)
 
                 # optimize the d_A network
