@@ -24,6 +24,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+// Delete quant op before quantized ops, and set input scale in the attr of
+// quantized ops
 void DeleteQuant(ir::Graph* graph, Scope* scope,
                  const std::string& quant_type) {
   const std::string pattern_name = "delete_quant_fuse";
@@ -33,8 +35,12 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
                              ->assert_is_op_input(quant_type, "X")
                              ->AsInput();
 
+  // Create pattern
   patterns::DeleteQuantOpFuse pattern(gpd.mutable_pattern(), pattern_name);
   pattern(input_act_node, quant_type);
+
+  // extract input scale from quant op input to set it in attr of all quantized
+  // ops linked from it
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     PADDLE_ENFORCE_EQ(subgraph.count(input_act_node), true,
@@ -47,18 +53,23 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
     Node* output_act = subgraph.at(pattern.GetPDNode("output_act_node"));
     int bit_length = BOOST_GET_CONST(int, quant->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
+
+    // Get input scale from tensor
     std::string input_scale_var_name = quant->Op()->Input("InScale").front();
-    PADDLE_ENFORCE_NOT_NULL(scope);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope, platform::errors::InvalidArgument(
+                   "scope in DeleteQuantOpFuse pass should not be null."));
     const LoDTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
     PADDLE_ENFORCE_EQ(
         paddle::platform::is_cpu_place(input_scale_tensor.place()), true,
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
-
     const float* input_scale_data = input_scale_tensor.data<float>();
     float in_scale = input_scale_data[0];
     float scale_value = in_scale / range;
+
+    // Set input scale in attr, and relink nodes
     std::string input_act_name = input_act->Var()->Name();
     std::string output_act_name = output_act->Var()->Name();
     auto outlinks = output_act->outputs;
@@ -81,6 +92,7 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
       op_desc->Flush();
       IR_NODE_LINK_TO(input_act, quantized_node);
     }
+    // Delete nodes and edges
     std::unordered_set<const Node*> nodes2rm = {input_scale, quant,
                                                 output_scale, output_act};
     GraphSafeRemoveNodes(graph, nodes2rm);
@@ -88,6 +100,8 @@ void DeleteQuant(ir::Graph* graph, Scope* scope,
   gpd(graph, handler);
 }
 
+// Delete dequant op after quantized ops, and convert weight from fp32 range to
+// int8 range
 void FuseDequant(ir::Graph* graph, Scope* scope,
                  const std::string& quantized_op_type,
                  const std::string& dequant_type) {
@@ -118,9 +132,11 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
           ->assert_is_op_input(quantized_op_type, input_name)
           ->AsInput();
 
+  // Create pattern
   patterns::DequantOpFuse pattern(gpd.mutable_pattern(), pattern_name);
   pattern(quantized_op_input, quantized_op_type, dequant_type, weight_name);
 
+  // Create new op desc
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     PADDLE_ENFORCE_EQ(
@@ -140,6 +156,8 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
         BOOST_GET_CONST(int, quantized_op_node->Op()->GetAttr("bit_length"));
     int range = ((1 << (bit_length - 1)) - 1);
     std::vector<float> weight_scale;
+
+    // Get weight scale
     if (dequant_type == "fake_channel_wise_dequantize_max_abs") {
       Node* dequant_channel_scale_node =
           subgraph.at(pattern.GetPDNode("dequant_channel_scale"));
@@ -166,9 +184,12 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
       weight_scale.push_back((range * range) / max_range / range);
     }
 
+    // Convert weight to fp32 range
     auto* weight_tensor =
         scope->Var(quantized_op_weight_node->Name())->GetMutable<LoDTensor>();
     auto w_dims = weight_tensor->dims();
+    // If quantized op is fc, weight scale size = 1;
+    // If quantized op is conv, weight scale size = weight dims[0]
     bool valid_scale_size =
         (weight_scale.size() == 1 ||
          weight_scale.size() == static_cast<size_t>(w_dims[0]));
@@ -211,7 +232,7 @@ void FuseDequant(ir::Graph* graph, Scope* scope,
     IR_NODE_LINK_TO(quantized_op_input_node, new_op);
     IR_NODE_LINK_TO(quantized_op_weight_node, new_op);
     IR_NODE_LINK_TO(new_op, dequant_op_out_node);
-    // delete nodes and edges
+    // Delete nodes and edges
     nodes2rm.insert(quantized_op_node);
     nodes2rm.insert(dequant_op_node);
     GraphSafeRemoveNodes(graph, nodes2rm);
