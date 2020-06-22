@@ -437,6 +437,21 @@ class Layer(core.Layer):
 
         Returns:
             None
+        
+        Examples:
+            .. code-block:: python
+                import numpy as np
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    linear = fluid.Linear(10, 3)
+                    value = np.array([0]).astype("float32")
+                    buffer = fluid.dygraph.to_variable(value)
+                    linear.register_buffer("buf_name", buffer, persistable=True)
+                    
+                    # get the buffer by attribute.
+                    print(linear.buf_name)
+
         """
 
         if '_buffers' not in self.__dict__:
@@ -491,6 +506,30 @@ class Layer(core.Layer):
 
         Yields:
             (string, Variable): Tuple of name and Variable
+
+        Examples:
+            .. code-block:: python
+                import numpy as np
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    buffer1 = fluid.dygraph.to_variable(np.array([0]).astype("float32"))
+                    # register a variable as buffer by specific `persistable`
+                    fc1.register_buffer("buf_name_1", buffer1, persistable=True)
+
+                    fc2 = fluid.Linear(3, 10)
+                    buffer2 = fluid.dygraph.to_variable(np.array([1]).astype("float32"))
+                    # register a buffer by assigning an attribute with Variable.
+                    # The `persistable` can only be False by this way.
+                    fc2.buf_name_2 = buffer2
+
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+
+                    # get all named buffers
+                    for name, buffer in model.named_buffers():
+                        print(name, buffer)
+
         """
         buffers_set = set()
         named_sublayers = self.named_sublayers(
@@ -718,8 +757,8 @@ class Layer(core.Layer):
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -761,12 +800,12 @@ class Layer(core.Layer):
                  include_sublayers=True,
                  use_structured_name=True):
         '''
-        Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from stat_dict. All the parameters and buffers will be reset by the tensor in the stat_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and peresistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key. 
                                                   Default: True
         Returns:
             None
@@ -796,14 +835,14 @@ class Layer(core.Layer):
                   include_sublayers=True,
                   use_structured_name=True):
         '''
-        Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
+        Set parameters and persistable buffers from stat_dict. All the parameters and persistabl buffers will be reset by the tensor in the stat_dict
 
         This api will be Deprecated. Please use set_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the parameters
-            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
-            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
+            state_dict(dict) : Dict contains all the parameters and persistable buffers.
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter or buffer name as key.
                                                   Default: True
         Returns:
             None
@@ -832,7 +871,7 @@ class Layer(core.Layer):
                 param_or_buffer.set_value(stat_dict[key_name])
             else:
                 raise RuntimeError(
-                    "Parameter not found, Can't not find [ {} ] in stat_dict"
+                    "Parameter or persistable buffer not found, Can't find [ {} ] in stat_dict"
                     "use_structured_name is set to [{}]".format(
                         key_name, use_structured_name))
         unused_para_list = []
@@ -841,5 +880,5 @@ class Layer(core.Layer):
                 unused_para_list.append(k)
         if len(unused_para_list) > 0:
             warnings.warn(
-                "Varibale [ {} ] are not used, because not included in layers state_dict".
+                "Variables [ {} ] are not used, because not included in layers state_dict".
                 format(" ".join(unused_para_list)))
