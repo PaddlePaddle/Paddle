@@ -40,9 +40,6 @@ constexpr char kCheckpointBlockId[] = "checkpint_block_id";
 constexpr char kLRDecayBlockId[] = "lr_decay_block_id";
 constexpr char kSparseGradToParam[] = "sparse_grad_to_param";
 
-// examples: embedding:Param,Moment1,Moment2:64,64,64:0
-constexpr char kLargeScaleKV[] = "large_scale_kv_meta";
-
 void RunServer(std::shared_ptr<distributed::RPCServer> service);
 
 template <class TKey, class TValue>

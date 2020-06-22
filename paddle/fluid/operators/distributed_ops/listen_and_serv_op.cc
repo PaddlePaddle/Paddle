@@ -109,59 +109,6 @@ static int64_t GetTimestamp() {
   return tp.tv_sec * 1000 + tp.tv_usec / 1000;
 }
 
-void InitLargeScaleKV(std::vector<std::string> kv_attrs) {
-  std::vector<distributed::SparseMeta> metas;
-
-  for (auto attrs : kv_attrs) {
-    std::vector<std::string> pieces;
-    split(attrs, ':', &pieces);
-    PADDLE_ENFORCE_EQ(pieces.size(), 8,
-                      "param, names, dims, mode, grad, cached_var, init_attrs");
-
-    std::string name;
-    std::string grad_name;
-    std::vector<std::string> value_names;
-    std::vector<int> value_dims;
-    distributed::Mode mode;
-    std::vector<std::string> cached_names;
-    std::vector<std::string> init_attrs;
-    std::string entry_attr;
-
-    name = pieces[0];
-    split(pieces[1], ',', &value_names);
-
-    std::vector<std::string> value_dims_str;
-    split(pieces[2], ',', &value_dims_str);
-    for (auto &str : value_dims_str) {
-      value_dims.push_back(std::stoi(str));
-    }
-
-    mode = pieces[3] == "0" ? distributed::Mode::training
-                            : distributed::Mode::infer;
-
-    grad_name = pieces[4];
-    split(pieces[5], ',', &cached_names);
-    split(pieces[6], ',', &init_attrs);
-    entry_attr = pieces[7];
-
-    auto meta = distributed::SparseMeta();
-    meta.name = name;
-    meta.value_names = value_names;
-    meta.value_dims = value_dims;
-    meta.mode = mode;
-    meta.grad_name = grad_name;
-    meta.cached_varnames = cached_names;
-    meta.initializer_attrs = init_attrs;
-    meta.entry = entry_attr;
-
-    VLOG(3) << "add sparse meta: " << meta.ToString();
-    metas.push_back(meta);
-  }
-
-  distributed::LargeScaleKV::Init(metas);
-  VLOG(3) << "init large scale kv with " << metas.size() << " params";
-}
-
 // For sync, sparse variables need recover grad type from LodTensor to
 // SelectedRows
 void ResetSparseVarsType(framework::Scope *recv_scope) {
@@ -521,9 +468,6 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
             << ", param_name = " << pieces[1];
     sparse_grad_name_to_param_name[pieces[0]] = pieces[1];
   }
-
-  auto kv_attrs = Attr<std::vector<std::string>>(kLargeScaleKV);
-  InitLargeScaleKV(kv_attrs);
 
   auto f =
       std::bind(FillRequestCtx, std::placeholders::_1, &recv_scope, &dev_ctx,

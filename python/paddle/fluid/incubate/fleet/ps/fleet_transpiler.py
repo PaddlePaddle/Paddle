@@ -904,10 +904,13 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = server.add_listen_and_serv_pass(_main, compiled_config)
         _main = server.add_rpc_global_flags_pass(_main, compiled_config)
         _main = server.add_optimizer_pass(_main, compiled_config)
-        _main = server.large_scale_sparse_pass(_main, compiled_config)
+        _main = server.large_scale_sparse_pass(_main, _main, compiled_config,
+                                               False)
 
         _startup = server.build_pserver_startup_program_pass(_startup, _main,
                                                              compiled_config)
+        _startup = server.large_scale_sparse_pass(_startup, _main,
+                                                  compiled_config, True)
 
         return _main, _startup
 

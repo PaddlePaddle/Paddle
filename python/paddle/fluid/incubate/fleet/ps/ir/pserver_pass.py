@@ -623,7 +623,7 @@ def add_optimizer_pass(program, config):
     return program
 
 
-def large_scale_sparse_pass(program, config):
+def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     opt_value_map = {}
     opt_value_map["sgd"] = ["Param"]
     opt_value_map["adam"] = ["Param", "Moment1", "Moment2"]
@@ -681,10 +681,10 @@ def large_scale_sparse_pass(program, config):
             if op.type not in opt_value_map.keys():
                 continue
 
-            grad = program.global_block().vars[op.input("Grad")[0]]
+            grad = main_program.global_block().vars[op.input("Grad")[0]]
 
             for value in opt_value_map[op.type]:
-                var = program.global_block().vars[op.input(value)[0]]
+                var = main_program.global_block().vars[op.input(value)[0]]
                 if len(var.shape) != 2:
                     raise ValueError("sparse param's dimension must be 2")
 
@@ -735,13 +735,12 @@ def large_scale_sparse_pass(program, config):
             attrs={"tablename": table_name,
                    "value_names": value_names})
 
-    op = get_op_by_type(program.global_block(), "listen_and_serv")
+    op = get_op_by_type(main_program.global_block(), "listen_and_serv")
 
     param_blockid_map = {}
     grad_blockid_map = {}
     grad_to_params = op.attr('sparse_grad_to_param')
     grad_to_block_ids = op.attr('grad_to_block_id')
-    large_scale_kv_metas = []
 
     for grad_to_block_id in grad_to_block_ids:
         grad, blockid = grad_to_block_id.split(":")
@@ -751,33 +750,43 @@ def large_scale_sparse_pass(program, config):
         grad, param = grad_to_param.split(":")
         param_blockid_map[param] = grad_blockid_map[grad]
 
-    for param, blockid in param_blockid_map.items():
-        opt_block = program.block(blockid)
-        grad, opt_idx, value_names, value_dims, acture_names = get_optimizer_values(
-            opt_block)
-        entry_attr = get_entry_attr(param)
+    if not is_startup:
+        for param, blockid in param_blockid_map.items():
+            opt_block = program.block(blockid)
+            grad, opt_idx, value_names, value_dims, acture_names = get_optimizer_values(
+                opt_block)
+            entry_attr = get_entry_attr(param)
+            is_entry = False if entry_attr == "none" else True
+            add_large_scale_op(opt_block,
+                               program.global_block(), param, value_names,
+                               acture_names, grad, is_entry, opt_idx)
+    else:
+        large_scale_kv_metas = []
+        for param, blockid in param_blockid_map.items():
+            opt_block = main_program.block(blockid)
+            grad, _, value_names, value_dims, acture_names = get_optimizer_values(
+                opt_block)
+            entry_attr = get_entry_attr(param)
 
-        is_entry = False if entry_attr == "none" else True
+            # training/infer
+            mode = "0"
+            names_str = ",".join(value_names)
+            dims_str = ",".join([str(dim) for dim in value_dims])
+            cached_str = ",".join(acture_names + ["kSparseIDs"])
+            init_attr_str = get_initializer_attrs(acture_names)
 
-        add_large_scale_op(opt_block,
-                           program.global_block(), param, value_names,
-                           acture_names, grad, is_entry, opt_idx)
+            meta_str = ":".join([
+                param, names_str, dims_str, mode, grad.name, cached_str,
+                init_attr_str, entry_attr
+            ])
+            print("large_scale_metas: {}".format(meta_str))
+            large_scale_kv_metas.append(meta_str)
 
-        # training/infer
-        mode = "0"
-        names_str = ",".join(value_names)
-        dims_str = ",".join([str(dim) for dim in value_dims])
-        cached_str = ",".join(acture_names + ["kSparseIDs"])
-        init_attr_str = get_initializer_attrs(acture_names)
-
-        meta_str = ":".join([
-            param, names_str, dims_str, mode, grad.name, cached_str,
-            init_attr_str, entry_attr
-        ])
-        print("large_scale_meta: {}".format(meta_str))
-        large_scale_kv_metas.append(meta_str)
-
-    op._set_attr("large_scale_kv_meta", large_scale_kv_metas)
+        program.global_block().append_op(
+            type="lookup_sparse_table_init",
+            inputs=None,
+            outputs=None,
+            attrs={"large_scale_metas": large_scale_kv_metas})
 
     # todo: need delete unused var.
     return program
