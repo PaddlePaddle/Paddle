@@ -475,7 +475,7 @@ class FleetTranspiler(Fleet):
                 local_vars.append(main_program.global_block().vars[varname])
 
         # todo: find why?
-        #self._communicator.recv()
+        # self._communicator.recv()
 
         fluid.io.save_vars(
             executor,
@@ -728,17 +728,17 @@ if you would like to save all variables in a
         Examples:
             .. code-block:: python
 
-#load pslib model for one table
+              #load pslib model for one table
               fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
               fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
 
-#load params from paddle model
+              #load params from paddle model
               fleet.load_one_table(2, "hdfs:/my_paddle_model/",
                                    scope = my_scope,
                                    model_proto_file = "./my_program.bin",
                                    load_combine = False)
 
-#below is how to save proto binary file
+              #below is how to save proto binary file
               with open("my_program.bin", "wb") as fout:
                   my_program = fluid.default_main_program()
                   fout.write(my_program.desc.serialize_to_string())
@@ -906,13 +906,14 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = server.add_optimizer_pass(_main, compiled_config)
         _main = server.large_scale_sparse_pass(_main, _main, compiled_config,
                                                False)
-        _main = server.delete_unused_vars_pass(_main, compiled_config)
-
         _startup = server.build_pserver_startup_program_pass(_startup, _main,
                                                              compiled_config)
         _startup = server.large_scale_sparse_pass(_startup, _main,
                                                   compiled_config, True)
 
+        _main = server.delete_unused_in_main_pass(_main, compiled_config)
+        _startup = server.delete_unused_in_startup_pass(_startup, _main,
+                                                        compiled_config)
         return _main, _startup
 
     def minimize(self,

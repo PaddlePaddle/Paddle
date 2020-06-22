@@ -792,7 +792,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     return program
 
 
-def delete_unused_vars_pass(program, config):
+def get_sparse_from_listen_and_serv(program):
     op = get_op_by_type(program.global_block(), "listen_and_serv")
 
     sparse_params = []
@@ -801,9 +801,43 @@ def delete_unused_vars_pass(program, config):
         _, param = grad_to_param.split(":")
         sparse_params.append(param)
 
+    return sparse_params
+
+
+def delete_unused_in_main_pass(program, config):
+    sparse_params = get_sparse_from_listen_and_serv(program)
+
     for var in sparse_params:
         if program.global_block().has_var(var):
             program.global_block()._remove_var(var)
+
+    return program
+
+
+def delete_unused_in_startup_pass(program, main_program, config):
+    sparse_params = get_sparse_from_listen_and_serv(main_program)
+
+    remove_ops = []
+
+    for op in program.global_block().ops:
+        if op.type in ["recv", "fetch_barrier", "concat"]:
+            continue
+
+        for key in op.output_names:
+            if op.output(key)[0] in sparse_params:
+                remove_ops.append(op)
+
+    all_ops = program.global_block().ops
+    op_idxs = [all_ops.index(op) for op in remove_ops]
+
+    for idx in op_idxs[::-1]:
+        program.global_block()._remove_op(idx)
+
+    for var in sparse_params:
+        if program.global_block().has_var(var):
+            program.global_block()._remove_var(var)
+
+    return program
 
 
 def build_pserver_startup_program_pass(program, p_main_program, config):
