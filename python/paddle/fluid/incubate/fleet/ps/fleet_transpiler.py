@@ -911,7 +911,9 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _startup = server.large_scale_sparse_pass(_startup, _main,
                                                   compiled_config, True)
 
-        _main = server.delete_unused_in_main_pass(_main, compiled_config)
+        if not compiled_config.is_sync_mode():
+            _main = server.delete_unused_in_main_pass(_main, compiled_config)
+
         _startup = server.delete_unused_in_startup_pass(_startup, _main,
                                                         compiled_config)
         return _main, _startup
