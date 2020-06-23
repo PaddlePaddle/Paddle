@@ -22,7 +22,7 @@ import shutil
 import numpy as np
 
 # from paddle.incubate.hapi.datasets import DatasetFolder
-from .folder import DatasetFolder
+from folder import DatasetFolder
 from paddle.incubate.hapi.vision.transforms import transforms
 
 

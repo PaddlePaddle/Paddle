@@ -16,7 +16,7 @@ import os
 import sys
 import cv2
 
-from paddle.io import Dataset
+# from paddle.io import Dataset
 
 __all__ = ["DatasetFolder"]
 
@@ -58,7 +58,7 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
 
 
 # class DatasetFolder(Dataset):
-class DatasetFolder(Dataset):
+class DatasetFolder():
     """A generic data loader where the samples are arranged in this way:
 
         root/class_a/1.ext
