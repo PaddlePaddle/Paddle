@@ -19,6 +19,7 @@ import gast
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = ['ReturnTransformer']
 
@@ -35,9 +36,8 @@ class ReturnPreAnalysisVisitor(gast.NodeVisitor):
     Visits gast Tree and pre-analyze the information about 'return'.
     """
 
-    def __init__(self, wrapper_root):
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
+    def __init__(self, root_node):
+        self.root = root_node
 
         # A list to store where the current function is.
         self.function_def = []
@@ -49,6 +49,7 @@ class ReturnPreAnalysisVisitor(gast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         self.function_def.append(node)
+        self.count_return[node] = 0
         self.generic_visit(node)
         self.function_def.pop()
         return node
@@ -66,35 +67,22 @@ class ReturnPreAnalysisVisitor(gast.NodeVisitor):
     def get_func_return_count(self, func_node):
         return self.count_return[func_node]
 
+    def set_func_return_count(self, func_node, count):
+        self.count_return[func_node] = count
+
 
 class ReturnTransformer(gast.NodeTransformer):
     """
     Transforms return statements into equivalent python statements containing
-    only one return statement at last. The basic idea is using a return value
-    variable to store the early return statements. For example:
+    only one return statement at last. The basics idea is using a return value
+    variable to store the early return statements and boolean states with
+    if-else to skip the statements after the return.
 
-    # Before transforming:
-    if some_condition:
-        statements_in_condition
-        return foo
-    statements_out_condition
-    return bar
-
-    # After transforming
-
-    if some_condition:
-        statements_in_condition
-        return_value = foo
-    else
-        statements_out_condition
-        return_value = bar
-    return return_value
     """
 
     def __init__(self, wrapper_root):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        self.pre_visitor = ReturnPreAnalysisVisitor(self.pre_visitor)
         self.ancestor_nodes = []
 
         # The name of the variable which stores the final return value
@@ -107,9 +95,7 @@ class ReturnTransformer(gast.NodeTransformer):
         self.function_def = []
 
     def transform(self):
-        if self.pre_visitor.get_count_return() >= 2:
-            # We only have to transform when there are >= 2 return statements
-            self.visit(self.root)
+        self.visit(self.root)
 
     def generic_visit(self, node):
         # Because we change ancestor nodes during visit_Return, not current
@@ -140,28 +126,32 @@ class ReturnTransformer(gast.NodeTransformer):
         self.return_value_name[node] = None
         self.return_name[node] = []
 
-        self.generic_visit(node)
+        pre_analysis = ReturnPreAnalysisVisitor(node)
+        while pre_analysis.get_func_return_count(node) > 1:
+            self.generic_visit(node)
+            pre_analysis = ReturnPreAnalysisVisitor(node)
 
-        # append final return statement
+        # prepend initialization of final return and append final return statement
         value_name = self.return_value_name[node]
         if value_name is not None:
             node.body.append(
                 gast.Return(value=gast.Name(
                     id=value_name,
-                    ctx=Load(),
+                    ctx=gast.Load(),
                     annotation=None,
                     type_comment=None)))
+            assign_zero_node = create_fill_constant_node(value_name, 0)
+            node.body.insert(0, assign_zero_node)
         # Prepend control flow boolean nodes such as '__return@1 = False'
         for name in self.return_name[node]:
             assign_false_node = create_fill_constant_node(name, False)
             node.body.insert(0, assign_false_node)
+
         self.function_def.pop()
         return node
 
     def visit_Return(self, node):
         cur_func_node = self.function_def[-1]
-        if self.pre_visitor.get_func_return_count(cur_func_node) <= 1:
-            return node
         return_name = unique_name.generate(RETURN_PREFIX)
         self.return_name[cur_func_node].append(return_name)
         for ancestor_index in reversed(range(len(self.ancestor_nodes) - 1)):
@@ -177,10 +167,41 @@ class ReturnTransformer(gast.NodeTransformer):
             elif hasattr(ancestor, "orelse") and index_in_list(ancestor.orelse,
                                                                cur_node) != -1:
                 if cur_node == node:
-                    self._replace_return_in_stmt_list(ancestor.body, cur_node,
+                    self._replace_return_in_stmt_list(ancestor.orelse, cur_node,
                                                       return_name)
                 self._replace_after_node_to_if_in_stmt_list(
                     ancestor.orelse, cur_node, return_name)
+
+            if isinstance(ancestor, gast.While):
+                cond_var_node = gast.UnaryOp(
+                    op=gast.Not(),
+                    operand=gast.Name(
+                        id=return_name,
+                        ctx=gast.Load(),
+                        annotation=None,
+                        type_comment=None))
+                ancestor.test = gast.BoolOp(
+                    op=gast.And(), values=[ancestor.test, cond_var_node])
+                continue
+
+            if isinstance(ancestor, gast.For):
+                cond_var_node = gast.UnaryOp(
+                    op=gast.Not(),
+                    operand=gast.Name(
+                        id=return_name,
+                        ctx=gast.Load(),
+                        annotation=None,
+                        type_comment=None))
+                parent_node = self.ancestor_nodes[ancestor_index - 1]
+                for_to_while = ForToWhileTransformer(parent_node, ancestor,
+                                                     cond_var_node)
+                new_stmts = for_to_while.transform()
+                while_node = new_stmts[-1]
+                self.ancestor_nodes[ancestor_index] = while_node
+
+            if ancestor == cur_func_node:
+                break
+        # return_node is replaced so we shouldn't return here
 
     def _replace_return_in_stmt_list(self, stmt_list, return_node, return_name):
         i = index_in_list(stmt_list, return_node)
@@ -195,10 +216,11 @@ class ReturnTransformer(gast.NodeTransformer):
             assign_nodes.append(
                 gast.Assign(
                     targets=[
-                        Name(
+                        gast.Name(
                             id=self.return_value_name[cur_func_node],
-                            ctx=Store(),
-                            annotation=None)
+                            ctx=gast.Store(),
+                            annotation=None,
+                            type_comment=None)
                     ],
                     value=return_node.value))
         stmt_list[i:] = assign_nodes
