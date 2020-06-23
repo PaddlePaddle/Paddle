@@ -110,7 +110,7 @@ class PartialProgramLayer(layers.Layer):
         self._inputs = NestSequence(inputs)
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
-        
+
         self._prune_unused_params(main_program)
         # Check all params from main program can be found in self._params:
         # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
