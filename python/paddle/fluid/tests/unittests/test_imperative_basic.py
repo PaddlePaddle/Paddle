@@ -645,5 +645,14 @@ class TestDygraphUtils(unittest.TestCase):
             self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
 
+class TestDygraphGuardWithError(unittest.TestCase):
+    def test_without_guard(self):
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(np.zeros([10, 10]))
+        with self.assertRaisesRegexp(TypeError,
+                                     "Please use `with fluid.dygraph.guard()"):
+            y = fluid.layers.matmul(x, x)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -89,12 +89,6 @@ else()
     )
 endif()
 
-if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
-    set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/eigen3_dummy.c)
-    file(WRITE ${dummyfile} "const char *dummy_eigen3 = \"${dummyfile}\";")
-    add_library(eigen3 STATIC ${dummyfile})
-else()
-    add_library(eigen3 INTERFACE)
-endif()
+add_library(eigen3 INTERFACE)
 
 add_dependencies(eigen3 extern_eigen3)

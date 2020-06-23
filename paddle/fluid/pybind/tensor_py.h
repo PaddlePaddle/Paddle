@@ -246,12 +246,13 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
   } else {
+    // obj may be any type, obj.cast<py::array>() may be failed,
+    // then the array.dtype will be string of unknown meaning,
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Incompatible data type: tensor.set() supports bool, float16, "
-        "float32, "
-        "float64, "
-        "int8, int16, int32, int64 and uint8, uint16, but got %s!",
-        array.dtype()));
+        "Input object type error or incompatible array data type. "
+        "tensor.set() supports array with bool, float16, float32, "
+        "float64, int8, int16, int32, int64, uint8 or uint16, "
+        "please check your input or input array data type."));
   }
 }
 
