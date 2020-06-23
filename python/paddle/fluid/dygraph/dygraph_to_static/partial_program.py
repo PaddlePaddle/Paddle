@@ -111,12 +111,12 @@ class PartialProgramLayer(layers.Layer):
         self._outputs = NestSequence(outputs, need_check=True)
         self._params = parameters if parameters is not None else []
 
-        self._prune_unused_params(main_program)
         # Check all params from main program can be found in self._params:
         # 1. parameter in self._params should be type `framework.ParamBase` which are created in dygraph.
         # 2. parameter from transformed program shall be found in self._params.
         #    Because they share same data with ParamBase of original dygraph.
         self._check_params_all_inited(main_program)
+        self._prune_unused_params(main_program)
 
         self._infer_program = main_program
         self._train_program = self._append_backward_desc()
