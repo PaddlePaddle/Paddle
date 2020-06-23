@@ -441,6 +441,7 @@ class Layer(core.Layer):
         
         Examples:
             .. code-block:: python
+
                 import numpy as np
                 import paddle.fluid as fluid
 
@@ -498,7 +499,7 @@ class Layer(core.Layer):
 
     def named_buffers(self, prefix='', include_sublayers=True):
         """
-        Returns an iterator over all buffers in the Layer, yielding tuple of name and varBase.
+        Returns an iterator over all buffers in the Layer, yielding tuple of name and Variable.
 
         Parameters:
             prefix(str, optional): Prefix to prepend to all buffer names. Default: ''.
@@ -510,6 +511,7 @@ class Layer(core.Layer):
 
         Examples:
             .. code-block:: python
+
                 import numpy as np
                 import paddle.fluid as fluid
 
