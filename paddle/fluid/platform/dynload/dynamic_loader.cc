@@ -58,6 +58,7 @@ struct PathNode {
 };
 
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
+static constexpr char cudnn_lib_path[] = "/usr/local/cuda/lib64";
 
 static PathNode s_py_site_pkg_path;
 
@@ -195,6 +196,10 @@ void* GetCublasDsoHandle() {
 }
 
 void* GetCUDNNDsoHandle() {
+  std::string cudnn_path = cudnn_lib_path;
+  if (!FLAGS_cudnn_dir.empty()) {
+    cudnn_path = FLAGS_cudnn_dir;
+  }
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
