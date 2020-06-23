@@ -64,12 +64,12 @@ def get_sparse_tablename(op):
 
 
 def get_all_get_sparse_tablenames(program):
-    tablenames = []
+    tablenames = set()
     for op in program.global_block().ops:
         varname = get_sparse_tablename(op)
         if varname:
-            tablenames.append(varname)
-    return tablenames
+            tablenames.add(varname)
+    return list(tablenames)
 
 
 def pretty_print_envs(envs, header=None):

@@ -27,6 +27,7 @@ from . import ps_pb2 as pslib
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.communicator import Communicator
+from paddle.fluid.communicator import LargeScaleKV
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
@@ -266,7 +267,7 @@ class FleetTranspiler(Fleet):
             fluid.io.load_persistables(self._executor, model_dir,
                                        self.main_program)
 
-            self._load_sparse_params(dirname=model_dir, varnames)
+            self._load_sparse_params(dirname=model_dir, varnames=varnames)
 
     def _init_pslib_server(self, model_dir=None, **kwargs):
         mode = kwargs.get("mode", 0)
@@ -483,7 +484,11 @@ class FleetTranspiler(Fleet):
             self.save_persistables(executor, dirname, program)
 
     def _load_sparse_params(self, dirname, varnames):
-        pass
+        scale_kv = LargeScaleKV()
+        for varname in varnames:
+            origin_varname, _, _ = public._get_varname_parts(varname)
+            sparse_dir = os.path.join(dirname, origin_varname, varname)
+            scale_kv.load(varname, sparse_dir)
 
     def _save_dense_params(self, executor, dirname, context, main_program):
         local_vars = []
@@ -595,6 +600,11 @@ if you would like to save all variables in a
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
+
+            origin_varname, _, _ = public._get_varname_parts(var.name)
+            if origin_varname.endswith("@GRAD"):
+                return False
+
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
                             var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
                             var.desc.type() == core.VarDesc.VarType.READER:
