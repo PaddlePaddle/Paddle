@@ -30,33 +30,14 @@ using platform::GetMKLDNNFormat;
 using platform::to_void_cast;
 
 inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                         const int groups, const bool is_conv3d) {
+                         const int groups) {
   if (groups > 1) {
-    if (is_conv3d) {
-      int output = weights_tz[0];
-      int input = weights_tz[1];
-      int dimension = weights_tz[2];
-      int height = weights_tz[3];
-      int width = weights_tz[4];
-      weights_tz.resize(6);
-      weights_tz[0] = groups;
-      weights_tz[1] = output / groups;
-      weights_tz[2] = input;
-      weights_tz[3] = dimension;
-      weights_tz[4] = height;
-      weights_tz[5] = width;
-    } else {
-      int output = weights_tz[0];
-      int input = weights_tz[1];
-      int height = weights_tz[2];
-      int width = weights_tz[3];
-      weights_tz.resize(5);
-      weights_tz[0] = groups;
-      weights_tz[1] = output / groups;
-      weights_tz[2] = input;
-      weights_tz[3] = height;
-      weights_tz[4] = width;
-    }
+    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
+    // else [o, i, h, w] -> [g, o/g, i, h, w]
+    weights_tz.push_back(0);
+    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
+    weights_tz[0] = groups;
+    weights_tz[1] = weights_tz[1] / groups;
   }
 }
 
@@ -212,7 +193,7 @@ class ConvMKLDNNHandlerT
       const auto src_tz = paddle::framework::vectorize(input->dims());
 
       auto weights_tz = paddle::framework::vectorize(filter->dims());
-      GetWeightsTz(weights_tz, groups, is_conv3d);
+      GetWeightsTz(weights_tz, groups);
 
       const auto dst_tz = paddle::framework::vectorize(output->dims());
 
@@ -326,17 +307,24 @@ class ConvMKLDNNHandlerT
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryWithReorder(
       const framework::Tensor* filter, const int groups, const bool is_conv3d,
       const bool is_test) {
-    const T* filter_data = filter->data<T>();
-    auto weights_tz = framework::vectorize(filter->dims());
-    GetWeightsTz(weights_tz, groups, is_conv3d);
+    // This is workaround to make execution faster, delete
+    // if statement after including md inside Tensor
+    auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
+    if (is_test && weights_mem_p) {
+      return weights_mem_p;
+    } else {
+      const T* filter_data = filter->data<T>();
+      auto weights_tz = framework::vectorize(filter->dims());
+      GetWeightsTz(weights_tz, groups);
 
-    auto user_src_md = platform::MKLDNNMemDesc(
-        weights_tz, platform::MKLDNNGetDataType<T>(),
-        GetWeightsFormat(filter->format(), groups, is_conv3d));
+      auto user_src_md = platform::MKLDNNMemDesc(
+          weights_tz, platform::MKLDNNGetDataType<T>(),
+          GetWeightsFormat(filter->format(), groups, is_conv3d));
 
-    return this->AcquireMemoryWithReorder(
-        user_src_md, this->fwd_pd_->weights_desc(),
-        to_void_cast<T>(filter_data), "@weights_mem_p", is_test);
+      return this->AcquireMemoryWithReorder(
+          user_src_md, this->fwd_pd_->weights_desc(),
+          to_void_cast<T>(filter_data), "@weights_mem_p", is_test);
+    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryWithReorder(
@@ -433,8 +421,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_memory_p = handler.AcquireSrcMemoryWithReorder(input);
 
     auto weights_memory_p = handler.AcquireWeightsMemoryWithReorder(
-        filter, ctx.Attr<int>("groups"), is_conv3d,
-        is_test);  // CHECK IF IS_CONV3D IS NEEDED
+        filter, ctx.Attr<int>("groups"), is_conv3d, is_test);
 
     std::shared_ptr<dnnl::memory> dst_memory_p;
     if (fuse_residual_conn) {
@@ -452,7 +439,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         {MKLDNN_ARG_WEIGHTS, *weights_memory_p},
         {MKLDNN_ARG_DST, *dst_memory_p}};
 
-    // std::shared_ptr<dnnl::memory> bias_memory_p;
     if (bias) {
       auto bias_memory_p = handler.AcquireBiasMemoryWithReorder(bias, is_test);
       args.insert({MKLDNN_ARG_BIAS, *bias_memory_p});
@@ -630,7 +616,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto weights_tz = paddle::framework::vectorize(filter->dims());
       int g = std::max(groups, 1);
 
-      GetWeightsTz(weights_tz, g, is_conv3d);
+      GetWeightsTz(weights_tz, g);
       auto dst_tz = paddle::framework::vectorize(output->dims());
 
       PADDLE_ENFORCE_EQ(
@@ -944,7 +930,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto weights_tz = paddle::framework::vectorize(filter->dims());
 
     int g = std::max(groups, 1);
-    GetWeightsTz(weights_tz, g, is_conv3d);
+    GetWeightsTz(weights_tz, g);
     auto dst_tz = paddle::framework::vectorize(output_grad->dims());
 
     auto src_format = input->format();
