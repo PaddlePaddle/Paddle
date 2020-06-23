@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from . import distributed
+from . import vision
 
-__all__ = ['distributed', ]
+__all__ = ['distributed', 'vision']

@@ -177,8 +177,8 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.incubate.hapi',
-          'paddle.incubate.hapi.vision'
-          'paddle.incubate.hapi.vision.transforms'
+          'paddle.incubate.hapi.vision',
+          'paddle.incubate.hapi.vision.transforms',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
