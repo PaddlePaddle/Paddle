@@ -22,6 +22,7 @@ include(system)
 project(paddle CXX C)
 
 include(init)
+include(generic)            # simplify cmake module
 
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
@@ -199,7 +200,6 @@ if(WITH_PROFILER)
     add_definitions(-DWITH_GPERFTOOLS)
 endif()
 
-include(generic)            # simplify cmake module
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
