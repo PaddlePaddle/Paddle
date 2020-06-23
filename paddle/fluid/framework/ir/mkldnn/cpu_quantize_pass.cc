@@ -37,10 +37,11 @@ void UnlinkNodes(ir::Node* a, ir::Node* b) {
                   b->inputs.end());
 }
 
-void LogCannotQuantizeOp(Node* op) {
+void LogCannotQuantizeOp(Node* op, const char* details = nullptr) {
   std::stringstream msg_ss;
   msg_ss << "Cannot quantize operator " << op->Name()
          << " (type: " << op->Op()->Type() << ", id: " << op->id() << ").";
+  if (details) msg_ss << " " << details;
   PrettyLogDetail(msg_ss.str().c_str());
 }
 
@@ -719,7 +720,8 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
 
     // TODO(sfraczek): add support for different signness
     if (is_x_unsigned != is_y_unsigned) {
-      VLOG(4) << "ElementwiseAdd inputs must be of the same type.";
+      LogCannotQuantizeOp(elementwise_add_op,
+                          "ElementwiseAdd inputs must be of the same type.");
       return;
     }
 
