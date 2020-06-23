@@ -37,12 +37,18 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
 from paddle.fluid.dygraph.nn import Conv2D, Conv2DTranspose, BatchNorm
 
-use_cudnn = False
+# Note: Set True to eliminate randomness.
+#     1. For one operation, cuDNN has several algorithms,
+#        some algorithm results are non-deterministic, like convolution algorithms.
+if fluid.is_compiled_with_cuda():
+    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+
+use_cudnn = True
 step_per_epoch = 10
 lambda_A = 10.0
 lambda_B = 10.0
 lambda_identity = 0.5
-# TODO(Aurlius84): Modify it into 256 when we move it into CE.
+# TODO(Aurelius84): Modify it into 256 when we move ut into CE platform.
 # It will lead to timeout if set 256 in CI.
 IMAGE_SIZE = 64
 SEED = 2020
@@ -65,11 +71,10 @@ class Cycle_Gan(fluid.dygraph.Layer):
                 input_channel)
 
     @declarative
-    def forward(self, input_A, input_B, is_G, is_DA, is_DB):
+    def forward(self, input_A, input_B):
         """
         Generator of GAN model.
         """
-        # if is_G:
         fake_B = self.build_generator_resnet_9blocks_a(input_A)
         fake_A = self.build_generator_resnet_9blocks_b(input_B)
         cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
@@ -109,7 +114,6 @@ class Cycle_Gan(fluid.dygraph.Layer):
         """
         Discriminator A of GAN model.
         """
-        # if is_DA:
         rec_B = self.build_gen_discriminator_a(input_A)
         fake_pool_rec_B = self.build_gen_discriminator_a(input_B)
 
@@ -120,7 +124,6 @@ class Cycle_Gan(fluid.dygraph.Layer):
         """
         Discriminator B of GAN model.
         """
-        # if is_DB:
         rec_A = self.build_gen_discriminator_b(input_A)
         fake_pool_rec_A = self.build_gen_discriminator_b(input_B)
 
@@ -371,11 +374,11 @@ class DeConv2D(fluid.dygraph.Layer):
             filter_size=filter_size,
             stride=stride,
             padding=padding,
+            use_cudnn=use_cudnn,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=stddev)),
             bias_attr=de_bias_attr)
-
         if norm:
             self.bn = BatchNorm(
                 num_channels=num_filters,
@@ -384,6 +387,7 @@ class DeConv2D(fluid.dygraph.Layer):
                 bias_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.Constant(0.0)),
                 trainable_statistics=True)
+
         self.outpadding = outpadding
         self.relufactor = relufactor
         self.use_bias = use_bias
@@ -414,9 +418,9 @@ class ImagePool(object):
             self.count += 1
             return image
         else:
-            p = random.random()
+            p = np.random.rand()
             if p > 0.5:
-                random_id = random.randint(0, self.pool_size - 1)
+                random_id = np.random.randint(0, self.pool_size - 1)
                 temp = self.pool[random_id]
                 self.pool[random_id] = image
                 return temp
@@ -476,8 +480,13 @@ def optimizer_setting(parameters):
 
 
 def train(args, to_static):
-    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
-        else fluid.CPUPlace()
+    # FIXME(Aurelius84): Found diff just on GPU and it disappears when we remove the BatchNorm layers.
+    # In dygraph mode, it still exists with different output while executing the every time.
+
+    # place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+    #     else fluid.CPUPlace()
+
+    place = fluid.CPUPlace()
 
     program_translator.enable(to_static)
 
@@ -525,7 +534,7 @@ def train(args, to_static):
 
                 # optimize the g_A network
                 fake_A, fake_B, cyc_A, cyc_B, g_A_loss, g_B_loss, idt_loss_A, idt_loss_B, cyc_A_loss, cyc_B_loss, g_loss = cycle_gan(
-                    data_A, data_B, True, False, False)
+                    data_A, data_B)
 
                 g_loss.backward()
                 optimizer1.minimize(g_loss)
