@@ -34,6 +34,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+from paddle.fluid.annotations import deprecated
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -569,6 +570,7 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
+    @deprecated(since='2.0', instead="jit.save")
     @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
