@@ -9626,10 +9626,20 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
+    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
-        alpha_shape = [1, x.shape[1], 1, 1]
+        assert len(
+            x.shape
+        ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        alpha_shape = [1, x.shape[1]]
     elif mode == 'element':
-        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
+        assert len(
+            x.shape
+        ) >= 1, "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        alpha_shape = [1] + list(x.shape)[1:]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -11897,8 +11907,10 @@ for func in [
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
         ],
-        skip_attrs_set={"x_data_format", "y_data_format", "axis"
-                        }) + """\n""" + str(func.__doc__)
+        skip_attrs_set={
+            "x_data_format", "y_data_format", "axis", "use_quantizer",
+            "Scale_x", "Scale_y", "Scale_out"
+        }) + """\n""" + str(func.__doc__)
 
 for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
