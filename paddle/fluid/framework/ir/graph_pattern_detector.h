@@ -1163,14 +1163,28 @@ struct TransposeFlattenConcat : public PatternBase {
   }
 };
 
-struct QuantDequantOpFuse : public PatternBase {
-  QuantDequantOpFuse(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "quant_dequant_fuse") {}
+struct DeleteQuantOpFuse : public PatternBase {
+  DeleteQuantOpFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "delete_quant_fuse") {}
 
-  void operator()(PDNode* quant_op_input, const std::string& op_name,
-                  const std::string& weight_name, int times,
-                  const std::string& quant_type,
-                  const std::string& dequant_type);
+  void operator()(PDNode* input_act_node, const std::string& quant_type);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
+};
+
+struct DequantOpFuse : public PatternBase {
+  DequantOpFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_fuse") {}
+
+  void operator()(PDNode* quant_op_input, const std::string& quantized_op_type,
+                  const std::string& dequant_type,
+                  const std::string& weight_name);
 
   std::string GetNodeName(const std::string& op_type) {
     return PDNodeName(name_scope_, repr_, id_, op_type);

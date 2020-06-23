@@ -61,7 +61,8 @@ class FcOpConverter : public OpConverter {
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr(i_name + "_scale"));
-      float in_scale = boost::get<float>(op_desc.GetAttr(i_name + "_scale"));
+      float in_scale =
+          boost::get<float>(op_desc.GetAttr(i_name + "_scale")) * 127;
       auto weight_scale =
           boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
