@@ -630,7 +630,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
@@ -807,7 +807,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
+            parameter_list (Iterable, optional): Iterable of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
@@ -851,7 +851,7 @@ class SGDOptimizer(Optimizer):
     Parameters:
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -959,7 +959,7 @@ class MomentumOptimizer(Optimizer):
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
@@ -1107,7 +1107,7 @@ class DGCMomentumOptimizer(Optimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity). \
             Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
@@ -1505,7 +1505,7 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1624,7 +1624,7 @@ class AdagradOptimizer(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -1749,7 +1749,7 @@ class AdamOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2015,7 +2015,7 @@ class AdamaxOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2190,7 +2190,7 @@ class DpsgdOptimizer(Optimizer):
         clip (float): clipping threshold
         batch_size (float): batch size.
         sigma (float): for gaussian noise.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
     Notes:
@@ -2273,7 +2273,7 @@ class DecayedAdagradOptimizer(Optimizer):
         decay (float, optional): The decay rate. The default value is 0.95.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2378,7 +2378,7 @@ class AdadeltaOptimizer(Optimizer):
         learning_rate (float|Variable): global learning rate.
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2535,7 +2535,7 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2709,7 +2709,7 @@ class FtrlOptimizer(Optimizer):
         l1 (float): L1 regularization strength, default is 0.0.
         l2 (float): L2 regularization strength, default is 0.0.
         lr_power (float): Learning Rate Power, default is -0.5.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
@@ -2857,7 +2857,7 @@ class LambOptimizer(AdamOptimizer):
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
-        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
