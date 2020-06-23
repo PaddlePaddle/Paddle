@@ -527,7 +527,7 @@ class DistributeTranspiler(object):
                             "endpoints": endpoints,
                             "padding_idx": padding_idx,
                             "trainer_id": self.trainer_id,
-                            "outputs_shape": op_type,
+                            "lookup_table_version": op_type,
                         })
                 else:
                     raise ValueError(
