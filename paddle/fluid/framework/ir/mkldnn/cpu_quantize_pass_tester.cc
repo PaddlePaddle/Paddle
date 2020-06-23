@@ -82,6 +82,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
+  } else if (type == "elementwise_add") {
+    op->SetInput("X", {inputs[0]});
+    if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
+    op->SetOutput("Out", {outputs[0]});
+    op->SetAttr("use_quantizer", use_quantizer);
   }
 }
 
@@ -387,7 +392,7 @@ static const std::initializer_list<std::string> variable_names_reshape = {
 // c->Dropout->d
 ProgramDesc BuildProgramDescReshape() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_reshape) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
@@ -402,7 +407,7 @@ ProgramDesc BuildProgramDescReshape() {
 // c->Dropout->d
 ProgramDesc BuildProgramDescReshapeBetweenNonQuantizedOp() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_reshape) {
     prog.MutableBlock(0)->Var(v);
   }
 
@@ -491,7 +496,7 @@ static const std::initializer_list<std::string> variable_names_matmul = {
 
 ProgramDesc BuildProgramDescMatmul() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_matmul) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
@@ -504,7 +509,7 @@ ProgramDesc BuildProgramDescMatmul() {
 
 ProgramDesc BuildProgramDescMatmulNotQuantized() {
   ProgramDesc prog;
-  for (auto& v : variable_names_transpose) {
+  for (auto& v : variable_names_matmul) {
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, false);
@@ -569,6 +574,71 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
   MainTestMatmul(BuildProgramDescMatmulNotQuantized(), matmul_count,
                  quant_count, dequant_count, added_nodes_count, 1.0f);
 }
+
+static const std::initializer_list<std::string> variable_names_elementwise_add =
+    {"a", "b", "c", "d", "e", "f"};
+
+ProgramDesc BuildProgramDescElementwiseAdd() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_elementwise_add) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
+  SetOp(&prog, "dequantize", "Dequantize2", {"c"}, {"d"}, true);
+  SetOp(&prog, "elementwise_add", "ElementwiseAdd", {"b", "d"}, {"e"}, true,
+        true);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+
+  return prog;
+}
+
+void MainTestElementwiseAdd(const ProgramDesc& prog, int elementwise_add_count,
+                            int quant_count, int dequant_count,
+                            int added_nodes_count, float scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_elementwise_add, &original_nodes_num,
+              &current_nodes_num);
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int elementwise_add_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "elementwise_add") {
+        elementwise_add_nodes_count++;
+        auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_x")), scale)
+            << "Scale_x for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_y")), scale)
+            << "Scale_y for node '" + op_name + "'.";
+        EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_out")), scale)
+            << "Scale_out for node '" + op_name + "'.";
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(elementwise_add_nodes_count, elementwise_add_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, elementwise_add) {
+  int elementwise_add_count = 1;
+  int quant_count = 2;
+  int dequant_count = 3;
+  // 2 Quant + 2 IN + 1 DeQuant + 1 OUT
+  int added_nodes_count = 6;
+  MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
+                         elementwise_add_count, quant_count, dequant_count,
+                         added_nodes_count, 2.0f * 127);
+}
+
 }  // namespace
 
 }  // namespace ir

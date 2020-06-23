@@ -676,6 +676,78 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
   PrettyLogDetail("---    quantized %d matmul ops", quantize_matmul_count);
 }
 
+void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
+  GraphPatternDetector gpd;
+  auto pattern = gpd.mutable_pattern();
+  patterns::ElementwiseAdd elementwise_add_pattern{pattern, name_scope_};
+
+  elementwise_add_pattern(
+      pattern->NewNode(elementwise_add_pattern.elementwise_add_x_repr()),
+      pattern->NewNode(elementwise_add_pattern.elementwise_add_y_repr()));
+
+  int quantize_elementwise_add_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "Quantize elementwise_add op";
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_op, elementwise_add_op,
+                              elementwise_add_pattern);
+    auto* elementwise_add_op_desc = elementwise_add_op->Op();
+
+    // skip if should not be quantized
+    if (!elementwise_add_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      return;
+    }
+
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_x, elementwise_add_x,
+                              elementwise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_y, elementwise_add_y,
+                              elementwise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                              elementwise_add_pattern);
+
+    if (!AreScalesPresentForNodes(elementwise_add_op,
+                                  {elementwise_add_x, elementwise_add_y})) {
+      LogCannotQuantizeOp(elementwise_add_op);
+      return;
+    }
+
+    bool is_x_unsigned{false}, is_y_unsigned{false};
+    auto input_x_scale =
+        GetScaleValueForNode(elementwise_add_x, &is_x_unsigned);
+    auto input_y_scale =
+        GetScaleValueForNode(elementwise_add_y, &is_y_unsigned);
+
+    // TODO(sfraczek): add support for different signness
+    if (is_x_unsigned != is_y_unsigned) {
+      VLOG(4) << "ElementwiseAdd inputs must be of the same type.";
+      return;
+    }
+
+    QuantizeInput(g, elementwise_add_op, elementwise_add_x, "X", input_x_scale,
+                  is_x_unsigned, "Scale_x");
+    QuantizeInput(g, elementwise_add_op, elementwise_add_y, "Y", input_y_scale,
+                  is_y_unsigned, "Scale_y");
+
+    // if quantization scale is missing for output tensor, return fp32 data
+    if (AreScalesPresentForNodes(elementwise_add_op, {elementwise_add_out})) {
+      bool is_output_unsigned{false};
+      auto output_scale =
+          GetScaleValueForNode(elementwise_add_out, &is_output_unsigned);
+      DequantizeOutput(g, elementwise_add_op, elementwise_add_out, "Out",
+                       output_scale, is_output_unsigned, "Scale_out");
+    } else {
+      elementwise_add_op->Op()->SetAttr("force_fp32_output", true);
+    }
+
+    ++quantize_elementwise_add_count;
+  };
+  gpd(graph, handler);
+  AddStatis(quantize_elementwise_add_count);
+
+  PrettyLogDetail("---    quantized %d elementwise_add ops",
+                  quantize_elementwise_add_count);
+}
+
 void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Quantizing the graph.";
   PADDLE_ENFORCE(graph);
@@ -692,6 +764,7 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeFc(graph);
   QuantizeReshape(graph);
   QuantizeMatmul(graph);
+  QuantizeElementwiseAdd(graph);
 }
 
 }  // namespace ir
