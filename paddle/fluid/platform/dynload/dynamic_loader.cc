@@ -201,11 +201,11 @@ void* GetCUDNNDsoHandle() {
     cudnn_path = FLAGS_cudnn_dir;
   }
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
+  return GetDsoHandleFromSearchPath(cudnn_path, "libcudnn.dylib", false);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib);
+  return GetDsoHandleFromSearchPath(cudnn_path, win_cudnn_lib);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false);
+  return GetDsoHandleFromSearchPath(cudnn_path, "libcudnn.so", false);
 #endif
 }
 
