@@ -206,7 +206,11 @@ class TensorRTEngine {
           engine_serialized_data.c_str(), engine_serialized_data.size(),
           nullptr));
 #else
-      PADDLE_THROW("the trt version should greater than 6.0.0");
+
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "To enable dynamic shape support, the TensorRT version should be "
+          "greater than 6.0.0"));
+
 #endif
     } else {
       infer_engine_.reset(runtime->deserializeCudaEngine(
