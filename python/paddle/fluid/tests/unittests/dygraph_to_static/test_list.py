@@ -157,8 +157,6 @@ def test_list_pop_in_while_loop(x, iter_num):
     a = []
     i = 0
 
-    # TODO(liym27): Delete it if the type of parameter `i` can be resolved in "if" stmt
-    i = fluid.layers.fill_constant(shape=[1], value=i, dtype="int32")
     while i < iter_num:
         a.append(x + i)
         i += 1

@@ -37,6 +37,36 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestSumOp5D(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {
+            'X': np.random.random((1, 2, 5, 6, 10)).astype("float64")
+        }
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp6D(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {
+            'X': np.random.random((1, 1, 2, 5, 6, 10)).astype("float64")
+        }
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestMeanOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"

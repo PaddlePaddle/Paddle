@@ -341,7 +341,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             ele.stop_gradient = True
             new_list_tensor.append(ele)
         else:
-            assert (isinstance(ele, int))
+            assert isinstance(ele, six.integer_types)
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
