@@ -172,10 +172,10 @@ class Communicator(object):
 
 class LargeScaleKV(object):
     def __init__(self):
-        self.scale_kv = core.LargeScaleKV.get_instance()
+        self.scale_kv = core.LargeScaleKV()
 
-    def save(self):
-        pass
+    def save(self, varname, dirname):
+        self.scale_kv.save(varname, dirname)
 
-    def load(self):
-        pass
+    def load(self, varname, dirname):
+        self.scale_kv.load(varname, dirname)
