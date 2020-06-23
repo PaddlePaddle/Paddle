@@ -93,6 +93,14 @@ class ClipKernel : public framework::OpKernel<T> {
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
       auto* x = context.Input<framework::LoDTensor>("X");
+      PADDLE_ENFORCE_EQ(
+          framework::TensorContainsInf(*x), false,
+          platform::errors::InvalidArgument("The target tensor x contains Inf "
+                                            "should check some layers output."));
+      PADDLE_ENFORCE_EQ(
+          framework::TensorContainsNAN(*x), false,
+          platform::errors::InvalidArgument("The target tensor x contains NAN "
+                                            "should check some layers output."));
       auto* out = context.Output<framework::LoDTensor>("Out");
       T* out_data = out->mutable_data<T>(context.GetPlace());
       const T* x_data = x->data<T>();
