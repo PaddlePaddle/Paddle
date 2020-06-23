@@ -264,9 +264,6 @@ class FleetTranspiler(Fleet):
                 dirname=model_dir,
                 vars=remaining_vars)
 
-            fluid.io.load_persistables(self._executor, model_dir,
-                                       self.main_program)
-
             self._load_sparse_params(dirname=model_dir, varnames=varnames)
 
     def _init_pslib_server(self, model_dir=None, **kwargs):
@@ -603,6 +600,9 @@ if you would like to save all variables in a
 
             origin_varname, _, _ = public._get_varname_parts(var.name)
             if origin_varname.endswith("@GRAD"):
+                return False
+
+            if origin_varname == "learning_rate_0":
                 return False
 
             if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
