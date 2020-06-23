@@ -255,8 +255,8 @@ class UpSample(layers.Layer):
 
 class Pad2D(layers.Layer):
     """
-    :alias_main: paddle.nn.Pad2D
-	:alias: paddle.nn.functional.pad2d,paddle.nn.functional.common.pad2d
+        :alias_main: paddle.nn.Pad2D
+        :alias: paddle.nn.Pad2D,paddle.nn.layer.Pad2D,paddle.nn.layer.common.Pad2D
 
     This interface is used to construct a callable object of the ``Pad2D``  class.
     The Pad2D layer pad 2-d images according to 'paddings' and 'mode'.
