@@ -250,8 +250,23 @@ class FleetTranspiler(Fleet):
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
+            varnames = self.compiled_config.get_sparse_varname_on_ps()
+
+            remaining_vars = list(
+                filter(
+                    FleetTranspiler.__exclude_vars(varnames),
+                    self.main_program.list_vars()))
+
+            fluid.io.load_vars(
+                self._executor,
+                main_program=self.main_program,
+                dirname=model_dir,
+                vars=remaining_vars)
+
             fluid.io.load_persistables(self._executor, model_dir,
                                        self.main_program)
+
+            self._load_sparse_params(dirname=model_dir, varnames)
 
     def _init_pslib_server(self, model_dir=None, **kwargs):
         mode = kwargs.get("mode", 0)
@@ -467,6 +482,9 @@ class FleetTranspiler(Fleet):
             program._copy_dist_param_info_from(self.main_program)
             self.save_persistables(executor, dirname, program)
 
+    def _load_sparse_params(self, dirname, varnames):
+        pass
+
     def _save_dense_params(self, executor, dirname, context, main_program):
         local_vars = []
 
@@ -505,17 +523,6 @@ class FleetTranspiler(Fleet):
         return context.keys()
 
     def _save_distributed_persistables(self, executor, dirname, main_program):
-        def __exclude_vars(exclude_var_names=[]):
-            def is_valid(var):
-                if var.name in exclude_var_names:
-                    return False
-                if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                                var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                                var.desc.type() == core.VarDesc.VarType.READER:
-                    return False
-                return var.persistable
-
-            return is_valid
 
         sparse_ctx = fleet.compiled_config.get_communicator_recv_context(
             recv_type=2)
@@ -531,7 +538,9 @@ class FleetTranspiler(Fleet):
         saved_varnames = recv_dense_varnames + recv_sparse_varnames
 
         remaining_vars = list(
-            filter(__exclude_vars(saved_varnames), main_program.list_vars()))
+            filter(
+                FleetTranspiler.__exclude_vars(saved_varnames),
+                main_program.list_vars()))
 
         fluid.io.save_vars(
             executor,
@@ -580,6 +589,19 @@ if you would like to save all variables in a
             )
 
         self._save_distributed_persistables(executor, dirname, main_program)
+
+    @staticmethod
+    def __exclude_vars(exclude_var_names=[]):
+        def is_valid(var):
+            if var.name in exclude_var_names:
+                return False
+            if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                            var.desc.type() == core.VarDesc.VarType.READER:
+                return False
+            return var.persistable
+
+        return is_valid
 
     def _set_opt_info(self, opt_info):
         """

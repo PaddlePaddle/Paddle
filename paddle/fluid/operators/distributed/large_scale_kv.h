@@ -537,22 +537,14 @@ class SparseVariable {
   void LoadFromSelectedRows(const std::vector<std::string> &filenames,
                             const std::vector<std::string> &valuenames) {
     std::vector<std::shared_ptr<framework::Variable>> variables;
-    std::vector<float *> tensors;
     auto place = platform::CPUPlace();
 
     for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
       auto var = std::make_shared<framework::Variable>();
-      auto *slr = var->GetMutable<framework::SelectedRows>();
-      auto *src_t = slr->mutable_value();
-      auto *value = src_t->mutable_data<float>(place);
       variables.push_back(var);
-      tensors.push_back(value);
-    }
-
-    for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
       auto &filename = filenames[i];
       std::ifstream fin(filename, std::ios::binary);
-      auto *selectedRows = variables[i]->GetMutable<framework::SelectedRows>();
+      auto *selectedRows = var->GetMutable<framework::SelectedRows>();
 
       platform::DeviceContextPool &pool =
           platform::DeviceContextPool::Instance();
@@ -560,6 +552,15 @@ class SparseVariable {
 
       framework::DeserializeFromStream(fin, selectedRows, dev_ctx);
       selectedRows->SyncIndex();
+    }
+
+    std::vector<const float *> tensors;
+
+    for (int i = 0; i < static_cast<int>(filenames.size()); i++) {
+      auto &slr = variables[i]->Get<framework::SelectedRows>();
+      auto src_t = slr.value();
+      const auto *value = src_t.data<float>();
+      tensors.push_back(value);
     }
 
     for (int i = 1; i < static_cast<int>(filenames.size()); i++) {
@@ -581,8 +582,8 @@ class SparseVariable {
       values.resize(filenames.size());
 
       for (int j = 0; j < static_cast<int>(filenames.size()); ++j) {
-        values[j].resize(meta_.value_dims[i]);
-        std::memcpy(values[j].data(), tensors[j] + i * meta_.value_dims[i],
+        values[j].resize(meta_.value_dims[j]);
+        std::memcpy(values[j].data(), tensors[j] + i * meta_.value_dims[j],
                     sizeof(float) * meta_.value_dims[j]);
       }
 

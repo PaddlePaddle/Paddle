@@ -63,6 +63,15 @@ def get_sparse_tablename(op):
     return None
 
 
+def get_all_get_sparse_tablenames(program):
+    tablenames = []
+    for op in program.global_block().ops:
+        varname = get_sparse_tablename(op)
+        if varname:
+            tablenames.append(varname)
+    return tablenames
+
+
 def pretty_print_envs(envs, header=None):
     spacing = 5
     max_k = 45
@@ -175,6 +184,23 @@ class CompileTimeStrategy(object):
 
     def get_origin_startup_program(self):
         return self.origin_startup_program
+
+    def get_sparse_varname_on_ps(self, endpoint=None):
+        if not endpoint:
+            endpoint = self.get_ps_endpoint()
+
+        varnames = get_all_get_sparse_tablenames(self.get_origin_main_program())
+
+        ps_sparse_varnames = []
+
+        for varname in varnames:
+            tables = self.get_var_distributed(varname, True)
+
+            for i in range(len(tables)):
+                table, ep, _ = tables[i]
+                if ep == endpoint:
+                    ps_sparse_varnames.append(table)
+        return ps_sparse_varnames
 
     def build_ctx(self, vars, mapping, is_grad):
         def get_grad_var_ep(slices):
