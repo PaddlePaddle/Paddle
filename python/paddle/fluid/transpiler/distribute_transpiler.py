@@ -480,22 +480,6 @@ class DistributeTranspiler(object):
                     ops.append(op)
                     used_ops.append(idx)
 
-            # if op_type == "lookup_table_v2":
-            #     all_ops = program.global_block().ops
-            #     op_idxs = [all_ops.index(op) for op in ops]
-            #     inputs = [
-            #         program.global_block().vars[op.input("Ids")[0]]
-            #         for op in ops
-            #     ]
-            #     shape_before_lookup = [i.shape for i in inputs]
-            #     for i in inputs:
-            #         program.global_block()._insert_op(
-            #             type="reshape2",
-            #             inputs=i,
-            #             attrs={"shape": [-1, 1]},
-            #             outputs={"Out": out,
-            #                     "XShape": x_shape}
-
             if op_type in ["lookup_table", "lookup_table_v2"]:
                 all_ops = program.global_block().ops
                 op_idxs = [all_ops.index(op) for op in ops]
@@ -542,7 +526,8 @@ class DistributeTranspiler(object):
                             "height_sections": height_sections,
                             "endpoints": endpoints,
                             "padding_idx": padding_idx,
-                            "trainer_id": self.trainer_id
+                            "trainer_id": self.trainer_id,
+                            "outputs_shape": op_type,
                         })
                 else:
                     raise ValueError(
