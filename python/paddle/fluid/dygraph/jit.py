@@ -658,9 +658,6 @@ class TracedLayer(object):
         self._feed_names = feed_names
         self._fetch_names = fetch_names
         self._params = parameters
-        # NOTE: used to record the mapping between the latest dygraph input
-        # variable names and static program feed variable names
-        self._feed_name_dict = {}
 
         self._place = _current_expected_place()
 
@@ -801,11 +798,9 @@ class TracedLayer(object):
         if in_dygraph_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
-                self._feed_name_dict[name] = x.name
         else:
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x
-                self._feed_name_dict[name] = x.name
 
         return feed_dict
 
