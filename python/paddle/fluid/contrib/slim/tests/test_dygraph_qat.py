@@ -21,14 +21,15 @@ import unittest
 import logging
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid import core
-from paddle.fluid.contrib.slim.quantization import DygraphQuantAware
 from paddle.fluid.optimizer import AdamOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.framework import IrGraph
+from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
+from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph import declarative
+from paddle.fluid.dygraph.nn import Conv2D
+from paddle.fluid.dygraph.nn import Pool2D
+from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.log_helper import get_logger
 
 os.environ["CPU_NUM"] = "1"
@@ -141,7 +142,6 @@ class DynamicLenet(fluid.dygraph.Layer):
                 param_attr=fc_w3_attr,
                 bias_attr=fc_b3_attr))
 
-    @declarative
     def forward(self, inputs):
         x = self.features(inputs)
 
@@ -156,7 +156,7 @@ class TestDygraphQat(unittest.TestCase):
     """
 
     def test_qat_save(self):
-        dygraph_qat = DygraphQuantAware(
+        dygraph_qat = ImperativeQuantAware(
             weight_quantize_type='abs_max',
             activation_quantize_type='moving_average_abs_max')
 
@@ -221,7 +221,7 @@ class TestDygraphQat(unittest.TestCase):
             model_dict = lenet.state_dict()
             fluid.save_dygraph(model_dict, "save_temp")
 
-            # test the correctness of `save_infer_quant_model`
+            # test the correctness of `save_quant_model`
             data = next(test_reader())
             test_data = np.array([x[0].reshape(1, 28, 28)
                                   for x in data]).astype('float32')
@@ -231,7 +231,7 @@ class TestDygraphQat(unittest.TestCase):
 
         # save inference quantized model
         path = "./mnist_infer_model"
-        dygraph_qat.save_infer_quant_model(
+        dygraph_qat.save_quant_model(
             dirname=path,
             model=lenet,
             input_shape=[(1, 28, 28)],
@@ -285,7 +285,7 @@ class TestDygraphQat(unittest.TestCase):
         _logger.info(
             "--------------------------dynamic graph qat--------------------------"
         )
-        dygraph_qat = DygraphQuantAware(
+        dygraph_qat = ImperativeQuantAware(
             weight_quantize_type=weight_quantize_type,
             activation_quantize_type=activation_quant_type)
 
@@ -332,7 +332,7 @@ class TestDygraphQat(unittest.TestCase):
                 if batch_id % 100 == 0:
                     _logger.info('{}: {}'.format('loss', avg_loss.numpy()))
 
-        dygraph_qat.save_infer_quant_model(
+        dygraph_qat.save_quant_model(
             dirname="./dynamic_mnist",
             model=lenet,
             input_shape=[(1, 28, 28)],

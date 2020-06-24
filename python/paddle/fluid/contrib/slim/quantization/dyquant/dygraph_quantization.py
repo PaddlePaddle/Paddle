@@ -22,13 +22,13 @@ from paddle.fluid.log_helper import get_logger
 from .quant_nn import QuantizedConv2D
 from .quant_nn import QuantizedLinear
 
-__all__ = ['DygraphQuantAware']
+__all__ = ['ImperativeQuantAware']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
-class DygraphQuantAware(object):
+class ImperativeQuantAware(object):
     def __init__(self,
                  weight_bits=8,
                  activation_bits=8,
@@ -36,7 +36,7 @@ class DygraphQuantAware(object):
                  activation_quantize_type='moving_average_abs_max',
                  moving_rate=0.9,
                  quantizable_layer_type=['Conv2D', 'Linear']):
-        super(DygraphQuantAware, self).__init__()
+        super(ImperativeQuantAware, self).__init__()
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._moving_rate = moving_rate
@@ -63,8 +63,6 @@ class DygraphQuantAware(object):
         for layer in self._quantizable_layer_type:
             assert not isinstance(
                 layer, str), "{} is unspported to be quantized.".format(layer)
-        self._translator = dygraph.ProgramTranslator()
-        self._translator.enable_declarative = False
 
     def quantize(self, model):
         for name, layer in model.named_sublayers():
@@ -82,14 +80,14 @@ class DygraphQuantAware(object):
             quant_layer = self._get_quantized_counterpart(layer)
             setattr(obj, target, quant_layer)
 
-    def save_infer_quant_model(self,
-                               dirname,
-                               model,
-                               input_shape,
-                               input_dtype,
-                               feed,
-                               fetch,
-                               append_batch_size=True):
+    def save_quant_model(self,
+                         dirname,
+                         model,
+                         input_shape,
+                         input_dtype,
+                         feed,
+                         fetch,
+                         append_batch_size=True):
         assert isinstance(
             input_shape, list), "The parameter `input_shape` shoubld be a list."
         assert isinstance(
@@ -103,8 +101,8 @@ class DygraphQuantAware(object):
         assert len(input_dtype) == len(
             feed), "The length of input_shape should be equal to  feed's."
 
+        prog_trans = dygraph.ProgramTranslator()
         with dygraph.guard():
-            self._translator.enable_declarative = True
             model.eval()
             input_vars = []
             for shape, dtype in zip(input_shape, input_dtype):
@@ -113,8 +111,8 @@ class DygraphQuantAware(object):
                     dtype) if append_batch_size else raw_data.astype(dtype)
                 input_var = dygraph.to_variable(input_data)
                 input_vars.append(input_var)
-            model(*input_vars)
-        self._translator.save_inference_model(dirname, feed, fetch)
+            prog_trans.get_output(model.__call__, model, *input_vars)
+        prog_trans.save_inference_model(dirname, feed, fetch)
 
     def _get_quantized_counterpart(self, layer):
         quant_layers = tuple(self._quant_layers_map.values())
