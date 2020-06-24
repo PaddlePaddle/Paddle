@@ -47,16 +47,11 @@ class FS(object):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def upload(self, local_path, fs_path, overwrite=False):
+    def upload(self, local_path, fs_path):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def download(self,
-                 fs_path,
-                 local_path,
-                 multi_processes=5,
-                 overwrite=False,
-                 retry_times=5):
+    def download(self, fs_path, local_path):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -72,15 +67,15 @@ class FS(object):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rename(self, fs_src_path, fs_dst_path, overwrite=False):
+    def rename(self, fs_src_path, fs_dst_path):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def mv(self, fs_src_path, fs_dst_path, overwrite=False):
+    def mv(self, fs_src_path, fs_dst_path):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def upload_dir(self, local_dir, dest_dir, overwrite=False):
+    def upload_dir(self, local_dir, dest_dir):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -97,10 +92,7 @@ class LocalFS(FS):
             fs_path)
         os.system("mkdir -p {}".format(fs_path))
 
-    def rename(self, fs_src_path, fs_dst_path, overwrite=False):
-        if overwrite:
-            shutil.move(fs_src_path, fs_dst_path)
-            return
+    def rename(self, fs_src_path, fs_dst_path):
         os.rename(fs_src_path, fs_dst_path)
 
     def _rmr(self, fs_path):
@@ -133,8 +125,8 @@ class LocalFS(FS):
     def touch(self, fs_path):
         return Path(fs_path).touch()
 
-    def mv(self, src_path, dst_path, overwrite=False):
-        return self.rename(src_path, dst_path, overwrite=overwrite)
+    def mv(self, src_path, dst_path):
+        return self.rename(src_path, dst_path)
 
     def list_dirs(self, fs_path):
         """	
