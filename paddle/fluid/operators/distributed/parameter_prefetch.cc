@@ -88,7 +88,6 @@ void prefetch_core(
     const framework::ExecutionContext& context, const framework::Scope& scope,
     std::unordered_map<int64_t, std::vector<float>>* recved_vec_map) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  // auto& actual_ctx = *pool.Get(context.GetPlace());
   auto& actual_ctx = *pool.Get(platform::CPUPlace());
 
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
@@ -103,12 +102,6 @@ void prefetch_core(
   auto splited_ids = SplitIds(ids, height_sections);
   SplitIdsIntoMultipleVarsBySection(in_var_names, height_sections, splited_ids,
                                     local_scope.get());
-
-  // create output var in local scope
-  // for (auto& name : out_var_names) {
-  //   out_var_tensor =
-  //   local_scope->Var(name)->GetMutable<framework::LoDTensor>();
-  // }
 
   // create output var in local scope cpu place
   auto embedding_name = context.InputNames("W").front();
@@ -219,10 +212,6 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
-
-  // if (!platform::is_cpu_place(place)) {
-  //   PADDLE_THROW("multi prefetch only support CPU currently");
-  // }
 
   std::vector<std::vector<int64_t>> ids_group;
   std::vector<int64_t> ids_union;
