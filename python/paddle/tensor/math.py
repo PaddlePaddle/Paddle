@@ -703,9 +703,9 @@ for func in [
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=additional_args_lines,
-        skip_attrs_set={"x_data_format", "y_data_format", "axis"
-                        }) + """\n""" + str(func.__doc__)
-
+        skip_attrs_set={"x_data_format", "y_data_format", "axis",
+            "use_quantizer", "Scale_x", "Scale_y", "Scale_out"
+        }) + """\n""" + str(func.__doc__)
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
