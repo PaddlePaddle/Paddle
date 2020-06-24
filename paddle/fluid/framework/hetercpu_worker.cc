@@ -247,9 +247,6 @@ void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
       }
     }
   }
-  for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
-      xpu_recv_var_list_.push_back(trainer_desc_.xpu_recv_list(i));
-  }
 }
 
 void HeterCpuWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
@@ -706,7 +703,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
   int done_cnt = 0;
   int cur_batch;
   uint64_t total_inst = 0;
-  wait_queue_.SetCap(1);
+  wait_queue_.SetCap(3);
   while (1) {
 
     std::shared_ptr<HeterTask> task;
@@ -818,7 +815,11 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       else if (task->state_ == XPU) {
         timeline.Start();
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, xpu_recv_var_list_);
+        std::vector<std::string> send_var_list;
+        for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
+            send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
+        }
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
         task->Update();
         JumpContext(task);
         timeline.Pause();
@@ -989,7 +990,7 @@ void HeterCpuWorker::TrainFiles() {
   int batch_cnt = 0;
   int done_cnt = 0;
   int cur_batch;
-  wait_queue_.SetCap(1);
+  wait_queue_.SetCap(3);
   need_to_push_dense_ = false;
   while (1) {
     //if (copy_table_config_.need_copy()) {
@@ -1085,7 +1086,11 @@ void HeterCpuWorker::TrainFiles() {
       }
       else if (task->state_ == XPU) {
         VLOG(3) << "call remote xpu taskid = " << task->taskid_;
-        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, xpu_recv_var_list_);
+        std::vector<std::string> send_var_list;
+        for (int i = 0; i < trainer_desc_.xpu_recv_list_size(); ++i) {
+            send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
+        }
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
         task->Update();
         JumpContext(task);
         break;

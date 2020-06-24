@@ -622,7 +622,6 @@ class HeterCpuWorker : public HogwildWorker {
   HeterObjectPool<HeterTask> object_pool_;
   HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
   HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
-  std::vector<std::string> xpu_recv_var_list_;
   bool need_dump_param_;
   std::vector<std::string> dump_param_;
   bool need_to_push_dense_;

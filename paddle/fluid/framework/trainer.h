@@ -176,7 +176,6 @@ class HeterXpuTrainer : public TrainerBase {
   DownpourWorkerParameter param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::string> need_merge_var_names_;
-  std::vector<std::string> recv_var_list_;
   float scale_datanorm_;
   int xpu_begin_op_index_;
   int xpu_end_op_index_;
