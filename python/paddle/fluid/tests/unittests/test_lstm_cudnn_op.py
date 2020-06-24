@@ -146,18 +146,12 @@ class TestCUDNNLstmOp(OpTest):
         program = fluid.Program()
         block = program.global_block()
 
-        cache_temp = block.create_var(
-            name="Cache",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW,
-            stop_gradient=True)
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'W': OpTest.np_dtype_to_fluid_dtype(flat_w),
             'InitH': OpTest.np_dtype_to_fluid_dtype(init_h),
             'InitC': OpTest.np_dtype_to_fluid_dtype(init_c),
         }
-        self.cache_name_list = ['Cache']
         self.attrs = {
             'max_len': num_steps,
             'dropout_prob': 0.0,
@@ -169,13 +163,15 @@ class TestCUDNNLstmOp(OpTest):
         self.outputs = {
             'Out': output,
             "last_h": last_hidden,
-            'last_c': last_cell
+            'last_c': last_cell,
+            'Reserve': np.ndarray((40000)).astype("uint8")
         }
 
     def test_output_with_place(self):
         # depend on the scope structure
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(
+            place, atol=1e-5, no_check_set=['Reserve'], check_dygraph=True)
 
     def test_grad_with_place(self):
         # depend on the scope structure
@@ -183,7 +179,7 @@ class TestCUDNNLstmOp(OpTest):
         self.check_grad_with_place(
             place,
             set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'last_h', 'last_c'],
-            check_dygraph=False)
+            check_dygraph=True)
 
 
 if __name__ == '__main__':

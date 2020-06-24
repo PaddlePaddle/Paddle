@@ -35,6 +35,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     Tensor *out = ctx.Output<Tensor>("Out");
     Tensor *last_h = ctx.Output<Tensor>("last_h");
     Tensor *last_c = ctx.Output<Tensor>("last_c");
+    Tensor *reserve = ctx.Output<Tensor>("Reserve");
 
     const T *x_data = x->data<T>();
     const T *init_h_data = init_h->data<T>();
@@ -56,38 +57,26 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    auto *cache_var = ctx.InputVar("Cache");
-    if (!cache_var) {
-      // The RAW type cache variable wouldn't be created and broadcasted on
-      // multi-devices before the first running.
-      // use parent scope to make cache persistable
-      auto *scope = const_cast<framework::Scope *>(ctx.scope().parent());
-      auto cache_var_name = ctx.InputNames("Cache")[0];
-      cache_var = scope->Var(cache_var_name);
-    }
-    CudnnRNNCache *cudnn_rnn_cache = nullptr;
-    if (cache_var->IsInitialized()) {
-      // const_cast is usually bad.
-      cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
-                            ->GetMutable<CudnnRNNCache>();
-    } else {
-      // const_cast is usually bad.
-      cudnn_rnn_cache = const_cast<framework::Variable *>(cache_var)
-                            ->GetMutable<CudnnRNNCache>();
-      std::random_device rnd;
-      int seed = ctx.Attr<int>("seed");
-      if (seed == -1) {
-        seed = rnd();
-      }
 
-      auto input_w_numel = w->numel();
-      auto batch_size = x->dims()[1];
-      cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
-                            input_size, hidden_size, num_layers, dropout_prob,
-                            is_bidirec, seed, input_w_numel);
+    framework::Variable cache_var;
+    CudnnRNNCache *cudnn_rnn_cache = cache_var.GetMutable<CudnnRNNCache>();
+
+    std::random_device rnd;
+    int seed = ctx.Attr<int>("seed");
+    if (seed == -1) {
+      seed = rnd();
     }
+
+    auto input_w_numel = w->numel();
+    auto batch_size = x->dims()[1];
+    size_t reserve_size;
+    cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
+                          input_size, hidden_size, num_layers, dropout_prob,
+                          is_bidirec, seed, input_w_numel, &reserve_size);
 
     auto run_seq_len = x->dims()[0];
+    auto *reserve_data = reserve->mutable_data<uint8_t>(
+        {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
 
     if (is_test) {
       // for inference
@@ -108,9 +97,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
           cudnn_rnn_cache->w_desc_, w_data, cudnn_rnn_cache->y_desc_, out_data,
           cudnn_rnn_cache->hy_desc_, last_h_data, cudnn_rnn_cache->cy_desc_,
           last_c_data, cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
-          cudnn_rnn_cache->workspace_size_,
-          cudnn_rnn_cache->reserve_data_.data<uint8_t>(),
-          cudnn_rnn_cache->reserve_size_));
+          cudnn_rnn_cache->workspace_size_, reserve_data, reserve_size));
     }
   }
 };
@@ -123,15 +110,12 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto *weight = ctx.Input<Tensor>("W");
     auto *init_h = ctx.Input<Tensor>("InitH");
     auto *init_c = ctx.Input<Tensor>("InitC");
-    // auto * last_h = ctx.Input<Tensor>("last_h");
-    // auto * last_c = ctx.Input<Tensor>("last_c");
+    auto *reserve = ctx.Input<Tensor>("Reserve");
+
     auto *out = ctx.Input<Tensor>("Out");
     auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *last_h_grad = ctx.Input<Tensor>(framework::GradVarName("last_h"));
     auto *last_c_grad = ctx.Input<Tensor>(framework::GradVarName("last_c"));
-
-    // auto* init_h = ctx.Input<Tensor>("init_h");
-    // auto* init_c = ctx.Input<Tensor>("init_c");
 
     auto *in_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto *weight_grad = ctx.Output<Tensor>(framework::GradVarName("W"));
@@ -140,11 +124,6 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    auto *cache_var = ctx.InputVar("Cache");
-    PADDLE_ENFORCE(cache_var->IsInitialized());
-    CudnnRNNCache *cudnn_rnn_cache =
-        const_cast<framework::Variable *>(cache_var)
-            ->GetMutable<CudnnRNNCache>();
 
     auto input_dims = input->dims();
     auto init_h_dims = init_h->dims();
@@ -224,8 +203,31 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto init_c_data = init_c->data<T>();
     auto in_grad_data = in_grad->data<T>();
 
+    size_t max_len = ctx.Attr<int>("max_len");
+    float dropout_prob = ctx.Attr<float>("dropout_prob");
+    bool is_bidirec = ctx.Attr<bool>("is_bidirec");
+    int input_size = ctx.Attr<int>("input_size");
+    int hidden_size = ctx.Attr<int>("hidden_size");
+    int num_layers = ctx.Attr<int>("num_layers");
+
+    framework::Variable cache_var;
+    CudnnRNNCache *cudnn_rnn_cache = cache_var.GetMutable<CudnnRNNCache>();
+
+    std::random_device rnd;
+    int seed = ctx.Attr<int>("seed");
+    if (seed == -1) {
+      seed = rnd();
+    }
+
+    auto input_w_numel = weight->numel();
+    auto batch_size = input->dims()[1];
+    size_t reserve_size;
+    cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
+                          input_size, hidden_size, num_layers, dropout_prob,
+                          is_bidirec, seed, input_w_numel, &reserve_size);
+
     auto work_data = cudnn_rnn_cache->workspace_data_.data<uint8_t>();
-    auto reserve_data = cudnn_rnn_cache->reserve_data_.data<uint8_t>();
+    const uint8_t *reserve_data = reserve->data<uint8_t>();
 
     auto run_seq_len = input_dims[0];
     PADDLE_ENFORCE_LE((size_t)run_seq_len, cudnn_rnn_cache->max_length_,
@@ -239,8 +241,8 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
         cudnn_rnn_cache->cx_desc_, init_c_data, cudnn_rnn_cache->dx_desc_,
         in_grad_data, cudnn_rnn_cache->dhx_desc_, init_h_grad_data,
         cudnn_rnn_cache->dcx_desc_, init_c_grad_data, work_data,
-        cudnn_rnn_cache->workspace_size_, reserve_data,
-        cudnn_rnn_cache->reserve_size_));
+        cudnn_rnn_cache->workspace_size_, const_cast<uint8_t *>(reserve_data),
+        reserve_size));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnRNNBackwardWeights(
         handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
@@ -248,8 +250,8 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
         init_h->data<T>(), cudnn_rnn_cache->y_desc_, out->data<T>(),
         cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
         cudnn_rnn_cache->workspace_size_, cudnn_rnn_cache->dw_desc_,
-        weight_grad->data<T>(), cudnn_rnn_cache->reserve_data_.data<uint8_t>(),
-        cudnn_rnn_cache->reserve_size_));
+        weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
+        reserve_size));
   }
 };
 

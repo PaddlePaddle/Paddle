@@ -33,8 +33,6 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                    "Input(init_h) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitC"),
                    "Input(init_c) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Cache"),
-                   "Input(Cache) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("last_h"),
@@ -84,11 +82,10 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
-    AddInput("Cache",
-             "The cache of dropout op, a RAW type variable including random "
-             "number generator states and some descriptors, which is used in "
-             "cudnn kernel.")
-        .AsDispensable();
+    AddOutput("Reserve",
+              "(Tensor, a temporary output Tensor to store the reserve_data "
+              "of cudnn kernel.")
+        .AsIntermediate();
     AddOutput("Out",
               "(Tensor) the hidden state of LSTM operator. "
               "The shape is ( seq_len x batch_size x hidden_size) if "
@@ -175,8 +172,6 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Cache"),
-                   "Input(last_c) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitH"),
                    "Input(init_h) of LSTM should not be null.");
 
@@ -195,6 +190,12 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
     SetOutGradDim("InitH");
     SetOutGradDim("InitC");
   }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
 };
 
 template <typename T>
@@ -209,9 +210,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitH", this->Input("InitH"));
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
-    if (this->HasInput("Cache")) {
-      op->SetInput("Cache", this->Input("Cache"));
-    }
+    op->SetInput("Reserve", this->Output("Reserve"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput(framework::GradVarName("last_c"), this->OutputGrad("last_c"));

@@ -55,8 +55,6 @@ struct CudnnRNNCache {
   cudnnFilterDescriptor_t dw_desc_;
 
   size_t workspace_size_;
-  size_t reserve_size_;
-  framework::Tensor reserve_data_;
   framework::Tensor workspace_data_;
 
   framework::Tensor dropout_state_;
@@ -74,7 +72,8 @@ struct CudnnRNNCache {
 
   void init(cudnnHandle_t handle, const platform::Place &place, size_t max_len,
             int batch_size, int input_size, int hidden_size, int num_layers,
-            float dropout_prob, bool is_bidirec, int seed, int weight_numel) {
+            float dropout_prob, bool is_bidirec, int seed, int weight_numel,
+            size_t *reserve_size_) {
     max_length_ = max_len;
     batch_size_ = batch_size;
     input_size_ = input_size;
@@ -219,10 +218,7 @@ struct CudnnRNNCache {
         handle, rnn_desc_, max_length_, x_desc_, &workspace_size_));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetRNNTrainingReserveSize(
-            handle, rnn_desc_, max_length_, x_desc_, &reserve_size_));
-
-    reserve_data_.Resize({static_cast<int64_t>(reserve_size_)});
-    reserve_data_.mutable_data<uint8_t>(place);
+            handle, rnn_desc_, max_length_, x_desc_, reserve_size_));
 
     workspace_data_.Resize({static_cast<int64_t>(workspace_size_)});
     workspace_data_.mutable_data<uint8_t>(place);
