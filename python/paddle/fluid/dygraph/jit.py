@@ -176,18 +176,23 @@ declarative = wrap_decorator(_declarative_)
 
 class SaveLoadConfig(object):
     """
-    SaveLoadConfig is used to specify additional configuration options in
-    `fluid.dygraph.jit.save`. Because fluid.dygraph.jit.save will call 
-    `fluid.io.save_inference_model`, save_inference_model have multiple
-    input arguments, some arguments may not be used often, we do not expose 
-    these arguments to users by default, but we need to retain the ability
-    to configure these arguments. 
+    The additional configuration options may be used in function 
+    ``paddle.imperative.jit.save`` that save a ``TranslatedLayer`` or used in function
+    ``paddle.imperative.jit.load`` that load a ``TranslatedLayer`` 
+    or load a model(TranslatedLayer). 
+    
+    Examples:
+        .. code-block:: python
+            
     """
 
     def __init__(self):
         self.output_spec = None
         self.model_filename = None
         self.params_filename = None
+
+        # NOTE: Users rarely use these configs, so these configs are not open to users,
+        # reducing user learning costs, but we retain the configuration capabilities
         self.export_for_deployment = True
         self.program_only = False
         self.pserver_endpoints = None
@@ -200,7 +205,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     It will prune the main_program to build a new program especially for inference, 
     and then save it and all related parameters to given `model_path` . 
     The saved inference model can be loaded by follow api:
-        - :ref:`api_fluid_dygraph_jit_load
+        - :ref:`api_fluid_dygraph_jit_load`
         - :ref:`api_fluid_io_load_inference_model`
         - C++ inference APIs
 
