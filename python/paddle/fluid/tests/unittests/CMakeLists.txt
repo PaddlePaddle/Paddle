@@ -375,7 +375,7 @@ if(NOT WIN32)
     py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
     py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
     py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
-    set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
+    set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 910)
     set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
     set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
