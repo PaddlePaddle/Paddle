@@ -1,0 +1,45 @@
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+package paddle.fleet;
+
+enum Mode {
+  COLLECTIVE = 1;
+  PS = 2;
+  PIPELINE = 3;
+  HETER = 4; // support XPU and GPU computing server
+}
+
+message DistributedStrategy {
+  optional Mode mode = 1 [ default = COLLECTIVE ]; // just for serialization
+  optional bool amp = 2 [ default = false ];
+  optional int32 amp_loss_scaling = 3 [ default = 32768 ];
+  optional bool recompute = 4 [ default = false ];
+  repeated string recompute_checkpoints = 5;
+  optional bool pipeline = 6 [ default = false ];
+  optional int32 pipeline_micro_batch = 7;
+  optional bool localsgd = 8 [ default = false ];
+  optional int32 localsgd_k_step = 9 [ default = 4 ];
+  optional bool dgc = 10 [ default = false ];
+  optional bool hierachical_allreduce = 11 [ default = false ];
+  optional int32 nccl_comm_num = 12 [ default = 1 ];
+  optional bool gradient_merge = 13 [ default = false ];
+  optional int32 gradient_merge_k_step = 14 [ default = 1 ];
+  optional bool sequential_execution = 15 [ default = false ];
+  optional bool sync = 16 [ default = false ];
+  optional bool async = 17 [ default = true ];
+  optional int32 async_k_step = 18 [ default = -1 ];
+  optional bool auto = 19 [ default = false ];
+}
