@@ -16,6 +16,43 @@ from .proto import distributed_strategy_pb2
 from ..fluid.framework import Variable
 
 
+class DistributedJobInfo(object):
+    """
+    DistributedJobInfo will serialize all distributed training information
+    Just for inner use: 1) debug 2) replicate experiments
+    """
+
+    def __init__(self):
+        self.job_info = distributed_strategy_pb2.DistributedJobInfo()
+
+    def _set_worker_num(self, worker_num):
+        self.job_info.worker_num = worker_num
+
+    def _set_server_num(self, server_num):
+        self.job_info.server_num = server_num
+
+    def _set_worker_ips(self, worker_ips):
+        self.job_info.worker_ips.extend(worker_ips)
+
+    def _set_server_endpoints(self, server_endpoints):
+        self.job_info.server_endpoints.extend(server_endpoints)
+
+    def _set_origin_startup(self, origin_startup_prog):
+        self.job_info.origin_startup = str(origin_startup_prog)
+
+    def _set_origin_main(self, origin_main_prog):
+        self.job_info.origin_main = str(origin_main_prog)
+
+    def _distributed_main(self, distributed_main_prog):
+        self.job_info.distributed_main = str(distributed_main_prog)
+
+    def _optimizer_name(self, optimizer_name):
+        self.job_info.optimizer_name = optimizer_name
+
+    def _set_distributed_strategy(self, dist_strategy):
+        self.job_info.strategy = dist_strategy
+
+
 class DistributedStrategy(object):
     def __init__(self):
         self.strategy = distributed_strategy_pb2.DistributedStrategy()
@@ -232,6 +269,29 @@ class DistributedStrategy(object):
             print("WARNING: async_k_step should have value of int type")
 
     @property
+    def enable_backward_optimizer_op_deps(self):
+        return self.strategy.enable_backward_optimizer_op_deps
+
+    @enable_backward_optimizer_op_deps.setter
+    def enable_backward_optimizer_op_deps(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.enable_backward_optimizer_op_deps = flag
+        else:
+            print(
+                "WARNING: enable_backward_optimizer_op_deps should be bool type")
+
+    @property
+    def elastic(self):
+        return self.strategy.elastic
+
+    @auto.setter
+    def elastic(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.elastic = flag
+        else:
+            print("WARNING: elastic should have value of bool type")
+
+    @property
     def auto(self):
         return self.strategy.auto
 
@@ -241,3 +301,6 @@ class DistributedStrategy(object):
             self.strategy.auto = flag
         else:
             print("WARNING: auto should have value of bool type")
+
+    def __repr__(self):
+        return str(self.strategy)
