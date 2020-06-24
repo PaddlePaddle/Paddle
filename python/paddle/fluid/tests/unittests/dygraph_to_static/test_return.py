@@ -20,6 +20,8 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import ProgramTranslator
 
+from ifelse_simple_func import dyfunc_with_if_else
+
 SEED = 2020
 np.random.seed(SEED)
 
@@ -88,6 +90,12 @@ def test_return_in_for(x):
     return x - 1
 
 
+@declarative
+def test_recursive_return(x):
+    x = fluid.dygraph.to_variable(x)
+    return dyfunc_with_if_else(x)
+
+
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
         self.input = np.ones((1)).astype('int32')
@@ -143,6 +151,12 @@ class TestReturnInWhile(TestReturnBase):
 class TestReturnInFor(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_in_for
+
+
+class TestRecursiveReturn(TestReturnBase):
+    def init_dygraph_func(self):
+        self.input = self.input.astype(np.float32)
+        self.dygraph_func = test_recursive_return
 
 
 if __name__ == '__main__':
