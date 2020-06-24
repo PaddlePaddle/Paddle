@@ -41,5 +41,20 @@ message DistributedStrategy {
   optional bool sync = 16 [ default = false ];
   optional bool async = 17 [ default = true ];
   optional int32 async_k_step = 18 [ default = -1 ];
-  optional bool auto = 19 [ default = false ];
+  optional bool enable_backward_optimizer_op_deps = 19 [ default = True ];
+  optional bool elastic = 20 [ default = False ];
+  optional bool auto = 501 [ default = false ];
+}
+
+message DistributedJobInfo {
+  optional int32 worker_num = 1;
+  optional int32 server_num = 2;
+  repeated string worker_ips = 3;
+  repeated string server_endpoints = 4;
+  optional string origin_startup = 5;
+  optional string origin_main = 6; // without backpropagation and optimization
+  optional string distributed_main = 7; // with backpropagation and optimization
+  optional string optimizer_name =
+      8; // optimizer algorithm wrapped by distributed_optimizer
+  optional DistributedStrategy strategy = 101;
 }
