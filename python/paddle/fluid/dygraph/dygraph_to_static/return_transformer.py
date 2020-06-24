@@ -140,7 +140,7 @@ class ReturnTransformer(gast.NodeTransformer):
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None)))
-            assign_zero_node = create_fill_constant_node(value_name, 0)
+            assign_zero_node = create_fill_constant_node(value_name, 0.0)
             node.body.insert(0, assign_zero_node)
         # Prepend control flow boolean nodes such as '__return@1 = False'
         for name in self.return_name[node]:

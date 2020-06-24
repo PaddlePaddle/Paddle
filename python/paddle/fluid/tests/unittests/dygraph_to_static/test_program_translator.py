@@ -68,7 +68,7 @@ class StaticCode1():
         __return_0 = fluid.layers.fill_constant(
             shape=[1], dtype='bool', value=False)
         __return_value_0 = fluid.layers.fill_constant(
-            shape=[1], dtype='int64', value=0)
+            shape=[1], dtype='float64', value=0.0)
 
         def true_fn_0(x_v):
             x_v = x_v - 1
@@ -124,7 +124,7 @@ class StaticCode2():
         __return_2 = fluid.layers.fill_constant(
             shape=[1], dtype='bool', value=False)
         __return_value_1 = fluid.layers.fill_constant(
-            shape=[1], dtype='int64', value=0)
+            shape=[1], dtype='float64', value=0.0)
 
         def true_fn_3(x_v):
             x_v = x_v - 1
@@ -195,6 +195,9 @@ class TestDygraphToStaticCode(unittest.TestCase):
         answer = get_source_code(StaticCode2.dyfunc_with_if_else)
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
+        for i in range(len(answer)):
+            if code[i] != answer[i]:
+                print(code[i] + " " + answer[i])
         self.assertEqual(answer, code)
 
 
