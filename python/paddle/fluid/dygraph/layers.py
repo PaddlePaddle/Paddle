@@ -591,6 +591,23 @@ class Layer(core.Layer):
         else:
             object.__delattr__(self, name)
 
+    def __dir__(self):
+        """
+        Get all parameters， sublayers, method and attr of Layer.
+
+        """
+        method = dir(self.__class__)
+        attrs = list(self.__dict__.keys())
+        parameters_name = [
+            param_name for param_name, _ in self.named_parameters()
+        ]
+        sublayers_name = [
+            sublayer_name for sublayer_name, _ in self.named_sublayers()
+        ]
+        keys = parameters_name + sublayers_name + attrs + method
+
+        return keys
+
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,

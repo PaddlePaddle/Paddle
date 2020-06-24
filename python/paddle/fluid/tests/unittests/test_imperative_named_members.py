@@ -79,6 +79,45 @@ class TestImperativeNamedParameters(unittest.TestCase):
 
             self.assertListEqual(expected_named_parameters, named_parameters)
 
+    def test_dir_layer(self):
+        with fluid.dygraph.guard():
+            fc1 = fluid.Linear(10, 3)
+            fc2 = fluid.Linear(3, 10)
+            mylayer = MyLayer(3, 10)
+            model = paddle.nn.Sequential(("fc1", fc1), ("fc2", fc2),
+                                         ("mylayer", mylayer))
+
+            expected_members = dir(model)
+
+            self.assertTrue("fc1" in expected_members,
+                            "model should contain Layer: fc1")
+            self.assertTrue("fc1.weight" in expected_members,
+                            "model should contain Parameter: fc1.weight")
+            self.assertTrue("fc1.bias" in expected_members,
+                            "model should contain Parameter: fc1.bias")
+
+            self.assertTrue("fc2" in expected_members,
+                            "model should contain Layer: fc2")
+            self.assertTrue("fc2.weight" in expected_members,
+                            "model should contain Parameter: fc2.weight")
+            self.assertTrue("fc2.bias" in expected_members,
+                            "model should contain Parameter: fc2.bias")
+
+            self.assertTrue("mylayer.fc" in expected_members,
+                            "model should contain Layer: mylayer.fc")
+            self.assertTrue("mylayer.fc.weight" in expected_members,
+                            "model should contain Parameter: mylayer.fc.weight")
+            self.assertTrue("mylayer.fc.bias" in expected_members,
+                            "model should contain Parameter: mylayer.fc.bias")
+
+            self.assertTrue("mylayer.conv" in expected_members,
+                            "model should contain Layer: mylayer.conv")
+            self.assertTrue(
+                "mylayer.conv.weight" in expected_members,
+                "model should contain Parameter: mylayer.conv.weight")
+            self.assertTrue("mylayer.conv.bias" in expected_members,
+                            "model should contain Parameter: mylayer.conv.bias")
+
 
 if __name__ == '__main__':
     unittest.main()
