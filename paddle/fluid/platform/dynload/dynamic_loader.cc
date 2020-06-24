@@ -197,15 +197,15 @@ void* GetCublasDsoHandle() {
 
 void* GetCUDNNDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(cudnn_path, "libcudnn.dylib", false);
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.dylib", false);
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
-  return GetDsoHandleFromSearchPath(cudnn_path, win_cudnn_lib);
+  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib);
 #else
-  std::string cudnn_path = linux_cudnn_lib_path;
+  std::string linux_cudnn_path = linux_cudnn_lib_path;
   if (!FLAGS_cudnn_dir.empty()) {
-    cudnn_path = FLAGS_cudnn_dir;
+    linux_cudnn_path = FLAGS_cudnn_dir;
   }
-  return GetDsoHandleFromSearchPath(cudnn_path, "libcudnn.so", false);
+  return GetDsoHandleFromSearchPath(linux_cudnn_path, "libcudnn.so", false);
 #endif
 }
 
