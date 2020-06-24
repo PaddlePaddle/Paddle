@@ -96,13 +96,13 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
         auto in_stride = framework::stride_numel(in.dims());
         auto out_stride = framework::stride_numel(recv_tensor->dims());
         if (platform::is_cpu_place(recv_tensor->place())) {
-          VLOG(1) << "StridedNumelCopyWithAxis CPU Begin";
+          VLOG(4) << "StridedNumelCopyWithAxis CPU Begin";
           auto cpu_ctx = paddle::platform::CPUDeviceContext();
           StridedNumelCopyWithAxis<T>(
               cpu_ctx, 0, recv_tensor->data<T>() + output_offset, out_stride,
               in.data<T>(), in_stride, in_stride[0]);
         } else {
-          VLOG(1) << "StridedNumelCopyWithAxis CPU<->GPU Begin";
+          VLOG(4) << "StridedNumelCopyWithAxis CPU<->GPU Begin";
           auto cpu_ctx = paddle::platform::CPUDeviceContext();
           auto *gpu_ctx = reinterpret_cast<platform::CUDADeviceContext *>(
               platform::DeviceContextPool::Instance().Get(

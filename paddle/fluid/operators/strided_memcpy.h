@@ -111,7 +111,7 @@ inline void StridedNumelCopyWithAxis(platform::CUDADeviceContext* dst_ctx,
 
   auto dst_place = dst_ctx->GetPlace();
   auto src_place = src_ctx.GetPlace();
-  VLOG(1) << "StridedNumelCopyWithAxis CPU<->CUDA Copy before: " << before
+  VLOG(4) << "StridedNumelCopyWithAxis CPU<->CUDA Copy before: " << before
           << " dst_after: " << dst_after << " src_after: " << src_after;
   PADDLE_ENFORCE_EQ(src_stride_numel.size(), dst_stride_numel.size(),
                     "src and dst tensor should have the same dims size.");
@@ -132,7 +132,7 @@ inline void StridedNumelCopyWithAxis(platform::CUDADeviceContext* dst_ctx,
   }
 
   for (int64_t i = 0; i < before; ++i) {
-    VLOG(1) << "StridedNumelCopyWithAxis CPU<->GPU Copy";
+    VLOG(4) << "StridedNumelCopyWithAxis CPU<->GPU Copy";
     auto& cpu_place = BOOST_GET_CONST(platform::CPUPlace, src_place);
     auto& gpu_place = BOOST_GET_CONST(platform::CUDAPlace, dst_place);
     memory::Copy(gpu_place, dst + i * dst_after, cpu_place, src + i * src_after,

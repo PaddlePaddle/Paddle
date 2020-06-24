@@ -112,7 +112,6 @@ void prefetch_core(
   for (size_t i = 0; i < out_var_names.size(); ++i) {
     auto* out_var_tensor =
         local_scope->Var(out_var_names[i])->GetMutable<framework::LoDTensor>();
-    // out_var_tensor->mutable_data<float>(platform::CPUPlace());
     auto& ids = splited_ids[i];
     if (!ids.empty()) {
       out_var_tensor->mutable_data<float>(
@@ -223,16 +222,9 @@ void prefetchs(const std::vector<std::string>& id_var_names,
     std::vector<int64_t> ids;
     std::vector<int64_t> ids_union_part;
     TensorToVector(id_tensor, context.device_context(), &ids);
-    VLOG(1) << "Parameter Prefetch: size(): " << ids.size() << " ids[0] "
+    VLOG(3) << "Parameter Prefetch: size(): " << ids.size() << " ids[0] "
             << ids[0];
     ids_union.insert(ids_union.end(), ids.begin(), ids.end());
-    // auto* id_data = id_tensor.data<int64_t>();
-    // std::vector<int64_t> ids;
-
-    // for (int64_t i = 0; i < id_tensor.numel(); ++i) {
-    //   ids.push_back(id_data[i]);
-    //   ids_union.push_back(id_data[i]);
-    // }
     ids_group.push_back(ids);
     ids_lods.push_back(id_tensor.lod());
   }
