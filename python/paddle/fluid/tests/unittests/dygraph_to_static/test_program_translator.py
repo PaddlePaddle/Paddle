@@ -195,9 +195,6 @@ class TestDygraphToStaticCode(unittest.TestCase):
         answer = get_source_code(StaticCode2.dyfunc_with_if_else)
         program_translator = ProgramTranslator()
         code = program_translator.get_code(dyfunc_with_if_else)
-        for i in range(len(answer)):
-            if code[i] != answer[i]:
-                print(code[i] + " " + answer[i])
         self.assertEqual(answer, code)
 
 
