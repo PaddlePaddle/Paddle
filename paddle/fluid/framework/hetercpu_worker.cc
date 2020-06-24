@@ -694,6 +694,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
   double pull_sparse_local_time = 0.0;
   double op_all_time = 0;
   double xpu_op_time = 0;
+  double xpu_wait_time = 0;
   double cpu_op_time = 0;
   double collect_label_time = 0;
   double fill_sparse_time = 0;
@@ -703,7 +704,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
   int done_cnt = 0;
   int cur_batch;
   uint64_t total_inst = 0;
-  wait_queue_.SetCap(3);
+  wait_queue_.SetCap(1);
   while (1) {
 
     std::shared_ptr<HeterTask> task;
@@ -820,10 +821,14 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             send_var_list.push_back(trainer_desc_.xpu_recv_list(i));
         }
         heter_ptr_->CallRemoteXpu(task, this, mpi_rank_, send_var_list);
-        task->Update();
-        JumpContext(task);
         timeline.Pause();
         task->xpu_op_time += timeline.ElapsedSec();
+        task->total_time += timeline.ElapsedSec();
+        task->Update();
+        timeline.Start();
+        JumpContext(task);
+        timeline.Pause();
+        task->xpu_wait_time += timeline.ElapsedSec();
         task->total_time += timeline.ElapsedSec();
         break;
       }
@@ -921,6 +926,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         pull_sparse_local_time += task->pull_sparse_local_time;
         op_all_time += task->op_all_time;
         xpu_op_time += task->xpu_op_time;
+        xpu_wait_time += task->xpu_wait_time;
         cpu_op_time += task->cpu_op_time;
         collect_label_time += task->collect_label_time;
         fill_sparse_time += task->fill_sparse_time;
@@ -946,6 +952,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             //}
             fprintf(stderr, "cpu op run total time: %fs\n", cpu_op_time / done_cnt);
             fprintf(stderr, "xpu op run total time: %fs\n", xpu_op_time / done_cnt);
+            fprintf(stderr, "xpu wait total time: %fs\n", xpu_wait_time / done_cnt);
             fprintf(stderr, "pack task time: %fs\n", pack_time / done_cnt);
             fprintf(stderr, "train total time: %fs\n", total_time / done_cnt);
             fprintf(stderr, "pull sparse local time: %fs\n",
@@ -960,6 +967,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
             fprintf(stderr, "cpu op run percent: %f\n", cpu_op_time / total_time * 100);
             fprintf(stderr, "xpu op run percent: %f\n", xpu_op_time / total_time * 100);
+            fprintf(stderr, "xpu wait percent: %f\n", xpu_wait_time / total_time * 100);
             fprintf(stderr, "pack task percent: %f\n", pack_time / total_time * 100);
             fprintf(stderr, "pull sparse local time percent: %f\n",
                     pull_sparse_local_time / total_time * 100);
@@ -990,7 +998,7 @@ void HeterCpuWorker::TrainFiles() {
   int batch_cnt = 0;
   int done_cnt = 0;
   int cur_batch;
-  wait_queue_.SetCap(3);
+  wait_queue_.SetCap(1);
   need_to_push_dense_ = false;
   while (1) {
     //if (copy_table_config_.need_copy()) {

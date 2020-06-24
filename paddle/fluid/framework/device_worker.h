@@ -359,6 +359,7 @@ public:
     pull_sparse_local_time = 0;
     op_all_time = 0;
     xpu_op_time = 0;
+    xpu_wait_time = 0;
     cpu_op_time = 0;
     collect_label_time = 0;
     fill_sparse_time = 0;
@@ -388,6 +389,7 @@ public:
   double pull_sparse_local_time{0};
   double op_all_time{0};
   double xpu_op_time{0};
+  double xpu_wait_time{0};
   double cpu_op_time{0};
   double collect_label_time{0};
   double fill_sparse_time{0};

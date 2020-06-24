@@ -267,15 +267,15 @@ void HeterWrapper::CallRemoteXpu(std::shared_ptr<HeterTask> task, HeterCpuWorker
   
 }
 
-void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker) {
+void HeterWrapper::CallRemoteXpuSync(std::shared_ptr<HeterTask> task, HeterCpuWorker* worker, int mpi_rank, std::vector<std::string>& send_vars) {
   HeterRequest request;
   HeterResponse response;
   brpc::Controller cntl;
   request.set_cmd(0);
   request.set_cur_batch(task->cur_batch_);
   
-  std::vector<std::string> varnames = {"concat_1.tmp_0", "click", "12345"};
-  for (auto& varname : varnames) {
+  //std::vector<std::string> varnames = {"concat_1.tmp_0", "click", "12345"};
+  for (auto& varname : send_vars) {
     auto* req_var = request.add_vars();
     SerializeToReq(varname, task->scope_, req_var);
   }

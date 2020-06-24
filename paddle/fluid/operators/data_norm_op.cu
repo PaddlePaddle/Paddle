@@ -76,9 +76,9 @@ __global__ void KernelDataNormBPStat(int N, int C, const T *x_val,
       square_sum +=
           (x_val[j * C + i] - means[i]) * (x_val[j * C + i] - means[i]);
     }
-    batch_size[i] = 1;
-    batch_sum[i] = val_sum / N;
-    batch_square_sum[i] = square_sum / N + squared_sum_epsilon;
+    batch_size[i] = N;
+    batch_sum[i] = val_sum;
+    batch_square_sum[i] = square_sum + N * squared_sum_epsilon;
   }
 }
 
