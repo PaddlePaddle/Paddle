@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # This script is used to count detail PADDLE checks in the paddle/fluid directory,
 #   contains the number of PADDLE checks under each folder, the statistical data 
 #   does not include subdirectories, only covers all files under the current directory.
@@ -7,7 +21,7 @@
 #   The three columns of data are: total number, valid number, invalid number. 
 #   The output format is easy to display as a markdown table.
 
-# Usage: bash detail_invalid_enforce.sh (run in tools directory)
+# Usage: bash count_enforce_by_dir.sh (run in tools directory)
 
 # Result Example:
 
@@ -43,27 +57,21 @@
 #     paddle/fluid/operators/tensorrt | 7 | 4 | 3
 #     paddle/fluid/operators | 2144 | 999 | 1145
 
+. ./count_all_enforce.sh --source-only
+
 ROOT_DIR=../paddle/fluid
 
-function enforce_scan(){
-    paddle_check=`grep -r -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
-    total_check_cnt=`echo "$paddle_check" | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    valid_check_cnt=`echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    eval $2=$total_check_cnt
-    eval $3=$valid_check_cnt
-}
-
-function walk_dir(){
+function count_dir_independently(){
     local sub_dir_total_check_cnt=0
     local sub_dir_valid_check_cnt=0
     for file in `ls $1`
     do
         if [ -d $1"/"$file ];then
-            enforce_scan $1"/"$file dir_total_check_cnt dir_valid_check_cnt
+            enforce_count $1"/"$file dir_total_check_cnt dir_valid_check_cnt
             sub_dir_total_check_cnt=$(($sub_dir_total_check_cnt+$dir_total_check_cnt))
             sub_dir_valid_check_cnt=$(($sub_dir_valid_check_cnt+$dir_valid_check_cnt))
             
-            walk_dir $1"/"$file $dir_total_check_cnt $dir_valid_check_cnt 
+            count_dir_independently $1"/"$file $dir_total_check_cnt $dir_valid_check_cnt 
         fi
     done
     total_check_cnt=$(($2-$sub_dir_total_check_cnt))
@@ -72,4 +80,10 @@ function walk_dir(){
     echo "${dir_name#../} | ${total_check_cnt} | ${valid_check_cnt} | $(($total_check_cnt-$valid_check_cnt))"
 }
 
-walk_dir $ROOT_DIR 0 0
+main() {
+    count_dir_independently $ROOT_DIR 0 0
+}
+
+if [ "${1}" != "--source-only" ]; then
+    main "${@}"
+fi

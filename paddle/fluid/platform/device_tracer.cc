@@ -646,7 +646,6 @@ DeviceTracer *GetDeviceTracer() {
 // so when event is not in same thread of PE event, we need add
 // father event(PE::run event) for this event
 void SetCurAnnotation(Event *event) {
-  std::string ret;
   if (!annotation_stack.empty()) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
@@ -670,17 +669,16 @@ void SetCurAnnotation(Event *event) {
 }
 
 void ClearCurAnnotation() {
-  if (!main_thread_annotation_stack.empty() &&
-      main_thread_annotation_stack.back()->name() ==
-          annotation_stack.back()->name()) {
+  if (!main_thread_annotation_stack.empty()) {
     std::string name = annotation_stack.back()->name();
     std::string main_name = main_thread_annotation_stack.back()->name();
     int main_name_len = main_name.length();
     int name_len = name.length();
     int prefix_len = main_name_len - name_len;
 
-    if (prefix_len >= 0 && main_name.at(prefix_len) == '/' &&
-        name == main_name.substr(prefix_len, name_len)) {
+    if ((prefix_len > 0 && main_name.at(prefix_len - 1) == '/' &&
+         name == main_name.substr(prefix_len, name_len)) ||
+        (name == main_name)) {
       main_thread_annotation_stack_name.pop_back();
       main_thread_annotation_stack.pop_back();
     }

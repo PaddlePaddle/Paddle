@@ -111,7 +111,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 10721757 5442383
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
-          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
+          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 6888866 32832641 6836917
       elif [ "${API_FILE}" == "paddle/fluid/pybind/op_function_generator.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) , phlrain) approval for the changes of paddle/fluid/pybind/op_function_generator.cc, which manages the logic of automatic generating op functions for dygraph. \n"
@@ -226,7 +226,7 @@ fi
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="In order to support dynamic graph, all ops are not recommended to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, lanxianghit or XiaoguangHu01) approval for the inherit of OperatorBase.\nYou inherit the OperatorBase class. The corresponding lines are as follows:\n${HAS_OPERATORBASE_FLAG}"
-    check_approval 1 47554610 46782768 22561442 6836917
+    check_approval 1 43953930 6836917 47554610 46782768
 fi
 
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
