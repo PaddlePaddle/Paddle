@@ -49,7 +49,7 @@ class FSTest(unittest.TestCase):
         fs.mv(new_dir_path, dir_path)
         self.assertTrue(fs.is_exist(dir_path))
         try:
-            fs.mv(new_dir_path, dir_path)
+            fs.mv(dir_path, dir_path)
             self.assertFalse(True)
         except FSFileExistsError as e:
             pass

@@ -142,10 +142,10 @@ class LocalFS(FS):
         return Path(fs_path).touch()
 
     def mv(self, src_path, dst_path):
-        if not self.is_exist(fs_src_path):
+        if not self.is_exist(src_path):
             raise FSFileNotExistsError
 
-        if self.is_exist(fs_dst_path):
+        if self.is_exist(dst_path):
             raise FSFileExistsError
 
         return self.rename(src_path, dst_path)
