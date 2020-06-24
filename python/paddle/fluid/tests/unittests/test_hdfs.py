@@ -82,7 +82,7 @@ class FSTest(unittest.TestCase):
         dst_file = os.path.abspath("./test_uolpad.dst")
 
         try:
-            fs.upload(src, dst_file)
+            fs.upload(src_file, dst_file)
             self.assertFalse(True)
         except FSFileNotExistsError as e:
             pass
@@ -95,7 +95,7 @@ class FSTest(unittest.TestCase):
 
         fs.upload(src_file, dst_file)
         try:
-            fs.upload(src, dst_file)
+            fs.upload(src_file, dst_file)
             self.assertFalse(True)
         except FSFileExistsError as e:
             pass
@@ -150,7 +150,6 @@ class FSTest(unittest.TestCase):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         self._test_dirs(fs)
         self._test_upload(fs)
-        self._test_config(self)
 
         self._test_download(fs)
         self._test_mkdirs(fs)
@@ -213,7 +212,7 @@ java.io.IOException: Input/output error
         config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", config, time_out=15 * 1000)
 
-    def test_list_dir(self):
+    def _test_list_dir(self, fs):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         fs.ls_dir("test_not_exists")
 
