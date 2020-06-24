@@ -230,9 +230,6 @@ class HDFSClient(FS):
 
     @_handle_errors
     def _rmr(self, fs_path):
-        if not self.is_exist(fs_path):
-            return
-
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
@@ -240,9 +237,6 @@ class HDFSClient(FS):
 
     @_handle_errors
     def _rm(self, fs_path):
-        if not self.is_exist(fs_path):
-            return
-
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:

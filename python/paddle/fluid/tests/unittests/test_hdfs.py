@@ -21,7 +21,7 @@ import sys
 
 from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid.incubate.fleet.utils.hdfs import FSTimeOut
+from paddle.fluid.incubate.fleet.utils.hdfs import FSTimeOut, FSFileExistsError, FSFileNotExistsError
 
 
 class FSTest(unittest.TestCase):
@@ -37,11 +37,22 @@ class FSTest(unittest.TestCase):
 
         new_dir_path = os.path.abspath("./new_test_dir")
         fs.delete(new_dir_path)
+        try:
+            fs.mv(new_dir_path, dir_path)
+            self.assertFalse(True)
+        except FSFileNotExistsError as e:
+            pass
+
         fs.mv(dir_path, new_dir_path)
         self.assertTrue(fs.is_exist(new_dir_path))
 
         fs.mv(new_dir_path, dir_path)
         self.assertTrue(fs.is_exist(dir_path))
+        try:
+            fs.mv(new_dir_path, dir_path)
+            self.assertFalse(True)
+        except FSFileExistsError as e:
+            pass
 
         fs.delete(dir_path)
         self.assertTrue(not fs.is_exist(dir_path))
@@ -66,9 +77,15 @@ class FSTest(unittest.TestCase):
         fs.delete(file_path)
         self.assertTrue(not fs.is_exist(file_path))
 
-    def _test_upload_file(self, fs):
+    def _test_upload(self, fs):
         src_file = os.path.abspath("./test_upload.src")
         dst_file = os.path.abspath("./test_uolpad.dst")
+
+        try:
+            fs.upload(src, dst_file)
+            self.assertFalse(True)
+        except FSFileNotExistsError as e:
+            pass
 
         local = LocalFS()
         local.touch(src_file)
@@ -77,9 +94,47 @@ class FSTest(unittest.TestCase):
         assert fs.need_upload_download()
 
         fs.upload(src_file, dst_file)
+        try:
+            fs.upload(src, dst_file)
+            self.assertFalse(True)
+        except FSFileExistsError as e:
+            pass
+
         self.assertTrue(fs.is_exist(dst_file))
         fs.delete(dst_file)
         fs.delete(src_file)
+
+    def _test_download(sefl, fs):
+        src_file = os.path.abspath("./test_download.src")
+        dst_file = os.path.abspath("./test_download.dst")
+
+        try:
+            fs.download(src, dst_file)
+            self.assertFalse(True)
+        except FSFileNotExistsError as e:
+            pass
+
+        local = LocalFS()
+        local.touch(src_file)
+        fs.delete(dst_file)
+
+        assert fs.need_upload_download()
+
+        fs.download(src_file, dst_file)
+        try:
+            fs.download(src, dst_file)
+            self.assertFalse(True)
+        except FSFileExistsError as e:
+            pass
+
+        self.assertTrue(fs.is_exist(dst_file))
+        fs.delete(dst_file)
+        fs.delete(src_file)
+
+    def _test_mkdirs(self, fs):
+        dir_name = "./test_mkdir"
+        fs.mkdirs(dir_name)
+        fs.mkdirs(dir_name)
 
     def test_exists(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
@@ -94,12 +149,19 @@ class FSTest(unittest.TestCase):
     def test_hdfs(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
         self._test_dirs(fs)
-        self._test_upload_file(fs)
+        self._test_upload(fs)
+        self._test_config(self)
+
+        self._test_download(fs)
+        self._test_mkdirs(fs)
+        sefl._test_list_dir(fs)
 
     def test_local(self):
         fs = LocalFS()
         self._test_dirs(fs)
         self._test_touch_file(fs)
+        self._test_mkdirs(fs)
+        self._test_list_dir(fs)
 
     def test_timeout(self):
         fs = HDFSClient(
@@ -146,6 +208,14 @@ java.io.IOException: Input/output error
 
         print("split lines:", s.splitlines())
         self.assertTrue(fs._test_match(s.splitlines()) != None)
+
+    def test_config(self):
+        config = {"fs.default.name": "hdfs://xxx", "hadoop.job.ugi": "ugi"}
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/", config, time_out=15 * 1000)
+
+    def test_list_dir(self):
+        fs = HDFSClient("/usr/local/hadoop-2.7.7/", None, time_out=15 * 1000)
+        fs.ls_dir("test_not_exists")
 
 
 if __name__ == '__main__':

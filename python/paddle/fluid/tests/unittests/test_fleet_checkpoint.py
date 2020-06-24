@@ -62,6 +62,39 @@ class FleetTest(unittest.TestCase):
 
         fleet.clean_redundant_checkpoints(dir_path, fs=fs)
 
+        # unnormal
+        # test remain_all_checkpoint 
+        fleet.save_checkpoint(
+            exe,
+            dir_path,
+            train_status=status,
+            fs=fs,
+            remain_all_checkpoint=False)
+
+        # can't save under a file
+        fs = LocalFS()
+        cache_path = "./.load_cache"
+        fs.touch(cache_path)
+        try:
+            fleet.save_checkpoint(
+                exe,
+                dir_path,
+                train_status=status,
+                fs=fs,
+                cache_path=cache_path)
+            self.assertFalse(True)
+        except:
+            pass
+
+        # can't load under a file
+        try:
+            status2 = fleet.load_checkpoint(
+                exe, dir_path, trainer_id=0, fs=fs, cache_path=cache_path)
+            self.assertFalse(True)
+        except:
+            pass
+        fs.delete(cache_path)
+
     def test_hdfs_checkpoint(self):
         fs = HDFSClient("/usr/local/hadoop-2.7.7", None)
         dir_path = "./checkpoint_test_hdfs"
