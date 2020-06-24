@@ -37,6 +37,7 @@ import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
 import paddle.framework
+import paddle.fleet
 import paddle.imperative
 import paddle.optimizer
 import paddle.metric
