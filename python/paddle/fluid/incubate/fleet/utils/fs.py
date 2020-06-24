@@ -29,6 +29,22 @@ import shutil
 __all__ = ['FS', 'LocalFS']
 
 
+class ExecuteError(Exception):
+    pass
+
+
+class FSFileExistsError(Exception):
+    pass
+
+
+class FSFileNotExistsError(Exception):
+    pass
+
+
+class FSTimeOut(Exception):
+    pass
+
+
 class FS(object):
     @abc.abstractmethod
     def ls_dir(self, fs_path):
@@ -126,6 +142,12 @@ class LocalFS(FS):
         return Path(fs_path).touch()
 
     def mv(self, src_path, dst_path):
+        if not self.is_exist(fs_src_path):
+            raise FSFileNotExistsError
+
+        if self.is_exist(fs_dst_path):
+            raise FSFileExistsError
+
         return self.rename(src_path, dst_path)
 
     def list_dirs(self, fs_path):
