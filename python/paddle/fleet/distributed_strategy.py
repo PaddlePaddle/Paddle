@@ -236,6 +236,28 @@ class DistributedStrategy(object):
                 "WARNING: sequential_execution should have value of bool type")
 
     @property
+    def lars(self):
+        return self.strategy.lars
+
+    @lars.setter
+    def lars(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.lars = flag
+        else:
+            print("WARNING: lars should have value of bool type")
+
+    @property
+    def lamb(self):
+        return self.strategy.lamb
+
+    @lamb.setter
+    def lamb(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.lamb = flag
+        else:
+            print("WARNING: lamb should have value of bool type")
+
+    @property
     def sync(self):
         return self.strategy.sync
 
