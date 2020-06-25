@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define distributed api under this directory, 
-from .distributed_strategy import DistributedStrategy
+from utils import *
 
-__all__ = ["DistributedStrategy"]
+
+def _create_fleet_obj_from_role_maker(role_maker):
+    pass
+
+
+def _create_fleet_util_from_role_maker(role_maker):
+    pass
