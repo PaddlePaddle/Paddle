@@ -148,7 +148,6 @@ class TestProfiler(unittest.TestCase):
                 "Default",
                 batch_range=[5, 10],
                 use_new_api=use_new_api)
-            #self.net_profiler(exe, 'CPU', "Default", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
@@ -161,8 +160,6 @@ class TestProfiler(unittest.TestCase):
                 "OpDetail",
                 batch_range=[0, 10],
                 use_new_api=use_new_api)
-            #self.net_profiler(
-            #    exe, 'GPU', "OpDetail", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
@@ -175,8 +172,6 @@ class TestProfiler(unittest.TestCase):
                 "AllOpDetail",
                 batch_range=None,
                 use_new_api=use_new_api)
-            #self.net_profiler(
-            #    exe, 'All', "AllOpDetail", use_parallel_executor=True)
 
 
 class TestProfilerAPIError(unittest.TestCase):
