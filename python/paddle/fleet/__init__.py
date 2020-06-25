@@ -13,16 +13,4 @@
 # limitations under the License.
 
 # TODO: define distributed api under this directory, 
-# __all__ = ['metric',
-#            'optimizer',
-#            'RoleMaker',
-#            'dataset',
-#            '	DatasetFactory',
-#            '	InMemoryDataset',
-#            '	QueueDataset',
-#            'transpiler',
-#            '	DistributeTranspiler',
-#            '	DistributeTranspilerConfig',
-#            '	HashName',
-#            '	RoundRobin',
-#            'collective']
+__all__ = ["DistributedStrategy"]
