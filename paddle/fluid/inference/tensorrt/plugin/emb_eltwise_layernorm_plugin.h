@@ -27,14 +27,29 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
-template <typename T>
-class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
+
+class EmbEltwiseLayernormPluginDynamicImplBase {
  public:
-  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
-                                            float* bias, float* scale,
-                                            std::vector<int> emb_sizes,
-                                            int bias_size, int scale_size,
-                                            int hidden_size, float eps)
+  EmbEltwiseLayernormPluginDynamicImplBase() {}
+  virtual ~EmbEltwiseLayernormPluginDynamicImplBase() {}
+
+  virtual int initialize() = 0;
+  virtual void terminate() = 0;
+  virtual int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+                      const nvinfer1::PluginTensorDesc* outputDesc,
+                      const void* const* inputs, void* const* outputs,
+                      void* workspace, cudaStream_t stream) = 0;
+};
+
+template <typename T>
+class EmbEltwiseLayernormPluginDynamicImpl
+    : public EmbEltwiseLayernormPluginDynamicImplBase {
+ public:
+  explicit EmbEltwiseLayernormPluginDynamicImpl(std::vector<float*> input_embs,
+                                                float* bias, float* scale,
+                                                std::vector<int> emb_sizes,
+                                                int bias_size, int scale_size,
+                                                int hidden_size, float eps)
       : embs_(input_embs),
         bias_(bias),
         scale_(scale),
@@ -44,46 +59,125 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
         hidden_size_(hidden_size),
         eps_(eps) {}
 
-  EmbEltwiseLayernormPluginDynamic(void const* serialData,
-                                   size_t serialLength) {
+  ~EmbEltwiseLayernormPluginDynamicImpl();
+
+  int initialize();
+  void terminate();
+  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+              const nvinfer1::PluginTensorDesc* outputDesc,
+              const void* const* inputs, void* const* outputs, void* workspace,
+              cudaStream_t stream);
+
+ private:
+  std::vector<float*> embs_;
+  float* bias_{nullptr};
+  float* scale_{nullptr};
+
+  // data on devices
+  float* bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
+  std::vector<T*> embs_gpu_;
+
+  std::vector<int> emb_sizes_;
+  int bias_size_;
+  int scale_size_;
+  int hidden_size_;
+  float eps_;
+
+  framework::Tensor in_ptr_tensor_, emb_ptr_tensor_;
+  int device_id_{0};
+  uintptr_t old_input_ptr_{0};
+};
+
+class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
+ public:
+  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
+                                            float* bias, float* scale,
+                                            std::vector<int> emb_sizes,
+                                            int bias_size, int scale_size,
+                                            int hidden_size, float eps,
+                                            bool with_fp16)
+      : embs_(input_embs),
+        bias_(bias),
+        scale_(scale),
+        emb_sizes_(emb_sizes),
+        bias_size_(bias_size),
+        scale_size_(scale_size),
+        hidden_size_(hidden_size),
+        eps_(eps),
+        with_fp16_(with_fp16),
+        own_host_buff_(false) {
+    if (with_fp16) {
+#ifdef SUPPORTS_CUDA_FP16
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
+          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
+          hidden_size_, eps_);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "Unsupported data type, current GPU doesn't support half."));
+#endif  // SUPPORTS_CUDA_FP16
+    } else {
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
+          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
+          hidden_size_, eps_);
+    }
+  }
+
+  EmbEltwiseLayernormPluginDynamic(void const* serialData, size_t serialLength)
+      : own_host_buff_(true) {
     DeserializeValue(&serialData, &serialLength, &emb_sizes_);
 
-    embs_gpu_.resize(emb_sizes_.size());
     embs_.resize(emb_sizes_.size());
     for (size_t i = 0; i < emb_sizes_.size(); i++) {
-      cudaMalloc(&embs_gpu_[i], sizeof(float) * emb_sizes_[i]);
-      cudaMemcpy(embs_gpu_[i], serialData, emb_sizes_[i] * sizeof(float),
-                 cudaMemcpyHostToDevice);
+      auto size = emb_sizes_[i];
+      auto ptr = new float[size];
+      memcpy(ptr, serialData, sizeof(float) * size);
+      embs_[i] = ptr;
       reinterpret_cast<char const*&>(serialData) +=
           emb_sizes_[i] * sizeof(float);
       serialLength -= emb_sizes_[i] * sizeof(float);
-      embs_[i] = nullptr;
     }
     DeserializeValue(&serialData, &serialLength, &bias_size_);
     DeserializeValue(&serialData, &serialLength, &scale_size_);
 
-    cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
-    cudaMemcpy(bias_gpu_, serialData, bias_size_ * sizeof(float),
-               cudaMemcpyHostToDevice);
-    bias_ = nullptr;
+    if (bias_size_) {
+      bias_ = new float[bias_size_];
+      memcpy(bias_, serialData, sizeof(float) * bias_size_);
+    }
     reinterpret_cast<char const*&>(serialData) += bias_size_ * sizeof(float);
     serialLength -= bias_size_ * sizeof(float);
 
-    cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
-    cudaMemcpy(scale_gpu_, serialData, scale_size_ * sizeof(float),
-               cudaMemcpyHostToDevice);
-    scale_ = nullptr;
+    if (scale_size_) {
+      scale_ = new float[scale_size_];
+      memcpy(scale_, serialData, sizeof(float) * scale_size_);
+    }
     reinterpret_cast<char const*&>(serialData) += scale_size_ * sizeof(float);
     serialLength -= scale_size_ * sizeof(float);
 
     DeserializeValue(&serialData, &serialLength, &hidden_size_);
     DeserializeValue(&serialData, &serialLength, &eps_);
+    DeserializeValue(&serialData, &serialLength, &with_fp16_);
+
+    if (with_fp16_) {
+#ifdef SUPPORTS_CUDA_FP16
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<half>(
+          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
+          hidden_size_, eps_);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "Unsupported data type, current GPU doesn't support half."));
+#endif  // SUPPORTS_CUDA_FP16
+    } else {
+      impl_ = new EmbEltwiseLayernormPluginDynamicImpl<float>(
+          embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_,
+          hidden_size_, eps_);
+    }
   }
 
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
-        eps_);
+        eps_, with_fp16_);
   }
 
   const char* getPluginType() const override {
@@ -91,7 +185,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   }
   int getNbOutputs() const override { return 1; }
   int initialize() override;
-
+  void terminate() override;
   size_t getSerializationSize() const override {
     int sum_num = 0;
     sum_num += SerializedSize(emb_sizes_);
@@ -106,23 +200,33 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
     sum_num += (bias_size_ + scale_size_) * sizeof(float);
     sum_num += SerializedSize(hidden_size_);
     sum_num += SerializedSize(eps_);
-    // sum_num += SerializedSize(with_fp16_);
+    sum_num += SerializedSize(with_fp16_);
 
     return sum_num;
   }
 
   void serialize(void* buffer) const override {
-    // SerializeValue(&buffer, with_fp16_);
     SerializeValue(&buffer, emb_sizes_);
     for (size_t i = 0; i < emb_sizes_.size(); i++) {
-      SerializeCudaPointer(&buffer, embs_gpu_[i], emb_sizes_[i]);
+      auto size = emb_sizes_[i];
+      for (int j = 0; j < size; ++j) {
+        SerializeValue(&buffer, embs_[i][j]);
+      }
     }
     SerializeValue(&buffer, bias_size_);
     SerializeValue(&buffer, scale_size_);
-    SerializeCudaPointer(&buffer, bias_gpu_, bias_size_);
-    SerializeCudaPointer(&buffer, scale_gpu_, scale_size_);
+
+    for (int i = 0; i < bias_size_; ++i) {
+      SerializeValue(&buffer, bias_[i]);
+    }
+
+    for (int i = 0; i < scale_size_; ++i) {
+      SerializeValue(&buffer, scale_[i]);
+    }
+
     SerializeValue(&buffer, hidden_size_);
     SerializeValue(&buffer, eps_);
+    SerializeValue(&buffer, with_fp16_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(
@@ -153,23 +257,33 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* inputTypes,
                                        int nbInputs) const override;
 
-  void destroy() override { delete this; }
+  void destroy() override {
+    if (own_host_buff_) {
+      for (auto ptr : embs_) {
+        delete[] ptr;
+      }
+      delete[] bias_;
+      delete[] scale_;
+    }
+
+    delete impl_;
+    delete this;
+  }
 
  private:
   std::vector<float*> embs_;
   float* bias_;
   float* scale_;
 
-  // data on devices
-  float* bias_gpu_;
-  float* scale_gpu_;
-  std::vector<float*> embs_gpu_;
-
   std::vector<int> emb_sizes_;
   int bias_size_;
   int scale_size_;
   int hidden_size_;
   float eps_;
+
+  bool with_fp16_;
+  bool own_host_buff_{false};
+  EmbEltwiseLayernormPluginDynamicImplBase* impl_{nullptr};
 };
 
 class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
@@ -193,8 +307,7 @@ class EmbEltwiseLayernormPluginV2Creator : public nvinfer1::IPluginCreator {
   nvinfer1::IPluginV2* deserializePlugin(const char* name,
                                          const void* serialData,
                                          size_t serialLength) override {
-    return new EmbEltwiseLayernormPluginDynamic<float>(serialData,
-                                                       serialLength);
+    return new EmbEltwiseLayernormPluginDynamic(serialData, serialLength);
   }
 
   void setPluginNamespace(const char* libNamespace) override {
