@@ -52,11 +52,11 @@ void LogScaleIsMissingForVar(Node* var) {
   PrettyLogDetail(msg_ss.str().c_str());
 }
 
-void LogQuantizationDisabled(Node* op) {   std::stringstream msg_ss;
-  msg_ss << "Qantization skipped for operator " << op->Name()
+void LogQuantizationDisabled(Node* op) {
+  std::stringstream msg_ss;
+  VLOG(4) << "Qantization skipped for operator " << op->Name()
          << " (type: " << op->Op()->Type() << ", id: " << op->id()
          << "). Attribute use_quantizer = false.";
-  PrettyLogDetail(msg_ss.str().c_str());
 }
 
 }  // namespace
@@ -348,10 +348,9 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
       LogQuantizationDisabled(fc);
       return;
     }
-    if (!
-        fc_op_desc->GetAttrIfExists<bool>("use_mkldnn")) {
+    if (!fc_op_desc->GetAttrIfExists<bool>("use_mkldnn")) {
       return;
-        }
+    }
 
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
@@ -415,7 +414,7 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     if (!pool_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
       LogQuantizationDisabled(pool_op);
       return;
-      }
+    }
 
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);
