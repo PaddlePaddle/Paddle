@@ -53,7 +53,7 @@ from .input import data  #DEFINE_ALIAS
 # from .input import Input        #DEFINE_ALIAS
 # from .layer.activation import PReLU        #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
-from .layer.activation import Leaky_ReLU  #DEFINE_ALIAS
+from .layer.activation import LeakyReLU  #DEFINE_ALIAS
 from .layer.activation import Sigmoid  #DEFINE_ALIAS
 # from .layer.activation import Softmax        #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
