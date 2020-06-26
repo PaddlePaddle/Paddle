@@ -56,7 +56,7 @@ DEFINE_bool(check_nan_inf, false,
  * Note: whether to use Tensor Core, faster but it may loss precision.
  */
 DEFINE_bool(
-    enable_cublas_tensor_op_math, false,
+    enable_cublas_tensor_op_math, true,
     "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
     "but it may loss precision. Currently, There are two CUDA libraries that"
     " use Tensor Cores, cuBLAS and cuDNN. cuBLAS uses Tensor Cores to speed up"
