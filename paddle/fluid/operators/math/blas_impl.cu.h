@@ -429,7 +429,13 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 
 #if CUDA_VERSION >= 9010
   bool tensor_core_avail = context_.tensor_core_available();
-  if ((tensor_core_avail && std::is_same<T, __half>::value) ||
+  // fprintf(stderr, "%d %d %d\n", (int)tensor_core_avail,
+  //                       (int)((tensor_core_avail && std::is_same<T,
+  //                       paddle::platform::float16>::value) || std::is_same<T,
+  //                       float>::value),
+  //                       (int)(sizeof(T)));
+  if ((tensor_core_avail &&
+       std::is_same<T, paddle::platform::float16>::value) ||
       std::is_same<T, float>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 
