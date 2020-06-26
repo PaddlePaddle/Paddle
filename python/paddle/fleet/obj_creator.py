@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from utils import *
+from utils import Util
 
 
 def _create_fleet_obj_from_role_maker(role_maker):
-    pass
+    if role_maker.collective:
+        pass
+    else:
+        pass
 
 
 def _create_fleet_util_from_role_maker(role_maker):
-    pass
+    return Util(role_maker)
