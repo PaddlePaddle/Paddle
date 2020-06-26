@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/cpu_quantize_pass.h"
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
@@ -87,6 +88,9 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
+    op->SetAttr("Scale_x", 254.0f);
+    op->SetAttr("Scale_y", 254.0f);
+    op->SetAttr("Scale_out", 254.0f);
   }
 }
 
@@ -100,7 +104,8 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
                  const std::initializer_list<std::string> variable_names,
                  int* original_nodes_num, int* current_nodes_num,
-                 std::string var_without_scale = "") {
+                 std::string var_without_scale = "",
+                 std::string var_signed = "") {
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
@@ -113,8 +118,7 @@ void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
     tensor.Resize({1});
     auto* ptr = tensor.mutable_data<double>(place);
     ptr[0] = 2.0;
-
-    (*scales)[v] = std::make_pair(false, std::move(tensor));
+    (*scales)[v] = std::make_pair(v == var_signed, std::move(tensor));
   }
 
   (*graph)->SetNotOwned(kParamScopeAttr, &scope);
@@ -594,11 +598,14 @@ ProgramDesc BuildProgramDescElementwiseAdd() {
 
 void MainTestElementwiseAdd(const ProgramDesc& prog, int elementwise_add_count,
                             int quant_count, int dequant_count,
-                            int added_nodes_count, float scale) {
+                            int added_nodes_count, float scale,
+                            bool output_scale_missing = false,
+                            bool unsigned_and_signed_input = false) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   int original_nodes_num, current_nodes_num;
   PreparePass(&graph, prog, variable_names_elementwise_add, &original_nodes_num,
-              &current_nodes_num);
+              &current_nodes_num, output_scale_missing ? "e" : "",
+              unsigned_and_signed_input ? "b" : "");
 
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
@@ -637,6 +644,27 @@ TEST(CpuQuantizePass, elementwise_add) {
   MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
                          elementwise_add_count, quant_count, dequant_count,
                          added_nodes_count, 2.0f * 127);
+}
+
+TEST(CpuQuantizePass, elementwise_add_output_scale_missing) {
+  int elementwise_add_count = 1;
+  int quant_count = 2;
+  int dequant_count = 2;
+  // 2 Quant + 2 IN
+  int added_nodes_count = 4;
+  MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
+                         elementwise_add_count, quant_count, dequant_count,
+                         added_nodes_count, 2.0f * 127, true);
+}
+
+TEST(CpuQuantizePass, elementwise_add_unsigned_and_signed_input) {
+  int elementwise_add_count = 1;
+  int quant_count = 0;
+  int dequant_count = 2;
+  int added_nodes_count = 0;
+  MainTestElementwiseAdd(BuildProgramDescElementwiseAdd(),
+                         elementwise_add_count, quant_count, dequant_count,
+                         added_nodes_count, 2.0f * 127, false, true);
 }
 
 }  // namespace
