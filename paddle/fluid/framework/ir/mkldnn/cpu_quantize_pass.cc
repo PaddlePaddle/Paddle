@@ -52,6 +52,13 @@ void LogScaleIsMissingForVar(Node* var) {
   PrettyLogDetail(msg_ss.str().c_str());
 }
 
+void LogQuantizationDisabled(Node* op) {   std::stringstream msg_ss;
+  msg_ss << "Qantization skipped for operator " << op->Name()
+         << " (type: " << op->Op()->Type() << ", id: " << op->id()
+         << "). Attribute use_quantizer = false.";
+  PrettyLogDetail(msg_ss.str().c_str());
+}
+
 }  // namespace
 
 enum { U8_MAX = 255, S8_MAX = 127 };
@@ -240,7 +247,10 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     auto* conv_op_desc = conv_op->Op();
 
     // skip if should not be quantized
-    if (!conv_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
+    if (!conv_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(conv_op);
+      return;
+    }
 
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
@@ -334,9 +344,14 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     auto* fc_op_desc = fc->Op();
 
     // skip if should not be quantized
-    if (fc_op_desc->GetAttrIfExists<bool>("use_quantizer") != true ||
-        fc_op_desc->GetAttrIfExists<bool>("use_mkldnn") != true)
+    if (!fc_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(fc);
       return;
+    }
+    if (!
+        fc_op_desc->GetAttrIfExists<bool>("use_mkldnn")) {
+      return;
+        }
 
     GET_IR_NODE_FROM_SUBGRAPH(weights, weights, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
@@ -397,7 +412,10 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     auto* pool_op_desc = pool_op->Op();
 
     // skip if should not be quantized
-    if (!pool_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
+    if (!pool_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(pool_op);
+      return;
+      }
 
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);
@@ -439,7 +457,10 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     auto* concat_op_desc = concat_op->Op();
 
     // skip if should not be quantized
-    if (!concat_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
+    if (!concat_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(concat_op);
+      return;
+    }
 
     GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, concat_pattern);
 
@@ -482,7 +503,10 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
     auto* prior_box_op_desc = prior_box_op->Op();
 
     // skip if should not be quantized
-    if (!prior_box_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
+    if (!prior_box_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(prior_box_op);
+      return;
+    }
 
     GET_IR_NODE_FROM_SUBGRAPH(prior_box_input, prior_box_input,
                               prior_box_pattern);
@@ -523,6 +547,7 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
 
     // skip if should not be quantized
     if (!transpose_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(transpose_op);
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, transpose_pattern);
@@ -577,6 +602,7 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
 
     // skip if should not be quantized
     if (!reshape_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(reshape_op);
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, reshape_pattern);
@@ -629,6 +655,7 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
 
     // skip if should not be quantized
     if (!matmul_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(matmul_op);
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(prev_op_x, prev_op_x, matmul_pattern);
@@ -696,6 +723,7 @@ void CPUQuantizePass::QuantizeElementwiseAdd(Graph* graph) const {
 
     // skip if should not be quantized
     if (!elementwise_add_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
+      LogQuantizationDisabled(elementwise_add_op);
       return;
     }
 
