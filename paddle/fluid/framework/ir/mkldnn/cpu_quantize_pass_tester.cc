@@ -88,9 +88,9 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
-    op->SetAttr("Scale_x", 254.0f);
-    op->SetAttr("Scale_y", 254.0f);
-    op->SetAttr("Scale_out", 254.0f);
+    op->SetAttr("Scale_x", 1.0f);
+    op->SetAttr("Scale_y", 1.0f);
+    op->SetAttr("Scale_out", 1.0f);
   }
 }
 
@@ -615,11 +615,13 @@ void MainTestElementwiseAdd(const ProgramDesc& prog, int elementwise_add_count,
       auto* op = node->Op();
       if (op->Type() == "elementwise_add") {
         elementwise_add_nodes_count++;
+        if (unsigned_and_signed_input) scale = 1.0f;
         auto op_name = BOOST_GET_CONST(std::string, op->GetAttr("name"));
         EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_x")), scale)
             << "Scale_x for node '" + op_name + "'.";
         EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_y")), scale)
             << "Scale_y for node '" + op_name + "'.";
+        if (output_scale_missing) scale = 1.0;
         EXPECT_EQ(BOOST_GET_CONST(float, op->GetAttr("Scale_out")), scale)
             << "Scale_out for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
