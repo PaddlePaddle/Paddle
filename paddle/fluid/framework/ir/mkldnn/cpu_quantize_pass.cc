@@ -55,8 +55,8 @@ void LogScaleIsMissingForVar(Node* var) {
 void LogQuantizationDisabled(Node* op) {
   std::stringstream msg_ss;
   VLOG(4) << "Qantization skipped for operator " << op->Name()
-         << " (type: " << op->Op()->Type() << ", id: " << op->id()
-         << "). Attribute use_quantizer = false.";
+          << " (type: " << op->Op()->Type() << ", id: " << op->id()
+          << "). Attribute use_quantizer = false.";
 }
 
 }  // namespace
