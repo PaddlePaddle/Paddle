@@ -235,13 +235,7 @@ void AsyncCommunicator::Recv() {
     return;
   }
 
-  int grad_num = grad_num_.load();
-  if (grad_num > min_send_grad_num_before_recv_) {
-    RecvByCommunicator();
-    grad_num_.store(0);
-  } else {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  RecvByCommunicator();
 }
 
 void AsyncCommunicator::RecvByCommunicator() {
