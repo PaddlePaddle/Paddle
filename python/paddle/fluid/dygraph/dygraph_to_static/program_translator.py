@@ -241,11 +241,11 @@ class ProgramCache(object):
     def get_program(self, item):
         if not isinstance(item, FunctionSpec):
             raise ValueError(
-                'type(item) should be FunctionSpec, but received %s' %
+                "Input item's type should be FunctionSpec, but received %s" %
                 type(item))
         if item not in self._caches:
             raise RuntimeError(
-                'failed to find program for input, please decorate input function by declarative.'
+                'Failed to find program for input item, please decorate input function by declarative.'
             )
         return self._caches[item]
 
@@ -570,7 +570,7 @@ class ProgramTranslator(object):
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
-    @deprecated(since='2.0', instead="jit.save")
+    @deprecated(since='2.0', instead="paddle.imperative.jit.save")
     @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """

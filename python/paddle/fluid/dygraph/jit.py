@@ -14,8 +14,6 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
-
 import os
 import six
 import pickle
@@ -29,8 +27,9 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, ParamBase, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-
 from paddle.fluid.dygraph.io import TranslatedLayer, VARIABLE_FILENAME, EXTRA_VAR_INFO_FILENAME
+
+__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
 logger = logging.getLogger("fluid")
 
@@ -177,9 +176,9 @@ declarative = wrap_decorator(_declarative_)
 class SaveLoadConfig(object):
     """
     The additional configuration options may be used in function 
-    ``paddle.imperative.jit.save`` that save a ``TranslatedLayer`` or used in function
-    ``paddle.imperative.jit.load`` that load a ``TranslatedLayer`` 
-    or load a model(TranslatedLayer). 
+    ``paddle.imperative.jit.save`` that save ``TranslatedLayer`` 
+    or used in function ``paddle.imperative.jit.load`` that 
+    load ``TranslatedLayer``.
     
     Examples:
         1. Using ``SaveLoadConfig`` when saving model
@@ -249,7 +248,7 @@ class SaveLoadConfig(object):
         self._model_filename = None
         self._params_filename = None
 
-        # NOTE: Users rarely use these configs, so these configs are not open to users,
+        # NOTE: Users rarely use following configs, so these configs are not open to users,
         # reducing user learning costs, but we retain the configuration capabilities
 
         # If True, programs are modified to only support direct inference deployment. 
@@ -264,60 +263,61 @@ class SaveLoadConfig(object):
     def output_spec(self):
         """
         Selects the output targets of the saved model (TranslatedLayer).
-        By default, all return variables are kept as the output of the saved TranslatedLayer.
+        By default, all return variables of original Layer's forward function
+        are kept as the output of the saved TranslatedLayer.
 
-        The output_spec type should be list[Variable]. If the provided output_spec list
-        is not all output variables, the saved model will be pruned according to the
-        output_spec list.
+        The ``output_spec`` type should be list[Variable]. If the provided ``output_spec``
+        list is not all output variables, the saved model will be pruned according to the
+        given ``output_spec`` list.
 
         .. note::
-            The output_spec is only used when saving model.
+            The ``output_spec`` is only used when saving model.
 
         Examples:
             .. code-block:: python
                 import numpy as np
-            import paddle.fluid as fluid
-            from paddle.fluid.dygraph import Linear
-            from paddle.fluid.dygraph import declarative
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
 
-            class SimpleNet(fluid.dygraph.Layer):
-                def __init__(self, in_size, out_size):
-                    super(SimpleNet, self).__init__()
-                    self._linear = Linear(in_size, out_size)
+                class SimpleNet(fluid.dygraph.Layer):
+                    def __init__(self, in_size, out_size):
+                        super(SimpleNet, self).__init__()
+                        self._linear = Linear(in_size, out_size)
 
-                @declarative
-                def forward(self, x):
-                    y = self._linear(x)
-                    z = self._linear(y)
-                    loss = fluid.layers.mean(z)
-                    return z, loss
+                    @declarative
+                    def forward(self, x):
+                        y = self._linear(x)
+                        z = self._linear(y)
+                        loss = fluid.layers.mean(z)
+                        return z, loss
 
-            # enable dygraph mode
-            fluid.enable_dygraph() 
+                # enable dygraph mode
+                fluid.enable_dygraph() 
 
-            # train model
-            net = SimpleNet(8, 8)
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
-            x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-            for i in range(10):
-                out, loss = net(x)
-                loss.backward()
-                adam.minimize(loss)
-                net.clear_gradients()
+                # train model
+                net = SimpleNet(8, 8)
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                for i in range(10):
+                    out, loss = net(x)
+                    loss.backward()
+                    adam.minimize(loss)
+                    net.clear_gradients()
 
-            # use SaveLoadconfig.output_spec
-            model_path = "simplenet.example.model.output_spec"
-            configs = fluid.dygraph.jit.SaveLoadConfig()
-            configs.output_spec = [out]
-            fluid.dygraph.jit.save(
-                layer=net,
-                model_path=model_path,
-                input_spec=[x],
-                configs=configs)
+                # use SaveLoadconfig.output_spec
+                model_path = "simplenet.example.model.output_spec"
+                configs = fluid.dygraph.jit.SaveLoadConfig()
+                configs.output_spec = [out]
+                fluid.dygraph.jit.save(
+                    layer=net,
+                    model_path=model_path,
+                    input_spec=[x],
+                    configs=configs)
 
-            infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
-            x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
-            pred = infer_net(x)
+                infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                pred = infer_net(x)
         """
         return self._output_spec
 
@@ -328,7 +328,7 @@ class SaveLoadConfig(object):
     @property
     def model_filename(self):
         """
-        The name of file to save the inference program of target Layer.
+        The name of file to save the translated program of target Layer.
         Default filename is :code:`__model__`.
 
         Exampels:
@@ -458,11 +458,11 @@ def save(layer, model_path, input_spec=None, configs=None):
     The default saved translated program file name is ``__model__``,
     and the default saved persistable variables file name is ``__variables__``,
     and it also saved some additional variable description information to file 
-    ``__varibales.info__``, this additional information is used in fine-tuning.
+    ``__varibales.info__``, these additional information is used in fine-tuning.
 
-    The saved model can be loaded by follow api:
+    The saved model can be loaded by follow APIs:
         - :ref:`api_fluid_dygraph_jit_load`
-        - :ref:`api_fluid_io_load_inference_model` (need set ``params_filename=__variables__``)
+        - :ref:`api_fluid_io_load_inference_model` (need pass ``params_filename=__variables__``)
         - Other C++ inference APIs
 
     Args:
@@ -619,7 +619,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     # 5. save inference model
     from paddle.fluid.io import save_inference_model
 
-    # keep nameing style consistent with '__model__'
+    # VARIABLE_FILENAME keep nameing style consistent with '__model__'
     if configs.params_filename is None:
         configs.params_filename = VARIABLE_FILENAME
     with scope_guard(scope):
@@ -647,8 +647,8 @@ def save(layer, model_path, input_spec=None, configs=None):
         #
         # Due to compatibility issues, we cannot change the original storage structure, 
         # but we can save these information in `jit.save` without changing the original 
-        # storage to improve user experience
-
+        # storage to improve user experience. So we save extra information into
+        # file `__variables.info__`
         extra_var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
         with open(extra_var_info_path, 'wb') as f:
             pickle.dump(extra_var_info, f, protocol=2)
@@ -656,8 +656,8 @@ def save(layer, model_path, input_spec=None, configs=None):
 
 def load(model_path, configs=None):
     """
-    Load model saved by `fluid.dygraph.jit.save` or `fluid.io.save_inference_model`
-    and construct TranslatedLayer, then performing inference or fine-tune training.
+    Load model saved by ``paddle.imperative.jit.save`` or ``fluid.io.save_inference_model``
+    as TranslatedLayer, then performing inference or fine-tune training.
 
     .. note::
         For some historical reasons, if you load model saved by `fluid.io.save_inference_model`,
@@ -667,7 +667,6 @@ def load(model_path, configs=None):
             **2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.**
             **3. The ``stop_gradient`` information is lost and can not be recovered.**
             **4. The parameter's ``trainable`` information is lost and can not be recovered.**
-            **5. Double gradient model is not supported now.**
 
     Args:
         model_path (str): The directory path where the model is saved.
@@ -675,7 +674,7 @@ def load(model_path, configs=None):
             additional configuration options. Default None.
 
     Returns:
-        TranslatedLayer: A Layer object can run saved model.
+        TranslatedLayer: A Layer object can run saved translated model.
 
     Examples:
         1. Load model saved by `fluid.dygraph.jit.save` then performing inference and fine-tune training.

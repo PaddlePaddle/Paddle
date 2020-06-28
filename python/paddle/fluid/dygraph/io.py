@@ -1,4 +1,4 @@
-# Copyright (c) 20w0 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@ from __future__ import print_function
 import os
 import six
 import pickle
-import logging
 import numpy as np
-from collections import OrderedDict
 
 from paddle import compat as cpt
 from paddle.fluid import core
@@ -170,6 +168,12 @@ def _change_is_test_status(program_desc, is_test):
 class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
+
+    _ProgramHolder is the execution unit of TranslatedLayer, 
+    if TranslatedLayer contains multiple _ProgramHolder, 
+    it can execute multiple methods
+
+    _ProgramHolder is an internal concept.
     """
 
     def __init__(self, program_desc):
@@ -214,7 +218,7 @@ class _ProgramHolder(object):
         return self._inner_scope
 
     def _preprocess(self, program_desc):
-        # 1. Crop original program
+        # 1. Prune original program
         # remove feed, fetch and scale-1 op, remove op_callstack attr
         ops_to_remove = []
         root_block = program_desc.block(0)
@@ -252,6 +256,19 @@ class _ProgramHolder(object):
 
         # 3. Output processing, add scale for outputs
         tmp_program = _build_program_by_desc(program_desc)
+        # NOTE: [why need append scale for outputs]
+        # When dealing with some more complex pre-training models, there 
+        # will be situations where the pre-training model has multiple 
+        # fetch outputs. In the scenario of multiple fetch outputs, 
+        # there is a special case where multiple outputs of the model 
+        # may be on the same branch. According to the user's subsequent 
+        # use, multiple outputs may be associated with multiple branches.
+        # These subsequent operations are added in TranslatedLayer is 
+        # agnostic during initialization, which results in subsequent 
+        # gradient accumulation operations that are required on the 
+        # output node in the middle of the branch will not be performed, 
+        # resulting in error, details see pull request:
+        # [https://github.com/PaddlePaddle/Paddle/pull/24627]
         self._append_scale_to_output(tmp_program)
 
         # 4. Persistable vars processing
@@ -264,7 +281,9 @@ class _ProgramHolder(object):
         # and later after loading, a new linear is added. At this time, 
         # there will be a problem of duplicate names, so here is unified 
         # to add the LOADED suffix to the parameters of the model loaded
-        #  during training.
+        # during training. And in order to avoid multiple @LOADED suffix
+        # are appended to variable name, we only append @LOADED suffix to
+        # the variable that not contains @LOADED suffix.
         _append_loaded_suffix_to_var(program_desc)
         # - get persistable var
         self._persis_names = _get_persis_var_names(program_desc)
@@ -300,7 +319,6 @@ class _ProgramHolder(object):
         fwd_op_num = program_desc_copy.block(0).op_size()
         program = _build_program_by_desc(program_desc_copy)
 
-        # TODO: could the targets be in sub block?
         targets = []
         for out in self._output_descs:
             targets.append(program.global_block().var(out.name()))
@@ -310,9 +328,9 @@ class _ProgramHolder(object):
         return program.desc
 
 
-# [ TranslatedLayer executed in imperative mode ]
+# [ TranslatedLayer : Run program in imperative mode ]
 # 
-# DESIGN IDEA: Add an special operator, execute static program inside operator.
+# DESIGN IDEA: using an special operator `RunProgram`, execute program inside operator.
 #
 # Op's Inputs:
 #   - the input variable of the user feed
@@ -331,8 +349,10 @@ class _ProgramHolder(object):
 # 
 # 2. Forward and Backward Separation:
 #   Because the dynamic graph op performs the forward and backward separately,
-#   the forward program is used as the execution object of the forward op,
-#   and the reverse program is used as the execution object of the grad op.
+#   in the forward op RunProgram, we only execute the forward part of whole program,
+#   and in the backward op RunProgramGrad, we execute the backward part of program.
+#   We can not separate the program into forward and backward part, which will 
+#   make some control flow execution logic wrong.
 
 
 # NOTE: [compatible] deal with model saved by save_inference_model,
@@ -380,7 +400,8 @@ def _load_persis_vars_by_program(model_path,
             param = load_var_dict[each_var.name()]
             param.stop_gradient = False
 
-    # NOTE: After loading the model, the stop_gradient information 
+    # NOTE: [Recovery stop gradient information based on the program]
+    # After loading the model, the stop_gradient information 
     # of the original variable is lost, but if a parameter does not
     # have a corresponding @GRAD variable in the backward program,
     # it can be said that it is also stop_gradient
@@ -410,7 +431,7 @@ def _load_persis_vars(var_file_path, var_info_path):
         if extra_var_info[name].get('trainable', None) is not None:
             # use default shape and dtype
             new_var = framework.ParamBase(
-                shape=[1],  # only to pass check
+                shape=[1],  # only to pass check, this shape is not meaningful
                 dtype=core.VarDesc.VarType.FP32,
                 name=new_name,
                 persistable=True)
@@ -476,11 +497,10 @@ class TranslatedLayer(layers.Layer):
     TranslatedLayer is a imperative Layer for holding the model loaded by 
     `paddle.imperative.jit.load`. It can be used like a general Layer object
     in eval or train mode.
-
     
     .. note:
         The TranslatedLayer objects should not be created by constructor,
-    it only can be loaded by `paddle.imperative.jit.load`.
+    it only can be loaded and constructed by `paddle.imperative.jit.load`.
 
     Examples:
         .. code-block:: python
@@ -649,7 +669,8 @@ class TranslatedLayer(layers.Layer):
                         zero_copy=True)
                 else:
                     var = value
-                    # TODO: here may have important name set by user
+                    # NOTE: we changed var name here, 
+                    # but it may be an important name set by user
                     var.name = program_holder.input_names[i]
                 input_vars.append(var)
 
@@ -703,12 +724,13 @@ class TranslatedLayer(layers.Layer):
                 grad_var_name = var.name + core.grad_var_suffix()
                 grad_var = trace_program.block(0).find_var(
                     cpt.to_bytes(grad_var_name))
-                # NOTE: cannot find var desc maybe no problem, such as in batch_norm
+                # NOTE: cannot find var desc maybe not problem, 
+                # such as in batch_norm
                 if grad_var is None:
                     continue
                 persis_var._set_grad_type(grad_var.type())
 
-            # Step 3. prepare output, keep same form with inputs
+            # 3. prepare output, keep same form with inputs
             outs = output_vars
             if len(output_vars) == 1:
                 outs = output_vars[0]
