@@ -29,6 +29,8 @@ from paddle.fluid.dygraph import layers
 from paddle.fluid.layers import nn
 from paddle.fluid.dygraph.base import switch_to_static_graph
 
+__all__ = ['TranslatedLayer']
+
 VARIABLE_FILENAME = "__variables__"
 EXTRA_VAR_INFO_FILENAME = "__variables.info__"
 
@@ -471,23 +473,101 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
 
 class TranslatedLayer(layers.Layer):
     """
-    jit.save and jit.load related Class.
+    TranslatedLayer is a imperative Layer for holding the model loaded by 
+    `paddle.imperative.jit.load`. It can be used like a general Layer object
+    in eval or train mode.
 
-    Avoid exposing TranslatedLayer class interface to users
+    
+    .. note:
+        The TranslatedLayer objects should not be created by constructor,
+    it only can be loaded by `paddle.imperative.jit.load`.
 
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.fluid.dygraph import Linear
+            from paddle.fluid.dygraph import declarative
 
-    Executed forward part of StaticModelRunner Layer.
-        Generally execute directly using the Layer object.
+            BATCH_SIZE = 32
+            BATCH_NUM = 20
 
-        Args:
-            args(tuple(np.ndarray|Variable)): the inputs of StaticModelRunner.
-                The order of input variables needs to be the same as the order 
-                of feed variables when using `save_inference_model` to save model.
-        
-        Returns:
-            Variable|list[Variable]: The forward outputs of StaticModelRunner Layer.
-                If there is only one output, return Variable;
-                if there are multiple outputs, return list[Variable].
+            def random_batch_reader():
+                def _get_random_images_and_labels(image_shape, label_shape):
+                    image = np.random.random(size=image_shape).astype('float32')
+                    label = np.random.random(size=label_shape).astype('int64')
+                    return image, label
+
+                def __reader__():
+                    for _ in range(BATCH_NUM):
+                        batch_image, batch_label = _get_random_images_and_labels(
+                            [BATCH_SIZE, 784], [BATCH_SIZE, 1])
+                        yield batch_image, batch_label
+
+                return __reader__
+
+            class LinearNet(fluid.dygraph.Layer):
+                def __init__(self, in_size, out_size):
+                    super(LinearNet, self).__init__()
+                    self._linear = Linear(in_size, out_size)
+
+                @declarative
+                def forward(self, x):
+                    return self._linear(x)
+
+            # enable dygraph mode
+            fluid.enable_dygraph() 
+
+            # 1. train & save model.
+            # create network
+            net = LinearNet(784, 1)
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            # create data loader
+            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+            train_loader.set_batch_generator(random_batch_reader())
+            # train
+            for data in train_loader():
+                img, label = data
+                label.stop_gradient = True
+
+                cost = net(img)
+
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
+
+                avg_loss.backward()
+                adam.minimize(avg_loss)
+                net.clear_gradients()
+
+            model_path = "linear.example.model"
+            fluid.dygraph.jit.save(
+                layer=net,
+                model_path=model_path,
+                input_spec=[img])
+
+            # 2. load model as TranslatedLayer
+            translated_layer = fluid.dygraph.jit.load(model_path)
+            # inference
+            translated_layer.eval()
+            x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
+            pred = translated_layer(x)
+            # fine-tune
+            translated_layer.train()
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=translated_layer.parameters())
+            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+            train_loader.set_batch_generator(random_batch_reader())
+            for data in train_loader():
+                img, label = data
+                label.stop_gradient = True
+
+                cost = translated_layer(img)
+
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
+
+                avg_loss.backward()
+                adam.minimize(avg_loss)
+                translated_layer.clear_gradients()
     """
 
     def __init__(self, programs, persistable_vars):

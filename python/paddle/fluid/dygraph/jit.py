@@ -182,40 +182,296 @@ class SaveLoadConfig(object):
     or load a model(TranslatedLayer). 
     
     Examples:
+        1. Using ``SaveLoadConfig`` when saving model
+
         .. code-block:: python
-            
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.fluid.dygraph import Linear
+            from paddle.fluid.dygraph import declarative
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self, in_size, out_size):
+                    super(SimpleNet, self).__init__()
+                    self._linear = Linear(in_size, out_size)
+
+                @declarative
+                def forward(self, x):
+                    y = self._linear(x)
+                    z = self._linear(y)
+                    return z
+
+            # enable dygraph mode
+            fluid.enable_dygraph() 
+
+            # train model
+            net = SimpleNet(8, 8)
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+            for i in range(10):
+                out = net(x)
+                loss = fluid.layers.mean(out)
+                loss.backward()
+                adam.minimize(loss)
+                net.clear_gradients()
+
+            # use SaveLoadconfig when saving model
+            model_path = "simplenet.example.model"
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.model_filename = "__simplenet__"
+            fluid.dygraph.jit.save(
+                layer=net,
+                model_path=model_path,
+                input_spec=[x],
+                configs=configs)
+
+        2. Using ``SaveLoadConfig`` when loading model
+
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+
+            # enable dygraph mode
+            fluid.enable_dygraph() 
+
+            # use SaveLoadconfig when loading model
+            model_path = "simplenet.example.model"
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.model_filename = "__simplenet__"
+            infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
+            # inference
+            x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+            pred = infer_net(x)
     """
 
     def __init__(self):
-        self.output_spec = None
-        self.model_filename = None
-        self.params_filename = None
+        self._output_spec = None
+        self._model_filename = None
+        self._params_filename = None
 
         # NOTE: Users rarely use these configs, so these configs are not open to users,
         # reducing user learning costs, but we retain the configuration capabilities
-        self.export_for_deployment = True
-        self.program_only = False
-        self.pserver_endpoints = None
+
+        # If True, programs are modified to only support direct inference deployment. 
+        # Otherwise,more information will be stored for flexible optimization and re-training. 
+        # Currently, only True is supported
+        self._export_for_deployment = True
+
+        # If True, It will save inference program only, and do not save params of Program
+        self._program_only = False
+
+    @property
+    def output_spec(self):
+        """
+        Selects the output targets of the saved model (TranslatedLayer).
+        By default, all return variables are kept as the output of the saved TranslatedLayer.
+
+        The output_spec type should be list[Variable]. If the provided output_spec list
+        is not all output variables, the saved model will be pruned according to the
+        output_spec list.
+
+        .. note::
+            The output_spec is only used when saving model.
+
+        Examples:
+            .. code-block:: python
+                import numpy as np
+            import paddle.fluid as fluid
+            from paddle.fluid.dygraph import Linear
+            from paddle.fluid.dygraph import declarative
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self, in_size, out_size):
+                    super(SimpleNet, self).__init__()
+                    self._linear = Linear(in_size, out_size)
+
+                @declarative
+                def forward(self, x):
+                    y = self._linear(x)
+                    z = self._linear(y)
+                    loss = fluid.layers.mean(z)
+                    return z, loss
+
+            # enable dygraph mode
+            fluid.enable_dygraph() 
+
+            # train model
+            net = SimpleNet(8, 8)
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+            for i in range(10):
+                out, loss = net(x)
+                loss.backward()
+                adam.minimize(loss)
+                net.clear_gradients()
+
+            # use SaveLoadconfig.output_spec
+            model_path = "simplenet.example.model.output_spec"
+            configs = fluid.dygraph.jit.SaveLoadConfig()
+            configs.output_spec = [out]
+            fluid.dygraph.jit.save(
+                layer=net,
+                model_path=model_path,
+                input_spec=[x],
+                configs=configs)
+
+            infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
+            x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+            pred = infer_net(x)
+        """
+        return self._output_spec
+
+    @output_spec.setter
+    def output_spec(self, spec):
+        self._output_spec = spec
+
+    @property
+    def model_filename(self):
+        """
+        The name of file to save the inference program of target Layer.
+        Default filename is :code:`__model__`.
+
+        Exampels:
+            .. code-block:: python
+                import numpy as np
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
+
+                class SimpleNet(fluid.dygraph.Layer):
+                    def __init__(self, in_size, out_size):
+                        super(SimpleNet, self).__init__()
+                        self._linear = Linear(in_size, out_size)
+
+                    @declarative
+                    def forward(self, x):
+                        y = self._linear(x)
+                        z = self._linear(y)
+                        return z
+
+                # enable dygraph mode
+                fluid.enable_dygraph() 
+
+                # train model
+                net = SimpleNet(8, 8)
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                for i in range(10):
+                    out = net(x)
+                    loss = fluid.layers.mean(out)
+                    loss.backward()
+                    adam.minimize(loss)
+                    net.clear_gradients()
+
+                model_path = "simplenet.example.model.model_filename"
+                configs = fluid.dygraph.jit.SaveLoadConfig()
+                configs.model_filename = "__simplenet__"
+
+                # saving with configs.model_filename
+                fluid.dygraph.jit.save(
+                    layer=net,
+                    model_path=model_path,
+                    input_spec=[x],
+                    configs=configs)
+
+                # loading with configs.model_filename
+                infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                pred = infer_net(x)
+        """
+        return self._model_filename
+
+    @model_filename.setter
+    def model_filename(self, filename):
+        self._model_filename = filename
+
+    @property
+    def params_filename(self):
+        """
+        The name of file to save all persistable variables in target Layer. 
+        Default file name is :code:`__variables__.
+        
+        Exampels:
+            .. code-block:: python
+                import numpy as np
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
+
+                class SimpleNet(fluid.dygraph.Layer):
+                    def __init__(self, in_size, out_size):
+                        super(SimpleNet, self).__init__()
+                        self._linear = Linear(in_size, out_size)
+
+                    @declarative
+                    def forward(self, x):
+                        y = self._linear(x)
+                        z = self._linear(y)
+                        return z
+
+                # enable dygraph mode
+                fluid.enable_dygraph() 
+
+                # train model
+                net = SimpleNet(8, 8)
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                for i in range(10):
+                    out = net(x)
+                    loss = fluid.layers.mean(out)
+                    loss.backward()
+                    adam.minimize(loss)
+                    net.clear_gradients()
+
+                model_path = "simplenet.example.model.params_filename"
+                configs = fluid.dygraph.jit.SaveLoadConfig()
+                configs.params_filename = "__params__"
+
+                # saving with configs.params_filename
+                fluid.dygraph.jit.save(
+                    layer=net,
+                    model_path=model_path,
+                    input_spec=[x],
+                    configs=configs)
+
+                # loading with configs.params_filename
+                infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                pred = infer_net(x)
+        """
+        return self._params_filename
+
+    @params_filename.setter
+    def params_filename(self, filename):
+        self._params_filename = filename
 
 
 @switch_to_static_graph
 def save(layer, model_path, input_spec=None, configs=None):
     """
-    Saves input declarative Layer as the inference model. 
-    It will prune the main_program to build a new program especially for inference, 
-    and then save it and all related parameters to given `model_path` . 
-    The saved inference model can be loaded by follow api:
+    Saves input declarative Layer as TranslatedLayer format model, 
+    which can be used for inference or fine-tuning after loading.
+
+    It will save the translated program and all related persistable 
+    variables of input declarative Layer to given ``model_path``.
+    
+    The default saved translated program file name is ``__model__``,
+    and the default saved persistable variables file name is ``__variables__``,
+    and it also saved some additional variable description information to file 
+    ``__varibales.info__``, this additional information is used in fine-tuning.
+
+    The saved model can be loaded by follow api:
         - :ref:`api_fluid_dygraph_jit_load`
-        - :ref:`api_fluid_io_load_inference_model`
-        - C++ inference APIs
+        - :ref:`api_fluid_io_load_inference_model` (need set ``params_filename=__variables__``)
+        - Other C++ inference APIs
 
     Args:
         layer (Layer): the Layer to be saved. The Layer should be decorated by `declarative`.
-        model_path (str): the directory to save the inference model.
-        input_spec (list[Varibale], optional): the indices of the input variables of the
-            dygraph functions which will be saved as input variables in
-            inference model. If None, all input variables of the dygraph function
-            would be the inputs of the saved inference model. Default None.
+        model_path (str): the directory to save the model.
+        input_spec (list[Varibale], optional): Describes the input of the saved model. 
+            It is the example inputs that will be passed to saved TranslatedLayer's forward
+            function. If None, all input variables of the original Layer's forward function
+            would be the inputs of the saved model. Default None.
         configs (SaveLoadConfig, optional): jit.SaveLoadConfig object that specifies 
             additional configuration options. Default None.
     Returns:
@@ -254,29 +510,30 @@ def save(layer, model_path, input_spec=None, configs=None):
                 def forward(self, x):
                     return self._linear(x)
 
-            # train & save model.
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
-                # create network
-                net = LinearNet(784, 1)
-                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
-                # create data loader
-                train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-                train_loader.set_batch_generator(random_batch_reader())
-                # train
-                for data in train_loader():
-                    img, label = data
-                    label.stop_gradient = True
+            # enable dygraph mode
+            fluid.enable_dygraph() 
 
-                    cost = net(img)
+            # create network
+            net = LinearNet(784, 1)
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            # create data loader
+            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+            train_loader.set_batch_generator(random_batch_reader())
+            # train
+            for data in train_loader():
+                img, label = data
+                label.stop_gradient = True
 
-                    loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                cost = net(img)
 
-                    avg_loss.backward()
-                    adam.minimize(avg_loss)
-                    net.clear_gradients()
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
 
+                avg_loss.backward()
+                adam.minimize(avg_loss)
+                net.clear_gradients()
+
+            # save model
             model_path = "linear.example.model"
             fluid.dygraph.jit.save(
                 layer=net,
@@ -374,8 +631,8 @@ def save(layer, model_path, input_spec=None, configs=None):
             main_program=concrete_program.main_program.clone(),
             model_filename=configs.model_filename,
             params_filename=configs.params_filename,
-            export_for_deployment=configs.export_for_deployment,
-            program_only=configs.program_only)
+            export_for_deployment=configs._export_for_deployment,
+            program_only=configs._program_only)
 
         # NOTE: [ Save extra variable info ]
         # save_inference_model will lose some important variable information, including:
@@ -456,28 +713,29 @@ def load(model_path, configs=None):
                 def forward(self, x):
                     return self._linear(x)
 
+            # enable dygraph mode
+            fluid.enable_dygraph() 
+
             # 1. train & save model.
-            place = fluid.CPUPlace()
-            with fluid.dygraph.guard(place):
-                # create network
-                net = LinearNet(784, 1)
-                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
-                # create data loader
-                train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-                train_loader.set_batch_generator(random_batch_reader())
-                # train
-                for data in train_loader():
-                    img, label = data
-                    label.stop_gradient = True
+            # create network
+            net = LinearNet(784, 1)
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+            # create data loader
+            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+            train_loader.set_batch_generator(random_batch_reader())
+            # train
+            for data in train_loader():
+                img, label = data
+                label.stop_gradient = True
 
-                    cost = net(img)
+                cost = net(img)
 
-                    loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
 
-                    avg_loss.backward()
-                    adam.minimize(avg_loss)
-                    net.clear_gradients()
+                avg_loss.backward()
+                adam.minimize(avg_loss)
+                net.clear_gradients()
 
             model_path = "linear.example.model"
             fluid.dygraph.jit.save(
@@ -486,35 +744,33 @@ def load(model_path, configs=None):
                 input_spec=[img])
 
             # 2. load model & inference
-            with fluid.dygraph.guard(fluid.CPUPlace()):
-                # load model
-                infer_net = fluid.dygraph.jit.load(model_path)
-                # inference
-                x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
-                pred = infer_net(x)
+            # load model
+            infer_net = fluid.dygraph.jit.load(model_path)
+            # inference
+            x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
+            pred = infer_net(x)
 
             # 3. load model & fine-tune
-            with fluid.dygraph.guard(fluid.CPUPlace()):
-                # load model
-                train_net = fluid.dygraph.jit.load(model_path)
-                train_net.train()
-                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=train_net.parameters())
-                # create data loader
-                train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-                train_loader.set_batch_generator(random_batch_reader())
-                # fine-tune
-                for data in train_loader():
-                    img, label = data
-                    label.stop_gradient = True
+            # load model
+            train_net = fluid.dygraph.jit.load(model_path)
+            train_net.train()
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=train_net.parameters())
+            # create data loader
+            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+            train_loader.set_batch_generator(random_batch_reader())
+            # fine-tune
+            for data in train_loader():
+                img, label = data
+                label.stop_gradient = True
 
-                    cost = train_net(img)
+                cost = train_net(img)
 
-                    loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
 
-                    avg_loss.backward()
-                    adam.minimize(avg_loss)
-                    train_net.clear_gradients()
+                avg_loss.backward()
+                adam.minimize(avg_loss)
+                train_net.clear_gradients()
 
         2. Load model saved by `fluid.io.save_inference_model` then performing and fine-tune training.
 
@@ -568,37 +824,35 @@ def load(model_path, configs=None):
             fluid.io.save_inference_model(
                 model_path, ["img"], [pred], exe)
 
+            # enable dygraph mode
+            fluid.enable_dygraph() 
+
             # 2. load model & inference
-            with fluid.dygraph.guard(place):
-                fc = fluid.dygraph.jit.load(model_path)
-                x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
-                pred = fc(x)
-                print(pred)
+            fc = fluid.dygraph.jit.load(model_path)
+            x = fluid.dygraph.to_variable(np.random.random((1, 784)).astype('float32'))
+            pred = fc(x)
 
             # 3. load model & fine-tune
-            with fluid.dygraph.guard(place):
-                fc = fluid.dygraph.jit.load(model_path)
-                fc.train()
-                sgd = fluid.optimizer.SGD(learning_rate=0.001,
+            fc = fluid.dygraph.jit.load(model_path)
+            fc.train()
+            sgd = fluid.optimizer.SGD(learning_rate=0.001,
                                         parameter_list=fc.parameters())
 
-                train_loader = fluid.io.DataLoader.from_generator(capacity=5)
-                train_loader.set_batch_generator(
-                    random_batch_reader(), places=place)
+            train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+            train_loader.set_batch_generator(
+                random_batch_reader(), places=place)
 
-                for data in train_loader():
-                    img, label = data
-                    label.stop_gradient = True
+            for data in train_loader():
+                img, label = data
+                label.stop_gradient = True
 
-                    cost = fc(img)
+                cost = fc(img)
 
-                    loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                loss = fluid.layers.cross_entropy(cost, label)
+                avg_loss = fluid.layers.mean(loss)
 
-                    avg_loss.backward()
-                    sgd.minimize(avg_loss)
-
-                print(loss)
+                avg_loss.backward()
+                sgd.minimize(avg_loss)
     """
     return TranslatedLayer._construct(model_path, configs)
 
