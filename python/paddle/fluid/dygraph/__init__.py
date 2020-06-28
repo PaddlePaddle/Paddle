@@ -66,5 +66,6 @@ __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += backward_strategy.__all__
 __all__ += jit.__all__
+__all__ += io.__all__
 __all__ += rnn.__all__
 __all__ += ['ProgramTranslator']

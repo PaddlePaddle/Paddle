@@ -15,4 +15,4 @@
 from ...fluid.dygraph.jit import save, load, SaveLoadConfig
 from ...fluid.dygraph.io import TranslatedLayer
 
-__all__ = ['save', 'load', 'SaveLoadConfig', 'TranslatedLayer']
+__all__ = ['save', 'load', 'SaveLoadConfig']

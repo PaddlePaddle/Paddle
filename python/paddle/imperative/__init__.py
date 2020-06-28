@@ -16,7 +16,7 @@
 __all__ = [
     'BackwardStrategy', 'enabled', 'grad', 'guard', 'LayerList', 'load', 'save',
     'prepare_context', 'to_variable', 'TracedLayer', 'no_grad', 'ParallelEnv',
-    'ProgramTranslator', 'declarative', 'DataParallel'
+    'ProgramTranslator', 'declarative', 'DataParallel', 'TranslatedLayer'
 ]
 
 __all__ += [
