@@ -33,6 +33,8 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                    "Input(init_h) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitC"),
                    "Input(init_c) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Reserve"),
+                   "Output(Reserve) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("last_h"),

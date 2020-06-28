@@ -58,8 +58,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
-    framework::Variable cache_var;
-    CudnnRNNCache *cudnn_rnn_cache = cache_var.GetMutable<CudnnRNNCache>();
+    CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 
     std::random_device rnd;
     int seed = ctx.Attr<int>("seed");
@@ -99,6 +98,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
           last_c_data, cudnn_rnn_cache->workspace_data_.data<uint8_t>(),
           cudnn_rnn_cache->workspace_size_, reserve_data, reserve_size));
     }
+    delete cudnn_rnn_cache;
   }
 };
 
@@ -210,8 +210,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
 
-    framework::Variable cache_var;
-    CudnnRNNCache *cudnn_rnn_cache = cache_var.GetMutable<CudnnRNNCache>();
+    CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 
     std::random_device rnd;
     int seed = ctx.Attr<int>("seed");
@@ -252,6 +251,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
         cudnn_rnn_cache->workspace_size_, cudnn_rnn_cache->dw_desc_,
         weight_grad->data<T>(), const_cast<uint8_t *>(reserve_data),
         reserve_size));
+    delete cudnn_rnn_cache;
   }
 };
 

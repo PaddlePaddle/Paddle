@@ -142,15 +142,15 @@ class TestCUDNNLstmOp(OpTest):
 
         init_h = np.zeros((batch_size, hidden_size), dtype=np.float32)
         init_c = np.zeros((batch_size, hidden_size), dtype=np.float32)
-        scope = core.Scope()
-        program = fluid.Program()
-        block = program.global_block()
+        #scope = core.Scope()
+        #program = fluid.Program()
+        #block = program.global_block()
 
         self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'W': OpTest.np_dtype_to_fluid_dtype(flat_w),
-            'InitH': OpTest.np_dtype_to_fluid_dtype(init_h),
-            'InitC': OpTest.np_dtype_to_fluid_dtype(init_c),
+            'Input': input,
+            'W': flat_w,
+            'InitH': init_h,
+            'InitC': init_c,
         }
         self.attrs = {
             'max_len': num_steps,
