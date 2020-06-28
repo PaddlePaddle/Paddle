@@ -23,8 +23,7 @@ from op_test import OpTest
 
 
 def update_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
-    l1 += 1e-10
-    l2 += 1e-10
+    smooth_factor = 1e-6
 
     param_hit = param[rows]
     sq_accum_hit = sq_accum[rows]
@@ -45,14 +44,14 @@ def update_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
             continue
 
         x = l1 * np.sign(lin_accum_updated[i]) - lin_accum_updated[i]
-        x *= 1 - l1 / np.linalg.norm(x)
+        x *= 1 - l1 / (np.linalg.norm(x) + smooth_factor)
 
         if lr_power == -0.5:
-            y = (np.sqrt(new_accum[i]) / lr) + (2 * l2)
+            y = (np.sqrt(new_accum[i]) / lr) + l2
         else:
-            y = (np.power(new_accum[i], -lr_power) / lr) + (2 * l2)
+            y = (np.power(new_accum[i], -lr_power) / lr) + l2
 
-        param_updated[i] = x / y
+        param_updated[i] = x / (y + smooth_factor)
 
     sq_accum_updated = sq_accum_hit + grad * grad
 

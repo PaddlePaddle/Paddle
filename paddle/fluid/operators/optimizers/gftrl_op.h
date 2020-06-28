@@ -83,6 +83,8 @@ class UpdateFunctor {
                 lr * p[n];
       }
 
+      s_acc_out[n] = new_acc;
+
       if (sparsity_flag && std::fabs(l_acc_out[n]) > l1) {
         sparsity_flag = false;
       }
@@ -97,36 +99,26 @@ class UpdateFunctor {
       auto x_square_acc = static_cast<T>(0);
 
       for (int64_t k = 0; k < row_numel; ++k) {
-        auto m = m_base + k;
         auto n = n_base + k;
 
         auto x = (l_acc_out[n] >= static_cast<T>(0)) ? (-l_acc_out[n] + l1)
                                                      : (-l_acc_out[n] - l1);
         x_square_acc += x * x;
 
-        auto new_acc = s_acc[n] + g[m] * g[m];
-        auto y =
-            (lr_power == static_cast<T>(-0.5))
-                ? (static_cast<T>(2) * l2 + std::sqrt(new_acc) / lr)
-                : (static_cast<T>(2) * l2 + std::pow(new_acc, -lr_power) / lr);
+        auto y = (lr_power == static_cast<T>(-0.5))
+                     ? (l2 + std::sqrt(s_acc_out[n]) / lr)
+                     : (l2 + std::pow(s_acc_out[n], -lr_power) / lr);
 
-        p_out[n] = x / y;
+        p_out[n] = x / (y + static_cast<T>(1e-6));
       }
 
       auto x_norm = std::sqrt(x_square_acc);
-      auto z = static_cast<T>(1) - l1 / x_norm;
+      auto z = static_cast<T>(1) - l1 / (x_norm + static_cast<T>(1e-6));
 
       for (int64_t k = 0; k < row_numel; ++k) {
         auto n = n_base + k;
         p_out[n] *= z;
       }
-    }
-
-    for (int64_t k = 0; k < row_numel; ++k) {
-      auto m = m_base + k;
-      auto n = n_base + k;
-
-      s_acc_out[n] = s_acc[n] + g[m] * g[m];
     }
   }
 };
@@ -154,8 +146,8 @@ class GFTRLOpKernel : public framework::OpKernel<T> {
     auto* sq_accum_out = ctx.Output<Tensor>("SquaredAccumOut");
     auto* lin_accum_out = ctx.Output<Tensor>("LinearAccumOut");
 
-    auto l1 = static_cast<T>(ctx.Attr<float>("l1")) + static_cast<T>(1e-10);
-    auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
+    auto l1 = static_cast<T>(ctx.Attr<float>("l1"));
+    auto l2 = static_cast<T>(ctx.Attr<float>("l2"));
     auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
 
     if (grad_var->IsType<framework::LoDTensor>()) {
