@@ -23,6 +23,7 @@ from paddle.fluid.multiprocess_utils import CleanupFuncRegistrar
 from .tracer import Tracer
 import logging
 import objgraph
+from ..data_feeder import convert_dtype
 
 __all__ = [
     'no_grad',
@@ -530,19 +531,19 @@ def grad(outputs,
 
 
 @framework.dygraph_only
-def to_variable(value, name=None, zero_copy=None):
+def to_variable(value, name=None, zero_copy=None, dtype=None):
     """
     :api_attr: imperative
 
     The API will create a ``Variable`` or ``ComplexVariable`` object from 
-    numpy\.ndarray, Variable or ComplexVariable object.
+    scalar, tuple, list, numpy\.ndarray, Variable or ComplexVariable object.
 
     Parameters:
-        value(ndarray|Variable|Tensor|ComplexVariable): The numpy\.ndarray, Variable 
-            Tensor or ComplexVariable object that needs to be converted, it can be 
-            multi-dimension, and the data type is one of numpy\.{float16, 
-            float32, float64, int16, int32, int64, uint8, uint16, complex64, 
-            complex128}.
+        value(tuple|list|ndarray|Variable|Tensor|ComplexVariable): Initial data. 
+            Can be a list, tuple, NumPy ndarray, Variable, Tensor, ComplexVariable. 
+            The shape can be multi-dimensional. The data type is one of 
+            numpy\.{float16, float32, float64, int16, int32, int64, 
+            uint8, uint16, complex64, complex128}.
         name(str, optional): The default value is None. Normally there is no 
             need for user to set this property. For more information, please 
             refer to :ref:`api_guide_Name` .
@@ -574,16 +575,33 @@ def to_variable(value, name=None, zero_copy=None):
             z.numpy() # array([2.+1.j, 2.+0.j])
             z.dtype # 'complex128'
     """
-    if isinstance(value, np.ndarray):
-        assert framework.in_dygraph_mode(
-        ), "to_variable could only be called in dygraph mode"
+    support_type = (list, tuple, np.ndarray, core.VarBase, framework.Variable,
+                    framework.ComplexVariable, core.Tensor, core.LoDTensor)
+    if not isinstance(value, support_type):
+        raise TypeError(
+            "The type of 'value' in fluid.dygraph.to_variable must be %s, but received %s."
+            % (support_type, type(value)))
+    if isinstance(value, (core.VarBase, framework.Variable,
+                          framework.ComplexVariable)):
+        return value
+    elif isinstance(value, (core.Tensor, core.LoDTensor)):
+        return core.VarBase(value)
+    else:
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
             if zero_copy is None:
                 zero_copy = True
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
-            zero_copy = False
+
+        if not isinstance(value, np.ndarray):
+            value = np.array(value)
+
+        if dtype is not None:
+            dtype = convert_dtype(dtype)
+            if value.dtype != dtype:
+                value = value.astype(dtype)
+
         if np.iscomplexobj(value):
             if not name:
                 name = framework.unique_name.generate('_generated_var')
@@ -608,12 +626,3 @@ def to_variable(value, name=None, zero_copy=None):
                 zero_copy=zero_copy,
                 name=name if name else '')
             return py_var
-    elif isinstance(value, (core.VarBase, framework.Variable,
-                            framework.ComplexVariable)):
-        return value
-    elif isinstance(value, (core.Tensor, core.LoDTensor)):
-        return core.VarBase(value)
-    else:
-        raise TypeError(
-            "The type of input value is invalid, expected type is 'ndarray', "
-            "'Variable' or 'ComplexVariable', but received %s." % type(value))
