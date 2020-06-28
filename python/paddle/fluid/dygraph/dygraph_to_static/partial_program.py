@@ -19,9 +19,10 @@ import logging
 from paddle.fluid import log_helper
 from paddle.fluid import framework, backward, core
 from paddle.fluid.dygraph import layers
+from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import RETURN_NO_VALUE_MAGIC_NUM
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
-from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle.compat as cpt
 
 _logger = log_helper.get_logger(
@@ -165,7 +166,8 @@ class PartialProgramLayer(layers.Layer):
                 'is_test': not self.training
             })
 
-        return self._restore_out(out_vars)
+        restored_nest_out = self._restore_out(out_vars)
+        return self._remove_no_value(restored_nest_out)
 
     def _prepare(self, inputs):
         """
@@ -224,6 +226,17 @@ class PartialProgramLayer(layers.Layer):
             outs = outs[0]
 
         return outs
+
+    def _remove_no_value(self, out_vars):
+        """
+        Removes invalid value for various-length return statement
+        """
+        if isinstance(output_vars, core.VarBase):
+            if output_vars == RETURN_NO_VALUE_MAGIC_NUM:
+                return None
+            return output_vars
+        else:
+            return [var for var in out_vars if var != RETURN_NO_VALUE_MAGIC_NUM]
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient

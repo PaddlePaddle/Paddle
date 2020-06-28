@@ -21,7 +21,9 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import ForToWhileTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
-__all__ = ['ReturnTransformer']
+__all__ = [
+    'RETURN_NO_VALUE_MAGIC_NUM', 'RETURN_NO_VALUE_VAR_NAME', 'ReturnTransformer'
+]
 
 # Constant for the name of the variable which stores the boolean state that we
 # should return
@@ -30,10 +32,30 @@ RETURN_PREFIX = '__return'
 # Constant for the name of the variable which stores the final return value
 RETURN_VALUE_PREFIX = '__return_value'
 
+# Constant magic number representing returning no value. This constant amis to
+# support returning various lengths of variables. Static graph must have fixed
+# size of fetched output while dygraph can have flexible lengths of output, to
+# solve it in dy2stat, we put float64 value with this magic number at Static
+# graph as a place holder to indicate the returning placeholder means no value
+# should return.
+RETURN_NO_VALUE_MAGIC_NUM = 1.771137e+279
+RETURN_NO_VALUE_VAR_NAME = str(RETURN_NO_VALUE_MAGIC_NUM)
 
-class ReturnPreAnalysisVisitor(gast.NodeVisitor):
+
+def get_return_size(return_node):
+    assert isinstance(return_node, gast.Return), "Input is not gast.Return node"
+    return_length = 0
+    if return_node.value is not None:
+        if isinstance(return_node.value, gast.Tuple):
+            return_length = len(return_node.value.elts)
+        else:
+            return_length = 1
+    return return_length
+
+
+class ReturnAnalysisVisitor(gast.NodeVisitor):
     """
-    Visits gast Tree and pre-analyze the information about 'return'.
+    Visits gast Tree and analyze the information about 'return'.
     """
 
     def __init__(self, root_node):
@@ -45,6 +67,10 @@ class ReturnPreAnalysisVisitor(gast.NodeVisitor):
         # Mapping from gast.FunctionDef node to the number of return statements
         # Python allows define function inside function so we have to handle it
         self.count_return = {}
+
+        # Mapping from gast.FunctionDef node to the maximum number of variables
+        # returned by the function's return statement
+        self.max_return_length = {}
         self.visit(self.root)
 
     def visit_FunctionDef(self, node):
@@ -62,13 +88,21 @@ class ReturnPreAnalysisVisitor(gast.NodeVisitor):
             self.count_return[cur_func] += 1
         else:
             self.count_return[cur_func] = 1
+
+        return_length = get_return_size(node)
+        if cur_func in self.max_return_length:
+            self.max_return_length[cur_func] = max(
+                self.max_return_length[cur_func], return_length)
+        else:
+            self.max_return_length[cur_func] = return_length
+
         self.generic_visit(node)
 
     def get_func_return_count(self, func_node):
         return self.count_return[func_node]
 
-    def set_func_return_count(self, func_node, count):
-        self.count_return[func_node] = count
+    def get_func_max_return_length(self, func_node):
+        return self.max_return_length[func_node]
 
 
 class ReturnTransformer(gast.NodeTransformer):
@@ -93,6 +127,8 @@ class ReturnTransformer(gast.NodeTransformer):
         self.return_name = {}
         # A list of FunctionDef to store where the current function is.
         self.function_def = []
+
+        self.pre_analysis = ReturnAnalysisVisitor(node)
 
     def transform(self):
         self.visit(self.root)
@@ -126,10 +162,10 @@ class ReturnTransformer(gast.NodeTransformer):
         self.return_value_name[node] = None
         self.return_name[node] = []
 
-        pre_analysis = ReturnPreAnalysisVisitor(node)
-        while pre_analysis.get_func_return_count(node) > 1:
+        self.pre_analysis = ReturnAnalysisVisitor(node)
+        while self.pre_analysis.get_func_return_count(node) > 1:
             self.generic_visit(node)
-            pre_analysis = ReturnPreAnalysisVisitor(node)
+            self.pre_analysis = ReturnAnalysisVisitor(node)
 
         # prepend initialization of final return and append final return statement
         value_name = self.return_value_name[node]
@@ -154,6 +190,8 @@ class ReturnTransformer(gast.NodeTransformer):
         cur_func_node = self.function_def[-1]
         return_name = unique_name.generate(RETURN_PREFIX)
         self.return_name[cur_func_node].append(return_name)
+        max_return_length = self.pre_analysis.get_max_return_length(
+            cur_func_node)
         for ancestor_index in reversed(range(len(self.ancestor_nodes) - 1)):
             ancestor = self.ancestor_nodes[ancestor_index]
             cur_node = self.ancestor_nodes[ancestor_index + 1]
@@ -163,7 +201,7 @@ class ReturnTransformer(gast.NodeTransformer):
                     self._replace_return_in_stmt_list(ancestor.body, cur_node,
                                                       return_name)
                 self._replace_after_node_to_if_in_stmt_list(
-                    ancestor.body, cur_node, return_name)
+                    ancestor.body, cur_node, return_name, max_return_length)
             elif hasattr(ancestor, "orelse") and index_in_list(ancestor.orelse,
                                                                cur_node) != -1:
                 if cur_node == node:
@@ -203,26 +241,82 @@ class ReturnTransformer(gast.NodeTransformer):
                 break
         # return_node is replaced so we shouldn't return here
 
-    def _replace_return_in_stmt_list(self, stmt_list, return_node, return_name):
+    def _replace_return_in_stmt_list(self, stmt_list, return_node, return_name,
+                                     max_return_length):
+        assert max_return_length >= 0, "Input illegal max_return_length"
         i = index_in_list(stmt_list, return_node)
         if i == -1:
             return False
         assign_nodes = [create_fill_constant_node(return_name, True)]
-        if return_node.value is not None:
-            cur_func_node = self.function_def[-1]
+
+        return_length = get_return_size(return_node)
+        if return_length < max_return_length:
+            # In this case we should append RETURN_NO_VALUE placeholder
+            #
+            # max_return_length must be >= 1 here because return_length will be
+            # 0 at least.
             if self.return_value_name[cur_func_node] is None:
                 self.return_value_name[cur_func_node] = unique_name.generate(
                     RETURN_VALUE_PREFIX)
-            assign_nodes.append(
-                gast.Assign(
-                    targets=[
-                        gast.Name(
-                            id=self.return_value_name[cur_func_node],
-                            ctx=gast.Store(),
-                            annotation=None,
-                            type_comment=None)
-                    ],
-                    value=return_node.value))
+            placeholder_node = create_fill_constant_node(
+                RETURN_NO_VALUE_VAR_NAME, RETURN_NO_VALUE_MAGIC_NUM)
+
+            # Handle tuple/non-tuple case
+            if max_return_length == 1:
+                assign_nodes.append(
+                    gast.Assign(
+                        targets=[
+                            gast.Name(
+                                id=self.return_value_name[cur_func_node],
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+                        ],
+                        value=placeholder_node))
+            else:
+                # max_return_length > 1 which means we should assign tuple
+                fill_tuple = [
+                    create_fill_constant_node(RETURN_NO_VALUE_VAR_NAME,
+                                              RETURN_NO_VALUE_MAGIC_NUM)
+                    for i in range(max_return_length - return_length)
+                ]
+                if return_node.value is not None:
+                    if isinstance(return_node.value, gast.Tuple):
+                        fill_tuple[:0] = return_node.value.elts
+                    else:
+                        fill_tuple.insert(0, return_node.value)
+
+                assign_nodes.append(
+                    gast.Assign(
+                        targets=[
+                            gast.Name(
+                                id=self.return_value_name[cur_func_node],
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+                        ],
+                        value=gast.Tuple(
+                            elts=fill_tuple, expr_context=gast.Load())))
+        else:
+            # In this case we should NOT append RETURN_NO_VALUE placeholder
+            if return_node.value is not None:
+                cur_func_node = self.function_def[-1]
+                if self.return_value_name[cur_func_node] is None:
+                    self.return_value_name[
+                        cur_func_node] = unique_name.generate(
+                            RETURN_VALUE_PREFIX)
+
+                assign_nodes.append(
+                    gast.Assign(
+                        targets=[
+                            gast.Name(
+                                id=self.return_value_name[cur_func_node],
+                                ctx=gast.Store(),
+                                annotation=None,
+                                type_comment=None)
+                        ],
+                        value=return_node.value))
+
         stmt_list[i:] = assign_nodes
         return True
 
