@@ -801,8 +801,11 @@ inline bool is_error(ncclResult_t nccl_result) {
 }
 
 inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
-  std::string msg(" Nccl error, ");
+  std::string msg(" Nccl error. ");
+#ifdef PADDLE_USE_DSO
   return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
+#endif
+  return msg;
 }
 
 inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
