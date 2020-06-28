@@ -654,6 +654,7 @@ def save(layer, model_path, input_spec=None, configs=None):
             pickle.dump(extra_var_info, f, protocol=2)
 
 
+@dygraph_only
 def load(model_path, configs=None):
     """
     Load model saved by ``paddle.imperative.jit.save`` or ``fluid.io.save_inference_model``

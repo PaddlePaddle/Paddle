@@ -32,6 +32,9 @@ from ..fluid.dygraph.parallel import prepare_context, ParallelEnv, DataParallel
 from ..fluid.dygraph.jit import TracedLayer, declarative
 from ..fluid.dygraph import ProgramTranslator
 
+from . import jit
+from .jit import *
+
 from ..fluid.dygraph.learning_rate_scheduler import NoamDecay, PiecewiseDecay, NaturalExpDecay, ExponentialDecay, \
         InverseTimeDecay, PolynomialDecay, CosineDecay
 

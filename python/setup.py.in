@@ -193,6 +193,7 @@ packages=['paddle',
           'paddle.nn.initializer',
           'paddle.metric',
           'paddle.imperative',
+          'paddle.imperative.jit',
           'paddle.tensor',
           ]
 
