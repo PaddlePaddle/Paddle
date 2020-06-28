@@ -445,7 +445,6 @@ def srccoms_extract(srcfile, wlist):
 def test(file_list):
     process_result = True
     for file in file_list:
-
         with open(file, 'r') as src:
             if not srccoms_extract(src, wlist):
                 process_result = False
@@ -466,6 +465,7 @@ def get_filenames():
     global whl_error
     methods = []
     whl_error = []
+    methods_rm = []
     get_incrementapi()
     API_spec = 'dev_pr_diff_api.spec'
     exception_get_filename = []
@@ -490,7 +490,9 @@ def get_filenames():
                 print("\n" + api + ' module is ' + module + "\n")
                 exception_get_filename.append(api)
             if filename != '':
-                if filename not in filenames:
+                if filename.startswith('../python/paddle/fluid/contrib'):
+                    print("Remove:-------contrib--------: %s" % filename)
+                elif filename not in filenames:
                     filenames.append(filename)
             # get all methods
             method = ''
@@ -511,8 +513,12 @@ def get_filenames():
             method = method + name
             if method not in methods:
                 methods.append(method)
+            if inspect.ismethod(eval(api)):
+                methods_rm.append(method)
     #os.remove(API_spec)
     print('methods: %s' % methods)
+    print('------------------------------------')
+    print('methods_rm: %s' % methods_rm)
     print('exception_get_filename: %s' % exception_get_filename)
     print('exception_get_method: %s' % exception_get_method)
     return filenames
@@ -591,12 +597,14 @@ else:
         print("Unrecognized argument:'", sys.argv[1], "' , 'cpu' or 'gpu' is ",
               "desired\n")
         sys.exit("Invalid arguments")
+
     print("API check -- Example Code")
     print("sample_test running under python", platform.python_version())
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
     cpus = multiprocessing.cpu_count()
     filenames = get_filenames()
+    print("ALL FILE: %s" % filenames)
     if len(filenames) == 0 and len(whl_error) == 0:
         print("-----API_PR.spec is the same as API_DEV.spec-----")
         exit(0)
