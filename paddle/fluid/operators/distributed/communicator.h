@@ -204,7 +204,7 @@ class Communicator {
                         const RpcCtxMap& recv_varname_to_ctx,
                         Scope* recv_scope) {}
   virtual void InitImpl(const paddle::framework::ProgramDesc& program,
-                        Scope* recv_scope) = 0;
+                        Scope* recv_scope) {}
 
   static Communicator* GetInstance() { return communicator_.get(); }
   static std::shared_ptr<Communicator> GetInstantcePtr() {
@@ -278,8 +278,6 @@ class AsyncCommunicator : public Communicator {
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
-    is_sgd_optimizer_ =
-        static_cast<bool>(std::stoi(envs.at("communicator_is_sgd_optimizer")));
     VLOG(0) << "AsyncCommunicator Initialized";
   }
 
@@ -288,9 +286,6 @@ class AsyncCommunicator : public Communicator {
 
   void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                 const RpcCtxMap& recv_varname_to_ctx,
-                Scope* recv_scope) override;
-
-  void InitImpl(const paddle::framework::ProgramDesc& program,
                 Scope* recv_scope) override;
 
   void MainThread();
@@ -316,7 +311,6 @@ class AsyncCommunicator : public Communicator {
   int send_wait_times_;
   int send_queue_size_;
   bool independent_recv_thread_;
-  bool is_sgd_optimizer_;
   int trainer_id_ = 0;
 
   std::unordered_map<std::string,
@@ -341,7 +335,6 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
 
   void InitEnvs() {
     min_send_grad_num_before_recv_ = 0;
-    is_sgd_optimizer_ = true;
     independent_recv_thread_ = false;
 
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
@@ -375,7 +368,6 @@ class SyncCommunicator : public HalfAsyncCommunicator {
 
   void InitEnvs() {
     min_send_grad_num_before_recv_ = 0;
-    is_sgd_optimizer_ = true;
     independent_recv_thread_ = false;
 
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
