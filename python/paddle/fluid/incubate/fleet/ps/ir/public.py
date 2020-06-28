@@ -419,7 +419,6 @@ class CompileTimeStrategy(object):
             for _, var in enumerate(send_vars):
                 recv_vars.append(self.grad_param_mapping[var])
 
-            ps_dispatcher.reset()
             eps = ps_dispatcher.dispatch(recv_vars)
 
             for i, ep in enumerate(eps):
