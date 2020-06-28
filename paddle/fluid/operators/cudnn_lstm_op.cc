@@ -33,14 +33,21 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                    "Input(init_h) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitC"),
                    "Input(init_c) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("State"),
+                   "Input(State) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Reserve"),
                    "Output(Reserve) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("StateOut"),
+                   "Output(StateOut) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("last_h"),
                    "Output(last_h) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("last_c"),
                    "Output(last_c) of LSTM should not be null.");
+    // PADDLE_ENFORCE_EQ(ctx->Inputs("State")[0], ctx->Outputs("StateOut")[0],
+    //                  platform::errors::InvalidArgument(
+    //                      "State and StateOut should share the same memory"));
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
@@ -52,6 +59,14 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("last_h", ctx->GetInputDim("InitH"));
     ctx->SetOutputDim("last_c", ctx->GetInputDim("InitC"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -84,10 +99,16 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) the learnable hidden-hidden weights."
              " The shape is (N), where N is total weight size of the LSTM. "
              " cudnn concatenate all the weight to one Tensor");
+    AddInput(
+        "State",
+        "(Tensor)  The global drop state to store in LSTM. (for training)");
     AddOutput("Reserve",
               "(Tensor, a temporary output Tensor to store the reserve_data "
               "of cudnn kernel.")
         .AsIntermediate();
+    AddOutput("StateOut",
+              "Share memory with State. "
+              "Store the global drop state when training");
     AddOutput("Out",
               "(Tensor) the hidden state of LSTM operator. "
               "The shape is ( seq_len x batch_size x hidden_size) if "
@@ -126,7 +147,8 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("num_layers", "the total layer number of the LSTM")
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
-    AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(-1);
+    std::random_device rnd;
+    AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(rnd());
     AddComment(R"DOC(
 CUDNN LSTM implementation
 
@@ -213,6 +235,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("InitC", this->Input("InitC"));
     op->SetInput("W", this->Input("W"));
     op->SetInput("Reserve", this->Output("Reserve"));
+    op->SetInput("State", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput(framework::GradVarName("last_c"), this->OutputGrad("last_c"));

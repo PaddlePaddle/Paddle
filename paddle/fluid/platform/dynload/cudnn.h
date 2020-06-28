@@ -116,6 +116,7 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnCreateDropoutDescriptor);                  \
   __macro(cudnnDropoutGetStatesSize);                     \
   __macro(cudnnSetDropoutDescriptor);                     \
+  __macro(cudnnRestoreDropoutDescriptor);                 \
   __macro(cudnnCreateRNNDescriptor);                      \
   __macro(cudnnSetRNNDescriptor);                         \
   __macro(cudnnGetRNNParamsSize);                         \

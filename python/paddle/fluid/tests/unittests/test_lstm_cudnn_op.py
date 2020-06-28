@@ -145,12 +145,14 @@ class TestCUDNNLstmOp(OpTest):
         #scope = core.Scope()
         #program = fluid.Program()
         #block = program.global_block()
+        state = np.ndarray((3932160)).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'W': flat_w,
             'InitH': init_h,
             'InitC': init_c,
+            'State': state
         }
         self.attrs = {
             'max_len': num_steps,
@@ -164,14 +166,18 @@ class TestCUDNNLstmOp(OpTest):
             'Out': output,
             "last_h": last_hidden,
             'last_c': last_cell,
-            'Reserve': np.ndarray((40000)).astype("uint8")
+            'Reserve': np.ndarray((40000)).astype("uint8"),
+            'StateOut': state
         }
 
     def test_output_with_place(self):
         # depend on the scope structure
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, atol=1e-5, no_check_set=['Reserve'], check_dygraph=True)
+            place,
+            atol=1e-5,
+            no_check_set=['Reserve', 'StateOut'],
+            check_dygraph=True)
 
     def test_grad_with_place(self):
         # depend on the scope structure

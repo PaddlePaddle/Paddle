@@ -57,8 +57,6 @@ struct CudnnRNNCache {
   size_t workspace_size_;
   framework::Tensor workspace_data_;
 
-  framework::Tensor dropout_state_;
-
   size_t max_length_;
 
   float dropout_prob_;
@@ -73,7 +71,8 @@ struct CudnnRNNCache {
   void init(cudnnHandle_t handle, const platform::Place &place, size_t max_len,
             int batch_size, int input_size, int hidden_size, int num_layers,
             float dropout_prob, bool is_bidirec, int seed, int weight_numel,
-            size_t *reserve_size_) {
+            size_t *reserve_size_, framework::Tensor *dropout_state_,
+            bool initialized) {
     max_length_ = max_len;
     batch_size_ = batch_size;
     input_size_ = input_size;
@@ -171,13 +170,24 @@ struct CudnnRNNCache {
         platform::dynload::cudnnCreateDropoutDescriptor(&dropout_desc_));
 
     size_t state_size;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
-    dropout_state_.Resize({static_cast<int64_t>(state_size)});
-    auto *dropout_state_data = dropout_state_.mutable_data<uint8_t>(place);
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
-        dropout_desc_, handle, dropout_prob_, dropout_state_data, state_size,
-        seed_));
+    if (!initialized) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+      dropout_state_->Resize({static_cast<int64_t>(state_size)});
+      auto *dropout_state_data = dropout_state_->mutable_data<uint8_t>(place);
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
+          dropout_desc_, handle, dropout_prob_, dropout_state_data, state_size,
+          seed_));
+    } else {
+      auto *dropout_state_data = dropout_state_->data<uint8_t>();
+      auto dropout_state_dims = dropout_state_->dims();
+      state_size = dropout_state_dims[0];
+      // LOG(INFO) << "dropout_state_dims[0]:" << state_size;
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnRestoreDropoutDescriptor(
+              dropout_desc_, handle, dropout_prob_, dropout_state_data,
+              state_size, 0));
+    }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateRNNDescriptor(&rnn_desc_));

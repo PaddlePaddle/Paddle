@@ -29,6 +29,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     const Tensor *x = ctx.Input<Tensor>("Input");
     const Tensor *init_h = ctx.Input<Tensor>("InitH");
     const Tensor *init_c = ctx.Input<Tensor>("InitC");
+    // const Tensor *state = ctx.Input<Tensor>("State");
 
     auto w = ctx.Input<Tensor>("W");
 
@@ -36,6 +37,7 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     Tensor *last_h = ctx.Output<Tensor>("last_h");
     Tensor *last_c = ctx.Output<Tensor>("last_c");
     Tensor *reserve = ctx.Output<Tensor>("Reserve");
+    Tensor *state_out = ctx.Output<Tensor>("StateOut");
 
     const T *x_data = x->data<T>();
     const T *init_h_data = init_h->data<T>();
@@ -54,24 +56,21 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
     bool is_test = ctx.Attr<bool>("is_test");
+    int seed = ctx.Attr<int>("seed");
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
 
     CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
 
-    std::random_device rnd;
-    int seed = ctx.Attr<int>("seed");
-    if (seed == -1) {
-      seed = rnd();
-    }
-
     auto input_w_numel = w->numel();
     auto batch_size = x->dims()[1];
     size_t reserve_size;
+    bool state_initialized = state_out->IsInitialized() ? true : false;
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
                           input_size, hidden_size, num_layers, dropout_prob,
-                          is_bidirec, seed, input_w_numel, &reserve_size);
+                          is_bidirec, seed, input_w_numel, &reserve_size,
+                          state_out, state_initialized);
 
     auto run_seq_len = x->dims()[0];
     auto *reserve_data = reserve->mutable_data<uint8_t>(
@@ -111,6 +110,7 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     auto *init_h = ctx.Input<Tensor>("InitH");
     auto *init_c = ctx.Input<Tensor>("InitC");
     auto *reserve = ctx.Input<Tensor>("Reserve");
+    auto *state = ctx.Input<Tensor>("State");
 
     auto *out = ctx.Input<Tensor>("Out");
     auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -209,21 +209,17 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
     int input_size = ctx.Attr<int>("input_size");
     int hidden_size = ctx.Attr<int>("hidden_size");
     int num_layers = ctx.Attr<int>("num_layers");
+    int seed = ctx.Attr<int>("seed");
 
     CudnnRNNCache *cudnn_rnn_cache = new CudnnRNNCache();
-
-    std::random_device rnd;
-    int seed = ctx.Attr<int>("seed");
-    if (seed == -1) {
-      seed = rnd();
-    }
 
     auto input_w_numel = weight->numel();
     auto batch_size = input->dims()[1];
     size_t reserve_size;
     cudnn_rnn_cache->init(handle, ctx.GetPlace(), max_len, batch_size,
                           input_size, hidden_size, num_layers, dropout_prob,
-                          is_bidirec, seed, input_w_numel, &reserve_size);
+                          is_bidirec, seed, input_w_numel, &reserve_size,
+                          const_cast<Tensor *>(state), true);
 
     auto work_data = cudnn_rnn_cache->workspace_data_.data<uint8_t>();
     const uint8_t *reserve_data = reserve->data<uint8_t>();
