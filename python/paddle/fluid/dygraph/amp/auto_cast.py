@@ -148,8 +148,11 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         original_white_list, original_black_list = tracer._get_amp_op_list()
         tracer._set_amp_op_list(_white_list, _black_list)
         # set amp related flags
-        original_flags = get_flags(AMP_RELATED_FLAGS)
-        set_flags(AMP_RELATED_FLAGS_SETTING)
+        # Currently, if FLAGS_cudnn_batchnorm_spatial_persistent is set True in amp_guard,
+        # batch_norm can run in fast mode, but batch_norm_grad can not if backward if not executed insise amp_guard.
+        # So, users need to set related flags manually.
+        # original_flags = get_flags(AMP_RELATED_FLAGS)
+        # set_flags(AMP_RELATED_FLAGS_SETTING)
 
     # restore status
     try:
@@ -158,4 +161,4 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         if tracer:
             tracer._enable_autocast = original_enable
             tracer._set_amp_op_list(original_white_list, original_black_list)
-            set_flags(original_flags)
+            # set_flags(original_flags)

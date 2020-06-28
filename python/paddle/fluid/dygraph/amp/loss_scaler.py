@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-from paddle.fluid import core, dygraph
+from paddle.fluid import core
+from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _varbase_creator
 from paddle.fluid.data_feeder import check_type
 from ...wrapped_decorator import signature_safe_contextmanager, wrap_decorator
@@ -77,9 +78,8 @@ class AmpScaler(object):
             self._incr_count = 0
             self._decr_count = 0
 
-            self._found_inf = dygraph.to_variable(
-                np.array([0]).astype(np.int32))
-            self._scale = dygraph.to_variable(
+            self._found_inf = to_variable(np.array([0]).astype(np.int32))
+            self._scale = to_variable(
                 np.array([self._init_loss_scaling]).astype(np.float32))
             self._cache_founf_inf = None
 
