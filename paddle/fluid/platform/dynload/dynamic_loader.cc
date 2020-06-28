@@ -117,8 +117,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
 
-// TODO(chenweihang): This path is used to search which libs? this should not be
-// set here
+// TODO(chenweihang): This path is used to search which libs?
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
 // bring System Integrity Projection (SIP), if dso_handle
 // is null, search from default package path in Mac OS.
@@ -134,6 +133,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 
 /*
  * We define three priorities for dynamic library search:
+ *
  * First: Search for the path specified by the user
  * Second: Search the system default path
  * Third: Search for a special path corresponding to
@@ -164,31 +164,32 @@ static inline void* GetDsoHandleFromSearchPath(
     }
   }
 
-  // 4. logging warning if exists
-  if (!warning_msg.empty()) {
+  // 4. [If Failed] logging warning if exists
+  if (nullptr == dso_handle && !warning_msg.empty()) {
     LOG(WARNING) << warning_msg;
   }
 
-  // 5. logging or throw error info
-  auto error_msg =
-      "Failed to find dynamic library: %s ( %s ) \n Please specify "
-      "its path correctly using following ways: \n   set "
-      "environment variable LD_LIBRARY_PATH on Linux or "
-      "DYLD_LIBRARY_PATH on Mac OS. \n   For instance, issue command: "
-      "export LD_LIBRARY_PATH=... \n   Note: After Mac OS 10.11, "
-      "using the DYLD_LIBRARY_PATH is impossible unless System "
-      "Integrity Protection (SIP) is disabled.";
+  // 5. [If Failed] logging or throw error info
+  if (nullptr == dso_handle) {
+    auto error_msg =
+        "Failed to find dynamic library: %s ( %s ) \n Please specify "
+        "its path correctly using following ways: \n   set "
+        "environment variable LD_LIBRARY_PATH on Linux or "
+        "DYLD_LIBRARY_PATH on Mac OS. \n   For instance, issue command: "
+        "export LD_LIBRARY_PATH=... \n   Note: After Mac OS 10.11, "
+        "using the DYLD_LIBRARY_PATH is impossible unless System "
+        "Integrity Protection (SIP) is disabled.";
 #if !defined(_WIN32)
-  auto errorno = dlerror();
+    auto errorno = dlerror();
 #else
-  auto errorno = GetLastError();
+    auto errorno = GetLastError();
 #endif  // !_WIN32
-  if (throw_on_error) {
-    // NOTE: Special error report case, no need to change its format
-    PADDLE_ENFORCE_NOT_NULL(
-        dso_handle, platform::errors::NotFound(error_msg, dso_name, errorno));
-  } else if (nullptr == dso_handle) {
-    LOG(WARNING) << string::Sprintf(error_msg, dso_name, errorno);
+    if (throw_on_error) {
+      // NOTE: Special error report case, no need to change its format
+      PADDLE_THROW(platform::errors::NotFound(error_msg, dso_name, errorno));
+    } else {
+      LOG(WARNING) << string::Sprintf(error_msg, dso_name, errorno);
+    }
   }
 
   return dso_handle;
