@@ -340,6 +340,10 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
       : AsyncCommunicator(envs) {}
 
   void InitEnvs() {
+    min_send_grad_num_before_recv_ = 0;
+    is_sgd_optimizer_ = true;
+    independent_recv_thread_ = false;
+
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
@@ -371,7 +375,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
 
   void InitEnvs() {
     min_send_grad_num_before_recv_ = 0;
-    is_sgd_optimizer_ = false;
+    is_sgd_optimizer_ = true;
     independent_recv_thread_ = false;
 
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
