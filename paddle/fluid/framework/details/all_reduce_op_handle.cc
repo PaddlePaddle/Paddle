@@ -182,21 +182,13 @@ void AllReduceOpHandle::NCCLAllReduceFunc(
 void AllReduceOpHandle::SyncNCCLAllReduce() {
   if (FLAGS_sync_nccl_allreduce) {
     for (auto &p : places_) {
-      int dev_id = boost::get<platform::CUDAPlace>(p).device;
+      int dev_id = BOOST_GET_CONST(platform::CUDAPlace, p).device;
       auto *nccl_ctxs =
           nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
       auto &nccl_ctx = nccl_ctxs->at(dev_id);
       auto stream = nccl_ctx.stream();
-      cudaError_t e_sync = cudaStreamSynchronize(stream);
-      if (e_sync != 0) {
-        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
-      }
-
-      cudaError_t e_get = cudaGetLastError();
-      if (e_get != 0) {
-        LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-                   << " errno:" << e_get;
-      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
     }
   }
 }

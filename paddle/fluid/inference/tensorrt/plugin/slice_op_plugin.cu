@@ -35,10 +35,8 @@ __global__ void SliceKernel(int num, int dims, const T *input,
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   extern __shared__ int shared_data[];
 
-  if (threadIdx.x == 0) {
-    for (int i = 0; i < dims * 3; i++) {
-      shared_data[i] = offsets_info[i];
-    }
+  for (int i = threadIdx.x; i < dims * 3; i += blockDim.x) {
+    shared_data[i] = offsets_info[i];
   }
   __syncthreads();
 
@@ -68,10 +66,7 @@ nvinfer1::DimsExprs SlicePluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
     nvinfer1::IExprBuilder &expr_builder) {
   auto in_dims = inputs[0];
-  nvinfer1::DimsExprs ret;
-  for (int i = 0; i < ret.nbDims; i++) {
-    ret.d[i] = in_dims.d[i];
-  }
+  nvinfer1::DimsExprs ret = in_dims;
   // start, ends should greater 0
   for (size_t i = 0; i < axes_.size(); i++) {
     int start = starts_[i];

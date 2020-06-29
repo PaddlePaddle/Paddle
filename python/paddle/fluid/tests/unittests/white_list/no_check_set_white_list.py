@@ -23,4 +23,5 @@ no_check_set_white_list = [
     'unsqueeze2',
     'cross_entropy2',
     'seed',
+    'amp_check_finite_and_scale',
 ]

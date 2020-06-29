@@ -18,7 +18,7 @@ import six
 import numpy as np
 import threading
 import paddle
-from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
+from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places, _current_expected_place
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
@@ -27,6 +27,7 @@ from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoade
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
+import warnings
 from .dataset import DatasetBase, InMemoryDataset
 
 ### Dygraph DataLoader configs ###
@@ -313,9 +314,9 @@ class DataLoader(object):
         assert num_workers >= 0, "num_workers should be a non-negative value"
         if num_workers > 0 and (sys.platform == 'darwin' or
                                 sys.platform == 'win32'):
-            logging.warning(
-                "multi-process mode not support MacOs and Windows currently." \
-                " use signle-process with num_workers = 0 instead")
+            warnings.warn(
+                "DataLoader with multi-process mode is not supported on MacOs and Windows currently." \
+                " Please use signle-process mode with num_workers = 0 instead")
             num_workers = 0
         self.num_workers = num_workers
 
@@ -670,13 +671,13 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._use_double_buffer = use_double_buffer
 
         if not iterable:
-            logging.warning(
-                "Please NOTE: dygraph can support iterable mode only. Change to iterable mode."
+            warnings.warn(
+                "Please NOTE: DygraphGeneratorLoader supports iterable mode only. Change to iterable mode."
             )
         self._iterable = True
         if not return_list:
-            logging.warning(
-                "Please NOTE: dygraph can support return as list only. Change to return as list."
+            warnings.warn(
+                "Please NOTE: DygraphGeneratorLoader supports returning as list only. Change to return as list."
             )
         self._return_list = True
 
@@ -684,8 +685,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._use_multiprocess = use_multiprocess
         if self._use_multiprocess and (sys.platform == 'darwin' or
                                        sys.platform == 'win32'):
-            logging.warning(
-                "NOTE: The multiprocess mode does not currently support MacOs and Windows."
+            warnings.warn(
+                "NOTE: DygraphGeneratorLoader with multiprocess mode is not currently supported on MacOs and Windows."
             )
             self._use_multiprocess = False
 
@@ -941,10 +942,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def set_batch_generator(self, reader, places=None):
         self._batch_reader = reader
-        assert places is not None, "Places cannot be None when DataLoader is iterable"
+        if places is None:
+            places = _current_expected_place()
         self._places = _convert_places(places)
         assert len(self._places) == 1, \
-            "Number of places must be 1 in dygraph mode"
+            "Number of places must be 1 in imperative mode"
         return self
 
 

@@ -25,7 +25,8 @@ class ScatterNdAddOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "This kernel only runs on GPU device.");
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto *X = ctx.Input<Tensor>("X");
     auto *Ids = ctx.Input<Tensor>("Index");
     auto *Updates = ctx.Input<Tensor>("Updates");
@@ -35,12 +36,15 @@ class ScatterNdAddOpCUDAKernel : public framework::OpKernel<T> {
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(
-        index_type_match, true,
-        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+    PADDLE_ENFORCE_EQ(index_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Index holds the wrong type, it holds [%s], but "
+                          "desires to be [%s] or [%s].",
+                          paddle::framework::DataTypeToString(index_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
     if (index_type == framework::proto::VarType::INT32) {
       GPUScatterNdAdd<DeviceContext, T, int32_t>(ctx, *Updates, *Ids, Out);
     } else {
@@ -54,7 +58,8 @@ class ScatterNdAddGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "This kernel only runs on GPU device.");
+                      platform::errors::PreconditionNotMet(
+                          "This kernel only runs on GPU device."));
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dUpdates = ctx.Output<Tensor>(framework::GradVarName("Updates"));
     auto *Ids = ctx.Input<Tensor>("Index");

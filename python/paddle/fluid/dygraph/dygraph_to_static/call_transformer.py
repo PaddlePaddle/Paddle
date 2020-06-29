@@ -32,13 +32,35 @@ class CallTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
 
+    def _no_need_convert_call(self, node):
+        """
+        Determines whether a function needs to be transformed by `convert_call`.
+        It doesn't need to be transformed when a function satisfies the following conditions:
+          1. It's a api of paddle
+          2. It's a python builtin function not include `len`
+        """
+        assert isinstance(node, gast.Call)
+        if is_paddle_api(node):
+            return True
+
+        func_str = ast_to_source_code(node.func).strip()
+        try:
+            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin_len, is_builtin
+            is_builtin = eval("is_builtin({})".format(func_str))
+            is_builtin_len = eval("is_builtin_len({})".format(func_str))
+            return is_builtin and not is_builtin_len
+        except Exception:
+            return False
+
     def transform(self):
         self.visit(self.root)
 
     def visit_Call(self, node):
         self.generic_visit(node)
-        if is_paddle_api(node):
+
+        if self._no_need_convert_call(node):
             return node
+
         func_str = ast_to_source_code(node.func).strip()
         new_func_str = "fluid.dygraph.dygraph_to_static.convert_call({})".format(
             func_str)

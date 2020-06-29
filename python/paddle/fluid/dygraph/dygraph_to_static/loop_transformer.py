@@ -22,13 +22,11 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import RenameTransformer
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
 
 __all__ = ['LoopTransformer', 'NameVisitor']
 
@@ -58,62 +56,15 @@ def create_while_node(condition_name, body_name, loop_var_names):
     ]
     while_args.append(gast.List(elts=assign_targets, ctx=gast.Param()))
 
-    while_func_id = gast.parse('fluid.layers.while_loop').body[0].value
+    while_func_id = gast.parse(
+        'fluid.dygraph.dygraph_to_static.convert_operators.convert_while_loop'
+    ).body[0].value
     while_node = gast.Call(func=while_func_id, args=while_args, keywords=[])
     assign_node = gast.Assign(
         targets=[gast.Tuple(
             elts=assign_targets, ctx=gast.Store())],
         value=while_node)
     return assign_node
-
-
-class LogicalOpTransformer(gast.NodeTransformer):
-    """
-    Transform python boolean op into Paddle logical op
-    """
-
-    def __init__(self, node):
-        self.root = node
-
-    def transform(self):
-        return self.visit(self.root)
-
-    def visit_UnaryOp(self, node):
-        self.generic_visit(node)
-        if isinstance(node.op, gast.Not):
-            arg = ast_to_source_code(node.operand)
-            new_node_str = "fluid.layers.logical_not({})".format(arg)
-            # gast.parse returns Module(body=[expr(value=...)])
-            new_node = gast.parse(new_node_str).body[0].value
-            return new_node
-        return node
-
-    def visit_BoolOp(self, node):
-        self.generic_visit(node)
-        if isinstance(node.op, gast.And):
-            new_node = self._create_bool_op_node(node.values, 'and')
-        elif isinstance(node.op, gast.Or):
-            new_node = self._create_bool_op_node(node.values, 'or')
-        else:
-            raise TypeError(
-                "Only supports and/or syntax in control flow if statement.")
-        return new_node
-
-    def _create_bool_op_node(self, nodes, api_type):
-        assert len(
-            nodes
-        ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
-            len(nodes))
-        if len(nodes) > 2:
-            # Creates logic_and/logic_or node recursively.
-            pre_assign_node = self._create_bool_op_node(nodes[:2], api_type)
-            nodes = [pre_assign_node] + nodes[2:]
-        args = [ast_to_source_code(child) for child in nodes]
-        new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
-            api_type, args[0], args[1])
-        # gast.parse return Module(body=[expr(...)])
-        new_node = gast.parse(new_node_str).body[0].value
-        return new_node
 
 
 class NameVisitor(gast.NodeVisitor):
@@ -135,7 +86,8 @@ class NameVisitor(gast.NodeVisitor):
 
         # Mapping from gast.While/gast.For to variable nodes
         self.before_loop_body_vars = defaultdict(set)
-        self.in_loop_vars = defaultdict(set)
+        # NOTE: Use ordered list as dict value
+        self.in_loop_vars = defaultdict(list)
 
         # Mapping from gast.While/gast.For to variable nodes which is condition
         # of loop or being modified during the loop
@@ -149,10 +101,6 @@ class NameVisitor(gast.NodeVisitor):
 
         self.visit(root_node)
 
-    def is_control_flow_loop(self, node):
-        # TODO: make a better condition
-        return True
-
     def get_loop_var_names(self, node):
         assert isinstance(
             node, (gast.While, gast.For)), "Input node is not gast loop node"
@@ -160,15 +108,30 @@ class NameVisitor(gast.NodeVisitor):
         create_var_names = set()
         read_context = {type(gast.Load()), type(gast.AugLoad())}
 
-        in_loop_vars = self.in_loop_vars[node]
+        in_loop_vars_list = self.in_loop_vars[node]
+
+        # get dict `var_name_to_ctxs`
+        var_name_to_ctxs = defaultdict(list)
+        for var_node in in_loop_vars_list:
+            var_name_to_ctxs[self._var_node_to_name(var_node)].append(
+                var_node.ctx)
+
+        in_loop_vars = set(in_loop_vars_list)
+        in_loop_vars = self._remove_unnecessary_vars(in_loop_vars, node)
         in_loop_name_strs = self._var_nodes_to_names(in_loop_vars)
+
         before_loop_body_vars = self.before_loop_body_vars[node]
+        before_loop_body_vars = self._remove_unnecessary_vars(
+            before_loop_body_vars, node)
         before_loop_name_strs = self._var_nodes_to_names(before_loop_body_vars)
+
         after_loop_vars = self.current_seen_vars - before_loop_body_vars - in_loop_vars
+        after_loop_vars = self._remove_unnecessary_vars(after_loop_vars, node)
         after_loop_name_strs = self._var_nodes_to_names(after_loop_vars,
                                                         read_context)
         condition_vars = self.condition_vars[node]
         condition_names = self._var_nodes_to_names(condition_vars)
+
         write_vars = self.write_in_loop[node]
         write_names = self._var_nodes_to_names(write_vars)
 
@@ -176,7 +139,6 @@ class NameVisitor(gast.NodeVisitor):
         for var in in_loop_vars:
             wrapper = self.node_to_wrapper_map[var]
             name_to_type[self._var_node_to_name(var)] = wrapper.node_var_type
-
         for name in in_loop_name_strs:
             if name in before_loop_name_strs:
                 # If a variable is used in loop and created before loop
@@ -199,6 +161,23 @@ class NameVisitor(gast.NodeVisitor):
                 # vars out
                 loop_var_names.add(name)
                 create_var_names.add(name)
+            else:
+                # If a variable is used and created in loop, but used before created,
+                # it should be in loop_var and we should create it.
+
+                # For example, `var_a` should be in loop_var and we should create it.
+                #
+                #   res = 0
+                #   for i, x in enumerate(x_array):
+                #       if i > 2:
+                #           x = func1(var_a)
+                #       var_a = func2(x)
+                #
+
+                if isinstance(var_name_to_ctxs[name][0], gast.Load):
+                    loop_var_names.add(name)
+                    create_var_names.add(name)
+
         return loop_var_names, create_var_names
 
     def visit_Name(self, node):
@@ -214,11 +193,11 @@ class NameVisitor(gast.NodeVisitor):
             type(gast.Store()), type(gast.AugStore()), type(gast.Del())
         }
         for loop_node in self.current_loop:
-            self.in_loop_vars[loop_node].add(node)
+            self.in_loop_vars[loop_node].append(node)
             if type(node.ctx) in write_context:
                 self.write_in_loop[loop_node].add(node)
-            if self.in_condition:
-                self.condition_vars[loop_node].add(node)
+        if self.in_condition:
+            self.condition_vars[loop_node].add(node)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
@@ -257,7 +236,7 @@ class NameVisitor(gast.NodeVisitor):
         self.current_seen_vars.add(node)
 
         for loop_node in self.current_loop:
-            self.in_loop_vars[loop_node].add(node)
+            self.in_loop_vars[loop_node].append(node)
 
         # sub-nodes are visited during get_attribute_full_name and we shouldn't
         # visit again
@@ -305,10 +284,95 @@ class NameVisitor(gast.NodeVisitor):
         return False
 
     def _is_call_func_name_node(self, node):
-        parent_node = self.node_to_wrapper_map[node].parent.node
+        parent_node = self._get_parent_node(node)
         if isinstance(parent_node, gast.Call) and parent_node.func == node:
             return True
         return False
+
+    def _get_parent_node(self, node):
+        wrapper_node = self.node_to_wrapper_map.get(node)
+        if wrapper_node:
+            parent_node = wrapper_node.parent.node
+            return parent_node
+        return None
+
+    def _remove_unnecessary_vars(self, loop_vars, loop_node):
+        """
+        Remove unnecessary vars from before_loop_vars, after_loop_vars or in_loop_vars about loop_node.
+            1. Remove target vars of gast.For from before_loop_vars or after_loop_vars.
+            2. Remove vars only in gast.comprehension.
+        :param loop_vars: before_loop_vars, after_loop_vars or in_loop_vars of loop_node.
+        :param loop_node: Current loop node.
+        """
+
+        vars_of_list_generator = set()
+        target_vars_of_for_node = set()
+
+        for name_node in loop_vars:
+            if not isinstance(name_node, gast.Name):
+                continue
+
+            parent_node = self._get_parent_node(name_node)
+
+            # NOTE: gast.For.target or gast.comprehension.target can be gast.Tuple.
+            #  For examples:
+            #   1) `for i, j in enumerate(x)` has two target vars: i and j
+            #   2) `[x for x,y in array]` has two target vars: x and y
+            if isinstance(parent_node, gast.Tuple):
+                parent_node = self._get_parent_node(parent_node)
+
+            # 1. Get vars only in gast.comprehension.
+            # For examples:
+            #  1) [x for x,y in array] -> x, x, y
+            #  2) [f(x) for x in array] -> x
+            #  3) [func(x, y) for x in array] -> x, x
+            if isinstance(parent_node, gast.comprehension):
+                # 1.1 target vars in list/set comprehensions
+                target_node = parent_node.target
+                if isinstance(target_node, gast.Tuple):
+                    target_vars = target_node.elts
+                else:
+                    target_vars = [target_node]
+
+                vars_of_list_generator = vars_of_list_generator | set(
+                    target_vars)
+
+                # 1.2 vars from target vars used in elt_node
+                target_var_names = {var.id for var in target_vars}
+                listcomp_node = self._get_parent_node(parent_node)
+                elt_node = listcomp_node.elt
+                if isinstance(elt_node, gast.Name):
+                    if elt_node.id in target_var_names:
+                        vars_of_list_generator.add(elt_node)
+                for child_node in gast.walk(elt_node):
+                    if isinstance(child_node, gast.Name):
+                        if child_node.id in target_var_names:
+                            vars_of_list_generator.add(child_node)
+
+            # 2. Get target vars or vars from target vars used in for-loop.
+            elif isinstance(parent_node,
+                            gast.For) and parent_node is not loop_node:
+                # 2.1 target vars in gast.For node.
+                target_node = parent_node.target
+                if isinstance(target_node, gast.Tuple):
+                    target_vars = target_node.elts
+                else:
+                    target_vars = [target_node]
+
+                target_vars_of_for_node = target_vars_of_for_node | set(
+                    target_vars)
+
+        # 2.2 vars from target vars used in for-loop
+        target_vars_name_strs = {var.id for var in target_vars_of_for_node}
+        for var in loop_vars:
+            if not isinstance(var, gast.Name):
+                continue
+            if var.id in target_vars_name_strs and var not in self.condition_vars[
+                    loop_node]:
+                target_vars_of_for_node.add(var)
+
+        removed_vars = target_vars_of_for_node | vars_of_list_generator
+        return loop_vars - removed_vars
 
 
 class LoopTransformer(gast.NodeTransformer):
@@ -319,7 +383,7 @@ class LoopTransformer(gast.NodeTransformer):
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of WhileTransformer."
+        ), "Input non-AstNodeWrapper node for the initialization of LoopTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.name_visitor = NameVisitor(self.root)
@@ -353,86 +417,43 @@ class LoopTransformer(gast.NodeTransformer):
             else:
                 i += 1
 
-    def get_for_range_node(self, node):
-        if not isinstance(node.iter, gast.Call):
-            return None
-        if not isinstance(node.iter.func, gast.Name):
-            return None
-        if node.iter.func.id != "range":
-            return None
-        return node.iter
-
-    def get_for_args_stmts(self, iter_name, args_list):
-        '''
-        Returns 3 gast stmt nodes for argument.
-        1. Initailize of iterate variable
-        2. Condition for the loop
-        3. Statement for changing of iterate variable during the loop
-        NOTE(TODO): Python allows to access iteration variable after loop, such
-           as "for i in range(10)" will create i = 9 after the loop. But using
-           current conversion will make i = 10. We should find a way to change it
-        '''
-        len_range_args = len(args_list)
-        assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
-        if len_range_args == 1:
-            init_stmt = get_constant_variable_node(iter_name, 0)
-        else:
-            init_stmt = gast.Assign(
-                targets=[
-                    gast.Name(
-                        id=iter_name,
-                        ctx=gast.Store(),
-                        annotation=None,
-                        type_comment=None)
-                ],
-                value=args_list[0])
-
-        range_max_node = args_list[0] if len_range_args == 1 else args_list[1]
-        step_node = args_list[2] if len_range_args == 3 else gast.Constant(
-            value=1, kind=None)
-
-        cond_stmt = gast.Compare(
-            left=gast.BinOp(
-                left=gast.Name(
-                    id=iter_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None),
-                op=gast.Add(),
-                right=step_node),
-            ops=[gast.LtE()],
-            comparators=[range_max_node])
-
-        change_stmt = gast.AugAssign(
-            target=gast.Name(
-                id=iter_name,
-                ctx=gast.Store(),
-                annotation=None,
-                type_comment=None),
-            op=gast.Add(),
-            value=step_node)
-
-        return init_stmt, cond_stmt, change_stmt
-
     def get_for_stmt_nodes(self, node):
         # TODO: consider for - else in python
-        if not self.name_visitor.is_control_flow_loop(node):
+
+        # 1. get key statements for different cases
+        # NOTE 1: three key statements:
+        #   1). init_stmts: list[node], prepare nodes of for loop, may not only one
+        #   2). cond_stmt: node, condition node to judge whether continue loop
+        #   3). body_stmts: list[node], updated loop body, sometimes we should change
+        #       the original statement in body, not just append new statement
+        #
+        # NOTE 2: The following `for` statements will be transformed to `while` statements:
+        #   1). for x in range(*)
+        #   2). for x in iter_var
+        #   3). for i, x in enumerate(*)
+
+        current_for_node_parser = ForNodeVisitor(node)
+        stmts_tuple = current_for_node_parser.parse()
+        if stmts_tuple is None:
             return [node]
+        init_stmts, cond_stmt, body_stmts = stmts_tuple
 
-        # TODO: support non-range case
-        range_call_node = self.get_for_range_node(node)
-        if range_call_node is None:
-            return [node]
-
-        if not isinstance(node.target, gast.Name):
-            return [node]
-        iter_var_name = node.target.id
-
-        init_stmt, cond_stmt, change_stmt = self.get_for_args_stmts(
-            iter_var_name, range_call_node.args)
-
+        # 2. get original loop vars
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
+        # NOTE: in 'for x in var' or 'for i, x in enumerate(var)' cases,
+        # we need append new loop var & remove useless loop var
+        #   1. for x in var -> x is no need
+        #   2. for i, x in enumerate(var) -> x is no need
+        if current_for_node_parser.is_for_iter(
+        ) or current_for_node_parser.is_for_enumerate_iter():
+            iter_var_name = current_for_node_parser.iter_var_name
+            iter_idx_name = current_for_node_parser.iter_idx_name
+            loop_var_names.add(iter_idx_name)
+            if iter_var_name not in create_var_names:
+                loop_var_names.remove(iter_var_name)
+
+        # 3. prepare result statement list
         new_stmts = []
         # Python can create variable in loop and use it out of loop, E.g.
         #
@@ -445,12 +466,10 @@ class LoopTransformer(gast.NodeTransformer):
             if "." not in name:
                 new_stmts.append(create_static_variable_gast_node(name))
 
-        new_stmts.append(init_stmt)
+        # 4. append init statements
+        new_stmts.extend(init_stmts)
 
-        # for x in range(10) in dygraph should be convert into static tensor + 1 <= 10
-        for name in loop_var_names:
-            new_stmts.append(to_static_variable_gast_node(name))
-
+        # 5. create & append condition function node
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_CONDITION_PREFIX),
             args=gast.arguments(
@@ -478,9 +497,9 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(condition_func_node)
 
-        new_body = node.body
-        new_body.append(change_stmt)
-        new_body.append(
+        # 6. create & append loop body function node
+        # append return values for loop body
+        body_stmts.append(
             gast.Return(value=generate_name_node(
                 loop_var_names, ctx=gast.Load())))
         body_func_node = gast.FunctionDef(
@@ -499,7 +518,7 @@ class LoopTransformer(gast.NodeTransformer):
                 kw_defaults=None,
                 kwarg=None,
                 defaults=[]),
-            body=new_body,
+            body=body_stmts,
             decorator_list=[],
             returns=None,
             type_comment=None)
@@ -510,6 +529,7 @@ class LoopTransformer(gast.NodeTransformer):
                     name, unique_name.generate(GENERATE_VARIABLE_PREFIX))
         new_stmts.append(body_func_node)
 
+        # 7. create & append while loop node
         while_loop_node = create_while_node(condition_func_node.name,
                                             body_func_node.name, loop_var_names)
         new_stmts.append(while_loop_node)
@@ -517,10 +537,6 @@ class LoopTransformer(gast.NodeTransformer):
         return new_stmts
 
     def get_while_stmt_nodes(self, node):
-        # TODO: consider while - else in python
-        if not self.name_visitor.is_control_flow_loop(node):
-            return [node]
-
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
         new_stmts = []
@@ -536,13 +552,6 @@ class LoopTransformer(gast.NodeTransformer):
         for name in create_var_names:
             if "." not in name:
                 new_stmts.append(create_static_variable_gast_node(name))
-
-        # while x < 10 in dygraph should be convert into static tensor < 10
-        for name in loop_var_names:
-            new_stmts.append(to_static_variable_gast_node(name))
-
-        logical_op_transformer = LogicalOpTransformer(node.test)
-        cond_value_node = logical_op_transformer.transform()
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
@@ -560,10 +569,11 @@ class LoopTransformer(gast.NodeTransformer):
                 kw_defaults=None,
                 kwarg=None,
                 defaults=[]),
-            body=[gast.Return(value=cond_value_node)],
+            body=[gast.Return(value=node.test)],
             decorator_list=[],
             returns=None,
             type_comment=None)
+
         for name in loop_var_names:
             if "." in name:
                 rename_transformer = RenameTransformer(condition_func_node)

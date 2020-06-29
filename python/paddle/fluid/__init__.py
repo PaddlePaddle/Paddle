@@ -51,6 +51,7 @@ from . import trainer_desc
 from . import io
 from . import evaluator
 from . import initializer
+from .initializer import set_global_initializer
 from . import layers
 from . import dygraph
 from . import contrib
@@ -89,6 +90,8 @@ from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
+enable_imperative = enable_dygraph
+disable_imperative = disable_dygraph
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + transpiler.__all__ + \
@@ -104,6 +107,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'dygraph',
         'enable_dygraph',
         'disable_dygraph',
+        'enable_imperative',
+        'disable_imperative',
         'transpiler',
         'nets',
         'optimizer',

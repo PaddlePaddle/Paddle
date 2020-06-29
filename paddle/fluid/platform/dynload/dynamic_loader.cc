@@ -30,12 +30,12 @@ DEFINE_string(cudnn_dir, "",
 
 DEFINE_string(cuda_dir, "",
               "Specify path for loading cuda library, such as libcublas, "
-              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
-              "dlopen will search cuda from LD_LIBRARY_PATH");
+              "libcurand, libcusolver. For instance, /usr/local/cuda/lib64. "
+              "If default, dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(nccl_dir, "",
-              "Specify path for loading nccl library, such as libcublas, "
-              "libcurand. For instance, /usr/local/cuda/lib64. If default, "
+              "Specify path for loading nccl library, such as libnccl.so. "
+              "For instance, /usr/local/cuda/lib64. If default, "
               "dlopen will search cuda from LD_LIBRARY_PATH");
 
 DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
@@ -58,6 +58,7 @@ struct PathNode {
 };
 
 static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;
+static constexpr char linux_cudnn_lib_path[] = "/usr/local/cuda/lib64";
 
 static PathNode s_py_site_pkg_path;
 
@@ -65,6 +66,8 @@ static PathNode s_py_site_pkg_path;
 static constexpr char* win_cublas_lib = "cublas64_" PADDLE_CUDA_BINVER ".dll";
 static constexpr char* win_curand_lib = "curand64_" PADDLE_CUDA_BINVER ".dll";
 static constexpr char* win_cudnn_lib = "cudnn64_" PADDLE_CUDNN_BINVER ".dll";
+static constexpr char* win_cusolver_lib =
+    "cusolver64_" PADDLE_CUDA_BINVER ".dll";
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -162,10 +165,10 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
   }
   auto error_msg =
       "Failed to find dynamic library: %s ( %s ) \n Please specify "
-      "its path correctly using following ways: \n Method. set "
+      "its path correctly using following ways: \n   set "
       "environment variable LD_LIBRARY_PATH on Linux or "
-      "DYLD_LIBRARY_PATH on Mac OS. \n For instance, issue command: "
-      "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
+      "DYLD_LIBRARY_PATH on Mac OS. \n   For instance, issue command: "
+      "export LD_LIBRARY_PATH=... \n   Note: After Mac OS 10.11, "
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
 #if !defined(_WIN32)
@@ -198,7 +201,11 @@ void* GetCUDNNDsoHandle() {
 #elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, win_cudnn_lib);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cudnn_dir, "libcudnn.so", false);
+  std::string linux_cudnn_path = linux_cudnn_lib_path;
+  if (!FLAGS_cudnn_dir.empty()) {
+    linux_cudnn_path = FLAGS_cudnn_dir;
+  }
+  return GetDsoHandleFromSearchPath(linux_cudnn_path, "libcudnn.so", false);
 #endif
 }
 
@@ -224,19 +231,29 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+void* GetCusolverDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cusolver_lib);
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
+#endif
+}
+
 void* GetNVRTCDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvrtc.so", false);
 #endif
 }
 
 void* GetCUDADsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.dylib", false);
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so");
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcuda.so", false);
 #endif
 }
 

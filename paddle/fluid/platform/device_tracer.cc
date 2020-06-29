@@ -40,6 +40,9 @@ namespace {
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
+// stack to strore event sunch as pe and so on
+static std::deque<Event *> main_thread_annotation_stack{};
+static std::deque<std::string> main_thread_annotation_stack_name{};
 
 std::map<uint32_t, int32_t> system_thread_id_map;
 
@@ -566,7 +569,7 @@ class DeviceTracerImpl : public DeviceTracer {
         } else if (platform::is_gpu_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPlace);
           event->set_device_id(
-              boost::get<platform::CUDAPlace>(r.place).GetDeviceId());
+              BOOST_GET_CONST(platform::CUDAPlace, r.place).GetDeviceId());
         } else if (platform::is_cuda_pinned_place(r.place)) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
         } else {
@@ -638,15 +641,50 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
+// In order to record PE time, we add main_thread_annotation_stack
+// for all event between PE run, we treat it as PE's child Event,
+// so when event is not in same thread of PE event, we need add
+// father event(PE::run event) for this event
 void SetCurAnnotation(Event *event) {
   if (!annotation_stack.empty()) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
   }
+  if (annotation_stack.empty() && !main_thread_annotation_stack.empty() &&
+      main_thread_annotation_stack.back()->thread_id() != event->thread_id()) {
+    event->set_parent(main_thread_annotation_stack.back());
+    event->set_name(main_thread_annotation_stack.back()->name() + "/" +
+                    event->name());
+  }
   annotation_stack.push_back(event);
+
+  if (event->role() == EventRole::kSpecial) {
+    std::string name = event->name();
+    if (!main_thread_annotation_stack_name.empty()) {
+      name = main_thread_annotation_stack_name.back() + "/" + event->name();
+    }
+    main_thread_annotation_stack_name.push_back(name);
+    main_thread_annotation_stack.push_back(event);
+  }
 }
 
-void ClearCurAnnotation() { annotation_stack.pop_back(); }
+void ClearCurAnnotation() {
+  if (!main_thread_annotation_stack.empty()) {
+    std::string name = annotation_stack.back()->name();
+    std::string main_name = main_thread_annotation_stack.back()->name();
+    int main_name_len = main_name.length();
+    int name_len = name.length();
+    int prefix_len = main_name_len - name_len;
+
+    if ((prefix_len > 0 && main_name.at(prefix_len - 1) == '/' &&
+         name == main_name.substr(prefix_len, name_len)) ||
+        (name == main_name)) {
+      main_thread_annotation_stack_name.pop_back();
+      main_thread_annotation_stack.pop_back();
+    }
+  }
+  annotation_stack.pop_back();
+}
 
 Event *CurAnnotation() {
   if (annotation_stack.empty()) return nullptr;

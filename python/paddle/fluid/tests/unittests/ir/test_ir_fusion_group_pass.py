@@ -122,7 +122,7 @@ class FusionGroupPassTestFP64(FusionGroupPassTest):
         self.fused_op_type = "fusion_group"
 
 
-class FusionGroupPassTestFP16(FusionGroupPassTest):
+class FusionGroupPassTestCastAndFP16(FusionGroupPassTest):
     def build_program(self, dtype):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 2)
@@ -133,15 +133,20 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
             # subgraph with 2 op nodes
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
             tmp_1 = layers.cast(tmp_0, dtype="float16")
-            tmp_2 = layers.mul(tmp_0, self.feed_vars[2])
+            zero = layers.fill_constant(shape=[128], dtype="float16", value=0)
+            # TODO(xreki): fix precision problem when using softmax of float16.
+            # tmp_2 = layers.softmax(tmp_1)
+            tmp_2 = layers.elementwise_add(tmp_1, zero)
+            tmp_3 = layers.mul(tmp_0, self.feed_vars[2])
             # subgraph with 4 op nodes
             tmp_3 = layers.cast(tmp_2, dtype="float16")
             tmp_4 = layers.relu(tmp_1 + tmp_3)
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
+            tmp_3 = layers.cast(tmp_2, dtype=dtype)
 
         self.append_gradients(tmp_5)
 
-        self.num_fused_ops = 3
+        self.num_fused_ops = 4
         self.fetch_list = [tmp_5, self.grad(tmp_0)]
 
 
@@ -203,12 +208,6 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
 
         self.num_fused_ops = 1
         self.fetch_list = [tmp_2, self.grad(tmp_0)]
-
-    def setUp(self):
-        self.build_program("float32")
-        self.feeds = self._feed_random_data(self.feed_vars)
-        self.pass_names = "fusion_group_pass"
-        self.fused_op_type = "fusion_group"
 
 
 if __name__ == "__main__":

@@ -27,6 +27,8 @@ from paddle.fluid.layers.control_flow import array_to_lod_tensor
 from paddle.fluid.layers.control_flow import shrink_memory
 from fake_reader import fake_imdb_reader
 
+numpy.random.seed(2020)
+
 
 class TestDynamicRNN(unittest.TestCase):
     def setUp(self):
@@ -144,6 +146,8 @@ class TestDynamicRNN(unittest.TestCase):
     def test_train_dynamic_rnn(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        main_program.random_seed = 10
+        startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1)
@@ -196,6 +200,8 @@ class TestDynamicRNN(unittest.TestCase):
 
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        main_program.random_seed = 10
+        startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=2)
@@ -249,6 +255,8 @@ class TestDynamicRNN(unittest.TestCase):
         hidden_size = 32
         main_program = fluid.Program()
         startup_program = fluid.Program()
+        main_program.random_seed = 10
+        startup_program.random_seed = 10
         with fluid.program_guard(main_program, startup_program):
             sentence = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=2)

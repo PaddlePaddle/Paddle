@@ -26,8 +26,7 @@ constexpr int64_t kNoPadding = -1;
 class LookupSparseTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LookupSparseTableOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LookupSparseTable");
     auto shape_w = ctx->GetInputDim("W");
     auto shape_ids = ctx->GetInputDim("Ids");
     shape_w[0] = shape_ids.size();
@@ -47,12 +46,15 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto ids_var = scope.FindVar(Input("Ids"));
     auto is_test = Attr<bool>("is_test");
 
-    PADDLE_ENFORCE(out_var->IsType<framework::LoDTensor>(),
-                   "The type of Out var should be LodTensor.");
-    PADDLE_ENFORCE(w_var->IsType<framework::SelectedRows>(),
-                   "The type of W var should be SelectedRows.");
-    PADDLE_ENFORCE(ids_var->IsType<framework::LoDTensor>(),
-                   "The type of Ids var should be LoDTensor.");
+    PADDLE_ENFORCE_EQ(out_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The type of Out var should be LodTensor."));
+    PADDLE_ENFORCE_EQ(w_var->IsType<framework::SelectedRows>(), true,
+                      platform::errors::InvalidArgument(
+                          "The type of W var should be SelectedRows."));
+    PADDLE_ENFORCE_EQ(ids_var->IsType<framework::LoDTensor>(), true,
+                      platform::errors::InvalidArgument(
+                          "The type of Ids var should be LoDTensor."));
     auto &ids_t = ids_var->Get<framework::LoDTensor>();
     auto out_t = out_var->GetMutable<framework::LoDTensor>();
     auto w_t = w_var->GetMutable<framework::SelectedRows>();
@@ -64,7 +66,8 @@ class LookupSparseTableOp : public framework::OperatorBase {
     out_t->Resize(out_shape);
     out_t->mutable_data(cpu, w_t->value().type());
     PADDLE_ENFORCE_EQ(w_t->value().type(), framework::proto::VarType::FP32,
-                      "The sparse table only support FP32");
+                      platform::errors::InvalidArgument(
+                          "The sparse table only support FP32"));
     w_t->Get(ids_t, out_t, true, is_test);
     out_t->set_lod(ids_t.lod());
   }

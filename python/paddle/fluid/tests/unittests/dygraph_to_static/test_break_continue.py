@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.fluid.dygraph.jit import declarative
 
 SEED = 2020
 np.random.seed(SEED)
@@ -89,6 +89,7 @@ def test_break_in_while(x):
 
 def test_break_continue_in_for(x):
     x = fluid.dygraph.to_variable(x)
+
     for i in range(1, 10, 1):
         if i <= 4:
             x += 1
@@ -97,6 +98,18 @@ def test_break_continue_in_for(x):
             x += 10010
             break
         x += 10086
+
+    a = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    for i in range(1, 10, 1):
+        if a <= 4:
+            x += 1
+            a += 1
+            continue
+        else:
+            x += 10010
+            break
+        x += 10086
+
     return x
 
 
@@ -160,13 +173,9 @@ class TestContinueInFor(unittest.TestCase):
             return res.numpy()
 
     def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            res = dygraph_to_static_func(self.dygraph_func)(self.input)
-        exe = fluid.Executor(self.place)
-        static_res = exe.run(main_program, fetch_list=[res])
-
-        return static_res[0]
+        with fluid.dygraph.guard():
+            res = declarative(self.dygraph_func)(self.input)
+            return res.numpy()
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()

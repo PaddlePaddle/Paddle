@@ -68,7 +68,7 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
       nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
   // Allocate temporary storage
-  auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
   // Run sorting operation
@@ -258,11 +258,11 @@ static void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
-  auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  auto place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   framework::Vector<uint64_t> mask(boxes_num * col_blocks);
-  NMSKernel<<<blocks, threads>>>(
-      boxes_num, nms_threshold, boxes,
-      mask.CUDAMutableData(boost::get<platform::CUDAPlace>(ctx.GetPlace())));
+  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes,
+                                 mask.CUDAMutableData(BOOST_GET_CONST(
+                                     platform::CUDAPlace, ctx.GetPlace())));
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
@@ -326,7 +326,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
       keep_num_t.data<int>(), keep_index.data<int>());
   int keep_num;
-  const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  const auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
                keep_num_t.data<int>(), sizeof(int), ctx.stream());
   ctx.Wait();
@@ -379,7 +379,11 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     float nms_thresh = context.Attr<float>("nms_thresh");
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
-    PADDLE_ENFORCE_GE(eta, 1., "Not support adaptive NMS.");
+    PADDLE_ENFORCE_GE(eta, 1.,
+                      platform::errors::InvalidArgument(
+                          "Not support adaptive NMS. The attribute 'eta' "
+                          "should not less than 1. But received eta=[%d]",
+                          eta));
 
     auto &dev_ctx = context.template device_context<DeviceContext>();
 
@@ -415,7 +419,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_rois_data = rpn_rois->data<T>();
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
-    auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto place = BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace());
     auto cpu_place = platform::CPUPlace();
 
     int64_t num_proposals = 0;

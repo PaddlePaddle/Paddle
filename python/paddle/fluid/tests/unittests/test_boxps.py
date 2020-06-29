@@ -16,6 +16,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import numpy as np
 import os
+import shutil
 import paddle.fluid.core as core
 import unittest
 from paddle.fluid.layers.nn import _pull_box_sparse
@@ -90,87 +91,112 @@ class TestBoxPSPreload(unittest.TestCase):
     """  TestCases for BoxPS Preload """
 
     def test_boxps_cpu(self):
-        self.run_boxps_preload(True)
+        self.run_boxps_preload(True, True)
+        self.run_boxps_preload(True, False)
 
     def test_boxps_gpu(self):
-        self.run_boxps_preload(False)
+        self.run_boxps_preload(False, True)
+        self.run_boxps_preload(False, False)
 
-    def run_boxps_preload(self, is_cpu=True):
-        x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
-        y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
-        emb_x, emb_y = _pull_box_sparse([x, y], size=2)
-        emb_xp = _pull_box_sparse(x, size=2)
-        concat = layers.concat([emb_x, emb_y], axis=1)
-        fc = layers.fc(input=concat,
-                       name="fc",
-                       size=1,
-                       num_flatten_dims=1,
-                       bias_attr=False)
-        loss = layers.reduce_mean(fc)
-        layers.Print(loss)
-        place = fluid.CPUPlace() if is_cpu or not core.is_compiled_with_cuda(
-        ) else fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        batch_size = 2
+    def run_boxps_preload(self, is_cpu=True, random_with_lineid=False):
+        program = fluid.Program()
+        with fluid.program_guard(program):
+            x = fluid.layers.data(
+                name='x', shape=[1], dtype='int64', lod_level=0)
+            y = fluid.layers.data(
+                name='y', shape=[1], dtype='int64', lod_level=0)
+            z = layers.data(name='z', shape=[1], dtype='int64')
+            emb_x, emb_y = _pull_box_sparse([x, y], size=2)
+            emb_xp = _pull_box_sparse(x, size=2)
+            concat = layers.concat([emb_x, emb_y], axis=1)
+            fc = layers.fc(input=concat,
+                           name="fc",
+                           size=1,
+                           num_flatten_dims=1,
+                           bias_attr=False)
+            loss = layers.reduce_mean(fc)
+            place = fluid.CPUPlace(
+            ) if is_cpu or not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            batch_size = 100
 
-        def binary_print(slot, fout):
-            fout.write(str(len(slot)) + " ")
-            for e in slot:
-                fout.write(str(e) + " ")
+            def binary_print(slot, fout):
+                fout.write(str(len(slot)) + " ")
+                for e in slot:
+                    fout.write(str(e) + " ")
 
-        batch1 = np.ones(
-            (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
-        filelist = []
-        place_str = "cpu" if is_cpu else "gpu"
-        for i in range(2):
-            filelist.append("test_hdfs_" + place_str + "_" + str(i))
-        for f in filelist:
-            with open(f, "w") as fout:
-                for ins in batch1:
-                    for slot in ins:
-                        binary_print(slot, fout)
-                fout.write("\n")
+            batch1 = np.ones(
+                (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
+            filelist = []
+            place_str = "cpu" if is_cpu else "gpu"
+            for i in range(2):
+                filelist.append("test_hdfs_" + place_str + "_" + str(i))
+            for f in filelist:
+                with open(f, "w") as fout:
+                    for ins in batch1:
+                        for slot in ins:
+                            binary_print(slot, fout)
+                    fout.write("\n")
 
-        def create_dataset():
-            dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
-            dataset.set_date("20190930")
-            dataset.set_use_var([x, y])
-            dataset.set_batch_size(2)
-            dataset.set_thread(1)
-            dataset.set_filelist(filelist)
-            return dataset
+            def create_dataset():
+                dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+                dataset.set_date("20190930")
+                dataset.set_use_var([x, y])
+                dataset.set_batch_size(2)
+                dataset.set_thread(1)
+                dataset.set_filelist(filelist)
+                return dataset
 
-        datasets = []
-        datasets.append(create_dataset())
-        datasets.append(create_dataset())
-        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-        optimizer = fluid.optimizer.PipelineOptimizer(
-            optimizer,
-            cut_list=[],
-            place_list=[place],
-            concurrency_list=[1],
-            queue_size=1,
-            sync_steps=-1)
-        optimizer.minimize(loss)
-        exe.run(fluid.default_startup_program())
-        datasets[0].load_into_memory()
-        datasets[0].begin_pass()
-        datasets[1].preload_into_memory()
-        exe.train_from_dataset(
-            program=fluid.default_main_program(),
-            dataset=datasets[0],
-            print_period=1)
-        datasets[0].end_pass(True)
-        datasets[1].wait_preload_done()
-        datasets[1].begin_pass()
-        exe.train_from_dataset(
-            program=fluid.default_main_program(),
-            dataset=datasets[1],
-            print_period=1,
-            debug=True)
-        datasets[1].end_pass(False)
-        for f in filelist:
-            os.remove(f)
+            datasets = []
+            datasets.append(create_dataset())
+            datasets.append(create_dataset())
+            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+            optimizer = fluid.optimizer.PipelineOptimizer(
+                optimizer,
+                cut_list=[],
+                place_list=[place],
+                concurrency_list=[1],
+                queue_size=1,
+                sync_steps=-1)
+            optimizer.minimize(loss)
+
+            program._pipeline_opt["dump_fields"] = [
+                "fc.tmp_0", "fc.tmp_0@GRAD", "fake_var", "z",
+                "reduce_mean_3.tmp_0"
+            ]
+            # fake_var: not in scope
+            # z: in scope, but no initialized
+            # reduce_mean_0.tmp_0, dimension is not right
+
+            program._pipeline_opt["dump_fields_path"] = "./dump_log/"
+            program._pipeline_opt["dump_param"] = ["fc.w_0"]
+            program._pipeline_opt["enable_random_dump"] = True
+            program._pipeline_opt["dump_interval"] = 10
+            program._pipeline_opt["random_with_lineid"] = random_with_lineid
+
+            exe.run(fluid.default_startup_program())
+            datasets[0].load_into_memory()
+            datasets[0].begin_pass()
+            datasets[0].slots_shuffle([])
+            datasets[1].preload_into_memory()
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=datasets[0],
+                print_period=1)
+            datasets[0].end_pass(True)
+            datasets[1].wait_preload_done()
+            datasets[1].begin_pass()
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=datasets[1],
+                print_period=1,
+                debug=True)
+            datasets[1].end_pass(False)
+            for f in filelist:
+                os.remove(f)
+            if os.path.isdir("dump_log"):
+                shutil.rmtree("dump_log")
 
 
 if __name__ == '__main__':

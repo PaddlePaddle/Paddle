@@ -80,19 +80,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
-  dump_fields_.resize(desc.dump_fields_size());
-  for (int i = 0; i < desc.dump_fields_size(); ++i) {
-    dump_fields_[i] = desc.dump_fields(i);
-  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
-  need_dump_param_ = false;
-  dump_param_.resize(desc.dump_param_size());
-  for (int i = 0; i < desc.dump_param_size(); ++i) {
-    dump_param_[i] = desc.dump_param(i);
-  }
-  if (desc.dump_param_size() != 0) {
-    need_dump_param_ = true;
-  }
   for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
     check_nan_var_names_.push_back(desc.check_nan_var_names(i));
   }
@@ -118,30 +106,6 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
         table_dependency_[m.key()] = value;
       }
     }
-  }
-}
-
-void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
-  writer_.Reset(queue);
-}
-
-void DownpourWorker::SetNeedDump(bool need_dump_field) {
-  need_dump_field_ = need_dump_field;
-}
-
-void DownpourWorker::DumpParam(const int batch_id) {
-  std::ostringstream os;
-  for (auto& param : dump_param_) {
-    os.str("");
-    Variable* var = thread_scope_->FindVar(param);
-    if (var == nullptr) {
-      continue;
-    }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    int64_t len = tensor->numel();
-    os << "(" << batch_id << "," << param << ")"
-       << PrintLodTensor(tensor, 0, len);
-    writer_ << os.str();
   }
 }
 
@@ -807,7 +771,50 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+#ifdef PADDLE_WITH_PSLIB
+        try {
+          op->Run(*thread_scope_, place_);
+        } catch (std::exception& e) {
+          fprintf(stderr, "error message: %s\n", e.what());
+          auto& ins_id_vec = device_reader_->GetInsIdVec();
+          size_t batch_size = device_reader_->GetCurBatchSize();
+          std::string s = "";
+          for (auto& ins_id : ins_id_vec) {
+            if (s != "") s += ",";
+            s += ins_id;
+          }
+          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
+                  s.c_str());
+          s = "";
+          for (auto& param : all_param_) {
+            Variable* var = thread_scope_->FindVar(param);
+            if (var == nullptr) {
+              continue;
+            }
+            Tensor* tensor = nullptr;
+            int64_t len = 0;
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
+              len = tensor->numel();
+            } else if (var->IsType<SelectedRows>()) {
+              auto selected_rows = var->GetMutable<SelectedRows>();
+              tensor = selected_rows->mutable_value();
+              len = tensor->numel();
+            }
+            if (!tensor->IsInitialized()) {
+              continue;
+            }
+            s += param + ":" + std::to_string(len) + ":";
+            s += PrintLodTensor(tensor, 0, len);
+            fprintf(stderr, "%s\n", s.c_str());
+            fflush(stderr);
+            s = "";
+          }
+          throw e;
+        }
+#else
         op->Run(*thread_scope_, place_);
+#endif
       }
     }
 
@@ -915,52 +922,17 @@ void DownpourWorker::TrainFiles() {
       }
     }
     if (need_dump_field_) {
-      size_t batch_size = device_reader_->GetCurBatchSize();
-      std::vector<std::string> ars(batch_size);
-      for (auto& ar : ars) {
-        ar.clear();
-      }
-      auto& ins_id_vec = device_reader_->GetInsIdVec();
-      auto& ins_content_vec = device_reader_->GetInsContentVec();
-      for (size_t i = 0; i < ins_id_vec.size(); i++) {
-        ars[i] += ins_id_vec[i];
-        ars[i] = ars[i] + "\t" + ins_content_vec[i];
-      }
-      for (auto& field : dump_fields_) {
-        Variable* var = thread_scope_->FindVar(field);
-        if (var == nullptr) {
-          continue;
-        }
-        LoDTensor* tensor = var->GetMutable<LoDTensor>();
-        if (!CheckValidOutput(tensor, batch_size)) {
-          continue;
-        }
-        for (size_t i = 0; i < batch_size; ++i) {
-          auto output_dim = tensor->dims()[1];
-          std::string output_dimstr =
-              boost::lexical_cast<std::string>(output_dim);
-          ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
-          auto bound = GetTensorBound(tensor, i);
-          ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
-        }
-      }
-      // #pragma omp parallel for
-      for (size_t i = 0; i < ars.size(); i++) {
-        if (ars[i].length() == 0) {
-          continue;
-        }
-        writer_ << ars[i];
-      }
-      if (need_dump_param_ && thread_id_ == 0) {
-        DumpParam(batch_cnt);
-      }
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
     }
 
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
   }
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
   if (copy_table_config_.need_copy()) {

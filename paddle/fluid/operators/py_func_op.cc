@@ -116,12 +116,11 @@ static void CallPythonFunc(py::object *callable,
   }
 }
 
-class PyFuncOpVarTypeInference : public framework::VarTypeInference {
+class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    bool has_out = (ctx->HasOutput("Out") && !ctx->Output("Out").empty());
-
-    bool has_in = (ctx->HasInput("X") && !ctx->Input("X").empty());
+    bool has_out = ctx->HasOutput("Out");
+    bool has_in = ctx->HasInput("X");
 
     /**
      * X or Out can be empty, so that py_func can be more flexible
@@ -134,10 +133,10 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
                                           has_in, has_out));
 
     PADDLE_ENFORCE_GE(
-        boost::get<int>(ctx->GetAttr(kForwardPythonCallableId)), 0,
+        BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId)), 0,
         platform::errors::InvalidArgument(
             "Function id cannot be less than 0, but received value is %d.",
-            boost::get<int>(ctx->GetAttr(kForwardPythonCallableId))));
+            BOOST_GET_CONST(int, ctx->GetAttr(kForwardPythonCallableId))));
 
     if (!has_out) return;
 
@@ -147,7 +146,7 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
      * the corresponding forward variable
      */
     const std::string kGradVarSuffix = framework::kGradVarSuffix;
-    auto &out_var_names = ctx->Output("Out");
+    auto &out_var_names = Output(ctx, "Out");
     for (auto &out_var_name : out_var_names) {
       if (out_var_name == framework::kEmptyVarName ||
           out_var_name.size() < kGradVarSuffix.size()) {
@@ -157,19 +156,17 @@ class PyFuncOpVarTypeInference : public framework::VarTypeInference {
       size_t len = out_var_name.size() - kGradVarSuffix.size();
       if (out_var_name.substr(len) == kGradVarSuffix) {
         auto fwd_var_name = out_var_name.substr(0, len);
-        PADDLE_ENFORCE_EQ(ctx->HasVar(out_var_name), true,
-                          platform::errors::InvalidArgument(
-                              "Backward variable %s not found", out_var_name));
-        PADDLE_ENFORCE_EQ(ctx->HasVar(fwd_var_name), true,
-                          platform::errors::InvalidArgument(
-                              "Backward variable %s not found", fwd_var_name));
+        OP_INOUT_CHECK(HasVar(ctx, out_var_name), "Var", out_var_name,
+                       "py_func");
+        OP_INOUT_CHECK(HasVar(ctx, fwd_var_name), "Var", fwd_var_name,
+                       "py_func");
         VLOG(10) << "Infer var_desc of Output(" << out_var_name << ") as Input("
                  << fwd_var_name << ")";
 
-        ctx->SetShape(out_var_name, ctx->GetShape(fwd_var_name));
-        ctx->SetDataType(out_var_name, ctx->GetDataType(fwd_var_name));
-        ctx->SetLoDLevel(out_var_name, ctx->GetLoDLevel(fwd_var_name));
-        ctx->SetType(out_var_name, ctx->GetType(fwd_var_name));
+        SetShape(ctx, out_var_name, GetShape(ctx, fwd_var_name));
+        SetDataType(ctx, out_var_name, GetDataType(ctx, fwd_var_name));
+        SetLoDLevel(ctx, out_var_name, GetLoDLevel(ctx, fwd_var_name));
+        SetType(ctx, out_var_name, GetType(ctx, fwd_var_name));
       }
     }
   }
@@ -230,7 +227,7 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
   std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
     auto &fwd_attrs = Attrs();
     // no backward op when backward_id is less than 0
-    if (boost::get<int>(fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
+    if (BOOST_GET_CONST(int, fwd_attrs.at(kBackwardPythonCallableId)) < 0) {
       return {};
     }
 
@@ -250,8 +247,8 @@ class PyFuncOpGradDescMaker : public framework::GradOpDescMakerBase {
 
     // For memory reused, some inputs/output in forward part may be not needed
     // in backward part. Skipping these vars helps to save memory
-    auto &backward_skip_var_list = boost::get<std::vector<std::string>>(
-        fwd_attrs.at(kPyFuncBackwardSkipVars));
+    auto &backward_skip_var_list = BOOST_GET_CONST(
+        std::vector<std::string>, fwd_attrs.at(kPyFuncBackwardSkipVars));
     std::unordered_set<std::string> backward_skip_var_set(
         backward_skip_var_list.begin(), backward_skip_var_list.end());
     std::vector<std::string> bwd_ins;

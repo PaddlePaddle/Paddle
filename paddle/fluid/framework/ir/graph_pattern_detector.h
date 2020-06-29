@@ -143,7 +143,7 @@ struct PDNode {
   PDNode* assert_op_attr(const std::string& attr_name, const T& attr) {
     asserts_.emplace_back([=](Node* x) {
       return x && x->IsOp() && x->Op()->HasAttr(attr_name) &&
-             boost::get<T>(x->Op()->GetAttr(attr_name)) == attr;
+             BOOST_GET_CONST(T, x->Op()->GetAttr(attr_name)) == attr;
     });
     return this;
   }
@@ -913,33 +913,34 @@ struct OpRequant : public PatternBase {
   PATTERN_DECL_NODE(requant_out);
 };
 
-// Conv + Dequant
+// Requant + Op
 // named nodes:
-// conv_op, conv_out
-// dequant_op, dequant_out
-struct ConvDequant : public PatternBase {
-  ConvDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_dequant") {}
+// requant_in, requant_op,
+// requant_out, any_op
+struct RequantOp : public PatternBase {
+  RequantOp(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "requant_op") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-
-  PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(dequant_out);
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(requant_in);
+  PATTERN_DECL_NODE(requant_op);
+  PATTERN_DECL_NODE(requant_out);
 };
 
-// Fc + Dequant
-struct FcDequant : public PatternBase {
-  FcDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "fc_dequant") {}
+// Op + Dequant
+// named nodes:
+// any_op, dequant_in
+// dequant_op, dequant_out
+struct OpDequant : public PatternBase {
+  OpDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "op_dequant") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(fc_op);
-  PATTERN_DECL_NODE(fc_out);
-
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(dequant_in);
   PATTERN_DECL_NODE(dequant_op);
   PATTERN_DECL_NODE(dequant_out);
 };
@@ -956,20 +957,6 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
-};
-
-// Matmul + Dequantize
-struct MatmulDequant : public PatternBase {
-  MatmulDequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "matmul_dequant") {}
-
-  PDNode* operator()();
-
-  PATTERN_DECL_NODE(matmul_op);
-  PATTERN_DECL_NODE(matmul_out);
-
-  PATTERN_DECL_NODE(dequant_op);
-  PATTERN_DECL_NODE(dequant_out);
 };
 
 // Scale + Matmul
@@ -1140,11 +1127,12 @@ struct MKLDNNInPlace : public PatternBase {
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 
-  // MKL-DNN's in-place ops: BatchNorm, Softmax, Layer Norm
+  // MKL-DNN's in-place ops: BatchNorm, Softmax, Elementwise_add
   PATTERN_DECL_NODE(inplace_to_be_op);
   PATTERN_DECL_NODE(inplace_to_be_op_in);
   PATTERN_DECL_NODE(inplace_to_be_op_out);
   PATTERN_DECL_NODE(next_op);
+  PATTERN_DECL_NODE(next_op_out);
 };
 
 struct TransposeFlattenConcat : public PatternBase {
@@ -1162,14 +1150,28 @@ struct TransposeFlattenConcat : public PatternBase {
   }
 };
 
-struct QuantDequantOpFuse : public PatternBase {
-  QuantDequantOpFuse(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "quant_dequant_fuse") {}
+struct DeleteQuantOpFuse : public PatternBase {
+  DeleteQuantOpFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "delete_quant_fuse") {}
 
-  void operator()(PDNode* quant_op_input, const std::string& op_name,
-                  const std::string& weight_name, int times,
-                  const std::string& quant_type,
-                  const std::string& dequant_type);
+  void operator()(PDNode* input_act_node, const std::string& quant_type);
+
+  std::string GetNodeName(const std::string& op_type) {
+    return PDNodeName(name_scope_, repr_, id_, op_type);
+  }
+
+  PDNode* GetPDNode(const std::string& op_type) {
+    return pattern->RetrieveNode(GetNodeName(op_type));
+  }
+};
+
+struct DequantOpFuse : public PatternBase {
+  DequantOpFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_fuse") {}
+
+  void operator()(PDNode* quant_op_input, const std::string& quantized_op_type,
+                  const std::string& dequant_type,
+                  const std::string& weight_name);
 
   std::string GetNodeName(const std::string& op_type) {
     return PDNodeName(name_scope_, repr_, id_, op_type);
@@ -1207,6 +1209,47 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
   PATTERN_DECL_NODE(any_op2);
+};
+
+// Reshape + Transpose + Matmul
+// named nodes:
+// reshape_op, reshape_out, reshape_xshape,
+// transpose_op, transpose_out, transpose_xshape,
+// matmul_op, matmul_out
+struct ReshapeTransposeMatmulPattern : public PatternBase {
+  ReshapeTransposeMatmulPattern(PDPattern* pattern,
+                                const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape_transpose_matmul") {}
+
+  PDNode* operator()(bool with_reshape_xshape, bool with_transpose_xshape);
+
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(reshape_xshape);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_xshape);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
+// Matmul + Transpose + Reshape
+struct MatmulTransposeReshapePattern : public PatternBase {
+  MatmulTransposeReshapePattern(PDPattern* pattern,
+                                const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_transpose_reshape") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_out_xshape);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(reshape_out_xshape);
 };
 
 }  // namespace patterns

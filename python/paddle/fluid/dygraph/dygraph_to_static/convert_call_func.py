@@ -29,6 +29,7 @@ import six
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.layers import Layer
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len
 
 DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 program_translator = ProgramTranslator()
@@ -47,6 +48,12 @@ def is_builtin(func):
         return True
     else:
         return False
+
+
+def is_builtin_len(func):
+    if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
+        return True
+    return False
 
 
 def is_paddle_func(func):
@@ -91,10 +98,10 @@ def convert_call(func):
     func_self = None
     converted_call = None
 
-    if is_builtin(func):
-        return func
+    if is_builtin_len(func):
+        return convert_len
 
-    if is_paddle_func(func):
+    if is_builtin(func) or is_paddle_func(func):
         return func
 
     if inspect.isfunction(func):
@@ -102,18 +109,12 @@ def convert_call(func):
         if func.__name__ == '<lambda>':
             return func
         try:
-            if func in func.__globals__.values():
-                if six.PY3:
-                    source_code = inspect.getsource(func)
-                    if any(decorator in source_code
-                           for decorator in DECORATOR_NAMES):
-                        converted_call = None
-                    else:
-                        converted_call = to_static_func(func)
-                        func_self = getattr(func, '__self__', None)
-                else:
-                    converted_call = to_static_func(func)
-                    func_self = getattr(func, '__self__', None)
+            global_funcs = set([
+                fn for fn in func.__globals__.values() if inspect.isfunction(fn)
+            ])
+            if func in global_funcs:
+                converted_call = to_static_func(func)
+                func_self = getattr(func, '__self__', None)
         except AttributeError:
             # NOTE:
             # If func is not in __globals__, it does not need to be transformed
@@ -121,45 +122,25 @@ def convert_call(func):
             converted_call = None
         except (IOError, OSError):
             # NOTE:
-            # If func has beed decorated, its source code can not be get
+            # If func has been decorated, its source code can not be get
             # so that it can not be transformed to static function.
             converted_call = None
     elif inspect.ismethod(func):
         try:
-            if six.PY3:
-                source_code = inspect.getsource(func)
-                if any(decorator in source_code
-                       for decorator in DECORATOR_NAMES):
-                    converted_call = None
-                else:
-                    converted_call = to_static_func(func)
-                    func_self = getattr(func, '__self__', None)
-            else:
-                converted_call = to_static_func(func)
-                func_self = getattr(func, '__self__', None)
+            converted_call = to_static_func(func)
+            func_self = getattr(func, '__self__', None)
         except (IOError, OSError):
-            # NOTE: func may have beed decorated.
+            # NOTE: func may have been decorated.
             converted_call = None
 
     elif hasattr(func, '__class__') and hasattr(func.__class__, '__call__'):
         if hasattr(func, 'forward') and isinstance(func, Layer):
             try:
-                if six.PY3:
-                    source_code = inspect.getsource(func.forward)
-                    if any(decorator in source_code
-                           for decorator in DECORATOR_NAMES):
-                        converted_call = None
-                    else:
-                        forward_func = to_static_func(func.forward)
-                        setattr(func, 'forward', forward_func)
-                        func_self = func
-                else:
-                    forward_func = to_static_func(func.forward)
-                    setattr(func, 'forward', forward_func)
-                    func_self = func
-
+                forward_func = to_static_func(func.forward)
+                setattr(func, 'forward', forward_func)
+                func_self = func
             except Exception:
-                # NOTE: func.forward may have beed decorated.
+                # NOTE: func.forward may have been decorated.
                 func_self = None if func_self else func_self
             converted_call = func
         else:

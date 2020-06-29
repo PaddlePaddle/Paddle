@@ -26,12 +26,15 @@ class GatherOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Index"),
-                   "Input(Index) of GatherOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GatherOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of GatherOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Index) of GatherOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of GatherOp should not be null."));
 
     auto index_dims = ctx->GetInputDim("Index");
     PADDLE_ENFORCE(index_dims.size() == 1 ||
@@ -40,6 +43,7 @@ class GatherOp : public framework::OperatorWithKernel {
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
     ctx->SetOutputDim("Out", output_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -123,7 +127,7 @@ class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GatherGradNoNeedBufferVarInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -133,7 +137,7 @@ REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
                   ops::GatherGradOpMaker<paddle::framework::OpDesc>,
                   ops::GatherGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
-                  ops::GatherGradNoNeedBufferVarInference);
+                  ops::GatherGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,
                        ops::GatherOpKernel<double>, ops::GatherOpKernel<int>,
                        ops::GatherOpKernel<uint8_t>,

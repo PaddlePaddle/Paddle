@@ -47,7 +47,9 @@ platform::Place GetNativePlace(const TargetType& type, int id = 0) {
     case TargetType::kCUDA:
       return platform::CUDAPlace(id);
     default:
-      LOG(FATAL) << "Error target type.";
+      PADDLE_THROW(
+          platform::errors::Unavailable("Unsupported target type. Now only "
+                                        "supports Host, x86, CUDA target."));
       return platform::Place();
   }
 }
@@ -70,7 +72,9 @@ PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type) {
     case framework::proto::VarType_Type_INT64:
       return PrecisionType::kInt64;
     default:
-      LOG(FATAL) << "Error precision type.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported precision type. Now only supports FP32, INT8, INT32 and "
+          "INT64."));
       return PrecisionType::kUnk;
   }
 }
@@ -87,7 +91,9 @@ framework::proto::VarType::Type GetNativePrecisionType(
     case PrecisionType::kInt64:
       return framework::proto::VarType_Type_INT64;
     default:
-      LOG(FATAL) << "Error precision type.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported precision type. Now only supports FP32, INT8, INT32 and "
+          "INT64."));
       return static_cast<framework::proto::VarType::Type>(-1);
   }
 }
@@ -97,7 +103,8 @@ framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
     case DataLayoutType::kNCHW:
       return framework::DataLayout::kNCHW;
     default:
-      LOG(FATAL) << "Error layout type.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupported layout type. Now only supports NCHW."));
       return static_cast<framework::DataLayout>(-1);
   }
 }
@@ -112,19 +119,22 @@ void MemoryCopyAsync(const platform::Place& dst_place, void* dst_data,
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_cpu_place(dst_place) &&
         platform::is_gpu_place(src_place)) {
-      LOG(FATAL) << "lite::MemoryCopy GPU->CPU is not yet implemented.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Lite::MemoryCopy GPU->CPU is not yet implemented."));
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_cpu_place(src_place)) {
-      LOG(FATAL) << "lite::MemoryCopy CPU->GPU is not yet implemented.";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Lite::MemoryCopy CPU->GPU is not yet implemented."));
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_gpu_place(src_place)) {
-      auto gpu_place = boost::get<platform::CUDAPlace>(src_place);
+      auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, src_place);
       memory::Copy(
           gpu_place, dst_data, gpu_place, src_data, size,
           static_cast<const platform::CUDADeviceContext&>(ctx).stream());
     }
 #else
-    LOG(FATAL) << "You must define PADDLE_WITH_CUDA for using CUDAPlace.";
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "You must define PADDLE_WITH_CUDA for using CUDAPlace."));
 #endif
   }
 }
