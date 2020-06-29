@@ -24,6 +24,7 @@ from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 
 SEED = 2020
+
 program_translator = ProgramTranslator()
 
 
