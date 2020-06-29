@@ -227,16 +227,27 @@ class PartialProgramLayer(layers.Layer):
 
         return outs
 
+    def _is_no_value(self, var):
+        if isinstance(var, core.VarBase):
+            if var.shape == [1] and var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+                return True
+        return False
+
     def _remove_no_value(self, out_vars):
         """
         Removes invalid value for various-length return statement
         """
-        if isinstance(output_vars, core.VarBase):
-            if output_vars == RETURN_NO_VALUE_MAGIC_NUM:
+        if isinstance(out_vars, core.VarBase):
+            if self._is_no_value(out_vars):
                 return None
-            return output_vars
+            return out_vars
         else:
-            return [var for var in out_vars if var != RETURN_NO_VALUE_MAGIC_NUM]
+            res = tuple(var for var in out_vars if not self._is_no_value(var))
+            if len(res) == 0:
+                return None
+            elif len(res) == 1:
+                return res[0]
+            return res
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient
