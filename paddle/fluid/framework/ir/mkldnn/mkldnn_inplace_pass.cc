@@ -193,7 +193,17 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "DNNL InPlace applied!";
   };
 
-  gpd(graph, handler);
+  auto should_inplace = [&](Graph* g) {
+    std::unordered_set<std::string> unwanted_ops(
+        {"conditional_block_infer", "While", "while_loop"});
+    for (auto& node : g) {
+      if (node->IsOp() && unwanted_ops.find(node->Name()) != unwanted_ops.end())
+        return false;
+    }
+    return true;
+  };
+
+  should_inplace(graph) ? gpd(graph, handler) : return;
 }
 
 }  // namespace ir
