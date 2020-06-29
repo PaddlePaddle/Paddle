@@ -45,7 +45,8 @@ from paddle.fluid.dygraph.nn import Conv2D, Conv2DTranspose, BatchNorm
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
-use_cudnn = True
+# set False to speed up training.
+use_cudnn = False
 step_per_epoch = 10
 lambda_A = 10.0
 lambda_B = 10.0
@@ -579,7 +580,6 @@ def train(args, to_static):
                     idt_loss_A, g_B_loss, cyc_B_loss, idt_loss_B
                 ]
                 cur_batch_loss = [x.numpy()[0] for x in cur_batch_loss]
-                loss_data.append(cur_batch_loss)
 
                 batch_time = time.time() - s_time
                 t_time += batch_time
@@ -591,6 +591,7 @@ def train(args, to_static):
                 if batch_id > args.train_step:
                     break
 
+                loss_data.append(cur_batch_loss)
         return np.array(loss_data)
 
 
