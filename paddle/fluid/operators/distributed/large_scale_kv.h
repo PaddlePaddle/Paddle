@@ -607,13 +607,13 @@ class SparseVariable {
     }
     SaveToSelectedRows(filenames, meta_.value_names);
 
-    // save sparse to text
-    std::vector<std::string> txt_filenames;
-    for (auto &value_name : meta_.value_names) {
-      auto filename = string::Sprintf("%s/%s.txt", dirname, value_name);
-      txt_filenames.push_back(filename);
-    }
-    SaveToText(txt_filenames, meta_.value_names);
+    //    // save sparse to text
+    //    std::vector<std::string> txt_filenames;
+    //    for (auto &value_name : meta_.value_names) {
+    //      auto filename = string::Sprintf("%s/%s.txt", dirname, value_name);
+    //      txt_filenames.push_back(filename);
+    //    }
+    //    SaveToText(txt_filenames, meta_.value_names);
 
     VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " done";
   }
