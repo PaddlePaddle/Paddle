@@ -377,7 +377,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
     } else {
       if (d_x) {
         GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
-            d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
+            d_y->data<T>(), scale_tmp.data<BatchNormParamType<T>>(),
             saved_mean_data, x->data<T>(), saved_var_data, C, H * W * D,
             d_x->data<T>());
       }
@@ -645,12 +645,12 @@ class InstanceNormDoubleGradKernel<platform::CUDADeviceContext, T>
     const int n = X->numel();
     int sample_size = n / N / C;
 
-    Tensor *scale_tmp = nullptr;
-    if (Scale) {
-      scale_tmp->mutable_data<T>({C}, ctx.GetPlace());
-      set_zero(dev_ctx, scale_tmp, static_cast<T>(1));
+    Tensor scale_tmp;
+    if (!Scale) {
+      scale_tmp.mutable_data<T>({C}, ctx.GetPlace());
+      set_zero(dev_ctx, &scale_tmp, static_cast<T>(1));
     }
-    const T *scale_data = Scale ? Scale->data<T>() : scale_tmp->data<T>();
+    const T *scale_data = Scale ? Scale->data<T>() : scale_tmp.data<T>();
 
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();

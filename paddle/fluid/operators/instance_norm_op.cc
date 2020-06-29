@@ -327,16 +327,16 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 
     math::SetConstant<platform::CPUDeviceContext, T> set_constant;
 
-    Tensor *scale_data = nullptr;
+    Tensor scale_data;
     if (!scale) {
-      scale_data->mutable_data<T>({C}, ctx.GetPlace());
-      set_constant(dev_ctx, scale_data, static_cast<T>(1));
+      scale_data.mutable_data<T>({C}, ctx.GetPlace());
+      set_constant(dev_ctx, &scale_data, static_cast<T>(1));
     }
 
-    auto scale_e =
-        scale ? framework::EigenVector<T>::Flatten(*scale)
-              : framework::EigenVector<T>::Flatten(
-                    *(const_cast<const framework::Tensor *>(scale_data)));
+    auto scale_e = scale
+                       ? framework::EigenVector<T>::Flatten(*scale)
+                       : framework::EigenVector<T>::Flatten(
+                             const_cast<const framework::Tensor &>(scale_data));
     auto mean_e = framework::EigenVector<T>::Flatten(*saved_mean);
     auto inv_var_e = framework::EigenVector<T>::Flatten(*saved_inv_variance);
     auto dy_e = framework::EigenVector<T>::Flatten(*d_y);
