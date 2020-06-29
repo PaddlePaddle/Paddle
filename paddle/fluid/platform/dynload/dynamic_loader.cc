@@ -171,7 +171,7 @@ static inline void* GetDsoHandleFromSearchPath(
 
   // 5. [If Failed] logging or throw error info
   if (nullptr == dso_handle) {
-    std::string error_msg =
+    auto error_msg =
         "Failed to find dynamic library: %s ( %s ) \n"
         "Please specify its path correctly using following ways: \n"
         "  set environment variable LD_LIBRARY_PATH on Linux or "
