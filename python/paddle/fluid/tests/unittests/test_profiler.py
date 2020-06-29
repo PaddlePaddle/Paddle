@@ -140,7 +140,7 @@ class TestProfiler(unittest.TestCase):
                     if batch_range is None and iter == 2:
                         utils.get_profiler().reset()
 
-        self.check_profile_result(profile_path)
+        #self.check_profile_result(profile_path)
 
     def test_cpu_profiler(self):
         exe = fluid.Executor(fluid.CPUPlace())
