@@ -56,6 +56,29 @@ def get_return_size(return_node):
     return return_length
 
 
+class ReplaceReturnNoneTransformer(gast.NodeTransformer):
+    """
+    Replace 'return None' to  'return' because 'None' cannot be a valid input
+    in control flow. In ReturnTransformer single 'Return' will be appended no
+    value placeholder
+    """
+
+    def __init__(self, root_node):
+        self.root = root_node
+
+    def transform(self):
+        self.visit(self.root)
+
+    def visit_Return(self, node):
+        if isinstance(node.value, gast.Name) and node.value.id == 'None':
+            node.value = None
+            return node
+        if isinstance(node.value, gast.Constant) and node.value.value == None:
+            node.value = None
+            return node
+        return node
+
+
 class ReturnAnalysisVisitor(gast.NodeVisitor):
     """
     Visits gast Tree and analyze the information about 'return'.
@@ -79,6 +102,7 @@ class ReturnAnalysisVisitor(gast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self.function_def.append(node)
         self.count_return[node] = 0
+        self.max_return_length[node] = 0
         self.generic_visit(node)
         self.function_def.pop()
         return node
@@ -120,8 +144,11 @@ class ReturnTransformer(gast.NodeTransformer):
     def __init__(self, wrapper_root):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        self.ancestor_nodes = []
 
+        pre_transformer = ReplaceReturnNoneTransformer(self.root)
+        pre_transformer.transform()
+
+        self.ancestor_nodes = []
         # The name of the variable which stores the final return value
         # Mapping from FunctionDef node to string
         self.return_value_name = {}
@@ -311,7 +338,7 @@ class ReturnTransformer(gast.NodeTransformer):
 
             no_value_names = [
                 unique_name.generate(RETURN_NO_VALUE_VAR_NAME)
-                for i in range(max_return_length - return_length)
+                for j in range(max_return_length - return_length)
             ]
             self.return_no_value_name[cur_func_node].extend(no_value_names)
 

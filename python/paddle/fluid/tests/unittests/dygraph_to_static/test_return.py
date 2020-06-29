@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import ProgramTranslator
 
@@ -118,6 +119,34 @@ def test_return_different_length_else(x):
         return x
 
 
+@declarative
+def test_no_return(x):
+    x = fluid.dygraph.to_variable(x)
+    y = x + 1
+
+
+@declarative
+def test_return_none(x):
+    x = fluid.dygraph.to_variable(x)
+    y = x + 1
+    if x > 0:
+        # x = to_variable(np.ones(1)) so it will return here
+        return None
+    else:
+        return x, y
+
+
+@declarative
+def test_return_no_variable(x):
+    x = fluid.dygraph.to_variable(x)
+    y = x + 1
+    if x < 0:
+        return x, y
+    else:
+        # x = to_variable(np.ones(1)) so it will return here
+        return
+
+
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
         self.input = np.ones((1)).astype('int32')
@@ -135,7 +164,9 @@ class TestReturnBase(unittest.TestCase):
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple)):
                 return tuple(r.numpy() for r in res)
-            return res.numpy()
+            elif isinstance(res, core.VarBase):
+                return res.numpy()
+            return res
 
     def run_static_mode(self):
         self.program_translator.enable(True)
@@ -143,7 +174,9 @@ class TestReturnBase(unittest.TestCase):
             res = self.dygraph_func(self.input)
             if isinstance(res, tuple):
                 return tuple(r.numpy() for r in res)
-            return res.numpy()
+            elif isinstance(res, core.VarBase):
+                return res.numpy()
+            return res
 
     def test_transformed_static_result(self):
         dygraph_res = self.run_dygraph_mode()
@@ -157,11 +190,13 @@ class TestReturnBase(unittest.TestCase):
                     msg='dygraph res is {}\nstatic_res is {}'.format(
                         dygraph_res[i], static_res[i]))
 
-        else:
+        elif isinstance(dygraph_res, np.ndarray):
             self.assertTrue(
                 np.allclose(dygraph_res, static_res),
                 msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
                                                                  static_res))
+        else:
+            self.assertEqual(dygraph_res, static_res)
 
 
 class TestInsideFuncBase(TestReturnBase):
@@ -203,6 +238,21 @@ class TestReturnDifferentLengthIfBody(TestReturnBase):
 class TestReturnDifferentLengthElse(TestReturnBase):
     def init_dygraph_func(self):
         self.dygraph_func = test_return_different_length_else
+
+
+class TestNoReturn(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_no_return
+
+
+class TestReturnNone(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_none
+
+
+class TestReturnNoVariable(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_no_variable
 
 
 if __name__ == '__main__':
