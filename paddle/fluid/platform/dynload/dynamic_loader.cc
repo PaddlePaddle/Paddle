@@ -103,8 +103,8 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
     // search xxx.so from custom path
     VLOG(3) << "Try to find library: " << dso_name
             << " from specific path: " << spec_path;
-    std::string dlPath = join(spec_path, dso_name);
-    dso_handle = dlopen(dlPath.c_str(), dynload_flags);
+    std::string dso_path = join(spec_path, dso_name);
+    dso_handle = dlopen(dso_path.c_str(), dynload_flags);
   }
   return dso_handle;
 }
@@ -171,14 +171,14 @@ static inline void* GetDsoHandleFromSearchPath(
 
   // 5. [If Failed] logging or throw error info
   if (nullptr == dso_handle) {
-    auto error_msg =
-        "Failed to find dynamic library: %s ( %s ) \n Please specify "
-        "its path correctly using following ways: \n   set "
-        "environment variable LD_LIBRARY_PATH on Linux or "
-        "DYLD_LIBRARY_PATH on Mac OS. \n   For instance, issue command: "
-        "export LD_LIBRARY_PATH=... \n   Note: After Mac OS 10.11, "
-        "using the DYLD_LIBRARY_PATH is impossible unless System "
-        "Integrity Protection (SIP) is disabled.";
+    std::string error_msg =
+        "Failed to find dynamic library: %s ( %s ) \n"
+        "Please specify its path correctly using following ways: \n"
+        "  set environment variable LD_LIBRARY_PATH on Linux or "
+        "DYLD_LIBRARY_PATH on Mac OS. \n"
+        "  For instance, issue command: export LD_LIBRARY_PATH=... \n"
+        "  Note: After Mac OS 10.11, using the DYLD_LIBRARY_PATH is "
+        "impossible unless System Integrity Protection (SIP) is disabled.";
 #if !defined(_WIN32)
     auto errorno = dlerror();
 #else
