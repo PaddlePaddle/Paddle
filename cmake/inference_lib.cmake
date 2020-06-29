@@ -186,11 +186,7 @@ copy(inference_lib_dist
 
     copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher.h
-        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/paddle/framework/io/crypto/)
-
-    copy(inference_lib_dist
-        SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher_utils.h
-        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/)
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/paddle/fluid/framework/io/crypto/)
 
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
