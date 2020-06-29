@@ -719,12 +719,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                                  'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
-    inputs = utils._get_shape_tensor_inputs(
-        inputs=inputs,
-        helper=helper,
-        attrs=attrs,
-        shape=shape,
-        op_type='fill_constant')
+    utils._get_shape_tensor_inputs(
+        inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
