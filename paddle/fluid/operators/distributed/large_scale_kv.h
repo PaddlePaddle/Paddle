@@ -203,7 +203,7 @@ struct SparseMeta {
 
 struct VALUE {
   explicit VALUE(const std::vector<std::string> &names)
-      : names_(names), count_(0), keep_days_(0) {
+      : names_(names), count_(0), unseen_days_(0) {
     values_.resize(names.size());
     for (int i = 0; i < static_cast<int>(names.size()); i++) {
       places[names[i]] = i;
@@ -234,6 +234,7 @@ struct VALUE {
   }
 
   int fetch_count() { return ++count_; }
+  void reset_unseen_days() { unseen_days_ = 0; }
 
   void set_entry(bool is_entry) { is_entry_ = is_entry; }
 
@@ -251,7 +252,7 @@ struct VALUE {
 
   std::vector<std::string> names_;
   int count_;
-  int keep_days_;
+  int unseen_days_;
   bool is_entry_;
   std::vector<std::vector<float>> values_;
   std::unordered_map<std::string, int> places;
@@ -344,7 +345,7 @@ class ValueBlock {
     rwlock_->WRLock();
 
     if (Has(id)) {
-      Entry(id);
+      Update(id);
       rwlock_->UNLock();
       return;
     }
@@ -365,7 +366,7 @@ class ValueBlock {
     }
 
     Init(id, &rets, 0);
-    Entry(id);
+    Update(id);
     rwlock_->UNLock();
   }
 
@@ -385,12 +386,12 @@ class ValueBlock {
     rwlock_->UNLock();
   }
 
-  void Entry(const int64_t id) {
+  void Update(const int64_t id) {
     auto *value = values_.at(id);
+    value->reset_unseen_days();
     auto count = value->fetch_count();
-    auto is_entry = value->get_entry();
 
-    if (!is_entry) {
+    if (!value->get_entry()) {
       value->set_entry(entry_func_(count));
     }
   }
@@ -589,7 +590,7 @@ class SparseVariable {
 
       auto *block = GetShard(id);
       block->Init(id, &values, 0);
-      block->Entry(id);
+      block->Update(id);
     }
   }
 
