@@ -56,8 +56,10 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
   return nullptr;
 }
 
-std::shared_ptr<Cipher> MakeCipher(const std::string& config_file) {
-  return CipherFactory::CreateCipher(config_file);
-}
 }  // namespace framework
+
+std::shared_ptr<framework::Cipher> MakeCipher(const std::string& config_file) {
+  return framework::CipherFactory::CreateCipher(config_file);
+}
+
 }  // namespace paddle
