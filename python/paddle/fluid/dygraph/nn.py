@@ -1028,16 +1028,16 @@ class InstanceNorm(layers.Layer):
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
         epsilon(float, optional): A value added to the denominator for
             numerical stability. Default is 1e-5.
-        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+        param_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
 	     If the Initializer of the param_attr is not set, the parameter is initialized 
-	     one. Default: None.
-        bias_attr(ParamAttr, optional): The parameter attribute for the bias of instance_norm.
+	     one. If it is set to False, will not create param_attr. Default: None.
+        bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
-	     Default: None.
+             If it is set to False, will not create bias_attr. Default: None.
         dtype(str, optional): Indicate the data type of the input ``Tensor``,
              which can be float32 or float64. Default: float32.
 
@@ -1071,41 +1071,35 @@ class InstanceNorm(layers.Layer):
                  bias_attr=None,
                  dtype='float32'):
         super(InstanceNorm, self).__init__()
-        assert bias_attr is not False, "bias_attr should not be False in InstanceNorm."
 
+        if param_attr == False:
+            assert bias_attr == False, "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
 
-        self.scale = self.create_parameter(
-            attr=self._param_attr,
-            shape=[num_channels],
-            dtype=self._dtype,
-            default_initializer=Constant(1.0),
-            is_bias=False)
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=[num_channels],
-            dtype=self._dtype,
-            default_initializer=Constant(0.0),
-            is_bias=True)
+        if param_attr and bias_attr:
+            self.scale = self.create_parameter(
+                attr=self._param_attr,
+                shape=[num_channels],
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+                is_bias=False)
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=[num_channels],
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True)
+        else:
+            self.scale = None
+            self.bias = None
 
     def forward(self, input):
         if in_dygraph_mode():
-            in_nc = int(input.shape[1])
-            if self.scale.trainable == False:
-                scale = self.scale[:in_nc]
-            else:
-                scale = self.scale
-
-            if self.bias.trainable == False:
-                bias = self.bias[:in_nc]
-            else:
-                bias = self.bias
-
-            out, _, _ = core.ops.instance_norm(input, scale, bias, 'epsilon',
-                                               self._epsilon)
+            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
+                                               'epsilon', self._epsilon)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -1113,7 +1107,10 @@ class InstanceNorm(layers.Layer):
 
         attrs = {"epsilon": self._epsilon}
 
-        inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
+        if self.scale == None and self.bias == None:
+            inputs = {"X": [input]}
+        else:
+            inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
 
         saved_mean = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
