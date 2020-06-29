@@ -181,30 +181,6 @@ class TestPipeline(unittest.TestCase):
             optimizer, num_microbatches=2)
         optimizer.minimize(loss)
 
-    def test_pipeline_noneoptimizer(self):
-        with fluid.device_guard("gpu:0"):
-            x = fluid.layers.data(
-                name='x', shape=[1], dtype='int64', lod_level=0)
-            y = fluid.layers.data(
-                name='y', shape=[1], dtype='int64', lod_level=0)
-            emb_x = layers.embedding(
-                input=x,
-                param_attr=fluid.ParamAttr(name="embx"),
-                size=[10, 2],
-                is_sparse=False)
-
-            fc = layers.fc(input=emb_x,
-                           name="fc",
-                           size=1,
-                           num_flatten_dims=1,
-                           bias_attr=False)
-            loss = layers.reduce_mean(fc)
-
-        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-        with self.assertRaises(ValueError):
-            optimizer = fluid.optimizer.PipelineOptimizer(
-                dict(), num_microbatches=2)
-
 
 if __name__ == '__main__':
     unittest.main()
