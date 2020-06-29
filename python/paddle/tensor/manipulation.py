@@ -430,47 +430,55 @@ def split(input, num_or_sections, dim=-1, name=None):
     return outs
 
 
-def squeeze(input, axes, out=None, name=None):
+def squeeze(x, axis=None, name=None):
     """
 	:alias_main: paddle.squeeze
 	:alias: paddle.squeeze,paddle.tensor.squeeze,paddle.tensor.manipulation.squeeze
 
-    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
-    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
-    to one will be deleted.
-
+    This OP will squeeze entries of size 1 of input tensor's shape. If axis is provided, will
+    remove the dim(s) by axis that of size 1. If axis is not provided, all dims equal of size 1
+    will be removed.
 
     .. code-block:: text
 
         Case1:
 
           Input:
-            X.shape = (1, 3, 1, 5)
-            axes = [0]
+            x.shape = [1, 3, 1, 5]
+            axis = None
           Output:
-            Out.shape = (3, 1, 5)
+            out.shape = [3, 5]
 
         Case2:
 
           Input:
-            X.shape = (1, 3, 1, 5)
-            axes = []
+            x.shape = [1, 3, 1, 5]
+            axis = 0
           Output:
-            Out.shape = (3, 5)
-
+            out.shape = [3, 1, 5]
+        
         Case3:
 
           Input:
-            X.shape = [1,3,1,5]
-            axes = [-2]
+            x.shape = [1, 3, 1, 5]
+            axis = [-2]
           Output:
-            Out.shape = [1,3,5]
+            out.shape = [1, 3, 5]
+
+        Case4:
+
+          Input:
+            x.shape = [1, 3, 1, 5]
+            axis = [0, 2]
+          Output:
+            out.shape = [3, 5]
 
     Args:
         input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
-                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
-                          Axes range is :math:`[-rank(input), rank(input))`.
-                          If axes is negative, :math:`axes=axes+rank(input)`.
+        axis (int|list, optional): An integer or list of integers, indicating the dimensions to be squeezed. Default is None.
+                          The range of axis is :math:`[-rank(input), rank(input))`.
+                          If axis is negative, :math:`axes=axes+rank(input)`.
+                          If axis is None, all the dimensions of input of size 1 will be removed.
         name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -483,26 +491,33 @@ def squeeze(input, axes, out=None, name=None):
             import paddle.fluid as fluid
 
             with fluid.dygraph.guard():
-                input_1 = np.random.random([5, 1, 10]).astype("int32")
-                # input is a variable which shape is [5, 1, 10]
-                input = fluid.dygraph.to_variable(input_1)
+                x_np = np.random.random([5, 1, 10]).astype("int32")
+                # x is a variable of shape [5, 1, 10]
+                x = fluid.dygraph.to_variable(input_1)
 
-                output = paddle.squeeze(input, axes=[1])
+                output = paddle.squeeze(x, axes=1)
                 # output.shape [5, 10]
 
     """
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
+
+    if in_dygraph_mode():
+        out, _ = core.ops.squeeze2(x, 'axes', axis)
+        return out
 
     helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int8', 'int32', 'int64'],
-                             'squeeze')
-    check_type(axes, 'axes', list, 'squeeze')
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
+    check_type(axis, 'axis', (int, list, type(None)), 'squeeze')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="squeeze2",
-        inputs={"X": input},
-        attrs={"axes": axes},
+        inputs={"X": x},
+        attrs={"axes": axis},
         outputs={"Out": out,
                  "XShape": x_shape})
 
