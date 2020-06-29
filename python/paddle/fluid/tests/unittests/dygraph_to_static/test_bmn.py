@@ -186,11 +186,11 @@ class BMN(fluid.dygraph.Layer):
             act="relu")
 
         # init to speed up
-        self.sample_mask = get_interp1d_mask(
-            self.tscale, self.dscale, self.prop_boundary_ratio, self.num_sample,
-            self.num_sample_perbin)
-        # self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
-        # self.sample_mask.stop_gradient = True
+        sample_mask = get_interp1d_mask(self.tscale, self.dscale,
+                                        self.prop_boundary_ratio,
+                                        self.num_sample, self.num_sample_perbin)
+        self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
+        self.sample_mask.stop_gradient = True
 
         self.p_conv3d1 = fluid.dygraph.Conv3D(
             num_channels=128,
@@ -241,12 +241,6 @@ class BMN(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, x):
-        # TODO(Aurelius84): sample_mask is created in `__init__`,
-        # but currently we don't support that. The two lines code
-        # will be removed when support creating var outside of forward.
-        sample_mask = to_variable(self.sample_mask)
-        sample_mask.stop_gradient = True
-
         # Base Module
         x = self.b_conv1(x)
         x = self.b_conv2(x)
@@ -262,7 +256,7 @@ class BMN(fluid.dygraph.Layer):
         # PEM
         xp = self.p_conv1(x)
         # BM layer
-        xp = fluid.layers.matmul(xp, sample_mask)
+        xp = fluid.layers.matmul(xp, self.sample_mask)
         xp = fluid.layers.reshape(
             xp, shape=[0, 0, -1, self.dscale, self.tscale])
 
