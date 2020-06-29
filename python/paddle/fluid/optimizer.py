@@ -3557,7 +3557,7 @@ class PipelineOptimizer(object):
     """
 	:api_attr: Static Graph
 
-    Pipeline Optimizer: Main program will be split by devices where ops run.
+    Pipeline Optimizer: Make a program to run as pipeline.
 
     Args:
         optimizer (Optimizer): The optimizer to use, such as SGD.
