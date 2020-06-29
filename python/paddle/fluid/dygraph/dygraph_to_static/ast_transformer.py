@@ -29,6 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransfor
 from paddle.fluid.dygraph.dygraph_to_static.logical_transformer import LogicalTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
+from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
@@ -70,6 +71,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform break/continue in loops
         BreakContinueTransformer(node_wrapper).transform()
+
+        # Transform return in functions
+        ReturnTransformer(node_wrapper).transform()
 
         # Transform logical and/or/not
         LogicalTransformer(node_wrapper).transform()
