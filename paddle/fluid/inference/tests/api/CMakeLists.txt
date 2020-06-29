@@ -319,7 +319,7 @@ if(WITH_MKLDNN)
   
   set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/qat")
   set(QAT_IMG_CLASS_TEST_APP "test_analyzer_qat_image_classification")
-  set(QAT_IMG_CLASS_TEST_APP_SRC "analyzer_qat_image_classification_tester.cc")
+  set(QAT_IMG_CLASS_TEST_APP_SRC "analyzer_quant_image_classification_tester.cc")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
