@@ -70,7 +70,7 @@ class DeformableConvOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<int>("im2col_step",
                  "im2col maximum number of image per computation")
-        .SetDefault(64);
+        .SetDefault(1);
     AddComment(R"DOC(
 **Deformable Convolution Operator**
 

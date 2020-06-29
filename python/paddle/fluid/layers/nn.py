@@ -14165,9 +14165,9 @@ def deformable_conv(input,
 
           Filter shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
 
-          Offset shape: :math:`(N, 2 * deformable\_groups * H_f * H_w, H_{in}, W_{in})`
+          Offset shape: :math:`(N, 2 * deformable\_groups * H_f * W_f, H_{in}, W_{in})`
 
-          Mask shape: :math:`(N, deformable\_groups * H_f * H_w, H_{in}, W_{in})`
+          Mask shape: :math:`(N, deformable\_groups * H_f * W_f, H_{in}, W_{in})`
 
         - Output:
 
@@ -14213,7 +14213,7 @@ def deformable_conv(input,
             The total batch size should be devisable by this value or smaller
             than this value; if you face out of memory problem, you can try
             to use a smaller value here.
-            Default: im2col_step = 64.
+            Default: im2col_step = 1.
         param_attr (ParamAttr, Optional): The parameter attribute for learnable parameters/weights
             of deformable conv. If it is set to None or one attribute of ParamAttr,
             deformable conv will create ParamAttr as param_attr.
