@@ -410,7 +410,32 @@ class CompileTimeStrategy(object):
         ps_dispatcher.reset()
         grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
 
+        sparse_gradnames = [grad.name for _, grad in self.origin_sparse_pairs]
+
         for grad_varname, splited_vars in grad_var_mapping_items:
+            if grad_varname in sparse_gradnames:
+                continue
+
+            send_vars = []
+            for _, var in enumerate(splited_vars):
+                send_vars.append(var)
+
+            recv_vars = []
+            for _, var in enumerate(send_vars):
+                recv_vars.append(self.grad_param_mapping[var])
+
+            eps = ps_dispatcher.dispatch(recv_vars)
+
+            for i, ep in enumerate(eps):
+                self.param_grad_ep_mapping[ep]["params"].append(recv_vars[i])
+                self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
+
+        for grad_varname, splited_vars in grad_var_mapping_items:
+            if grad_varname not in sparse_gradnames:
+                continue
+
+            ps_dispatcher.reset()
+
             send_vars = []
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
@@ -617,6 +642,7 @@ class CompileTimeStrategy(object):
         self.grad_name_to_param_name = grad_name_to_param_name
 
         sparse_pair_map = collections.OrderedDict()
+
         for pair in self.origin_sparse_pairs + self.origin_dense_pairs:
             param, grad = pair
             sparse_pair_map[param.name] = str(param)
