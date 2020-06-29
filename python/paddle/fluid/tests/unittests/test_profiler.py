@@ -65,6 +65,8 @@ class TestProfiler(unittest.TestCase):
         opts = optimizer.minimize(avg_cost, startup_program=startup_program)
 
         if compile_program:
+            # TODO(luotao): profiler tool may have bug with multi-thread parallel executor.
+            # https://github.com/PaddlePaddle/Paddle/pull/25200#issuecomment-650483092
             exec_strategy = fluid.ExecutionStrategy()
             exec_strategy.num_threads = 1
             train_program = fluid.compiler.CompiledProgram(
@@ -139,8 +141,9 @@ class TestProfiler(unittest.TestCase):
                     utils.get_profiler().record_step()
                     if batch_range is None and iter == 2:
                         utils.get_profiler().reset()
-
-        #self.check_profile_result(profile_path)
+        # TODO(luotao): check why nccl kernel in profile result.
+        # https://github.com/PaddlePaddle/Paddle/pull/25200#issuecomment-650483092
+        # self.check_profile_result(profile_path)
 
     def test_cpu_profiler(self):
         exe = fluid.Executor(fluid.CPUPlace())
