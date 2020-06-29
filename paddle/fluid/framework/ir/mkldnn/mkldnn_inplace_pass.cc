@@ -196,7 +196,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
   auto should_inplace = [&](Graph* g) {
     std::unordered_set<std::string> unwanted_ops(
         {"conditional_block_infer", "While", "while_loop"});
-    for (auto& node : g) {
+    for (auto& node : g->Nodes()) {
       if (node->IsOp() && unwanted_ops.find(node->Name()) != unwanted_ops.end())
         return false;
     }
