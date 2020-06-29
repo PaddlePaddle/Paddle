@@ -214,7 +214,9 @@ class ColorJitter(object):
             transforms.append(HueTransform(hue))
 
         random.shuffle(transforms)
-        self.transforms = Compose(transforms)
+        self.transforms = transforms
 
     def __call__(self, img):
-        return self.transforms(img)
+        for t in self.transforms:
+            img = t(img)
+        return img

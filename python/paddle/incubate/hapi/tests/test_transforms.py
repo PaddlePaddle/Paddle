@@ -26,10 +26,9 @@ class TestTransforms(unittest.TestCase):
 
     def test_color_jitter(self):
         trans = [
-            transforms.BrightnessTransform(0.0),
-            transforms.HueTransform(0.0),
+            transforms.BrightnessTransform(0.0), transforms.HueTransform(0.0),
             transforms.SaturationTransform(0.0),
-            transforms.ContrastTransform(0.0),
+            transforms.ContrastTransform(0.0), transforms.ColorJitter(0.2)
         ]
         self.do_transform(trans)
 
