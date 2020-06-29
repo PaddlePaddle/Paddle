@@ -203,7 +203,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     return true;
   };
 
-  should_inplace(graph) ? gpd(graph, handler) : return;
+  if (should_inplace(graph)) gpd(graph, handler);
 }
 
 }  // namespace ir
