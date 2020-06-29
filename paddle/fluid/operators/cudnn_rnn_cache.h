@@ -182,7 +182,6 @@ struct CudnnRNNCache {
       auto *dropout_state_data = dropout_state_->data<uint8_t>();
       auto dropout_state_dims = dropout_state_->dims();
       state_size = dropout_state_dims[0];
-      // LOG(INFO) << "dropout_state_dims[0]:" << state_size;
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnRestoreDropoutDescriptor(
               dropout_desc_, handle, dropout_prob_, dropout_state_data,

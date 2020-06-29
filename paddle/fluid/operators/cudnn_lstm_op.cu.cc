@@ -29,7 +29,6 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     const Tensor *x = ctx.Input<Tensor>("Input");
     const Tensor *init_h = ctx.Input<Tensor>("InitH");
     const Tensor *init_c = ctx.Input<Tensor>("InitC");
-    // const Tensor *state = ctx.Input<Tensor>("State");
 
     auto w = ctx.Input<Tensor>("W");
 

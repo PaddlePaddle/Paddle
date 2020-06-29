@@ -142,10 +142,7 @@ class TestCUDNNLstmOp(OpTest):
 
         init_h = np.zeros((batch_size, hidden_size), dtype=np.float32)
         init_c = np.zeros((batch_size, hidden_size), dtype=np.float32)
-        #scope = core.Scope()
-        #program = fluid.Program()
-        #block = program.global_block()
-        state = np.ndarray((3932160)).astype("uint8")
+        state = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
             'Input': input,
@@ -166,7 +163,7 @@ class TestCUDNNLstmOp(OpTest):
             'Out': output,
             "last_h": last_hidden,
             'last_c': last_cell,
-            'Reserve': np.ndarray((40000)).astype("uint8"),
+            'Reserve': np.ndarray((400)).astype("uint8"),
             'StateOut': state
         }
 
