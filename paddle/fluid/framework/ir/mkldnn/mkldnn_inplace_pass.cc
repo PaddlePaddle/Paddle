@@ -193,9 +193,10 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "oneDNN InPlace applied!";
   };
 
+  // TODO(jczaja): inplace pass does not influece ops inside block ops
   auto should_inplace = [&](Graph* g) {
     std::unordered_set<std::string> unwanted_ops(
-        {"conditional_block_infer", "While", "while_loop"});
+        {"conditional_block", "While", "while_loop"});
     for (auto& node : g->Nodes()) {
       if (node->IsOp() &&
           unwanted_ops.find(node->Name()) != unwanted_ops.end()) {
