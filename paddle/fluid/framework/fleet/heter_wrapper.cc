@@ -133,7 +133,11 @@ void HeterWrapper::SerializeToReq(const std::string& varname, Scope* scope, Vari
 }
 
 //void HeterWrapper::DeSerializeToTensor(Scope* scope, const HeterRequest* request) {
+#ifdef PADDLE_WITH_CUDA
+void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place, cudaStream_t stream) {
+#else
 void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place) {
+#endif
   //const VariableMessage& req_var = request->vars();
   auto* var = scope->FindVar(req_var.varname());
   auto* tensor = var->GetMutable<LoDTensor>();
@@ -163,7 +167,7 @@ void HeterWrapper::DeSerializeToTensor(Scope* scope, const VariableMessage& req_
       tensor_data,
       platform::CPUPlace(),
       req_var.data().data(), 
-      tensor->numel() * SizeOfType(tensor->type()), nullptr);
+      tensor->numel() * SizeOfType(tensor->type()), stream);
   #else
   memcpy(tensor_data, req_var.data().data(), tensor->numel() * SizeOfType(tensor->type()));
   #endif

@@ -79,8 +79,11 @@ class HeterWrapper {
 
   framework::proto::VarType::Type ToVarType(VariableMessage::Type type);
   
+#ifdef PADDLE_WITH_CUDA
+  void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place, cudaStream_t stream = nullptr);
+#else
   void DeSerializeToTensor(Scope* scope, const VariableMessage& req_var, platform::Place place);
-  
+#endif
   // HeterWrapper singleton
   static std::shared_ptr<HeterWrapper> GetInstance() {
     if (NULL == s_instance_) {

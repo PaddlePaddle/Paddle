@@ -100,7 +100,8 @@ void HeterXpuTrainer::Initialize(const TrainerDesc &trainer_desc,
   //  copy_streams_.push_back(stream);
   //  places_.push_back(place);
   //}
-  trainer_desc_ = trainer_desc;        
+  trainer_desc_ = trainer_desc;
+  
 }
 
 void HeterXpuTrainer::CreateThreadParam(const ProgramDesc& program, int num) {
@@ -206,76 +207,46 @@ void HeterXpuTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   }
   
   xpu_begin_op_index_ = xpu_end_op_index_ = -1;
-/*
-  for (size_t i = 0; i < ops_.size(); ++i) {
-    //if (!first && ops_[i]->Type() == "mul") {
-    //  first = 1; 
-    //  xpu_begin_op_index_ = i;
-    //  auto& in_map = ops_[i]->Inputs();
-    //  
-    //  
-    //  auto it = in_map.find("X");
-    //  if (it != in_map.end()) {
-    //    for (auto& x : it->second) {
-    //      send_var = x;
-    //    }
-    //  }
-    //}
-    //if (ops_[i]->Type() == "mul_grad") {
-    //  xpu_end_op_index_ = i;
-    //  auto& out_map = ops_[i]->Outputs();
-    //  auto it = out_map.find("X@GRAD");
-    //  if (it != out_map.end()) {
-    //    for (auto& x : it->second) {
-    //      recv_var_ = x;
-    //    }
-    //  }
-    //}
-    auto& out_map = ops_[i]->Outputs();
-    
-    {
-      auto it = out_map.find("Out");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0") {
-            xpu_begin_op_index_ = i + 1;
-          }
-        }
-      }
-    }
-    
-    {
-      auto it = out_map.find("X@GRAD");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0@GRAD") {
-            xpu_end_op_index_ = i;
-          }
-        }
-      }
-    }
-    
-    {
-      auto it = out_map.find("Out");
-      if (it != out_map.end()) {
-        for (auto& x : it->second) {
-          if (x == "concat_1.tmp_0@GRAD") {
-            xpu_end_op_index_ = i;
-          }
-        }
-      }
-    }
-  }
-  
-  if (xpu_end_op_index_ == -1) {
-    xpu_end_op_index_ = ops_.size() - 1;
-  }
-  */
   xpu_begin_op_index_ = trainer_desc_.xpu_start_idx();
   xpu_end_op_index_ = trainer_desc_.xpu_end_idx();
   VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
   //CHECK(xpu_begin_op_index_ == 0);
   //CHECK(xpu_end_op_index_ = ops_.size() - 1);
+  
+  //// init pool
+  for (size_t i = 0; i < 5; ++i) {
+    for (size_t j = 0; j < places_.size(); ++j) {
+      int num = j;
+      std::shared_ptr<HeterServiceContext> context = std::make_shared<HeterServiceContext>();
+      
+      context->place_num_ = num;
+      auto place = places_[num];
+      context->scope_ = &(place_scopes_[num]->NewScope());
+      auto &block = program_.Block(0);
+      for (auto &var : block.AllVars()) {
+        if (!var->Persistable()) {
+          auto *ptr = context->scope_->Var(var->Name());
+          InitializeVariable(ptr, var->GetType());
+        }
+      }
+      for (auto& v : dense_grad_names_) {
+        for (auto& name : v.second) {
+          auto *ptr = context->scope_->Var(name + "pin");
+          InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+        }
+      }
+      for (auto &op_desc : block.AllOps()) {
+        std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
+        OperatorBase *local_op_ptr = local_op.release();
+        (context->ops_).push_back(local_op_ptr);
+      }
+  
+      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      platform::CUDADeviceGuard guard(dev_id);
+      PADDLE_ENFORCE(cudaEventCreateWithFlags(&context->event_, cudaEventDisableTiming));
+      object_pool_.Push(context);
+    }
+  }
   VLOG(3) << "init other env done.";
 }
 
@@ -413,8 +384,13 @@ int HeterXpuTrainer::RunTask(const HeterRequest* request, HeterResponse* respons
   {
     auto deserial_timer = std::make_shared<paddle::ps::CostTimer>("xpu_service_deserial");
     for (int i = 0; i < request->vars_size(); ++i) {
-      heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place);
-    }  
+      heter_ptr_->DeSerializeToTensor(context->scope_, request->vars(i), place, copy_streams_[context->place_num_]);
+    } 
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(context->event_, copy_streams_[context->place_num_]));
+    while (cudaEventQuery(context->event_) != cudaSuccess) {
+      VLOG(3) << "wait for kernel";
+      bthread_yield();
+    }
   }
   
   { 
