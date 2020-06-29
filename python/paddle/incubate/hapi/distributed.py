@@ -45,22 +45,20 @@ class DistributedBatchSampler(BatchSampler):
             is not divisible by the batch size. Default False
     Examples:
         .. code-block:: python
-            import numpy as np
-            from paddle.incubate.hapi.datasets import MNIST
+            
             from paddle.incubate.hapi.distributed import DistributedBatchSampler
-            class MnistDataset(MNIST):
-                def __init__(self, mode, return_label=True):
-                    super(MnistDataset, self).__init__(mode=mode)
-                    self.return_label = return_label
+            class FakeDataset():
+                def __init__(self):
+                    pass
+
                 def __getitem__(self, idx):
-                    img = np.reshape(self.images[idx], [1, 28, 28])
-                    if self.return_label:
-                        return img, np.array(self.labels[idx]).astype('int64')
-                    return img,
+                    return idx,
+
                 def __len__(self):
-                    return len(self.images)
-            train_dataset = MnistDataset(mode='train')
-            dist_train_dataloader = DistributedBatchSampler(train_dataset, batch_size=64)
+                    return 10
+
+            train_dataset = FakeDataset()
+            dist_train_dataloader = DistributedBatchSampler(train_dataset, batch_size=4)
             for data in dist_train_dataloader:
                 # do something
                 break
