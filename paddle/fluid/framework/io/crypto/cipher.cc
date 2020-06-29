@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/io/crypto/cipher.h"
 #include "paddle/fluid/framework/io/crypto/aes_cipher.h"
 #include "paddle/fluid/framework/io/crypto/cipher_utils.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/platform/enforce.h"
-
 namespace paddle {
 namespace framework {
 
@@ -56,5 +56,8 @@ std::shared_ptr<Cipher> CipherFactory::CreateCipher(
   return nullptr;
 }
 
+std::shared_ptr<Cipher> MakeCipher(const std::string& config_file) {
+  return CipherFactory::CreateCipher(config_file);
+}
 }  // namespace framework
 }  // namespace paddle
