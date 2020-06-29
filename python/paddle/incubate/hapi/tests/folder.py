@@ -16,7 +16,7 @@ import os
 import sys
 import cv2
 
-# from paddle.io import Dataset
+from paddle.fluid.io import Dataset
 
 __all__ = ["DatasetFolder"]
 
@@ -57,65 +57,8 @@ def make_dataset(dir, class_to_idx, extensions, is_valid_file=None):
     return images
 
 
-# class DatasetFolder(Dataset):
-class DatasetFolder():
+class DatasetFolder(Dataset):
     """A generic data loader where the samples are arranged in this way:
-
-        root/class_a/1.ext
-        root/class_a/2.ext
-        root/class_a/3.ext
-
-        root/class_b/123.ext
-        root/class_b/456.ext
-        root/class_b/789.ext
-
-    Args:
-        root (string): Root directory path.
-        loader (callable|optional): A function to load a sample given its path.
-        extensions (tuple[str]|optional): A list of allowed extensions.
-            both extensions and is_valid_file should not be passed.
-        transform (callable|optional): A function/transform that takes in
-            a sample and returns a transformed version.
-        is_valid_file (callable|optional): A function that takes path of a file
-            and check if the file is a valid file (used to check of corrupt files)
-            both extensions and is_valid_file should not be passed.
-
-     Attributes:
-        classes (list): List of the class names.
-        class_to_idx (dict): Dict with items (class_name, class_index).
-        samples (list): List of (sample path, class_index) tuples
-        targets (list): The class_index value for each image in the dataset
-
-    Example:
-
-        .. code-block:: python
-
-            import os
-            import cv2
-            import tempfile
-            import shutil
-            import numpy as np
-            from paddle.incubate.hapi.datasets import DatasetFolder
-
-            def make_fake_dir():
-                data_dir = tempfile.mkdtemp()
-
-                for i in range(2):
-                    sub_dir = os.path.join(data_dir, 'class_' + str(i))
-                    if not os.path.exists(sub_dir):
-                        os.makedirs(sub_dir)
-                    for j in range(2):
-                        fake_img = (np.random.random((32, 32, 3)) * 255).astype('uint8')
-                        cv2.imwrite(os.path.join(sub_dir, str(j) + '.jpg'), fake_img)
-                return data_dir
-
-            temp_dir = make_fake_dir()
-            data_folder = DatasetFolder(temp_dir)
-
-            for items in data_folder:
-                break
-                
-            shutil.rmtree(temp_dir)
     """
 
     def __init__(self,

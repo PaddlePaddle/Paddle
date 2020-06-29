@@ -21,7 +21,6 @@ import cv2
 import shutil
 import numpy as np
 
-# from paddle.incubate.hapi.datasets import DatasetFolder
 from folder import DatasetFolder
 from paddle.incubate.hapi.vision.transforms import transforms
 
@@ -93,7 +92,7 @@ class TestTransforms(unittest.TestCase):
         self.do_transform(trans)
 
     def test_color_jitter(self):
-        trans = transforms.BatchCompose([
+        trans = transforms.Compose([
             transforms.BrightnessTransform(0.0),
             transforms.HueTransform(0.0),
             transforms.SaturationTransform(0.0),
@@ -104,7 +103,7 @@ class TestTransforms(unittest.TestCase):
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
 
-        trans_batch = transforms.BatchCompose([transforms.Resize(-1)])
+        trans_batch = transforms.Compose([transforms.Resize(-1)])
 
         with self.assertRaises(Exception):
             self.do_transform(trans)
@@ -126,7 +125,6 @@ class TestTransforms(unittest.TestCase):
 
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))
-        str(transforms.BatchCompose([transforms.Resize((224, 224))]))
 
 
 if __name__ == '__main__':

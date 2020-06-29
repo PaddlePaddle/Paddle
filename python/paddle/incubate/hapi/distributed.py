@@ -16,23 +16,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import six
-import time
 import math
-import socket
-import contextlib
 import numpy as np
 
-from paddle import fluid
-from paddle.fluid.layers import collective
-from paddle.fluid.dygraph.parallel import ParallelEnv, ParallelStrategy
-# from paddle.io import BatchSampler
+from paddle.fluid.dygraph.parallel import ParallelEnv
+from paddle.fluid.io import BatchSampler
 
 __all__ = ['DistributedBatchSampler']
 
 
-# class DistributedBatchSampler(BatchSampler):
-class DistributedBatchSampler():
+class DistributedBatchSampler(BatchSampler):
     """Sampler that restricts data loading to a subset of the dataset.
 
     In such case, each process can pass a DistributedBatchSampler instance 
