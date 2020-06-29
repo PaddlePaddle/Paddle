@@ -57,7 +57,7 @@ EXPRESSION_MAP = {
 
 def monkey_patch_variable():
     def unique_tmp_name():
-        return unique_name.generate("tmp")
+        return unique_name.generate("tmp_var")
 
     def safe_get_dtype(var):
         try:
