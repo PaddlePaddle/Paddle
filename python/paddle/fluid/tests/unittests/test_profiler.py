@@ -65,8 +65,11 @@ class TestProfiler(unittest.TestCase):
         opts = optimizer.minimize(avg_cost, startup_program=startup_program)
 
         if compile_program:
+            exec_strategy = fluid.ExecutionStrategy()
+            exec_strategy.num_threads = 1
             train_program = fluid.compiler.CompiledProgram(
-                main_program).with_data_parallel(loss_name=avg_cost.name)
+                main_program).with_data_parallel(
+                    loss_name=avg_cost.name, exec_strategy=exec_strategy)
         else:
             train_program = main_program
         return train_program, startup_program, avg_cost, batch_size, batch_acc
