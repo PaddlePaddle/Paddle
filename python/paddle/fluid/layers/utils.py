@@ -282,7 +282,7 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def _get_shape_tensor_inputs(inputs, helper, attrs, shape, op_type):
+def _get_shape_tensor_inputs(inputs, attrs, shape, op_type):
     from .tensor import fill_constant, cast
 
     def _get_attr_shape(list_shape):

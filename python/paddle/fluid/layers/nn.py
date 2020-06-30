@@ -10503,11 +10503,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
 
     inputs = {}
     utils._get_shape_tensor_inputs(
-        inputs=inputs,
-        helper=helper,
-        attrs=attrs,
-        shape=shape,
-        op_type='gaussian_random')
+        inputs=inputs, attrs=attrs, shape=shape, op_type='gaussian_random')
 
     helper.append_op(
         type='gaussian_random',
