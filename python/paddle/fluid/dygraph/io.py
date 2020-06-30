@@ -365,22 +365,28 @@ def _load_persis_vars_by_program(model_path,
     load_var_dict = {}
     for each_var in persis_vars:
         orig_each_name = _remove_loaded_suffix(each_var.name())
-        # create output varbase
-        new_var = framework.ParamBase(
-            shape=each_var.shape(),
-            dtype=each_var.dtype(),
-            name=each_var.name(),
-            type=each_var.type(),
-            persistable=True)
+        if _is_parameter(each_var, program_holder.infer_program):
+            # create output varbase
+            new_var = framework.ParamBase(
+                shape=each_var.shape(),
+                dtype=each_var.dtype(),
+                name=each_var.name(),
+                type=each_var.type(),
+                persistable=True)
+        else:
+            new_var = framework._varbase_creator(
+                type=each_var.type(),
+                name=each_var.name(),
+                shpae=each_var.shape(),
+                dtype=each_var.dtype(),
+                persistable=True)
         if params_filename is None:
-            if not _is_parameter(each_var, program_holder.infer_program):
-                continue
             framework._dygraph_tracer().trace_op(
                 type='load',
                 inputs={},
                 outputs={'Out': new_var},
                 attrs={'file_path': os.path.join(model_path, orig_each_name)})
-            new_var.stop_gradient = False
+        new_var.stop_gradient = False
         load_var_dict[each_var.name()] = new_var
 
     if params_filename is not None:
@@ -624,8 +630,9 @@ class TranslatedLayer(layers.Layer):
         for name, var in persistable_vars.items():
             if isinstance(var, framework.ParamBase):
                 self.add_parameter(name, var)
+            elif isinstance(var, core.VarBase):
+                self.register_buffer(name, var)
             else:
-                # TODO(chenweihang): support add buffers
                 raise TypeError(
                     "Adding persistent variable which  to layer is not supported now"
                 )
@@ -697,8 +704,9 @@ class TranslatedLayer(layers.Layer):
             for var_name in program_holder.persistable_names:
                 if var_name in self._parameters:
                     persis_vars.append(self._parameters[var_name])
+                elif var_name in self._buffers:
+                    persis_vars.append(self._buffers[var_name])
                 else:
-                    # TODO(chenweihang): buffer support
                     raise ValueError(
                         "The persistable variable %s is not exists in current TranslatedLayer."
                         % var_name)

@@ -32,6 +32,8 @@ class StaticModelRunner(object):
 
     def __new__(cls, model_dir, model_filename=None, params_filename=None):
         configs = SaveLoadConfig()
-        configs.model_filename = model_filename
-        configs.params_filename = params_filename
+        if model_filename is not None:
+            configs.model_filename = model_filename
+        if params_filename is not None:
+            configs.params_filename = params_filename
         return TranslatedLayer._construct(model_dir, configs)
