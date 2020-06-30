@@ -44,7 +44,7 @@ function(download_qat_fp32_model install_dir data_file)
 endfunction()
 
 function(inference_qat_int8_image_classification_test target qat_model_dir dataset_path)
-    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/qat_int8_image_classification_comparison.py"
+    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant_int8_image_classification_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
@@ -58,7 +58,7 @@ endfunction()
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 25 
 function(inference_qat2_int8_image_classification_test target qat_model_dir fp32_model_dir dataset_path ops_to_quantize)
-    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/qat2_int8_image_classification_comparison.py"
+    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_image_classification_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
@@ -73,7 +73,7 @@ endfunction()
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20 
 function(inference_qat2_int8_nlp_test target qat_model_dir fp32_model_dir dataset_path labels_path)
-    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/qat2_int8_nlp_comparison.py"
+    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_nlp_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
@@ -99,7 +99,7 @@ function(download_qat_model install_dir data_file)
 endfunction()
 
 function(save_qat_ic_model_test target qat_model_dir fp32_model_save_path int8_model_save_path ops_to_quantize)
-    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py
+    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_quant_model.py
             ARGS --qat_model_path ${qat_model_dir}
 	         --fp32_model_save_path ${fp32_model_save_path}
 	         --int8_model_save_path ${int8_model_save_path}
@@ -107,7 +107,7 @@ function(save_qat_ic_model_test target qat_model_dir fp32_model_save_path int8_m
 endfunction()
 
 function(save_qat_nlp_model_test target qat_model_dir fp32_model_save_path int8_model_save_path)
-    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py
+    py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/save_quant_model.py
             ARGS --qat_model_path ${qat_model_dir}
 	         --fp32_model_save_path ${fp32_model_save_path}
 	         --int8_model_save_path ${int8_model_save_path})
