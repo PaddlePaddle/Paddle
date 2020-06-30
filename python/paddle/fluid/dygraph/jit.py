@@ -16,7 +16,7 @@ from __future__ import print_function
 
 __all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
-import logging
+import warnings
 from paddle.fluid import core
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.dygraph.base import program_desc_tracing_guard, switch_to_static_graph
@@ -25,8 +25,6 @@ from paddle.fluid.dygraph.layers import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.wrapped_decorator import wrap_decorator
-
-logger = logging.getLogger("fluid")
 
 
 def create_program_from_desc(program_desc):
@@ -104,7 +102,7 @@ def _dygraph_to_static_func_(dygraph_func):
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
         if in_dygraph_mode() or not program_translator.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set ProgramTranslator.enable to False. "
                 "We will just return dygraph output.")
@@ -156,7 +154,7 @@ def _declarative_(dygraph_func):
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
         if not program_translator.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The decorator 'declarative' doesn't work when setting ProgramTranslator.enable=False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)

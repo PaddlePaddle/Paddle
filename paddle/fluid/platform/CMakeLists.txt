@@ -124,10 +124,7 @@ else()
   cc_library(device_memory_aligment SRCS device_memory_aligment.cc DEPS cpu_info place)
 endif()
 
-# TODO: Fix this unittest failed on Windows
-if(NOT WIN32)
-  cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
-endif(NOT WIN32)
+cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)

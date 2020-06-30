@@ -40,7 +40,7 @@ limitations under the License. */
 #ifdef _WIN32
 #define cpuid(reg, x) __cpuidex(reg, x, 0)
 #else
-#ifndef WITH_NV_JETSON
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM)
 #include <cpuid.h>
 inline void cpuid(int reg[4], int x) {
   __cpuid_count(x, 0, reg[0], reg[1], reg[2], reg[3]);

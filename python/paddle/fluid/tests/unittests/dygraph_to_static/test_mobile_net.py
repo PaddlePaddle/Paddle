@@ -517,10 +517,10 @@ class TestMobileNet(unittest.TestCase):
             np.allclose(dy_out, st_out),
             msg="dy_out: {}, st_out: {}".format(dy_out, st_out))
 
-    def test_mobileNetV1(self):
+    def test_mobileNet(self):
+        # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
-
-    def test_mobileNetV2(self):
+        # MobileNet-V2
         self.assert_same_loss("MobileNetV2")
 
 
