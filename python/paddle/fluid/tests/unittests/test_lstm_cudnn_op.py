@@ -20,6 +20,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0
@@ -113,6 +114,9 @@ def lstm_naive(
 
     output = output.transpose((1, 0, 2))
 
+    pre_h = pre_h.reshape((1, batch_size, hidden_size))
+    pre_c = pre_c.reshape((1, batch_size, hidden_size))
+
     return output, pre_h, pre_c
 
 
@@ -161,8 +165,8 @@ class TestCUDNNLstmOp(OpTest):
         }
         self.outputs = {
             'Out': output,
-            "last_h": last_hidden,
-            'last_c': last_cell,
+            "LastH": last_hidden,
+            'LastC': last_cell,
             'Reserve': np.ndarray((400)).astype("uint8"),
             'StateOut': state
         }
@@ -181,8 +185,35 @@ class TestCUDNNLstmOp(OpTest):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
-            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'last_h', 'last_c'],
+            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'LastH', 'LastC'],
             check_dygraph=True)
+
+
+class TestCUDNNlstmAPI(unittest.TestCase):
+    def test_lstm(self):
+        max_len = 20
+        batch_size = 5
+        hidden_size = 20
+        dropout_prob = 0.0
+        num_layers = 1
+        input = fluid.data(
+            name='input',
+            shape=[max_len, batch_size, hidden_size],
+            dtype='float32')
+        init_h = layers.fill_constant([num_layers, batch_size, hidden_size],
+                                      'float32', 0.0)
+        init_c = layers.fill_constant([num_layers, batch_size, hidden_size],
+                                      'float32', 0.0)
+        rnn_out, last_h, last_c = layers.lstm( input, init_h, init_c, \
+                        max_len, hidden_size, num_layers, dropout_prob)
+        exe = fluid.Executor(fluid.CUDAPlace(0))
+        exe.run(fluid.default_startup_program())
+        input_i = np.random.uniform(
+            low=-0.1, high=0.1, size=(max_len, batch_size,
+                                      hidden_size)).astype("float32")
+        out = exe.run(fluid.default_main_program(),
+                      feed={'input': input_i},
+                      fetch_list=[rnn_out, last_h, last_c])
 
 
 if __name__ == '__main__':

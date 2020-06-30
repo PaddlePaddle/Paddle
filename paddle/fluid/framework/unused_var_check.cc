@@ -58,6 +58,7 @@ const std::unordered_set<std::string> op_with_unsed_vars_allow_list = {
     "fused_batch_norm_act_grad",       // 2
     "data_norm",                       // 0
     "data_norm_grad",                  // 0
+    "cudnn_lstm",                      // 1
 };
 
 namespace paddle {

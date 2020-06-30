@@ -41,10 +41,10 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
                    "Output(StateOut) of LSTM should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("last_h"),
-                   "Output(last_h) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("last_c"),
-                   "Output(last_c) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("LastH"),
+                   "Output(LastH) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("LastC"),
+                   "Output(LastC) of LSTM should not be null.");
     // PADDLE_ENFORCE_EQ(ctx->Inputs("State")[0], ctx->Outputs("StateOut")[0],
     //                  platform::errors::InvalidArgument(
     //                      "State and StateOut should share the same memory"));
@@ -57,8 +57,8 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
     out_dims[2] = hidden_size;
 
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("last_h", ctx->GetInputDim("InitH"));
-    ctx->SetOutputDim("last_c", ctx->GetInputDim("InitC"));
+    ctx->SetOutputDim("LastH", ctx->GetInputDim("InitH"));
+    ctx->SetOutputDim("LastC", ctx->GetInputDim("InitC"));
   }
 
  protected:
@@ -115,13 +115,13 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "is_bidirec is False"
               "and When is_bidirec is True, the shape will be ( seq_len x "
               "batch_size x hidden_size * 2) ");
-    AddOutput("last_h",
+    AddOutput("LastH",
               "(Tensor) the hidden state of the last step. "
               "The shape is ( num_layers x batch_size x hidden_size) if "
               "is_bidirec is False"
               "and When is_bidirec is True, the shape will be (num_layers*2 x "
               "batch_size x hidden_size)");
-    AddOutput("last_c",
+    AddOutput("LastC",
               "(Tensor) the cell state of the last step"
               "The shape is ( num_layers x batch_size x hidden_size) if "
               "is_bidirec is False"
@@ -140,7 +140,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_bidirec",
                   "is_bidirec"
                   "if it is bidirectional rnn"
-                  "The will affect the shape of the Out, last_h, and last_c")
+                  "The will affect the shape of the Out, LastH, and LastC")
         .SetDefault(false);
     AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(10);
     AddAttr<int>("hidden_size", "hidden size of the LSTM").SetDefault(100);
@@ -238,8 +238,8 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("State", this->Output("StateOut"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput(framework::GradVarName("last_c"), this->OutputGrad("last_c"));
-    op->SetInput(framework::GradVarName("last_h"), this->OutputGrad("last_h"));
+    op->SetInput(framework::GradVarName("LastC"), this->OutputGrad("LastC"));
+    op->SetInput(framework::GradVarName("LastH"), this->OutputGrad("LastH"));
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));

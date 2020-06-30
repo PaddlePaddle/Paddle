@@ -33,8 +33,8 @@ class CudnnLSTMGPUKernel : public framework::OpKernel<T> {
     auto w = ctx.Input<Tensor>("W");
 
     Tensor *out = ctx.Output<Tensor>("Out");
-    Tensor *last_h = ctx.Output<Tensor>("last_h");
-    Tensor *last_c = ctx.Output<Tensor>("last_c");
+    Tensor *last_h = ctx.Output<Tensor>("LastH");
+    Tensor *last_c = ctx.Output<Tensor>("LastC");
     Tensor *reserve = ctx.Output<Tensor>("Reserve");
     Tensor *state_out = ctx.Output<Tensor>("StateOut");
 
@@ -113,8 +113,8 @@ class CudnnLSTMGPUGradKernel : public framework::OpKernel<T> {
 
     auto *out = ctx.Input<Tensor>("Out");
     auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *last_h_grad = ctx.Input<Tensor>(framework::GradVarName("last_h"));
-    auto *last_c_grad = ctx.Input<Tensor>(framework::GradVarName("last_c"));
+    auto *last_h_grad = ctx.Input<Tensor>(framework::GradVarName("LastH"));
+    auto *last_c_grad = ctx.Input<Tensor>(framework::GradVarName("LastC"));
 
     auto *in_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto *weight_grad = ctx.Output<Tensor>(framework::GradVarName("W"));
