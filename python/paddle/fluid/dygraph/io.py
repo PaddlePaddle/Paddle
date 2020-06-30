@@ -495,15 +495,15 @@ def _construct_params_and_buffers(model_path, programs, params_filename=None):
 class TranslatedLayer(layers.Layer):
     """
     TranslatedLayer is a imperative Layer for holding the model loaded by 
-    `paddle.imperative.jit.load`. It can be used like a general Layer object
-    in eval or train mode.
+    :ref:`api_fluid_dygraph_jit_load` . It can be used like a general Layer 
+    object in eval or train mode.
     
     .. note:
-        The TranslatedLayer objects should not be created by constructor,
-    it only can be loaded and constructed by `paddle.imperative.jit.load`.
+        The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_fluid_dygraph_jit_load` .
 
     Examples:
         .. code-block:: python
+
             import numpy as np
             import paddle.fluid as fluid
             from paddle.fluid.dygraph import Linear

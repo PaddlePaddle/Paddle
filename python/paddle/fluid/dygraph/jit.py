@@ -176,9 +176,9 @@ declarative = wrap_decorator(_declarative_)
 class SaveLoadConfig(object):
     """
     The additional configuration options may be used in function 
-    ``paddle.imperative.jit.save`` that save ``TranslatedLayer`` 
-    or used in function ``paddle.imperative.jit.load`` that 
-    load ``TranslatedLayer``.
+    :ref:`api_fluid_dygraph_jit_save` that save :ref:`api_fluid_dygraph_TranslatedLayer` 
+    or used in function :ref:`api_fluid_dygraph_jit_load` that 
+    load :ref:`api_fluid_dygraph_TranslatedLayer` .
     
     Examples:
         1. Using ``SaveLoadConfig`` when saving model
@@ -262,7 +262,7 @@ class SaveLoadConfig(object):
     @property
     def output_spec(self):
         """
-        Selects the output targets of the saved model (TranslatedLayer).
+        Selects the output targets of the saved model ( :ref:`api_fluid_dygraph_TranslatedLayer` ).
         By default, all return variables of original Layer's forward function
         are kept as the output of the saved TranslatedLayer.
 
@@ -275,6 +275,7 @@ class SaveLoadConfig(object):
 
         Examples:
             .. code-block:: python
+            
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
@@ -329,10 +330,11 @@ class SaveLoadConfig(object):
     def model_filename(self):
         """
         The name of file to save the translated program of target Layer.
-        Default filename is :code:`__model__`.
+        Default filename is :code:`__model__` .
 
         Exampels:
             .. code-block:: python
+
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
@@ -389,10 +391,11 @@ class SaveLoadConfig(object):
     def params_filename(self):
         """
         The name of file to save all persistable variables in target Layer. 
-        Default file name is :code:`__variables__.
+        Default file name is :code:`__variables__` .
         
         Exampels:
             .. code-block:: python
+
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
@@ -449,8 +452,8 @@ class SaveLoadConfig(object):
 @switch_to_static_graph
 def save(layer, model_path, input_spec=None, configs=None):
     """
-    Saves input declarative Layer as TranslatedLayer format model, 
-    which can be used for inference or fine-tuning after loading.
+    Saves input declarative Layer as :ref:`api_fluid_dygraph_TranslatedLayer` 
+    format model, which can be used for inference or fine-tuning after loading.
 
     It will save the translated program and all related persistable 
     variables of input declarative Layer to given ``model_path``.
@@ -461,9 +464,9 @@ def save(layer, model_path, input_spec=None, configs=None):
     ``__varibales.info__``, these additional information is used in fine-tuning.
 
     The saved model can be loaded by follow APIs:
-        - :ref:`api_fluid_dygraph_jit_load`
-        - :ref:`api_fluid_io_load_inference_model` (need pass ``params_filename=__variables__``)
-        - Other C++ inference APIs
+      - :ref:`api_fluid_dygraph_jit_load`
+      - :ref:`api_fluid_io_load_inference_model` (need pass ``params_filename=__variables__``)
+      - Other C++ inference APIs
 
     Args:
         layer (Layer): the Layer to be saved. The Layer should be decorated by `declarative`.
@@ -472,13 +475,14 @@ def save(layer, model_path, input_spec=None, configs=None):
             It is the example inputs that will be passed to saved TranslatedLayer's forward
             function. If None, all input variables of the original Layer's forward function
             would be the inputs of the saved model. Default None.
-        configs (SaveLoadConfig, optional): jit.SaveLoadConfig object that specifies 
-            additional configuration options. Default None.
+        configs (SaveLoadConfig, optional): :ref:`api_fluid_dygraph_jit_SaveLoadConfig` object
+            that specifies additional configuration options. Default None.
     Returns:
         None
 
     Examples:
         .. code-block:: python
+
             import numpy as np
             import paddle.fluid as fluid
             from paddle.fluid.dygraph import Linear
@@ -657,28 +661,27 @@ def save(layer, model_path, input_spec=None, configs=None):
 @dygraph_only
 def load(model_path, configs=None):
     """
-    Load model saved by ``paddle.imperative.jit.save`` or ``fluid.io.save_inference_model``
-    as TranslatedLayer, then performing inference or fine-tune training.
+    Load model saved by :ref:`api_fluid_dygraph_jit_save` or :ref:`api_fluid_io_save_inference_model`
+    as :ref:`api_fluid_dygraph_TranslatedLayer`, then performing inference or fine-tune training.
 
     .. note::
-        For some historical reasons, if you load model saved by `fluid.io.save_inference_model`,
+        For some historical reasons, if you load model saved by :ref:`api_fluid_io_load_inference_model`,
         there will be the following limitations when using it:
-            **1. Imperative mode do not support LoDTensor. All original model's 
-                feed targets or parametars that depend on LoD are temporarily unavailable.**
+            **1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.**
             **2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.**
             **3. The ``stop_gradient`` information is lost and can not be recovered.**
             **4. The parameter's ``trainable`` information is lost and can not be recovered.**
 
     Args:
         model_path (str): The directory path where the model is saved.
-        configs (SaveLoadConfig, optional): jit.SaveLoadConfig object that specifies 
+        configs (SaveLoadConfig, optional): :ref:`api_fluid_dygraph_jit_SaveLoadConfig` object that specifies 
             additional configuration options. Default None.
 
     Returns:
         TranslatedLayer: A Layer object can run saved translated model.
 
     Examples:
-        1. Load model saved by `fluid.dygraph.jit.save` then performing inference and fine-tune training.
+        1. Load model saved by :ref:`api_fluid_dygraph_jit_save` then performing inference and fine-tune training.
 
         .. code-block:: python
 
@@ -772,7 +775,7 @@ def load(model_path, configs=None):
                 adam.minimize(avg_loss)
                 train_net.clear_gradients()
 
-        2. Load model saved by `fluid.io.save_inference_model` then performing and fine-tune training.
+        2. Load model saved by :ref:`api_fluid_io_save_inference_model` then performing and fine-tune training.
 
         .. code-block:: python
 
