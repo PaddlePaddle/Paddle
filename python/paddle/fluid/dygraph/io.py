@@ -55,7 +55,7 @@ def _is_persistable(var_desc):
     return var_desc.persistable()
 
 
-def _is_parameter(persis_var_desc, program_desc):
+def _is_parameter(persistable_var_desc, program_desc):
     # 1. firstly, param should be input of op
     input_ops = []  # op can be repeated
     for block_idx in six.moves.range(program_desc.num_blocks()):
@@ -63,14 +63,14 @@ def _is_parameter(persis_var_desc, program_desc):
         for op_idx in six.moves.range(block.op_size()):
             op = block.op(op_idx)
             # NOTE: parameter is the input of a certain op
-            if persis_var_desc.name() in op.input_arg_names():
+            if persistable_var_desc.name() in op.input_arg_names():
                 input_ops.append(op)
     # 2. secondly, param should not be output of op or be same op's output
     for block_idx in six.moves.range(program_desc.num_blocks()):
         block = program_desc.block(block_idx)
         for op_idx in six.moves.range(block.op_size()):
             op = block.op(op_idx)
-            if persis_var_desc.name() in op.output_arg_names():
+            if persistable_var_desc.name() in op.output_arg_names():
                 # such as batch_norm_op
                 if op in input_ops:
                     continue
@@ -79,21 +79,21 @@ def _is_parameter(persis_var_desc, program_desc):
     return True
 
 
-def _get_persis_vars(program_desc):
-    persis_vars = []
+def _get_persistable_vars(program_desc):
+    persistable_vars = []
     for i in six.moves.range(program_desc.num_blocks()):
         block = program_desc.block(i)
-        persis_vars.extend(list(filter(_is_persistable, block.all_vars())))
-    return persis_vars
+        persistable_vars.extend(list(filter(_is_persistable, block.all_vars())))
+    return persistable_vars
 
 
-def _get_persis_var_names(program_desc):
+def _get_persistable_var_names(program_desc):
     """
     Get all persistable variable names in ProgramDesc.
     """
     var_names = []
-    persis_vars = _get_persis_vars(program_desc)
-    for var in persis_vars:
+    persistable_vars = _get_persistable_vars(program_desc)
+    for var in persistable_vars:
         var_names.append(var.name())
     return var_names
 
@@ -109,7 +109,7 @@ def _get_all_var_names(program_desc):
 
 def _append_loaded_suffix(name):
     """
-    Append grad suffix to the given variable name
+    Append loaded suffix to the given variable name
     e.g. x ==> x@LOADED
     """
     suffix = core.loaded_var_suffix()
@@ -121,7 +121,7 @@ def _append_loaded_suffix(name):
 
 def _remove_loaded_suffix(name):
     """
-    Remove grad suffix to the given variable name
+    Remove loaded suffix to the given variable name
     e.g. x@LOADED ==> x
     """
     suffix = core.loaded_var_suffix()
@@ -130,8 +130,8 @@ def _remove_loaded_suffix(name):
 
 
 def _append_loaded_suffix_to_var(program_desc):
-    persis_vars = _get_persis_vars(program_desc)
-    for var_desc in persis_vars:
+    persistable_vars = _get_persistable_vars(program_desc)
+    for var_desc in persistable_vars:
         old_name = var_desc.name()
         new_name = _append_loaded_suffix(var_desc.name())
         var_desc.set_name(new_name)
@@ -181,7 +181,7 @@ class _ProgramHolder(object):
 
         # input, output, persistable var info
         self._input_names = []
-        self._persis_names = []
+        self._persistable_names = []
         self._output_descs = []
 
         # execution scope
@@ -211,7 +211,7 @@ class _ProgramHolder(object):
 
     @property
     def persistable_names(self):
-        return self._persis_names
+        return self._persistable_names
 
     @property
     def scope(self):
@@ -286,7 +286,7 @@ class _ProgramHolder(object):
         # the variable that not contains @LOADED suffix.
         _append_loaded_suffix_to_var(program_desc)
         # - get persistable var
-        self._persis_names = _get_persis_var_names(program_desc)
+        self._persistable_names = _get_persistable_var_names(program_desc)
 
         return program_desc
 
@@ -316,7 +316,6 @@ class _ProgramHolder(object):
         # Originally, there is no need to build a program, but need to almost
         # rewrite a series of methods for append_backward for program_desc. 
         # Therefore, in order to reuse the method of backward.py, build the program here.
-        fwd_op_num = program_desc_copy.block(0).op_size()
         program = _build_program_by_desc(program_desc_copy)
 
         targets = []
@@ -357,13 +356,13 @@ class _ProgramHolder(object):
 
 # NOTE: [compatible] deal with model saved by save_inference_model,
 # which need get var info from program desc
-def _load_persis_vars_by_program(model_path,
-                                 program_holder,
-                                 params_filename=None):
+def _load_persistable_vars_by_program(model_path,
+                                      program_holder,
+                                      params_filename=None):
     # make sure the path has been checked
-    persis_vars = _get_persis_vars(program_holder.infer_program)
+    persistable_vars = _get_persistable_vars(program_holder.infer_program)
     load_var_dict = {}
-    for each_var in persis_vars:
+    for each_var in persistable_vars:
         orig_each_name = _remove_loaded_suffix(each_var.name())
         if _is_parameter(each_var, program_holder.infer_program):
             # create output varbase
@@ -400,7 +399,7 @@ def _load_persis_vars_by_program(model_path,
             outputs={'Out': load_var_list},
             attrs={'file_path': os.path.join(model_path, params_filename)})
 
-        for each_var in persis_vars:
+        for each_var in persistable_vars:
             if not _is_parameter(each_var, program_holder.infer_program):
                 continue
             param = load_var_dict[each_var.name()]
@@ -420,10 +419,10 @@ def _load_persis_vars_by_program(model_path,
     return load_var_dict
 
 
-def _load_persis_vars(model_path,
-                      var_info_path,
-                      separate_params=False,
-                      params_filename=None):
+def _load_persistable_vars(model_path,
+                           var_info_path,
+                           separate_params=False,
+                           params_filename=None):
     # 1. load extra var info
     with open(var_info_path, 'rb') as f:
         extra_var_info = pickle.load(f) if six.PY2 else pickle.load(
@@ -507,11 +506,11 @@ def _construct_params_and_buffers(model_path,
                                   params_filename=None):
     var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
     if os.path.exists(var_info_path):
-        var_dict = _load_persis_vars(model_path, var_info_path, separate_params,
-                                     params_filename)
+        var_dict = _load_persistable_vars(model_path, var_info_path,
+                                          separate_params, params_filename)
     else:
-        var_dict = _load_persis_vars_by_program(model_path, programs['forward'],
-                                                params_filename)
+        var_dict = _load_persistable_vars_by_program(
+            model_path, programs['forward'], params_filename)
     return var_dict
 
 
@@ -658,11 +657,11 @@ class TranslatedLayer(layers.Layer):
         programs = _construct_program_holders(model_path, model_filename)
 
         # 2. load layer parameters & parameter attirbutes
-        persis_vars = _construct_params_and_buffers(
+        persistable_vars = _construct_params_and_buffers(
             model_path, programs, separate_params, params_filename)
 
         # 3. construct TranslatedLayer object
-        translated_layer = TranslatedLayer(programs, persis_vars)
+        translated_layer = TranslatedLayer(programs, persistable_vars)
 
         # 4. create TranslatedLayer's execution method
         for method_name, program_holder in programs.items():
@@ -700,12 +699,12 @@ class TranslatedLayer(layers.Layer):
                     var.name = program_holder.input_names[i]
                 input_vars.append(var)
 
-            persis_vars = []
+            persistable_vars = []
             for var_name in program_holder.persistable_names:
                 if var_name in self._parameters:
-                    persis_vars.append(self._parameters[var_name])
+                    persistable_vars.append(self._parameters[var_name])
                 elif var_name in self._buffers:
-                    persis_vars.append(self._buffers[var_name])
+                    persistable_vars.append(self._buffers[var_name])
                 else:
                     raise ValueError(
                         "The persistable variable %s is not exists in current TranslatedLayer."
@@ -730,7 +729,7 @@ class TranslatedLayer(layers.Layer):
             framework._dygraph_tracer().trace_op(
                 type='run_program',
                 inputs={'X': input_vars,
-                        'Params': persis_vars},
+                        'Params': persistable_vars},
                 outputs={'Out': output_vars,
                          'OutScope': tmp_scope_vec},
                 attrs={
@@ -747,7 +746,7 @@ class TranslatedLayer(layers.Layer):
             # If we don't change grad_var type here, RunProgramOp need
             # transform SelectedRows to LoDTensor forcely, it may not
             # be user wanted result.
-            for persis_var in persis_vars:
+            for persistable_var in persistable_vars:
                 grad_var_name = var.name + core.grad_var_suffix()
                 grad_var = trace_program.block(0).find_var(
                     cpt.to_bytes(grad_var_name))
@@ -755,7 +754,7 @@ class TranslatedLayer(layers.Layer):
                 # such as in batch_norm
                 if grad_var is None:
                     continue
-                persis_var._set_grad_type(grad_var.type())
+                persistable_var._set_grad_type(grad_var.type())
 
             # 3. prepare output, keep same form with inputs
             outs = output_vars

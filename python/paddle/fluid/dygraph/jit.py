@@ -226,7 +226,7 @@ class SaveLoadConfig(object):
         2. Using ``SaveLoadConfig`` when loading model
 
         .. code-block:: python
-        
+
             import numpy as np
             import paddle.fluid as fluid
 
@@ -695,22 +695,22 @@ def save(layer, model_path, input_spec=None, configs=None):
     layer_func = FunctionSpec(type(layer).forward, [layer], {})
     concrete_program, _ = prog_cache.get_program(layer_func)
 
-    # 3. share parameters form Layer to scope & record var info
+    # 3. share parameters from Layer to scope & record var info
     scope = core.Scope()
     state_dict = layer.state_dict()
     extra_var_info = dict()
-    for structured_name, param in state_dict.items():
+    for structured_name, param_or_buffer in state_dict.items():
         # share to scope
-        param_tensor = scope.var(param.name).get_tensor()
-        src_tensor = param.value().get_tensor()
-        param_tensor._share_data_with(src_tensor)
+        param_or_buffer_tensor = scope.var(param_or_buffer.name).get_tensor()
+        src_tensor = param_or_buffer.value().get_tensor()
+        param_or_buffer_tensor._share_data_with(src_tensor)
         # record var info
         extra_info_dict = dict()
         extra_info_dict['structured_name'] = structured_name
-        extra_info_dict['stop_gradient'] = param.stop_gradient
-        if isinstance(param, ParamBase):
-            extra_info_dict['trainable'] = param.trainable
-        extra_var_info[param.name] = extra_info_dict
+        extra_info_dict['stop_gradient'] = param_or_buffer.stop_gradient
+        if isinstance(param_or_buffer, ParamBase):
+            extra_info_dict['trainable'] = param_or_buffer.trainable
+        extra_var_info[param_or_buffer.name] = extra_info_dict
 
     # 4. build input & output spec
     input_var_names = get_inout_spec(concrete_program.inputs, input_spec, True)
