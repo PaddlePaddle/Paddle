@@ -135,7 +135,7 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
     return out
 
 
-def index_select(input, index, dim=0):
+def index_select(x, index, dim=0):
     """
 	:alias_main: paddle.index_select
 	:alias: paddle.index_select,paddle.tensor.index_select,paddle.tensor.search.index_select
@@ -146,7 +146,7 @@ def index_select(input, index, dim=0):
     size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
 
     Args:
-        input (Variable): The input tensor variable.
+        x (Variable): The input tensor variable.
         index (Variable): The 1-D tensor containing the indices to index.
         dim (int): The dimension in which we index.
 
@@ -180,19 +180,18 @@ def index_select(input, index, dim=0):
     """
     helper = LayerHelper("index_select", **locals())
     if in_dygraph_mode():
-        return core.ops.index_select(input, index, 'dim', dim)
+        return core.ops.index_select(x, index, 'dim', dim)
 
-    check_variable_and_dtype(input, 'x',
-                             ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.index_select')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
+                             'paddle.tensor.search.index_select')
 
-    out = helper.create_variable_for_type_inference(input.dtype)
+    out = helper.create_variable_for_type_inference(x.dtype)
 
     helper.append_op(
         type='index_select',
-        inputs={'X': input,
+        inputs={'X': x,
                 'Index': index},
         outputs={'Out': out},
         attrs={'dim': dim})
