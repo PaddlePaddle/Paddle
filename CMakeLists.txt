@@ -142,13 +142,14 @@ if(WIN32)
     endif()
 endif()
 
+#RUN_TYPE=DIST
 if (NOT WITH_GPU AND WITH_NCCL)
     MESSAGE(WARNING
         "Disable NCCL when compiling without GPU. Force WITH_NCCL=OFF.")
     set(WITH_NCCL OFF CACHE STRING
         "Disable NCCL when compiling without GPU" FORCE)
 endif()
-
+#RUN_TYPE=EXCLUESIVE
 if(WITH_NCCL)
      add_definitions("-DPADDLE_WITH_NCCL")
      include(nccl)
