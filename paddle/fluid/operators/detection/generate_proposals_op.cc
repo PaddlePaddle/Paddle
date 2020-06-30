@@ -378,7 +378,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       for (int i = 0; i < num; i++) {
         lod_data[i] = tmp_lod[i];
       }
-      rpn_rois_lod->Resize({num, 1});
+      rpn_rois_lod->Resize({num});
     }
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
