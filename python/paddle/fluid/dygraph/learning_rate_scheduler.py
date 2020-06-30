@@ -175,15 +175,17 @@ class NaturalExpDecay(LearningRateDecay):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          base_lr = 0.1
-          with fluid.dygraph.guard():
-              sgd_optimizer = fluid.optimizer.SGD(
-        	      learning_rate=fluid.dygraph.NaturalExpDecay(
-	    	            learning_rate=base_lr,
-        		    decay_steps=10000,
-		            decay_rate=0.5,
-		            staircase=True))
+            import paddle.fluid as fluid
+            base_lr = 0.1
+            with fluid.dygraph.guard():
+                emb = fluid.dygraph.Embedding([10, 10])
+                sgd_optimizer = fluid.optimizer.SGD(
+                        learning_rate=fluid.dygraph.NaturalExpDecay(
+                            learning_rate=base_lr,
+                            decay_steps=10000,
+                            decay_rate=0.5,
+                            staircase=True),
+                        parameter_list=emb.parameters())
 
     """
 
@@ -662,6 +664,7 @@ class LinearLrWarmup(LearningRateDecay):
                 format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
+        self.start_lr = start_lr
         assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
             end_lr, start_lr)
         self.lr_ratio_before_warmup = (
@@ -674,7 +677,7 @@ class LinearLrWarmup(LearningRateDecay):
 
         from .. import layers
         if self.step_num < self.warmup_steps:
-            return self.lr_ratio_before_warmup * self.step_num
+            return self.lr_ratio_before_warmup * self.step_num + self.start_lr
         else:
             return base_lr
 

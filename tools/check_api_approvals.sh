@@ -111,7 +111,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 10721757 5442383
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
-          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
+          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the changes of paddle/fluid/framework/unused_var_check.cc, which manages the allow list of operators that have unused input variables. Before change the allow list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 6888866 32832641 6836917
       elif [ "${API_FILE}" == "paddle/fluid/pybind/op_function_generator.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) , phlrain) approval for the changes of paddle/fluid/pybind/op_function_generator.cc, which manages the logic of automatic generating op functions for dygraph. \n"

@@ -52,7 +52,8 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
     CHECK(op_desc.HasAttr("Input_scale"));
-    float in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale"));
+    float in_scale =
+        BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
     auto weight_scale =
         BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
     weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,

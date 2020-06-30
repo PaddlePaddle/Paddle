@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -33,6 +34,7 @@ DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
+USE_GPU_MEM_STAT;
 namespace paddle {
 namespace platform {
 
@@ -364,6 +366,7 @@ class RecordedCudaMallocHelper {
       if (NeedRecord()) {
         cur_size_ += size;
       }
+      STAT_INT_ADD("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
       return cudaSuccess;
     } else {
       RaiseNonOutOfMemoryError(&result);
@@ -392,6 +395,7 @@ class RecordedCudaMallocHelper {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
       }
+      STAT_INT_SUB("STAT_gpu" + std::to_string(dev_id_) + "_mem_size", size);
     } else {
       cudaGetLastError();  // clear the error flag when cudaErrorCudartUnloading
     }
