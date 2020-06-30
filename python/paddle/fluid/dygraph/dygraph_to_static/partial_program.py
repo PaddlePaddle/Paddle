@@ -272,18 +272,19 @@ class PartialProgramLayer(layers.Layer):
                 "Type of self._params in PartialProgramLayer should be list or tuple, but received %s."
                 % type(self._params))
 
-        params_name_set = set()
-        for i, param in enumerate(self._params):
-            if not isinstance(param, framework.ParamBase):
+        param_and_buffer_names_set = set()
+        for i, var in enumerate(self._params):
+            # self._params constains parameters and buffers with persistable=True.
+            if not isinstance(var, core.VarBase):
                 raise TypeError(
-                    'Type of self._params[{}] in PartialProgramLayer should be framework.ParamBase, but received {}.'.
-                    format(i, type(param)))
-            params_name_set.add(param.name)
+                    'Type of self._params[{}] in PartialProgramLayer should be Parameter or Variable, but received {}.'.
+                    format(i, type(var)))
+            param_and_buffer_names_set.add(var.name)
 
         for block in main_program.blocks:
             for name, var in block.vars.items():
                 if isinstance(var, framework.Parameter):
-                    if name not in params_name_set:
+                    if name not in param_and_buffer_names_set:
                         raise ValueError(
                             "\n\tWe don't support to define layer with parameters in the function "
                             "decorated by `@declarative`.\n\tBecause that will re-defined parameters "
