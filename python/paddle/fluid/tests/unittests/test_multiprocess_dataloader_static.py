@@ -157,10 +157,6 @@ class TestStaticDataLoader(unittest.TestCase):
         return ret
 
     def test_main(self):
-        # FIXME(dkp): disable for random fail in Py35 cloud, 
-        #             should be fixed ASAP
-        if sys.version[:3] == '3.5':
-            return
         for p in prepare_places(True):
             results = []
             for num_workers in [0, 2]:
