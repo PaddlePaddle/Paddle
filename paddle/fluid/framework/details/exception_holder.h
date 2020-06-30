@@ -37,8 +37,7 @@ class ExceptionHolder {
     } catch (memory::allocation::BadAlloc& exp) {
       Catch(exp);
     } catch (std::exception& ex) {
-      PADDLE_THROW(platform::errors::Fatal(
-          "Unknown std::exception caught:\n%s.", ex.what()));
+      Catch(ex);
     } catch (...) {
       PADDLE_THROW(platform::errors::Fatal("Unknown exception caught."));
     }
@@ -67,6 +66,10 @@ class ExceptionHolder {
             exception_.get());
         throw e;
       }
+      case kBaseException: {
+        auto e = *static_cast<std::exception*>(exception_.get());
+        throw e;
+      }
     }
     ClearImpl();
   }
@@ -90,6 +93,9 @@ class ExceptionHolder {
       case kBadAlloc: {
         return "BadAlloc";
       }
+      case kBaseException: {
+        return "BaseException";
+      }
     }
     return "unknown";
   }
@@ -108,6 +114,7 @@ class ExceptionHolder {
 
   void Catch(const memory::allocation::BadAlloc& exp) {
     std::lock_guard<std::mutex> lock(mu_);
+    // BadAlloc have the highest priority
     exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
     type_ = kBadAlloc;
   }
@@ -121,7 +128,16 @@ class ExceptionHolder {
     }
   }
 
-  enum ExceptionType { kNone, kEnforceNotMet, kEOF, kBadAlloc };
+  void Catch(const std::exception& exp) {
+    std::lock_guard<std::mutex> lock(mu_);
+    // std::exception will not cover anything
+    if (exception_.get() == nullptr) {
+      exception_.reset(new std::exception(exp));
+      type_ = kBaseException;
+    }
+  }
+
+  enum ExceptionType { kNone, kEnforceNotMet, kEOF, kBadAlloc, kBaseException };
   ExceptionType type_{kNone};
 
   std::unique_ptr<std::exception> exception_;
