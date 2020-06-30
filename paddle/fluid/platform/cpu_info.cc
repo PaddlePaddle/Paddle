@@ -165,10 +165,10 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
         return (reg[1] & avx512f_mask) != 0;
       }
     }
+#endif
     return false;
   }
 }
-#endif
 #endif
 
 }  // namespace platform
