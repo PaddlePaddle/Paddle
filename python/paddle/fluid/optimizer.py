@@ -3743,7 +3743,7 @@ class PipelineOptimizer(object):
         raw_name_new_name_map = dict()
         # Because we will create vars in block, it is more safe
         # to get all var_names before iteration.
-        var_names = block.vars.keys()
+        var_names = list(block.vars.keys())
         for var_name in var_names:
             var = block.var(var_name)
             if not var.is_data:
