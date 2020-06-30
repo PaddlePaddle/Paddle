@@ -27,7 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/io/crypto/cipher.h"
+#include "crypto/cipher.h"
 #include "paddle_infer_declare.h"  // NOLINT
                                    /*! \namespace paddle
                                     */
