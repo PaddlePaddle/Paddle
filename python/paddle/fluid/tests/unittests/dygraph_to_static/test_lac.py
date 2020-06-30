@@ -388,8 +388,6 @@ class Args(object):
     base_learning_rate = 0.01
     bigru_num = 2
     print_steps = 1
-    save_steps = 50
-    validation_steps = 25
     model_save_dir = "./lac_model"
     dy_param_path = "./lac_dy_param"
 
@@ -397,10 +395,11 @@ class Args(object):
 def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
     local_random = np.random.RandomState(SEED)
     padding_id = np.int64(0)
+    iter_num = 5
 
     def __reader__():
         batch, init_lens = [], []
-        for i in range(10 * batch_size):
+        for i in range(iter_num * batch_size):
             cur_len = local_random.randint(3, max_seq_len)
             word_ids = local_random.randint(0, vocab_size,
                                             [cur_len]).astype('int64').tolist()
@@ -431,7 +430,7 @@ def get_random_input_data(batch_size, vocab_size, num_labels, max_seq_len=64):
 
 def create_dataloader(reader, place):
     data_loader = fluid.io.DataLoader.from_generator(
-        capacity=50, use_double_buffer=True, iterable=True)
+        capacity=16, use_double_buffer=True, iterable=True)
 
     data_loader.set_sample_list_generator(reader, places=place)
 

@@ -86,7 +86,6 @@ class CNN(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        # o_np_mask = (inputs.numpy().reshape(-1, 1) != self.dict_dim).astype('float32')
         o_np_mask = (
             fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
                 dtype='float32')
@@ -97,13 +96,11 @@ class CNN(fluid.dygraph.Layer):
         conv_3 = self._simple_conv_pool_1(emb)
         fc_1 = self._fc1(conv_3)
         prediction = self._fc_prediction(fc_1)
-        # if label is not None:
+
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = fluid.layers.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
-        # else:
-        #     return prediction
 
 
 class BOW(fluid.dygraph.Layer):
@@ -130,7 +127,6 @@ class BOW(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        # o_np_mask = (inputs.numpy().reshape(-1,1) != self.dict_dim).astype('float32')
         o_np_mask = (
             fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
                 dtype='float32')
@@ -142,13 +138,11 @@ class BOW(fluid.dygraph.Layer):
         fc_1 = self._fc1(bow_1)
         fc_2 = self._fc2(fc_1)
         prediction = self._fc_prediction(fc_2)
-        # if label is not None:
+
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = fluid.layers.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
-        # else:
-        #     return prediction
 
 
 class GRU(fluid.dygraph.Layer):
@@ -190,13 +184,11 @@ class GRU(fluid.dygraph.Layer):
         tanh_1 = fluid.layers.tanh(gru_hidden)
         fc_2 = self._fc2(tanh_1)
         prediction = self._fc_prediction(fc_2)
-        # if label is not None:
+
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = fluid.layers.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
-        # else:
-        #     return prediction
 
 
 class BiGRU(fluid.dygraph.Layer):
@@ -229,7 +221,6 @@ class BiGRU(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        # o_np_mask = to_variable(inputs.numpy().reshape(-1, 1)!= self.dict_dim).astype('float32')
         o_np_mask = (fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
                      ).astype('float32')
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
@@ -246,6 +237,7 @@ class BiGRU(fluid.dygraph.Layer):
         encoded_vector = fluid.layers.reduce_max(encoded_vector, dim=1)
         fc_2 = self._fc2(encoded_vector)
         prediction = self._fc_prediction(fc_2)
+        # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.
         # if label is not None:
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_cost = fluid.layers.mean(x=cost)
@@ -280,8 +272,8 @@ class Args(object):
     lr = 0.01
     vocab_size = 1000
     padding_size = 50
-    log_step = 5
-    train_step = 20
+    log_step = 2
+    train_step = 10
 
 
 def train(args, to_static):
@@ -320,6 +312,7 @@ def train(args, to_static):
 
                 model.train()
                 avg_cost, prediction, acc = model(doc, label)
+                print(prediction.name)
                 loss_data.append(avg_cost.numpy()[0])
 
                 avg_cost.backward()
@@ -346,8 +339,8 @@ class TestSentiment(unittest.TestCase):
 
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
-        dy_out = train(self.args, False)
         st_out = train(self.args, True)
+        dy_out = train(self.args, False)
         self.assertTrue(
             np.allclose(dy_out, st_out),
             msg="dy_out:\n {}\n st_out:\n {}".format(dy_out, st_out))
@@ -355,7 +348,6 @@ class TestSentiment(unittest.TestCase):
     def test_train(self):
         model_types = ['cnn_net', 'bow_net', 'gru_net', 'bigru_net']
         for model_type in model_types:
-            # model_type = 'bigru_net'
             print('training %s ....' % model_type)
             self.train_model(model_type)
 
