@@ -555,7 +555,10 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             'int32' , 'int64' , 'uint8' . Default: None.
 
     Returns:
-        Variable or ComplexVariable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable object, just return ``value``.
+        Variable or ComplexVariable: If ``value`` is a tuple/list/numpy\.ndarray object, 
+            return ``Tensor`` created from the corresponding numpy\.ndarray object, which has 
+            same data type and shape with ``value``. If ``value`` is a Variable or ComplexVariable 
+            object, just return ``value``.
 
 
     Examples:
