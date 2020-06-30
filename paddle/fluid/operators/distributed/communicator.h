@@ -272,6 +272,13 @@ class AsyncCommunicator : public Communicator {
   void InitEnvs() {
     independent_recv_thread_ = static_cast<bool>(
         std::stoi(envs.at("communicator_independent_recv_thread")));
+
+    if (independent_recv_thread_) {
+      VLOG(0) << "communicator_independent_recv_thread can not be supported "
+                 "now, set False.";
+      independent_recv_thread_ = false;
+    }
+
     min_send_grad_num_before_recv_ =
         std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
