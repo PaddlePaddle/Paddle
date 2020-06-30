@@ -1219,7 +1219,7 @@ class GeneratorLoader(DataLoaderBase):
         else:
             if places is not None:
                 logging.info(
-                    'places would be ommited when DataLoader is not iterable')
+                    'places would be omitted when DataLoader is not iterable')
         return self
 
 
