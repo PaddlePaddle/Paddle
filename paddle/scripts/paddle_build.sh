@@ -360,6 +360,9 @@ function cmake_gen_and_build() {
     startTime_s=`date +%s`
     cmake_gen $1
     build $2
+    if [ $? -ne 0 ]; then
+        exit 7;
+    fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
 }
