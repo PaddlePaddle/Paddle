@@ -241,7 +241,7 @@ class PartialProgramLayer(layers.Layer):
         for i, idx in enumerate(self._outputs.var_ids):
             flatten_outputs[idx] = out_vars[i]
         outs = self._outputs.restore(flatten_outputs)
-        if len(outs) == 1:
+        if outs is not None and len(outs) == 1:
             outs = outs[0]
 
         return outs
@@ -260,13 +260,24 @@ class PartialProgramLayer(layers.Layer):
             if self._is_no_value(out_vars):
                 return None
             return out_vars
-        else:
-            res = tuple(var for var in out_vars if not self._is_no_value(var))
-            if len(res) == 0:
+        elif isinstance(out_vars, (tuple, list)):
+            if isinstance(out_vars, tuple):
+                res = tuple(
+                    var for var in out_vars if not self._is_no_value(var))
+            else:
+                # isinstance(out_vars, list)
+                res = [var for var in out_vars if not self._is_no_value(var)]
+
+            has_removed = (len(out_vars) > len(res))
+            # len(out_vars) > len(res) means we have removed var. This is
+            # preventing out_vars is empty or just one element at the beginning
+            if len(res) == 0 and has_removed:
                 return None
-            elif len(res) == 1:
+            elif len(res) == 1 and has_removed:
                 return res[0]
             return res
+
+        return out_vars
 
     def _set_grad_type(self, params):
         # NOTE: if user set sparse gradient mode, the param's gradient

@@ -229,6 +229,8 @@ class ReturnTransformer(gast.NodeTransformer):
                     annotation=None,
                     type_comment=None)
             else:
+                # We need to initial return value as tuple because control flow
+                # requires input or output has same structure
                 return_value_nodes = gast.Tuple(
                     elts=[
                         gast.Name(
