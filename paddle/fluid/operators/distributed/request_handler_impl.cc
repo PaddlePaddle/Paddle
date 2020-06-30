@@ -290,14 +290,14 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
     counter += send_value[0];
     decay_counters.at(trainer_id) = counter;
 
-    auto* global_step_var = scope()->FindVar(LEARNING_RATE_DECAY_COUNTER);
+    auto* global_step_var = this->scope()->FindVar(LEARNING_RATE_DECAY_COUNTER);
     if (global_step_var == nullptr) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "can not find " << LEARNING_RATE_DECAY_COUNTER << " "));
+          "can not find LEARNING_RATE_DECAY_COUNTER "));
     }
 
     auto* tensor = global_step_var->GetMutable<framework::LoDTensor>();
-    auto* value = tensor->mutable_data(platform::CPUPlace());
+    auto* value = tensor->mutable_data<int64_t>(platform::CPUPlace());
 
     auto global_counter = 0;
 

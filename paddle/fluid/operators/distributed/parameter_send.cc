@@ -80,6 +80,9 @@ void SendByNotifyRPC(const CommContext &rpc_ctx,
   auto &send_var_name = rpc_ctx.var_name;
   std::vector<distributed::VarHandlePtr> rets;
 
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
+
   if (NeedSend(scope, send_var_name)) {
     for (size_t j = 0; j < rpc_ctx.epmap.size(); j++) {
       auto &endpoint = rpc_ctx.epmap[j];

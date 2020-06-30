@@ -257,13 +257,9 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const framework::Scope &scope) {
   waiting_ = false;
 
-  PADDLE_ENFORCE_GE(
-      var_names.size(), 1,
-      platform::errors::InvalidArgument("var_names.size() >= 1 is permitted"));
-
   PADDLE_ENFORCE_EQ(
       var_tables.size(), 1,
-      platform::errors::InvalidArgument("var_names.size() == 1 is permitted"));
+      platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
   auto table_name = var_tables[0];
   auto &queue = send_varname_to_queue_.at(table_name);
@@ -272,11 +268,15 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
     tensor->Resize(framework::make_ddim({1}));
-    auto *out_d = out_t->mutable_data<float>(platform::CPUPlace());
+    auto *out_d = tensor->mutable_data<float>(platform::CPUPlace());
     out_d[0] = 1.0;
     VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
     queue->Push(tmp_var);
   } else {
+    PADDLE_ENFORCE_GE(var_names.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "var_names.size() >= 1 is permitted"));
+
     auto *var = scope.FindVar(var_names[0]);
 
     PADDLE_ENFORCE_EQ(

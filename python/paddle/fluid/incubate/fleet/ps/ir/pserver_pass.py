@@ -545,7 +545,7 @@ def add_optimizer_pass(program, config):
             opt_op_on_pserver.append(op)
 
     # append lr decay ops to the child block if exists
-    lr_ops = _get_lr_ops()
+    lr_ops = _get_lr_ops(origin_program)
     lr_decay_block_id = -1
     optimize_blocks = []
 
