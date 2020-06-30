@@ -141,7 +141,7 @@ class TestFillAnyLikeOpError(unittest.TestCase):
             self.assertRaises(
                 ValueError,
                 paddle.full_like,
-                input=input_data,
+                x=input_data,
                 fill_value=2,
                 dtype='uint4')
             self.assertRaises(

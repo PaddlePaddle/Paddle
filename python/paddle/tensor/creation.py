@@ -54,13 +54,7 @@ __all__ = [
 ]
 
 
-def full_like(input,
-              fill_value,
-              out=None,
-              dtype=None,
-              device=None,
-              stop_gradient=True,
-              name=None):
+def full_like(x, fill_value, dtype=None, name=None):
     """
 	:alias_main: paddle.full_like
 	:alias: paddle.full_like,paddle.tensor.full_like,paddle.tensor.creation.full_like
@@ -70,12 +64,9 @@ def full_like(input,
     with `input`.
 
     Args:
-        input(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+        x(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
         fill_value(bool|float|int): The value to fill the tensor with. Default value is 0. Note: this value shouldn't exceed the range of the output data type.
-        out(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of operation. If out is None, a new Varibale will be create to store the result. Default value is None.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The default value is None, which means the output data type is the same as input.
-        device (string, optional): Which device to run the operator. The :attr:`device` must be None, 'cpu', 'gpu'. If :attr:`device` is None, it will be the device that the user set in the paddle program. Default value is None.
-        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable. Default value is True.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
     Returns:
@@ -99,7 +90,7 @@ def full_like(input,
 
     var_dtype = None
     if dtype is None:
-        var_dtype = input.dtype
+        var_dtype = x.dtype
     else:
         check_dtype(
             dtype, 'dtype',
@@ -107,16 +98,14 @@ def full_like(input,
             'full_like')
         var_dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
+    out = helper.create_variable_for_type_inference(dtype=var_dtype)
 
     helper.append_op(
         type='fill_any_like',
-        inputs={'X': [input]},
+        inputs={'X': [x]},
         attrs={'value': fill_value,
                "dtype": var_dtype},
         outputs={'Out': [out]})
-    out.stop_gradient = stop_gradient
 
     return out
 
