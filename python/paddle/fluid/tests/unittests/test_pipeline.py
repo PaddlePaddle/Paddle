@@ -21,8 +21,6 @@ import shutil
 import unittest
 import math
 
-gpu1_id = 0
-
 
 def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
                   act=None):
@@ -91,8 +89,7 @@ def build_network(input, layers=50, class_dim=1000):
     elif layers == 152:
         depth = [3, 8, 36, 3]
     num_filters = [64, 128, 256, 512]
-    offset = 0
-    with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
+    with fluid.device_guard("cpu"):
         conv = conv_bn_layer(
             input=input, num_filters=64, filter_size=7, stride=2, act='relu')
         conv = fluid.layers.pool2d(
@@ -103,14 +100,14 @@ def build_network(input, layers=50, class_dim=1000):
             pool_type='max')
     if layers >= 50:
         for block in range(len(depth)):
-            with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
+            with fluid.device_guard("cpu"):
                 for i in range(depth[block]):
                     conv = bottleneck_block(
                         input=conv,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1)
 
-        with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
+        with fluid.device_guard("gpu:0"):
             pool = fluid.layers.pool2d(
                 input=conv, pool_size=7, pool_type='avg', global_pooling=True)
             stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
@@ -121,14 +118,14 @@ def build_network(input, layers=50, class_dim=1000):
                     initializer=fluid.initializer.Uniform(-stdv, stdv)))
     else:
         for block in range(len(depth)):
-            with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
+            with fluid.device_guard("cpu"):
                 for i in range(depth[block]):
                     conv = basic_block(
                         input=conv,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         is_first=block == i == 0)
-        with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
+        with fluid.device_guard("gpu:0"):
             pool = fluid.layers.pool2d(
                 input=conv, pool_size=7, pool_type='avg', global_pooling=True)
             stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
@@ -137,15 +134,14 @@ def build_network(input, layers=50, class_dim=1000):
                 size=class_dim,
                 param_attr=fluid.param_attr.ParamAttr(
                     initializer=fluid.initializer.Uniform(-stdv, stdv)))
-    offset += 1
-    return out, offset
+    return out
 
 
 class TestPipeline(unittest.TestCase):
     """  TestCases for Pipeline Training. """
 
     def test_pipeline(self):
-        with fluid.device_guard("gpu:%d" % gpu1_id):
+        with fluid.device_guard("cpu"):
             image = fluid.layers.data(
                 name="image", shape=[3, 224, 224], dtype="float32")
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
@@ -154,8 +150,8 @@ class TestPipeline(unittest.TestCase):
                 capacity=64,
                 use_double_buffer=True,
                 iterable=False)
-            fc, offset = build_network(image, layers=50)
-        with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
+            fc = build_network(image, layers=50)
+        with fluid.device_guard("gpu:0"):
             out, prob = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label, return_softmax=True)
             loss = fluid.layers.mean(out)
