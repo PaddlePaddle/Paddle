@@ -9801,11 +9801,11 @@ def soft_relu(x, threshold=40.0, name=None):
     return out
 
 
-def flatten(x, axis=1, name=None):
+def flatten(x, start_axis=0, stop_axis=-1, name=None):
     """
     **Flatten op**
 
-    Flatten the input tensor into a 2D matrix.
+    Flattens a contiguous range of dims in a tensor.
 
     For Example:
 
@@ -9817,10 +9817,11 @@ def flatten(x, axis=1, name=None):
             X.shape = (3, 100, 100, 4)
 
           and
-            axis = 2
+            start_axis = 1
+            end_axis = 2
 
           We get:
-            Out.shape = (3 * 100, 4 * 100)
+            Out.shape = (3, 1000 * 100, 2)
 
         Case 2:
 
@@ -9828,30 +9829,28 @@ def flatten(x, axis=1, name=None):
             X.shape = (3, 100, 100, 4)
 
           and
-            axis = 0
+            start_axis = 0
+            stop_axis = -1
 
           We get:
-            Out.shape = (1, 3 * 100 * 100 * 4)
+            Out.shape = (3 * 100 * 100 * 4)
 
     Args:
         x (Variable): A tensor of rank >= axis. A tensor with type float32,
                       float64, int8, int32, int64.
-        axis (int): Indicate up to which input dimensions (exclusive) should
-                    be flattened to the outer dimension of the output.
-                    The value for axis must be in the range [0, R], where R
-                    is the rank of the input tensor. Default: 1.
+        start_axis (int): the first dimension to flatten
+        stop_axis (int): the last dimension to flatten
         name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
                         Generally, no setting is required. Default: None.
 
     Returns:
-        Variable: A 2D tensor with the contents of the input tensor, with input \
-                  dimensions up to axis flattened to the outer dimension of \
-                  the output and remaining input dimensions flattened into the \
-                  inner dimension of the output. A Tensor with type same as input x.
+        Variable: A tensor with the contents of the input tensor, with input \
+                  dimensions flattened by indicated start axis and end axis. \
+                  A Tensor with type same as input x.
 
     Raises:
         ValueError: If x is not a variable.
-        ValueError: If axis is not in range [0, rank(x)].
+        ValueError: If axis is illegal.
 
     Examples:
 
@@ -9860,8 +9859,8 @@ def flatten(x, axis=1, name=None):
             import paddle.fluid as fluid
             x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
-            out = fluid.layers.flatten(x=x, axis=2)
-            # out shape is [16, 3]
+            out = fluid.layers.flatten(x=x, start_axis=1, end_axis=2)
+            # out shape is [4, 12]
     """
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int8', 'int32', 'int64'], 'flatten')
@@ -9870,8 +9869,15 @@ def flatten(x, axis=1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Variable")
 
-    if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
-        raise ValueError("The axis should be a int, and in range [0, rank(x)]")
+    x_dim = len(x.shape)
+    if not (isinstance(start_axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
+        raise ValueError("The start_axis should be a int, and in range [-rank(x), rank(x))")
+    if not (isinstance(stop_axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
+        raise ValueError("The stop_axis should be a int, and in range [-rank(x), rank(x))")
+    if start_axis < 0:
+        start_axis = start_axis + x_dim
+    if stop_axis < 0:
+        stop_axis = stop_axis + x_dim
 
     out = helper.create_variable_for_type_inference(x.dtype)
     x_shape = helper.create_variable_for_type_inference(x.dtype)
@@ -9880,7 +9886,8 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out,
                  'XShape': x_shape},
-        attrs={"axis": axis})
+        attrs={"start_axis": start_axis,
+               "stop_axis": stop_axis})
     return out
 
 
