@@ -163,17 +163,16 @@ class Flatten2Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Flatten2");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Flatten2");
-    const auto &axis = ctx->Attrs().Get<int>("axis");
+    const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
+    const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
     const auto &in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(axis, 0,
-                      platform::errors::InvalidArgument(
-                          "The axis should be greater than or equal to 0."));
-    PADDLE_ENFORCE_LE(
-        axis, in_dims.size(),
-        platform::errors::InvalidArgument(
-            "The axis should be less than or equal to input tensor's rank"));
 
-    const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
+    PADDLE_ENFORCE_GE(
+        stop_axis, start_axis,
+        platform::errors::InvalidArgument("The stop_axis should be greater"
+                                          "than or equal to start_axis."));
+
+    const auto &out_dims = GetOutputShape(start_axis, stop_axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
@@ -190,12 +189,69 @@ class Flatten2Op : public framework::OperatorWithKernel {
     ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
+
+  static std::vector<int32_t> GetOutputShape(const int start_axis,
+                                             const int stop_axis,
+                                             const framework::DDim &in_dims) {
+    int64_t outer = 1;
+    std::vector<int32_t> out_shape;
+    int in_dims_size = in_dims.size();
+    out_shape.reserve(in_dims_size - stop_axis + start_axis);
+
+    for (int i = 0; i < start_axis; ++i) {
+      out_shape.push_back(in_dims[i]);
+    }
+    for (int i = start_axis; i <= stop_axis; i++) {
+      outer *= in_dims[i];
+    }
+    out_shape.push_back(outer);
+    for (int i = stop_axis + 1; i < in_dims_size; i++) {
+      out_shape.push_back(in_dims[i]);
+    }
+
+    return out_shape;
+  }
 };
 
 class Flatten2OpMaker : public FlattenOpMaker {
  public:
   void Make() override {
-    FlattenOpMaker::Make();
+    AddInput("X", "(Tensor) A tensor of rank >= axis.");
+    AddOutput("Out",
+              "A 2D tensor is reshaped input tensor. The input dimensions"
+              "up to axis are flattened to the outer dimension of the output"
+              "and the remaining input dimensions are flattened into the inner"
+              "dimension of the output.");
+    AddAttr<int>("start_axis",
+                 "(int)"
+                 "Indicate the input start dimension (exclusive) to flatten")
+        .SetDefault(1);
+    AddAttr<int>("stop_axis",
+                 "(int)"
+                 "Indicate the input stop dimension (exclusive) to flatten")
+        .SetDefault(1);
+    AddComment(R"DOC(
+Flatten Operator
+
+Flattens the input tensor into a 2D matrix.
+
+Examples:
+Case 1:
+  Given
+    X.shape = (3, 100, 100, 4)
+  and
+    axis = 2
+  We get:
+    Out.shape = (3 * 100, 4 * 100)
+
+Case 2:
+  Given
+    X.shape = (3, 100, 100, 4)
+  and
+    axis = 0
+  We get:
+    Out.shape = (1, 3 * 100 * 100 * 4)
+)DOC");
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
