@@ -404,6 +404,9 @@ class SaveLoadConfig(object):
             raise TypeError(
                 "The SaveLoadConfig.model_filename should be str, but received input's type is %s."
                 % type(filename))
+        if len(filename) == 0:
+            raise ValueError(
+                "The SaveLoadConfig.model_filename is empty string.")
         self._model_filename = filename
 
     @property
@@ -471,6 +474,9 @@ class SaveLoadConfig(object):
             raise TypeError(
                 "The SaveLoadConfig.params_filename should be str, but received input's type is %s."
                 % type(filename))
+        if len(filename) == 0:
+            raise ValueError(
+                "The SaveLoadConfig.params_filename is empty string.")
         self._params_filename = filename
 
     # NOTE: [why not use params_filename=None control params saved separately]
