@@ -5136,7 +5136,9 @@ class ParamBase(core.VarBase):
         if isinstance(trainable, bool):
             self.stop_gradient = not trainable
         else:
-            raise ValueError
+            raise ValueError(
+                "The type of trainable MUST be bool, but the type is ",
+                type(trainable))
 
     def to_string(self, throw_on_error, with_details=False):
         """
