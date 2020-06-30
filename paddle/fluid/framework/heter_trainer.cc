@@ -80,6 +80,19 @@ void HeterTrainer::Initialize(const TrainerDesc &trainer_desc,
   pull_dense_worker_->Initialize(trainer_desc);
   VLOG(3) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
+
+  RegisterHeterCallback();
+
+
+}
+
+void HeterTrainer::RegisterHeterCallback() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->RegisterHeterCallback(
+    [this](int worker, int taskid) {
+      workers_[worker]->Schedule(taskid);
+    }
+  );
 }
 
 void HeterTrainer::DumpWork(int tid) {
