@@ -212,6 +212,7 @@ __all__ = [
     'flip',
     'roll',
     'log_softmax',
+    'index_sample',
 ]
 
 
@@ -16545,3 +16546,93 @@ def log_softmax(input, axis=None, dtype=None, name=None):
         type='log', inputs={'X': outs_softmax}, outputs={'Out': outs_log})
 
     return outs_log
+
+
+def index_sample(x, index):
+    """
+    **IndexSample Layer**
+    IndexSample OP returns the element of the specified location of X, 
+    and the location is specified by Index. 
+
+    .. code-block:: text
+
+    Given:
+                X = [[1, 2, 3, 4, 5],
+                     [6, 7, 8, 9, 10]]
+                Index = [[0, 1, 3],
+                         [0, 2, 4]]
+                Then:
+                Out = [[1, 2, 4],
+                       [6, 8, 10]]
+
+    Args:
+        x (Variable): The source input tensor with 2-D shape. Supported data type is 
+            int32, int64, float32, float64.
+        index (Variable): The index input tensor with 2-D shape, first dimension should be same with X. 
+            Data type is int32 or int64.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as index.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                                [5.0, 6.0, 7.0, 8.0],
+                                [9.0, 10.0, 11.0, 12.0]]).astype('float32')
+
+            data_index = np.array([[0, 1, 2],
+                                    [1, 2, 3],
+                                    [0, 0, 0]]).astype('int32')
+
+            target_data = np.array([[100, 200, 300, 400],
+                                    [500, 600, 700, 800],
+                                    [900, 1000, 1100, 1200]]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                target = fluid.dygraph.to_variable(target_data)
+
+                out_z1 = fluid.layers.index_sample(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3.]
+                # [6. 7. 8.]
+                # [9. 9. 9.]]
+
+                # Use the index of the maximum value by topk op
+                # get the value of the element of the corresponding index in other tensors
+                top_value, top_index = fluid.layers.topk(x, k=2)
+                out_z2 = fluid.layers.index_sample(target, top_index)
+                print(top_value.numpy())
+                #[[ 4.  3.]
+                # [ 8.  7.]
+                # [12. 11.]]
+
+                print(top_index.numpy())
+                #[[3 2]
+                # [3 2]
+                # [3 2]]
+
+                print(out_z2.numpy())
+                #[[ 400  300]
+                # [ 800  700]
+                # [1200 1100]]
+    """
+    helper = LayerHelper("index_sample", **locals())
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'fluid.layers.index_sample')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'fluid.layers.index_sample')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='index_sample',
+        inputs={'X': x,
+                'Index': index},
+        outputs={'Out': out})
+    return out
