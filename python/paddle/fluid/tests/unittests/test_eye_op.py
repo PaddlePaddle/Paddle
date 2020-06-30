@@ -111,6 +111,11 @@ class API_TestTensorEye(unittest.TestCase):
 
             self.assertRaises(TypeError, test_num_columns_type_check)
 
+            def test_num_columns_type_check():
+                paddle.eye(10, num_columns=10, dtype="int8")
+
+            self.assertRaises(TypeError, test_num_columns_type_check)
+
 
 if __name__ == "__main__":
     unittest.main()
