@@ -754,7 +754,34 @@ class Layer(core.Layer):
 
     def __dir__(self):
         """
-        Get all parameters， sublayers, method and attr of Layer.
+        Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
+
+        Examples:
+            import paddle.fluid as fluid
+            import numpy as np
+
+            fluid.dygraph.enable_dygraph()
+
+            class Mylayer1(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(Mylayer1, self).__init__()
+                    self.linear1 = fluid.dygraph.Linear(10, 10)
+                    self.linear2 = fluid.dygraph.Linear(5, 5)
+                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.h_0 = fluid.dygraph.to_variable(np.zeros([10, 10]).astype('float32'))
+
+            class Mylayer2(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(Mylayer2, self).__init__()
+                    self.linear1 = fluid.dygraph.Linear(10, 10)
+                    self.linear2 = fluid.dygraph.Linear(5, 5)
+                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
+                    self.mylayer1 =  Mylayer1()
+
+            mylayer = Mylayer2()
+            print(dir(mylayer))
 
         """
         method = dir(self.__class__)
@@ -765,7 +792,8 @@ class Layer(core.Layer):
         sublayers_name = [
             sublayer_name for sublayer_name, _ in self.named_sublayers()
         ]
-        keys = parameters_name + sublayers_name + attrs + method
+        buffers_name = [buf_name for buf_name, _ in self.named_buffers()]
+        keys = parameters_name + sublayers_name + buffers_name + attrs + method
 
         return keys
 
