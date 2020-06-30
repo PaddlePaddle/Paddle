@@ -101,7 +101,6 @@ def build_network(input, layers=50, class_dim=1000):
             pool_stride=2,
             pool_padding=1,
             pool_type='max')
-    offset += 1
     if layers >= 50:
         for block in range(len(depth)):
             with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
@@ -110,7 +109,6 @@ def build_network(input, layers=50, class_dim=1000):
                         input=conv,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1)
-            offset += 1
 
         with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
             pool = fluid.layers.pool2d(
@@ -121,7 +119,6 @@ def build_network(input, layers=50, class_dim=1000):
                 size=class_dim,
                 param_attr=fluid.param_attr.ParamAttr(
                     initializer=fluid.initializer.Uniform(-stdv, stdv)))
-        offset += 1
     else:
         for block in range(len(depth)):
             with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
@@ -131,7 +128,6 @@ def build_network(input, layers=50, class_dim=1000):
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         is_first=block == i == 0)
-            offset += 1
         with fluid.device_guard("gpu:%d" % (gpu1_id + offset)):
             pool = fluid.layers.pool2d(
                 input=conv, pool_size=7, pool_type='avg', global_pooling=True)
@@ -141,7 +137,7 @@ def build_network(input, layers=50, class_dim=1000):
                 size=class_dim,
                 param_attr=fluid.param_attr.ParamAttr(
                     initializer=fluid.initializer.Uniform(-stdv, stdv)))
-        offset += 1
+    offset += 1
     return out, offset
 
 
@@ -180,6 +176,30 @@ class TestPipeline(unittest.TestCase):
         optimizer = fluid.optimizer.PipelineOptimizer(
             optimizer, num_microbatches=2)
         optimizer.minimize(loss)
+
+    def test_pipeline_noneoptimizer(self):
+        with fluid.device_guard("gpu:0"):
+            x = fluid.layers.data(
+                name='x', shape=[1], dtype='int64', lod_level=0)
+            y = fluid.layers.data(
+                name='y', shape=[1], dtype='int64', lod_level=0)
+            emb_x = layers.embedding(
+                input=x,
+                param_attr=fluid.ParamAttr(name="embx"),
+                size=[10, 2],
+                is_sparse=False)
+
+            fc = layers.fc(input=emb_x,
+                           name="fc",
+                           size=1,
+                           num_flatten_dims=1,
+                           bias_attr=False)
+            loss = layers.reduce_mean(fc)
+
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+        with self.assertRaises(ValueError):
+            optimizer = fluid.optimizer.PipelineOptimizer(
+                dict(), num_microbatches=2)
 
 
 if __name__ == '__main__':
