@@ -10410,20 +10410,28 @@ def uniform_random_batch_size_like(input,
 
 
 @templatedoc()
-def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
+def gaussian_random(shape,
+                    mean=0.0,
+                    std=1.0,
+                    seed=0,
+                    dtype='float32',
+                    name=None):
     """
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (tuple[int] | list[int] | Variable | list[Variable]): Shape of the generated random tensor.
-        
-        mean (float): Mean of the random tensor, defaults to 0.0.
-            
-        std (float): Standard deviation of the random tensor, defaults to 1.0.
-        
-        seed (int): ${seed_comment}
-        
-        dtype(np.dtype | core.VarDesc.VarType | str): Output data type, float32 or float64.
+        shape(list|tuple|Variable): Shape of the Tensor to be created. The data
+            type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+            the elements of it should be integers or Tensors with shape [1]. If
+            ``shape`` is a Variable, it should be an 1-D Tensor .
+        mean(float): Mean of the random tensor, defaults to 0.0.
+        std(float): Standard deviation of the random tensor, defaults to 1.0.
+        seed(int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output
+            tensor, which can be float32, float64. Default is float32.
+        name(str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+            Default is None.
 
     Returns:
         Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
@@ -10486,10 +10494,15 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
-
-    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        shape = utils._convert_shape_to_list(shape)
+        return core.ops.gaussian_random('shape', shape, 'mean', mean, 'std',
+                                        std, 'seed', seed, 'dtype', dtype)
+
+    check_type(shape, 'shape', (list, tuple, Variable), 'gaussian_random')
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'gaussian_random')
 
     inputs = {}
