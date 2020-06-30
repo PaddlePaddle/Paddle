@@ -414,7 +414,10 @@ def _load_persis_vars_by_program(model_path,
     return load_var_dict
 
 
-def _load_persis_vars(var_file_path, var_info_path):
+def _load_persis_vars(model_path,
+                      var_info_path,
+                      separate_params=False,
+                      params_filename=None):
     # 1. load extra var info
     with open(var_info_path, 'rb') as f:
         extra_var_info = pickle.load(f) if six.PY2 else pickle.load(
@@ -438,16 +441,30 @@ def _load_persis_vars(var_file_path, var_info_path):
         else:
             new_var = framework._varbase_creator(
                 name=new_name, persistable=True)
+
+        # load separate vars
+        if separate_params is True:
+            framework._dygraph_tracer().trace_op(
+                type='load',
+                inputs={},
+                outputs={'Out': new_var},
+                attrs={'file_path': os.path.join(model_path, name)})
+
         new_var.stop_gradient = extra_var_info[name]['stop_gradient']
         load_var_dict[new_name] = new_var
         load_var_list.append(new_var)
 
     # 3. load all vars
-    framework._dygraph_tracer().trace_op(
-        type='load_combine',
-        inputs={},
-        outputs={'Out': load_var_list},
-        attrs={'file_path': var_file_path})
+    if separate_params is False:
+        if params_filename is not None:
+            var_file_path = os.path.join(model_path, params_filename)
+        else:
+            var_file_path = os.path.join(model_path, VARIABLE_FILENAME)
+        framework._dygraph_tracer().trace_op(
+            type='load_combine',
+            inputs={},
+            outputs={'Out': load_var_list},
+            attrs={'file_path': var_file_path})
 
     return load_var_dict
 
@@ -478,14 +495,14 @@ def _construct_program_holders(model_path, model_filename=None):
     return program_holder_dict
 
 
-def _construct_params_and_buffers(model_path, programs, params_filename=None):
+def _construct_params_and_buffers(model_path,
+                                  programs,
+                                  separate_params=False,
+                                  params_filename=None):
     var_info_path = os.path.join(model_path, EXTRA_VAR_INFO_FILENAME)
     if os.path.exists(var_info_path):
-        if params_filename is not None:
-            var_file_path = os.path.join(model_path, params_filename)
-        else:
-            var_file_path = os.path.join(model_path, VARIABLE_FILENAME)
-        var_dict = _load_persis_vars(var_file_path, var_info_path)
+        var_dict = _load_persis_vars(model_path, var_info_path, separate_params,
+                                     params_filename)
     else:
         var_dict = _load_persis_vars_by_program(model_path, programs['forward'],
                                                 params_filename)
@@ -624,16 +641,18 @@ class TranslatedLayer(layers.Layer):
             raise ValueError("There is no directory named '%s'" % model_path)
         model_filename = None
         params_filename = None
+        separate_params = False
         if configs is not None:
             model_filename = configs.model_filename
             params_filename = configs.params_filename
+            separate_params = configs.separate_params
 
         # 1. load program desc & construct _ProgramHolder
         programs = _construct_program_holders(model_path, model_filename)
 
         # 2. load layer parameters & parameter attirbutes
-        persis_vars = _construct_params_and_buffers(model_path, programs,
-                                                    params_filename)
+        persis_vars = _construct_params_and_buffers(
+            model_path, programs, separate_params, params_filename)
 
         # 3. construct TranslatedLayer object
         translated_layer = TranslatedLayer(programs, persis_vars)

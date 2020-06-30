@@ -245,6 +245,7 @@ class SaveLoadConfig(object):
         self._output_spec = None
         self._model_filename = None
         self._params_filename = None
+        self._separate_params = False
 
         # NOTE: Users rarely use following configs, so these configs are not open to users,
         # reducing user learning costs, but we retain the configuration capabilities
@@ -273,7 +274,7 @@ class SaveLoadConfig(object):
 
         Examples:
             .. code-block:: python
-            
+
                 import numpy as np
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph import Linear
@@ -307,7 +308,9 @@ class SaveLoadConfig(object):
                 # use SaveLoadconfig.output_spec
                 model_path = "simplenet.example.model.output_spec"
                 configs = fluid.dygraph.jit.SaveLoadConfig()
+                # only keep the predicted output in saved model, diccard loss
                 configs.output_spec = [out]
+
                 fluid.dygraph.jit.save(
                     layer=net,
                     model_path=model_path,
@@ -316,12 +319,22 @@ class SaveLoadConfig(object):
 
                 infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
                 x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                # only have the predicted output
                 pred = infer_net(x)
         """
         return self._output_spec
 
     @output_spec.setter
     def output_spec(self, spec):
+        if not isinstance(spec, list):
+            raise TypeError(
+                "The SaveLoadConfig.output_spec should be 'list', but received input type is %s."
+                % type(input))
+            for var in spec:
+                if not isinstance(var, core.VarBase):
+                    raise TypeError(
+                        "The element in SaveLoadConfig.output_spec list should be 'Variable', but received element's type is %s."
+                        % type(var))
         self._output_spec = spec
 
     @property
@@ -373,6 +386,8 @@ class SaveLoadConfig(object):
                     model_path=model_path,
                     input_spec=[x],
                     configs=configs)
+                # [result] the saved model directory contains:
+                # __simplenet__  __variables__  __variables.info__
 
                 # loading with configs.model_filename
                 infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
@@ -383,6 +398,10 @@ class SaveLoadConfig(object):
 
     @model_filename.setter
     def model_filename(self, filename):
+        if not isinstance(filename, six.string_types):
+            raise TypeError(
+                "The SaveLoadConfig.model_filename should be str, but received input's type is %s."
+                % type(filename))
         self._model_filename = filename
 
     @property
@@ -434,6 +453,8 @@ class SaveLoadConfig(object):
                     model_path=model_path,
                     input_spec=[x],
                     configs=configs)
+                # [result] the saved model directory contains:
+                # __model__  __params__  __variables.info__
 
                 # loading with configs.params_filename
                 infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
@@ -444,7 +465,87 @@ class SaveLoadConfig(object):
 
     @params_filename.setter
     def params_filename(self, filename):
+        if not isinstance(filename, six.string_types):
+            raise TypeError(
+                "The SaveLoadConfig.params_filename should be str, but received input's type is %s."
+                % type(filename))
         self._params_filename = filename
+
+    # NOTE: [why not use params_filename=None control params saved separately]
+    # The new save interface does not recommend parameters to be saved separately. 
+    # Here, the concept should be separated as clearly as possible. 
+    # Setting params_filename=None only means that the saved file name is set 
+    # and without any other meaning. New separate_params control for file saved
+    # separately can makes the concept clearer.
+    @property
+    def separate_params(self):
+        """
+        Configure whether to save the Layer parameters as separete files.
+        (In order to be compatible with the behavior of :ref:`api_fluid_io_load_inference_model` )
+
+        If True, each parameter will be saved to a file separately, the file name is the parameter name. Default False.
+        If True, the SaveLoadConfig.params_filename configuration will not take effect.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import Linear
+                from paddle.fluid.dygraph import declarative
+
+                class SimpleNet(fluid.dygraph.Layer):
+                    def __init__(self, in_size, out_size):
+                        super(SimpleNet, self).__init__()
+                        self._linear = Linear(in_size, out_size)
+
+                    @declarative
+                    def forward(self, x):
+                        y = self._linear(x)
+                        z = self._linear(y)
+                        return z
+
+                # enable dygraph mode
+                fluid.enable_dygraph() 
+
+                # train model
+                net = SimpleNet(8, 8)
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.1, parameter_list=net.parameters())
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                for i in range(10):
+                    out = net(x)
+                    loss = fluid.layers.mean(out)
+                    loss.backward()
+                    adam.minimize(loss)
+                    net.clear_gradients()
+
+                model_path = "simplenet.example.model.separate_params"
+                configs = fluid.dygraph.jit.SaveLoadConfig()
+                configs.separate_params = True
+
+                # saving with configs.separate_params
+                fluid.dygraph.jit.save(
+                    layer=net,
+                    model_path=model_path,
+                    input_spec=[x],
+                    configs=configs)
+                # [result] the saved model directory contains:
+                # linear_0.b_0  linear_0.w_0  __model__  __variables.info__
+
+                # loading with configs.params_filename
+                infer_net = fluid.dygraph.jit.load(model_path, configs=configs)
+                x = fluid.dygraph.to_variable(np.random.random((4, 8)).astype('float32'))
+                pred = infer_net(x)
+        """
+        return self._separate_params
+
+    @separate_params.setter
+    def separate_params(self, value):
+        if not isinstance(value, bool):
+            raise TypeError(
+                "The SaveLoadConfig.separate_params should be bool value, but received input's type is %s."
+                % type(value))
+        self._separate_params = value
 
 
 @switch_to_static_graph
@@ -562,17 +663,6 @@ def save(layer, model_path, input_spec=None, configs=None):
 
         return target_vars
 
-    def check_list_input(input, name):
-        if input is not None and not isinstance(input, list):
-            raise TypeError(
-                "The input %s should be 'list', but received %s type is %s." %
-                (name, name, type(input)))
-            for var in input:
-                if not isinstance(var, core.VarBase):
-                    raise TypeError(
-                        "The input variable in %s list should be 'Variable', but received variable type is %s."
-                        % (name, type(var)))
-
     # 1. input check
     prog_translator = ProgramTranslator()
     if not prog_translator.enable:
@@ -584,12 +674,18 @@ def save(layer, model_path, input_spec=None, configs=None):
             "The input layer of paddle.imperative.jit.save should be 'Layer', but received layer type is %s."
             % type(layer))
 
-    # build other save config
     if configs is None:
         configs = SaveLoadConfig()
 
-    check_list_input(input_spec, 'input_spec')
-    check_list_input(configs.output_spec, 'configs.output_spec')
+    if input_spec is not None and not isinstance(input_spec, list):
+        raise TypeError(
+            "The input input_spec should be 'list', but received input_spec's type is %s."
+            % type(input_spec))
+        for var in input_spec:
+            if not isinstance(var, core.VarBase):
+                raise TypeError(
+                    "The element in input_spec list should be 'Variable', but received element's type is %s."
+                    % type(var))
 
     # 2. get program of declarative Layer.forward
     prog_cache = prog_translator.get_program_cache()
@@ -624,6 +720,7 @@ def save(layer, model_path, input_spec=None, configs=None):
     # VARIABLE_FILENAME keep nameing style consistent with '__model__'
     if configs.params_filename is None:
         configs.params_filename = VARIABLE_FILENAME
+
     with scope_guard(scope):
         save_inference_model(
             dirname=model_path,
@@ -632,7 +729,8 @@ def save(layer, model_path, input_spec=None, configs=None):
             executor=Executor(_current_expected_place()),
             main_program=concrete_program.main_program.clone(),
             model_filename=configs.model_filename,
-            params_filename=configs.params_filename,
+            params_filename=None
+            if configs.separate_params else configs.params_filename,
             export_for_deployment=configs._export_for_deployment,
             program_only=configs._program_only)
 
