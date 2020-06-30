@@ -243,6 +243,7 @@ EOF
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_LITE=${WITH_LITE:-OFF}
+    
 
 }
 
@@ -748,6 +749,7 @@ function card_test() {
     set -m
     case_count $1 $2
     ut_startTime_s=`date +%s` 
+    summary_failtest=''
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
@@ -781,19 +783,26 @@ function card_test() {
         done
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+                ctest_output=`ctest -I $i,,$NUM_PROC -R "($testcases)" -V &`
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &
+                ctest_output=`env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &`
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                ctest_output=`ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &`
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &
+                ctest_output=`env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &`
+            fi
+            echo "$ctest_output"
+            if [[ $ctest_output =~ 'The following tests FAILED:' ]]
+            then
+                failuretest=`echo $ctest_output | sed 's/.*The following tests FAILED://g'`
+            else
+                failuretest=''
             fi
         fi
     done
-
+    summary_failtest="$summary_failtest""$failuretest"
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -878,6 +887,7 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        echo "$summary_failtest"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
