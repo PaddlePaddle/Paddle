@@ -16556,15 +16556,6 @@ def index_sample(x, index):
 
     .. code-block:: text
 
-    Given:
-                X = [[1, 2, 3, 4, 5],
-                     [6, 7, 8, 9, 10]]
-                Index = [[0, 1, 3],
-                         [0, 2, 4]]
-                Then:
-                Out = [[1, 2, 4],
-                       [6, 8, 10]]
-
     Args:
         x (Variable): The source input tensor with 2-D shape. Supported data type is 
             int32, int64, float32, float64.
@@ -16572,7 +16563,7 @@ def index_sample(x, index):
             Data type is int32 or int64.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape as index.
+        Variable: A tensor with the same shape as `index` .
 
     Examples:
         .. code-block:: python
