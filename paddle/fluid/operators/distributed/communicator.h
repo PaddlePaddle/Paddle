@@ -304,6 +304,7 @@ class AsyncCommunicator : public Communicator {
 
   void Recv() override;
   void SendByCommunicator();
+  void SendGlobalStep();
   void RecvByCommunicator();
   virtual void RecvNoBarrier();
   virtual void MetCondition() {}

@@ -74,10 +74,39 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldCommContext(
   return table_pairs;
 }  // namespace distributed
 
+void SendByNotifyRPC(const CommContext &rpc_ctx,
+                     const framework::Scope &scope) {
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto &send_var_name = rpc_ctx.var_name;
+  std::vector<distributed::VarHandlePtr> rets;
+
+  if (NeedSend(scope, send_var_name)) {
+    for (size_t j = 0; j < rpc_ctx.epmap.size(); j++) {
+      auto &endpoint = rpc_ctx.epmap[j];
+      VLOG(4) << "sending " << send_var_name << " to " << endpoint;
+      rets.push_back(rpc_client->AsyncDistributeNotify(endpoint, cpu_ctx, scope,
+                                                       send_var_name));
+      VLOG(4) << "send var " << send_var_name << " by notify RPC done";
+    }
+  } else {
+    VLOG(3) << "don't send non-initialized variable: " << rpc_ctx.var_name;
+  }
+
+  for (auto &handle : rets) {
+    PADDLE_ENFORCE_NE(handle->Wait(), 0U, platform::errors::ExecutionTimeout(
+                                              "internal error in RPCClient"));
+  }
+}
+
 template <typename T>
 void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync,
                                   int multi_parts) {
+  if (rpc_ctx.var_name == LEARNING_RATE_DECAY_COUNTER) {
+    SendByNotifyRPC(rpc_ctx, scope);
+    return;
+  }
+
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -87,7 +116,6 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(rpc_ctx.trainer_id);
 
   std::vector<distributed::VarHandlePtr> rets;
-
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
 
   if (send_var->IsType<framework::LoDTensor>()) {
@@ -122,43 +150,20 @@ void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                                    ->GetMutable<framework::LoDTensor>();
       out->ShareDataWith(send_tensor);
     }
-    if (rpc_ctx.use_send_handler) {
-      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-        auto &send_var_name = rpc_ctx.splited_varnames[i];
-        VLOG(4) << "send var name: " << send_var_name;
-        auto &endpoint = rpc_ctx.epmap[i];
-        VLOG(4) << " send var endpoint: " << endpoint;
-        VLOG(4) << " need send: "
-                << NeedSend(*local_scope.get(), send_var_name);
-        if (NeedSend(*local_scope.get(), send_var_name)) {
-          VLOG(3) << "sending " << send_var_name << " to " << endpoint;
-          rets.push_back(rpc_client->AsyncSendVar(
-              endpoint, cpu_ctx, *local_scope.get(), send_var_name));
-          VLOG(4) << "send var " << send_var_name << " async handle done";
-        } else {
-          VLOG(3) << "don't send non-initialized variable: "
-                  << rpc_ctx.splited_varnames[i];
-        }
-      }
-    } else {
-      for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
-        for (size_t j = 0; j < rpc_ctx.epmap.size(); j++) {
-          auto &send_var_name = rpc_ctx.splited_varnames[i];
-          VLOG(4) << "send var name: " << send_var_name;
-          auto &endpoint = rpc_ctx.epmap[j];
-          VLOG(4) << " send var endpoint: " << endpoint;
-          VLOG(4) << " need send: "
-                  << NeedSend(*local_scope.get(), send_var_name);
-          if (NeedSend(*local_scope.get(), send_var_name)) {
-            VLOG(3) << "sending " << send_var_name << " to " << endpoint;
-            rets.push_back(rpc_client->AsyncDistributeNotify(
-                endpoint, cpu_ctx, *local_scope.get(), send_var_name));
-            VLOG(4) << "send var " << send_var_name << " async handle done";
-          } else {
-            VLOG(3) << "don't send non-initialized variable: "
-                    << rpc_ctx.splited_varnames[i];
-          }
-        }
+
+    for (size_t i = 0; i < rpc_ctx.splited_varnames.size(); i++) {
+      auto &send_var_name = rpc_ctx.splited_varnames[i];
+      auto &endpoint = rpc_ctx.epmap[i];
+      VLOG(4) << " send var name: " << send_var_name
+              << "endpoint: " << endpoint;
+      if (NeedSend(*local_scope.get(), send_var_name)) {
+        VLOG(3) << "sending " << send_var_name << " to " << endpoint;
+        rets.push_back(rpc_client->AsyncSendVar(
+            endpoint, cpu_ctx, *local_scope.get(), send_var_name));
+        VLOG(4) << "send var " << send_var_name << " async handle done";
+      } else {
+        VLOG(3) << "don't send non-initialized variable: "
+                << rpc_ctx.splited_varnames[i];
       }
     }
   } else if (send_var->IsType<framework::SelectedRows>()) {

@@ -41,10 +41,24 @@ from paddle.fluid.incubate.fleet.ps.ir.ps_dispatcher import RoundRobin, PSDispat
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
+LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
+OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
+
+
+def _get_lr_ops(program):
+    lr_ops = []
+    for index, op in enumerate(program.global_block().ops):
+        role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
+        if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
+                        role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                        int(OPT_OP_ROLE_ATTR_VALUE):
+            lr_ops.append(op)
+    return lr_ops
 
 
 def is_sparse_op(op):
@@ -253,6 +267,18 @@ class CompileTimeStrategy(object):
             grads = merged[1]
             ctx = self.build_ctx(grads, self.grad_var_mapping, True)
             send_ctx[ctx.merged_varname()] = ctx
+
+        lr_ops = _get_lr_ops(self.get_origin_main_program())
+
+        if lr_ops:
+            name = LEARNING_RATE_DECAY_COUNTER
+            trainer_id = self.get_role_id()
+            endpoints = self.get_ps_endpoints()
+            sections = [1] * len(endpoints)
+            names = [name] * len(endpoints)
+            ctx = CommContext(name, names, endpoints, sections, [name],
+                              trainer_id, True, False)
+            send_ctx[name] = ctx
         return send_ctx
 
     def get_communicator_recv_context(self, recv_type=1):

@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -144,9 +145,12 @@ class RequestCheckpointHandler final : public RequestHandler {
 
 class RequestNotifyHandler final : public RequestHandler {
  public:
-  explicit RequestNotifyHandler(int distributed_mode, int lr_decay_block_id)
+  explicit RequestNotifyHandler(int distributed_mode, int trainers)
       : RequestHandler(distributed_mode) {
-    this->lr_decay_block_id = lr_decay_block_id;
+    this->trainers = trainers;
+    for (int i = 0; i < trainers; i++) {
+      decay_counters[i] = 0;
+    }
   }
   virtual ~RequestNotifyHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
@@ -155,7 +159,8 @@ class RequestNotifyHandler final : public RequestHandler {
               const std::string& table_name = "") override;
 
  private:
-  int lr_decay_block_id;
+  int trainers;
+  std::unordered_map<int, int64_t> decay_counters;
 };
 
 }  // namespace distributed

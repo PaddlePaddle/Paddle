@@ -280,19 +280,31 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
   string::Piece var_name_piece = string::Piece(varname);
   if (string::Contains(var_name_piece, decay_piece)) {
     VLOG(3) << "LearningRate Decay Counter Update";
-    PADDLE_ENFORCE_NE(
-        lr_decay_block_id, -1,
-        "when lr_decay_block_id = -1, there should be no RPC invoke.");
-    auto* origin_var = scope_->FindVar(varname);
-    auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
+
     auto* send_var = scope->FindVar(varname);
     auto send_var_tensor = send_var->Get<framework::LoDTensor>();
-    int64_t* origin_value =
-        origin_var_tensor.mutable_data<int64_t>(origin_var_tensor.place());
     int64_t* send_value =
         send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
-    origin_value[0] += send_value[0];
-    executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
+
+    auto counter = decay_counters.at(trainer_id);
+    counter += send_value[0];
+    decay_counters.at(trainer_id) = counter;
+
+    auto* global_step_var = scope()->FindVar(LEARNING_RATE_DECAY_COUNTER);
+    if (global_step_var == nullptr) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "can not find " << LEARNING_RATE_DECAY_COUNTER << " "));
+    }
+
+    auto* tensor = global_step_var->GetMutable<framework::LoDTensor>();
+    auto* value = tensor->mutable_data(platform::CPUPlace());
+
+    auto global_counter = 0;
+
+    for (auto& trainer_counter : decay_counters) {
+      global_counter += trainer_counter.second;
+    }
+    value[0] = global_counter;
   }
   return true;
 }

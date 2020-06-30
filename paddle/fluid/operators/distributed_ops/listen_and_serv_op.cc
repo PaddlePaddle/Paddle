@@ -387,8 +387,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestCheckpointHandler(distributed_mode));
   request_get_no_barrier_handler_.reset(
       new distributed::RequestGetNoBarrierHandler());
-  request_notify_handler_.reset(new distributed::RequestNotifyHandler(
-      distributed_mode, lr_decay_block_id));
+  request_notify_handler_.reset(
+      new distributed::RequestNotifyHandler(distributed_mode, fan_in));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(), rpc_send_thread_num);

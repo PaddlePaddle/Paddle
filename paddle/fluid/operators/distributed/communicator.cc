@@ -120,17 +120,13 @@ void AsyncCommunicator::SendByCommunicator() {
         auto &ctx = send_varname_to_ctx_.at(var_name);
 
         auto before_merge = GetCurrentUS();
-
         MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
-
         auto after_merge = GetCurrentUS();
         VLOG(3) << "merge " << merged_var_num << " " << var_name << " use time "
                 << after_merge - before_merge;
 
         auto send_functor = distributed::ParameterSend<float>();
-
         send_functor(ctx, *send_scope_, true, 1);
-
         auto after_send = GetCurrentUS();
         VLOG(3) << "send " << var_name << " use time "
                 << after_send - after_merge;
@@ -272,25 +268,37 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
   auto table_name = var_tables[0];
   auto &queue = send_varname_to_queue_.at(table_name);
 
-  auto *var = scope.FindVar(var_names[0]);
-  PADDLE_ENFORCE_EQ(
-      var->IsInitialized(), true,
-      platform::errors::InvalidArgument("grad var should be inited"));
-
-  auto tmp_var = std::make_shared<Variable>();
-
-  if (var->IsType<framework::SelectedRows>()) {
-    framework::CopyVariable(*var, tmp_var.get());
-    VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
-    queue->Push(tmp_var);
-  } else if (var->IsType<framework::LoDTensor>()) {
-    // push var into send queue by var_name
-    auto var_name = var_names[0];
-    framework::CopyVariable(*var, tmp_var.get());
+  if (table_name == LEARNING_RATE_DECAY_COUNTER) {
+    auto tmp_var = std::make_shared<Variable>();
+    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    tensor->Resize(framework::make_ddim({1}));
+    auto *out_d = out_t->mutable_data<float>(platform::CPUPlace());
+    out_d[0] = 1.0;
     VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
     queue->Push(tmp_var);
   } else {
-    PADDLE_THROW("unknown var type to copy");
+    auto *var = scope.FindVar(var_names[0]);
+
+    PADDLE_ENFORCE_EQ(
+        var->IsInitialized(), true,
+        platform::errors::InvalidArgument("grad var should be inited"));
+
+    auto tmp_var = std::make_shared<Variable>();
+    if (var->IsType<framework::SelectedRows>()) {
+      framework::CopyVariable(*var, tmp_var.get());
+      VLOG(3) << "send to " << table_name << " with queue size "
+              << queue->Size();
+      queue->Push(tmp_var);
+    } else if (var->IsType<framework::LoDTensor>()) {
+      // push var into send queue by var_name
+      auto var_name = var_names[0];
+      framework::CopyVariable(*var, tmp_var.get());
+      VLOG(3) << "send to " << table_name << " with queue size "
+              << queue->Size();
+      queue->Push(tmp_var);
+    } else {
+      PADDLE_THROW("unknown var type to copy");
+    }
   }
 }
 

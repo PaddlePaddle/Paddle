@@ -32,6 +32,7 @@ import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.ps.ir.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.ps.ir.public import _get_lr_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
 from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
 
@@ -46,16 +47,6 @@ op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 
 def delete_optimizer_pass(program, config):
-    def _get_lr_ops(_program):
-        lr_ops = []
-        for index, op in enumerate(_program.global_block().ops):
-            role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
-            if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                            role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                            int(OPT_OP_ROLE_ATTR_VALUE):
-                lr_ops.append(op)
-        return lr_ops
-
     def _delete_optimizer_op_and_vars(_program, optimize_ops):
         optimize_vars = []
         optimize_op_role_vars = []

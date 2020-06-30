@@ -38,7 +38,7 @@ from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import _orig_varname
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_varname_parts
 from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
-from paddle.fluid.incubate.fleet.ps.ir.public import is_sparse_op
+from paddle.fluid.incubate.fleet.ps.ir.public import _get_lr_ops
 
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -538,17 +538,6 @@ def add_optimizer_pass(program, config):
 
         # reset the block of op
         op._set_attr('sub_block', new_sub_block)
-
-    def _get_lr_ops():
-        lr_ops = []
-        block = origin_program.global_block()
-        for index, op in enumerate(block.ops):
-            role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
-            if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                            role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
-                            int(OPT_OP_ROLE_ATTR_VALUE):
-                lr_ops.append(op)
-        return lr_ops
 
     optimize_ops = _get_optimize_ops(origin_program)
     for _, op in enumerate(optimize_ops):
