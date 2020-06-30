@@ -4199,7 +4199,7 @@ class PipelineOptimizer(object):
                     var_info[var_name] = []
                 if not prog in var_info[var_name]:
                     var_info[var_name].append(prog)
-        for var_name in var_info.keys():
+        for var_name in list(var_info.keys()):
             if len(var_info[var_name]) == 1:
                 var_info.pop(var_name)
 
