@@ -20,6 +20,7 @@ import sys
 import paddle.fluid as fluid
 import importlib
 from six.moves import cStringIO
+print(1,2,3)
 
 
 def main():
