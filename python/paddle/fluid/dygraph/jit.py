@@ -182,6 +182,7 @@ class SaveLoadConfig(object):
         1. Using ``SaveLoadConfig`` when saving model
 
         .. code-block:: python
+
             import numpy as np
             import paddle.fluid as fluid
             from paddle.fluid.dygraph import Linear
@@ -225,6 +226,7 @@ class SaveLoadConfig(object):
         2. Using ``SaveLoadConfig`` when loading model
 
         .. code-block:: python
+        
             import numpy as np
             import paddle.fluid as fluid
 
@@ -763,10 +765,10 @@ def load(model_path, configs=None):
     .. note::
         For some historical reasons, if you load model saved by :ref:`api_fluid_io_load_inference_model`,
         there will be the following limitations when using it:
-            **1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.**
-            **2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.**
-            **3. The ``stop_gradient`` information is lost and can not be recovered.**
-            **4. The parameter's ``trainable`` information is lost and can not be recovered.**
+        1. Imperative mode do not support LoDTensor. All original model's feed targets or parametars that depend on LoD are temporarily unavailable.
+        2. All saved model's feed targets need to be passed into TranslatedLayer's forwrad function.
+        3. The ``stop_gradient`` information is lost and can not be recovered.
+        4. The parameter's ``trainable`` information is lost and can not be recovered.
 
     Args:
         model_path (str): The directory path where the model is saved.
