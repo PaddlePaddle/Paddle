@@ -301,8 +301,8 @@ Examples:
         print(res)
 
         # using dygraph
-        with fluid.dygraph.guard():
-            dygraph_input = fluid.dygraph.to_variable(img)
+        with paddle.imperative.guard():
+            dygraph_input = paddle.imperative.to_variable(img)
             dygraph_output = paddle.%s(dygraph_input)
             print(dygraph_output.numpy())
 """ % (op_type, op_type)
