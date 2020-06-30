@@ -4202,7 +4202,6 @@ class LookaheadOptimizer(object):
             for batch_data in reader():
                 exe.run(fluid.default_main_program(),
                 feed=feeder.feed(batch_data))
-            
     """
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
