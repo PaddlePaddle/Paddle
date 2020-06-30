@@ -24,7 +24,7 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import Qat2Int8MkldnnPass
+from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
 from paddle.fluid import core
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
@@ -42,7 +42,7 @@ def parse_args():
         help='Number of the first minibatches to skip in performance statistics.'
     )
     parser.add_argument(
-        '--qat_model', type=str, default='', help='A path to a QAT model.')
+        '--quant_model', type=str, default='', help='A path to a Quant model.')
     parser.add_argument(
         '--fp32_model', type=str, default='', help='A path to an FP32 model.')
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
@@ -71,15 +71,15 @@ def parse_args():
     parser.add_argument(
         '--debug',
         action='store_true',
-        help='If used, the graph of QAT model is drawn.')
+        help='If used, the graph of Quant model is drawn.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
 
 
-class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
+class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
     """
-    Test for accuracy comparison of FP32 and QAT2 INT8 Image Classification inference.
+    Test for accuracy comparison of FP32 and Quant2 INT8 Image Classification inference.
     """
 
     def _reader_creator(self, data_file='data.bin'):
@@ -182,9 +182,9 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
 
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
-                graph.draw('.', 'qat_orig', graph.all_op_nodes())
+                graph.draw('.', 'quant_orig', graph.all_op_nodes())
             if (transform_to_int8):
-                transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
+                transform_to_mkldnn_int8_pass = Quant2Int8MkldnnPass(
                     self._quantized_ops,
                     _op_ids_to_skip=self._op_ids_to_skip,
                     _scope=inference_scope,
@@ -223,7 +223,7 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 labels = np.array([x[1] for x in data]).astype('int64')
 
                 if (transform_to_int8 == True):
-                    # QAT INT8 models do not have accuracy measuring layers
+                    # INT8 models obtained from Quant models do not have accuracy measuring layers
                     start = time.time()
                     out = exe.run(inference_program,
                                   feed={feed_target_names[0]: images},
@@ -301,8 +301,8 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
         if not fluid.core.is_compiled_with_mkldnn():
             return
 
-        qat_model_path = test_case_args.qat_model
-        assert qat_model_path, 'The QAT model path cannot be empty. Please, use the --qat_model option.'
+        quant_model_path = test_case_args.quant_model
+        assert quant_model_path, 'The Quant model path cannot be empty. Please, use the --quant_model option.'
         fp32_model_path = test_case_args.fp32_model
         assert fp32_model_path, 'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
         data_path = test_case_args.infer_data
@@ -323,8 +323,8 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
             self._op_ids_to_skip = set(
                 map(int, test_case_args.op_ids_to_skip.split(',')))
 
-        _logger.info('FP32 & QAT INT8 prediction run.')
-        _logger.info('QAT model: {}'.format(qat_model_path))
+        _logger.info('FP32 & Quant INT8 prediction run.')
+        _logger.info('Quant model: {}'.format(quant_model_path))
         _logger.info('FP32 model: {}'.format(fp32_model_path))
         _logger.info('Dataset: {}'.format(data_path))
         _logger.info('Batch size: {}'.format(batch_size))
@@ -346,12 +346,12 @@ class Qat2Int8ImageClassificationComparisonTest(unittest.TestCase):
             batch_num,
             skip_batch_num,
             transform_to_int8=False)
-        _logger.info('--- QAT INT8 prediction start ---')
+        _logger.info('--- Quant INT8 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path), batch_size=batch_size)
         int8_output, int8_acc1, int8_acc5, int8_fps, int8_lat = self._predict(
             val_reader,
-            qat_model_path,
+            quant_model_path,
             batch_size,
             batch_num,
             skip_batch_num,

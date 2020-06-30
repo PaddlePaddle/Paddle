@@ -24,7 +24,7 @@ import time
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import Qat2Int8MkldnnPass
+from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
 from paddle.fluid import core
 
 logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
@@ -42,12 +42,12 @@ def parse_args():
         help='Number of the first minibatches to skip in performance statistics.'
     )
     parser.add_argument(
-        '--qat_model', type=str, default='', help='A path to a QAT model.')
+        '--quant_model', type=str, default='', help='A path to a Quant model.')
     parser.add_argument(
         '--fp32_model',
         type=str,
         default='',
-        help='A path to an FP32 model. If empty, the QAT model will be used for FP32 inference.'
+        help='A path to an FP32 model. If empty, the Quant model will be used for FP32 inference.'
     )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
@@ -77,16 +77,16 @@ def parse_args():
     parser.add_argument(
         '--debug',
         action='store_true',
-        help='If used, the graph of QAT model is drawn.')
+        help='If used, the graph of Quant model is drawn.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
 
     return test_args, sys.argv[:1] + args
 
 
-class QatInt8NLPComparisonTest(unittest.TestCase):
+class QuantInt8NLPComparisonTest(unittest.TestCase):
     """
-    Test for accuracy comparison of QAT FP32 and INT8 NLP inference.
+    Test for accuracy comparison of Quant FP32 and INT8 NLP inference.
     """
 
     def _reader_creator(self, data_file=None, labels_file=None):
@@ -158,9 +158,9 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
 
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if (self._debug):
-                graph.draw('.', 'qat_orig', graph.all_op_nodes())
+                graph.draw('.', 'quant_orig', graph.all_op_nodes())
             if (transform_to_int8):
-                transform_to_mkldnn_int8_pass = Qat2Int8MkldnnPass(
+                transform_to_mkldnn_int8_pass = Quant2Int8MkldnnPass(
                     self._quantized_ops,
                     _op_ids_to_skip=self._op_ids_to_skip,
                     _scope=inference_scope,
@@ -248,9 +248,9 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         if not fluid.core.is_compiled_with_mkldnn():
             return
 
-        qat_model_path = test_case_args.qat_model
-        assert qat_model_path, 'The QAT model path cannot be empty. Please, use the --qat_model option.'
-        fp32_model_path = test_case_args.fp32_model if test_case_args.fp32_model else qat_model_path
+        quant_model_path = test_case_args.quant_model
+        assert quant_model_path, 'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        fp32_model_path = test_case_args.fp32_model if test_case_args.fp32_model else quant_model_path
         data_path = test_case_args.infer_data
         assert data_path, 'The dataset path cannot be empty. Please, use the --infer_data option.'
         labels_path = test_case_args.labels
@@ -270,8 +270,8 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
             self._op_ids_to_skip = set(
                 map(int, test_case_args.op_ids_to_skip.split(',')))
 
-        _logger.info('FP32 & QAT INT8 prediction run.')
-        _logger.info('QAT model: {}'.format(qat_model_path))
+        _logger.info('FP32 & Quant INT8 prediction run.')
+        _logger.info('Quant model: {}'.format(quant_model_path))
         _logger.info('FP32 model: {}'.format(fp32_model_path))
         _logger.info('Dataset: {}'.format(data_path))
         _logger.info('Labels: {}'.format(labels_path))
@@ -295,12 +295,12 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
             skip_batch_num,
             transform_to_int8=False)
         _logger.info('FP32: avg accuracy: {0:.6f}'.format(fp32_acc))
-        _logger.info('--- QAT INT8 prediction start ---')
+        _logger.info('--- Quant INT8 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, labels_path), batch_size=batch_size)
         int8_acc, int8_pps, int8_lat = self._predict(
             val_reader,
-            qat_model_path,
+            quant_model_path,
             batch_size,
             batch_num,
             skip_batch_num,
