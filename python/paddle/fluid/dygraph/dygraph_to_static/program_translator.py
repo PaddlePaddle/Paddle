@@ -15,7 +15,7 @@
 from __future__ import print_function
 import gast
 import inspect
-import logging
+import warnings
 import textwrap
 import threading
 import collections
@@ -38,8 +38,6 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
 
 __all__ = ['ProgramTranslator', 'convert_to_static']
-
-logger = logging.getLogger("fluid")
 
 
 class FunctionCache(object):
@@ -131,15 +129,36 @@ class FunctionSpec(object):
         return self._args and isinstance(self._args[0], layers.Layer)
 
     def parameters(self, include_sublayer=True):
+        """
+        Returns parameters of decorated layers. If set `include_sublayer` True,
+        the parameters created in sub layers will be added.
+        """
         params = collections.OrderedDict()
         if self.is_method():
+            layer_instance = self._args[0]
             if include_sublayer:
-                params = self._args[0].parameters()
+                params = layer_instance.parameters()
                 names = [p.name for p in params]
                 params = collections.OrderedDict(zip(names, params))
             else:
-                params = self._args[0]._parameters
+                params = layer_instance._parameters
         return params
+
+    def buffers(self, include_sublayer=True):
+        """
+        Returns Variable buffers of decorated layers. If set `include_sublayer` True,
+        the Variable buffers created in sub layers will be added.
+        """
+        buffers = collections.OrderedDict()
+        if self.is_method():
+            layer_instance = self._args[0]
+            if include_sublayer:
+                buffers = layer_instance.buffers()
+                names = [buffer.name for buffer in buffers]
+                buffers = collections.OrderedDict(zip(names, buffers))
+            else:
+                buffers = layer_instance._buffers
+        return buffers
 
     @switch_to_static_graph
     def to_static_inputs(self, main_program):
@@ -251,11 +270,13 @@ class ConcreteProgram(object):
                 # 1. Adds `fluid.data` layers for input if needed
                 inputs = func_spec.to_static_inputs(main_program)
 
-                # 2. Gets all ParamBases in the function
-                all_parameters = list(func_spec.parameters().values())
+                # 2. Gets all ParamBases and buffered VarBases in the function
+                all_parameters_and_buffers = list(func_spec.parameters().values(
+                )) + list(func_spec.buffers().values())
 
                 # 3. Builds program only once and returns the output Variables.
-                with param_guard(func_spec.parameters(False)):
+                with param_guard(func_spec.parameters(False)), param_guard(
+                        func_spec.buffers(False)):
                     outputs = static_func(*inputs)
                 if not isinstance(outputs, (tuple, list)):
                     outputs = [outputs] if outputs else []
@@ -263,7 +284,7 @@ class ConcreteProgram(object):
         return ConcreteProgram(
             inputs=inputs,
             outputs=outputs,
-            parameters=all_parameters,
+            parameters=all_parameters_and_buffers,
             func=dygraph_function,
             main_program=main_program,
             startup_program=startup_program)
@@ -439,7 +460,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable = False. "
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
@@ -490,7 +511,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable=False. We will "
                 "just return dygraph output.")
             return dygraph_func
@@ -543,7 +564,7 @@ class ProgramTranslator(object):
             dygraph_func
         ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
         if not self.enable_declarative:
-            logger.info(
+            warnings.warn(
                 "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable=False."
                 "We will just return dygraph output.")
             return dygraph_func(*args, **kwargs)
