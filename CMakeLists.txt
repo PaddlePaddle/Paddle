@@ -207,7 +207,6 @@ include(coveralls)          # set code coverage
 include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("${PADDLE_SOURCE_DIR}/paddle/fluid/framework/io")
 
 if(WITH_AMD_GPU)
     find_package(HIP)
