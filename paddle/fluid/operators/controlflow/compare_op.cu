@@ -14,11 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/compare_op.h"
 
-REGISTER_COMPARE_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor);
-REGISTER_COMPARE_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor);
+REGISTER_COMPARE_KERNEL(less_than, CUDA, paddle::operators::LessThanFunctor,
+                        paddle::operators::InverseLessThanFunctor);
+REGISTER_COMPARE_KERNEL(less_equal, CUDA, paddle::operators::LessEqualFunctor,
+                        paddle::operators::InverseLessEqualFunctor);
 REGISTER_COMPARE_KERNEL(greater_than, CUDA,
-                        paddle::operators::GreaterThanFunctor);
+                        paddle::operators::GreaterThanFunctor,
+                        paddle::operators::InverseGreaterThanFunctor);
 REGISTER_COMPARE_KERNEL(greater_equal, CUDA,
-                        paddle::operators::GreaterEqualFunctor);
-REGISTER_COMPARE_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
-REGISTER_COMPARE_KERNEL(not_equal, CUDA, paddle::operators::NotEqualFunctor);
+                        paddle::operators::GreaterEqualFunctor,
+                        paddle::operators::InverseGreaterEqualFunctor);
+REGISTER_COMPARE_EQUAL_KERNEL(equal, CUDA, paddle::operators::EqualFunctor);
+REGISTER_COMPARE_EQUAL_KERNEL(not_equal, CUDA,
+                              paddle::operators::NotEqualFunctor);

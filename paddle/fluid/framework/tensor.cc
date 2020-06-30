@@ -37,6 +37,8 @@ size_t Tensor::memory_size() const {
 void* Tensor::mutable_data(const platform::Place& place,
                            proto::VarType::Type type, size_t requested_size) {
   type_ = type;
+  VLOG(1) << "numel()" << numel();
+  VLOG(1) << "dim_ " << dims().size();
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
