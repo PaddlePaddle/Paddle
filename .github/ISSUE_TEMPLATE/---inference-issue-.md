@@ -13,6 +13,7 @@ about: 您可以提问预测中报错、应用等问题。 You could use this te
     2）CPU：预测若用CPU，请提供CPU型号，MKL/OpenBlas/MKLDNN/等数学库使用情况
     3）GPU：预测若用GPU，请提供GPU型号、CUDA和CUDNN版本号
     4）系统环境：请您描述系统类型、版本（如Mac OS 10.14），Python版本
+注：您可以通过执行[summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py)获取以上信息。
 -预测信息
     1）C++预测：请您提供预测库安装包的版本信息，及其中的version.txt文件
     2）CMake包含路径的完整命令
@@ -33,6 +34,7 @@ If there is no solution,please make sure that this is an inference issue includi
 -Cmake orders
 -C++version.txt
 -API information
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**
