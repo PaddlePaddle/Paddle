@@ -23,7 +23,7 @@ from ..data_feeder import check_type
 __all__ = [
     'NoamDecay', 'PiecewiseDecay', 'NaturalExpDecay', 'ExponentialDecay',
     'InverseTimeDecay', 'PolynomialDecay', 'CosineDecay', 'LinearLrWarmup',
-    'ReduceLROnPlateau', 'MultiStepDecay'
+    'ReduceLROnPlateau', 'StepDecay', 'MultiStepDecay'
 ]
 
 
@@ -595,6 +595,8 @@ class NoamDecay(LearningRateDecay):
 
 class LinearLrWarmup(LearningRateDecay):
     """
+    :api_attr: imperative
+
     This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
     For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
     
@@ -683,6 +685,8 @@ class LinearLrWarmup(LearningRateDecay):
 
 class ReduceLROnPlateau(LearningRateDecay):
     """
+    :api_attr: imperative
+
     Reduce learning rate when ``loss`` has stopped descending. Models often benefit from reducing the learning rate 
     by 2 to 10 times once model performance has no longer improvement.
 
@@ -870,35 +874,81 @@ class ReduceLROnPlateau(LearningRateDecay):
             return current > best + self.threshold
 
 
-class MultiStepDecay(LearningRateDecay):
+class _LearningRateEpochDecay(LearningRateDecay):
     """
-    Decays the learning rate of ``optimizer`` by ``decay_rate`` once ``global_step`` reaches one of the milestones.
+    :api_attr: imperative
+
+    Base class of learning rate decay, which is updated each epoch.
+    
+    Define the common interface of an _LearningRateEpochDecay.
+    User should not use this class directly,
+    but need to use one of it's implementation. And invoke method: `epoch()` each epoch.
+    """
+
+    def __init__(self, learning_rate, dtype=None):
+        if not isinstance(learning_rate, (float, int)):
+            raise TypeError(
+                "The type of 'learning_rate' must be 'float, int', but received %s."
+                % type(learning_rate))
+        if learning_rate >= 1.0:
+            raise ValueError("The initial learning rate")
+
+        self.base_lr = float(learning_rate)
+
+        self.epoch_num = -1
+        if dtype is None:
+            self.dtype = "float32"
+        self.learning_rate = self.create_lr_var(self.base_lr)
+
+        self.epoch()
+
+    def __call__(self):
+        """ 
+        Return last computed learning rate on current epoch.
+        """
+        return self.learning_rate
+
+    def epoch(self, epoch=None):
+        """
+        compueted learning_rate and update it when invoked.
+        """
+        if epoch is None:
+            self.epoch_num += 1
+        else:
+            self.epoch_num = epoch
+
+        self.learning_rate = self.get_lr()
+        if isinstance(self.learning_rate, float):
+            self.learning_rate = self.create_lr_var(self.learning_rate)
+
+    def get_lr(self):
+        raise NotImplementedError
+
+
+class StepDecay(_LearningRateEpochDecay):
+    """
+    :api_attr: imperative
+
+    Decays the learning rate of ``optimizer`` by ``decay_rate`` every ``step_size`` number of epoch.
 
     The algorithm can be described as the code below. 
 
     .. code-block:: text
 
         learning_rate = 0.5
-        milestones = [30, 50]
+        step_size = 30
         decay_rate = 0.1
-        if global_step < 30:
-            learning_rate = 0.5
-        elif global_step < 50:
-            learning_rate = 0.05
-        else:
-            learning_rate = 0.005
+
+        learning_rate = 0.5     if epoch < 30
+        learning_rate = 0.05    if 30 <= epoch < 60
+        learning_rate = 0.005   if 60 <= epoch < 90
+        ...
 
     Parameters:
-        learning_rate (Variable|float|int): The initial learning rate. It can be set to python float or int number. If 
-            the type is Variable, it should be 1-D Tensor with shape [1], and the data type should be 'float32' or 'float64'.
-        milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
+        learning_rate (float|int): The initial learning rate. It can be set to python float or int number.
+        step_size (int): Period of learning rate decay..
         decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
             It should be less than 1.0. Default: 0.1.
-        begin(int, optional): The begin step to initialize the global_step in the description above. Default: 0.
-        step(int, optional): The step size used to calculate the new global_step in the description above.
-            Default: 1.
-        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            'float32', 'float64'. Default: 'float32'.
 
     Returns:
         None.
@@ -912,37 +962,111 @@ class MultiStepDecay(LearningRateDecay):
                 x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
                 linear = fluid.dygraph.Linear(10, 10)
                 input = fluid.dygraph.to_variable(x)
-                adam = fluid.optimizer.Adam(
-                    learning_rate = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5]),
-                    parameter_list = linear.parameters())
+                scheduler = fluid.dygraph.StepDecay(0.5, step_size=3)
+                adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
 
-                for step in range(6):
-                    out = linear(input)
-                    loss = fluid.layers.reduce_mean(out)
-                    adam.minimize(loss)                 
-                    lr = adam.current_step_lr()
-                    print("step:{}, current lr is {}" .format(step, lr))
-                    # step:0, current lr is 0.5
-                    # step:1, current lr is 0.5
-                    # step:2, current lr is 0.5
-                    # step:3, current lr is 0.05
-                    # step:4, current lr is 0.05
-                    # step:5, current lr is 0.005
+                for epoch in range(9):
+                    for batch_id in range(5):
+                        out = linear(input)
+                        loss = fluid.layers.reduce_mean(out)
+                        adam.minimize(loss)  
+                    scheduler.epoch()
+
+                    print("epoch:{}, current lr is {}" .format(epoch, adam.current_step_lr()))
+                    # epoch:0, current lr is 0.5
+                    # epoch:1, current lr is 0.5
+                    # epoch:2, current lr is 0.5
+                    # epoch:3, current lr is 0.05
+                    # epoch:4, current lr is 0.05
+                    # epoch:5, current lr is 0.05
+                    # epoch:6, current lr is 0.005
+                    # epoch:7, current lr is 0.005
+                    # epoch:8, current lr is 0.005
 
     """
 
-    def __init__(self,
-                 learning_rate,
-                 milestones,
-                 decay_rate=0.1,
-                 begin=0,
-                 step=1,
-                 dtype='float32'):
-        super(MultiStepDecay, self).__init__(begin, step, dtype)
-        check_type(learning_rate, 'learning_rate', (float, int, Variable),
-                   'MultiStepDecay')
-        if isinstance(learning_rate, (float, int)):
-            learning_rate = self.create_lr_var(learning_rate)
+    def __init__(self, learning_rate, step_size, decay_rate=0.1):
+        if not isinstance(step_size, int):
+            raise TypeError(
+                "The type of 'step_size' must be 'int', but received %s." %
+                type(step_size))
+        if decay_rate >= 1.0:
+            raise ValueError('decay_rate should be < 1.0.')
+
+        self.step_size = step_size
+        self.decay_rate = decay_rate
+        super(StepDecay, self).__init__(learning_rate)
+
+    def get_lr(self):
+        decay_rate = self.create_lr_var(self.decay_rate)
+        i = self.epoch_num // self.step_size
+        return self.base_lr * (decay_rate**i)
+
+
+class MultiStepDecay(_LearningRateEpochDecay):
+    """
+    :api_attr: imperative
+
+    Decays the learning rate of ``optimizer`` by ``decay_rate`` once ``epoch`` reaches one of the milestones.
+
+    The algorithm can be described as the code below. 
+
+    .. code-block:: text
+
+        learning_rate = 0.5
+        milestones = [30, 50]
+        decay_rate = 0.1
+        if epoch < 30:
+            learning_rate = 0.5
+        elif epoch < 50:
+            learning_rate = 0.05
+        else:
+            learning_rate = 0.005
+
+    Parameters:
+        learning_rate (float|int): The initial learning rate. It can be set to python float or int number. If it
+        milestones (tuple|list): List or tuple of each boundaries. Must be increasing.
+        decay_rate (float, optional): The Ratio that the learning rate will be reduced. ``new_lr = origin_lr * decay_rate`` . 
+            It should be less than 1.0. Default: 0.1.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import numpy as np
+            with fluid.dygraph.guard():
+                x = np.random.uniform(-1, 1, [10, 10]).astype("float32")
+                linear = fluid.dygraph.Linear(10, 10)
+                input = fluid.dygraph.to_variable(x)
+                scheduler = fluid.dygraph.MultiStepDecay(0.5, milestones=[3, 5])
+                adam = fluid.optimizer.Adam(learning_rate = scheduler, parameter_list = linear.parameters())
+
+                for epoch in range(6):
+                    for batch_id in range(5):
+                        out = linear(input)
+                        loss = fluid.layers.reduce_mean(out)
+                        adam.minimize(loss)
+                    scheduler.epoch()
+
+                    print("epoch:{}, current lr is {}" .format(epoch, adam.current_step_lr()))
+                    # epoch:0, current lr is 0.5
+                    # epoch:1, current lr is 0.5
+                    # epoch:2, current lr is 0.5
+                    # epoch:3, current lr is 0.05
+                    # epoch:4, current lr is 0.05
+                    # epoch:5, current lr is 0.005
+
+    """
+
+    def __init__(self, learning_rate, milestones, decay_rate=0.1):
+        if not isinstance(milestones, (tuple, list)):
+            raise TypeError(
+                "The type of 'milestones' in 'MultiStepDecay' must be 'tuple, list', but received %s."
+                % type(milestones))
+
         if not all([
                 milestones[i] < milestones[i + 1]
                 for i in range(len(milestones) - 1)
@@ -951,15 +1075,14 @@ class MultiStepDecay(LearningRateDecay):
         if decay_rate >= 1.0:
             raise ValueError('decay_rate should be < 1.0.')
 
-        self.learning_rate = learning_rate
-        check_type(milestones, 'milestones', (tuple, list), 'MultiStepDecay')
         self.milestones = milestones
-        self.decay_rate = self.create_lr_var(decay_rate)
+        self.decay_rate = decay_rate
+        super(MultiStepDecay, self).__init__(learning_rate)
 
-    def step(self):
-        from .. import layers
+    def get_lr(self):
+        decay_rate = self.create_lr_var(self.decay_rate)
         for i in range(len(self.milestones)):
-            if self.step_num < self.milestones[i]:
-                return self.learning_rate * (self.decay_rate**i)
+            if self.epoch_num < self.milestones[i]:
+                return self.base_lr * (decay_rate**i)
 
-        return self.learning_rate * (self.decay_rate**len(self.milestones))
+        return self.base_lr * (decay_rate**len(self.milestones))

@@ -104,12 +104,16 @@ def linear_lr_warmup(global_step, warmup_steps, start_lr, end_lr):
     return decayed_lr
 
 
-def multi_step_decay(global_step, learning_rate, milestones, decay_rate=1.0):
+def multi_step_decay(global_step, learning_rate, milestones, decay_rate=0.1):
     for i in range(len(milestones)):
         if global_step < milestones[i]:
             return learning_rate * math.pow(decay_rate, i)
 
     return learning_rate * math.pow(decay_rate, len(milestones))
+
+
+def step_decay(global_step, learning_rate, step_size, decay_rate=0.1):
+    return learning_rate * math.pow(decay_rate, global_step // step_size)
 
 
 class TestLearningRateDecayDygraph(unittest.TestCase):
@@ -158,28 +162,54 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
     def test_MultiStepDecay(self):
         with fluid.dygraph.guard():
-            learning_rate = 0.1
+            learning_rate = 0.5
             milestones = [2, 4, 8]
             decay_rate = 0.2
-            lr = fluid.layers.multi_step_decay(learning_rate, milestones,
-                                               decay_rate)
-            for step in range(10):
-                right_result = multi_step_decay(step, learning_rate, milestones,
-                                                decay_rate)
-                fluid_result = lr()
+            scheduler = fluid.dygraph.MultiStepDecay(learning_rate, milestones,
+                                                     decay_rate)
+            for epoch in range(10):
+                right_result = multi_step_decay(epoch, learning_rate,
+                                                milestones, decay_rate)
+                fluid_result = scheduler().numpy()[0]
+                scheduler.epoch()
                 self.assertAlmostEqual(
                     right_result,
-                    fluid_result[0],
+                    fluid_result,
                     msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
-                    format(step, right_result, fluid_result[0]))
+                    format(epoch, right_result, fluid_result))
 
             with self.assertRaises(ValueError):
-                lr = fluid.layers.multi_step_decay(learning_rate, [30, 50, 20],
-                                                   0.1)
+                lr = fluid.dygraph.MultiStepDecay(learning_rate, [30, 50, 20],
+                                                  0.1)
 
             with self.assertRaises(ValueError):
-                lr = fluid.layers.multi_step_decay(learning_rate, [20, 30, 50],
-                                                   1)
+                lr = fluid.dygraph.MultiStepDecay(learning_rate, [20, 30, 50],
+                                                  1)
+
+    def test_StepDecay(self):
+        with fluid.dygraph.guard():
+            learning_rate = 0.5
+            step_size = 3
+            decay_rate = 0.2
+            scheduler = fluid.dygraph.StepDecay(learning_rate, step_size,
+                                                decay_rate)
+            for epoch in range(10):
+                right_result = step_decay(epoch, learning_rate, step_size,
+                                          decay_rate)
+                fluid_result = scheduler().numpy()[0]
+                scheduler.epoch()
+                self.assertAlmostEqual(
+                    right_result,
+                    fluid_result,
+                    msg='Failed lr scheduler in step {0}, Python result is {1}, Fluid result is {2}'.
+                    format(epoch, right_result, fluid_result))
+
+            with self.assertRaises(TypeError):
+                lr = fluid.dygraph.MultiStepDecay(learning_rate, "test", 0.1)
+
+            with self.assertRaises(ValueError):
+                lr = fluid.dygraph.MultiStepDecay(learning_rate, [20, 30, 50],
+                                                  1)
 
 
 class TestLearningRateDecay(unittest.TestCase):
@@ -254,10 +284,6 @@ class TestLearningRateDecay(unittest.TestCase):
                  "d_model": 0.01,
                  "warmup_steps": 200,
                  "learning_rate": 2.0
-             }), (multi_step_decay, layers.multi_step_decay, {
-                 "learning_rate": 0.5,
-                 "milestones": [3, 5, 8],
-                 "decay_rate": 0.2
              })
         ]
 
@@ -270,7 +296,7 @@ class TestLearningRateDecay(unittest.TestCase):
                 self.check_decay(py_decay_fn, fluid_decay_fn, kwargs)
 
 
-class TestLinearWamrupLearningRateDecay(TestLearningRateDecay):
+class TestLinearWamrupLearningRateDecay(unittest.TestCase):
     def check_decay_with_place(self, place, python_decay_fn, fluid_decay_fn,
                                kwargs):
         main_prog = fluid.Program()
