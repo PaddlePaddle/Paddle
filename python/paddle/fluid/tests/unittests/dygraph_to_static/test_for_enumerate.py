@@ -24,9 +24,9 @@ from paddle.fluid.dygraph.jit import declarative
 program_translator = ProgramTranslator()
 
 
-# 0. for in range with var case
+# 0. for in range var.numpy()[0]
 @declarative
-def dygraph_for_in_range(x):
+def for_in_range(x):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x = fluid.dygraph.to_variable(x)
     for i in range(x.numpy()[0]):
@@ -36,7 +36,7 @@ def dygraph_for_in_range(x):
 
 # 1. for iter list 
 @declarative
-def dygraph_for_iter_list(x_array):
+def for_iter_list(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     for x in x_array:
         z = z + x
@@ -45,7 +45,7 @@ def dygraph_for_iter_list(x_array):
 
 # 2. for enumerate list
 @declarative
-def dygraph_for_enumerate_list(x_array):
+def for_enumerate_list(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     for i, x in enumerate(x_array):
         z = z + x + i
@@ -54,7 +54,7 @@ def dygraph_for_enumerate_list(x_array):
 
 # 3. for iter var.numpy()
 @declarative
-def dygraph_for_iter_var_numpy(x_array):
+def for_iter_var_numpy(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
     for x in x_array.numpy():
@@ -64,7 +64,7 @@ def dygraph_for_iter_var_numpy(x_array):
 
 # 4. for enumerate var.numpy()
 @declarative
-def dygraph_for_enumerate_var_numpy(x_array):
+def for_enumerate_var_numpy(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -76,7 +76,7 @@ def dygraph_for_enumerate_var_numpy(x_array):
 
 # 5. for enumerate var.numpy() with start
 @declarative
-def dygraph_for_enumerate_var_numpy_with_start(x_array):
+def for_enumerate_var_numpy_with_start(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -88,7 +88,7 @@ def dygraph_for_enumerate_var_numpy_with_start(x_array):
 
 # 6. for in range with break
 @declarative
-def dygraph_for_in_range_with_break(x):
+def for_in_range_with_break(x):
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x = fluid.dygraph.to_variable(x)
     for i in range(x.numpy()[0]):
@@ -100,7 +100,7 @@ def dygraph_for_in_range_with_break(x):
 
 # 7. for enumerate var.numpy() with break
 @declarative
-def dygraph_for_enumerate_var_numpy_with_break(x_array):
+def for_enumerate_var_numpy_with_break(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -114,7 +114,7 @@ def dygraph_for_enumerate_var_numpy_with_break(x_array):
 
 # 8. for enumerate var.numpy() with continue
 @declarative
-def dygraph_for_enumerate_var_numpy_with_continue(x_array):
+def for_enumerate_var_numpy_with_continue(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -128,7 +128,7 @@ def dygraph_for_enumerate_var_numpy_with_continue(x_array):
 
 # 9. for enumerate var.numpy() with start & break
 @declarative
-def dygraph_for_enumerate_var_numpy_with_start_break(x_array):
+def for_enumerate_var_numpy_with_start_break(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -142,7 +142,7 @@ def dygraph_for_enumerate_var_numpy_with_start_break(x_array):
 
 # 10. for enumerate var.numpy() with start & continue
 @declarative
-def dygraph_for_enumerate_var_numpy_with_start_continue(x_array):
+def for_enumerate_var_numpy_with_start_continue(x_array):
     y = fluid.layers.fill_constant([1], 'int32', 0)
     z = fluid.layers.fill_constant([1], 'int32', 0)
     x_array = fluid.dygraph.to_variable(x_array)
@@ -150,6 +150,62 @@ def dygraph_for_enumerate_var_numpy_with_start_continue(x_array):
         y = y + i
         if i > 2:
             continue
+        z = z + x
+    return y, z
+
+
+# 11. for iter var
+@declarative
+def for_iter_var(x_array):
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for x in x_array:
+        z = z + x
+    return z
+
+
+# 12. for enumerate var
+@declarative
+def for_enumerate_var(x_array):
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    x_array = fluid.dygraph.to_variable(x_array)
+    for i, x in enumerate(x_array):
+        y = y + i
+        z = z + x
+    return y, z
+
+
+# 13. for iter list[var]
+@declarative
+def for_iter_var_list(x):
+    # 1. prepare data, ref test_list.py
+    x = fluid.dygraph.to_variable(x)
+    iter_num = fluid.layers.fill_constant(shape=[1], value=5, dtype="int32")
+    a = []
+    for i in range(iter_num):
+        a.append(x + i)
+    # 2. iter list[var]
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    for x in a:
+        y = y + x
+    return y
+
+
+# 14. for enumerate list[var]
+@declarative
+def for_enumerate_var_list(x):
+    # 1. prepare data, ref test_list.py
+    x = fluid.dygraph.to_variable(x)
+    iter_num = fluid.layers.fill_constant(shape=[1], value=5, dtype="int32")
+    a = []
+    for i in range(iter_num):
+        a.append(x + i)
+    # 2. iter list[var]
+    y = fluid.layers.fill_constant([1], 'int32', 0)
+    z = fluid.layers.fill_constant([1], 'int32', 0)
+    for i, x in enumerate(a):
+        y = y + i
         z = z + x
     return y, z
 
@@ -206,7 +262,7 @@ class TestForInRange(TestTransform):
         self.input = np.array([5])
 
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_in_range
+        self.dygraph_func = for_in_range
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()
@@ -214,7 +270,7 @@ class TestForInRange(TestTransform):
 
 class TestForIterList(TestTransform):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_iter_list
+        self.dygraph_func = for_iter_list
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()
@@ -222,12 +278,12 @@ class TestForIterList(TestTransform):
 
 class TestForEnumerateSimple(TestForIterList):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_list
+        self.dygraph_func = for_enumerate_list
 
 
 class TestForInRangeWithBreak(TestForInRange):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_in_range_with_break
+        self.dygraph_func = for_in_range_with_break
 
 
 class TestForIterVarNumpy(TestTransform):
@@ -235,7 +291,7 @@ class TestForIterVarNumpy(TestTransform):
         self.input = np.array([1, 2, 3, 4, 5])
 
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_iter_var_numpy
+        self.dygraph_func = for_iter_var_numpy
 
     def test_transformed_result_compare(self):
         self.transformed_result_compare()
@@ -243,32 +299,52 @@ class TestForIterVarNumpy(TestTransform):
 
 class TestForEnumerateVarNumpy(TestForIterVarNumpy):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy
+        self.dygraph_func = for_enumerate_var_numpy
 
 
 class TestForEnumerateVarNumpyWithStart(TestForIterVarNumpy):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start
+        self.dygraph_func = for_enumerate_var_numpy_with_start
 
 
 class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_break
+        self.dygraph_func = for_enumerate_var_numpy_with_break
 
 
 class TestForEnumerateVarNumpyWithBreak(TestForIterVarNumpy):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_continue
+        self.dygraph_func = for_enumerate_var_numpy_with_continue
 
 
 class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start_break
+        self.dygraph_func = for_enumerate_var_numpy_with_start_break
 
 
 class TestForEnumerateVarNumpyWithStartAndBreak(TestForIterVarNumpy):
     def set_test_func(self):
-        self.dygraph_func = dygraph_for_enumerate_var_numpy_with_start_continue
+        self.dygraph_func = for_enumerate_var_numpy_with_start_continue
+
+
+class TestForIterVar(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_iter_var
+
+
+class TestForEnumerateVar(TestForIterVarNumpy):
+    def set_test_func(self):
+        self.dygraph_func = for_enumerate_var
+
+
+class TestForIterVarList(TestForInRange):
+    def set_test_func(self):
+        self.dygraph_func = for_iter_var_list
+
+
+class TestForEnumerateVarList(TestForInRange):
+    def set_test_func(self):
+        self.dygraph_func = for_enumerate_var_list
 
 
 if __name__ == '__main__':

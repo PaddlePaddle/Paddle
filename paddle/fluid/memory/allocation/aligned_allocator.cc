@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -35,9 +36,13 @@ class AlignedAllocation : public Allocation {
 AlignedAllocator::AlignedAllocator(
     const std::shared_ptr<Allocator>& underlyning_allocator, size_t alignment)
     : underlying_allocator_(underlyning_allocator), alignment_(alignment) {
-  PADDLE_ENFORCE(alignment_ > 0, "alignment must be positive integer");
+  PADDLE_ENFORCE_GT(
+      alignment_, 0,
+      platform::errors::InvalidArgument(
+          "Alignment should be larger than 0, but got %d", alignment_));
   if (alignment_ & (alignment_ - 1)) {
-    PADDLE_THROW("alignment must be 2^N, but got %d", alignment_);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Alignment should be power of 2 (2^N), but got %d", alignment_));
   }
 }
 

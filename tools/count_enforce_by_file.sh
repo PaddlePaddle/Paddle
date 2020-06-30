@@ -1,12 +1,27 @@
 #!/bin/bash
 
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # This script is used to count PADDLE checks by files in the paddle/fluid/operators directory,
 #   contains the number of PADDLE checks under each file.
 #   
 #   The three columns of data are: total number, valid number, invalid number. 
 #   The output format is easy to display as a markdown table.
 
-# Usage: bash file_invalid_enforce.sh (run in tools directory)
+# Usage: bash count_enforce_by_file.sh  [target directory or file] (run in tools directory)
+#   - The default check path is paddle/fluid/operators
 
 # Result Example:
 
@@ -27,9 +42,15 @@
 #   - math_function.cu | 4 | 0 | 4
 #   - math_function_impl.h | 10 | 0 | 10
 
+. ./count_all_enforce.sh --source-only
+
 ROOT_DIR=../paddle/fluid/operators
 
-white_list_str = "\
+if [ "$1" != "" ]; then
+    ROOT_DIR=$1
+fi
+
+FILE_WHITE_LIST="\
     layer_norm_op.cc \
     box_clip_op.cc \
     box_clip_op.h \
@@ -38,15 +59,7 @@ white_list_str = "\
     fused_elemwise_activation_op.cc \
     auc_op.cu"
 
-function enforce_scan(){
-    paddle_check=`grep -r -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" $1 || true`
-    total_check_cnt=`echo "$paddle_check" | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    valid_check_cnt=`echo "$paddle_check" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' | grep -cE "(PADDLE_ENFORCE|PADDLE_THROW)" || true`
-    eval $2=$total_check_cnt
-    eval $3=$valid_check_cnt
-}
-
-function walk_dir(){
+function count_file_recursively(){
     dir_name=$1
     echo "**${dir_name#../}** | **$2** | **$3** | **$(($2-$3))**"
     local i=0
@@ -54,9 +67,9 @@ function walk_dir(){
     for file in `ls $1`
     do
         if [ -f $1"/"$file ];then
-            in_white_list=$(echo $white_list_str | grep "${file}")
+            in_white_list=$(echo $FILE_WHITE_LIST | grep "${file}")
             if [[ "$in_white_list" == "" ]];then
-                enforce_scan $1"/"$file file_total_check_cnt file_valid_check_cnt
+                enforce_count $1"/"$file file_total_check_cnt file_valid_check_cnt
                 file_invalid_check_cnt=$(($total_check_cnt-$valid_check_cnt))
                 if [ $file_invalid_check_cnt -gt 0 ];then
                     echo "- $file | ${file_total_check_cnt} | ${file_valid_check_cnt} | ${file_invalid_check_cnt}"
@@ -70,9 +83,15 @@ function walk_dir(){
     done
     for sub_dir_name in ${dir_array[@]}
     do
-        enforce_scan $sub_dir_name dir_total_check_cnt dir_valid_check_cnt
-        walk_dir $sub_dir_name $dir_total_check_cnt $dir_valid_check_cnt
+        enforce_count $sub_dir_name dir_total_check_cnt dir_valid_check_cnt
+        count_file_recursively $sub_dir_name $dir_total_check_cnt $dir_valid_check_cnt
     done
 }
 
-walk_dir $ROOT_DIR 0 0
+main() {
+    count_file_recursively $ROOT_DIR 0 0
+}
+
+if [ "${1}" != "--source-only" ]; then
+    main "${@}"
+fi

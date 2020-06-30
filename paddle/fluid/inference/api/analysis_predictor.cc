@@ -579,11 +579,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 
     if (config.thread_local_stream_enabled() &&
         process_level_allocator_enabled) {
-      LOG(FATAL) << " When binding threads and streams, the use of "
-                    "process-level allocators will result in undefined result "
-                    "errors due to memory asynchronous operations."
-                    "The thread and stream binding configuration of all "
-                    "predictors should be the same in a single process.";
+      PADDLE_THROW(platform::errors::Fatal(
+          "When binding threads and streams, the use of "
+          "process-level allocators will result in undefined result "
+          "errors due to memory asynchronous operations."
+          "The thread and stream binding configuration of all "
+          "predictors should be the same in a single process."));
     }
   }
 
@@ -917,8 +918,9 @@ std::string AnalysisPredictor::GetSerializedProgram() const {
 
 bool AnalysisPredictor::CheckOperatorCompatible() {
   if (!inference_program_) {
-    LOG(FATAL) << "Inference program version check failed because the program "
-                  "does not exist.";
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Inference program version check failed because the program does not "
+        "exist."));
     return false;
   }
   bool res = true;

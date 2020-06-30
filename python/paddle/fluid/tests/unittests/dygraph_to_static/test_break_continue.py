@@ -89,6 +89,7 @@ def test_break_in_while(x):
 
 def test_break_continue_in_for(x):
     x = fluid.dygraph.to_variable(x)
+
     for i in range(1, 10, 1):
         if i <= 4:
             x += 1
@@ -97,6 +98,18 @@ def test_break_continue_in_for(x):
             x += 10010
             break
         x += 10086
+
+    a = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
+    for i in range(1, 10, 1):
+        if a <= 4:
+            x += 1
+            a += 1
+            continue
+        else:
+            x += 10010
+            break
+        x += 10086
+
     return x
 
 

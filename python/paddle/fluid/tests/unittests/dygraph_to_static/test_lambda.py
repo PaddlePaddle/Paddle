@@ -65,6 +65,20 @@ def call_lambda_with_ifExpr(x):
     return out
 
 
+def call_lambda_with_ifExpr2(x):
+    x = fluid.dygraph.to_variable(x)
+
+    add_func = lambda x: x + 1
+
+    y = fluid.layers.mean(x)
+
+    # NOTE: y is Variable, but z<2 is python bool value
+    z = 0
+    out = add_func(y) if y or z < 2 else (lambda x: x**2)(y)
+
+    return out
+
+
 class TestLambda(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
@@ -76,7 +90,7 @@ class TestLambda(unittest.TestCase):
     def init_func(self):
         self.dyfuncs = [
             call_lambda_as_func, call_lambda_directly, call_lambda_in_func,
-            call_lambda_with_ifExpr
+            call_lambda_with_ifExpr, call_lambda_with_ifExpr2
         ]
 
     def run_static(self, func):

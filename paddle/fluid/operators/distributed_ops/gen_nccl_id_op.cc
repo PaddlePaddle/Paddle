@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/distributed/barrier_monitor.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -30,26 +28,32 @@ namespace operators {
 
 class GenNCCLIdOp : public framework::OperatorBase {
  public:
-  GenNCCLIdOp(const std::string& type, const framework::VariableNameMap& inputs,
-              const framework::VariableNameMap& outputs,
-              const framework::AttributeMap& attrs)
+  GenNCCLIdOp(const std::string &type, const framework::VariableNameMap &inputs,
+              const framework::VariableNameMap &outputs,
+              const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     // put nccl id in CPUPlace
-    auto& dev_ctx = *pool.Get(platform::CPUPlace());
+    auto &dev_ctx = *pool.Get(platform::CPUPlace());
     int trainer_id = Attr<int>("trainer_id");
 
     std::vector<std::string> trainers =
         Attr<std::vector<std::string>>("trainers");
-    PADDLE_ENFORCE(
-        trainer_id >= 0 && trainer_id < static_cast<int>(trainers.size()),
-        "trainer_id:%d must be in trainers.size range", trainer_id);
+    PADDLE_ENFORCE_GE(trainer_id, 0, platform::errors::InvalidArgument(
+                                         "trainer_id %d is less than 0. Its "
+                                         "valid range is [0, trainer_size)"));
+    PADDLE_ENFORCE_LT(
+        trainer_id, static_cast<int>(trainers.size()),
+        platform::errors::OutOfRange("trainer_id %d is out of range. Its valid "
+                                     "range is [0, trainer_size)",
+                                     trainer_id));
+
     std::string endpoint = trainers[trainer_id];
 
-    framework::Scope& local_scope = scope.NewScope();
+    framework::Scope &local_scope = scope.NewScope();
 
     int nccl_comm_num = Attr<int>("nccl_comm_num");
     int use_hierarchical_allreduce = Attr<bool>("use_hierarchical_allreduce");
@@ -58,12 +62,20 @@ class GenNCCLIdOp : public framework::OperatorBase {
     int inter_trainer_id = -1;
     int exter_trainer_id = -1;
     if (use_hierarchical_allreduce) {
-      PADDLE_ENFORCE(trainers.size() > 1, "trainers.size():%llu < 1",
-                     trainers.size());
-      PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d < 1", inter_nranks);
-      PADDLE_ENFORCE((trainers.size() % inter_nranks == 0),
-                     "trainers.size():%llu mod inter_nranks:%d != 0",
-                     trainers.size(), inter_nranks);
+      PADDLE_ENFORCE_GT(
+          trainers.size(), 1,
+          platform::errors::PreconditionNotMet(
+              "The number of collective trainers %llu <= 1", trainers.size()));
+      PADDLE_ENFORCE_GT(
+          inter_nranks, 1,
+          platform::errors::PreconditionNotMet(
+              "inter_nranks %d <= 1 while in hierarchical allreduce mode",
+              inter_nranks));
+      PADDLE_ENFORCE_EQ(
+          trainers.size() % inter_nranks, 0,
+          platform::errors::PreconditionNotMet(
+              "The number of trainers %llu mod inter_nranks %d is not equal 0",
+              trainers.size(), inter_nranks));
 
       inter_trainer_id = trainer_id % inter_nranks;
 
@@ -106,10 +118,16 @@ class GenNCCLIdOp : public framework::OperatorBase {
       return;
     }
 
-    PADDLE_ENFORCE(trainers.size() % inter_nranks == 0,
-                   "enpoints.size:%llu mod inter_nranks:%d should ==0",
-                   trainers.size(), inter_nranks);
-    PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d must > 1", inter_nranks);
+    PADDLE_ENFORCE_EQ(
+        trainers.size() % inter_nranks, 0,
+        platform::errors::PreconditionNotMet(
+            "The number of trainers %llu mod inter_nranks %d is not equal 0",
+            trainers.size(), inter_nranks));
+    PADDLE_ENFORCE_GT(
+        inter_nranks, 1,
+        platform::errors::PreconditionNotMet(
+            "inter_nranks %d <= 1 while in hierarchical allreduce mode",
+            inter_nranks));
 
     // hierarchical inter ncclid
     if (inter_trainer_id == 0) {
@@ -151,86 +169,107 @@ class GenNCCLIdOp : public framework::OperatorBase {
   }
 
  private:
-  void GenerateAndSend(framework::Scope* scope,
-                       const platform::DeviceContext& dev_ctx,
-                       const std::string& nccl_id_name,
-                       const std::vector<std::string>& endpoint_list) const {
+  void GenerateAndSend(framework::Scope *scope,
+                       const platform::DeviceContext &dev_ctx,
+                       const std::string &nccl_id_name,
+                       const std::vector<std::string> &endpoint_list) const {
     auto var = scope->FindVar(nccl_id_name);
-    PADDLE_ENFORCE_NOT_NULL(var, "can't find nccl_id_var_name:%s",
-                            nccl_id_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("Variable with name %s is not found",
+                                        nccl_id_name.c_str()));
     auto id = var->GetMutable<ncclUniqueId>();
-    PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(id));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetUniqueId(id));
 
-    distributed::RPCClient* client =
+    distributed::RPCClient *client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
-    for (auto& ep : endpoint_list) {
+    for (auto &ep : endpoint_list) {
       VLOG(3) << "sending nccl_id_var:" << nccl_id_name << " to " << ep;
       client->AsyncSendVar(ep, dev_ctx, *scope, nccl_id_name);
     }
     client->Wait();
-    for (auto& ep : endpoint_list) {
+    for (auto &ep : endpoint_list) {
       client->AsyncSendBatchBarrier(ep);
     }
     client->Wait();
     VLOG(3) << "sending completed...";
   }
 
-  void GetIdByServer(const std::string& endpoint, framework::Scope* scope,
-                     const platform::DeviceContext& dev_ctx, int nccl_comm_num,
+  void GetIdByServer(const std::string &endpoint, framework::Scope *scope,
+                     const platform::DeviceContext &dev_ctx, int nccl_comm_num,
                      bool use_hierarchical_allreduce, int trainer_id,
                      int inter_trainer_id, int exter_trainer_id) const {
     // std::string endpoint = Attr<std::string>("endpoint");
     // NOTE: Can not use unique_ptr here because the default
     // deleter will call GRPC Server's base class's dtor and
     // that will cause a wired crash.
-    distributed::RequestSendHandler rpc_h(distributed::DistributedMode::kSync);
+
     std::unique_ptr<distributed::RPCServer> rpc_service(
         new RPCSERVER_T(endpoint, 1));
 
+    distributed::RequestSendHandler rpc_h(distributed::DistributedMode::kSync);
+
+    distributed::RequestNotifyHandler notify_h(
+        distributed::DistributedMode::kSync, -1);
+
     rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
-    rpc_h.SetRPCServer(rpc_service.get());
+    rpc_service->RegisterRPC(distributed::kRequestNotify, &notify_h);
 
     framework::ProgramDesc empty_program;
     framework::Executor executor(dev_ctx.GetPlace());
+
+    rpc_h.SetRPCServer(rpc_service.get());
     rpc_h.SetScope(scope);
     rpc_h.SetDevCtx(&dev_ctx);
     rpc_h.SetProgram(&empty_program);
     rpc_h.SetExecutor(&executor);
 
+    notify_h.SetRPCServer(rpc_service.get());
+    notify_h.SetScope(scope);
+    notify_h.SetDevCtx(&dev_ctx);
+    notify_h.SetProgram(&empty_program);
+    notify_h.SetExecutor(&executor);
+
+    distributed::BarrierMonitor::Init(1);
+    auto *barrier = distributed::BarrierMonitor::GetInstance();
+    barrier->Reset(1, distributed::BarrierType::kSendBarrier);
+
     std::thread server_thread(
         std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
 
     for (int i = 0; i < nccl_comm_num; i++) {
-      rpc_service->SetCond(distributed::kRequestSend);
+      barrier->WaitServerWeakup();
+      barrier->Reset(1, distributed::BarrierType::kSendBarrier);
+      barrier->ServerWeakup();
+
       VLOG(3) << "trainer_id:" << trainer_id
               << " start getting nccl id from trainer 0, nccl_comm_no:" << i;
-      rpc_service->WaitBarrier(distributed::kRequestSend);
-      rpc_service->ResetBarrierCounter();
     }
 
     if (use_hierarchical_allreduce) {
       if (inter_trainer_id > 0) {
         for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
+          barrier->WaitServerWeakup();
+          barrier->Reset(1, distributed::BarrierType::kSendBarrier);
+          barrier->ServerWeakup();
+
           VLOG(3) << "trainer_id:" << trainer_id
                   << ", inter_trainer_id:" << inter_trainer_id
                   << " start getting nccl id from inter_trainer:" << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
         }
       }
 
       if (exter_trainer_id > 0) {
         for (int i = 0; i < nccl_comm_num; i++) {
-          rpc_service->SetCond(distributed::kRequestSend);
+          barrier->WaitServerWeakup();
+          barrier->Reset(1, distributed::BarrierType::kSendBarrier);
+          barrier->ServerWeakup();
+
           VLOG(3)
               << "trainer_id:" << trainer_id
               << ", exter_trainer_id:" << exter_trainer_id
               << " start getting nccl id from exter_trainer 0, nccl_comm_no:"
               << i;
-          rpc_service->WaitBarrier(distributed::kRequestSend);
-          rpc_service->ResetBarrierCounter();
         }
       }
     }
@@ -239,6 +278,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
             << ", inter_trainer_id:" << inter_trainer_id
             << ", exter_trainer_id:" << exter_trainer_id
             << " got nccl id and stop server...";
+    barrier->Stop();
     rpc_service->ShutDown();
     VLOG(3) << "rpc server stopped";
     server_thread.join();
@@ -251,7 +291,6 @@ class GenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("NCCLID", "Raw variable contains a NCCL UniqueId instaces.");
     AddComment(R"DOC(
 GenNCCLId operator
-
 For trainer 0: generate a new UniqueId and send it to all the other trainers.
 For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the server.
 )DOC");

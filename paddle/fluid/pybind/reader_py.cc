@@ -160,8 +160,8 @@ class MultiDeviceFeedReader {
                 reader, p, 2));
       } else {
         if (platform::is_gpu_place(p)) {
-          PADDLE_THROW(
-              "Place cannot be CUDAPlace when use_double_buffer is False");
+          PADDLE_THROW(platform::errors::PermissionDenied(
+              "Place cannot be CUDAPlace when use_double_buffer is False"));
         }
         holder->Reset(reader);
       }
@@ -233,7 +233,11 @@ class MultiDeviceFeedReader {
       auto each_status = futures_[i].get();
       if (UNLIKELY(each_status != Status::kSuccess)) {
         if (UNLIKELY(each_status == Status::kException)) {
-          PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
+          PADDLE_ENFORCE_NOT_NULL(
+              exceptions_[i],
+              platform::errors::NotFound("exceptions_[%d] is NULL, but the "
+                                         "result status is Status::kException",
+                                         i));
           *excep = exceptions_[i];
           exceptions_[i] = nullptr;
         }
@@ -280,7 +284,10 @@ class MultiDeviceFeedReader {
     Status status = WaitFutures(&excep);
 
     if (UNLIKELY(excep)) {
-      PADDLE_ENFORCE_EQ(status, Status::kException);
+      PADDLE_ENFORCE_EQ(status, Status::kException,
+                        platform::errors::NotFound(
+                            "The exception raised is not NULL, but "
+                            "the result status is not Status::kException"));
       std::rethrow_exception(excep);
     }
 
@@ -290,7 +297,10 @@ class MultiDeviceFeedReader {
       throw py::stop_iteration();
     }
 
-    PADDLE_ENFORCE_EQ(status, Status::kSuccess);
+    PADDLE_ENFORCE_EQ(status, Status::kSuccess,
+                      platform::errors::NotFound(
+                          "The function executed sucessfully, but "
+                          "the result status is not Status::kSuccess"));
   }
 
   std::shared_ptr<QueueType> queue_;

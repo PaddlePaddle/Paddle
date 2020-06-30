@@ -35,8 +35,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
 
+USE_INT_STAT(STAT_total_feasign_num_in_mem);
 namespace paddle {
 namespace framework {
 
@@ -390,6 +392,12 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
     while (ParseOneInstanceFromPipe(&instance)) {
       writer << std::move(instance);
       instance = T();
+    }
+    STAT_ADD(STAT_total_feasign_num_in_mem, fea_num_);
+    {
+      std::lock_guard<std::mutex> flock(*mutex_for_fea_num_);
+      *total_fea_num_ += fea_num_;
+      fea_num_ = 0;
     }
     writer.Flush();
     timeline.Pause();
@@ -935,6 +943,7 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
     }
     instance->float_feasigns_.shrink_to_fit();
     instance->uint64_feasigns_.shrink_to_fit();
+    fea_num_ += instance->uint64_feasigns_.size();
     return true;
   }
 #else
