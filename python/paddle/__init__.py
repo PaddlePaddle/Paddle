@@ -35,3 +35,6 @@ import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
 import paddle.complex
+
+from . import incubate
+from .incubate import hapi
