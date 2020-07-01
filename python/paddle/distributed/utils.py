@@ -333,6 +333,7 @@ class TrainerProc(object):
         self.log_fn = None
         self.log_offset = None
         self.rank = None
+        self.local_rank = None
         self.cmd = None
 
 
@@ -378,6 +379,7 @@ def start_local_trainers(cluster,
         tp = TrainerProc()
         tp.proc = proc
         tp.rank = t.rank
+        tp.local_rank = idx
         tp.log_fn = fn
         tp.log_offset = 0 if fn else None
         tp.cmd = cmd
@@ -396,7 +398,9 @@ def pull_worker_log(tp):
                 buf = fin.read(BUF_SIZE)
                 if len(buf) == 0:
                     break
-                sys.stdout.write(buf.decode(sys.stdout.encoding))
+                if isinstance(buf, bytes):
+                    buf = buf.decode(sys.stdout.encoding)
+                sys.stdout.write(buf)
             tp.log_offset = fin.tell()
 
 
@@ -407,7 +411,7 @@ def watch_local_trainers(procs, nranks):
         # wait all process finish or one error
         alive = False
         for p in procs:
-            if p.log_fn:
+            if p.log_fn and p.local_rank == 0:
                 pull_worker_log(p)
 
             ret = p.proc.poll()
