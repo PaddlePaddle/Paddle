@@ -3202,7 +3202,7 @@ class Flatten(layers.Layer):
           import numpy as np
 
           inp_np = np.ones([5, 2, 3, 4]).astype('float32')
-          with paddle.imperative.guard()::
+          with paddle.imperative.guard():
               inp_np = to_variable(inp_np)
               flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
               flatten_res = flatten(inp_np)

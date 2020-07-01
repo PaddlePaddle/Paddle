@@ -17,12 +17,15 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle
 from op_test import OpTest
 
 
 class TestFlattenOp(OpTest):
     def setUp(self):
         self.op_type = "flatten2"
+        self.start_axis = 0
+        self.stop_axis = -1
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float64")}
         self.init_attrs()
@@ -38,53 +41,134 @@ class TestFlattenOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.in_shape = (3, 2, 4, 5)
-        self.axis = 1
-        self.new_shape = (3, 40)
+        self.in_shape = (3, 2, 5, 4)
+        self.start_axis = 0
+        self.stop_axis = -1
+        self.new_shape = (120)
 
     def init_attrs(self):
-        self.attrs = {"axis": self.axis}
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
 
 
-class TestFlattenOp(TestFlattenOp):
+class TestFlattenOp_1(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
-        self.axis = 0
-        self.new_shape = (1, 120)
-
-
-class TestFlattenOpWithDefaultAxis(TestFlattenOp):
-    def init_test_case(self):
-        self.in_shape = (10, 2, 2, 3)
-        self.new_shape = (10, 12)
+        self.start_axis = 1
+        self.stop_axis = 2
+        self.new_shape = (3, 10, 4)
 
     def init_attrs(self):
-        self.attrs = {}
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
+
+
+class TestFlattenOp_2(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = (3, 2, 5, 4)
+        self.start_axis = 0
+        self.stop_axis = 1
+        self.new_shape = (6, 5, 4)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
+
+
+class TestFlattenOp_3(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = (3, 2, 5, 4)
+        self.start_axis = 0
+        self.stop_axis = 2
+        self.new_shape = (30, 4)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
+
+
+class TestFlattenOp_4(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = (3, 2, 5, 4)
+        self.start_axis = -2
+        self.stop_axis = -1
+        self.new_shape = (3, 2, 20)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
+
+
+class TestFlattenOp_5(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = (3, 2, 5, 4)
+        self.start_axis = 2
+        self.stop_axis = 2
+        self.new_shape = (3, 2, 5, 4)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
 
 
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
-        self.axis = 4
-        self.new_shape = (36, 16)
+        self.start_axis = 3
+        self.stop_axis = 5
+        self.new_shape = (3, 2, 3, 32)
+
+    def init_attrs(self):
+        self.attrs = {
+            "start_axis": self.start_axis,
+            "stop_axis": self.stop_axis
+        }
 
 
 class TestFlatten2OpError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_data = np.random.random((3, 2, 4, 5)).astype("float64")
+        image_shape = (2, 3, 4, 4)
+        x = np.arange(image_shape[0] * image_shape[1] * image_shape[2] *
+                      image_shape[3]).reshape(image_shape) / 100.
+        x = x.astype('float32')
 
-        def test_Variable():
-            # the input type must be Variable
-            fluid.layers.flatten(input_data, axis=1)
+        def test_ValueError1():
+            x_var = paddle.nn.data(name="x", shape=image_shape, dtype='float32')
+            out = paddle.flatten(x_var, start_axis=2, stop_axis=1)
 
-        self.assertRaises(TypeError, test_Variable)
+        self.assertRaises(ValueError, test_ValueError1)
+
+        def test_ValueError2():
+            x_var = paddle.nn.data(name="x", shape=image_shape, dtype='float32')
+            fluid.layers.flatten(x_var, start_axis=10, stop_axis=1)
+
+        self.assertRaises(ValueError, test_ValueError2)
+
+        def test_ValueError3():
+            x_var = paddle.nn.data(name="x", shape=image_shape, dtype='float32')
+            fluid.layers.flatten(x_var, start_axis=2, stop_axis=10)
+
+        self.assertRaises(ValueError, test_ValueError3)
 
         def test_type():
             # dtype must be float32, float64, int8, int32, int64.
-            x2 = fluid.layers.data(
-                name='x2', shape=[3, 2, 4, 5], dtype='float16')
-            fluid.layers.flatten(x2, axis=1)
+            x2 = np.arange(image_shape[0] * image_shape[1] * image_shape[2] *
+                           image_shape[3]).reshape(image_shape) / 100.
+            x2 = x2.astype('float16')
+            x2_var = paddle.data(name='x2', shape=[3, 2, 4, 5], dtype='float16')
+            fluid.layers.flatten(x2_var)
 
         self.assertRaises(TypeError, test_type)
 
