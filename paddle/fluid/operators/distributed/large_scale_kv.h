@@ -440,11 +440,14 @@ class SparseVariable {
           meta.entry);
       shard_blocks_.emplace_back(block);
     }
+
+    rwlock_.reset(new framework::RWLock);
   }
 
   void GetAndInit(const std::vector<int64_t> &ids,
                   const std::vector<std::string> &value_names,
                   std::vector<std::vector<std::vector<float> *>> *values) {
+    rwlock_->RDLock();
     for (auto &id : ids) {
       std::vector<std::vector<float> *> id_values;
       auto *block = GetShard(id);
@@ -452,6 +455,7 @@ class SparseVariable {
       id_values = block->Get(id, value_names);
       values->push_back(id_values);
     }
+    rwlock_->UNLock();
   }
 
   void Get(const std::vector<int64_t> &ids,
@@ -522,7 +526,7 @@ class SparseVariable {
   }
 
   void Load(const std::string &dirname) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    rwlock_->WRLock();
     VLOG(1) << "load " << meta_.name << " from dir: " << dirname << " begin";
 
     std::vector<std::string> filenames;
@@ -533,6 +537,7 @@ class SparseVariable {
 
     LoadFromSelectedRows(filenames, meta_.value_names);
     VLOG(1) << "load " << meta_.name << " in dir: " << dirname << " done";
+    rwlock_->UNLock();
   }
 
   void LoadFromSelectedRows(const std::vector<std::string> &filenames,
@@ -595,7 +600,7 @@ class SparseVariable {
   }
 
   void Save(const std::string &dirname) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    rwlock_->WRLock();
     VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " begin";
 
     MkDirRecursively(dirname.c_str());
@@ -616,6 +621,7 @@ class SparseVariable {
     //    SaveToText(txt_filenames, meta_.value_names);
 
     VLOG(1) << "save " << meta_.name << " in dir: " << dirname << " done";
+    rwlock_->UNLock();
   }
 
   void SaveToSelectedRows(const std::vector<std::string> &filenames,
@@ -751,7 +757,7 @@ class SparseVariable {
   }
 
  private:
-  mutable std::mutex mutex_;
+  std::unique_ptr<framework::RWLock> rwlock_{nullptr};
 
   SparseMeta meta_;
   std::unordered_map<std::string, int64_t> values_dims_;
