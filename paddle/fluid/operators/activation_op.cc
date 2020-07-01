@@ -230,7 +230,7 @@ $$out = \left \lceil x \right \rceil$$
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
-Floor Activation Operator.
+Floor Activation Operator. Computes floor of x element-wise.
 
 $$out = \\left \\lfloor x \\right \\rfloor$$
 
