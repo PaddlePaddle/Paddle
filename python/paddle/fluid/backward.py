@@ -45,7 +45,7 @@ class ProgramStats(object):
         input_names = []
         for name in self.var_op_deps:
             if len(self.var_op_deps[name]["var_as_output_ops"]) == 0 and \
-               len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
+                    len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
                 if self.block.var(name).persistable:
                     continue
                 input_names.append(name)
@@ -191,7 +191,7 @@ def _add_needed_descs_to_block(descs, block, main_block, in_memory_vars):
         return []
     result_descs = []
     op_role_attr_name = \
-            core.op_proto_and_checker_maker.kOpRoleAttrName()
+        core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
     for desc in descs:
         if isinstance(desc, framework.Operator):
@@ -407,7 +407,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
-                            str(var_rename_count[var_name])
+                                   str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
                         # rename original var_name
                         renamed_vars[var_name][0] = new_name
@@ -433,7 +433,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                         ] + arg_names[arg_idx:]
 
                     new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
-                        str(var_rename_count[var_name])
+                               str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
@@ -611,7 +611,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
     not_need_op_descs_set = set(not_need_op_descs)
     grad_op_descs_set = set(grad_op_descs)
     # If a backward computational graph is simply one sub-graph header, the
-    # not_need_op_descs will be whole graph, this IF clause avoids it. 
+    # not_need_op_descs will be whole graph, this IF clause avoids it.
     if grad_op_descs_set == not_need_op_descs_set:
         return set()
     return not_need_op_descs_set
@@ -662,7 +662,7 @@ def _append_backward_ops_with_checkpoints_(
     checkpoints_name = list(set(checkpoints_name))
     local_block = block.program._create_block()
     buffer_block = block.program._create_block()
-    # 0) deal with forward recomputing program descs  
+    # 0) deal with forward recomputing program descs
     program_stat = ProgramStats(block, ops)
     program_stat.modify_forward_desc_for_recompute()
     program_stat.build_stats()
@@ -797,7 +797,38 @@ def _append_backward_ops_with_checkpoints_(
     return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
 
 
-def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
+# def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
+#     """
+#     Get output vars in subblock which will be assigned to parent block.
+#     It is used to find the grad path in subblock
+#     """
+#     assert sub_block_op_desc.has_attr(
+#         "sub_block") and sub_block.idx == sub_block_op_desc._block_attr_id(
+#             "sub_block")
+#     # TODO(huihuangzheng): add support for recurrent op and while op
+#     if sub_block_op_desc.type == "conditional_block":
+#         sub_outputs = []
+#         sub_assign_to_out_ops = []
+#         for var in sub_block_op_desc.output_arg_names:
+#             for op_desc in sub_block.ops:
+#                 if op_desc.type == "assign" and var in op_desc.output_arg_names:
+#                     sub_assign_to_out_ops.append(op_desc)
+#                     for name in op_desc.input_arg_names:
+#                         if sub_block.has_var(name):
+#                             sub_outputs.append(sub_block.var(name))
+#
+#         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
+#                                            no_grad_set)
+#         # TODO better way than finding in list
+#         for op_desc in sub_assign_to_out_ops:
+#             if op_desc not in sub_block_op_path:
+#                 sub_block_op_path.append(op_desc)
+#         return sub_block_op_path
+#     return sub_block.ops
+def _get_sub_block_path(sub_block,
+                        sub_block_op_desc,
+                        no_grad_set,
+                        sub_block_output_names=None):
     """
     Get output vars in subblock which will be assigned to parent block.
     It is used to find the grad path in subblock
@@ -805,20 +836,32 @@ def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
     assert sub_block_op_desc.has_attr(
         "sub_block") and sub_block.idx == sub_block_op_desc._block_attr_id(
             "sub_block")
+
+    assert isinstance(sub_block_output_names, (set, type(None)))
+
+    if sub_block_output_names is None:
+        sub_block_output_names = sub_block_op_desc.output_arg_names
+
+    # sub_outputs = [sub_block.var(name) for name in parent_output_names
+    #            if name in sub_block_op_desc.output_arg_names and sub_block.has_var(name)]
+    #
+
     # TODO(huihuangzheng): add support for recurrent op and while op
     if sub_block_op_desc.type == "conditional_block":
-        sub_outputs = []
         sub_assign_to_out_ops = []
-        for var in sub_block_op_desc.output_arg_names:
+        sub_outputs = []
+        for var in sub_block_output_names:
             for op_desc in sub_block.ops:
-                if op_desc.type == "assign" and var in op_desc.output_arg_names:
+                # why op_desc.type must be 'assign' ?
+                # if op_desc.type == "assign" and var in op_desc.output_arg_names:
+                if var in op_desc.output_arg_names:
                     sub_assign_to_out_ops.append(op_desc)
                     for name in op_desc.input_arg_names:
                         if sub_block.has_var(name):
                             sub_outputs.append(sub_block.var(name))
 
         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
-                                           no_grad_set)
+                                           no_grad_set, dict())
         # TODO better way than finding in list
         for op_desc in sub_assign_to_out_ops:
             if op_desc not in sub_block_op_path:
@@ -846,7 +889,8 @@ def _append_backward_ops_(block,
                           no_grad_dict,
                           grad_to_var,
                           callbacks=None,
-                          input_grad_names_set=None):
+                          input_grad_names_set=None,
+                          op_path_dict=None):
     """
     Create all grad ops, and insert them into given block
 
@@ -888,8 +932,9 @@ def _append_backward_ops_(block,
             # see follwing comments for why set None here.
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
-            sub_block_path = _get_sub_block_path(sub_block, op,
-                                                 no_grad_dict[sub_block.idx])
+            # sub_block_path = _get_sub_block_path(sub_block, op,
+            #                                      no_grad_dict[sub_block.idx])
+            sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
             _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
                                   no_grad_dict, grad_to_var, callbacks,
                                   input_grad_names_set)
@@ -979,6 +1024,37 @@ def _append_backward_ops_(block,
         op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
     ]
 
+    # -------------- start liym
+    forward_vars_set = set()
+    for op in ops:
+        forward_vars_set.update(op.desc.input_arg_names())
+        forward_vars_set.update(op.desc.output_arg_names())
+
+    # Record the vars which are created during backward and is not generated by op.
+    backward_vars_set = set()
+    for op_desc in grad_op_descs:
+        print(" op type : ", op_desc.type())
+        input_set = set(op_desc.input_arg_names())
+        # The new_vars are created during backward and is not generated by op.
+        new_vars = input_set - forward_vars_set - backward_vars_set
+        backward_vars_set.update(op_desc.output_arg_names())
+        if new_vars:
+            print(" here !! new_vars : ", new_vars)
+
+    removed_op = [
+        op_desc for op_desc in grad_op_descs
+        if op_desc.type() in ["assign"] and "i@GRAD" in op_desc.input_arg_names(
+        )
+    ]
+    grad_op_descs = [
+        op_desc for op_desc in grad_op_descs if op_desc not in removed_op
+    ]
+
+    for op_desc in removed_op:
+        print(" remove op grad : ", op_desc.type())
+
+    # --------------- end
+
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -1013,7 +1089,7 @@ def _find_parent_op_(sub_block):
                     "sub_block") == sub_block_id:
                 return op
 
-    # NOTE(paddle-dev): When optimizer is added in conditional block, 
+    # NOTE(paddle-dev): When optimizer is added in conditional block,
     # sub_block may not be found.
     return None
 
@@ -1072,7 +1148,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             if var != core.empty_var_name()
         ]
 
-        # If the outputs of grad op is empty, just remove it 
+        # If the outputs of grad op is empty, just remove it
         if not outputs:
             ops_to_remove.append(op_idx)
             continue
@@ -1358,7 +1434,11 @@ def append_backward(loss,
 
         block_no_grad_set = set(
             map(_strip_grad_suffix_, no_grad_dict[block_idx]))
-        op_path = _find_op_path_(block, [loss], [], block_no_grad_set)
+        # changed liym27
+        # op_path = _find_op_path_(block, [loss], [], block_no_grad_set)
+        op_path_dict = dict()
+        op_path = _find_op_path_(block, [loss], [], block_no_grad_set,
+                                 op_path_dict)
 
         no_grad_vars = _find_no_grad_vars(block, op_path, [loss],
                                           block_no_grad_set)
@@ -1400,7 +1480,8 @@ def append_backward(loss,
                 no_grad_dict,
                 grad_to_var,
                 callbacks,
-                input_grad_names_set=input_grad_names_set)
+                input_grad_names_set=input_grad_names_set,
+                op_path_dict=op_path_dict)
 
     grad_info_map = dict()
 
@@ -1554,7 +1635,51 @@ def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     return set(no_grad_var)
 
 
-def _find_op_path_(block, outputs, inputs, no_grad_set):
+# def _find_op_path_(block, outputs, inputs, no_grad_set):
+#     """
+#     no_grad_set will also be changed
+#     """
+#     input_names = set([inp.name for inp in inputs])
+#     output_names = _get_output_names(block, outputs)
+#
+#     relevant_op_flags = [True] * len(block.ops)
+#
+#     # All the inputs of the block are used if inputs is empty,
+#     if inputs:
+#         for i, op in enumerate(block.ops):
+#             if _some_in_set_(
+#                     op.desc.input_arg_names(),
+#                     input_names) and core.has_non_empty_grad_op_maker(op.type):
+#                 for name in op.desc.output_arg_names():
+#                     if name not in no_grad_set:
+#                         input_names.add(name)
+#             else:
+#                 relevant_op_flags[i] = False
+#
+#     for i, op in reversed(list(enumerate(block.ops))):
+#         if _some_in_set_(
+#                 op.desc.output_arg_names(),
+#                 output_names) and core.has_non_empty_grad_op_maker(op.type):
+#             for name in op.desc.input_arg_names():
+#                 if name not in no_grad_set:
+#                     output_names.add(name)
+#         else:
+#             relevant_op_flags[i] = False
+#
+#     op_path = [
+#         block.ops[i] for i in range(len(block.ops)) if relevant_op_flags[i]
+#     ]
+#
+#     if inputs:
+#         for op in op_path:
+#             for name in op.desc.input_arg_names():
+#                 if name not in input_names and block.vars[name].stop_gradient:
+#                     no_grad_set.add(name)
+#
+#     return op_path
+
+
+def _find_op_path_(block, outputs, inputs, no_grad_set, op_path_dict):
     """
     no_grad_set will also be changed
     """
@@ -1564,6 +1689,7 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
     relevant_op_flags = [True] * len(block.ops)
 
     # All the inputs of the block are used if inputs is empty,
+    # TODO(liym27): Consider inputs is not empty
     if inputs:
         for i, op in enumerate(block.ops):
             if _some_in_set_(
@@ -1576,6 +1702,16 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
                 relevant_op_flags[i] = False
 
     for i, op in reversed(list(enumerate(block.ops))):
+        if op.has_attr("sub_block"):
+            sub_block_id = op._block_attr_id("sub_block")
+            sub_block = block.program.block(sub_block_id)
+
+            # TODO(liym27): use output_names
+            sub_block_output_names = output_names & set(op.output_arg_names)
+            sub_block_path = _get_sub_block_path(sub_block, op,
+                                                 set(), sub_block_output_names)
+            op_path_dict[sub_block_id] = sub_block_path
+
         if _some_in_set_(
                 op.desc.output_arg_names(),
                 output_names) and core.has_non_empty_grad_op_maker(op.type):
