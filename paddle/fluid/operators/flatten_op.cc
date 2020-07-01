@@ -166,13 +166,21 @@ class Flatten2Op : public framework::OperatorWithKernel {
     const auto &start_axis = ctx->Attrs().Get<int>("start_axis");
     const auto &stop_axis = ctx->Attrs().Get<int>("stop_axis");
     const auto &in_dims = ctx->GetInputDim("X");
-
+    int in_dims_size = in_dims.size();
+    int real_start_axis = start_axis, real_stop_axis = stop_axis;
+    if (start_axis < 0) {
+      real_start_axis = start_axis + in_dims_size;
+    }
+    if (stop_axis < 0) {
+      real_stop_axis = stop_axis + in_dims_size;
+    }
     PADDLE_ENFORCE_GE(
-        stop_axis, start_axis,
+        real_stop_axis, real_start_axis,
         platform::errors::InvalidArgument("The stop_axis should be greater"
                                           "than or equal to start_axis."));
 
-    const auto &out_dims = GetOutputShape(start_axis, stop_axis, in_dims);
+    const auto &out_dims =
+        GetOutputShape(real_start_axis, real_stop_axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)

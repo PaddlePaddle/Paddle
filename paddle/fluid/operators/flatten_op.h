@@ -82,11 +82,18 @@ class Flatten2Kernel : public framework::OpKernel<T> {
 
     auto *in = context.Input<framework::LoDTensor>("X");
     auto x_dims = in->dims();
-
+    int in_dims_size = x_dims.size();
+    int real_start_axis = start_axis, real_stop_axis = stop_axis;
+    if (start_axis < 0) {
+      real_start_axis = start_axis + in_dims_size;
+    }
+    if (stop_axis < 0) {
+      real_stop_axis = stop_axis + in_dims_size;
+    }
     auto *out = context.Output<framework::LoDTensor>("Out");
 
-    auto out_dims =
-        framework::make_ddim(GetOutputShape(start_axis, stop_axis, x_dims));
+    auto out_dims = framework::make_ddim(
+        GetOutputShape(real_start_axis, real_stop_axis, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
