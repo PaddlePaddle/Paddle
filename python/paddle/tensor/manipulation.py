@@ -104,7 +104,7 @@ def flip(input, dims, name=None):
     return out
 
 
-def roll(input, shifts, dims=None):
+def roll(input, shifts, axis=None, name=None):
     """
 	:alias_main: paddle.roll
 	:alias: paddle.roll,paddle.tensor.roll,paddle.tensor.manipulation.roll
@@ -117,7 +117,7 @@ def roll(input, shifts, dims=None):
         input (Variable): The input tensor variable.
         shifts (int|list|tuple): The number of places by which the elements
                            of the `input` tensor are shifted.
-        dims (int|list|tuple|None): Dimentions along which to roll.
+        axis (int|list|tuple|None): Dimentions along which to roll.
 
     Returns:
         Variable: A Tensor with same data type as `input`.
@@ -138,7 +138,7 @@ def roll(input, shifts, dims=None):
                 #[[9. 1. 2.]
                 # [3. 4. 5.]
                 # [6. 7. 8.]]
-                out_z2 = paddle.roll(x, shifts=1, dims=0)
+                out_z2 = paddle.roll(x, shifts=1, axis=0)
                 print(out_z2.numpy())
                 #[[7. 8. 9.]
                 # [1. 2. 3.]
@@ -148,31 +148,31 @@ def roll(input, shifts, dims=None):
     origin_shape = input.shape
     if type(shifts) == int:
         shifts = [shifts]
-    if type(dims) == int:
-        dims = [dims]
+    if type(axis) == int:
+        axis = [axis]
 
-    if dims:
-        check_type(dims, 'dims', (list, tuple), 'roll')
+    if axis:
+        check_type(axis, 'axis', (list, tuple), 'roll')
     check_type(shifts, 'shifts', (list, tuple), 'roll')
 
     if in_dygraph_mode():
-        if dims is None:
+        if axis is None:
             input = core.ops.reshape(input, 'shape', [-1, 1])
-            dims = [0]
-        out = core.ops.roll(input, 'dims', dims, 'shifts', shifts)
+            axis = [0]
+        out = core.ops.roll(input, 'axis', axis, 'shifts', shifts)
         return core.ops.reshape(out, 'shape', origin_shape)
 
     out = helper.create_variable_for_type_inference(input.dtype)
 
-    if dims is None:
+    if axis is None:
         input = reshape(input, shape=[-1, 1])
-        dims = [0]
+        axis = [0]
 
     helper.append_op(
         type='roll',
         inputs={'X': input},
         outputs={'Out': out},
-        attrs={'dims': dims,
+        attrs={'dims': axis,
                'shifts': shifts})
     out = reshape(out, shape=origin_shape, inplace=True)
     return out
