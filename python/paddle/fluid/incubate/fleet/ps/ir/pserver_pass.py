@@ -624,6 +624,9 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     opt_value_map["decayed_adagrad"] = ["Param", "Moment"]
     opt_value_map["ftrl"] = ["Param", "SquaredAccumulator", "LinearAccumulator"]
 
+    geo_value_map = {}
+    geo_value_map["sum"] = "Param"
+
     opt_init_map = {}
     opt_init_map["gaussian_random"] = ["seed", "mean", "std"]
     opt_init_map["fill_constant"] = ["value"]
@@ -656,6 +659,30 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
                     break
 
         return l_sep.join(init_attrs)
+
+    def get_geo_values(block):
+        value_names = []
+        acture_names = []
+        value_dims = []
+        opt_idx = -1
+
+        for op in block.ops:
+            opt_idx += 1
+
+            if op.type not in geo_value_map.keys():
+                continue
+
+            param = main_program.global_block().vars[op.output("Out")[0]]
+            vars = main_program.global_block().vars[op.input("X")]
+            recv = vars[1] if vars[0] == param else vars[0]
+
+            value_names.append(geo_value_map[op.type])
+            value_dims.append(param.shape[1])
+            acture_names.append(param.name)
+
+            if value_names:
+                break
+        return recv, opt_idx, value_names, value_dims, acture_names
 
     def get_optimizer_values(block):
         value_names = []
@@ -742,19 +769,25 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
     if not is_startup:
         for param, blockid in param_blockid_map.items():
             opt_block = program.block(blockid)
-            grad, opt_idx, value_names, value_dims, acture_names = get_optimizer_values(
-                opt_block)
+
+            grad, opt_idx, value_names, value_dims, acture_names = \
+                get_geo_values(opt_block) if config.is_geo_mode() \
+                    else get_optimizer_values(opt_block)
+
             entry_attr = get_entry_attr(param)
             is_entry = False if entry_attr == "none" else True
             add_large_scale_op(opt_block,
                                program.global_block(), param, value_names,
                                acture_names, grad, is_entry, opt_idx)
+
     else:
         large_scale_kv_metas = []
         for param, blockid in param_blockid_map.items():
             opt_block = main_program.block(blockid)
-            grad, _, value_names, value_dims, acture_names = get_optimizer_values(
-                opt_block)
+            grad, _, value_names, value_dims, acture_names = \
+                get_geo_values(opt_block) if config.is_geo_mode() \
+                    else get_optimizer_values(opt_block)
+
             entry_attr = get_entry_attr(param)
 
             # training/infer
@@ -900,3 +933,50 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
                 attrs=op.all_attrs())
 
     return program
+
+
+def add_geo_optimizer_pass(program, config):
+    endpoint = config.get_ps_endpoint()
+    params = [p for p in config.param_grad_ep_mapping[endpoint]["params"]]
+    param_names = [
+        p.name for p in config.param_grad_ep_mapping[endpoint]["params"]
+    ]
+
+    for param in params:
+        _clone_var(program.global_block(), param)
+
+    optimize_block = []
+    sparse_grad_to_param = []
+    param_to_block_id = []
+    pre_block_idx = program.num_blocks - 1
+
+    for param in param_names:
+        per_opt_block = program._create_block(pre_block_idx)
+        optimize_block.append(per_opt_block)
+        var_name = param.name
+        pserver_block = per_opt_block.program.global_block()
+        param = pserver_block.vars[var_name]
+
+        delta_var_name = "%s.delta" % (param.name)
+
+        if param.type == core.VarDesc.VarType.SELECTED_ROWS:
+            sparse_grad_to_param.append(":".join([delta_var_name, param.name]))
+
+        delta_var = pserver_block.create_var(
+            name=delta_var_name,
+            persistable=False,
+            type=param.type,
+            dtype=param.dtype,
+            shape=param.shape)
+
+        per_opt_block.append_op(
+            type="sum",
+            inputs={"X": [param, delta_var]},
+            outputs={"Out": param})
+
+        param_to_block_id.append(delta_var_name + ":" + str(per_opt_block.idx))
+
+    op = get_op_by_type(program.global_block(), "listen_and_serv")
+    op._set_attr("optimize_blocks", optimize_block)
+    op._set_attr("grad_to_block_id", param_to_block_id)
+    op._set_attr("sparse_grad_to_param", sparse_grad_to_param)
