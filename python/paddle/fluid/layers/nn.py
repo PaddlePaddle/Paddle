@@ -9976,14 +9976,20 @@ def stack(x, axis=0):
 
     """
 
-    helper = LayerHelper('stack', **locals())
+    # 动态图和静态图共有的逻辑，保留在if分支前面
     axis = 0 if axis is None else axis
-
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
+
+    # 动态图if分支，调用core.ops.stack，执行快速路径
+    if in_dygraph_mode():
+        # core.ops.xx()的参数传递依次为输入和attr，详见动态图分支写法文档。
+        return core.ops.stack(x, 'axis', axis)
+
+    # 静态图分支，基本保留不变，继续执行append_op的组网逻辑
+    helper = LayerHelper('stack', **locals())
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    if not in_dygraph_mode() and \
-            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+    if x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
         assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
