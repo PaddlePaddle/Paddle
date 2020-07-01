@@ -762,7 +762,7 @@ class Layer(core.Layer):
 
             fluid.dygraph.enable_dygraph()
 
-            class Mylayer1(fluid.dygraph.Layer):
+            class Mylayer(fluid.dygraph.Layer):
                 def __init__(self):
                     super(Mylayer1, self).__init__()
                     self.linear1 = fluid.dygraph.Linear(10, 10)
@@ -771,29 +771,18 @@ class Layer(core.Layer):
                     self.embedding = fluid.dygraph.Embedding(size=[128, 16])
                     self.h_0 = fluid.dygraph.to_variable(np.zeros([10, 10]).astype('float32'))
 
-            class Mylayer2(fluid.dygraph.Layer):
-                def __init__(self):
-                    super(Mylayer2, self).__init__()
-                    self.linear1 = fluid.dygraph.Linear(10, 10)
-                    self.linear2 = fluid.dygraph.Linear(5, 5)
-                    self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
-                    self.embedding = fluid.dygraph.Embedding(size=[128, 16])
-                    self.mylayer1 =  Mylayer1()
-
-            mylayer = Mylayer2()
+            mylayer = Mylayer()
             print(dir(mylayer))
+            #
 
         """
         method = dir(self.__class__)
         attrs = list(self.__dict__.keys())
-        parameters_name = [
-            param_name for param_name, _ in self.named_parameters()
-        ]
-        sublayers_name = [
-            sublayer_name for sublayer_name, _ in self.named_sublayers()
-        ]
-        buffers_name = [buf_name for buf_name, _ in self.named_buffers()]
-        keys = parameters_name + sublayers_name + buffers_name + attrs + method
+        parameters = list(self._parameters.keys())
+        sublayers = list(self._sub_layers.keys())
+        buffers = list(self._buffers.keys())
+
+        keys = method + attrs + parameters + sublayers + buffers
 
         return keys
 
