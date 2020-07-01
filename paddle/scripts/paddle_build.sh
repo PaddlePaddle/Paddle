@@ -298,7 +298,6 @@ function check_style() {
 #=================================================
 
 function build_base() {
-    set +e
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -315,7 +314,6 @@ function build_base() {
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
-
     make install -j ${parallel_number}
 }
 
