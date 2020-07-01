@@ -673,8 +673,10 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
                 continue
 
             param = main_program.global_block().vars[op.output("Out")[0]]
-            vars = main_program.global_block().vars[op.input("X")]
-            recv = vars[1] if vars[0] == param else vars[0]
+            varnams = op.input("X")
+            recv_varname = varnams[1] if varnams[0] == param.name else varnams[
+                0]
+            recv_var = main_program.global_block().vars[recv_varname]
 
             value_names.append(geo_value_map[op.type])
             value_dims.append(param.shape[1])
@@ -682,7 +684,7 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
 
             if value_names:
                 break
-        return recv, opt_idx, value_names, value_dims, acture_names
+        return recv_var, opt_idx, value_names, value_dims, acture_names
 
     def get_optimizer_values(block):
         value_names = []
@@ -938,9 +940,6 @@ def build_pserver_startup_program_pass(program, p_main_program, config):
 def add_geo_optimizer_pass(program, config):
     endpoint = config.get_ps_endpoint()
     params = [p for p in config.param_grad_ep_mapping[endpoint]["params"]]
-    param_names = [
-        p.name for p in config.param_grad_ep_mapping[endpoint]["params"]
-    ]
 
     for param in params:
         _clone_var(program.global_block(), param)
@@ -950,7 +949,7 @@ def add_geo_optimizer_pass(program, config):
     param_to_block_id = []
     pre_block_idx = program.num_blocks - 1
 
-    for param in param_names:
+    for param in params:
         per_opt_block = program._create_block(pre_block_idx)
         optimize_block.append(per_opt_block)
         var_name = param.name
@@ -980,3 +979,5 @@ def add_geo_optimizer_pass(program, config):
     op._set_attr("optimize_blocks", optimize_block)
     op._set_attr("grad_to_block_id", param_to_block_id)
     op._set_attr("sparse_grad_to_param", sparse_grad_to_param)
+
+    return program
