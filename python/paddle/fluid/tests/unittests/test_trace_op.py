@@ -71,7 +71,7 @@ class TestTraceAPICase(unittest.TestCase):
         case = np.random.randn(2, 20, 2, 3).astype('float32')
         data1 = fluid.data(name='data1', shape=[2, 20, 2, 3], dtype='float32')
         out1 = tensor.trace(data1)
-        out2 = tensor.trace(data1, offset=-5, dim1=1, dim2=-1)
+        out2 = tensor.trace(data1, diagonal=-5, start_axis=1, stop_axis=-1)
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
