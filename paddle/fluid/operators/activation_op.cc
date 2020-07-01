@@ -232,7 +232,7 @@ $$out = \left \lceil x \right \rceil$$
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
-$$out = \left \lfloor x \right \rfloor$$
+$$out = \\left \\lfloor x \\right \\rfloor$$
 
 )DOC";
 
