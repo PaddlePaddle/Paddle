@@ -65,7 +65,8 @@ def full_like(x, fill_value, dtype=None, name=None):
 
     Args:
         x(Variable): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
-        fill_value(bool|float|int): The value to fill the tensor with. Default value is 0. Note: this value shouldn't exceed the range of the output data type.
+        fill_value(bool|float16|float32|float64|int32|int64|Variable): The value to fill the tensor with. Default value is 0. 
+            Note: this value shouldn't exceed the range of the output data type.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output. The default value is None, which means the output data type is the same as input.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
     
@@ -76,9 +77,8 @@ def full_like(x, fill_value, dtype=None, name=None):
         .. code-block:: python
 
           import paddle
-          import paddle.fluid as fluid
           import numpy as np
-          input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+          input = paddle.data(name='input', dtype='float32', shape=[2, 3])
           output = paddle.full_like(input, 2.0)
           exe = fluid.Executor(fluid.CPUPlace())
           exe.run(fluid.default_startup_program())
