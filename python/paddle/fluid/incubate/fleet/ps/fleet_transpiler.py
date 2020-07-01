@@ -137,12 +137,8 @@ class FleetTranspiler(Fleet):
         if isinstance(self._strategy, SyncStrategy):
             kwargs = sync_strategy_envs()
 
-        if trainer_config.mode in [
-                DistributedMode.SYNC, DistributedMode.ASYNC,
-                DistributedMode.HALF_ASYNC
-        ]:
+        if not trainer_config.is_geo_mode:
             send_ctx = fleet.compiled_config.get_communicator_send_context()
-
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
 
