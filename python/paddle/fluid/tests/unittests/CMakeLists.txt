@@ -157,9 +157,10 @@ function(py_test_modules TARGET_NAME)
     if (py_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
-
+## set line above test
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
   endif()
+## set line end 
 endfunction()
 
 function(bash_test_modules TARGET_NAME)
@@ -202,7 +203,10 @@ function(bash_test_modules TARGET_NAME)
         set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT ${timeout})
     endif()
 endfunction()
-
+# test for general setting 
+# set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 350)
+# test with more blank
+# set_tests_properties(${TARGET_NAME} PROPERTIES  TIMEOUT 350)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
