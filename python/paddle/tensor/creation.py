@@ -844,7 +844,7 @@ def triu(input, diagonal=0, name=None):
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
-def meshgrid(input, name=None):
+def meshgrid(*input, **kwargs):
     """
 	:alias_main: paddle.meshgrid
 	:alias: paddle.meshgrid,paddle.tensor.meshgrid,paddle.tensor.creation.meshgrid
@@ -853,10 +853,7 @@ def meshgrid(input, name=None):
     vector, and creates N-dimensional grids.
     
     Args:
-        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
-        name (str, optional): The default value is None. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        
  
     Returns:
          Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
@@ -904,14 +901,16 @@ def meshgrid(input, name=None):
 
     """
 
+    if len(input) == 1 and isinstance(input[0], (list, tuple)):
+        input = input[0]
     if in_dygraph_mode():
         num = len(input)
-        out = core.ops.meshgrid(input, num)
+        out = core.ops.meshgrid(list(input), num)
         return out
 
     helper = LayerHelper('meshgrid', **locals())
 
-    if not isinstance(input, list):
+    if not isinstance(input, (list, tuple)):
         raise TypeError("The type of input in meshgrid should be list.")
 
     for id, input_ in enumerate(input):
@@ -924,6 +923,7 @@ def meshgrid(input, name=None):
         helper.create_variable_for_type_inference(dtype=input[i].dtype)
         for i in range(num)
     ]
-    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+    helper.append_op(
+        type='meshgrid', inputs={'X': list(input)}, outputs={'Out': out})
 
     return out
