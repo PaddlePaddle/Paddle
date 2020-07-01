@@ -51,12 +51,6 @@ function ubuntu() {
   # ubuntu 14
   sed 's#<baseimg>#8.0-cudnn7-devel-ubuntu14.04#g'  Dockerfile.ubuntu >test/ubuntu_1404_cpu.dockerfile
   install_gcc "test/ubuntu_1404_cpu.dockerfile"
-  sed 's#<baseimg>#9.0-cudnn7-devel-ubuntu14.04#g'  Dockerfile.ubuntu >test/ubuntu_1404_gpu_cuda9.0_cudnn7_runtime.dockerfile
-  install_gcc "test/ubuntu_1404_gpu_cuda9.0_cudnn7_runtime.dockerfile"
-  sed 's#<baseimg>#9.1-cudnn7-devel-ubuntu14.04#g'  Dockerfile.ubuntu >test/ubuntu_1404_gpu_cuda9.1_cudnn7_runtime.dockerfile
-  install_gcc "test/ubuntu_1404_gpu_cuda9.1_cudnn7_runtime.dockerfile"
-  sed 's#<baseimg>#9.2-cudnn7-devel-ubuntu14.04#g'  Dockerfile.ubuntu >test/ubuntu_1404_gpu_cuda9.2_cudnn7_runtime.dockerfile
-  install_gcc "test/ubuntu_1404_gpu_cuda9.2_cudnn7_runtime.dockerfile"
   sed 's#<baseimg>#10.0-cudnn7-devel-ubuntu14.04#g' Dockerfile.ubuntu >test/ubuntu_1404_gpu_cuda10.0_cudnn7_runtime.dockerfile
   install_gcc "test/ubuntu_1404_gpu_cuda10.0_cudnn7_runtime.dockerfile"
   sed 's#<baseimg>#10.1-cudnn7-devel-ubuntu14.04#g' Dockerfile.ubuntu >test/ubuntu_1404_gpu_cuda10.1_cudnn7_runtime.dockerfile

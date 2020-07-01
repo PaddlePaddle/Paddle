@@ -50,7 +50,7 @@ function do_cpython_build {
     mkdir -p ${prefix}/lib
     # -Wformat added for https://bugs.python.org/issue17547 on Python 2.6
 
-    if [ $(lex_pyver $py_ver) -eq $(lex_pyver 3.6) ]; then
+    if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.6) ]; then
         wget https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
         tar -zxf sqlite-autoconf-3250300.tar.gz
         cd sqlite-autoconf-3250300
