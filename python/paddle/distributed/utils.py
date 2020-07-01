@@ -21,7 +21,6 @@ import signal
 import copy
 import sys
 import subprocess
-import threading
 from contextlib import closing
 import socket
 
@@ -332,6 +331,7 @@ class TrainerProc(object):
     def __init__(self):
         self.proc = None
         self.log_fn = None
+        self.log_offset = None
         self.rank = None
         self.cmd = None
 
@@ -371,29 +371,7 @@ def start_local_trainers(cluster,
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
-            if idx == 0:
-                proc = subprocess.Popen(
-                    cmd,
-                    env=current_env,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT)
-
-                def shell_tee(proc, fn):
-                    BUF_SIZE = 512
-                    while True:
-                        buf = proc.stdout.read(BUF_SIZE)
-                        if len(buf) == 0:
-                            break
-
-                        sys.stdout.buffer.write(buf)
-                        fn.buffer.write(buf)
-                        sys.stdout.flush()
-                        fn.flush()
-
-                threading.Thread(target=shell_tee, args=(proc, fn)).start()
-            else:
-                proc = subprocess.Popen(
-                    cmd, env=current_env, stdout=fn, stderr=fn)
+            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
 
@@ -401,11 +379,25 @@ def start_local_trainers(cluster,
         tp.proc = proc
         tp.rank = t.rank
         tp.log_fn = fn
+        tp.log_offset = 0 if fn else None
         tp.cmd = cmd
 
         procs.append(tp)
 
     return procs
+
+
+def pull_worker_log(tp):
+    if tp.log_fn:
+        with open(tp.log_fn.name, 'r') as fin:
+            fin.seek(tp.log_offset, 0)
+            BUF_SIZE = 512
+            while True:
+                buf = fin.read(BUF_SIZE)
+                if len(buf) == 0:
+                    break
+                sys.stdout.write(buf.decode(sys.stdout.encoding))
+            tp.log_offset = fin.tell()
 
 
 def watch_local_trainers(procs, nranks):
@@ -415,6 +407,9 @@ def watch_local_trainers(procs, nranks):
         # wait all process finish or one error
         alive = False
         for p in procs:
+            if p.log_fn:
+                pull_worker_log(p)
+
             ret = p.proc.poll()
             if ret is None:
                 alive = True
