@@ -259,7 +259,7 @@ class Pad2D(layers.Layer):
         :alias: paddle.nn.Pad2D,paddle.nn.layer.Pad2D,paddle.nn.layer.common.Pad2D
 
     This interface is used to construct a callable object of the ``Pad2D``  class.
-    The Pad2D layer pad 2-d images according to 'paddings' and 'mode'.
+    The Pad2D layer pads the input tensor boundaries according to 'paddings' and 'mode'.
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
     than height-1. And the width dimension has the same condition.
 
