@@ -936,6 +936,7 @@ class TestDistBase(unittest.TestCase):
                          check_error_log=False,
                          need_envs={},
                          log_name=""):
+        print("enable ut, check it, (tangwei)")
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
         local_losses \
