@@ -116,7 +116,8 @@ class ExceptionHolder {
     std::lock_guard<std::mutex> lock(mu_);
     // BadAlloc have the highest priority
     if (exception_.get() != nullptr) {
-      VLOG(2) << "exception reset by BadAlloc";
+      VLOG(2) << "exception is reset by BadAlloc, the message is"
+              << exception_->what();
     }
     exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
     type_ = kBadAlloc;
@@ -128,6 +129,9 @@ class ExceptionHolder {
     if (exception_.get() == nullptr) {
       exception_.reset(new platform::EOFException(exp));
       type_ = kEOF;
+    } else {
+      VLOG(2) << "EOFException is skip, the error message of EOFException is "
+              << exception_->what();
     }
   }
 

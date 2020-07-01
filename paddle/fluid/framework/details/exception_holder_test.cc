@@ -87,6 +87,13 @@ TEST(ExceptionHolderTester, TestBadAllocCatchReplace) {
   }
   ASSERT_TRUE(exception_holder.IsCaught());
   ASSERT_EQ(exception_holder.Type(), "BadAlloc");
+
+  try {
+    throw platform::EOFException("eof test", "test_file", 0);
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_EQ(exception_holder.Type(), "BadAlloc");
 }
 
 }  // namespace details
