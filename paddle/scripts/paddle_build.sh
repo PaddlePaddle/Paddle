@@ -250,6 +250,9 @@ function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake_base $1
+    if [ $? -ne 0 ]; then
+        exit 7;
+    fi
 }
 
 function abort(){
@@ -295,6 +298,7 @@ function check_style() {
 #=================================================
 
 function build_base() {
+    set +e
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
