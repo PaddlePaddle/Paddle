@@ -95,6 +95,19 @@ class WhileOp : public framework::OperatorBase {
         step_scopes->push_back(&current_scope);
         executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
                                     true);
+
+        auto input_names = Inputs(kX);
+        for (auto &input_var_name : input_names) {
+          auto *ig_outside_var = scope.FindVar(input_var_name);
+          if (ig_outside_var->IsType<framework::LoDTensor>()) {
+            auto ig_outside_var_tensor = ig_outside_var->Get<LoDTensor>();
+            auto *ig_inside_var =
+                current_scope.Var(input_var_name)->GetMutable<LoDTensor>();
+            framework::TensorCopy(ig_outside_var_tensor, dev_place,
+                                  ig_inside_var);
+          }
+        }
+
         cond_data =
             GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
@@ -307,6 +320,9 @@ class WhileGradOp : public framework::OperatorBase {
         //    continue;
         //  }
 
+        auto var_iter =
+            std::find(outside_og_names.begin(), outside_og_names.end(),
+                      pg_ig_names[param_id]);
         // zero gradient variable in step 0
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
@@ -320,8 +336,8 @@ class WhileGradOp : public framework::OperatorBase {
                         "Currently the type of var only can be LoDTensorArray, "
                         "or LoDTensor, but the received var[%s] is %s.",
                         inside_grad_name, framework::ToTypeName(var->Type())));
-
-          if (var->IsType<LoDTensor>()) {
+          if ((var_iter == outside_og_names.end()) &&
+              var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] = inside_tensor.type();
@@ -338,13 +354,18 @@ class WhileGradOp : public framework::OperatorBase {
                 ->set_lod(inside_tensor.lod());
           }
         }
-        auto new_inside_name = cur_scope.Rename(inside_grad_name);
-        auto sum_op = framework::OpRegistry::CreateOp(
-            "sum", {{"X", {pg_ig_names[param_id], new_inside_name}}},
-            {{"Out", {pg_ig_names[param_id]}}},
-            framework::AttributeMap{{"use_mkldnn", {false}}});
-        sum_op->Run(cur_scope, dev_place);
-        cur_scope.Rename(new_inside_name, inside_grad_name);
+        auto var_tmp = scope.FindVar(pg_ig_names[param_id]);
+        if ((var_iter == outside_og_names.end()) ||
+            ((var_iter != outside_og_names.end()) &&
+             var_tmp->IsType<framework::LoDTensorArray>())) {
+          auto new_inside_name = cur_scope.Rename(inside_grad_name);
+          auto sum_op = framework::OpRegistry::CreateOp(
+              "sum", {{"X", {pg_ig_names[param_id], new_inside_name}}},
+              {{"Out", {pg_ig_names[param_id]}}},
+              framework::AttributeMap{{"use_mkldnn", {false}}});
+          sum_op->Run(cur_scope, dev_place);
+          cur_scope.Rename(new_inside_name, inside_grad_name);
+        }
       }
       dev_ctx.Wait();
       const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
