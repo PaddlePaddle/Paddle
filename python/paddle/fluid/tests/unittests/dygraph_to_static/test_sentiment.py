@@ -312,7 +312,6 @@ def train(args, to_static):
 
                 model.train()
                 avg_cost, prediction, acc = model(doc, label)
-                print(prediction.name)
                 loss_data.append(avg_cost.numpy()[0])
 
                 avg_cost.backward()

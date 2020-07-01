@@ -18,6 +18,9 @@ import time
 import numpy as np
 import unittest
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
