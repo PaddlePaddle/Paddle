@@ -50,8 +50,8 @@ from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
 
-LOOKUP_TABLE_TYPE = "lookup_table"
-LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
+LOOKUP_TABLE_TYPE = ["lookup_table", "lookup_table_v2"]
+LOOKUP_TABLE_GRAD_TYPE = ["lookup_table_grad", "lookup_table_v2_grad"]
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
@@ -199,10 +199,10 @@ class DistributeTranspilerConfig(object):
     geo_sgd_need_push_nums = 100
 
     nccl_comm_num = 1
-    #The picture here illustrates the principle:
-    #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+    # The picture here illustrates the principle:
+    # https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
-    #Nccl ranks in a node when use hierarchical allreduce, it's set to gpu cards' number in most cases.
+    # Nccl ranks in a node when use hierarchical allreduce, it's set to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
@@ -445,7 +445,7 @@ class DistributeTranspiler(object):
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
-        sparse_update_op_types = ["lookup_table", "nce"]
+        sparse_update_op_types = ["lookup_table", "nce", "lookup_table_v2"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
                     'remote_prefetch') is True:
@@ -475,7 +475,7 @@ class DistributeTranspiler(object):
                     ops.append(op)
                     used_ops.append(idx)
 
-            if op_type == "lookup_table":
+            if op_type in LOOKUP_TABLE_TYPE:
                 all_ops = program.global_block().ops
                 op_idxs = [all_ops.index(op) for op in ops]
                 inputs = [
@@ -521,7 +521,8 @@ class DistributeTranspiler(object):
                             "height_sections": height_sections,
                             "endpoints": endpoints,
                             "padding_idx": padding_idx,
-                            "trainer_id": self.trainer_id
+                            "trainer_id": self.trainer_id,
+                            "lookup_table_version": op_type
                         })
                 else:
                     raise ValueError(
@@ -609,10 +610,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     )
 
                 assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \
-                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(
+                        trainers_num, self.config.hierarchical_allreduce_inter_nranks)
 
                 assert trainers_num % self.config.hierarchical_allreduce_inter_nranks == 0, \
-                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(
+                        trainers_num, self.config.hierarchical_allreduce_inter_nranks)
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = \
                     int(self.config.hierarchical_allreduce_inter_nranks)
@@ -778,7 +781,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 decay_dummy_output = program.global_block().create_var(
                     name=framework.generate_control_dev_var_name())
                 if self.config.runtime_split_send_recv:
-                    ## async mode, using communicator to merge and send
+                    # async mode, using communicator to merge and send
                     send_varnames = [self.counter_var.name]
                 else:
                     send_varnames = []
@@ -897,7 +900,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         [param_varname, recv_op_role_var_name]
                     })
 
-        self._update_remote_sparse_update_op(program, need_sparse_update_params)
+        self._update_remote_sparse_update_op(
+            program, need_sparse_update_params)
 
         if self.sync_mode:
             # form a WAW dependency
@@ -931,7 +935,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
                                                         pserver_endpoints)
-            self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
+            self._split_table_grad_and_add_send_vars(
+                program, pserver_endpoints)
 
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
@@ -970,7 +975,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 inputs={},
                 outputs={"Out": table_var},
                 attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(self.startup_program.global_block(), table_param_init_op)
+            delete_ops(self.startup_program.global_block(),
+                       table_param_init_op)
 
     def _delete_trainer_optimizer(self, is_startup):
         optimize_vars = []
@@ -1015,7 +1021,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
             - Delete optimizer related op, because parameter updated on Pserver
             - After the op which computed gradient of each parameter, add ``Send_op`` and ``Recv_op`` 
-        
+
         Args:
             wait_port(bool): Whether to wait for the parameter server to be ready before returning to program, 
             default is True
@@ -1072,7 +1078,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         sparse_table_names = self._get_sparse_table_names()
 
         # self._fake_init_sparsetable(sparse_table_names)
-        #self._delete_trainer_optimizer(is_startup=True)
+        # self._delete_trainer_optimizer(is_startup=True)
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
             if varname in sparse_table_names:
@@ -1286,7 +1292,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
             # clone ops
             for origin_op in origin_block.ops:
-                cloned_op = self._clone_lr_op(program, new_sub_block, origin_op)
+                cloned_op = self._clone_lr_op(
+                    program, new_sub_block, origin_op)
                 # clone sub_block of op
                 __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
@@ -1304,7 +1311,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 pserver_program.num_blocks - 1)
             optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
-                cloned_op = self._append_pserver_non_opt_ops(lr_decay_block, op)
+                cloned_op = self._append_pserver_non_opt_ops(
+                    lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
                 __clone_lr_op_sub_block__(cloned_op, pserver_program,
                                           lr_decay_block)
@@ -1466,8 +1474,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             Program: parameter server side startup program.
 
         Examples:
-	    .. code-block:: python
-            
+            .. code-block:: python
+
                 pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
                 trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
                 current_endpoint = "192.168.0.1:6174"
@@ -2211,7 +2219,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             merged_var_name = orig_varname
 
         merged_var = pserver_block.vars[merged_var_name]
-        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
+        grad_to_block_id.append(
+            merged_var.name + ":" + str(optimize_block.idx))
         if self.sync_mode or self.config.completely_not_async and self.trainer_num > 1:
             vars2merge = []
             for i in range(self.trainer_num):
@@ -2310,7 +2319,8 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         if self.config.enable_dc_asgd:
             param_var = _get_param_block(opt_op)
-            dc = self._append_dc_asgd_ops(optimize_block, param_var, merged_var)
+            dc = self._append_dc_asgd_ops(
+                optimize_block, param_var, merged_var)
 
         for key in opt_op.input_names:
             if key == "Grad":
@@ -2661,7 +2671,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         for op in block.ops:
             if self._is_opt_role_op(op):
                 # Todo(chengmo): Whether clip related op belongs to Optimize guard should be discussed
-                # delete clip op from opt_ops when run in Parameter Server mode 
+                # delete clip op from opt_ops when run in Parameter Server mode
                 if OP_NAME_SCOPE in op.all_attrs(
                 ) and CLIP_OP_NAME_SCOPE in op.attr(
                         OP_NAME_SCOPE
@@ -2692,7 +2702,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         return opt_ops, params_grads
 
     def _get_distribute_update_vars(self):
-        #TODO(chengmo): find more powerful and simple way to deal with these special situation
+        # TODO(chengmo): find more powerful and simple way to deal with these special situation
         """
         This Function is used for a special model, like PyramidDnn which has pyramid hash op.
         Some Parameters don't use optimizing op to update its value, but updated in its BP process.
