@@ -31,6 +31,7 @@ from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransfor
 from paddle.fluid.dygraph.dygraph_to_static.print_transformer import PrintTransformer
 from paddle.fluid.dygraph.dygraph_to_static.return_transformer import ReturnTransformer
 from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+from paddle.fluid.dygraph.dygraph_to_static.cast_transformer import CastTransformer
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
@@ -92,6 +93,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         # Transform call recursively
         CallTransformer(node_wrapper).transform()
+
+        # Transform python type casting statement
+        CastTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
