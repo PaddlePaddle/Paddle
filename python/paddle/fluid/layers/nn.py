@@ -9856,10 +9856,10 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            x = fluid.data(name="x", shape=[4, 4, 3], dtype="float32")
+            import paddle
+            x = paddle.data(name="x", shape=[4, 4, 3], dtype="float32")
             # x shape is [4, 4, 3]
-            out = fluid.layers.flatten(x=x, start_axis=1, end_axis=2)
+            out = paddle.flatten(x=x, start_axis=1, stop_axis=2)
             # out shape is [4, 12]
     """
     check_variable_and_dtype(

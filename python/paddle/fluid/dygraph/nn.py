@@ -3197,13 +3197,12 @@ class Flatten(layers.Layer):
 
         .. code-block:: python
 
-          import paddle.fluid as fluid
           import paddle
-          from paddle.fluid.dygraph.base import to_variable
+          from paddle.imperative import to_variable
           import numpy as np
 
-          inp_np = np.ones([5, 200, 100, 100]).astype('float32')
-          with fluid.dygraph.guard():
+          inp_np = np.ones([5, 2, 3, 4]).astype('float32')
+          with paddle.imperative.guard()::
               inp_np = to_variable(inp_np)
               flatten = paddle.nn.Flatten(start_axis=1, stop_axis=2)
               flatten_res = flatten(inp_np)
