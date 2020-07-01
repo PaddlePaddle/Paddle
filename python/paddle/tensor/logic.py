@@ -278,7 +278,6 @@ def greater_than(x, y):
     """
     :alias_main: paddle.greater_than
 	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
-	:old_api: paddle.fluid.layers.greater_than
 
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
@@ -366,9 +365,6 @@ def less_than(x, y):
 @templatedoc()
 def not_equal(x, y):
     """
-    :alias_main: paddle.not_equal
-	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
-
     :alias_main: paddle.not_equal
 	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
 
