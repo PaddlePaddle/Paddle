@@ -186,6 +186,12 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 lr = fluid.dygraph.MultiStepDecay(learning_rate, [20, 30, 50],
                                                   1)
 
+            with self.assertRaises(TypeError):
+                lr = fluid.dygraph.MultiStepDecay("test", [20, 30, 50])
+
+            with self.assertRaises(ValueError):
+                lr = fluid.dygraph.MultiStepDecay(2.0, [20, 30, 50])
+
     def test_StepDecay(self):
         with fluid.dygraph.guard():
             learning_rate = 0.5
