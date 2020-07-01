@@ -1203,7 +1203,7 @@ def inverse(x, name=None):
                 print(inv) # [[0.5, 0], [0, 0.5]]
     """
     if in_dygraph_mode():
-        return core.ops.inverse(input)
+        return core.ops.inverse(x)
 
     def _check_input(x):
         check_variable_and_dtype(x, 'x',
