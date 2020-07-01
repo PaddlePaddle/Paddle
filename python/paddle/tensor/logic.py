@@ -15,19 +15,15 @@
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_type
 from ..fluid.layers.layer_function_generator import templatedoc
+from .. import fluid
 
 # TODO: define logic functions of a tensor  
-from ..fluid.layers import greater_equal  #DEFINE_ALIAS
-from ..fluid.layers import greater_than  #DEFINE_ALIAS
 from ..fluid.layers import is_empty  #DEFINE_ALIAS
 from ..fluid.layers import isfinite  #DEFINE_ALIAS
-from ..fluid.layers import less_equal  #DEFINE_ALIAS
-from ..fluid.layers import less_than  #DEFINE_ALIAS
 from ..fluid.layers import logical_and  #DEFINE_ALIAS
 from ..fluid.layers import logical_not  #DEFINE_ALIAS
 from ..fluid.layers import logical_or  #DEFINE_ALIAS
 from ..fluid.layers import logical_xor  #DEFINE_ALIAS
-from ..fluid.layers import not_equal  #DEFINE_ALIAS
 from ..fluid.layers import reduce_all  #DEFINE_ALIAS
 from ..fluid.layers import reduce_any  #DEFINE_ALIAS
 
@@ -245,4 +241,156 @@ def elementwise_equal(x, y, name=None):
                 'Y': [y]},
         outputs={'Out': [out]},
         attrs={'force_cpu': False})
+    return out
+
+
+@templatedoc()
+def greater_equal(x, y):
+    """
+    :alias_main: paddle.greater_equal
+	:alias: paddle.greater_equal,paddle.tensor.greater_equal,paddle.tensor.logic.greater_equal
+
+    This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
+
+    Args:
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+    Returns:
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.imperative as imperative
+            with imperative.guard(paddle.CPUPlace()):
+                x = imperative.to_variable(np.array([1, 2, 3]))
+                y = imperative.to_variable(np.array([1, 3, 2]))
+                result1 = paddle.greater_equal(x, y)
+                print(result1.numpy())  # result1 = [True False True]
+    """
+    out = fluid.layers.greater_equal(x, y, cond=None)
+    return out
+
+
+@templatedoc()
+def greater_than(x, y):
+    """
+    :alias_main: paddle.greater_than
+	:alias: paddle.greater_than,paddle.tensor.greater_than,paddle.tensor.logic.greater_than
+	:old_api: paddle.fluid.layers.greater_than
+
+    This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+
+    Args:
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+    Returns:
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.imperative as imperative
+            with imperative.guard(paddle.CPUPlace()):
+                x = imperative.to_variable(np.array([1, 2, 3]))
+                y = imperative.to_variable(np.array([1, 3, 2]))
+                result1 = paddle.greater_than(x, y)
+                print(result1.numpy())  # result1 = [False False False]
+    """
+    out = fluid.layers.greater_than(x, y, cond=None)
+    return out
+
+
+@templatedoc()
+def less_equal(x, y):
+    """
+    :alias_main: paddle.less_equal
+	:alias: paddle.less_equal,paddle.tensor.less_equal,paddle.tensor.logic.less_equal
+
+    This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
+
+    Args:
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+
+    Returns:
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.imperative as imperative
+            with imperative.guard(paddle.CPUPlace()):
+                x = imperative.to_variable(np.array([1, 2, 3]))
+                y = imperative.to_variable(np.array([1, 3, 2]))
+                result1 = paddle.less_equal(x, y)
+                print(result1.numpy())  # result1 = [True True False]
+    """
+    out = fluid.layers.less_equal(x, y, cond=None)
+    return out
+
+
+@templatedoc()
+def less_than(x, y):
+    """
+    :alias_main: paddle.less_than
+	:alias: paddle.less_than,paddle.tensor.less_than,paddle.tensor.logic.less_than
+
+    This OP returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
+
+    Args:
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+
+    Returns:
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.imperative as imperative
+            with imperative.guard(paddle.CPUPlace()):
+                x = imperative.to_variable(np.array([1, 2, 3]))
+                y = imperative.to_variable(np.array([1, 3, 2]))
+                result1 = paddle.less_than(x, y)
+                print(result1.numpy())  # result1 = [False True False]
+    """
+    out = fluid.layers.less_than(x, y, force_cpu=False, cond=None)
+    return out
+
+
+@templatedoc()
+def not_equal(x, y):
+    """
+    :alias_main: paddle.not_equal
+	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
+
+    :alias_main: paddle.not_equal
+	:alias: paddle.not_equal,paddle.tensor.not_equal,paddle.tensor.logic.not_equal
+
+    This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
+
+    Args:
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+
+    Returns:
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.imperative as imperative
+            with imperative.guard(paddle.CPUPlace()):
+                x = imperative.to_variable(np.array([1, 2, 3]))
+                y = imperative.to_variable(np.array([1, 3, 2]))
+                result1 = paddle.not_equal(x, y)
+                print(result1.numpy())  # result1 = [False True True]
+    """
+    out = fluid.layers.not_equal(x, y, cond=None)
     return out
