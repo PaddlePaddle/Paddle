@@ -326,3 +326,7 @@ def delet_extra_optimizes_pass(program, config):
             program.global_block()._remove_var(var)
 
     return program
+
+
+def append_geo_send_pass(program, config):
+    pass

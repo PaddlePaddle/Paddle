@@ -917,15 +917,20 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = fleet._origin_main_program.clone()
         _startup = fleet._origin_startup_program.clone()
 
-        # for main program
-        _main = worker.delete_optimizer_pass(_main, compiled_config)
-        _main = worker.distributed_ops_pass(_main, compiled_config)
-        _main = worker.append_send_ops_pass(_main, compiled_config)
+        if not compiled_config.is_geo_mode():
+            # for main program
+            _main = worker.delete_optimizer_pass(_main, compiled_config)
+            _main = worker.distributed_ops_pass(_main, compiled_config)
+            _main = worker.append_send_ops_pass(_main, compiled_config)
 
-        # for startup program
-        _startup = worker.fake_init_ops_pass(_startup, compiled_config)
-        _startup = worker.init_from_server_pass(_startup, compiled_config)
-        _startup = worker.delet_extra_optimizes_pass(_startup, compiled_config)
+            # for startup program
+            _startup = worker.fake_init_ops_pass(_startup, compiled_config)
+            _startup = worker.init_from_server_pass(_startup, compiled_config)
+            _startup = worker.delet_extra_optimizes_pass(_startup,
+                                                         compiled_config)
+        else:
+            _main = worker.append_geo_send_pass(_main, compiled_config)
+            _startup = _startup
 
         return _main, _startup
 
@@ -933,21 +938,27 @@ class ParameterServerOptimizer(DistributedOptimizer):
         _main = fluid.Program()
         _startup = fluid.Program()
 
-        _main = server.add_listen_and_serv_pass(_main, compiled_config)
-        _main = server.add_rpc_global_flags_pass(_main, compiled_config)
-        _main = server.add_optimizer_pass(_main, compiled_config)
-        _main = server.large_scale_sparse_pass(_main, _main, compiled_config,
-                                               False)
-        _startup = server.build_pserver_startup_program_pass(_startup, _main,
-                                                             compiled_config)
-        _startup = server.large_scale_sparse_pass(_startup, _main,
-                                                  compiled_config, True)
+        if not compiled_config.is_geo_mode():
+            _main = server.add_listen_and_serv_pass(_main, compiled_config)
+            _main = server.add_rpc_global_flags_pass(_main, compiled_config)
+            _main = server.add_optimizer_pass(_main, compiled_config)
+            _main = server.large_scale_sparse_pass(_main, _main,
+                                                   compiled_config, False)
+            _startup = server.build_pserver_startup_program_pass(
+                _startup, _main, compiled_config)
+            _startup = server.large_scale_sparse_pass(_startup, _main,
+                                                      compiled_config, True)
 
-        if not compiled_config.is_sync_mode():
-            _main = server.delete_unused_in_main_pass(_main, compiled_config)
+            if not compiled_config.is_sync_mode():
+                _main = server.delete_unused_in_main_pass(_main,
+                                                          compiled_config)
 
-        _startup = server.delete_unused_in_startup_pass(_startup, _main,
-                                                        compiled_config)
+            _startup = server.delete_unused_in_startup_pass(_startup, _main,
+                                                            compiled_config)
+        else:
+            _main = _main
+            _startup = _startup
+
         return _main, _startup
 
     def minimize(self,

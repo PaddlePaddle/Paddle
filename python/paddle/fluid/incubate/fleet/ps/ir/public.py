@@ -178,6 +178,10 @@ class CompileTimeStrategy(object):
         trainer = self.strategy.get_trainer_runtime_config()
         return trainer.mode == DistributedMode.SYNC
 
+    def is_geo_mode(self):
+        trainer = self.strategy.get_trainer_runtime_config()
+        return trainer.mode == DistributedMode.GEO
+
     def get_role_id(self):
         return self.role_maker.role_id()
 
