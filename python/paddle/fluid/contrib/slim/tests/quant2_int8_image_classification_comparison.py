@@ -50,8 +50,7 @@ def parse_args():
         '--batch_num',
         type=int,
         default=0,
-        help=
-        'Number of batches to process. 0 or less means whole dataset. Default: 0.'
+        help='Number of batches to process. 0 or less means whole dataset. Default: 0.'
     )
     parser.add_argument(
         '--acc_diff_threshold',
@@ -62,8 +61,7 @@ def parse_args():
         '--ops_to_quantize',
         type=str,
         default='',
-        help=
-        'A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
+        help='A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
     )
     parser.add_argument(
         '--op_ids_to_skip',
@@ -137,14 +135,11 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             name = op_node.name()
             if name in ['depthwise_conv2d']:
                 input_var_node = graph._find_node_by_name(
-                    op_node.inputs,
-                    op_node.input("Input")[0])
+                    op_node.inputs, op_node.input("Input")[0])
                 weight_var_node = graph._find_node_by_name(
-                    op_node.inputs,
-                    op_node.input("Filter")[0])
+                    op_node.inputs, op_node.input("Filter")[0])
                 output_var_node = graph._find_node_by_name(
-                    graph.all_var_nodes(),
-                    op_node.output("Output")[0])
+                    graph.all_var_nodes(), op_node.output("Output")[0])
                 attrs = {
                     name: op_node.op().attr(name)
                     for name in op_node.op().attr_names()
@@ -180,8 +175,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         with fluid.scope_guard(inference_scope):
             if os.path.exists(os.path.join(model_path, '__model__')):
                 [inference_program, feed_target_names,
-                 fetch_targets] = fluid.io.load_inference_model(
-                     model_path, exe)
+                 fetch_targets] = fluid.io.load_inference_model(model_path, exe)
             else:
                 [inference_program, feed_target_names,
                  fetch_targets] = fluid.io.load_inference_model(
@@ -235,28 +229,26 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                     # FP32 models have accuracy measuring layers
                     labels = labels.reshape([-1, 1])
                     start = time.time()
-                    out = exe.run(
-                        inference_program,
-                        feed={
-                            feed_target_names[0]: images,
-                            feed_target_names[1]: labels
-                        },
-                        fetch_list=fetch_targets)
+                    out = exe.run(inference_program,
+                                  feed={
+                                      feed_target_names[0]: images,
+                                      feed_target_names[1]: labels
+                                  },
+                                  fetch_list=fetch_targets)
                     batch_time = (time.time() - start) * 1000  # in miliseconds
                     batch_acc1, batch_acc5 = out[1][0], out[2][0]
                     outputs.append(batch_acc1)
                 else:
                     # Quant INT8 models do not have accuracy measuring layers
                     start = time.time()
-                    out = exe.run(
-                        inference_program,
-                        feed={feed_target_names[0]: images},
-                        fetch_list=fetch_targets)
+                    out = exe.run(inference_program,
+                                  feed={feed_target_names[0]: images},
+                                  fetch_list=fetch_targets)
                     batch_time = (time.time() - start) * 1000  # in miliseconds
                     outputs.append(out[0])
                     # Calculate accuracy result
-                    batch_acc1, batch_acc5 = self._get_batch_accuracy(
-                        out[0], labels)
+                    batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
+                                                                      labels)
 
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
@@ -269,8 +261,8 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info('batch {0}{5}, acc1: {1:.4f}, acc5: {2:.4f}, '
                              'latency: {3:.4f} ms, fps: {4:.2f}'.format(
-                                 iters, batch_acc1, batch_acc5,
-                                 batch_time / batch_size, fps, appx))
+                                 iters, batch_acc1, batch_acc5, batch_time /
+                                 batch_size, fps, appx))
 
             # Postprocess benchmark data
             batch_latencies = batch_times[skip_batch_num:]
@@ -281,8 +273,8 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             infer_total_time = time.time() - infer_start_time
             acc1_avg = np.mean(infer_accs1)
             acc5_avg = np.mean(infer_accs5)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time))
+            _logger.info('Total inference run time: {:.2f} s'.format(
+                infer_total_time))
 
             return outputs, acc1_avg, acc5_avg, fps_avg, latency_avg
 
@@ -351,12 +343,11 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
         _logger.info('Batch size: {}'.format(batch_size))
         _logger.info('Batch number: {}'.format(batch_num))
         _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
-        _logger.info(
-            'Quantized ops: {}.'.format(','.join(self._quantized_ops) if self.
-                                        _quantized_ops else 'all quantizable'))
-        _logger.info('Op ids to skip quantization: {}.'.format(
-            ','.join(map(str, self._op_ids_to_skip)) if test_case_args.
-            op_ids_to_skip else 'none'))
+        _logger.info('Quantized ops: {}.'.format(','.join(
+            self._quantized_ops) if self._quantized_ops else 'all quantizable'))
+        _logger.info('Op ids to skip quantization: {}.'.format(','.join(
+            map(str, self._op_ids_to_skip)) if test_case_args.op_ids_to_skip
+                                                               else 'none'))
 
         _logger.info('--- Quant prediction start ---')
         val_reader = paddle.batch(

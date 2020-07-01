@@ -120,9 +120,9 @@ class Quant2Int8MkldnnPass(object):
 
     def _is_any_of_op_types_quantized(self, op_types, graph):
         return self._is_any_of_op_types_in_graph(
-            op_types, graph) and (self._is_quantizing_all_ops()
-                                  or any(op_type in self._ops_to_quantize
-                                         for op_type in op_types))
+            op_types, graph) and (self._is_quantizing_all_ops() or
+                                  any(op_type in self._ops_to_quantize
+                                      for op_type in op_types))
 
     def _is_conv_quantized(self, graph):
         return self._is_any_of_op_types_quantized(self._conv_ops, graph)
@@ -146,9 +146,8 @@ class Quant2Int8MkldnnPass(object):
                 scale_name = op.input("InScale")[0]
                 output_name = op.output("Out")[0]
                 # Gather new weights scale after folding batchnorm in convolution
-                scale = np.array(
-                    1.0 / self._load_param(self._scope, scale_name)[0]).astype(
-                        np.float64)
+                scale = np.array(1.0 / self._load_param(
+                    self._scope, scale_name)[0]).astype(np.float64)
                 lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
                 _add_scale_for_vars([input_name, output_name], use_unsigned_int,
@@ -254,8 +253,7 @@ class Quant2Int8MkldnnPass(object):
         fake_quant_out = graph._find_node_by_name(op.outputs,
                                                   op.output("Out")[0])
         fake_quant_out_scale = graph._find_node_by_name(
-            op.outputs,
-            op.output("OutScale")[0])
+            op.outputs, op.output("OutScale")[0])
 
         next_ops = fake_quant_out.outputs
         for next_op in next_ops:
@@ -315,8 +313,8 @@ class Quant2Int8MkldnnPass(object):
 
     def _update_activations(self, graph):
         for op in graph.all_op_nodes():
-            if op.name(
-            ) in self._conv_ops and not op.op().has_attr("fuse_activation"):
+            if op.name() in self._conv_ops and not op.op().has_attr(
+                    "fuse_activation"):
                 activation = ""
                 if op.op().has_attr("fuse_relu") and op.op().attr("fuse_relu"):
                     activation = "relu"
@@ -388,9 +386,8 @@ class Quant2Int8MkldnnPass(object):
                 ir_pass.set(attr, value)
         ir_pass.apply(cpp_graph)
         if self._debug:
-            graph.draw(
-                '.', '{}_{}_{}'.format(self._pass_group, self._pass_idx,
-                                       pass_name), graph.all_op_nodes())
+            graph.draw('.', '{}_{}_{}'.format(self._pass_group, self._pass_idx,
+                                              pass_name), graph.all_op_nodes())
         self._remove_unused_var_nodes(graph)
         self._pass_idx += 1
         return graph
@@ -470,8 +467,8 @@ class Quant2Int8MkldnnPass(object):
             for op in graph.all_op_nodes():
                 if op.name() in ops:
                     out_name = op.output(op_out_name)[0]
-                    if out_name in self._var_quant_scales and predicate(
-                            op.op()):
+                    if out_name in self._var_quant_scales and predicate(op.op(
+                    )):
                         _, tensor = self._var_quant_scales[out_name]
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
@@ -496,14 +493,12 @@ class Quant2Int8MkldnnPass(object):
         graph = self._apply_pass(
             graph, 'cpu_quantize_placement_pass',
             ['quantize_enabled_op_types', 'quantize_excluded_op_ids'],
-            [self._ops_to_quantize,
-             self._find_avg_pooling_ids(graph)])
+            [self._ops_to_quantize, self._find_avg_pooling_ids(graph)])
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph,
                                  'reshape_transpose_matmul_mkldnn_fuse_pass')
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
-            [self._var_quant_scales,
-             self._get_data_layout(graph)])
+            [self._var_quant_scales, self._get_data_layout(graph)])
         graph = self._apply_pass(graph, 'cpu_quantize_squash_pass')
         return graph

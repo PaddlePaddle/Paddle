@@ -45,8 +45,7 @@ def parse_args():
         '--fp32_model',
         type=str,
         default='',
-        help=
-        'A path to an FP32 model. If empty, the Quant model will be used for FP32 inference.'
+        help='A path to an FP32 model. If empty, the Quant model will be used for FP32 inference.'
     )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
@@ -55,8 +54,7 @@ def parse_args():
         '--batch_num',
         type=int,
         default=0,
-        help=
-        'Number of batches to process. 0 or less means whole dataset. Default: 0.'
+        help='Number of batches to process. 0 or less means whole dataset. Default: 0.'
     )
     parser.add_argument(
         '--acc_diff_threshold',
@@ -67,8 +65,7 @@ def parse_args():
         '--ops_to_quantize',
         type=str,
         default='',
-        help=
-        'A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
+        help='A comma separated list of operators to quantize. Only quantizable operators are taken into account. If the option is not used, an attempt to quantize all quantizable operators will be made.'
     )
     parser.add_argument(
         '--op_ids_to_skip',
@@ -152,8 +149,7 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         with fluid.scope_guard(inference_scope):
             if os.path.exists(os.path.join(model_path, '__model__')):
                 [inference_program, feed_target_names,
-                 fetch_targets] = fluid.io.load_inference_model(
-                     model_path, exe)
+                 fetch_targets] = fluid.io.load_inference_model(model_path, exe)
             else:
                 [inference_program, feed_target_names,
                  fetch_targets] = fluid.io.load_inference_model(
@@ -195,13 +191,12 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
                 labels = np.array([x[2] for x in data]).astype('int64')
 
                 start = time.time()
-                out = exe.run(
-                    inference_program,
-                    feed={
-                        feed_target_names[0]: input0,
-                        feed_target_names[1]: input1
-                    },
-                    fetch_list=fetch_targets)
+                out = exe.run(inference_program,
+                              feed={
+                                  feed_target_names[0]: input0,
+                                  feed_target_names[1]: input1
+                              },
+                              fetch_list=fetch_targets)
                 batch_time = (time.time() - start) * 1000  # in miliseconds
                 batch_times.append(batch_time)
                 batch_correct = self._get_batch_correct(out, labels)
@@ -226,8 +221,8 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             ppses = ppses[skip_batch_num:]
             pps_avg = np.average(ppses)
             acc_avg = float(np.sum(total_correct)) / float(total_samples)
-            _logger.info(
-                'Total inference run time: {:.2f} s'.format(infer_total_time))
+            _logger.info('Total inference run time: {:.2f} s'.format(
+                infer_total_time))
 
             return acc_avg, pps_avg, latency_avg
 
@@ -296,12 +291,11 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         _logger.info('Batch size: {}'.format(batch_size))
         _logger.info('Batch number: {}'.format(batch_num))
         _logger.info('Accuracy drop threshold: {}.'.format(acc_diff_threshold))
-        _logger.info(
-            'Quantized ops: {}.'.format(','.join(self._quantized_ops) if self.
-                                        _quantized_ops else 'all quantizable'))
-        _logger.info('Op ids to skip quantization: {}.'.format(
-            ','.join(map(str, self._op_ids_to_skip)) if test_case_args.
-            op_ids_to_skip else 'none'))
+        _logger.info('Quantized ops: {}.'.format(','.join(
+            self._quantized_ops) if self._quantized_ops else 'all quantizable'))
+        _logger.info('Op ids to skip quantization: {}.'.format(','.join(
+            map(str, self._op_ids_to_skip)) if test_case_args.op_ids_to_skip
+                                                               else 'none'))
 
         _logger.info('--- Quant prediction start ---')
         val_reader = paddle.batch(
