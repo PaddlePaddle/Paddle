@@ -189,6 +189,8 @@ class TestCUDNNLstmOp(OpTest):
             check_dygraph=True)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNlstmAPI(unittest.TestCase):
     def test_lstm(self):
         max_len = 20
@@ -213,7 +215,13 @@ class TestCUDNNlstmAPI(unittest.TestCase):
                                       hidden_size)).astype("float32")
         out = exe.run(fluid.default_main_program(),
                       feed={'input': input_i},
-                      fetch_list=[rnn_out, last_h, last_c])
+                      fetch_list=[rnn_out, last_h, last_c, 'cudnn_lstm_0.w_0'])
+
+        output, last_hidden, last_cell = lstm_naive(input_i, out[3])
+
+        self.assertTrue(np.allclose(output, out[0], atol=1e-5))
+        self.assertTrue(np.allclose(last_hidden, out[1], atol=1e-5))
+        self.assertTrue(np.allclose(last_cell, out[2], atol=1e-5))
 
 
 if __name__ == '__main__':

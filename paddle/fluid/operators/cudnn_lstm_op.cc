@@ -24,33 +24,25 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(Weight) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasInput("State"), "Input", "State", "CudnnLSTM");
 
-    PADDLE_ENFORCE(ctx->HasInput("InitH"),
-                   "Input(init_h) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("InitC"),
-                   "Input(init_c) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("State"),
-                   "Input(State) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Reserve"),
-                   "Output(Reserve) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("StateOut"),
-                   "Output(StateOut) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LastH"),
-                   "Output(LastH) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LastC"),
-                   "Output(LastC) of LSTM should not be null.");
-    // PADDLE_ENFORCE_EQ(ctx->Inputs("State")[0], ctx->Outputs("StateOut")[0],
-    //                  platform::errors::InvalidArgument(
-    //                      "State and StateOut should share the same memory"));
+    OP_INOUT_CHECK(ctx->HasOutput("Reserve"), "Output", "Reserve", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("StateOut"), "Output", "StateOut",
+                   "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("LastH"), "Output", "LastH", "CudnnLSTM");
+    OP_INOUT_CHECK(ctx->HasOutput("LastC"), "Output", "LastC", "CudnnLSTM");
 
     auto in_dims = ctx->GetInputDim("Input");
-    PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
+    PADDLE_ENFORCE_EQ(in_dims.size(), 3,
+                      platform::errors::InvalidArgument(
+                          "The rank of Input in CudnnLSTM  must be 3. But "
+                          "received Input's rank is %d.",
+                          in_dims.size()));
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
@@ -193,14 +185,10 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("InitH"),
-                   "Input(init_h) of LSTM should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasInput("InitC"),
-                   "Input(init_c) of LSTM should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "CudnnLSTMGrad");
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "CudnnLSTMGrad");
+    OP_INOUT_CHECK(ctx->HasInput("InitH"), "Input", "InitH", "CudnnLSTMGrad");
+    OP_INOUT_CHECK(ctx->HasInput("InitC"), "Input", "InitC", "CudnnLSTMGrad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);
