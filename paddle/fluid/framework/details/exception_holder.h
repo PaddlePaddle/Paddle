@@ -30,16 +30,16 @@ class ExceptionHolder {
   void Catch(std::exception_ptr eptr) {
     try {
       std::rethrow_exception(eptr);
+    } catch (memory::allocation::BadAlloc& exp) {
+      Catch(exp);
     } catch (platform::EOFException& exp) {
       Catch(exp);
     } catch (platform::EnforceNotMet& exp) {
       Catch(exp);
-    } catch (memory::allocation::BadAlloc& exp) {
-      Catch(exp);
     } catch (std::exception& ex) {
       Catch(ex);
     } catch (...) {
-      PADDLE_THROW(platform::errors::Fatal("Unknown exception caught."));
+      LOG(FATAL) << "Unknown exception caught.";
     }
   }
 
@@ -115,6 +115,9 @@ class ExceptionHolder {
   void Catch(const memory::allocation::BadAlloc& exp) {
     std::lock_guard<std::mutex> lock(mu_);
     // BadAlloc have the highest priority
+    if (exception_.get() != nullptr) {
+      VLOG(2) << "exception reset by BadAlloc";
+    }
     exception_.reset(new paddle::memory::allocation::BadAlloc(exp));
     type_ = kBadAlloc;
   }

@@ -70,6 +70,25 @@ TEST(ExceptionHolderTester, TestBaseExpceptionCatch) {
   ASSERT_TRUE(catch_base_exception);
 }
 
+TEST(ExceptionHolderTester, TestBadAllocCatchReplace) {
+  ExceptionHolder exception_holder;
+  try {
+    throw std::exception();
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_TRUE(exception_holder.IsCaught());
+  ASSERT_EQ(exception_holder.Type(), "BaseException");
+
+  try {
+    throw memory::allocation::BadAlloc("bad alloc test", "test_file", 0);
+  } catch (...) {
+    exception_holder.Catch(std::current_exception());
+  }
+  ASSERT_TRUE(exception_holder.IsCaught());
+  ASSERT_EQ(exception_holder.Type(), "BadAlloc");
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
