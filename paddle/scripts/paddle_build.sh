@@ -243,6 +243,9 @@ EOF
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_LITE=${WITH_LITE:-OFF}
+    if [ $? -ne 0 ]; then
+        exit 7;
+    fi
 
 }
 
@@ -250,9 +253,6 @@ function cmake_gen() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     cmake_base $1
-    if [ $? -ne 0 ]; then
-        exit 7;
-    fi
 }
 
 function abort(){
@@ -315,6 +315,9 @@ function build_base() {
         make clean
     fi
     make install -j ${parallel_number}
+    if [ $? -ne 0 ]; then
+        exit 7;
+    fi
 }
 
 function build_size() {
