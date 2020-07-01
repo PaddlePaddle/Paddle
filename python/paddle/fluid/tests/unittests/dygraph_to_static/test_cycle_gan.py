@@ -40,10 +40,13 @@ from paddle.fluid.dygraph.nn import Conv2D, Conv2DTranspose, BatchNorm
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
+#     2. If include BatchNorm, please set `use_global_stats=True` to avoid using
+#        cudnnBatchNormalizationBackward which is non-deterministic.
 if fluid.is_compiled_with_cuda():
     fluid.set_flags({'FLAGS_cudnn_deterministic': True})
 
-use_cudnn = True
+# set False to speed up training.
+use_cudnn = False
 step_per_epoch = 10
 lambda_A = 10.0
 lambda_B = 10.0
@@ -110,7 +113,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
         return fake_A, fake_B, cyc_A, cyc_B, g_A_loss, g_B_loss, idt_loss_A, idt_loss_B, cyc_A_loss, cyc_B_loss, g_loss
 
     @declarative
-    def disriminatorA(self, input_A, input_B):
+    def discriminatorA(self, input_A, input_B):
         """
         Discriminator A of GAN model.
         """
@@ -326,6 +329,7 @@ class conv2d(fluid.dygraph.Layer):
             bias_attr=con_bias_attr)
         if norm:
             self.bn = BatchNorm(
+                use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.NormalInitializer(1.0, 0.02)),
@@ -381,6 +385,7 @@ class DeConv2D(fluid.dygraph.Layer):
             bias_attr=de_bias_attr)
         if norm:
             self.bn = BatchNorm(
+                use_global_stats=True,  # set True to use deterministic algorithm
                 num_channels=num_filters,
                 param_attr=fluid.ParamAttr(
                     initializer=fluid.initializer.NormalInitializer(1.0, 0.02)),
@@ -429,7 +434,6 @@ class ImagePool(object):
 
 
 def reader_creater():
-    # local_random = np.random.RandomState(SEED)
     def reader():
         while True:
             fake_image = np.uint8(
@@ -480,13 +484,8 @@ def optimizer_setting(parameters):
 
 
 def train(args, to_static):
-    # FIXME(Aurelius84): Found diff just on GPU and it disappears when we remove the BatchNorm layers.
-    # In dygraph mode, it still exists with different output while executing the every time.
-
-    # place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
-    #     else fluid.CPUPlace()
-
-    place = fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+        else fluid.CPUPlace()
 
     program_translator.enable(to_static)
 
@@ -553,8 +552,8 @@ def train(args, to_static):
                 fake_pool_A = to_variable(fake_pool_A)
 
                 # optimize the d_A network
-                rec_B, fake_pool_rec_B = cycle_gan.disriminatorA(data_B,
-                                                                 fake_pool_B)
+                rec_B, fake_pool_rec_B = cycle_gan.discriminatorA(data_B,
+                                                                  fake_pool_B)
                 d_loss_A = (fluid.layers.square(fake_pool_rec_B) +
                             fluid.layers.square(rec_B - 1)) / 2.0
                 d_loss_A = fluid.layers.reduce_mean(d_loss_A)
@@ -581,7 +580,6 @@ def train(args, to_static):
                     idt_loss_A, g_B_loss, cyc_B_loss, idt_loss_B
                 ]
                 cur_batch_loss = [x.numpy()[0] for x in cur_batch_loss]
-                loss_data.append(cur_batch_loss)
 
                 batch_time = time.time() - s_time
                 t_time += batch_time
@@ -593,6 +591,7 @@ def train(args, to_static):
                 if batch_id > args.train_step:
                     break
 
+                loss_data.append(cur_batch_loss)
         return np.array(loss_data)
 
 
