@@ -46,10 +46,8 @@ void LogCannotQuantizeOp(Node* op, const char* details = nullptr) {
 }
 
 void LogScaleIsMissingForVar(Node* var) {
-  std::stringstream msg_ss;
-  msg_ss << "Quantization scale for the variable " << var->Name()
-         << " is missing.";
-  PrettyLogDetail(msg_ss.str().c_str());
+  VLOG(4) << "Quantization scale for the variable " << var->Name()
+          << " is missing.";
 }
 
 void LogQuantizationDisabled(Node* op) {
