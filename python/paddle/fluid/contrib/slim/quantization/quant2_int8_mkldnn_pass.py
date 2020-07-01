@@ -473,8 +473,7 @@ class Quant2Int8MkldnnPass(object):
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
 
-        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops and \
-            op.attr("fuse_residual_connection") == False
+        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops
         graph = _set_unsigned_scale(graph, self._conv_ops, "Output",
                                     conv_predicate)
 

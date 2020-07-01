@@ -256,6 +256,14 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
+    auto has_output_scale = AreScalesPresentForNodes(conv_op, {conv_output});
+    if (with_residual_data && !has_output_scale) {
+      LogCannotQuantizeOp(conv_op,
+                          "Conv op with ResidualData input cannot be quantized "
+                          "without output scale.");
+      return;
+    }
+
     if (with_residual_data) {
       GET_IR_NODE_FROM_SUBGRAPH(conv_residual_data, conv_residual_data,
                                 conv_pattern);
@@ -294,7 +302,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     conv_op->Op()->SetAttr("Scale_weights", filter_scale);
 
     // if quantization scale is missing for output tensor, return fp32 data
-    if (AreScalesPresentForNodes(conv_op, {conv_output})) {
+    if (has_output_scale) {
       bool is_output_unsigned{false};
       auto output_scale =
           GetScaleValueForNode(conv_output, &is_output_unsigned);
