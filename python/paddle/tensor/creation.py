@@ -121,7 +121,7 @@ def full_like(input,
     return out
 
 
-def linspace(start, stop, num, dtype, name=None):
+def linspace(start, stop, num, dtype=None, name=None):
     """
 	:alias_main: paddle.linspace
 	:alias: paddle.linspace,paddle.tensor.linspace,paddle.tensor.creation.linspace
@@ -137,7 +137,8 @@ def linspace(start, stop, num, dtype, name=None):
             or a tensor of shape [1] with input data type float32, float64.
         num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
             or a tensor of shape [1] with type int32.
-        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
+        dtype(string| optional): The data type of output tensor, it could be 'float32' and 'float64'.
+            Default is None(data type is float32)
         name(str, optional): Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
@@ -160,6 +161,11 @@ def linspace(start, stop, num, dtype, name=None):
     check_type(stop, 'stop', (Variable, float, int), linspace)
     check_type(num, 'num', (Variable, float, int), linspace)
 
+    if dtype is None:
+        dtype = 'float32'
+    else:
+        check_dtype(dtype, 'create data type', ['float32', 'float64'],
+                    'linspace')
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
     else:

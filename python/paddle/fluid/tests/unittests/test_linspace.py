@@ -82,6 +82,11 @@ class TestLinspaceOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
+            def test_dtype():
+                fluid.layers.linspace(0, 10, 1, dtype="int32")
+
+            self.assertRaises(TypeError, test_dtype)
+
             def test_start_type():
                 fluid.layers.linspace([0], 10, 1, dtype="float32")
 
