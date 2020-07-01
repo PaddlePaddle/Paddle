@@ -654,24 +654,43 @@ class TestCollectFpnPropsals(unittest.TestCase):
         with program_guard(program):
             multi_bboxes = []
             multi_scores = []
+            multi_rois_num = []
             for i in range(4):
-                bboxes = layers.data(
+                bboxes = fluid.data(
                     name='rois' + str(i),
                     shape=[10, 4],
                     dtype='float32',
-                    lod_level=1,
-                    append_batch_size=False)
-                scores = layers.data(
+                    lod_level=1)
+                scores = fluid.data(
                     name='scores' + str(i),
                     shape=[10, 1],
                     dtype='float32',
-                    lod_level=1,
-                    append_batch_size=False)
+                    lod_level=1)
+                rois_num = fluid.data(
+                    name='rois_num' + str(i),
+                    shape=[10, 1],
+                    dtype='int32',
+                    lod_level=1)
+
                 multi_bboxes.append(bboxes)
                 multi_scores.append(scores)
-            fpn_rois = layers.collect_fpn_proposals(multi_bboxes, multi_scores,
-                                                    2, 5, 10)
+                multi_rois_num.append(rois_num)
+            fpn_rois = layers.collect_fpn_proposals(
+                multi_bboxes, multi_scores, 2, 5, 10, return_rois_num=False)
+            fpn_rois_r, rois_num = layers.collect_fpn_proposals(
+                multi_bboxes, multi_scores, 2, 5, 10, return_rois_num=True)
+            fpn_rois_m = layers.collect_fpn_proposals(
+                multi_bboxes,
+                multi_scores,
+                2,
+                5,
+                10,
+                multi_rois_num=multi_rois_num)
+
             self.assertIsNotNone(fpn_rois)
+            self.assertIsNotNone(fpn_rois_r)
+            self.assertIsNotNone(rois_num)
+            self.assertIsNotNone(fpn_rois_m)
 
     def test_collect_fpn_proposals_error(self):
         def generate_input(bbox_type, score_type, name):

@@ -3692,7 +3692,9 @@ def collect_fpn_proposals(multi_rois,
                           min_level,
                           max_level,
                           post_nms_top_n,
-                          name=None):
+                          name=None,
+                          multi_rois_num=None,
+                          return_rois_num=False):
     """
 	:alias_main: paddle.nn.functional.collect_fpn_proposals
 	:alias: paddle.nn.functional.collect_fpn_proposals,paddle.nn.functional.vision.collect_fpn_proposals
@@ -3720,7 +3722,12 @@ def collect_fpn_proposals(multi_rois,
         post_nms_top_n(int): The number of selected RoIs
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default.        
+            None by default.
+        multi_rois_num(list, optional): List of the number of RoIs in each image from each level. Element in list is 1-D Tensor with shape [N] and data type is int32, N is the number of total RoIs in each level. Default: None
+        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's 
+            num of each image. N is the number of images. For example, the tensor has values [4,5] that represents
+            the first image has 4 Rois and the second image has 5 Rois. It only used in rcnn model. 
+            'False' by default.         
 
     Returns:
         Variable:
@@ -3728,6 +3735,8 @@ def collect_fpn_proposals(multi_rois,
         fpn_rois(Variable): 2-D LoDTensor with shape [N, 4] and data type is 
         float32 or float64. Selected RoIs. 
 
+        rois_num(Variable): 1-D Tensor with shape [N, ] and data type is int32.
+        The number of rois in each image.
 
     Examples:
         .. code-block:: python
@@ -3759,13 +3768,19 @@ def collect_fpn_proposals(multi_rois,
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
     output_rois = helper.create_variable_for_type_inference(dtype)
+    rois_num = helper.create_variable_for_type_inference(dtype='int32')
     output_rois.stop_gradient = True
+    rois_num.stop_gradient = True
     helper.append_op(
         type='collect_fpn_proposals',
         inputs={
             'MultiLevelRois': input_rois,
-            'MultiLevelScores': input_scores
+            'MultiLevelScores': input_scores,
+            'MultiLevelNums': multi_rois_num
         },
-        outputs={'FpnRois': output_rois},
+        outputs={'FpnRois': output_rois,
+                 'RoisNum': rois_num},
         attrs={'post_nms_topN': post_nms_top_n})
+    if return_rois_num:
+        return output_rois, rois_num
     return output_rois

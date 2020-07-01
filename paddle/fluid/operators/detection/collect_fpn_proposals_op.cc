@@ -68,13 +68,15 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
             BOOST_GET(framework::Variable *, roi_inputs[i]);
         framework::Variable *score_var =
             BOOST_GET(framework::Variable *, score_inputs[i]);
-        auto &roi_lod = roi_var->Get<LoDTensor>().lod();
-        auto &score_lod = score_var->Get<LoDTensor>().lod();
-        PADDLE_ENFORCE_EQ(
-            roi_lod, score_lod,
-            platform::errors::InvalidArgument(
-                "Inputs(MultiLevelRois) and "
-                "Inputs(MultiLevelScores) should have same lod."));
+        if (!context->HasInputs("MultiLevelNums")) {
+          auto &roi_lod = roi_var->Get<LoDTensor>().lod();
+          auto &score_lod = score_var->Get<LoDTensor>().lod();
+          PADDLE_ENFORCE_EQ(
+              roi_lod, score_lod,
+              platform::errors::InvalidArgument(
+                  "Inputs(MultiLevelRois) and "
+                  "Inputs(MultiLevelScores) should have same lod."));
+        }
       }
     }
   }
@@ -99,7 +101,15 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
              "(LoDTensor) Multiple score LoDTensors from each level in shape"
              " (N, 1), N is the number of RoIs.")
         .AsDuplicable();
+    AddInput(
+        "MultiLevelNums",
+        "(Tensor) Multiple RoIs number of each image from each level in shape"
+        "(N), N is the total number of RoIs.")
+        .AsDuplicable()
+        .AsDispensable();
     AddOutput("FpnRois", "(LoDTensor) All selected RoIs with highest scores");
+    AddOutput("RoisNum", "(Tensor), Number of RoIs in each images.")
+        .AsDispensable();
     AddAttr<int>("post_nms_topN",
                  "Select post_nms_topN RoIs from"
                  " all images and all fpn layers");
