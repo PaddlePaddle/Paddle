@@ -135,7 +135,7 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
     return out
 
 
-def index_select(x, index, dim=0):
+def index_select(x, index, axis=0, name=None):
     """
 	:alias_main: paddle.index_select
 	:alias: paddle.index_select,paddle.tensor.index_select,paddle.tensor.search.index_select
@@ -146,9 +146,9 @@ def index_select(x, index, dim=0):
     size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
 
     Args:
-        x (Variable): The input tensor variable.
+        x (Variable): The input tensor variable.The dtype of x can be one of float32, float64, int32, int64.
         index (Variable): The 1-D tensor containing the indices to index.
-        dim (int): The dimension in which we index.
+        axis (int32|int64): The dimension in which we index.
 
     Returns:
         Variable: A Tensor with same data type as `input`.
@@ -167,12 +167,12 @@ def index_select(x, index, dim=0):
             with fluid.dygraph.guard():
                 x = fluid.dygraph.to_variable(data)
                 index = fluid.dygraph.to_variable(data_index)
-                out_z1 = paddle.index_select(x, index)
+                out_z1 = paddle.index_select(x=x, index=index)
                 print(out_z1.numpy())
                 #[[1. 2. 3. 4.]
                 # [5. 6. 7. 8.]
                 # [5. 6. 7. 8.]]
-                out_z2 = paddle.index_select(x, index, dim=1)
+                out_z2 = paddle.index_select(x=x, index=index, dim=1)
                 print(out_z2.numpy())
                 #[[ 1.  2.  2.]
                 # [ 5.  6.  6.]
@@ -180,7 +180,7 @@ def index_select(x, index, dim=0):
     """
     helper = LayerHelper("index_select", **locals())
     if in_dygraph_mode():
-        return core.ops.index_select(x, index, 'dim', dim)
+        return core.ops.index_select(x, index, 'dim', axis)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'paddle.tensor.search.index_select')
@@ -194,7 +194,7 @@ def index_select(x, index, dim=0):
         inputs={'X': x,
                 'Index': index},
         outputs={'Out': out},
-        attrs={'dim': dim})
+        attrs={'dim': axis})
     return out
 
 
