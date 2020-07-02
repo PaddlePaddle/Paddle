@@ -244,7 +244,6 @@ EOF
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_LITE=${WITH_LITE:-OFF}
-    set -e
     if [ $? -ne 0 ]; then
         exit 7;
     fi
@@ -317,7 +316,6 @@ function build_base() {
         make clean
     fi
     make install -j ${parallel_number}
-    set -e
     if [ $? -ne 0 ]; then
         exit 7;
     fi
