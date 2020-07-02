@@ -853,7 +853,10 @@ def meshgrid(*input, **kwargs):
     vector, and creates N-dimensional grids.
     
     Args:
-        
+        input(Variable|list of Variable) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,), 
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
          Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
@@ -872,7 +875,7 @@ def meshgrid(*input, **kwargs):
           input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
 
           exe = fluid.Executor(place=fluid.CPUPlace())
-          grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+          grid_x, grid_y = paddle.tensor.meshgrid(x, y)
           res_1, res_2 = exe.run(fluid.default_main_program(),
                                  feed={'x': input_1,
                                        'y': input_2},
@@ -894,7 +897,7 @@ def meshgrid(*input, **kwargs):
           with fluid.dygraph.guard():
               tensor_3 = fluid.dygraph.to_variable(input_3)
               tensor_4 = fluid.dygraph.to_variable(input_4)
-              grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+              grid_x, grid_y = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
           #the shape of grid_x is (100, 200)
           #the shape of grid_y is (100, 200)
