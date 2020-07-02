@@ -14747,9 +14747,9 @@ def mish(x, threshold=20, name=None):
                       should be float16, float32 or float64.
         threshold (float|None): threshold for softplus in Mish operator.
                 Approximate value of softplus will be used if absolute value
-                of input is greater than :attr:`threshold` if :attr:`threshold`
-                is set as positive value, None or negative value for not using
-                approximate value. Default 20.
+                of input is greater than :attr:threshold and :attr:threshold
+                is set as positive value. For none or negative threshold,
+                approximate value is not used. Default 20.
         name (str, optional): The default value is None. Normally there is no
                 need for user to set this property. For more information, please
                 refer to :ref:`api_guide_Name`
