@@ -256,7 +256,7 @@ def monkey_patch_varbase():
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var), ("set_value", set_value),
         ("block", block), ("backward", backward), ("gradient", gradient),
-        ("__str__", __str__), ("to_string", to_string)):
+        ("__str__", __str__)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase
