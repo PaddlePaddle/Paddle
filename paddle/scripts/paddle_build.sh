@@ -219,6 +219,7 @@ EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
+    set +e
     cmake .. \
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
         ${PYTHON_FLAGS} \
@@ -243,10 +244,10 @@ EOF
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_LITE=${WITH_LITE:-OFF}
+    set -e
     if [ $? -ne 0 ]; then
         exit 7;
     fi
-
 }
 
 function cmake_gen() {
@@ -298,6 +299,7 @@ function check_style() {
 #=================================================
 
 function build_base() {
+    set +e
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -315,6 +317,7 @@ function build_base() {
         make clean
     fi
     make install -j ${parallel_number}
+    set -e
     if [ $? -ne 0 ]; then
         exit 7;
     fi
@@ -365,9 +368,6 @@ function cmake_gen_and_build() {
     startTime_s=`date +%s`
     cmake_gen $1
     build $2
-    if [ $? -ne 0 ]; then
-        exit 7;
-    fi
     endTime_s=`date +%s`
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
 }
