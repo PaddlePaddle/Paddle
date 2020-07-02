@@ -754,7 +754,7 @@ class Layer(core.Layer):
 
     def __dir__(self):
         """
-        Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
+        Return a list. Get all parameters, buffers(non-parameter variables), sublayers, method and attr of Layer.
 
         Examples:
             import paddle.fluid as fluid
@@ -764,7 +764,7 @@ class Layer(core.Layer):
 
             class Mylayer(fluid.dygraph.Layer):
                 def __init__(self):
-                    super(Mylayer1, self).__init__()
+                    super(Mylayer, self).__init__()
                     self.linear1 = fluid.dygraph.Linear(10, 10)
                     self.linear2 = fluid.dygraph.Linear(5, 5)
                     self.conv2d = fluid.dygraph.Conv2D(3, 2, 3)
@@ -773,7 +773,8 @@ class Layer(core.Layer):
 
             mylayer = Mylayer()
             print(dir(mylayer))
-            #
+            # only parts are shown, because of list have too much content
+            # ['__call__', '__class__',  ... , 'conv2d', 'embedding', 'h_0', 'linear1', 'linear2', ... , 'sublayers', 'train']
 
         """
         method = dir(self.__class__)
