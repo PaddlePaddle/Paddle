@@ -793,8 +793,11 @@ function card_test() {
                 (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee tmp.log
             fi
         fi
-        grep 'The following tests FAILED:' tmp.log
-        if [ $? -ne 0 ]; then
+        set +e
+        grep 'The following tests FAILED:' tmp.log;errcode=$?
+        echo "errcode::::"
+        echo $errcode
+        if [ $errcode -ne 0 ]; then
             failuretest=''
         else
             failuretest=`grep -A 10000 'The following tests FAILED:' tmp.log | sed 's/The following tests FAILED://g'|sed '/^$/d'`
