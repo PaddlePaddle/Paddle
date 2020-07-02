@@ -68,6 +68,4 @@ RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/
 RUN wget --no-check-certificate  -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz && \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/
 
-RUN mkdir -p /proc/sys/net/ipv4 && echo "20000-23000" >> /proc/sys/net/ipv4/ip_local_reserved_ports
-
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
