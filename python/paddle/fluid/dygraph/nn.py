@@ -1107,10 +1107,10 @@ class InstanceNorm(layers.Layer):
 
         attrs = {"epsilon": self._epsilon}
 
-        if self.scale == None and self.bias == None:
-            inputs = {"X": [input]}
-        else:
+        if self.scale and self.bias:
             inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
+        else:
+            inputs = {"X": [input]}
 
         saved_mean = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
