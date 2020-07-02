@@ -28,7 +28,7 @@ import numpy as np
 import paddle
 import paddle.reader
 from paddle.reader import *
-from paddle.fluid import layers
+from paddle.fluid import layers, device_guard
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable, \
@@ -485,7 +485,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
         block = prog.global_block()
 
         # recv optimize vars from pserver
-        with fluid.device_guard("cpu"):
+        with device_guard("cpu"):
             for name, remote_params in remote_params_map.items():
                 origin = remote_params[0].origin
                 is_slice = remote_params[0].is_slice
