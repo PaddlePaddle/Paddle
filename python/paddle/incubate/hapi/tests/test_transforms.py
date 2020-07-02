@@ -108,6 +108,11 @@ class TestTransforms(unittest.TestCase):
         trans = transforms.Compose([transforms.Pad(2)])
         self.do_transform(trans)
 
+        fake_img = np.random.rand(200, 150, 3).astype('float32')
+        trans_pad = transforms.Pad(10)
+        fake_img_padded = trans_pad(fake_img)
+        np.testing.assert_equal(fake_img_padded.shape, (210, 160, 3))
+
     def test_erase(self):
         trans = transforms.Compose([transforms.RandomErasing()])
         self.do_transform(trans)
@@ -119,9 +124,27 @@ class TestTransforms(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+        trans_random_crop1 = transforms.RandomCrop(224)
+        trans_random_crop2 = transforms.RandomCrop(140, 160)
+
+        fake_img = np.random.rand(500, 400, 3).astype('float32')
+        fake_img_crop1 = trans_random_crop1(fake_img)
+        fake_img_crop2 = trans_random_crop2(fake_img_crop1)
+
+        np.testing.assert_equal(fake_img_crop1.shape, (224, 224, 3))
+        np.testing.assert_equal(fake_img_crop2.shape, (140, 160, 3))
+
     def test_grayscale(self):
-        trans = transforms.Compose([transforms.Grayscale(), ])
+        trans = transforms.Compose([transforms.Grayscale()])
         self.do_transform(trans)
+
+        trans_gray = transforms.Grayscale()
+        fake_img = np.random.rand(500, 400, 3).astype('float32')
+        fake_img_gray = trans_gray(fake_img)
+
+        np.testing.assert_equal(len(fake_img_gray.shape), 2)
+        np.testing.assert_equal(fake_img_gray.shape[0], 500)
+        np.testing.assert_equal(len(fake_img_gray.shape[1]), 400)
 
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
@@ -145,6 +168,15 @@ class TestTransforms(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             transforms.BrightnessTransform(-1.0)
+
+        with self.assertRaises(ValueError):
+            transforms.Pad([1.0, 2.0, 3.0])
+
+        with self.assertRaises(ValueError):
+            transforms.RandomRotate(-2)
+
+        with self.assertRaises(ValueError):
+            transforms.RandomRotate([1, 2, 3])
 
     def test_info(self):
         str(transforms.Compose([transforms.Resize((224, 224))]))

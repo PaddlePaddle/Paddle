@@ -106,12 +106,12 @@ def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
     """Pad the given CV Image on all sides with speficified padding mode and fill value.
     Args:
         img (np.ndarray): Image to be padded.
-        padding (int or tuple): Padding on each border. If a single int is provided this
+        padding (int|tuple): Padding on each border. If a single int is provided this
             is used to pad all borders. If tuple of length 2 is provided this is the padding
             on left/right and top/bottom respectively. If a tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
-        fill (int, tuple): Pixel fill value for constant fill. Default is 0. If a tuple of
+        fill (int|tuple): Pixel fill value for constant fill. Default is 0. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
@@ -239,26 +239,6 @@ def rotate(img,
     else:
         dst = cv2.warpAffine(img, M, (w, h), flags=interpolation)
     return dst.astype(dtype)
-
-
-def erase(img, i, j, h, w, v):
-    """ Erase the input Image with given value.
-
-    Args:
-        img (numpy.ndarray): image of size (C, H, W) to be erased
-        i (int): i in (i,j) i.e coordinates of the upper left corner.
-        j (int): j in (i,j) i.e coordinates of the upper left corner.
-        h (int): Height of the erased region.
-        w (int): Width of the erased region.
-        v: Erasing value.
-        inplace(bool, optional): For in-place operations. By default is set False.
-
-    Returns:
-        numpy ndarray: Erased image.
-    """
-
-    img[:, i:i + h, j:j + w] = v
-    return img
 
 
 def to_grayscale(img, num_output_channels=1):
