@@ -393,14 +393,14 @@ def pull_worker_log(tp):
     if tp.log_fn:
         with open(tp.log_fn.name, 'r') as fin:
             fin.seek(tp.log_offset, 0)
-            BUF_SIZE = 512
-            while True:
-                buf = fin.read(BUF_SIZE)
-                if len(buf) == 0:
-                    break
-                if isinstance(buf, bytes):
-                    buf = buf.decode(sys.stdout.encoding)
-                sys.stdout.write(buf)
+            for line in fin:
+                try:
+                    sys.stdout.write(line)
+                except UnicodeEncodeError:
+                    sys.stdout.write(
+                        'UnicodeEncodeError occurs at this line. '
+                        'Please refer to the original log file "%s"\n' %
+                        tp.log_fn.name)
             tp.log_offset = fin.tell()
 
 
