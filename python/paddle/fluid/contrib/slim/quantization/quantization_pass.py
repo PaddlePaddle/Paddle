@@ -134,16 +134,13 @@ def _get_output_name_index(op, output_var_name):
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
     name_list = _op_real_in_out_name[op_name][1]
+    res = None
     for name in name_list:
         var_name = op.output(name)
-        if isinstance(var_name, list):
-            for index, val in enumerate(var_name):
-                if val == output_var_name:
-                    return name, index
-        else:
-            if var_name == output_var_name:
-                return name, 0
-    return None
+        for index, val in enumerate(var_name):
+            if val == output_var_name:
+                res = (name, index)
+    return res
 
 
 def _init_var_node(var_node, value, scope, place):
