@@ -21,6 +21,7 @@ from .framework import Variable, default_main_program, default_startup_program, 
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
+from .initializer import _global_weight_initializer, _global_bias_initializer
 
 
 class LayerHelperBase(object):
@@ -298,7 +299,15 @@ class LayerHelperBase(object):
         if not attr:
             return None
         assert isinstance(attr, ParamAttr)
-        suffix = 'b' if is_bias else 'w'
+        if is_bias:
+            suffix = 'b'
+            default_initializer = _global_bias_initializer(
+            ) if _global_bias_initializer() is not None else default_initializer
+        else:
+            suffix = 'w'
+            default_initializer = _global_weight_initializer(
+            ) if _global_weight_initializer(
+            ) is not None else default_initializer
         if attr.name is None:
             attr.name = unique_name.generate(".".join([self.name, suffix]))
 

@@ -59,10 +59,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     add_subdirectory(tests/api)
 endif()
 
-if(NOT ON_INFER)
-  return()
-endif()
-
 set(SHARED_INFERENCE_SRCS
     io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc
@@ -81,6 +77,9 @@ cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
+if(WIN32)
+    target_link_libraries(paddle_fluid_shared gflags)
+endif()
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
 if(NOT APPLE AND NOT WIN32)

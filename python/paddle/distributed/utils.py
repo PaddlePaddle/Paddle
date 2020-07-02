@@ -21,6 +21,7 @@ import signal
 import copy
 import sys
 import subprocess
+import threading
 from contextlib import closing
 import socket
 
@@ -252,15 +253,12 @@ def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
 def terminate_local_procs(procs):
     for p in procs:
         if p.proc.poll() is None:
-            # subprocess need to release resource(e.g. shared memory)
-            # use join to wait subprocess releasing
-            p.proc.join(timeout=1)
+            p.proc.terminate()
             p.log_fn.close()
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
-    # wait all process terminiated
-    # time.sleep(3)
-
+    #wait all process terminiated
+    time.sleep(3)
     for step in range(0, 50):
         alive = False
         for p in procs:
@@ -373,7 +371,29 @@ def start_local_trainers(cluster,
         if log_dir is not None:
             os.system("mkdir -p {}".format(log_dir))
             fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
-            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+            if idx == 0:
+                proc = subprocess.Popen(
+                    cmd,
+                    env=current_env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT)
+
+                def shell_tee(proc, fn):
+                    BUF_SIZE = 512
+                    while True:
+                        buf = proc.stdout.read(BUF_SIZE)
+                        if len(buf) == 0:
+                            break
+
+                        sys.stdout.buffer.write(buf)
+                        fn.buffer.write(buf)
+                        sys.stdout.flush()
+                        fn.flush()
+
+                threading.Thread(target=shell_tee, args=(proc, fn)).start()
+            else:
+                proc = subprocess.Popen(
+                    cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
 

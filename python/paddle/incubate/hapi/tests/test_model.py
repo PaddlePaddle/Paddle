@@ -23,8 +23,7 @@ import shutil
 import tempfile
 
 from paddle import fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
 from paddle.incubate.hapi.model import Model, Input, set_device
@@ -42,9 +41,11 @@ class LeNetDygraph(fluid.dygraph.Layer):
         self.features = Sequential(
             Conv2D(
                 1, 6, 3, stride=1, padding=1),
+            ReLU(),
             Pool2D(2, 'max', 2),
             Conv2D(
                 6, 16, 5, stride=1, padding=0),
+            ReLU(),
             Pool2D(2, 'max', 2))
 
         if num_classes > 0:

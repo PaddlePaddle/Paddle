@@ -771,7 +771,50 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+#ifdef PADDLE_WITH_PSLIB
+        try {
+          op->Run(*thread_scope_, place_);
+        } catch (std::exception& e) {
+          fprintf(stderr, "error message: %s\n", e.what());
+          auto& ins_id_vec = device_reader_->GetInsIdVec();
+          size_t batch_size = device_reader_->GetCurBatchSize();
+          std::string s = "";
+          for (auto& ins_id : ins_id_vec) {
+            if (s != "") s += ",";
+            s += ins_id;
+          }
+          fprintf(stderr, "batch_size: %zu, ins_ids_vec: %s\n", batch_size,
+                  s.c_str());
+          s = "";
+          for (auto& param : all_param_) {
+            Variable* var = thread_scope_->FindVar(param);
+            if (var == nullptr) {
+              continue;
+            }
+            Tensor* tensor = nullptr;
+            int64_t len = 0;
+            if (var->IsType<framework::LoDTensor>()) {
+              tensor = var->GetMutable<LoDTensor>();
+              len = tensor->numel();
+            } else if (var->IsType<SelectedRows>()) {
+              auto selected_rows = var->GetMutable<SelectedRows>();
+              tensor = selected_rows->mutable_value();
+              len = tensor->numel();
+            }
+            if (!tensor->IsInitialized()) {
+              continue;
+            }
+            s += param + ":" + std::to_string(len) + ":";
+            s += PrintLodTensor(tensor, 0, len);
+            fprintf(stderr, "%s\n", s.c_str());
+            fflush(stderr);
+            s = "";
+          }
+          throw e;
+        }
+#else
         op->Run(*thread_scope_, place_);
+#endif
       }
     }
 

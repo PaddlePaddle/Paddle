@@ -27,6 +27,7 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
@@ -108,6 +110,8 @@ class DataFeed {
   DataFeed() {
     mutex_for_pick_file_ = nullptr;
     file_idx_ = nullptr;
+    mutex_for_fea_num_ = nullptr;
+    total_fea_num_ = nullptr;
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
@@ -164,7 +168,9 @@ class DataFeed {
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
+  virtual void SetFeaNumMutex(std::mutex* mutex) { mutex_for_fea_num_ = mutex; }
   virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual void SetFeaNum(uint64_t* fea_num) { total_fea_num_ = fea_num; }
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
@@ -197,6 +203,9 @@ class DataFeed {
   std::vector<std::string> filelist_;
   size_t* file_idx_;
   std::mutex* mutex_for_pick_file_;
+  std::mutex* mutex_for_fea_num_ = nullptr;
+  uint64_t* total_fea_num_ = nullptr;
+  uint64_t fea_num_ = 0;
 
   // the alias of used slots, and its order is determined by
   // data_feed_desc(proto object)
@@ -484,13 +493,25 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
 
 struct RecordCandidate {
   std::string ins_id_;
-  std::unordered_multimap<uint16_t, FeatureKey> feas;
+  std::unordered_multimap<uint16_t, FeatureKey> feas_;
+  size_t shadow_index_ = -1;  // Optimization for Reservoir Sample
+
+  RecordCandidate() {}
+  RecordCandidate(const Record& rec,
+                  const std::unordered_set<uint16_t>& slot_index_to_replace) {
+    for (const auto& fea : rec.uint64_feasigns_) {
+      if (slot_index_to_replace.find(fea.slot()) !=
+          slot_index_to_replace.end()) {
+        feas_.insert({fea.slot(), fea.sign()});
+      }
+    }
+  }
 
   RecordCandidate& operator=(const Record& rec) {
-    feas.clear();
+    feas_.clear();
     ins_id_ = rec.ins_id_;
     for (auto& fea : rec.uint64_feasigns_) {
-      feas.insert({fea.slot(), fea.sign()});
+      feas_.insert({fea.slot(), fea.sign()});
     }
     return *this;
   }
@@ -499,22 +520,67 @@ struct RecordCandidate {
 class RecordCandidateList {
  public:
   RecordCandidateList() = default;
-  RecordCandidateList(const RecordCandidateList&) = delete;
-  RecordCandidateList& operator=(const RecordCandidateList&) = delete;
+  RecordCandidateList(const RecordCandidateList&) {}
 
+  size_t Size() { return cur_size_; }
   void ReSize(size_t length);
 
   void ReInit();
+  void ReInitPass() {
+    for (size_t i = 0; i < cur_size_; ++i) {
+      if (candidate_list_[i].shadow_index_ != i) {
+        candidate_list_[i].ins_id_ =
+            candidate_list_[candidate_list_[i].shadow_index_].ins_id_;
+        candidate_list_[i].feas_.swap(
+            candidate_list_[candidate_list_[i].shadow_index_].feas_);
+        candidate_list_[i].shadow_index_ = i;
+      }
+    }
+    candidate_list_.resize(cur_size_);
+  }
 
   void AddAndGet(const Record& record, RecordCandidate* result);
+  void AddAndGet(const Record& record, size_t& index_result) {  // NOLINT
+    // std::unique_lock<std::mutex> lock(mutex_);
+    size_t index = 0;
+    ++total_size_;
+    auto fleet_ptr = FleetWrapper::GetInstance();
+    if (!full_) {
+      candidate_list_.emplace_back(record, slot_index_to_replace_);
+      candidate_list_.back().shadow_index_ = cur_size_;
+      ++cur_size_;
+      full_ = (cur_size_ == capacity_);
+    } else {
+      index = fleet_ptr->LocalRandomEngine()() % total_size_;
+      if (index < capacity_) {
+        candidate_list_.emplace_back(record, slot_index_to_replace_);
+        candidate_list_[index].shadow_index_ = candidate_list_.size() - 1;
+      }
+    }
+    index = fleet_ptr->LocalRandomEngine()() % cur_size_;
+    index_result = candidate_list_[index].shadow_index_;
+  }
+  const RecordCandidate& Get(size_t index) const {
+    PADDLE_ENFORCE_LT(
+        index, candidate_list_.size(),
+        platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                     "elements in candidate_list[%lu].",
+                                     index, candidate_list_.size()));
+    return candidate_list_[index];
+  }
+  void SetSlotIndexToReplace(
+      const std::unordered_set<uint16_t>& slot_index_to_replace) {
+    slot_index_to_replace_ = slot_index_to_replace;
+  }
 
  private:
-  size_t _capacity = 0;
-  std::mutex _mutex;
-  bool _full = false;
-  size_t _cur_size = 0;
-  size_t _total_size = 0;
-  std::vector<RecordCandidate> _candidate_list;
+  size_t capacity_ = 0;
+  std::mutex mutex_;
+  bool full_ = false;
+  size_t cur_size_ = 0;
+  size_t total_size_ = 0;
+  std::vector<RecordCandidate> candidate_list_;
+  std::unordered_set<uint16_t> slot_index_to_replace_;
 };
 
 template <class AR>

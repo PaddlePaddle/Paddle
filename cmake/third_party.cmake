@@ -107,12 +107,11 @@ ENDMACRO()
 # 1. URL:           The download url of 3rd dependencies
 # 2. NAME:          The name of file, that determin the dirname
 #
-MACRO(file_download_and_uncompress URL NAME)
+FUNCTION(file_download_and_uncompress URL NAME)
   MESSAGE(STATUS "Download dependence[${NAME}] from ${URL}")
-  SET(EXTERNAL_PROJECT_NAME "extern_download_${NAME}")
-  SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data)
+  SET(${NAME}_INCLUDE_DIR ${THIRD_PARTY_PATH}/${NAME}/data PARENT_SCOPE)
   ExternalProject_Add(
-      ${EXTERNAL_PROJECT_NAME}
+      extern_download_${NAME}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX                ${THIRD_PARTY_PATH}/${NAME}
       URL                   ${URL}
@@ -124,8 +123,8 @@ MACRO(file_download_and_uncompress URL NAME)
       UPDATE_COMMAND        ""
       INSTALL_COMMAND       ""
     )
-  list(APPEND third_party_deps ${EXTERNAL_PROJECT_NAME})
-ENDMACRO()
+  set(third_party_deps ${third_party_deps} extern_download_${NAME} PARENT_SCOPE)
+ENDFUNCTION()
 
 
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
@@ -209,10 +208,6 @@ include(external/warpctc)   # download, build, install warpctc
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
 list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
 
-# download file
-set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
-file_download_and_uncompress(${CUDAERROR_URL} "cudaerror")
-
 if(WITH_AMD_GPU)
     include(external/rocprim)   # download, build, install rocprim
     list(APPEND third_party_deps extern_rocprim)
@@ -250,6 +245,9 @@ ENDIF()
 if(WITH_GPU)
     include(external/cub)       # download cub
     list(APPEND third_party_deps extern_cub)
+  
+    set(CUDAERROR_URL  "http://paddlepaddledeps.bj.bcebos.com/cudaErrorMessage.tar.gz" CACHE STRING "" FORCE)
+    file_download_and_uncompress(${CUDAERROR_URL} "cudaerror") # download file cudaErrorMessage
 endif(WITH_GPU)
 
 if(WITH_PSLIB)
@@ -304,5 +302,9 @@ endif()
 if (WITH_LITE)
     include(external/lite)
 endif (WITH_LITE)
+
+if (WITH_CRYPTO)
+    include(external/cryptopp)   # download, build, install cryptopp
+endif (WITH_CRYPTO)
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

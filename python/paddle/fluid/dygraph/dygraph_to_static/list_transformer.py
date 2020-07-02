@@ -19,6 +19,7 @@ import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code, is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.utils import SplitAssignTransformer
 from paddle.fluid.framework import core, Variable
 from paddle.fluid.layers import array_length, array_read, array_write, create_array
 from paddle.fluid.layers import assign, fill_constant, slice
@@ -108,6 +109,7 @@ class ListTransformer(gast.NodeTransformer):
         self.scope_var_type_dict = var_env.get_scope_var_type()
 
     def transform(self):
+        SplitAssignTransformer(self.root).transform()
         self.visit(self.root)
         self.replace_list_with_tensor_array(self.root)
 
@@ -211,27 +213,29 @@ class ListTransformer(gast.NodeTransformer):
         if value_name not in self.list_name_to_updated:
             return False
 
-        # 3. The arg of append() is one `Tensor`
+        # 3. The number of arg of append() is one
         # Only one argument is supported in Python list.append()
         if len(node.args) != 1:
             return False
-        arg = node.args[0]
-        if isinstance(arg, gast.Name):
-            # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function
-            # Need a better way to confirm whether `arg.id` is a Tensor.
-            try:
-                var_type_set = self.scope_var_type_dict[arg.id]
-            except KeyError:
-                return False
 
-            if NodeVarType.NUMPY_NDARRAY in var_type_set:
-                return False
-            if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
-                return False
-        # else:
-        # Todo: Consider that `arg` may be a gast.Call about Paddle Api.
-        # eg: list_a.append(fluid.layers.reshape(x))
-        # return True
+        # TODO(liym27): The arg of append() should be Tensor. But because the type of arg is often wrong with static analysis,
+        #   the arg is not required to be Tensor here.
+        # 4. The arg of append() is Tensor
+        # arg = node.args[0]
+        # if isinstance(arg, gast.Name):
+        #     # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function
+        #     # Need a better way to confirm whether `arg.id` is a Tensor.
+        #     try:
+        #         var_type_set = self.scope_var_type_dict[arg.id]
+        #     except KeyError:
+        #         return False
+        #     if NodeVarType.NUMPY_NDARRAY in var_type_set:
+        #         return False
+        #     if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
+        #         return False
+        # # TODO: Consider that `arg` may be a gast.Call about Paddle Api. eg: list_a.append(fluid.layers.reshape(x))
+        # # else:
+        # # return True
         self.list_name_to_updated[value_name.strip()] = True
         return True
 
@@ -264,7 +268,7 @@ class ListTransformer(gast.NodeTransformer):
     def _update_list_name_to_updated(self, node):
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
-        # TODO: Consider node has more than one target. eg: x, y = a, []
+        # NOTE: Code like `x, y = a, []` has been transformed to `x=a; y=[]`
         try:
             target_id = target_node.id
         except AttributeError:

@@ -71,8 +71,8 @@ RecordEvent::RecordEvent(const std::string &name, const EventRole role) {
   role_ = role;
   is_enabled_ = true;
   // lock is not needed, the code below is thread-safe
-  Event *e = PushEvent(name, role);
   // Maybe need the same push/pop behavior.
+  Event *e = PushEvent(name, role);
   SetCurAnnotation(e);
   name_ = e->name();
 }
@@ -86,7 +86,7 @@ RecordEvent::~RecordEvent() {
                           BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
-  PopEvent(name_);
+  PopEvent(name_, role_);
 }
 
 void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
@@ -187,8 +187,8 @@ Event *PushEvent(const std::string &name, const EventRole role) {
   return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role);
 }
 
-void PopEvent(const std::string &name) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
+void PopEvent(const std::string &name, const EventRole role) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id, role);
 }
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,

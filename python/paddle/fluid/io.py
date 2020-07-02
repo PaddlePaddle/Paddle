@@ -198,7 +198,8 @@ def _load_program_scope(main=None, startup=None, scope=None):
     with paddle.fluid.scope_guard(scope):
         with paddle.fluid.program_guard(prog, startup_prog):
             with paddle.fluid.unique_name.guard():
-                yield
+                with paddle.fluid.framework._dygraph_guard(None):
+                    yield
 
 
 def _get_valid_program(main_program):
@@ -663,7 +664,6 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             filename=filename)
 
 
-@dygraph_not_support
 def load_vars(executor,
               dirname,
               main_program=None,
@@ -1712,7 +1712,7 @@ def load(program, model_path, executor=None, var_list=None):
     if not os.path.exists(parameter_file_name):
         # model file save by fluid.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
-        _logger.warning(
+        _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
         if executor is None:
@@ -1830,7 +1830,6 @@ def load(program, model_path, executor=None, var_list=None):
             set_var(v, load_dict[v.name])
 
 
-@dygraph_not_support
 def load_program_state(model_path, var_list=None):
     """
     :api_attr: Static Graph
@@ -1876,7 +1875,7 @@ def load_program_state(model_path, var_list=None):
     if not os.path.exists(parameter_file_name):
         # model file saved with fluid.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
-        _logger.warning(
+        _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
 

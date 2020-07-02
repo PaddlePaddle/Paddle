@@ -117,12 +117,7 @@ def to_static_variable(x):
     if isinstance(x, float):
         return fill_constant(shape=[1], dtype='float64', value=x)
 
-    if six.PY2:
-        if isinstance(x, int):
-            return fill_constant(shape=[1], dtype='int32', value=x)
-        if isinstance(x, long):
-            return fill_constant(shape=[1], dtype='int64', value=x)
-    else:
-        if isinstance(x, int):
-            return fill_constant(shape=[1], dtype='int64', value=x)
+    if isinstance(x, six.integer_types):
+        return fill_constant(shape=[1], dtype='int64', value=x)
+
     return x
