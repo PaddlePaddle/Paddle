@@ -8,7 +8,7 @@ function install_trt(){
   cudnn=`echo $docker_name|awk -F '-' '{print $2}' `
 
   sed -i "s#<install_trt>#COPY build_scripts /build_scripts \
-    RUN bash /build_scripts/install_trt.sh cuda${cuda}${cudnn} \&\& rm -rf /build_scripts #g" Dockerfile.tmp 
+    RUN bash tools/dockerfile/build_scripts/install_trt.sh cuda${cuda}${cudnn} \&\& rm -rf /build_scripts #g" Dockerfile.tmp 
 
 }
 
