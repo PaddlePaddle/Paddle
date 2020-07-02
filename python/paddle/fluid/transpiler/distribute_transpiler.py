@@ -973,8 +973,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 inputs={},
                 outputs={"Out": table_var},
                 attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(self.startup_program.global_block(),
-                       table_param_init_op)
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
 
     def _delete_trainer_optimizer(self, is_startup):
         optimize_vars = []
@@ -1308,8 +1307,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 pserver_program.num_blocks - 1)
             optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
-                cloned_op = self._append_pserver_non_opt_ops(
-                    lr_decay_block, op)
+                cloned_op = self._append_pserver_non_opt_ops(lr_decay_block, op)
                 # append sub blocks to pserver_program in lr_decay_op
                 __clone_lr_op_sub_block__(cloned_op, pserver_program,
                                           lr_decay_block)
@@ -2216,8 +2214,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             merged_var_name = orig_varname
 
         merged_var = pserver_block.vars[merged_var_name]
-        grad_to_block_id.append(
-            merged_var.name + ":" + str(optimize_block.idx))
+        grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if self.sync_mode or self.config.completely_not_async and self.trainer_num > 1:
             vars2merge = []
             for i in range(self.trainer_num):
