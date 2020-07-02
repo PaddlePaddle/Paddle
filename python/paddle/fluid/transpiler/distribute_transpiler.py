@@ -900,8 +900,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         [param_varname, recv_op_role_var_name]
                     })
 
-        self._update_remote_sparse_update_op(
-            program, need_sparse_update_params)
+        self._update_remote_sparse_update_op(program, need_sparse_update_params)
 
         if self.sync_mode:
             # form a WAW dependency
@@ -935,8 +934,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
                                                         pserver_endpoints)
-            self._split_table_grad_and_add_send_vars(
-                program, pserver_endpoints)
+            self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
@@ -1292,8 +1290,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
             # clone ops
             for origin_op in origin_block.ops:
-                cloned_op = self._clone_lr_op(
-                    program, new_sub_block, origin_op)
+                cloned_op = self._clone_lr_op(program, new_sub_block, origin_op)
                 # clone sub_block of op
                 __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
@@ -2319,8 +2316,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         if self.config.enable_dc_asgd:
             param_var = _get_param_block(opt_op)
-            dc = self._append_dc_asgd_ops(
-                optimize_block, param_var, merged_var)
+            dc = self._append_dc_asgd_ops(optimize_block, param_var, merged_var)
 
         for key in opt_op.input_names:
             if key == "Grad":
