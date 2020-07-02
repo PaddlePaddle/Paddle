@@ -811,7 +811,7 @@ def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
         sub_assign_to_out_ops = []
         for var in sub_block_op_desc.output_arg_names:
             for op_desc in sub_block.ops:
-                if op_desc.type == "assign" and var in op_desc.output_arg_names:
+                if var in op_desc.output_arg_names:
                     sub_assign_to_out_ops.append(op_desc)
                     for name in op_desc.input_arg_names:
                         if sub_block.has_var(name):
