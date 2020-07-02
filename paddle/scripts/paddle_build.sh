@@ -749,7 +749,6 @@ function card_test() {
     set -m
     case_count $1 $2
     ut_startTime_s=`date +%s` 
-    summary_failtest=''
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
 
@@ -783,26 +782,26 @@ function card_test() {
         done
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest_output=`ctest -I $i,,$NUM_PROC -R "($testcases)" -V &`
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V &)|tee tmp.log
             else
-                ctest_output=`env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &`
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &)|tee tmp.log
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest_output=`ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &`
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee tmp.log
             else
-                ctest_output=`env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &`
-            fi
-            echo "$ctest_output"
-            if [[ $ctest_output =~ 'The following tests FAILED:' ]]
-            then
-                failuretest=`echo $ctest_output | sed 's/.*The following tests FAILED://g'`
-            else
-                failuretest=''
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee tmp.log
             fi
         fi
+        grep 'The following tests FAILED:' tmp.log
+        if [ $? -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' tmp.log | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+        fi
+        echo "failuretest: ""$failuretest"
+        summary_failtest="$summary_failtest $failuretest"
     done
-    summary_failtest="$summary_failtest""$failuretest"
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -814,6 +813,7 @@ function card_test() {
 }
 
 function parallel_test_base() {
+    summary_failtest=''
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -887,6 +887,7 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        echo "summary_failtest::::"
         echo "$summary_failtest"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
