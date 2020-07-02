@@ -70,9 +70,9 @@ def hsigmoid(x, w, label, bias, num_classes):
     batch_size = x.shape[0]
     code_length = find_latest_set(num_classes - 1)
     code_table = [0 for _ in range(code_length)]
-    pre_output = np.zeros((batch_size, code_length))
-    pre_sum = np.zeros((batch_size, 1))
-    out = np.zeros((batch_size, 1))
+    pre_output = np.zeros((batch_size, code_length)).astype('float64')
+    pre_sum = np.zeros((batch_size, 1)).astype('float64')
+    out = np.zeros((batch_size, 1)).astype('float64')
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -105,9 +105,9 @@ def hsigmoid(x, w, label, bias, num_classes):
 
 def hsigmoid_grad(x, w, label, bias, num_classes):
     batch_size = x.shape[0]
-    dx = np.zeros(x.shape)
-    dw = np.zeros(w.shape)
-    db = np.zeros(bias.shape)
+    dx = np.zeros(x.shape).astype('float64')
+    dw = np.zeros(w.shape).astype('float64')
+    db = np.zeros(bias.shape).astype('float64')
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
@@ -133,9 +133,9 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
     code_length = len(path_table[0])
     code_table = [0 for _ in range(code_length)]
     # init pre_out with shape [N, code_length]
-    pre_output = np.zeros((batch_size, code_length))
-    pre_sum = np.zeros((batch_size, 1))
-    out = np.zeros((batch_size, 1))
+    pre_output = np.zeros((batch_size, code_length)).astype('float64')
+    pre_sum = np.zeros((batch_size, 1)).astype('float64')
+    out = np.zeros((batch_size, 1)).astype('float64')
     if isinstance(bias, np.ndarray):
         for i in range(batch_size):
             code_table = CodeTableWithCustomTree(path_table, path_code, i)
@@ -173,11 +173,13 @@ class TestHSigmoidOp(OpTest):
         num_classes = 101
         feature_size = 5
         batch_size = 20
-        x = np.random.uniform(-1, 1, (batch_size, feature_size))
-        w = np.random.uniform(-1, 1, (num_classes - 1, feature_size))
+        x = np.random.uniform(-1, 1,
+                              (batch_size, feature_size)).astype('float64')
+        w = np.random.uniform(-1, 1,
+                              (num_classes - 1, feature_size)).astype('float64')
         label = np.random.randint(0, num_classes,
                                   (batch_size, 1)).astype('int64')
-        bias = np.random.uniform(-1, 1, (num_classes - 1, 1))
+        bias = np.random.uniform(-1, 1, (num_classes - 1, 1)).astype('float64')
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
         pre_output, out = hsigmoid(x, w, label, bias, num_classes)
