@@ -174,26 +174,19 @@ class Accuracy(Metric):
         from paddle.incubate.hapi.metrics import Accuracy
         from paddle.incubate.hapi.loss import CrossEntropy
         from paddle.incubate.hapi.datasets import MNIST
-        from paddle.incubate.hapi.model import Input
         from paddle.incubate.hapi.vision.models import LeNet 
 
         fluid.enable_dygraph()
 
         train_dataset = MNIST(mode='train')
 
-        model = LeNet()
+        model = Model(LeNet())
         optim = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=model.parameters())
-
-        inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
-            
         model.prepare(
             optim,
             loss_function=CrossEntropy(average=False),
-            metrics=Accuracy(),
-            inputs=inputs,
-            labels=labels)
+            metrics=Accuracy())
 
         model.fit(train_dataset, batch_size=64)
 

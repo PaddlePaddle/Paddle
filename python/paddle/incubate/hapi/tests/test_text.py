@@ -36,7 +36,7 @@ class ModuleApiTest(unittest.TestCase):
         np.random.seed(cls._random_seed)
         random.seed(cls._random_seed)
 
-        cls.model_cls = type(cls.__name__ + "Model", (Model, ), {
+        cls.model_cls = type(cls.__name__ + "Model", (Layer, ), {
             "__init__": cls.model_init_wrapper(cls.model_init),
             "forward": cls.model_forward
         })
@@ -89,8 +89,9 @@ class ModuleApiTest(unittest.TestCase):
             fluid.disable_dygraph()
         fluid.default_main_program().random_seed = self._random_seed
         fluid.default_startup_program().random_seed = self._random_seed
-        model = self.model_cls(**self.attrs) if isinstance(
+        layer = self.model_cls(**self.attrs) if isinstance(
             self.attrs, dict) else self.model_cls(*self.attrs)
+        model = Model(layer)
         model.prepare(inputs=self.make_inputs(), device=place)
         if self.param_states:
             model.load(self.param_states, optim_state=None)

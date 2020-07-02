@@ -298,7 +298,7 @@ class ProgBarLogger(Callback):
             from paddle.incubate.hapi.datasets import MNIST
             from paddle.incubate.hapi.vision.models import LeNet
             from paddle.incubate.hapi.callbacks import ProgBarLogger
-            from paddle.incubate.hapi.model import Input, set_device
+            from paddle.incubate.hapi.model import Input
 
             inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
             labels = [Input([None, 1], 'int64', name='label')]
@@ -441,7 +441,7 @@ class ModelCheckpoint(Callback):
             
             from paddle.incubate.hapi.vision.models import LeNet
             from paddle.incubate.hapi.callbacks import ModelCheckpoint
-            from paddle.incubate.hapi.model import Input, set_device
+            from paddle.incubate.hapi.model import Input
 
             inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
             labels = [Input([None, 1], 'int64', name='label')]

@@ -16,9 +16,12 @@ import collections
 import contextlib
 import sys
 import numpy as np
-import collections
 import six
 import re
+import copy
+import weakref
+import warnings
+
 from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
@@ -26,9 +29,7 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard, param_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-import copy
-import weakref
-import warnings
+from ..framework import in_dygraph_mode
 
 __all__ = ['Layer']
 
@@ -702,22 +703,25 @@ class Layer(core.Layer):
 
         '''
 
-        inner_state_dict = self.state_dict()
+        def _check_match(key, param):
+            state = stat_dict.get(key, None)
+            if state is None:
+                raise ValueError(
+                    "{} is not found in the providing file.".format(key))
+            if list(state.shape) != list(param.shape):
+                raise ValueError(
+                    "{} receives a shape {}, but the expected shape is {}.".
+                    format(key, list(state.shape), list(param.shape)))
+            return param, state
 
-        for name, para in inner_state_dict.items():
-            key_name = name if use_structured_name else para.name
-            if key_name in stat_dict:
-                para.set_value(stat_dict[key_name])
-            else:
-                raise RuntimeError(
-                    "Parameter not found, Can't not find [ {} ] in stat_dict"
-                    "use_structured_name is set to [{}]".format(
-                        key_name, use_structured_name))
-        unused_para_list = []
-        for k, v in stat_dict.items():
-            if k not in inner_state_dict:
-                unused_para_list.append(k)
-        if len(unused_para_list) > 0:
-            warnings.warn(
-                "Varibale [ {} ] are not used, because not included in layers state_dict".
-                format(" ".join(unused_para_list)))
+        matched_param_state = []
+        for key, param in self.state_dict().items():
+            key_name = key if use_structured_name else param.name
+            try:
+                match_res = _check_match(key_name, param)
+            except ValueError as err:
+                warnings.warn(("Skip loading for {}. ".format(key) + str(err)))
+            matched_param_state.append(match_res)
+
+        for param, state in matched_param_state:
+            param.set_value(state)

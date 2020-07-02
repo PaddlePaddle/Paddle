@@ -20,9 +20,10 @@ import unittest
 import numpy as np
 import contextlib
 
+import paddle
 from paddle import fluid
 
-from paddle.incubate.hapi.model import Model, Input, set_device
+from paddle.incubate.hapi.model import Model, Input
 from paddle.incubate.hapi.loss import CrossEntropy
 from paddle.incubate.hapi.vision.models import LeNet
 from paddle.incubate.hapi.metrics import Accuracy
@@ -58,7 +59,7 @@ def compute_accuracy(pred, gt):
                  'CPU testing is not supported')
 class TestDistTraning(unittest.TestCase):
     def test_static_multiple_gpus(self):
-        device = set_device('gpu')
+        device = paddle.set_device('gpu')
 
         im_shape = (-1, 1, 28, 28)
         batch_size = 128
@@ -66,17 +67,16 @@ class TestDistTraning(unittest.TestCase):
         inputs = [Input(im_shape, 'float32', name='image')]
         labels = [Input([None, 1], 'int64', name='label')]
 
+        model = Model(LeNet(), inputs, labels)
+        optim = fluid.optimizer.Momentum(
+            learning_rate=0.001, momentum=.9, parameter_list=model.parameters())
+        model.prepare(optim, CrossEntropy(), Accuracy())
+
         train_dataset = MnistDataset(mode='train')
         val_dataset = MnistDataset(mode='test')
         test_dataset = MnistDataset(mode='test', return_label=False)
 
-        model = LeNet()
-        optim = fluid.optimizer.Momentum(
-            learning_rate=0.001, momentum=.9, parameter_list=model.parameters())
-        loss = CrossEntropy()
-        model.prepare(optim, loss, Accuracy(), inputs, labels, device=device)
         cbk = ProgBarLogger(50)
-
         model.fit(train_dataset,
                   val_dataset,
                   epochs=2,

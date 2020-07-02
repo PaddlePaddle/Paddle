@@ -26,7 +26,8 @@ from paddle import fluid
 from paddle.nn import Conv2D, Pool2D, Linear, ReLU, Sequential
 from paddle.fluid.dygraph.base import to_variable
 
-from paddle.incubate.hapi.model import Model, Input, set_device
+import paddle.incubate.hapi as hapi
+from paddle.incubate.hapi.model import Model, Input
 from paddle.incubate.hapi.loss import CrossEntropy
 from paddle.incubate.hapi.metrics import Accuracy
 from paddle.incubate.hapi.datasets import MNIST
@@ -123,7 +124,7 @@ class TestModel(unittest.TestCase):
     def setUpClass(cls):
         if not fluid.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
-        cls.device = set_device('gpu')
+        cls.device = hapi.set_device('gpu')
         fluid.enable_dygraph(cls.device)
 
         sp_num = 1280
@@ -189,15 +190,15 @@ class TestModel(unittest.TestCase):
         fluid.default_startup_program().random_seed = seed
         fluid.default_main_program().random_seed = seed
 
-        model = LeNet()
+        # model = LeNet()
+        net = LeNet()
         optim_new = fluid.optimizer.Adam(
-            learning_rate=0.001, parameter_list=model.parameters())
+            learning_rate=0.001, parameter_list=net.parameters())
+        model = Model(net, inputs=self.inputs, labels=self.labels)
         model.prepare(
             optim_new,
             loss_function=CrossEntropy(average=False),
-            metrics=Accuracy(),
-            inputs=self.inputs,
-            labels=self.labels)
+            metrics=Accuracy())
         model.fit(self.train_dataset, batch_size=64, shuffle=False)
 
         result = model.evaluate(self.val_dataset, batch_size=64)
@@ -225,9 +226,8 @@ class TestModel(unittest.TestCase):
 
     def evaluate(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
-        model = LeNet()
-        model.prepare(
-            metrics=Accuracy(), inputs=self.inputs, labels=self.labels)
+        model = Model(LeNet(), self.inputs, self.labels)
+        model.prepare(metrics=Accuracy())
         model.load(self.weight_path)
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
@@ -247,8 +247,8 @@ class TestModel(unittest.TestCase):
 
     def predict(self, dynamic):
         fluid.enable_dygraph(self.device) if dynamic else None
-        model = LeNet()
-        model.prepare(inputs=self.inputs)
+        model = Model(LeNet(), self.inputs)
+        model.prepare()
         model.load(self.weight_path)
         output = model.predict(
             self.test_dataset, batch_size=64, stack_outputs=True)
@@ -271,7 +271,7 @@ class TestModel(unittest.TestCase):
         fluid.disable_dygraph() if dynamic else None
 
 
-class MyModel(Model):
+class MyModel(fluid.dygraph.Layer):
     def __init__(self):
         super(MyModel, self).__init__()
         self._fc = Linear(20, 10, act='softmax')
@@ -310,28 +310,24 @@ class TestModelFunction(unittest.TestCase):
 
         ref = get_expect()
         for dynamic in [True, False]:
-            device = set_device('cpu')
+            device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
-            model = MyModel()
 
+            net = MyModel()
             optim2 = fluid.optimizer.SGD(learning_rate=0.001,
-                                         parameter_list=model.parameters())
+                                         parameter_list=net.parameters())
 
             inputs = [Input([None, dim], 'float32', name='x')]
             labels = [Input([None, 1], 'int64', name='label')]
-            model.prepare(
-                optim2,
-                loss_function=CrossEntropy(average=False),
-                inputs=inputs,
-                labels=labels,
-                device=device)
+            model = Model(net, inputs, labels)
+            model.prepare(optim2, loss_function=CrossEntropy(average=False))
             loss, = model.train_batch([data], [label])
 
             np.testing.assert_allclose(loss.flatten(), ref.flatten())
             fluid.disable_dygraph() if dynamic else None
 
-    def test_test_batch(self, dynamic=True):
+    def test_test_batch(self):
         dim = 20
         data = np.random.random(size=(4, dim)).astype(np.float32)
 
@@ -346,32 +342,31 @@ class TestModelFunction(unittest.TestCase):
 
         ref = get_expect()
         for dynamic in [True, False]:
-            device = set_device('cpu')
+            device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
             self.set_seed()
-            model = MyModel()
+            net = MyModel()
             inputs = [Input([None, dim], 'float32', name='x')]
-            model.prepare(inputs=inputs, device=device)
+            model = Model(net, inputs)
+            model.prepare()
             out, = model.test_batch([data])
 
-            np.testing.assert_allclose(out, ref)
+            np.testing.assert_allclose(out, ref, rtol=1e-6)
             fluid.disable_dygraph() if dynamic else None
 
     def test_save_load(self):
         path = tempfile.mkdtemp()
         for dynamic in [True, False]:
-            device = set_device('cpu')
+            device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
-            model = MyModel()
+            net = MyModel()
             inputs = [Input([None, 20], 'float32', name='x')]
             labels = [Input([None, 1], 'int64', name='label')]
             optim = fluid.optimizer.SGD(learning_rate=0.001,
-                                        parameter_list=model.parameters())
+                                        parameter_list=net.parameters())
+            model = Model(net, inputs, labels)
             model.prepare(
-                inputs=inputs,
-                optimizer=optim,
-                loss_function=CrossEntropy(average=False),
-                labels=labels)
+                optimizer=optim, loss_function=CrossEntropy(average=False))
             model.save(path + '/test')
             model.load(path + '/test')
             shutil.rmtree(path)
@@ -379,82 +374,73 @@ class TestModelFunction(unittest.TestCase):
 
     def test_dynamic_save_static_load(self):
         path = tempfile.mkdtemp()
-        # for dynamic in [True, False]:
-        device = set_device('cpu')
-        fluid.enable_dygraph(device)  #if dynamic else None
-        model = MyModel()
-        inputs = [Input([None, 20], 'float32', name='x')]
-        labels = [Input([None, 1], 'int64', name='label')]
+        # dynamic saving
+        device = hapi.set_device('cpu')
+        fluid.enable_dygraph(device)
+        model = Model(MyModel())
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(
-            inputs=inputs,
-            optimizer=optim,
-            loss_function=CrossEntropy(average=False),
-            labels=labels)
+            optimizer=optim, loss_function=CrossEntropy(average=False))
         model.save(path + '/test')
         fluid.disable_dygraph()
-        model = MyModel()
+
         inputs = [Input([None, 20], 'float32', name='x')]
         labels = [Input([None, 1], 'int64', name='label')]
+        model = Model(MyModel(), inputs, labels)
         optim = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=model.parameters())
         model.prepare(
-            inputs=inputs,
-            optimizer=optim,
-            loss_function=CrossEntropy(average=False),
-            labels=labels)
+            optimizer=optim, loss_function=CrossEntropy(average=False))
         model.load(path + '/test')
         shutil.rmtree(path)
 
     def test_static_save_dynamic_load(self):
         path = tempfile.mkdtemp()
 
-        model = MyModel()
+        net = MyModel()
         inputs = [Input([None, 20], 'float32', name='x')]
         labels = [Input([None, 1], 'int64', name='label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
-                                    parameter_list=model.parameters())
+                                    parameter_list=net.parameters())
+        model = Model(net, inputs, labels)
         model.prepare(
-            inputs=inputs,
-            optimizer=optim,
-            loss_function=CrossEntropy(average=False),
-            labels=labels)
+            optimizer=optim, loss_function=CrossEntropy(average=False))
         model.save(path + '/test')
 
-        device = set_device('cpu')
+        device = hapi.set_device('cpu')
         fluid.enable_dygraph(device)  #if dynamic else None
 
-        model = MyModel()
+        net = MyModel()
         inputs = [Input([None, 20], 'float32', name='x')]
         labels = [Input([None, 1], 'int64', name='label')]
         optim = fluid.optimizer.SGD(learning_rate=0.001,
-                                    parameter_list=model.parameters())
+                                    parameter_list=net.parameters())
+        model = Model(net, inputs, labels)
         model.prepare(
-            inputs=inputs,
-            optimizer=optim,
-            loss_function=CrossEntropy(average=False),
-            labels=labels)
+            optimizer=optim, loss_function=CrossEntropy(average=False))
         model.load(path + '/test')
         shutil.rmtree(path)
         fluid.disable_dygraph()
 
     def test_parameters(self):
         for dynamic in [True, False]:
-            device = set_device('cpu')
+            device = hapi.set_device('cpu')
             fluid.enable_dygraph(device) if dynamic else None
-            model = MyModel()
+            net = MyModel()
             inputs = [Input([None, 20], 'float32', name='x')]
-            model.prepare(inputs=inputs)
+            model = Model(net, inputs)
+            model.prepare()
             params = model.parameters()
             self.assertTrue(params[0].shape[0] == 20)
             self.assertTrue(params[0].shape[1] == 10)
             fluid.disable_dygraph() if dynamic else None
 
     def test_export_deploy_model(self):
-        model = LeNet()
+        net = LeNet()
         inputs = [Input([-1, 1, 28, 28], 'float32', name='image')]
-        model.prepare(inputs=inputs)
+        model = Model(net, inputs)
+        model.prepare()
         save_dir = tempfile.mkdtemp()
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
