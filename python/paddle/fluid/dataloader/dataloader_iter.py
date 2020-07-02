@@ -57,8 +57,7 @@ def default_collate_fn(batch):
               fileds, and batch should be a list of sample.
     
     Returns:
-        batch(list of numpy array): collated batch data, a list of
-              batch fileds, each batch filed is a numpy array.
+        a list of numpy array: collated batch
     """
     sample = batch[0]
     # dataset has only 1 field
