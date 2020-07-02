@@ -80,7 +80,6 @@ def delete_optimizer_pass(program, config):
 
 def distributed_ops_pass(program, config):
     trainer_id = config.get_role_id()
-    pserver_endpoints = config.get_ps_endpoints()
 
     def _get_pull_sparse_ops(_program):
         pull_sparse_ops = {}
