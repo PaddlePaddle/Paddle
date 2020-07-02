@@ -3557,12 +3557,63 @@ class PipelineOptimizer(object):
     """
 	:api_attr: Static Graph
 
-    Pipeline Optimizer: Make a program to run as pipeline.
+    Pipeline Optimizer: Make a program to run as pipeline, that is splitting a
+    program into multiple sections (sub-programs) and each section run on a
+    device to enable the training of large scale models and the use of
+    heterogeneous devices. Meanwhile, all sections run in the stype of pipeline.
 
     Args:
         optimizer (Optimizer): The optimizer to use, such as SGD.
         num_microbatches (int): Number of microbatches. [Optional. Default:1].
         start_cpu_core_id (int): The first cpu core id to use. [Optional. Default:0].
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            with fluid.device_guard("gpu:0"):
+                x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+                y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[x, y],
+                    capacity=64,
+                    use_double_buffer=True,
+                    iterable=False)
+
+                emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+                emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+
+            with fluid.device_guard("gpu:1"):
+                concat = layers.concat([emb_x, emb_y], axis=1)
+                fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+                loss = layers.reduce_mean(fc)
+            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+            optimizer = fluid.optimizer.PipelineOptimizer(optimizer)
+            optimizer.minimize(loss)
+
+            def train_reader():
+                for _ in range(4):
+                    x = np.random.random(size=[1]).astype('int64')
+                    y = np.random.random(size=[1]).astype('int64')
+                    yield x, y
+            data_loader.set_sample_generator(train_reader, batch_size=1)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            batch_size = 1
+            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
+            dataset.set_use_var([x,y])
+            dataset.set_batch_size(batch_size)
+            dataset.set_filelist(filelist)
+            data_loader.start()
+            exe.train_from_dataset(
+                    fluid.default_main_program(),
+                    dataset)
+            data_loader.reset()
     """
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
