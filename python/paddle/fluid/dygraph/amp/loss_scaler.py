@@ -109,19 +109,28 @@ class AmpScaler(object):
         Args:
             optimizer(Optimizer):  The optimizer used to update parameters.
         """
+        optimize_ops = None
+        params_grads = None
+
         if not self._enable:
-            return
+            return optimize_ops, params_grads
 
         #  unscale the grad
         self._unscale(optimizer)
 
+        optimize_ops = None
+        params_grads = None
+
         if self._found_inf:
             self._cache_founf_inf = True
         else:
-            optimizer.minimize(*args, **kwargs)
+            optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
             self._cache_founf_inf = False
 
+        # uopdate the scale
         self._update()
+
+        return optimize_ops, params_grads
 
     def _unscale(self, optimizer):
         if not self._enable:

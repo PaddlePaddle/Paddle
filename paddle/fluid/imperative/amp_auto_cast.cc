@@ -164,10 +164,8 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
 
 void SetAmpOpList(const std::unordered_set<std::string>& white_list,
                   const std::unordered_set<std::string>& black_list) {
-  std::copy(white_list.begin(), white_list.end(),
-            std::inserter(g_white_ops, g_white_ops.begin()));
-  std::copy(black_list.begin(), black_list.end(),
-            std::inserter(g_black_ops, g_black_ops.begin()));
+  g_white_ops = white_list;
+  g_black_ops = black_list;
 }
 
 std::tuple<const std::unordered_set<std::string>,
