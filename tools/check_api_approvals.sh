@@ -285,14 +285,14 @@ RUNTYPE_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH|gre
 if [ "${RUNTYPE_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for CMAKELISTS_FILE in ${RUNTYPE_FILE_CHANGED};
     do
-        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "+" |grep -E "RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST" || true`
+        RUNTYPE_ADD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CMAKELISTS_FILE} |grep "^+" |grep -E "RUN_TYPE=EXCLUSIVE|RUN_TYPE=DIST" || true`
 	if [[ ${RUNTYPE_ADD} != "" ]];then
 	    RUNTYPE_ADD_LINES="${RUNTYPE_ADD_LINES}\n${CMAKELISTS_FILE}\n${RUNTYPE_ADD}\n"
 	fi
     done
-    if [ "${RUNTYPE_ADD_LINES}" != "" ];then
-        echo_line="You must have one RD (XieYunshen(Recommend)) approval for setting parameter RUN_TYPE to EXCLUSIVE or DIST.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\n"
-	check_approval 1 32428676
+    if [[ ${RUNTYPE_ADD_LINES} != "" ]];then
+        echo_line="You must have one RD (XieYunshen(Recommend) or chalsliu) approval for setting parameter RUN_TYPE to EXCLUSIVE or DIST.\nThe corresponding lines are as follows:\n${RUNTYPE_ADD_LINES}\n"
+	check_approval 1 32428676 45041955
     fi
 fi
 
