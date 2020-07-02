@@ -28,8 +28,10 @@
 #include <string>
 #include <vector>
 
-/*! \namespace paddle
- */
+#include "crypto/cipher.h"
+#include "paddle_infer_declare.h"  // NOLINT
+                                   /*! \namespace paddle
+                                    */
 namespace paddle {
 
 /// \brief Paddle data type.
@@ -404,4 +406,6 @@ int PaddleDtypeSize(PaddleDType dtype);
 
 std::string get_version();
 
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
 }  // namespace paddle

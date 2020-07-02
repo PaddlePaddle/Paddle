@@ -105,6 +105,11 @@ function(copy_part_of_thrid_party TARGET DST)
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
+        set(dst_dir "${DST}/third_party/install/cryptopp")
+        copy(${TARGET}
+        SRCS ${CRYPTOPP_INCLUDE_DIR} ${CRYPTOPP_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)
+
     set(dst_dir "${DST}/third_party/install/xxhash")
     copy(${TARGET}
         SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
@@ -161,7 +166,10 @@ copy(inference_lib_dist
 copy(inference_lib_dist
         SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
-
+copy(inference_lib_dist
+        SRCS  ${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io/crypto/cipher.h
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/crypto/)
+include_directories(${CMAKE_BINARY_DIR}/../paddle/fluid/framework/io)
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
 "A path setting CAPI fluid inference shared")
