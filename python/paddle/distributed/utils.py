@@ -250,29 +250,29 @@ def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
 
 
 def terminate_local_procs(procs):
+    decents = []
+    for child in psutil.Process(os.getpid()).children(recursive=True):
+        decents.append(child)
+
     for p in procs:
-        if p.proc.poll() is None:
-            p.proc.terminate()
-            p.log_fn.close()
-            logger.debug("terminate process id:{}".format(p.proc.pid))
+        p.log_fn.close()
 
-    #wait all process terminiated
-    time.sleep(3)
-    for step in range(0, 50):
-        alive = False
-        for p in procs:
-            if p.proc.poll() is None:  # not termniate
-                os.kill(p.proc.pid, signal.SIGKILL)
-                alive = True
+    # try to kill
+    for p in decents:
+        p.send_signal(signal.SIGTERM)
 
-        if not alive:
-            logger.info("terminate all the procs")
-            return
+    # wait
+    gone, alive = psutil.wait_procs(decents, timeout=3)
+    for p in alive:
+        p.kill()
 
-        time.sleep(3)
+    # still alive?
+    gone, alive = psutil.wait_procs(decents, timeout=1)
+    if len(alive) != 0:
+        logger.fatal("can't kill all process and exit")
+        exit(1)
 
-    logger.fatal("can't kill all process and exit")
-    exit(1)
+    logger.info("terminate all procs")
 
 
 def get_host_name_ip():
