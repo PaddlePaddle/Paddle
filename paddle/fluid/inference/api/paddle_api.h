@@ -27,7 +27,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-
+#include "crypto/cipher.h"
 /*! \namespace paddle
  */
 namespace paddle {
@@ -404,4 +404,6 @@ int PaddleDtypeSize(PaddleDType dtype);
 
 std::string get_version();
 
+PD_INFER_DECL std::shared_ptr<framework::Cipher> MakeCipher(
+    const std::string& config_file);
 }  // namespace paddle
