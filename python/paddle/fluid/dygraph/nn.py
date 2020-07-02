@@ -1072,14 +1072,14 @@ class InstanceNorm(layers.Layer):
                  dtype='float32'):
         super(InstanceNorm, self).__init__()
 
-        if param_attr == False:
-            assert bias_attr == False, "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
+        if param_attr == False or bias_attr == False:
+            assert bias_attr == param_attr, "param_attr and bias_attr must be set to Fasle at the same time in InstanceNorm"
         self._epsilon = epsilon
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
 
-        if param_attr and bias_attr:
+        if param_attr != False and bias_attr != False:
             self.scale = self.create_parameter(
                 attr=self._param_attr,
                 shape=[num_channels],
