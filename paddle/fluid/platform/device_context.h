@@ -517,7 +517,7 @@ class DeviceContextPool {
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool,
                             platform::errors::PreconditionNotMet(
-                                "Need to Create DeviceContextPool first!"));
+                                "Need to Create DeviceContextPool firstly!"));
     return *pool;
   }
 

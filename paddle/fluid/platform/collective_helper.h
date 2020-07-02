@@ -81,11 +81,11 @@ class NCCLCommContext {
     PADDLE_ENFORCE_GT(
         comm_map_.count(ring_id), 0,
         platform::errors::InvalidArgument(
-            "comunicator in ring id %d has not been initialized", ring_id));
+            "Comunicator in ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
                       platform::errors::InvalidArgument(
-                          "you should specify a device id to retrieve from "
-                          "multiple communicators"));
+                          "One device id should be specified to retrieve from "
+                          "multiple communicators."));
     return comm_map_.at(ring_id).begin()->second.get();
   }
 
@@ -94,11 +94,11 @@ class NCCLCommContext {
     PADDLE_ENFORCE_GT(
         comm_map_.count(ring_id), 0,
         platform::errors::InvalidArgument(
-            "comunicator of ring id %d has not been initialized", ring_id));
+            "Comunicator of ring id %d has not been initialized.", ring_id));
     PADDLE_ENFORCE_GT(
         comm_map_.at(ring_id).count(dev_id), 0,
         platform::errors::InvalidArgument(
-            "comunicator at device id %d has not been initialized in ring %d",
+            "Comunicator at device id %d has not been initialized in ring %d.",
             dev_id, ring_id));
     return comm_map_.at(ring_id).at(dev_id).get();
   }
