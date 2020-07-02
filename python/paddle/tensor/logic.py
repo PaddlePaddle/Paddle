@@ -263,11 +263,12 @@ def greater_equal(x, y):
             import numpy as np
             import paddle
             import paddle.imperative as imperative
-            with imperative.guard(paddle.CPUPlace()):
-                x = imperative.to_variable(np.array([1, 2, 3]))
-                y = imperative.to_variable(np.array([1, 3, 2]))
-                result1 = paddle.greater_equal(x, y)
-                print(result1.numpy())  # result1 = [True False True]
+
+            paddle.enable_imperative()
+            x = imperative.to_variable(np.array([1, 2, 3]))
+            y = imperative.to_variable(np.array([1, 3, 2]))
+            result1 = paddle.greater_equal(x, y)
+            print(result1.numpy())  # result1 = [True False True]
     """
     out = fluid.layers.greater_equal(x, y, cond=None)
     return out
@@ -292,11 +293,12 @@ def greater_than(x, y):
             import numpy as np
             import paddle
             import paddle.imperative as imperative
-            with imperative.guard(paddle.CPUPlace()):
-                x = imperative.to_variable(np.array([1, 2, 3]))
-                y = imperative.to_variable(np.array([1, 3, 2]))
-                result1 = paddle.greater_than(x, y)
-                print(result1.numpy())  # result1 = [False False False]
+
+            paddle.enable_imperative()
+            x = imperative.to_variable(np.array([1, 2, 3]))
+            y = imperative.to_variable(np.array([1, 3, 2]))
+            result1 = paddle.greater_than(x, y)
+            print(result1.numpy())  # result1 = [False False False]
     """
     out = fluid.layers.greater_than(x, y, cond=None)
     return out
@@ -322,11 +324,12 @@ def less_equal(x, y):
             import numpy as np
             import paddle
             import paddle.imperative as imperative
-            with imperative.guard(paddle.CPUPlace()):
-                x = imperative.to_variable(np.array([1, 2, 3]))
-                y = imperative.to_variable(np.array([1, 3, 2]))
-                result1 = paddle.less_equal(x, y)
-                print(result1.numpy())  # result1 = [True True False]
+
+            paddle.enable_imperative()
+            x = imperative.to_variable(np.array([1, 2, 3]))
+            y = imperative.to_variable(np.array([1, 3, 2]))
+            result1 = paddle.less_equal(x, y)
+            print(result1.numpy())  # result1 = [True True False]
     """
     out = fluid.layers.less_equal(x, y, cond=None)
     return out
@@ -352,11 +355,12 @@ def less_than(x, y):
             import numpy as np
             import paddle
             import paddle.imperative as imperative
-            with imperative.guard(paddle.CPUPlace()):
-                x = imperative.to_variable(np.array([1, 2, 3]))
-                y = imperative.to_variable(np.array([1, 3, 2]))
-                result1 = paddle.less_than(x, y)
-                print(result1.numpy())  # result1 = [False True False]
+
+            paddle.enable_imperative()
+            x = imperative.to_variable(np.array([1, 2, 3]))
+            y = imperative.to_variable(np.array([1, 3, 2]))
+            result1 = paddle.less_than(x, y)
+            print(result1.numpy())  # result1 = [False True False]
     """
     out = fluid.layers.less_than(x, y, force_cpu=False, cond=None)
     return out
@@ -382,11 +386,12 @@ def not_equal(x, y):
             import numpy as np
             import paddle
             import paddle.imperative as imperative
-            with imperative.guard(paddle.CPUPlace()):
-                x = imperative.to_variable(np.array([1, 2, 3]))
-                y = imperative.to_variable(np.array([1, 3, 2]))
-                result1 = paddle.not_equal(x, y)
-                print(result1.numpy())  # result1 = [False True True]
+
+            paddle.enable_imperative()
+            x = imperative.to_variable(np.array([1, 2, 3]))
+            y = imperative.to_variable(np.array([1, 3, 2]))
+            result1 = paddle.not_equal(x, y)
+            print(result1.numpy())  # result1 = [False True True]
     """
     out = fluid.layers.not_equal(x, y, cond=None)
     return out
