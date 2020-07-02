@@ -100,6 +100,29 @@ class TestTransforms(unittest.TestCase):
         ])
         self.do_transform(trans)
 
+    def test_rotate(self):
+        trans = transforms.Compose([transforms.RandomRotate(90)])
+        self.do_transform(trans)
+
+    def test_pad(self):
+        trans = transforms.Compose([transforms.Pad(2)])
+        self.do_transform(trans)
+
+    def test_erase(self):
+        trans = transforms.Compose([transforms.RandomErasing()])
+        self.do_transform(trans)
+
+    def test_random_crop(self):
+        trans = transforms.Compose([
+            transforms.RandomCrop(200),
+            transforms.RandomCrop((140, 160)),
+        ])
+        self.do_transform(trans)
+
+    def test_grayscale(self):
+        trans = transforms.Compose([transforms.Grayscale(), ])
+        self.do_transform(trans)
+
     def test_exception(self):
         trans = transforms.Compose([transforms.Resize(-1)])
 

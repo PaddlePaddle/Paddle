@@ -17,6 +17,7 @@ import collections
 import random
 
 import cv2
+import numbers
 import numpy as np
 
 if sys.version_info < (3, 3):
@@ -99,3 +100,183 @@ def resize(img, size, interpolation=cv2.INTER_LINEAR):
             return cv2.resize(img, (ow, oh), interpolation=interpolation)
     else:
         return cv2.resize(img, size[::-1], interpolation=interpolation)
+
+
+def pad(img, padding, fill=(0, 0, 0), padding_mode='constant'):
+    """Pad the given CV Image on all sides with speficified padding mode and fill value.
+    Args:
+        img (np.ndarray): Image to be padded.
+        padding (int or tuple): Padding on each border. If a single int is provided this
+            is used to pad all borders. If tuple of length 2 is provided this is the padding
+            on left/right and top/bottom respectively. If a tuple of length 4 is provided
+            this is the padding for the left, top, right and bottom borders
+            respectively.
+        fill (int, tuple): Pixel fill value for constant fill. Default is 0. If a tuple of
+            length 3, it is used to fill R, G, B channels respectively.
+            This value is only used when the padding_mode is constant
+        padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
+            constant: pads with a constant value, this value is specified with fill
+            edge: pads with the last value on the edge of the image
+            reflect: pads with reflection of image (without repeating the last value on the edge)
+                padding [1, 2, 3, 4] with 2 elements on both sides in reflect mode
+                will result in [3, 2, 1, 2, 3, 4, 3, 2]
+            symmetric: pads with reflection of image (repeating the last value on the edge)
+                padding [1, 2, 3, 4] with 2 elements on both sides in symmetric mode
+                will result in [2, 1, 1, 2, 3, 4, 4, 3]
+
+    Returns:
+        numpy ndarray: Paded image.
+    """
+
+    if not isinstance(padding, (numbers.Number, tuple)):
+        raise TypeError('Got inappropriate padding arg')
+    if not isinstance(fill, (numbers.Number, str, tuple)):
+        raise TypeError('Got inappropriate fill arg')
+    if not isinstance(padding_mode, str):
+        raise TypeError('Got inappropriate padding_mode arg')
+
+    if isinstance(padding, collections.Sequence) and len(padding) not in [2, 4]:
+        raise ValueError(
+            "Padding must be an int or a 2, or 4 element tuple, not a " +
+            "{} element tuple".format(len(padding)))
+
+    assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric'], \
+        'Expected padding mode be either constant, edge, reflect or symmetric, but got {}'.format(padding_mode)
+
+    PAD_MOD = {
+        'constant': cv2.BORDER_CONSTANT,
+        'edge': cv2.BORDER_REPLICATE,
+        'reflect': cv2.BORDER_DEFAULT,
+        'symmetric': cv2.BORDER_REFLECT
+    }
+
+    if isinstance(padding, int):
+        pad_left = pad_right = pad_top = pad_bottom = padding
+    if isinstance(padding, collections.Sequence) and len(padding) == 2:
+        pad_left = pad_right = padding[0]
+        pad_top = pad_bottom = padding[1]
+    if isinstance(padding, collections.Sequence) and len(padding) == 4:
+        pad_left, pad_top, pad_right, pad_bottom = padding
+
+    if isinstance(fill, numbers.Number):
+        fill = (fill, ) * (2 * len(img.shape) - 3)
+
+    if padding_mode == 'constant':
+        assert (len(fill) == 3 and len(img.shape) == 3) or (len(fill) == 1 and len(img.shape) == 2), \
+            'channel of image is {} but length of fill is {}'.format(img.shape[-1], len(fill))
+
+    img = cv2.copyMakeBorder(
+        src=img,
+        top=pad_top,
+        bottom=pad_bottom,
+        left=pad_left,
+        right=pad_right,
+        borderType=PAD_MOD[padding_mode],
+        value=fill)
+
+    return img
+
+
+def rotate(img,
+           angle,
+           interpolation=cv2.INTER_LINEAR,
+           expand=False,
+           center=None):
+    """Rotate the image by angle.
+    Args:
+        img (PIL Image): PIL Image to be rotated.
+        angle ({float, int}): In degrees clockwise order.
+        resample ({NEAREST, BILINEAR, BICUBIC}, optional):
+            An optional resampling filter.
+            See http://pillow.readthedocs.io/en/3.4.x/handbook/concepts.html#filters
+            If omitted, or if the image has mode "1" or "P", it is set to PIL.Image.NEAREST.
+        expand (bool, optional): Optional expansion flag.
+            If true, expands the output image to make it large enough to hold the entire rotated image.
+            If false or omitted, make the output image the same size as the input image.
+            Note that the expand flag assumes rotation around the center and no translation.
+        center (2-tuple, optional): Optional center of rotation.
+            Origin is the upper left corner.
+            Default is the center of the image.
+
+    Returns:
+        numpy ndarray: Rotated image.
+    """
+    dtype = img.dtype
+
+    h, w, _ = img.shape
+    point = center or (w / 2, h / 2)
+    M = cv2.getRotationMatrix2D(point, angle=-angle, scale=1)
+
+    if expand:
+        if center is None:
+            cos = np.abs(M[0, 0])
+            sin = np.abs(M[0, 1])
+
+            # compute the new bounding dimensions of the image
+            nW = int((h * sin) + (w * cos))
+            nH = int((h * cos) + (w * sin))
+
+            # adjust the rotation matrix to take into account translation
+            M[0, 2] += (nW / 2) - point[0]
+            M[1, 2] += (nH / 2) - point[1]
+
+            # perform the actual rotation and return the image
+            dst = cv2.warpAffine(img, M, (nW, nH))
+        else:
+            xx = []
+            yy = []
+            for point in (np.array([0, 0, 1]), np.array([w - 1, 0, 1]),
+                          np.array([w - 1, h - 1, 1]), np.array([0, h - 1, 1])):
+                target = np.dot(M, point)
+                xx.append(target[0])
+                yy.append(target[1])
+            nh = int(math.ceil(max(yy)) - math.floor(min(yy)))
+            nw = int(math.ceil(max(xx)) - math.floor(min(xx)))
+            # adjust the rotation matrix to take into account translation
+            M[0, 2] += (nw - w) / 2
+            M[1, 2] += (nh - h) / 2
+            dst = cv2.warpAffine(img, M, (nw, nh), flags=interpolation)
+    else:
+        dst = cv2.warpAffine(img, M, (w, h), flags=interpolation)
+    return dst.astype(dtype)
+
+
+def erase(img, i, j, h, w, v):
+    """ Erase the input Image with given value.
+
+    Args:
+        img (numpy.ndarray): image of size (C, H, W) to be erased
+        i (int): i in (i,j) i.e coordinates of the upper left corner.
+        j (int): j in (i,j) i.e coordinates of the upper left corner.
+        h (int): Height of the erased region.
+        w (int): Width of the erased region.
+        v: Erasing value.
+        inplace(bool, optional): For in-place operations. By default is set False.
+
+    Returns:
+        numpy ndarray: Erased image.
+    """
+
+    img[:, i:i + h, j:j + w] = v
+    return img
+
+
+def to_grayscale(img, num_output_channels=1):
+    """Convert image to grayscale version of image.
+    Args:
+        img (np.ndarray): Image to be converted to grayscale.
+    Returns:
+        numpy ndarray:  Grayscale version of the image.
+                        if num_output_channels == 1 : returned image is single channel
+                        if num_output_channels == 3 : returned image is 3 channel with r == g == b
+    """
+
+    if num_output_channels == 1:
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    elif num_output_channels == 3:
+        img = cv2.cvtColor(
+            cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
+    else:
+        raise ValueError('num_output_channels should be either 1 or 3')
+
+    return img
