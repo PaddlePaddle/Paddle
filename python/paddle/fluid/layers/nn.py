@@ -9361,29 +9361,31 @@ def pow(x, factor=1.0, name=None):
     :math:`out = x^{factor}`
 
     Args:
-        x(Variable): A ``Variable`` of which the data type is ``float32`` or ``float64``.
+        x(Variable): A ``Variable`` with type ``float32`` or ``float64``.
         factor(float32|Variable, optional): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.  The exponential factor of Pow. Default 1.0.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``.
+        Variable: A ``Variable`` with type same as ``x``.
 
     Examples:
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
+            import numpy as np
 
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
+            # use dygraph
+            with paddle.imperative.guard():
+                x_data = np.array([1, 2, 3])
+                factor = 2
+                x = paddle.imperative.to_variable(x_data)
+                res = paddle.pow(x, factor)
+                print(res.numpy()) # [1 4 9]
 
-            # example 1: argument factor is float
-            y_1 = fluid.layers.pow(x, factor=2.0)
-            # y_1 is x^{2.0}
-
-            # example 2: argument factor is Variable
-            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            y_2 = fluid.layers.pow(x, factor=factor_tensor)
-            # y_2 is x^{3.0}
+                factor = paddle.fill_constant(shape=[1], value=2, dtype='float32')
+                res = paddle.pow(x, factor)
+                print(res.numpy()) # [1 4 9]
     """
     check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'],
                              'pow')
