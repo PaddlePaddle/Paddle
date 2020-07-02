@@ -109,7 +109,7 @@ class FSTest(unittest.TestCase):
         dst_file = os.path.abspath("./test_download.dst")
 
         try:
-            fs.download(src, dst_file)
+            fs.download(src_file, dst_file)
             self.assertFalse(True)
         except FSFileNotExistsError as e:
             pass
