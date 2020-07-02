@@ -109,9 +109,10 @@ class BarrierBlock {
   explicit BarrierBlock(const int id, const BarrierType &type)
       : id_(id), type_(type) {}
 
-  void Wait() {
+  bool Wait() {
     std::unique_lock<std::mutex> lk(mutex_);
-    cv_.wait(lk, [this] { return (done); });
+    cv_.wait(lk, [this] { return (done_); });
+    return available_;
   }
 
   void Done(bool available) {
