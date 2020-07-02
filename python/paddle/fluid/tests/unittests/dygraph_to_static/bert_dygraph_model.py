@@ -247,8 +247,11 @@ class BertModelLayer(Layer):
 
         enc_output = self._encoder(emb_out, n_head_self_attn_mask)
 
-        if not self.return_pooled_out:
-            return enc_output
+        # TODO(zhhsplendid): uncomment this in next PR which we support various
+        # length of early return
+        #
+        #if not self.return_pooled_out:
+        #    return enc_output
         next_sent_feat = fluid.layers.slice(
             input=enc_output, axes=[1], starts=[0], ends=[1])
         next_sent_feat = self.pooled_fc(next_sent_feat)

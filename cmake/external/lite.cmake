@@ -25,7 +25,11 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   if(NOT LITE_GIT_TAG)
-    set(LITE_GIT_TAG 34c29406c27ee00cef033a98887403443eb2565f)
+    set(LITE_GIT_TAG ab8af5c4b4dc5b40217633e0aa436315912d7b53)
+  endif()
+
+  if(NOT CUDA_ARCH_NAME)
+    set(CUDA_ARCH_NAME "Auto")
   endif()
 
   # No quotes, so cmake can resolve it as a command with arguments.
