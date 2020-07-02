@@ -828,6 +828,7 @@ def _append_backward_ops_with_checkpoints_(
 def _get_sub_block_path(sub_block,
                         sub_block_op_desc,
                         no_grad_set,
+                        op_path_dict,
                         sub_block_output_names=None):
     """
     Get output vars in subblock which will be assigned to parent block.
@@ -861,7 +862,7 @@ def _get_sub_block_path(sub_block,
                             sub_outputs.append(sub_block.var(name))
 
         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
-                                           no_grad_set, dict())
+                                           no_grad_set, op_path_dict)
         # TODO better way than finding in list
         for op_desc in sub_assign_to_out_ops:
             if op_desc not in sub_block_op_path:
@@ -937,7 +938,7 @@ def _append_backward_ops_(block,
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
             _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
                                   no_grad_dict, grad_to_var, callbacks,
-                                  input_grad_names_set)
+                                  input_grad_names_set, op_path_dict)
             input_grad_names_set = pre_input_grad_names_set
 
             program._rollback()
@@ -1679,12 +1680,14 @@ def _find_no_grad_vars(block, op_path, targets, no_grad_set):
 #     return op_path
 
 
-def _find_op_path_(block, outputs, inputs, no_grad_set, op_path_dict):
+def _find_op_path_(block, outputs, inputs, no_grad_set, op_path_dict=None):
     """
     no_grad_set will also be changed
     """
     input_names = set([inp.name for inp in inputs])
     output_names = _get_output_names(block, outputs)
+    if op_path_dict is None:
+        op_path_dict = dict()
 
     relevant_op_flags = [True] * len(block.ops)
 
@@ -1709,7 +1712,8 @@ def _find_op_path_(block, outputs, inputs, no_grad_set, op_path_dict):
             # TODO(liym27): use output_names
             sub_block_output_names = output_names & set(op.output_arg_names)
             sub_block_path = _get_sub_block_path(sub_block, op,
-                                                 set(), sub_block_output_names)
+                                                 set(), op_path_dict,
+                                                 sub_block_output_names)
             op_path_dict[sub_block_id] = sub_block_path
 
         if _some_in_set_(
@@ -1824,7 +1828,9 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             raise "input must be in the same program as targets"
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(block, targets, inputs, block_no_grad_set)
+    op_path_dict = dict()
+    op_path = _find_op_path_(block, targets, inputs, block_no_grad_set,
+                             op_path_dict)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
@@ -1834,7 +1840,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         block,
         no_grad_dict,
         grad_to_var,
-        input_grad_names_set=input_grad_names_set)
+        input_grad_names_set=input_grad_names_set,
+        op_path_dict=op_path_dict)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
