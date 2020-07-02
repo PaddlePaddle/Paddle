@@ -24,12 +24,12 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     OpComment comment;
     AddInput("X", string::Sprintf("Left hand operand of %s operator. Must be "
-                                  "a LoDTensor or Tensor of type bool.",
+                                  "a Variable of type bool.",
                                   comment.type));
     AddInput("Y", string::Sprintf("Right hand operand of %s operator. Must be "
-                                  "a LoDTensor or Tensor of type bool.",
+                                  "a Variable of type bool.",
                                   comment.type));
-    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor"));
+    AddOutput("Out", string::Sprintf("n-dim bool Variable"));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
 It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
