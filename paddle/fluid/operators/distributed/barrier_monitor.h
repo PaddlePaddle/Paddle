@@ -78,14 +78,17 @@ class BlockingQueueForBarrier {
     return rc;
   }
 
-  size_t Cap() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return capacity_;
-  }
-
   size_t Size() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return queue_.size();
+  }
+
+  void ReCapacity(size_t capacity) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    PADDLE_ENFORCE_GT(capacity_, 0,
+                      platform::errors::InvalidArgument(
+                          "The capacity must be greater than 0."));
+    capacity_ = capacity;
   }
 
   void Clear() {
@@ -94,11 +97,37 @@ class BlockingQueueForBarrier {
   }
 
  private:
-  const size_t capacity_;
+  size_t capacity_;
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
   std::condition_variable worker_cv_;
+};
+
+class BarrierBlock {
+ public:
+  explicit BarrierBlock(const int id, const BarrierType &type)
+      : id_(id), type_(type) {}
+
+  void Wait() {
+    std::unique_lock<std::mutex> lk(mutex_);
+    cv_.wait(lk, [this] { return (done); });
+  }
+
+  void Done(bool available) {
+    std::unique_lock<std::mutex> lck(mutex_);
+    available_ = available;
+    done_ = true;
+    cv_.notify_all();
+  }
+
+ private:
+  const int id_;
+  const BarrierType type_;
+  bool done_ = false;
+  bool available_ = true;
+  std::condition_variable cv_;
+  std::mutex mutex_;
 };
 
 class BarrierMonitor {
@@ -111,10 +140,10 @@ class BarrierMonitor {
     PADDLE_ENFORCE_GT(workers, 0, platform::errors::InvalidArgument(
                                       "trainers must have one or more"));
 
-    send_barrier_queue =
-        std::make_shared<BlockingQueueForBarrier<int>>(workers);
-    recv_barrier_queue =
-        std::make_shared<BlockingQueueForBarrier<int>>(workers);
+    send_barrier_queue = std::make_shared<
+        BlockingQueueForBarrier<std::shared_ptr<BarrierBlock>>>(workers);
+    recv_barrier_queue = std::make_shared<
+        BlockingQueueForBarrier<std::shared_ptr<BarrierBlock>>>(workers);
 
     running_ = true;
     monitor_thread_.reset(
@@ -136,19 +165,17 @@ class BarrierMonitor {
 
   void Monitor();
 
-  void Swap(bool is_valid);
+  void Exchange(bool available);
 
   void Stop();
 
   bool IsReady();
 
-  bool Wait();
-
   void WaitServerWeakup();
 
   void ServerWeakup();
 
-  void WorkerWeakup();
+  void NotifyWorker(BarrierType type, bool available);
 
   void Reset(int workers, BarrierType type);
 
@@ -161,22 +188,21 @@ class BarrierMonitor {
   static std::once_flag init_flag_;
   static std::unique_ptr<BarrierMonitor> monitor_;
 
-  int workers_;
+  std::atomic<int> workers_{0};
   bool running_ = false;
-  bool valid_ = false;
-  bool release_ = false;
 
-  std::condition_variable worker_cv_;
   std::condition_variable server_cv_;
-
   std::mutex server_mutex_;
-  std::mutex mutex_;
 
   BarrierType barrier_type;
   int64_t max_wait_ms;
   std::unique_ptr<std::thread> monitor_thread_{nullptr};
-  std::shared_ptr<BlockingQueueForBarrier<int>> send_barrier_queue;
-  std::shared_ptr<BlockingQueueForBarrier<int>> recv_barrier_queue;
+  std::shared_ptr<BlockingQueueForBarrier<std::shared_ptr<BarrierBlock>>>
+      send_barrier_queue;
+  std::shared_ptr<BlockingQueueForBarrier<std::shared_ptr<BarrierBlock>>>
+      recv_barrier_queue;
+
+  friend class BarrierBlock;
 };
 
 }  // namespace distributed

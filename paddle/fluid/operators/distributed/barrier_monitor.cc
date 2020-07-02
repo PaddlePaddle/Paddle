@@ -35,25 +35,25 @@ namespace operators {
 namespace distributed {
 bool BarrierMonitor::IncreaseBarrier(const int worker_id,
                                      const std::string &barrier) {
-  release_ = false;
+  auto block = std::make_shared<BarrierBlock>(worker_id, barrier);
 
   if (barrier == BATCH_BARRIER_MESSAGE) {
     VLOG(4) << "BarrierMonitor send queue recv trainer: " << worker_id;
-    send_barrier_queue->Push(worker_id);
+    send_barrier_queue->Push(block);
   } else if (barrier == FETCH_BARRIER_MESSAGE) {
     VLOG(4) << "BarrierMonitor recv queue recv trainer: " << worker_id;
-    recv_barrier_queue->Push(worker_id);
+    recv_barrier_queue->Push(block);
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "unknown Message status %s, only "
         "BATCH_BARRIER_MESSAGE/FETCH_BARRIER_MESSAGE",
         barrier));
   }
-  return Wait();
+  block->Wait();
+  return block->available;
 }
 
 void BarrierMonitor::DecreaseWorker() {
-  std::unique_lock<std::mutex> lck(mutex_);
   workers_--;
   VLOG(1) << "decrement worker num to " << workers_;
 }
@@ -61,12 +61,22 @@ void BarrierMonitor::DecreaseWorker() {
 void BarrierMonitor::Reset(int workers, BarrierType type) {
   std::unique_lock<std::mutex> lk(server_mutex_);
 
-  workers_ = workers;
+  workers_.exchange(workers);
   barrier_type = type;
 
   send_barrier_queue->Clear();
   recv_barrier_queue->Clear();
+
+  send_barrier_queue->ReCapacity(workers);
+  recv_barrier_queue->ReCapacity(workers);
+
   VLOG(2) << "reset monitor workers: " << workers_ << " type: " << barrier_type;
+
+  if (monitor_thread_ == nullptr) {
+    running_ = true;
+    monitor_thread_.reset(
+        new std::thread(std::bind(&BarrierMonitor::Monitor, this)));
+  }
 }
 
 void BarrierMonitor::Monitor() {
@@ -79,7 +89,7 @@ void BarrierMonitor::Monitor() {
     int timer = 0;
 
     if (IsReady()) {
-      Swap(true);
+      Exchange(true);
     } else {
       VLOG(4) << "running timer: " << timer << " barrier: " << barrier_type
               << " sendQ:" << send_barrier_queue->Size()
@@ -91,7 +101,7 @@ void BarrierMonitor::Monitor() {
       } else {
         VLOG(1) << "time out of " << max_wait_ms
                 << ", need barreir: " << barrier_type << " retry";
-        Swap(false);
+        Exchange(false);
       }
     }
   }
@@ -105,58 +115,58 @@ bool BarrierMonitor::IsReady() {
   }
 }
 
-void BarrierMonitor::Swap(bool is_valid) {
-  std::unique_lock<std::mutex> lck(mutex_);
-
-  valid_ = is_valid;
-  release_ = true;
-
+void BarrierMonitor::Exchange(bool available) {
   if (barrier_type == BarrierType::kSendBarrier) {
     barrier_type = BarrierType::kRecvBarrier;
-    send_barrier_queue->Clear();
-    VLOG(4) << "barrier monitor server clean up queue and barrier";
+    NotifyWorker(BarrierType::kSendBarrier);
     ServerWeakup();
     VLOG(4) << "barrier monitor server weak up sync to do";
     WaitServerWeakup();
     VLOG(4) << "barrier monitor server weak up sync done";
-
   } else {
     barrier_type = BarrierType::kSendBarrier;
-    recv_barrier_queue->Clear();
+    NotifyWorker(BarrierType::kRecvBarrier);
     VLOG(4) << "barrier monitor server switch to send barrier";
   }
+}
 
-  worker_cv_.notify_all();
+void BarrierMonitor::NotifyWorker(BarrierType type, bool available) {
+  if (type == BarrierType::kSendBarrier) {
+    while (send_barrier_queue->Size() != 0) {
+      auto block = send_barrier_queue->Pop();
+      block->Done(available);
+    }
+  } else {
+    while (recv_barrier_queue->Size() != 0) {
+      auto block = recv_barrier_queue->Pop();
+      block->Done(available);
+    }
+  }
 }
 
 void BarrierMonitor::Stop() {
-  valid_ = true;
-  release_ = true;
+  std::lock_guard<std::mutex> lk(server_mutex_);
   running_ = false;
 
   barrier_type = BarrierType::kRecvBarrier;
-  send_barrier_queue->Clear();
-  recv_barrier_queue->Clear();
+  NotifyWorker(BarrierType::kSendBarrier, true);
+  NotifyWorker(BarrierType::kRecvBarrier, true);
 
-  worker_cv_.notify_all();
   server_cv_.notify_all();
 
   if (monitor_thread_) monitor_thread_->join();
   monitor_thread_ = nullptr;
 }
 
-bool BarrierMonitor::Wait() {
-  std::unique_lock<std::mutex> lk(mutex_);
-  worker_cv_.wait(lk, [this] { return (release_); });
-  return valid_;
-}
-
 void BarrierMonitor::WaitServerWeakup() {
-  std::unique_lock<std::mutex> lk(server_mutex_);
+  std::lock_guard<std::mutex> lk(server_mutex_);
   server_cv_.wait(lk);
 }
 
-void BarrierMonitor::ServerWeakup() { server_cv_.notify_all(); }
+void BarrierMonitor::ServerWeakup() {
+  std::lock_guard<std::mutex> lk(server_mutex_);
+  server_cv_.notify_all();
+}
 
 std::once_flag BarrierMonitor::init_flag_;
 std::unique_ptr<BarrierMonitor> BarrierMonitor::monitor_(nullptr);
