@@ -182,7 +182,7 @@ class GRPCClient : public RPCClient {
                             const platform::DeviceContext& ctx,
                             const framework::Scope& scope,
                             const std::string& var_name,
-                            int64_t time_out = FLAGS_rpc_deadline) override;
+                            int64_t time_out = kMaxWaitMS) override;
 
   VarHandlePtr AsyncGetVar(const std::string& ep,
                            const platform::DeviceContext& ctx,
@@ -190,7 +190,7 @@ class GRPCClient : public RPCClient {
                            const std::string& var_name,
                            const std::string& out_varname,
                            const std::string& table_name = "",
-                           int64_t time_out = FLAGS_rpc_deadline) override;
+                           int64_t time_out = kMaxWaitMS) override;
 
   VarHandlePtr AsyncGetVarNoBarrier(
       const std::string& ep, const platform::DeviceContext& ctx,
@@ -209,7 +209,7 @@ class GRPCClient : public RPCClient {
                                 const std::string& in_var_name,
                                 const std::string& out_var_name,
                                 const std::string& table_name = "",
-                                int64_t time_out = FLAGS_rpc_deadline) override;
+                                int64_t time_out = kMaxWaitMS) override;
 
   VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;

@@ -40,8 +40,6 @@ namespace distributed {
 
 enum BarrierType { kSendBarrier, kRecvBarrier };
 
-constexpr int64_t kMaxWaitMS = 120000;
-
 template <typename T>
 class BlockingQueueForBarrier {
  public:
