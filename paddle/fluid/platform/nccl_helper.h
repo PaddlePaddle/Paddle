@@ -95,7 +95,8 @@ struct NCCLContextMap {
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE_EQ(!places.empty(), true);
+    PADDLE_ENFORCE_EQ(!places.empty(), true, platform::errors::InvalidArgument(
+                                                 "The NCCL place is empty."));
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = BOOST_GET_CONST(CUDAPlace, p).device;
@@ -104,7 +105,8 @@ struct NCCLContextMap {
     }
     PADDLE_ENFORCE_EQ(
         order_.size(), contexts_.size(),
-        "NCCL Context Map does not support contain two or more same device");
+        platform::errors::Unavaliable("NCCL Context Map does not support "
+                                      "contain two or more same device."));
 
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
     // if num_trainers == 1, should create a new nccl id for local comms.
@@ -113,7 +115,8 @@ struct NCCLContextMap {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
-      PADDLE_ENFORCE_NOT_NULL(nccl_id);
+      PADDLE_ENFORCE_NOT_NULL(nccl_id, platform::errors::InvalidArgument(
+                                           "The NCCL id should not be null."));
       {
         int nranks = num_trainers * order_.size();
         NCCLGroupGuard gurad;
@@ -263,13 +266,17 @@ class NCCLCommunicator {
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
-    PADDLE_ENFORCE_EQ(trainers_num, inter_trainers_num * exter_trainers_num,
-                      "trainers_num:%llu != inter_trainers_num:%llu * "
-                      "exter_trainers_num:%llu",
-                      trainers_num, inter_trainers_num, exter_trainers_num);
+    PADDLE_ENFORCE_EQ(
+        trainers_num, inter_trainers_num * exter_trainers_num,
+        platform::errors::InvalidArgument(
+            "trainers_num:%llu != inter_trainers_num:%llu * "
+            "exter_trainers_num:%llu",
+            trainers_num, inter_trainers_num, exter_trainers_num));
 
-    PADDLE_ENFORCE_GT(inter_trainers_num, 1, "inter_trainers_num:%llu must > 1",
-                      inter_trainers_num);
+    PADDLE_ENFORCE_GT(
+        inter_trainers_num, 1,
+        platform::errors::InvalidArgument("inter_trainers_num:%llu must > 1",
+                                          inter_trainers_num));
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
     for (size_t i = 0; i < inter_nccl_ids.size(); i++) {
@@ -300,14 +307,16 @@ class NCCLCommunicator {
   bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
-    PADDLE_ENFORCE(h_inter_ctxs_.size() > 0,
-                   "must init hierarchical ctxs first!");
+    PADDLE_ENFORCE_GT(h_inter_ctxs_.size(), 0,
+                      platform::errors::InvalidArgument(
+                          "Hierarchical ctxs should be initialized firstly!"));
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()].get();
   }
 
   NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
-    PADDLE_ENFORCE(h_exter_ctxs_.size() > 0,
-                   "must init hierarchical ctxs first!");
+    PADDLE_ENFORCE_GT(h_exter_ctxs_.size(), 0,
+                      platform::errors::InvalidArgument(
+                          "Hierarchical ctxs should be initialized firstly!"));
     return h_exter_ctxs_[run_order % h_exter_ctxs_.size()].get();
   }
 

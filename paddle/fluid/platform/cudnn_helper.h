@@ -329,18 +329,28 @@ class ScopedConvolutionDescriptor {
   inline cudnnConvolutionDescriptor_t descriptor(
       cudnnDataType_t type, const std::vector<int>& pads,
       const std::vector<int>& strides, const std::vector<int>& dilations) {
-    PADDLE_ENFORCE_EQ(pads.size(), strides.size());
-    PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
+    PADDLE_ENFORCE_EQ(pads.size(), strides.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of pads and strides should be equal. But "
+                          "received size of pads is %d, size of strides is %d.",
+                          pads.size(), strides.size()));
+    PADDLE_ENFORCE_EQ(
+        pads.size(), dilations.size(),
+        platform::errors::InvalidArgument(
+            "The size of pads and dilations should be equal. But received size "
+            "of pads is %d, size of dilations is %d.",
+            pads.size(), dilations.size()));
 
 #if !CUDNN_VERSION_MIN(6, 0, 0)
     // cudnn v5 does not support dilation conv, the argument is called upscale
     // instead of dilations and it is must be one.
     for (size_t i = 0; i < dilations.size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          dilations[i], 1,
-          "Dilations conv is not supported in this cuDNN version(%d.%d.%d).",
-          CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
-          CUDNN_VERSION % 100);
+      PADDLE_ENFORCE_EQ(dilations[i], 1,
+                        platform::errors::InvalidArgument(
+                            "Dilations conv is not supported in this cuDNN "
+                            "version(%d.%d.%d).",
+                            CUDNN_VERSION / 1000, CUDNN_VERSION % 1000 / 100,
+                            CUDNN_VERSION % 100));
     }
 #endif
 

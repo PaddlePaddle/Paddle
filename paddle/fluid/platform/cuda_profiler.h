@@ -26,13 +26,23 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
                       std::string config_file) {
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv");
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
-  PADDLE_ENFORCE(
-      cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
+  PADDLE_ENFORCE_EQ(
+      cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode),
+      true,
+      platform::errors::Unavaliable("The CUDA profiler failed to initializ."));
 }
 
-void CudaProfilerStart() { PADDLE_ENFORCE(cudaProfilerStart()); }
+void CudaProfilerStart() {
+  PADDLE_ENFORCE_EQ(
+      cudaProfilerStart(), true,
+      platform::errors::Unavaliable("The CUDA profiler failed to start."));
+}
 
-void CudaProfilerStop() { PADDLE_ENFORCE(cudaProfilerStop()); }
+void CudaProfilerStop() {
+  PADDLE_ENFORCE(
+      cudaProfilerStop(), true,
+      platform::errors::Unavaliable("The CUDA profiler failed to stop."));
+}
 
 }  // namespace platform
 }  // namespace paddle
