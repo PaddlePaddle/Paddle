@@ -793,17 +793,7 @@ function card_test() {
                 (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee tmp.log
             fi
         fi
-        set +e
-        grep 'The following tests FAILED:' tmp.log;errcode=$?
-        echo "errcode::::"
-        echo $errcode
-        if [ $errcode -ne 0 ]; then
-            failuretest=''
-        else
-            failuretest=`grep -A 10000 'The following tests FAILED:' tmp.log | sed 's/The following tests FAILED://g'|sed '/^$/d'`
-        fi
-        echo "failuretest: ""$failuretest"
-        summary_failtest="$summary_failtest $failuretest"
+        gather_failtests
     done
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
@@ -813,6 +803,18 @@ function card_test() {
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
     set +m
+}
+
+function gather_failtests() {
+    set +e
+    grep 'The following tests FAILED:' tmp.log;errcode=$?
+    if [ $errcode -ne 0 ]; then
+        failuretest=''
+    else
+        failuretest=`grep -A 10000 'The following tests FAILED:' tmp.log | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+    fi
+    echo "failuretest: ""$failuretest"
+    summary_failtest="$summary_failtest $failuretest"
 }
 
 function parallel_test_base() {
