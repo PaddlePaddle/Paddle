@@ -17,10 +17,10 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import IrGraph
-from paddle.fluid.contrib.slim.quantization import Qat2Int8MkldnnPass
+from paddle.fluid.contrib.slim.quantization import Quant2Int8MkldnnPass
 
 
-class TestQat2Int8MkldnnPass(unittest.TestCase):
+class TestQuant2Int8MkldnnPass(unittest.TestCase):
     def setUp(self):
         self.scope = fluid.Scope()
         self.place = fluid.CPUPlace()
@@ -109,20 +109,20 @@ class TestQat2Int8MkldnnPass(unittest.TestCase):
             if op.op().has_attr("fuse_brelu") and op.op().attr("fuse_brelu"):
                 self.assertTrue(op.op().attr("fuse_activation") == "relu6")
 
-    def test_qat_update_activation(self):
+    def test_quant_update_activation(self):
         program = fluid.Program()
         with fluid.program_guard(program):
             self.prepare_program(program)
             graph = IrGraph(core.Graph(program.desc), for_test=True)
             graph = self.remove_fuse_activation_attribute(graph)
             self.check_graph_before_pass(graph)
-            qat2_int8_mkldnn_pass = Qat2Int8MkldnnPass(
+            quant2_int8_mkldnn_pass = Quant2Int8MkldnnPass(
                 self.quantized_ops,
                 _scope=self.scope,
                 _place=self.place,
                 _core=core,
                 _debug=False)
-            graph = qat2_int8_mkldnn_pass._update_activations(graph)
+            graph = quant2_int8_mkldnn_pass._update_activations(graph)
             self.check_graph_after_pass(graph)
 
 

@@ -45,8 +45,6 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 
-#TODO(malin): Fix this unitest failed on GCC8.
-LIST(REMOVE_ITEM TEST_OPS test_roll_op)
 #TODO(sunxiaolong01): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 if(WIN32)
@@ -205,6 +203,7 @@ endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -232,6 +231,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
+list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -363,6 +363,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+py_test_modules(test_parallel_executor_profiler MODULES test_parallel_executor_profiler)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 
@@ -414,6 +415,7 @@ set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inp
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
+        test_parallel_executor_profiler
         PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32 AND NOT APPLE)
