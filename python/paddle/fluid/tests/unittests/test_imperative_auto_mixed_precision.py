@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
+from test_imperative_resnet import ResNet, BottleneckBlock, ConvBNLayer
 
 
 class SimpleConv(fluid.dygraph.Layer):
@@ -42,15 +44,6 @@ class SimpleConv(fluid.dygraph.Layer):
 
 
 class TestAutoCast(unittest.TestCase):
-    def reader_decorator(self, reader):
-        def _reader_imple():
-            for item in reader():
-                doc = np.array(item[0]).reshape(3, 224, 224)
-                label = np.array(item[1]).astype('int64').reshape(1)
-                yield doc, label
-
-        return _reader_imple
-
     def test_amp_guard_white_op(self):
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
         with fluid.dygraph.guard():
@@ -81,7 +74,6 @@ class TestAutoCast(unittest.TestCase):
             tracer = fluid.framework._dygraph_tracer()
             base_white_list = fluid.dygraph.amp.auto_cast.WHITE_LIST
             base_black_list = fluid.dygraph.amp.auto_cast.BLACK_LIST
-            print(tracer._get_amp_op_list())
             with fluid.dygraph.amp_guard(
                     custom_white_list=["log"], custom_black_list=["conv2d"]):
                 white_list, black_list = tracer._get_amp_op_list()
@@ -112,6 +104,58 @@ class TestAutoCast(unittest.TestCase):
                     out = model(inp)
 
         self.assertRaises(ValueError, func)
+
+
+class TestAmpScaler(unittest.TestCase):
+    def test_scale(self):
+        with fluid.dygraph.guard():
+            data = paddle.rand([10, 1024])
+            scaler = paddle.fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+            scaled_data = scaler.scale(data)
+            self.assertEqual(
+                np.array_equal(scaled_data.numpy(), data.numpy() * 1024), True)
+
+    def test_minimize(self):
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+
+        def run_simple_conv(use_scaler=True):
+            paddle.manual_seed(10)
+            with fluid.dygraph.guard():
+                model = SimpleConv(
+                    num_channels=3,
+                    num_filters=64,
+                    filter_size=7,
+                    stride=2,
+                    act='relu')
+                optimizer = fluid.optimizer.SGDOptimizer(
+                    learning_rate=0.01, parameter_list=model.parameters())
+                scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
+                data = fluid.dygraph.to_variable(inp_np)
+
+                out = model(data)
+                loss = fluid.layers.mean(out)
+                scaled_loss = scaler.scale(loss)
+                scaled_loss.backward()
+                optimize_ops, params_grads = scaler.minimize(optimizer,
+                                                             scaled_loss)
+                return optimize_ops, params_grads
+
+        outs_with_scaler = run_simple_conv(use_scaler=True)
+        outs_no_scaler = run_simple_conv(use_scaler=False)
+
+        self.assertEqual(outs_with_scaler[0],
+                         [])  # optimize_ops is [] in dygraoh mode
+        self.assertEqual(outs_no_scaler[0],
+                         [])  # optimize_ops is [] in dygraoh mode
+        for i in range(len(outs_with_scaler[1])):
+            # check each grad
+            self.assertEqual(
+                np.allclose(outs_with_scaler[1][i][1].numpy(),
+                            outs_no_scaler[1][i][1].numpy()), True)
+            # check each parameter
+            self.assertEqual(
+                np.allclose(outs_with_scaler[1][i][0].numpy(),
+                            outs_no_scaler[1][i][0].numpy()), True)
 
 
 if __name__ == '__main__':
