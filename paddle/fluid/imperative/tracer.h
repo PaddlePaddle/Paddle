@@ -32,7 +32,7 @@ namespace imperative {
 class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
-  std::string Generate(std::string key = "tmp") {
+  std::string Generate(std::string key = "eager_tmp") {
     return prefix_ + key + "_" + std::to_string(id_++);
   }
 
