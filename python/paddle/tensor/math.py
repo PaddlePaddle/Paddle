@@ -1637,7 +1637,7 @@ def trace(input, diagonal=0, start_axis=0, stop_axis=1, name=None):
         start_axis_ = start_axis if start_axis >= 0 else len(input_shape) + start_axis
         stop_axis_ = stop_axis if stop_axis >= 0 else len(input_shape) + stop_axis
 
-        assert dim1_ < len(input_shape),     \
+        assert start_axis_ < len(input_shape),     \
             "The argument start_axis is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
             % (-(len(input_shape)), len(input_shape) - 1, start_axis)
 
