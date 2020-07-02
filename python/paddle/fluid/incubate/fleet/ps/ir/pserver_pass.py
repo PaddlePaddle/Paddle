@@ -26,6 +26,7 @@ from paddle.fluid.incubate.fleet.ps.ir.public import _get_varname_parts
 from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_lr_ops
 
+LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 OPT_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Optimize
@@ -532,13 +533,29 @@ def add_optimizer_pass(program, config):
 
     # append lr decay ops to the child block if exists
     lr_ops = _get_lr_ops(origin_program)
+    has_lr_decay = True if len(lr_ops) > 0 else False
     lr_decay_block_id = -1
     optimize_blocks = []
 
-    if len(lr_ops) > 0:
+    if has_lr_decay > 0:
+        counter_increment_idx = -1
+        for idx, op in enumerate(lr_ops):
+            if op.type != 'increment':
+                continue
+            counter = op.input("X")[0]
+            if counter == LEARNING_RATE_DECAY_COUNTER:
+                counter_increment_idx = idx
+                break
+
+        if counter_increment_idx == -1:
+            raise ValueError(
+                "can not find right decay counter, submit a issue is recommended"
+            )
+        lr_ops.pop(counter_increment_idx)
+
         lr_decay_block = program._create_block(program.num_blocks - 1)
         optimize_blocks.append(lr_decay_block)
-        for _, op in enumerate(lr_ops):
+        for op in lr_ops:
             cloned_op = _append_pserver_non_opt_ops(lr_decay_block, op,
                                                     origin_program, config)
             # append sub blocks to pserver_program in lr_decay_op

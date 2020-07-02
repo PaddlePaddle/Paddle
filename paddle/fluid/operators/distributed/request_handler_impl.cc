@@ -300,11 +300,17 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
     auto* value = tensor->mutable_data<int64_t>(platform::CPUPlace());
 
     auto global_counter = 0;
-
     for (auto& trainer_counter : decay_counters) {
       global_counter += trainer_counter.second;
     }
     value[0] = global_counter;
+
+    if (lr_decay_prepared_ctx_.get() == nullptr) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "can not find decay block for executor"));
+    }
+
+    executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
   }
   return true;
 }
