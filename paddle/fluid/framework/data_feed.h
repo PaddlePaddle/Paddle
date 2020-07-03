@@ -322,6 +322,7 @@ class InMemoryDataFeed : public DataFeed {
   bool parse_content_;
   bool parse_logkey_;
   bool enable_pv_merge_;
+  bool slot_padding_zero_;
   int current_phase_{-1};  // only for untest
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
