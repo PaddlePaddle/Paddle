@@ -29,7 +29,7 @@ struct CommContext {
               const std::vector<std::string> &emap,
               const std::vector<int64_t> &sections,
               const std::vector<std::string> &origin_names, int id,
-              bool merge_add_ = true, bool use_send_handler_ = true)
+              bool merge_add_ = true, bool queue_ = true)
       : var_name(name),
         splited_varnames(names),
         epmap(emap),
@@ -37,7 +37,7 @@ struct CommContext {
         origin_varnames(origin_names),
         trainer_id(id),
         merge_add(merge_add_),
-        use_send_handler(use_send_handler_) {}
+        queue(queue_) {}
 
   CommContext(const CommContext &ctx) {
     var_name = ctx.var_name;
@@ -46,7 +46,7 @@ struct CommContext {
     height_sections = ctx.height_sections;
     trainer_id = ctx.trainer_id;
     merge_add = ctx.merge_add;
-    use_send_handler = ctx.use_send_handler;
+    queue = ctx.queue;
     origin_varnames = ctx.origin_varnames;
   }
 
@@ -75,7 +75,7 @@ struct CommContext {
   std::vector<std::string> origin_varnames;
   int trainer_id;
   bool merge_add;
-  bool use_send_handler;
+  bool queue;
 };
 
 }  // namespace distributed

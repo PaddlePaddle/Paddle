@@ -202,12 +202,6 @@ def append_send_ops_pass(program, config):
     return program
 
 
-def lr_decay_pass(program, config):
-    import warnings
-    warnings.warn("lr_decay_pass need implement later")
-    return program
-
-
 def init_from_server_pass(program, config):
     fetch_barrier_out = program.global_block().create_var(
         name=framework.generate_control_dev_var_name())
@@ -312,7 +306,3 @@ def delet_extra_optimizes_pass(program, config):
             program.global_block()._remove_var(var)
 
     return program
-
-
-def append_geo_send_pass(program, config):
-    pass

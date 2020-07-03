@@ -210,25 +210,6 @@ class Communicator {
   static std::shared_ptr<Communicator> GetInstantcePtr() {
     return communicator_;
   }
-  template <typename T>
-  static Communicator* InitInstance(
-      const paddle::framework::ProgramDesc& program, Scope* recv_scope,
-      const std::map<std::string, std::string>& envs) {
-    std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
-                   recv_scope, std::ref(envs));
-    return communicator_.get();
-  }
-
-  template <typename T>
-  static void InitWithProgram(const paddle::framework::ProgramDesc& program,
-                              Scope* recv_scope,
-                              const std::map<std::string, std::string>& envs) {
-    if (communicator_.get() == nullptr) {
-      communicator_.reset(new T(std::ref(envs)));
-      communicator_->InitEnvs();
-      communicator_->InitImpl(program, recv_scope);
-    }
-  }
 
   template <typename T>
   static Communicator* InitInstance(

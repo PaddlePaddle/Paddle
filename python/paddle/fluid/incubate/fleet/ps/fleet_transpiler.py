@@ -104,19 +104,12 @@ class FleetTranspiler(Fleet):
             None
         """
 
-        def geo_strategy_envs():
-            kwargs = {}
-            kwargs["push_vars"] = self.vars_info
-            kwargs["trainers"] = self.worker_num()
-            kwargs["push_nums"] = self._strategy.get_program_config(
-            ).geo_sgd_need_push_nums
-            return kwargs
-
-        def sync_strategy_envs():
+        def extra_strategy_envs():
             kwargs = {}
             kwargs[
                 "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
             kwargs["trainer_id"] = self._role_maker.worker_id()
+            kwargs["trainers"] = self.worker_num()
             return kwargs
 
         # if MPISymetricRoleMaker is defined
@@ -133,24 +126,23 @@ class FleetTranspiler(Fleet):
         kwargs = None
 
         if isinstance(self._strategy, GeoStrategy):
-            kwargs = geo_strategy_envs()
+            kwargs = extra_strategy_envs()
         if isinstance(self._strategy, SyncStrategy):
-            kwargs = sync_strategy_envs()
+            kwargs = extra_strategy_envs()
 
-        if not trainer_config.is_geo_mode:
-            send_ctx = fleet.compiled_config.get_communicator_send_context()
+        send_ctx = fleet.compiled_config.get_communicator_send_context()
+
+        if self.compiled_config.is_geo_mode():
+            recv_ctx = fleet.compiled_config.get_communicator_recv_context(
+                recv_type=3)
+        else:
             recv_ctx = fleet.compiled_config.get_communicator_recv_context(
                 recv_type=1)
 
-            self._communicator = Communicator(
-                trainer_config.mode, kwargs,
-                trainer_config.get_communicator_flags())
-            self._communicator.init_with_ctx(send_ctx, recv_ctx)
-        else:
-            self._communicator = Communicator(
-                trainer_config.mode, kwargs,
-                trainer_config.get_communicator_flags())
-            self._communicator.init_with_program(self.main_program)
+        self._communicator = Communicator(
+            trainer_config.mode, kwargs,
+            trainer_config.get_communicator_flags())
+        self._communicator.init_with_ctx(send_ctx, recv_ctx)
 
         if not self._communicator.is_running():
             self._communicator.start()
@@ -925,7 +917,7 @@ class ParameterServerOptimizer(DistributedOptimizer):
             _startup = worker.delet_extra_optimizes_pass(_startup,
                                                          compiled_config)
         else:
-            _main = worker.append_geo_send_pass(_main, compiled_config)
+            _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
 
         return _main, _startup
