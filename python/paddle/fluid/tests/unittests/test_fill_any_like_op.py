@@ -277,5 +277,17 @@ class TestOnesZerosError(unittest.TestCase):
         self.assertRaises(TypeError, test_ones_like_out_dtype_error)
 
 
+class ImperativeModeTest(unittest.TestCase):
+    def test_full_like_imperative(self):
+        with paddle.imperative.guard():
+            input = paddle.arange(6, 10, dtype='float32')
+            out = paddle.full_like(input, fill_value=888.88, dtype='float32')
+            out_numpy = np.random.random((4)).astype("float32")
+            out_numpy.fill(888.88)
+            print(out.numpy())
+            print(out_numpy)
+            self.assertTrue((out.numpy() == out_numpy).all(), True)
+
+
 if __name__ == "__main__":
     unittest.main()

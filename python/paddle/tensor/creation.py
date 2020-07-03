@@ -82,7 +82,6 @@ def full_like(x, fill_value, dtype=None, name=None):
           output = paddle.full_like(input, 2.0)
           print(output.numpy()) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
-    helper = LayerHelper("full_like", **locals())
 
     var_dtype = None
     if dtype is None:
@@ -94,6 +93,11 @@ def full_like(x, fill_value, dtype=None, name=None):
             'full_like')
         var_dtype = convert_np_dtype_to_dtype_(dtype)
 
+    if in_dygraph_mode():
+        return core.ops.fill_any_like(x, 'value', fill_value, 'dtype',
+                                      var_dtype)
+
+    helper = LayerHelper("full_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=var_dtype)
 
     helper.append_op(
