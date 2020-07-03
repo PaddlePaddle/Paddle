@@ -939,7 +939,7 @@ class RandomErasing(object):
             return img
 
         for _ in range(100):
-            area = img.shape[1] * img.shape[2]
+            area = img.shape[0] * img.shape[1]
 
             target_area = random.uniform(self.scale[0], self.scale[1]) * area
             aspect_ratio = random.uniform(self.ratio, 1 / self.ratio)
@@ -947,13 +947,14 @@ class RandomErasing(object):
             h = int(round(math.sqrt(target_area * aspect_ratio)))
             w = int(round(math.sqrt(target_area / aspect_ratio)))
 
-            if w < img.shape[2] and h < img.shape[1]:
-                x1 = random.randint(0, img.shape[1] - h)
-                y1 = random.randint(0, img.shape[2] - w)
-                if img.shape[0] == 3:
-                    img[0, x1:x1 + h, y1:y1 + w] = self.value[0]
-                    img[1, x1:x1 + h, y1:y1 + w] = self.value[1]
-                    img[2, x1:x1 + h, y1:y1 + w] = self.value[2]
+            if w < img.shape[1] and h < img.shape[0]:
+                x1 = random.randint(0, img.shape[0] - h)
+                y1 = random.randint(0, img.shape[1] - w)
+
+                if len(img.shape) == 3 and img.shape[2] == 3:
+                    img[x1:x1 + h, y1:y1 + w, 0] = self.value[0]
+                    img[x1:x1 + h, y1:y1 + w, 1] = self.value[1]
+                    img[x1:x1 + h, y1:y1 + w, 2] = self.value[2]
                 else:
                     img[0, x1:x1 + h, y1:y1 + w] = self.value[1]
                 return img
@@ -964,12 +965,12 @@ class RandomErasing(object):
 class Pad(object):
     """Pad the given CV Image on all sides with the given "pad" value.
     Args:
-        padding (int|tuple): Padding on each border. If a single int is provided this
+        padding (int|list|tuple): Padding on each border. If a single int is provided this
             is used to pad all borders. If tuple of length 2 is provided this is the padding
             on left/right and top/bottom respectively. If a tuple of length 4 is provided
             this is the padding for the left, top, right and bottom borders
             respectively.
-        fill (int): Pixel fill value for constant fill. Default is 0. If a tuple of
+        fill (int|list|tuple): Pixel fill value for constant fill. Default is 0. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
             This value is only used when the padding_mode is constant
         padding_mode (str): Type of padding. Should be: constant, edge, reflect or symmetric. Default is constant.
@@ -999,8 +1000,8 @@ class Pad(object):
     """
 
     def __init__(self, padding, fill=0, padding_mode='constant'):
-        assert isinstance(padding, (numbers.Number, tuple))
-        assert isinstance(fill, (numbers.Number, str, tuple))
+        assert isinstance(padding, (numbers.Number, list, tuple))
+        assert isinstance(fill, (numbers.Number, str, list, tuple))
         assert padding_mode in ['constant', 'edge', 'reflect', 'symmetric']
         if isinstance(padding,
                       collections.Sequence) and len(padding) not in [2, 4]:
