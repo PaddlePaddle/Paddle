@@ -89,7 +89,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     this_worker->SetSectionIndex(i);
     this_worker->SetPlace(place);
     this_worker->Initialize(trainer_desc);
-    this_worker->SetMacrobatchNum(num_microbatches_);
+    this_worker->SetMicrobatchNum(num_microbatches_);
   }
   // set debug here
   SetDebug(trainer_desc.debug());
@@ -202,7 +202,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
             workers_[i]);
     this_worker->SetRootScope(root_scope_);
     this_worker->SetMinibatchScope(minibatch_scopes_[i]);
-    this_worker->SetMacrobatchScopes(microbatch_scopes_[i]);
+    this_worker->SetMicrobatchScopes(microbatch_scopes_[i]);
     this_worker->SetSkipVars(skip_vars_[i]);
   }
 }

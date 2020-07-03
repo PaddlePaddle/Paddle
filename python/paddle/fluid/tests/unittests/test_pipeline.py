@@ -20,6 +20,7 @@ import os
 import shutil
 import unittest
 import math
+import time
 
 
 def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
@@ -138,36 +139,42 @@ def build_network(input, layers=50, class_dim=1000):
 class TestPipeline(unittest.TestCase):
     """  TestCases for Pipeline Training. """
 
-    def test_pipeline(self):
-        with fluid.device_guard("cpu"):
-            image = fluid.layers.data(
-                name="image", shape=[3, 224, 224], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-            data_loader = fluid.io.DataLoader.from_generator(
-                feed_list=[image, label],
-                capacity=64,
-                use_double_buffer=True,
-                iterable=False)
-            fc = build_network(image, layers=50)
-        with fluid.device_guard("gpu:0"):
-            out, prob = fluid.layers.softmax_with_cross_entropy(
-                logits=fc, label=label, return_softmax=True)
-            loss = fluid.layers.mean(out)
-            #acc_top1 = fluid.layers.accuracy(input=prob, label=label, k=1)
-            #acc_top5 = fluid.layers.accuracy(input=prob, label=label, k=5)
+    def _run(self):
+        main_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        with fluid.program_guard(main_prog, startup_prog):
+            with fluid.device_guard("cpu"):
+                image = fluid.layers.data(
+                    name="image", shape=[3, 224, 224], dtype="float32")
+                label = fluid.layers.data(
+                    name="label", shape=[1], dtype="int64")
+                data_loader = fluid.io.DataLoader.from_generator(
+                    feed_list=[image, label],
+                    capacity=64,
+                    use_double_buffer=True,
+                    iterable=False)
+                fc = build_network(image, layers=50)
+            with fluid.device_guard("gpu:0"):
+                out, prob = fluid.layers.softmax_with_cross_entropy(
+                    logits=fc, label=label, return_softmax=True)
+                loss = fluid.layers.mean(out)
+                acc_top1 = fluid.layers.accuracy(input=prob, label=label, k=1)
+                acc_top5 = fluid.layers.accuracy(input=prob, label=label, k=5)
 
-        base_lr = 0.1
-        #passes = [30, 60, 80, 90]
-        #total_images = 1281167
-        #steps_per_pass = total_images // 128
-        #bd = [steps_per_pass * p for p in passes]
-        #lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        #lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
-        optimizer = fluid.optimizer.SGD(base_lr)
-        #regularization=fluid.regularizer.L2Decay(1e-4))
-        optimizer = fluid.optimizer.PipelineOptimizer(
-            optimizer, num_microbatches=2)
-        optimizer.minimize(loss)
+            base_lr = 0.1
+            passes = [30, 60, 80, 90]
+            total_images = 1281167
+            steps_per_pass = total_images // 128
+            bd = [steps_per_pass * p for p in passes]
+            lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+            lr_val = fluid.layers.piecewise_decay(boundaries=bd, values=lr)
+            optimizer = fluid.optimizer.MomentumOptimizer(
+                lr_val,
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            optimizer = fluid.optimizer.PipelineOptimizer(
+                optimizer, num_microbatches=2)
+            optimizer.minimize(loss)
 
         def train_reader():
             for _ in range(4):
@@ -183,18 +190,14 @@ class TestPipeline(unittest.TestCase):
         dataset.set_filelist(['/tmp/tmp_2.txt'])
         dataset.set_use_var([image, label])
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe.run(startup_prog)
         data_loader.start()
-        try:
-            exe.train_from_dataset(fluid.default_main_program(), dataset)
-        except EOFException:
-            data_loader.reset()
-        data_loader.reset()
-        try:
-            exe.train_from_dataset(
-                fluid.default_main_program(), dataset, debug=True)
-        except EOFException:
-            data_loader.reset()
+        exe.train_from_dataset(main_prog, dataset, debug=False)
+        data_loader.start()
+        exe.train_from_dataset(main_prog, dataset, debug=True)
+
+    def test_pipeline(self):
+        self._run()
 
     def test_pipeline_noneoptimizer(self):
         with fluid.device_guard("gpu:0"):
