@@ -184,7 +184,7 @@ def rotate(img,
            center=None):
     """Rotate the image by angle.
     Args:
-        img (PIL Image): PIL Image to be rotated.
+        img (numpy.ndarray): Image to be rotated.
         angle ({float, int}): In degrees clockwise order.
         resample ({NEAREST, BILINEAR, BICUBIC}, optional):
             An optional resampling filter.
@@ -244,9 +244,9 @@ def rotate(img,
 def to_grayscale(img, num_output_channels=1):
     """Convert image to grayscale version of image.
     Args:
-        img (np.ndarray): Image to be converted to grayscale.
+        img (numpy.ndarray): Image to be converted to grayscale.
     Returns:
-        numpy ndarray:  Grayscale version of the image.
+        numpy.ndarray:  Grayscale version of the image.
                         if num_output_channels == 1 : returned image is single channel
                         if num_output_channels == 3 : returned image is 3 channel with r == g == b
     """
