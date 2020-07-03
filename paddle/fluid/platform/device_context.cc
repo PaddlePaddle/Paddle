@@ -85,9 +85,9 @@ DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(
       places.size(), 0,
-      platform::errors::InvalidArgument(
-          "The number of platform places should >0. But received %d.",
-          places.size()));
+      platform::errors::InvalidArgument("The number of platform places should "
+                                        "be larger than 0. But received %d.",
+                                        places.size()));
   std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);

@@ -103,7 +103,8 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented("Unexpected pooling mode."));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
   }
 }
 #else
@@ -119,7 +120,8 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
-      PADDLE_THROW(platform::errors::Unimplemented("Unexpected pooling mode."));
+      PADDLE_THROW(
+          platform::errors::Unimplemented("Unexpected CUDNN pooling mode."));
   }
 }
 #endif  // CUDNN_VERSION < 6000
@@ -210,7 +212,7 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
       return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
-          "Unknown cudnn equivalent for order."));
+          "CUDNN has no equivalent dataLayout for %s.", order));
   }
   return CUDNN_TENSOR_NCHW;
 }
@@ -477,9 +479,9 @@ class ScopedActivationDescriptor {
         mode = CUDNN_ACTIVATION_TANH;
         break;
       default:
-        PADDLE_THROW(
-            platform::errors::Unimplemented("Unrecognized activation mode: %d.",
-                                            static_cast<int>(activation_mode)));
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unrecognized CUDNN activation mode: %d.",
+            static_cast<int>(activation_mode)));
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
