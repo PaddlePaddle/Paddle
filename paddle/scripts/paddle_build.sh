@@ -213,7 +213,8 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
-        -DWITH_LITE=${WITH_LITE:-OFF}
+        -DWITH_LITE=${WITH_LITE:-ON}
+        -DLITE_GIT_TAG=develop
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -242,7 +243,8 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_LITE=${WITH_LITE:-OFF}
+        -DWITH_LITE=${WITH_LITE:-ON} \
+        -DLITE_GIT_TAG=develop
 
 }
 
@@ -1150,7 +1152,7 @@ EOF
       parallel_number=$1
     fi
     startTime_s=`date +%s` 
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DWITH_LITE=ON -DLITE_GIT_TAG=develop
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
 
     make -j ${parallel_number} fluid_lib_dist
     make -j ${parallel_number} inference_lib_dist
