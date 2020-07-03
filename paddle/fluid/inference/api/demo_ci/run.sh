@@ -14,7 +14,8 @@ current_dir=`pwd`
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
-  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
+  LITE_LIB=${inference_install_dir}/third_party/install/lite/cxx/lib
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}:${LITE_LIB}
 fi
 if [ $3 == ON ]; then
   use_gpu_list='true false'
