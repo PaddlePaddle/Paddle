@@ -273,10 +273,10 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
                                   const int trainer_id,
                                   const std::string& out_var_name,
                                   const std::string& table_name) {
-  VLOG(4) << "RequestNotifyHandler: " << varname;
-  VLOG(3) << "async process var: " << varname << ", trainer_id: " << trainer_id;
+  VLOG(3) << "RequestNotifyHandler: " << varname
+          << ", trainer_id: " << trainer_id;
 
-  string::Piece decay_piece(LEARNING_RATE_DECAY_COUNTER);
+  string::Piece decay_piece(STEP_COUNTER);
   string::Piece var_name_piece = string::Piece(varname);
   if (string::Contains(var_name_piece, decay_piece)) {
     VLOG(3) << "LearningRate Decay Counter Update";

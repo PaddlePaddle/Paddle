@@ -264,7 +264,7 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
   auto table_name = var_tables[0];
   auto &queue = send_varname_to_queue_.at(table_name);
 
-  if (table_name == LEARNING_RATE_DECAY_COUNTER) {
+  if (table_name == STEP_COUNTER) {
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
     tensor->Resize(framework::make_ddim({1}));

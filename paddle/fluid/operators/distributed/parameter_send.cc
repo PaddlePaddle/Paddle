@@ -105,7 +105,7 @@ template <typename T>
 void ParameterSend<T>::operator()(const CommContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync,
                                   int multi_parts) {
-  if (rpc_ctx.var_name == LEARNING_RATE_DECAY_COUNTER) {
+  if (rpc_ctx.var_name == STEP_COUNTER) {
     SendByNotifyRPC(rpc_ctx, scope);
     return;
   }

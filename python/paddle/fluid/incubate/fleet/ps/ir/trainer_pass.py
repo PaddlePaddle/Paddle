@@ -38,7 +38,8 @@ from paddle.fluid.incubate.fleet.ps.mode import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
-LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
+STEP_COUNTER = "@PS_STEP_COUNTER@"
+
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -163,7 +164,7 @@ def append_send_ops_pass(program, config):
 
     def _append_send_op(union_vars, queue):
 
-        if queue == LEARNING_RATE_DECAY_COUNTER:
+        if queue == STEP_COUNTER:
             send_input_vars = []
         else:
             send_input_vars = [

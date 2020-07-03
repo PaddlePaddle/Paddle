@@ -41,7 +41,7 @@ from paddle.fluid.incubate.fleet.ps.ir.ps_dispatcher import RoundRobin, PSDispat
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
-LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
+STEP_COUNTER = "@PS_STEP_COUNTER@"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleAttrName()
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
@@ -275,7 +275,7 @@ class CompileTimeStrategy(object):
         lr_ops = _get_lr_ops(self.get_origin_main_program())
 
         if lr_ops:
-            name = LEARNING_RATE_DECAY_COUNTER
+            name = STEP_COUNTER
             trainer_id = self.get_role_id()
             endpoints = self.get_ps_endpoints()
             sections = [1] * len(endpoints)
