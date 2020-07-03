@@ -288,6 +288,9 @@ if(WITH_DISTRIBUTE)
     #not need
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
+    
+    # FIXME(malin10): add this test back
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ctr")
 
     py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
