@@ -848,7 +848,7 @@ def _get_sub_block_path(sub_block,
     #
 
     # TODO(huihuangzheng): add support for recurrent op and while op
-    if sub_block_op_desc.type == "conditional_block":
+    if sub_block_op_desc.type in ["conditional_block", "while"]:
         sub_assign_to_out_ops = []
         sub_outputs = []
         for var in sub_block_output_names:
@@ -858,8 +858,10 @@ def _get_sub_block_path(sub_block,
                 if var in op_desc.output_arg_names:
                     sub_assign_to_out_ops.append(op_desc)
                     for name in op_desc.input_arg_names:
-                        if sub_block.has_var(name):
-                            sub_outputs.append(sub_block.var(name))
+
+                        # if sub_block.has_var(name):
+                        #     sub_outputs.append(sub_block.var(name))
+                        sub_outputs.append(sub_block._var_recursive(name))
 
         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
                                            no_grad_set, op_path_dict)
