@@ -141,7 +141,7 @@ class PipelineTrainer : public TrainerBase {
 
  protected:
   int section_num_;
-  int num_macrobatches_;
+  int num_microbatches_;
   int start_cpu_core_id_;
   std::vector<std::string> feed_var_names_;
   std::vector<platform::Place> places_;
@@ -153,10 +153,10 @@ class PipelineTrainer : public TrainerBase {
   std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
   // minibatch_scopes_: [section_id]
   std::vector<Scope*> minibatch_scopes_;
-  // macrobatch_scopes_: [section_id][macrobatch_id]
-  std::vector<std::vector<Scope*>> macrobatch_scopes_;
+  // microbatch_scopes_: [section_id][microbatch_id]
+  std::vector<std::vector<Scope*>> microbatch_scopes_;
 
-  void CopyParameters(int section_id, int macrobatch_id,
+  void CopyParameters(int section_id, int microbatch_id,
                       const ProgramDesc& program, const platform::Place& place);
   bool isPersistableVarGrad(std::string name);
   bool isPersistable(VarDesc* var);

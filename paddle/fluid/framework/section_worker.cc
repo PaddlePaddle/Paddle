@@ -106,12 +106,12 @@ void SectionWorker::TrainFiles() {
   if (thread_id_ == 0) {
     while (true) {
       // Start a minibatch.
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         try {
           for (auto& op : ops_) {
             int op_role =
                 boost::get<int>(op->Attr<int>(std::string("op_role")));
-            // We run op with op_role = kLRSched only for the first macrobatch
+            // We run op with op_role = kLRSched only for the first microbatch
             // to avoid increasing the @LR_DECAY_STEP@ multiple times.
             bool run_first_mbatch =
                 op_role == static_cast<int>(OpRole::kForward) ||
@@ -124,9 +124,9 @@ void SectionWorker::TrainFiles() {
             if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
               VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                       << " for scope " << i;
-              op->Run(*macrobatch_scopes_[i], place_);
+              op->Run(*microbatch_scopes_[i], place_);
               if (gc) {
-                DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+                DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                     unused_vars_, gc.get());
               }
             }
@@ -148,7 +148,7 @@ void SectionWorker::TrainFiles() {
         }
       }
       // backward pass
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
@@ -156,9 +156,9 @@ void SectionWorker::TrainFiles() {
                           static_cast<int>(OpRole::kLoss))) {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
-            op->Run(*macrobatch_scopes_[i], place_);
+            op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
-              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
           }
@@ -170,9 +170,9 @@ void SectionWorker::TrainFiles() {
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
-          op->Run(*macrobatch_scopes_[0], place_);
+          op->Run(*microbatch_scopes_[0], place_);
           if (gc) {
-            DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
         }
@@ -201,10 +201,10 @@ void SectionWorker::TrainFiles() {
         local_batch_id_ += 1;
       }
       // forward pass:
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-          // We run op with op_role = kLRSched only for the first macrobatch
+          // We run op with op_role = kLRSched only for the first microbatch
           // to avoid increasing the @LR_DECAY_STEP@ multiple times.
           bool run_first_mbatch =
               op_role == static_cast<int>(OpRole::kForward) ||
@@ -217,16 +217,16 @@ void SectionWorker::TrainFiles() {
           if ((i == 0 && run_first_mbatch) || (i != 0 && run_others)) {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
-            op->Run(*macrobatch_scopes_[i], place_);
+            op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
-              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
           }
         }
       }
       // backward pass
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
@@ -234,9 +234,9 @@ void SectionWorker::TrainFiles() {
                           static_cast<int>(OpRole::kLoss))) {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
-            op->Run(*macrobatch_scopes_[i], place_);
+            op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
-              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
           }
@@ -248,9 +248,9 @@ void SectionWorker::TrainFiles() {
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
-          op->Run(*macrobatch_scopes_[0], place_);
+          op->Run(*microbatch_scopes_[0], place_);
           if (gc) {
-            DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
         }
@@ -309,13 +309,13 @@ void SectionWorker::TrainFilesWithProfiler() {
       // Start a minibatch.
       // int batch_size = 0;
       batch_timer.Start();
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         try {
           int op_idx = 0;
           for (auto& op : ops_) {
             int op_role =
                 boost::get<int>(op->Attr<int>(std::string("op_role")));
-            // We run op with op_role = kLRSched only for the first macrobatch
+            // We run op with op_role = kLRSched only for the first microbatch
             // to avoid increasing the @LR_DECAY_STEP@ multiple times.
             bool run_first_mbatch =
                 op_role == static_cast<int>(OpRole::kForward) ||
@@ -329,9 +329,9 @@ void SectionWorker::TrainFilesWithProfiler() {
               VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                       << " for scope " << i;
               timeline.Start();
-              op->Run(*macrobatch_scopes_[i], place_);
+              op->Run(*microbatch_scopes_[i], place_);
               if (gc) {
-                DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+                DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                     unused_vars_, gc.get());
               }
               timeline.Pause();
@@ -372,7 +372,7 @@ void SectionWorker::TrainFilesWithProfiler() {
         }
       }
       // backward pass
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
@@ -382,9 +382,9 @@ void SectionWorker::TrainFilesWithProfiler() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             timeline.Start();
-            op->Run(*macrobatch_scopes_[i], place_);
+            op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
-              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
             timeline.Pause();
@@ -410,9 +410,9 @@ void SectionWorker::TrainFilesWithProfiler() {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
           timeline.Start();
-          op->Run(*macrobatch_scopes_[0], place_);
+          op->Run(*microbatch_scopes_[0], place_);
           if (gc) {
-            DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
           timeline.Pause();
@@ -462,11 +462,11 @@ void SectionWorker::TrainFilesWithProfiler() {
         local_batch_id_ += 1;
       }
       // forward pass:
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
-          // We run op with op_role = kLRSched only for the first macrobatch
+          // We run op with op_role = kLRSched only for the first microbatch
           // to avoid increasing the @LR_DECAY_STEP@ multiple times.
           bool run_first_mbatch =
               op_role == static_cast<int>(OpRole::kForward) ||
@@ -480,9 +480,9 @@ void SectionWorker::TrainFilesWithProfiler() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             timeline.Start();
-            op->Run(*macrobatch_scopes_[i], place_);
+            op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
-              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
             timeline.Pause();
@@ -501,7 +501,7 @@ void SectionWorker::TrainFilesWithProfiler() {
         }
       }
       // backward pass
-      for (int i = 0; i < num_macrobatches_; ++i) {
+      for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
@@ -511,9 +511,9 @@ void SectionWorker::TrainFilesWithProfiler() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             timeline.Start();
-            op->Run(*macrobatch_scopes_[i], place_);
+            op->Run(*microbatch_scopes_[i], place_);
             if (gc) {
-              DeleteUnusedTensors(*macrobatch_scopes_[i], op.get(),
+              DeleteUnusedTensors(*microbatch_scopes_[i], op.get(),
                                   unused_vars_, gc.get());
             }
             timeline.Pause();
@@ -539,9 +539,9 @@ void SectionWorker::TrainFilesWithProfiler() {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
           timeline.Start();
-          op->Run(*macrobatch_scopes_[0], place_);
+          op->Run(*microbatch_scopes_[0], place_);
           if (gc) {
-            DeleteUnusedTensors(*macrobatch_scopes_[num_macrobatches_ - 1],
+            DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
                                 op.get(), unused_vars_, gc.get());
           }
           timeline.Pause();

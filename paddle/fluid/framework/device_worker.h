@@ -326,9 +326,9 @@ class SectionWorker : public DeviceWorker {
   void SetSectionIndex(int section_id) { section_id_ = section_id; }
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-  void SetMacrobatchNum(int num) { num_macrobatches_ = num; }
-  void SetMacrobatchScopes(const std::vector<Scope*>& scope) {
-    macrobatch_scopes_ = scope;
+  void SetMicrobatchNum(int num) { num_macrobatches_ = num; }
+  void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
+    microbatch_scopes_ = scope;
   }
   void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
   void SetSkipVars(const std::vector<std::string>& skip_vars) {
@@ -341,8 +341,8 @@ class SectionWorker : public DeviceWorker {
   void AutoSetCPUAffinity(bool reuse);
   int section_id_;
   int thread_id_;
-  int num_macrobatches_;
-  std::vector<Scope*> macrobatch_scopes_;
+  int num_microbatches_;
+  std::vector<Scope*> microbatch_scopes_;
   std::vector<std::string> skip_vars_;
   const Scope* minibatch_scope_;
 

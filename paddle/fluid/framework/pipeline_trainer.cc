@@ -25,9 +25,9 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
                                  Dataset* dataset) {
   const auto& section_params = trainer_desc.section_param();
   // We set the blocking queue capacity to the value
-  // of number of macrobatches in the python side.
-  num_macrobatches_ = section_params.queue_size();
-  VLOG(3) << "Number of macrobatches per minibatch: " << num_macrobatches_;
+  // of number of microbatches in the python side.
+  num_microbatches_ = section_params.queue_size();
+  VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
   section_num_ = section_params.section_config_size();
   VLOG(3) << "Number of program sections: " << section_num_;
   trainer_desc_ = trainer_desc;
@@ -89,7 +89,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     this_worker->SetSectionIndex(i);
     this_worker->SetPlace(place);
     this_worker->Initialize(trainer_desc);
-    this_worker->SetMacrobatchNum(num_macrobatches_);
+    this_worker->SetMacrobatchNum(num_microbatches_);
   }
   // set debug here
   SetDebug(trainer_desc.debug());
@@ -120,14 +120,14 @@ void PipelineTrainer::InitDumpEnv() {
   }
 }
 
-void PipelineTrainer::CopyParameters(int section_id, int macrobatch_id,
+void PipelineTrainer::CopyParameters(int section_id, int microbatch_id,
                                      const ProgramDesc& program,
                                      const platform::Place& place) {
   auto& global_block = program.Block(0);
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
-    if ((var->Persistable() || is_feed_var) && macrobatch_id == 0) {
+    if ((var->Persistable() || is_feed_var) && microbatch_id == 0) {
       if (is_feed_var) {
         auto* new_ptr = minibatch_scopes_[section_id]->Var(var->Name());
         VLOG(3) << "data name: " << var->Name() << ", ptr: " << new_ptr;
@@ -145,9 +145,9 @@ void PipelineTrainer::CopyParameters(int section_id, int macrobatch_id,
       }
     } else if (!var->Persistable() && !is_feed_var) {
       auto* ptr =
-          macrobatch_scopes_[section_id][macrobatch_id]->Var(var->Name());
+          microbatch_scopes_[section_id][microbatch_id]->Var(var->Name());
       VLOG(3) << "Create variable " << var->Name() << " for section "
-              << section_id << " macrobatch " << macrobatch_id
+              << section_id << " microbatch " << microbatch_id
               << ", which pointer is " << ptr;
       InitializeVariable(ptr, var->GetType());
     }
@@ -179,7 +179,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   auto start_cpu_id = trainer_desc_.section_param().start_cpu_core_id();
   SectionWorker::cpu_id_.store(start_cpu_id);
   minibatch_scopes_.resize(section_num_);
-  macrobatch_scopes_.resize(section_num_);
+  microbatch_scopes_.resize(section_num_);
   skip_vars_.resize(section_num_);
 
   VLOG(3) << "Init ScopeQueues and create all scopes";
@@ -188,9 +188,9 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     std::shared_ptr<framework::ProgramDesc> program;
     program.reset(new ProgramDesc(
         trainer_desc_.section_param().section_config(i).program_desc()));
-    macrobatch_scopes_[i].resize(num_macrobatches_);
-    for (int j = 0; j < num_macrobatches_; ++j) {
-      macrobatch_scopes_[i][j] = &minibatch_scopes_[i]->NewScope();
+    microbatch_scopes_[i].resize(num_microbatches_);
+    for (int j = 0; j < num_microbatches_; ++j) {
+      microbatch_scopes_[i][j] = &minibatch_scopes_[i]->NewScope();
       CopyParameters(i, j, *program, places_[i]);
     }
     GetSkipVars(i, *program);
@@ -202,7 +202,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
             workers_[i]);
     this_worker->SetRootScope(root_scope_);
     this_worker->SetMinibatchScope(minibatch_scopes_[i]);
-    this_worker->SetMacrobatchScopes(macrobatch_scopes_[i]);
+    this_worker->SetMacrobatchScopes(microbatch_scopes_[i]);
     this_worker->SetSkipVars(skip_vars_[i]);
   }
 }
@@ -232,7 +232,7 @@ void PipelineTrainer::Finalize() {
     std::shared_ptr<framework::ProgramDesc> program;
     program.reset(new ProgramDesc(
         trainer_desc_.section_param().section_config(i).program_desc()));
-    for (int j = 0; j < num_macrobatches_; ++j) {
+    for (int j = 0; j < num_microbatches_; ++j) {
       auto& global_block = program->Block(0);
       for (auto& var : global_block.AllVars()) {
         if (var->Persistable()) {
@@ -251,7 +251,7 @@ void PipelineTrainer::Finalize() {
 }
 
 Scope* PipelineTrainer::GetWorkerScope(int thread_id) {
-  return macrobatch_scopes_[thread_id][0];
+  return microbatch_scopes_[thread_id][0];
 }
 
 }  // end namespace framework
