@@ -68,7 +68,7 @@ inline void shell_execute(const std::string& cmd) {
   } while (err_no == -1);
 }
 
-// time_out:ms, default -1 means forever.
+// time_out:ms, default value:-1 means forever.
 // sleep_inter:ms, default -1 means not sleep.
 extern std::string shell_get_command_output(const std::string& cmd,
                                             int time_out = 10 * 60 * 1000,
