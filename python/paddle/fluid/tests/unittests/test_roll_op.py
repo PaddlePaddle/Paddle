@@ -49,7 +49,7 @@ class TestRollOp(OpTest):
 class TestRollOpCase2(TestRollOp):
     def init_dtype_type(self):
         self.dtype = np.float32
-        self.x_shape = (100, 100, 5)
+        self.x_shape = (100, 10, 5)
         self.shifts = [8, -1]
         self.dims = [-1, -2]
 
@@ -59,7 +59,7 @@ class TestRollAPI(unittest.TestCase):
         self.data_x = np.array(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]])
 
-    def test_roll_api(self):
+    def test_roll_op_api(self):
         self.input_data()
 
         # case 1:
