@@ -330,7 +330,7 @@ std::string PDPattern::DotString() const {
   Dot dot;
   int id = 0;
   // Create Nodes
-  std::map<PDNode *, std::string> node2dot;
+  std::unordered_map<PDNode *, std::string> node2dot;
   for (const auto &node : nodes()) {
     std::string node_id = "Node" + std::to_string(id++);
     dot.AddNode(node_id, {}, node->name());
