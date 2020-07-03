@@ -326,7 +326,7 @@ class SectionWorker : public DeviceWorker {
   void SetSectionIndex(int section_id) { section_id_ = section_id; }
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-  void SetMicrobatchNum(int num) { num_macrobatches_ = num; }
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
     microbatch_scopes_ = scope;
   }
