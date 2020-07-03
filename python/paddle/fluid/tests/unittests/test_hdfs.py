@@ -23,6 +23,8 @@ from paddle.fluid.incubate.fleet.utils.fs import LocalFS
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 from paddle.fluid.incubate.fleet.utils.hdfs import FSTimeOut, FSFileExistsError, FSFileNotExistsError
 
+java_home = os.environ["JAVA_HOME"]
+
 
 class FSTest(unittest.TestCase):
     def _test_dirs(self, fs):
@@ -104,7 +106,7 @@ class FSTest(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
-    def _test_download(sefl, fs):
+    def _test_download(self, fs):
         src_file = os.path.abspath("./test_download.src")
         dst_file = os.path.abspath("./test_download.dst")
 
