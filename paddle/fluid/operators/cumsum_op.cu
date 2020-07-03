@@ -251,8 +251,15 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
-    auto in_dims = in->dims();
+    bool flatten = context.Attr<bool>("flatten");
     auto size = in->numel();
+
+    if (flatten){
+      paddle::framework::DDim flatten_dims{size};
+      in->Resize(flatten_dims);
+    }
+
+    auto in_dims = in->dims();
 
     if (axis == -1) {
       axis = in_dims.size() - 1;
