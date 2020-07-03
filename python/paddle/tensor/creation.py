@@ -80,11 +80,7 @@ def full_like(x, fill_value, dtype=None, name=None):
           import numpy as np
           input = paddle.data(name='input', dtype='float32', shape=[2, 3])
           output = paddle.full_like(input, 2.0)
-          exe = fluid.Executor(fluid.CPUPlace())
-          exe.run(fluid.default_startup_program())
-          img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-          res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
-          print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
+          print(output.numpy()) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
     helper = LayerHelper("full_like", **locals())
 
