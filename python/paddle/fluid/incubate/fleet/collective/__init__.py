@@ -675,6 +675,9 @@ class CollectiveOptimizer(DistributedOptimizer):
         fleet._origin_program = main_program.clone(for_test=False)
         fleet._transpiled_program = main_program
         if self._use_pipeline:
+            node_num = self._node_num()
+            if node_num == 1:
+                return optimize_ops, param_grads
             fleet.main_program = self._try_to_compile(startup_program,
                                                       prog_list)
         else:
