@@ -14925,8 +14925,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
 
     if in_dygraph_mode():
         shape = utils._convert_shape_to_list(shape)
-        return core.ops.uniform_random('shape', shape, 'min', min, 'max', max,
-                                       'seed', seed, 'dtype', dtype)
+        return core.ops.uniform_random('shape', shape, 'min',
+                                       float(min), 'max',
+                                       float(max), 'seed', seed, 'dtype', dtype)
 
     check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     check_dtype(dtype, 'dtype', ('float32', 'float64'), 'uniform_random')
