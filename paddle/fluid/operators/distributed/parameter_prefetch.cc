@@ -209,16 +209,20 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   TableAndEndpoints tables;
 
   for (auto& id_name : id_var_names) {
-    auto& id_tensor = scope.FindVar(id_name)->Get<framework::LoDTensor>();
-    auto* id_data = id_tensor.data<int64_t>();
+    auto* id_tensor =
+        scope.FindVar(id_name)->GetMutable<framework::LoDTensor>();
+    auto id_dims = id_tensor->dims();
+    id_tensor->Resize(framework::make_ddim(
+        {static_cast<int64_t>(id_dims[0] * id_dims[1]), 1}));
+    auto* id_data = id_tensor->data<int64_t>();
     std::vector<int64_t> ids;
 
-    for (int64_t i = 0; i < id_tensor.numel(); ++i) {
+    for (int64_t i = 0; i < id_tensor->numel(); ++i) {
       ids.push_back(id_data[i]);
       ids_union.push_back(id_data[i]);
     }
     ids_group.push_back(ids);
-    ids_lods.push_back(id_tensor.lod());
+    ids_lods.push_back(id_tensor->lod());
   }
 
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
