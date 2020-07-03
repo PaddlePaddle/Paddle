@@ -447,8 +447,6 @@ def rand(shape, dtype=None, name=None):
         import paddle
         import numpy as np
 
-        paddle.enable_imperative()
-
         # example 1: attr shape is a list which doesn't contain tensor Variable.
         result_1 = paddle.rand(shape=[2, 3])
         # [[0.451152  , 0.55825245, 0.403311  ],

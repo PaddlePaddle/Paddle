@@ -345,3 +345,16 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
             temp_out = fill_constant([1], dtype, ele, force_cpu=True)
             new_list_tensor.append(temp_out)
     return new_list_tensor
+
+
+def _convert_shape_to_list(shape):
+    """
+    Convert shape(list, tuple, variable) to list in imperative mode
+    """
+    if isinstance(shape, (list, tuple)):
+        shape = list(
+            map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+                shape))
+    else:
+        shape = list(shape.numpy().astype(int))
+    return shape
