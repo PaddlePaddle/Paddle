@@ -26,7 +26,7 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   const auto& section_params = trainer_desc.section_param();
   // We set the blocking queue capacity to the value
   // of number of microbatches in the python side.
-  num_microbatches_ = section_params.queue_size();
+  num_microbatches_ = section_params.pipeline_micro_batch();
   VLOG(3) << "Number of microbatches per minibatch: " << num_microbatches_;
   section_num_ = section_params.section_config_size();
   VLOG(3) << "Number of program sections: " << section_num_;
