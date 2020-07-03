@@ -106,7 +106,7 @@ struct NCCLContextMap {
     }
     PADDLE_ENFORCE_EQ(
         order_.size(), contexts_.size(),
-        platform::errors::Unavaliable("NCCL Context Map does not support "
+        platform::errors::Unavailable("NCCL Context Map does not support "
                                       "contain two or more same device."));
 
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);

@@ -60,9 +60,9 @@ platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Place %s is not supported, Please check that your paddle compiles "
+        "Place %s is not supported. Please check that your paddle compiles "
         "with WITH_GPU option or check that your train process hold the "
-        "correct gpu_id if you use Executor",
+        "correct gpu_id if you use Executor.",
         place));
   }
   return it->second.get().get();
@@ -104,7 +104,7 @@ DeviceContextPool::DeviceContextPool(
       EmplaceDeviceContext<CUDADeviceContext, CUDAPlace>(&device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "'CUDAPlace is not supported. Please re-compile with WITH_GPU."
           "option"));
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
@@ -113,7 +113,7 @@ DeviceContextPool::DeviceContextPool(
           &device_contexts_, p);
 #else
       PADDLE_THROW(platform::errors::Unimplemented(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
+          "'CUDAPlace' is not supported. Please re-compile with WITH_GPU."
           "option"));
 #endif
     }

@@ -173,7 +173,7 @@ class MKLDNNHandlerT {
     fwd_pd_ = std::static_pointer_cast<typename TForward::primitive_desc>(
         dev_ctx_.GetBlob(key_fwd_pd));
     PADDLE_ENFORCE_NOT_NULL(
-        fwd_pd_, platform::errors::Unavaliable(
+        fwd_pd_, platform::errors::Unavailable(
                      "Get MKLDNN Forward primitive %s failed.", key_fwd_pd));
     const std::string key_pd = key_ + "@backward_pd";
     bwd_pd_ = std::static_pointer_cast<typename TBackward::primitive_desc>(

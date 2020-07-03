@@ -478,7 +478,7 @@ class ScopedActivationDescriptor {
         break;
       default:
         PADDLE_THROW(
-            platform::errors::Unimplemented("unrecognized activation mode: %d.",
+            platform::errors::Unimplemented("Unrecognized activation mode: %d.",
                                             static_cast<int>(activation_mode)));
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(

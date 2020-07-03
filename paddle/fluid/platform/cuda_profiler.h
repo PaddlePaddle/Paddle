@@ -28,19 +28,19 @@ void CudaProfilerInit(std::string output_file, std::string output_mode,
   cudaOutputMode_t mode = output_mode == "csv" ? cudaCSV : cudaKeyValuePair;
   PADDLE_ENFORCE_NOT_NULL(
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode),
-      platform::errors::Unavaliable("The CUDA profiler failed to initialize."));
+      platform::errors::Unavailable("The CUDA profiler failed to initialize."));
 }
 
 void CudaProfilerStart() {
   PADDLE_ENFORCE_NOT_NULL(
       cudaProfilerStart(),
-      platform::errors::Unavaliable("The CUDA profiler failed to start."));
+      platform::errors::Unavailable("The CUDA profiler failed to start."));
 }
 
 void CudaProfilerStop() {
   PADDLE_ENFORCE_NOT_NULL(
       cudaProfilerStop(),
-      platform::errors::Unavaliable("The CUDA profiler failed to stop."));
+      platform::errors::Unavailable("The CUDA profiler failed to stop."));
 }
 
 }  // namespace platform
