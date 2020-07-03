@@ -37,8 +37,8 @@ class CastTransformer(gast.NodeTransformer):
     def visit_Call(self, node):
         self.generic_visit(node)
         func_str = ast_to_source_code(node.func).strip()
-        args_str = ast_to_source_code(node.args[0]).strip()
-        if func_str in self._castable_type:
+        if func_str in self._castable_type and len(node.args) > 0:
+            args_str = ast_to_source_code(node.args[0]).strip()
             new_func_str = "fluid.dygraph.dygraph_to_static.convert_operators.convert_var_dtype({}, '{}')".format(
                 args_str, func_str)
             new_node = gast.parse(new_func_str).body[0].value

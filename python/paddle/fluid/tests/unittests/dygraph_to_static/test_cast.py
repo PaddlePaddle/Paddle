@@ -45,6 +45,12 @@ def test_float_cast(x):
 
 
 @declarative
+def test_not_var_cast(x):
+    x = int(x)
+    return x
+
+
+@declarative
 def test_mix_cast(x):
     x = fluid.dygraph.to_variable(x)
     x = int(x)
@@ -75,10 +81,10 @@ class TestCastBase(unittest.TestCase):
     def do_test(self):
         with fluid.dygraph.guard():
             res = self.func(self.input)
-            return res.numpy()
+            return res
 
     def test_cast_result(self):
-        res = self.do_test()
+        res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
             msg='The target dtype is {}, but the casted dtype is {}.'.format(
@@ -132,15 +138,33 @@ class TestMixCast(TestCastBase):
         self.func = test_mix_cast
 
     def test_cast_result(self):
-        res = self.do_test()
+        res = self.do_test().numpy()
         self.assertTrue(
             res.dtype == self.cast_dtype,
             msg='The target dtype is {}, but the casted dtype is {}.'.format(
                 self.cast_dtype, res.dtype))
         ref_val = self.input.astype(self.cast_int).astype(
-            self.cast_float).astype(self.cast_bool).astype(self.cast_float)
+            self.cast_float).astype(self.cast_bool).astype(self.cast_dtype)
         self.assertTrue(
             np.allclose(res, ref_val),
+            msg='The casted value is {}.\nThe correct value is {}.'.format(
+                res, ref_val))
+
+
+class TestNotVarCast(TestCastBase):
+    def prepare(self):
+        self.input = 3.14
+        self.cast_dtype = 'int'
+
+    def set_func(self):
+        self.func = test_not_var_cast
+
+    def test_cast_result(self):
+        res = self.do_test()
+        self.assertTrue(type(res) == int, msg='The casted dtype is not int.')
+        ref_val = int(self.input)
+        self.assertTrue(
+            res == ref_val,
             msg='The casted value is {}.\nThe correct value is {}.'.format(
                 res, ref_val))
 
