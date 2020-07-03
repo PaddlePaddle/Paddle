@@ -132,6 +132,30 @@ __global__ void PushCopy(
   }
 }
 
+__global__ void AddBasicCalculator(const float* pred, const int64_t* label,
+                                   double* positive, double* negative,
+                                   double* abs_error, double* sqr_error,
+                                   double* local_pred, int len,
+                                   int table_size) {
+  CUDA_KERNEL_LOOP(ins_idx, len) {
+    int pos = static_cast<int>(pred[ins_idx] * table_size);
+    if (pos >= table_size) {
+      pos = table_size - 1;
+    }
+    if (label[ins_idx] == 0) {
+      atomicAdd(negative + pos, 1.0);
+      // negative[pos]++;
+    } else {
+      atomicAdd(positive + pos, 1.0);
+      // positive[pos]++;
+    }
+    double err = pred[ins_idx] - label[ins_idx];
+    abs_error[ins_idx] += fabs(err);
+    sqr_error[ins_idx] += err * err;
+    local_pred[ins_idx] += pred[ins_idx];
+  }
+}
+
 void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
                              uint64_t** gpu_keys,
                              const std::vector<float*>& values,
@@ -174,6 +198,7 @@ void BoxWrapper::CopyForPull(const paddle::platform::Place& place,
     EMBEDX_CASE(8, EXPAND_EMBED_PULL_CASE(0); EXPAND_EMBED_PULL_CASE(8);
                 EXPAND_EMBED_PULL_CASE(64););
     EMBEDX_CASE(16, EXPAND_EMBED_PULL_CASE(0););
+    EMBEDX_CASE(256, EXPAND_EMBED_PULL_CASE(0););
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
@@ -253,6 +278,7 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
     EMBEDX_CASE(8, EXPAND_EMBED_PUSH_CASE(0); EXPAND_EMBED_PUSH_CASE(8);
                 EXPAND_EMBED_PUSH_CASE(64););
     EMBEDX_CASE(16, EXPAND_EMBED_PUSH_CASE(0););
+    EMBEDX_CASE(256, EXPAND_EMBED_PUSH_CASE(0););
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupport this embedding size [%d]", hidden_size - 3));
@@ -261,6 +287,27 @@ void BoxWrapper::CopyForPush(const paddle::platform::Place& place,
   cudaStreamSynchronize(stream);
 #undef EXPAND_EMBED_PUSH_CASE
 #undef EMBEDX_CASE
+}
+
+void BasicAucCalculator::cuda_add_data(const paddle::platform::Place& place,
+                                       const int64_t* label, const float* pred,
+                                       int len) {
+
+  auto stream = dynamic_cast<platform::CUDADeviceContext*>(
+                    platform::DeviceContextPool::Instance().Get(
+                        BOOST_GET_CONST(platform::CUDAPlace, place)))
+                    ->stream();
+
+  int i = BOOST_GET_CONST(platform::CUDAPlace, place).GetDeviceId();
+
+  cudaSetDevice(i);
+
+  AddBasicCalculator<<<(len + 512 - 1) / 512, 512, 0, stream>>>(
+      pred, label, reinterpret_cast<double*>(_d_positive[i]->ptr()),
+      reinterpret_cast<double*>(_d_negative[i]->ptr()),
+      reinterpret_cast<double*>(_d_abserr[i]->ptr()),
+      reinterpret_cast<double*>(_d_sqrerr[i]->ptr()),
+      reinterpret_cast<double*>(_d_pred[i]->ptr()), len, _table_size);
 }
 
 }  // end namespace framework

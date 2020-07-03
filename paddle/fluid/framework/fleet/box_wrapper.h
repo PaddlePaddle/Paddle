@@ -53,40 +53,15 @@ namespace framework {
 #ifdef PADDLE_WITH_BOX_PS
 class BasicAucCalculator {
  public:
-  BasicAucCalculator() {}
-  void init(int table_size) { set_table_size(table_size); }
-  void reset() {
-    for (int i = 0; i < 2; i++) {
-      _table[i].assign(_table_size, 0.0);
-    }
-    _local_abserr = 0;
-    _local_sqrerr = 0;
-    _local_pred = 0;
-  }
-  void add_data(double pred, int label) {
-    PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
-                                     "pred should be greater than 0"));
-    PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
-                                     "pred should be lower than 1"));
-    PADDLE_ENFORCE_EQ(
-        label * label, label,
-        platform::errors::PreconditionNotMet(
-            "label must be equal to 0 or 1, but its value is: %d", label));
-    int pos = std::min(static_cast<int>(pred * _table_size), _table_size - 1);
-    PADDLE_ENFORCE_GE(
-        pos, 0,
-        platform::errors::PreconditionNotMet(
-            "pos must be equal or greater than 0, but its value is: %d", pos));
-    PADDLE_ENFORCE_LT(
-        pos, _table_size,
-        platform::errors::PreconditionNotMet(
-            "pos must be less than table_size, but its value is: %d", pos));
-    std::lock_guard<std::mutex> lock(_table_mutex);
-    _local_abserr += fabs(pred - label);
-    _local_sqrerr += (pred - label) * (pred - label);
-    _local_pred += pred;
-    _table[label][pos]++;
-  }
+  BasicAucCalculator(bool mode_collect_in_gpu=false): 
+      _mode_collect_in_gpu(mode_collect_in_gpu) {}
+  void init(int table_size, int max_batch_size=0);
+  void reset();
+  // add batch data
+  void add_data(const float* d_pred, const int64_t* d_label, int batch_size,
+                const paddle::platform::Place& place);
+  // add single data in CPU with LOCK, deprecated
+  void add_data(double pred, int label); 
   void compute();
   int table_size() const { return _table_size; }
   double bucket_error() const { return _bucket_error; }
@@ -101,7 +76,8 @@ class BasicAucCalculator {
   double& local_abserr() { return _local_abserr; }
   double& local_sqrerr() { return _local_sqrerr; }
   double& local_pred() { return _local_pred; }
-
+  void cuda_add_data(const paddle::platform::Place& place,
+                     const int64_t* label, const float* pred, int len);
  private:
   void calculate_bucket_error();
 
@@ -117,15 +93,24 @@ class BasicAucCalculator {
   double _size;
   double _bucket_error = 0;
 
+  std::vector<std::shared_ptr<memory::Allocation>> _d_positive;
+  std::vector<std::shared_ptr<memory::Allocation>> _d_negative;
+  std::vector<std::shared_ptr<memory::Allocation>> _d_abserr;
+  std::vector<std::shared_ptr<memory::Allocation>> _d_sqrerr;
+  std::vector<std::shared_ptr<memory::Allocation>> _d_pred;
+
  private:
   void set_table_size(int table_size) {
     _table_size = table_size;
-    for (int i = 0; i < 2; i++) {
-      _table[i] = std::vector<double>();
-    }
-    reset();
   }
+  void set_max_batch_size(int max_batch_size) {
+    _max_batch_size = max_batch_size;
+  }
+  void collect_data_nccl();
+  void copy_data_d2h(int device);
   int _table_size;
+  int _max_batch_size;
+  bool _mode_collect_in_gpu;
   std::vector<double> _table[2];
   static constexpr double kRelativeErrorBound = 0.05;
   static constexpr double kMaxSpan = 0.01;
@@ -376,27 +361,42 @@ class BoxWrapper {
    public:
     MetricMsg() {}
     MetricMsg(const std::string& label_varname, const std::string& pred_varname,
-              int metric_phase, int bucket_size = 1000000)
+              int metric_phase, int bucket_size = 1000000, bool mode_collect_in_gpu = false,
+              int max_batch_size = 0)
         : label_varname_(label_varname),
           pred_varname_(pred_varname),
           metric_phase_(metric_phase) {
-      calculator = new BasicAucCalculator();
-      calculator->init(bucket_size);
+      calculator = new BasicAucCalculator(mode_collect_in_gpu);
+      calculator->init(bucket_size, max_batch_size);
     }
     virtual ~MetricMsg() {}
 
     int MetricPhase() const { return metric_phase_; }
     BasicAucCalculator* GetCalculator() { return calculator; }
-    virtual void add_data(const Scope* exe_scope) {
-      std::vector<int64_t> label_data;
-      get_data<int64_t>(exe_scope, label_varname_, &label_data);
-      std::vector<float> pred_data;
-      get_data<float>(exe_scope, pred_varname_, &pred_data);
+    virtual void add_data(const Scope* exe_scope,
+                          const paddle::platform::Place& place) {
+      int label_len = 0;
+      const int64_t* label_data = NULL;
+      int pred_len = 0;
+      const float* pred_data = NULL;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data, &label_len);
+      get_data<float>(exe_scope, pred_varname_, &pred_data, &pred_len);
+      PADDLE_ENFORCE_EQ(label_len, pred_len, platform::errors::PreconditionNotMet(
+                    "the predict data length should be consistent with the label data length"));
+      int& batch_size = label_len;
       auto cal = GetCalculator();
-      auto batch_size = label_data.size();
-      for (size_t i = 0; i < batch_size; ++i) {
-        cal->add_data(pred_data[i], label_data[i]);
-      }
+      cal->add_data(pred_data, label_data, batch_size, place);
+    }
+    template <class T = float>
+    static void get_data(const Scope* exe_scope, const std::string& varname,
+                         const T** data, int* len) {
+      auto* var = exe_scope->FindVar(varname.c_str());
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::NotFound(
+                   "Error: var %s is not found in scope.", varname.c_str()));
+      auto& gpu_tensor = var->Get<LoDTensor>();
+      *data = gpu_tensor.data<T>();
+      *len = gpu_tensor.numel();
     }
     template <class T = float>
     static void get_data(const Scope* exe_scope, const std::string& varname,
@@ -457,7 +457,8 @@ class BoxWrapper {
                             cmatch_rank_v.size(), pred_v.size()));
     }
     virtual ~MultiTaskMetricMsg() {}
-    void add_data(const Scope* exe_scope) override {
+    void add_data(const Scope* exe_scope,
+                          const paddle::platform::Place& place) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -528,7 +529,8 @@ class BoxWrapper {
       }
     }
     virtual ~CmatchRankMetricMsg() {}
-    void add_data(const Scope* exe_scope) override {
+    void add_data(const Scope* exe_scope,
+                          const paddle::platform::Place& place) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -582,7 +584,8 @@ class BoxWrapper {
       calculator->init(bucket_size);
     }
     virtual ~MaskMetricMsg() {}
-    void add_data(const Scope* exe_scope) override {
+    void add_data(const Scope* exe_scope,
+                          const paddle::platform::Place& place) override {
       std::vector<int64_t> label_data;
       get_data<int64_t>(exe_scope, label_varname_, &label_data);
       std::vector<float> pred_data;
@@ -637,10 +640,11 @@ class BoxWrapper {
                   const std::string& cmatch_rank_varname,
                   const std::string& mask_varname, int metric_phase,
                   const std::string& cmatch_rank_group, bool ignore_rank,
-                  int bucket_size = 1000000) {
+                  int bucket_size = 1000000, bool mode_collect_in_gpu = false,
+                  int max_batch_size = 0) {
     if (method == "AucCalculator") {
       metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
-                                                metric_phase, bucket_size));
+                                                metric_phase, bucket_size, mode_collect_in_gpu, max_batch_size));
     } else if (method == "MultiTaskAucCalculator") {
       metric_lists_.emplace(
           name, new MultiTaskMetricMsg(label_varname, pred_varname,
