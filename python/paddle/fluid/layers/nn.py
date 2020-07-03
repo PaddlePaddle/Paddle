@@ -11995,7 +11995,7 @@ def logical_and(x, y, out=None, name=None):
     :alias: paddle.logical_and, paddle.tensor.logical_and, paddle.tensor.logic.logical_and
     :old_api: paddle.fluid.layers.logical_and
 
-    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out`. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
+    ``logical_and`` operator computes element-wise logical AND on ``x`` and ``y``, and returns ``out``. ``x``, ``y`` and ``out`` are N-dim boolean ``Variable``.
     Each element of ``out`` is calculated by
 
     .. math::
