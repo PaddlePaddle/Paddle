@@ -44,17 +44,17 @@ def default_collate_fn(batch):
     batch should be a list of samples, and each sample should be a list
     of fields as follows:
     
-    [[filed1, filed2, ...], [filed1, filed2, ...], ...]
+    [[field1, field2, ...], [field1, field2, ...], ...]
     
-    This default collate function zipped each filed together and stack
-    each filed as the batch field as follows:
+    This default collate function zipped each field together and stack
+    each field as the batch field as follows:
 
-    [batch_filed1, batch_filed2, ...]
+    [batch_field1, batch_field2, ...]
 
     Args:  
         batch(list of list of numpy array): the batch data, each fields
               should be a numpy array, each sample should be a list of
-              fileds, and batch should be a list of sample.
+              fields, and batch should be a list of sample.
     
     Returns:
         a list of numpy array: collated batch

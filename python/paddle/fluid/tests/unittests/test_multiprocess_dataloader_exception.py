@@ -23,7 +23,7 @@ import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.fluid.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
