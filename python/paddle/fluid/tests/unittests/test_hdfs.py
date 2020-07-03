@@ -109,6 +109,8 @@ class FSTest(unittest.TestCase):
     def _test_download(self, fs):
         src_file = os.path.abspath("./test_download.src")
         dst_file = os.path.abspath("./test_download.dst")
+        fs.delete(dst_file)
+        fs.delete(src_file)
 
         try:
             fs.download(src_file, dst_file)
@@ -155,7 +157,7 @@ class FSTest(unittest.TestCase):
 
         self._test_download(fs)
         self._test_mkdirs(fs)
-        sefl._test_list_dir(fs)
+        self._test_list_dir(fs)
 
     def test_local(self):
         fs = LocalFS()
