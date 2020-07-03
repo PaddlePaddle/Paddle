@@ -46,7 +46,8 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
   } else if (type == framework::proto::VarType::FP16) {
     return ncclFloat16;
   } else {
-    PADDLE_THROW("Not supported");
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This datatype in nccl is not supported."));
   }
 }
 

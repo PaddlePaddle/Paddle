@@ -103,7 +103,7 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
-      PADDLE_THROW("Unexpected pooling mode.");
+      PADDLE_THROW(platform::errors::Unimplemented("Unexpected pooling mode."));
   }
 }
 #else
@@ -119,7 +119,7 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
     case PoolingMode::kMaximum:
       return CUDNN_POOLING_MAX;
     default:
-      PADDLE_THROW("Unexpected pooling mode.");
+      PADDLE_THROW(platform::errors::Unimplemented("Unexpected pooling mode."));
   }
 }
 #endif  // CUDNN_VERSION < 6000
@@ -140,7 +140,8 @@ inline ActivationMode StringToActivationMode(const std::string& str) {
   } else if (str == "bandpass") {
     return ActivationMode::kBandPass;
   } else {
-    PADDLE_THROW("Unknown activation string: %s", str);
+    PADDLE_THROW(
+        platform::errors::Unimplemented("Unknown activation string: %s.", str));
   }
 }
 
@@ -208,7 +209,8 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
     case DataLayout::kNDHWC:
       return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
-      PADDLE_THROW("Unknown cudnn equivalent for order");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unknown cudnn equivalent for order."));
   }
   return CUDNN_TENSOR_NCHW;
 }
@@ -387,8 +389,17 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& kernel,
                                              const std::vector<int>& pads,
                                              const std::vector<int>& strides) {
-    PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
-    PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
+    PADDLE_ENFORCE_EQ(kernel.size(), pads.size(),
+                      platform::errors::InvalidArgument(
+                          "The size of kernel and pads should be equal. But "
+                          "received size of kernel is %d, size of pads is %d.",
+                          kernel.size(), pads.size()));
+    PADDLE_ENFORCE_EQ(
+        kernel.size(), strides.size(),
+        platform::errors::InvalidArgument(
+            "The size of kernel and strides should be equal. But "
+            "received size of kernel is %d, size of strides is %d.",
+            kernel.size(), strides.size()));
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetPoolingNdDescriptor(
         desc_, (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
@@ -466,8 +477,9 @@ class ScopedActivationDescriptor {
         mode = CUDNN_ACTIVATION_TANH;
         break;
       default:
-        PADDLE_THROW("unrecognized activation mode: %d .",
-                     static_cast<int>(activation_mode));
+        PADDLE_THROW(
+            platform::errors::Unimplemented("unrecognized activation mode: %d.",
+                                            static_cast<int>(activation_mode)));
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
