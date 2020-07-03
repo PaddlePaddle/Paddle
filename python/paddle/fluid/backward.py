@@ -852,6 +852,10 @@ def _get_sub_block_path(sub_block,
         sub_assign_to_out_ops = []
         sub_outputs = []
         for var in sub_block_output_names:
+
+            # add. liym27
+            sub_outputs.append(sub_block._var_recursive(var))
+
             for op_desc in sub_block.ops:
                 # why op_desc.type must be 'assign' ?
                 # if op_desc.type == "assign" and var in op_desc.output_arg_names:
@@ -865,10 +869,10 @@ def _get_sub_block_path(sub_block,
 
         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
                                            no_grad_set, op_path_dict)
-        # TODO better way than finding in list
-        for op_desc in sub_assign_to_out_ops:
-            if op_desc not in sub_block_op_path:
-                sub_block_op_path.append(op_desc)
+        # # TODO better way than finding in list
+        # for op_desc in sub_assign_to_out_ops:
+        #     if op_desc not in sub_block_op_path:
+        #         sub_block_op_path.append(op_desc)
         return sub_block_op_path
     return sub_block.ops
 
@@ -1593,10 +1597,13 @@ def _get_output_names(cur_block, targets):
 
     block = targets[0].block if targets else cur_block
     prog = cur_block.program
-    if _is_ancestor_block(block, cur_block):
-        return set()
-
+    # if _is_ancestor_block(block, cur_block):
+    #     return set()
+    #
+    # current_output_names = set([out.name for out in targets])
     current_output_names = set([out.name for out in targets])
+    if _is_ancestor_block(block, cur_block):
+        return current_output_names
 
     # if `cur_block` is an ancestor of `targets[0].block`, run while loop
     while block.idx != cur_block.idx:
