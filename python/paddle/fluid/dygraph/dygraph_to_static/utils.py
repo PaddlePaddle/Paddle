@@ -24,6 +24,7 @@ import inspect
 import os
 import six
 import tempfile
+import textwrap
 
 from paddle.fluid import unique_name
 
@@ -368,6 +369,8 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
     source = ast_to_source_code(ast_root)
+    import_fluid = "import paddle.fluid as fluid\n"
+    source = import_fluid + source
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -407,9 +410,24 @@ def recover_globals_attribute(src_obj, dst_obj):
             dst_globals[k] = v
 
 
+def func_to_source_code(function, dedent=True):
+    """
+    Transforms function into raw string of source code.
+    """
+    if not (inspect.isfunction(function) or inspect.ismethod(function)):
+        raise TypeError(
+            "The type of 'function' should be a function or method, but received {}.".
+            format(type(function).__name__))
+    source_code = inspect.getsource(function)
+    if dedent:
+        source_code = textwrap.dedent(source_code)
+
+    return source_code
+
+
 def ast_to_source_code(ast_node):
     """
-    Transformers ast node into source code.
+    Transforms ast node into source code.
     """
     if not isinstance(ast_node, (gast.AST, ast.AST)):
         raise TypeError(

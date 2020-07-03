@@ -22,22 +22,22 @@ class TestDownload(unittest.TestCase):
         get_weights_path_from_url(url, md5sum)
 
     def test_download_model(self):
-        url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams'
-        md5sum = '8ff74f291f72533f2a7956a4efff9d88'
+        url = 'https://paddle-hapi.bj.bcebos.com/unittest/single_file.pdparams'
+        md5sum = 'd41d8cd98f00b204e9800998ecf8427e'
         self.download(url, md5sum)
 
     def test_exist_download(self):
-        url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams'
-        md5sum = '8ff74f291f72533f2a7956a4efff9d88'
+        url = 'https://paddle-hapi.bj.bcebos.com/unittest/single_file.pdparams'
+        md5sum = 'd41d8cd98f00b204e9800998ecf8427e'
         self.download(url, md5sum)
 
     def test_download_without_md5sum(self):
-        url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams'
+        url = 'https://paddle-hapi.bj.bcebos.com/unittest/single_file.pdparams'
         self.download(url, None)
 
     def test_download_errors(self):
         with self.assertRaises(RuntimeError):
-            url = 'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0t.pdparams'
+            url = 'https://paddle-hapi.bj.bcebos.com/unittest/single_file.pdparams'
             md5sum = '8ff74f291f72533f2a7956a4eftttttt'
             self.download(url, md5sum)
 
