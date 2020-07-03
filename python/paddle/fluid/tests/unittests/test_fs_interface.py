@@ -34,10 +34,13 @@ class FSTest(unittest.TestCase):
 
         a = None
         try:
-            if len(args) == 2:
+            if len(args) == 1:
+                func()
+            elif len(args) == 2:
                 func(a)
             elif len(args) == 3:
                 func(a, a)
+            print("args:", args, len(args), "func:", func)
             self.assertFalse(True)
         except NotImplementedError as e:
             pass

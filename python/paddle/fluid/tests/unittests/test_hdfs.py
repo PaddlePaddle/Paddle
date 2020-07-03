@@ -122,7 +122,7 @@ class FSTest(unittest.TestCase):
 
         fs.download(src_file, dst_file)
         try:
-            fs.download(src, dst_file)
+            fs.download(src_file, dst_file)
             self.assertFalse(True)
         except FSFileExistsError as e:
             pass
