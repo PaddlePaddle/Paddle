@@ -270,6 +270,9 @@ def terminate_local_procs(procs):
     # still alive?
     gone, alive = psutil.wait_procs(decents, timeout=1)
     if len(alive) != 0:
+        for p in alive:
+            logger.fatal("can't kill process:{} cmd_line:{}".format(
+                p.pid, p.cmdline()))
         logger.fatal("can't kill all process and exit")
         exit(1)
 
