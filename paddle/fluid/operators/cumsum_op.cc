@@ -37,6 +37,10 @@ class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
                  "dimension [default -1].")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
+    AddAttr<bool>("flatten",
+                  "Whether to compute the cumsum over the flattened array. "
+                  "[default false].")
+        .SetDefault(false);
     AddAttr<bool>("exclusive",
                   "Whether to perform exclusive cumsum. [default false].")
         .SetDefault(false);
@@ -63,6 +67,8 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttr("axis", BOOST_GET_CONST(int, this->GetAttr("axis")));
+    grad_op->SetAttr("flatten",
+                     BOOST_GET_CONST(bool, this->GetAttr("flatten")));
     grad_op->SetAttr("reverse",
                      !BOOST_GET_CONST(bool, this->GetAttr("reverse")));
     grad_op->SetAttr("exclusive",
