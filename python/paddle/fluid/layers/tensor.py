@@ -28,7 +28,6 @@ from . import utils
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
 import warnings
-import paddle
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
@@ -1397,8 +1396,66 @@ def range(start, end, step, dtype):
     return out
 
 
-def linspace(start, stop, num, dtype):
-    return paddle.tensor.linspace(start, stop, num, dtype)
+def linspace(start, stop, num, dtype, name=None):
+    """
+    This OP return fixed number of evenly spaced values within a given interval.
+
+    Args:
+        start(float|Variable): The input :attr:`start` is start variable of range. It is a float scalar, \
+            or a tensor of shape [1] with input data type float32, float64.
+        stop(float|Variable): The input :attr:`stop` is start variable of range. It is a float scalar, \
+            or a tensor of shape [1] with input data type float32, float64.
+        num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
+            or a tensor of shape [1] with type int32.
+        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
+
+    Returns:
+        Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
+        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
+        the value with input :attr:`start`. 
+
+    Examples:
+        .. code-block:: python
+
+             import paddle.fluid as fluid
+             data = fluid.layers.linspace(0, 10, 5, 'float32') # [0.0,  2.5,  5.0,  7.5, 10.0]
+             data = fluid.layers.linspace(0, 10, 1, 'float32') # [0.0]
+
+    """
+    helper = LayerHelper("linspace", **locals())
+
+    check_type(start, 'start', (Variable, float, int), linspace)
+    check_type(stop, 'stop', (Variable, float, int), linspace)
+    check_type(num, 'num', (Variable, float, int), linspace)
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'linspace')
+
+    if not isinstance(start, Variable):
+        start = fill_constant([1], dtype, start)
+    else:
+        check_variable_and_dtype(start, "start", ["float32", "float64"],
+                                 "linspace")
+
+    if not isinstance(stop, Variable):
+        stop = fill_constant([1], dtype, stop)
+    else:
+        check_variable_and_dtype(stop, "stop", ["float32", "float64"],
+                                 "linspace")
+    if not isinstance(num, Variable):
+        num = fill_constant([1], 'int32', num)
+    else:
+        check_variable_and_dtype(num, "num", ["int32"], "linspace")
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='linspace',
+        inputs={'Start': start,
+                'Stop': stop,
+                'Num': num},
+        outputs={'Out': [out]})
+    return out
 
 
 def zeros_like(x, out=None):

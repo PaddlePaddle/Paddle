@@ -27,8 +27,8 @@ from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
 from ..fluid.layers import diag  #DEFINE_ALIAS
 from ..fluid.layers import eye  #DEFINE_ALIAS
 from ..fluid.layers import fill_constant  #DEFINE_ALIAS
-
 from ..fluid.layers import create_tensor  #DEFINE_ALIAS
+import paddle
 
 __all__ = [
     'create_tensor',
@@ -155,42 +155,10 @@ def linspace(start, stop, num, dtype=None, name=None):
              data = paddle.linspace(0, 10, 1, dtype='float32') # [0.0]
 
     """
-    helper = LayerHelper("linspace", **locals())
-
-    check_type(start, 'start', (Variable, float, int), linspace)
-    check_type(stop, 'stop', (Variable, float, int), linspace)
-    check_type(num, 'num', (Variable, float, int), linspace)
-
     if dtype is None:
         dtype = 'float32'
-    else:
-        check_dtype(dtype, 'create data type', ['float32', 'float64'],
-                    'linspace')
-    if not isinstance(start, Variable):
-        start = fill_constant([1], dtype, start)
-    else:
-        check_variable_and_dtype(start, "start", ["float32", "float64"],
-                                 "linspace")
-
-    if not isinstance(stop, Variable):
-        stop = fill_constant([1], dtype, stop)
-    else:
-        check_variable_and_dtype(stop, "stop", ["float32", "float64"],
-                                 "linspace")
-    if not isinstance(num, Variable):
-        num = fill_constant([1], 'int32', num)
-    else:
-        check_variable_and_dtype(num, "num", ["int32"], "linspace")
-
-    out = helper.create_variable_for_type_inference(dtype=start.dtype)
-
-    helper.append_op(
-        type='linspace',
-        inputs={'Start': start,
-                'Stop': stop,
-                'Num': num},
-        outputs={'Out': [out]})
-    return out
+    return paddle.fluid.layers.linspace(
+        start=start, stop=stop, num=num, dtype=dtype, name=name)
 
 
 def ones(shape, dtype=None, out=None, device=None):
