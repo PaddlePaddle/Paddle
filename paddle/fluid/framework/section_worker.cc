@@ -90,15 +90,15 @@ void SectionWorker::TrainFiles() {
   if (platform::is_gpu_place(place_)) {
     if (IsFastEagerDeletionModeEnabled()) {
       gc.reset(new UnsafeFastGPUGarbageCollector(
-          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     } else {
       gc.reset(new DefaultStreamGarbageCollector(
-          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     }
   } else if (platform::is_cpu_place(place_)) {
 #endif
-    gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place_),
-                                     max_memory_size));
+    gc.reset(new CPUGarbageCollector(
+        BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
@@ -110,7 +110,7 @@ void SectionWorker::TrainFiles() {
         try {
           for (auto& op : ops_) {
             int op_role =
-                boost::get<int>(op->Attr<int>(std::string("op_role")));
+                BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
             // We run op with op_role = kLRSched only for the first microbatch
             // to avoid increasing the @LR_DECAY_STEP@ multiple times.
             bool run_first_mbatch =
@@ -150,7 +150,8 @@ void SectionWorker::TrainFiles() {
       // backward pass
       for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
-          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          int op_role =
+              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -166,7 +167,8 @@ void SectionWorker::TrainFiles() {
       }
       // update pass
       for (auto& op : ops_) {
-        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        int op_role =
+            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
@@ -182,10 +184,12 @@ void SectionWorker::TrainFiles() {
   } else {
     while (true) {
       {
-        PADDLE_ENFORCE_LE(local_batch_id_, batch_id_,
-                          "local_batch_id_ (%d) must be less than or equal to "
-                          "batch_id_ (%d)",
-                          local_batch_id_, batch_id_);
+        PADDLE_ENFORCE_LE(
+            local_batch_id_, batch_id_,
+            platform::errors::InvalidArgument(
+                "local_batch_id_ (%d) must be less than or equal to "
+                "batch_id_ (%d)",
+                local_batch_id_, batch_id_));
         std::unique_lock<std::mutex> lk(thread_mutex);
         if (local_batch_id_ == batch_id_ && !threads_completed) {
           thread_condition.wait(lk);
@@ -203,7 +207,8 @@ void SectionWorker::TrainFiles() {
       // forward pass:
       for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
-          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          int op_role =
+              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
           // We run op with op_role = kLRSched only for the first microbatch
           // to avoid increasing the @LR_DECAY_STEP@ multiple times.
           bool run_first_mbatch =
@@ -228,7 +233,8 @@ void SectionWorker::TrainFiles() {
       // backward pass
       for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
-          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          int op_role =
+              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -244,7 +250,8 @@ void SectionWorker::TrainFiles() {
       }
       // update pass
       for (auto& op : ops_) {
-        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        int op_role =
+            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
@@ -291,15 +298,15 @@ void SectionWorker::TrainFilesWithProfiler() {
   if (platform::is_gpu_place(place_)) {
     if (IsFastEagerDeletionModeEnabled()) {
       gc.reset(new UnsafeFastGPUGarbageCollector(
-          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     } else {
       gc.reset(new DefaultStreamGarbageCollector(
-          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+          BOOST_GET_CONST(platform::CUDAPlace, place_), max_memory_size));
     }
   } else if (platform::is_cpu_place(place_)) {
 #endif
-    gc.reset(new CPUGarbageCollector(boost::get<platform::CPUPlace>(place_),
-                                     max_memory_size));
+    gc.reset(new CPUGarbageCollector(
+        BOOST_GET_CONST(platform::CPUPlace, place_), max_memory_size));
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
@@ -314,7 +321,7 @@ void SectionWorker::TrainFilesWithProfiler() {
           int op_idx = 0;
           for (auto& op : ops_) {
             int op_role =
-                boost::get<int>(op->Attr<int>(std::string("op_role")));
+                BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
             // We run op with op_role = kLRSched only for the first microbatch
             // to avoid increasing the @LR_DECAY_STEP@ multiple times.
             bool run_first_mbatch =
@@ -375,7 +382,8 @@ void SectionWorker::TrainFilesWithProfiler() {
       for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
-          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          int op_role =
+              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -405,7 +413,8 @@ void SectionWorker::TrainFilesWithProfiler() {
       // update pass
       int op_idx = 0;
       for (auto& op : ops_) {
-        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        int op_role =
+            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
@@ -436,10 +445,12 @@ void SectionWorker::TrainFilesWithProfiler() {
   } else {
     while (true) {
       {
-        PADDLE_ENFORCE_LE(local_batch_id_, batch_id_,
-                          "local_batch_id_ (%d) must be less than or equal to "
-                          "batch_id_ (%d)",
-                          local_batch_id_, batch_id_);
+        PADDLE_ENFORCE_LE(
+            local_batch_id_, batch_id_,
+            platform::errors::InvalidArgument(
+                "local_batch_id_ (%d) must be less than or equal to "
+                "batch_id_ (%d)",
+                local_batch_id_, batch_id_));
         std::unique_lock<std::mutex> lk(thread_mutex);
         if (local_batch_id_ == batch_id_ && !threads_completed) {
           thread_condition.wait(lk);
@@ -465,7 +476,8 @@ void SectionWorker::TrainFilesWithProfiler() {
       for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
-          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          int op_role =
+              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
           // We run op with op_role = kLRSched only for the first microbatch
           // to avoid increasing the @LR_DECAY_STEP@ multiple times.
           bool run_first_mbatch =
@@ -504,7 +516,8 @@ void SectionWorker::TrainFilesWithProfiler() {
       for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
-          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          int op_role =
+              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -534,7 +547,8 @@ void SectionWorker::TrainFilesWithProfiler() {
       // update pass
       int op_idx = 0;
       for (auto& op : ops_) {
-        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        int op_role =
+            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";

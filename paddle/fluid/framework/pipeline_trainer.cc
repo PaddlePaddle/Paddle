@@ -41,9 +41,10 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   VLOG(3) << "readers num: " << readers.size();
   int num_readers = readers.size();
   PADDLE_ENFORCE_EQ(num_readers, 1,
-                    "Number of dataset readers for model parallel"
-                    "must be 1 now, but the value you give is %d.",
-                    num_readers);
+                    platform::errors::InvalidArgument(
+                        "Number of dataset readers for pipeline "
+                        "must be 1 now, but the value you give is %d.",
+                        num_readers));
   auto* reader = readers[0];
   feed_var_names_ = reader->GetUseSlotAlias();
 
@@ -58,18 +59,22 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
         break;
       case SectionConfig::CUDAPlace:
         // Note that one section has at most one GPU place in one pipeline
-        PADDLE_ENFORCE_GE(place_id, 0,
-                          "The place_id value for CUDAPlace shoud be greater "
-                          "than or equal to 0, but the value you give is %d.",
-                          place_id);
+        PADDLE_ENFORCE_GE(
+            place_id, 0,
+            platform::errors::InvalidArgument(
+                "The place_id value for CUDAPlace shoud be greater "
+                "than or equal to 0, but the value you give is %d.",
+                place_id));
         place = platform::CUDAPlace(place_id);
         break;
       case SectionConfig::CUDAPinnedPlace:
         place = platform::CUDAPinnedPlace();
         break;
       default:
-        PADDLE_ENFORCE(false, "Unkown place type in SectionConfig: %d",
-                       section_config.place());
+        PADDLE_ENFORCE_NOT_NULL(nullptr,
+                                platform::errors::InvalidArgument(
+                                    "Unkown place type in SectionConfig: %d",
+                                    section_config.place()));
     }
     places_.emplace_back(place);
     VLOG(3) << "Device worker place: " << place << ", device id: " << place_id
@@ -162,9 +167,10 @@ void PipelineTrainer::GetSkipVars(int section_id, const ProgramDesc& program) {
     }
     auto input_arg_names = op->InputArgumentNames();
     PADDLE_ENFORCE_EQ(input_arg_names.size(), 1,
-                      "Number of input arguments for enqueue op must be 1, "
-                      "but the value is %d.",
-                      input_arg_names.size());
+                      platform::errors::InvalidArgument(
+                          "Number of input arguments for enqueue op must be 1, "
+                          "but the value is %d.",
+                          input_arg_names.size()));
     std::string input_arg_name = input_arg_names[0];
     if (input_arg_name.rfind("@GRAD") != input_arg_name.size() - 5) {
       skip_vars_[section_id].emplace_back(input_arg_name);
@@ -175,7 +181,9 @@ void PipelineTrainer::GetSkipVars(int section_id, const ProgramDesc& program) {
 
 void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                      const platform::Place& place) {
-  PADDLE_ENFORCE(root_scope_, "Null root_scope pointer");
+  PADDLE_ENFORCE_NOT_NULL(root_scope_,
+                          platform::errors::InvalidArgument(
+                              "root_scope pointer can not be nullptr"));
   auto start_cpu_id = trainer_desc_.section_param().start_cpu_core_id();
   SectionWorker::cpu_id_.store(start_cpu_id);
   minibatch_scopes_.resize(section_num_);
