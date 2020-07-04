@@ -95,46 +95,35 @@ void AsyncCommunicator::SendByCommunicator(int batches) {
   for (auto &iter : send_varname_to_queue_) {
     auto &var_name = iter.first;
     auto &var_queue = iter.second;
-    if (var_queue->Size() > 0) {
-      auto send_task = [this, &var_name, &var_queue] {
-        VLOG(3) << var_name << " merge and send";
-        std::vector<std::shared_ptr<Variable>> vars;
-        size_t merged_var_num = 0;
-        size_t wait_times = 0;
-        while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
-          if (var_queue->Size() == 0) {
-            VLOG(3) << "wait_times -> " << wait_times;
-            if (wait_times >= static_cast<size_t>(send_wait_times_)) {
-              break;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            wait_times++;
-            continue;
-          } else {
-            wait_times = 0;
-            vars.push_back(var_queue->Pop());
-            merged_var_num++;
-          }
-        }
-        auto &ctx = send_varname_to_ctx_.at(var_name);
 
-        auto before_merge = GetCurrentUS();
-        MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
-        auto after_merge = GetCurrentUS();
-        VLOG(3) << "merge " << merged_var_num << " " << var_name << " use time "
-                << after_merge - before_merge;
+    auto send_task = [this, batches, &var_name, &var_queue] {
+      if (var_name == STEP_COUNTER) {
+        return;
+      }
 
-        auto send_functor = distributed::ParameterSend<float>();
-        send_functor(ctx, *send_scope_, true, 1);
-        auto after_send = GetCurrentUS();
-        VLOG(3) << "send " << var_name << " use time "
-                << after_send - after_merge;
-      };
-      task_futures.emplace_back(
-          send_threadpool_->enqueue(std::move(send_task)));
-    } else {
-      VLOG(4) << var_name << " queue empty";
-    }
+      VLOG(3) << var_name << " merge and send";
+      std::vector<std::shared_ptr<Variable>> vars;
+      vars.reserve(batches);
+
+      for (int i = 0; i < batches; ++i) {
+        vars.push_back(var_queue->Pop());
+      }
+
+      auto &ctx = send_varname_to_ctx_.at(var_name);
+
+      auto before_merge = GetCurrentUS();
+      MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
+      auto after_merge = GetCurrentUS();
+      VLOG(3) << "merge " << batches << " " << var_name << " use time "
+              << after_merge - before_merge;
+
+      auto send_functor = distributed::ParameterSend<float>();
+      send_functor(ctx, *send_scope_, true, 1);
+      auto after_send = GetCurrentUS();
+      VLOG(3) << "send " << var_name << " use time "
+              << after_send - after_merge;
+    };
+    task_futures.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
   }
   for (auto &task_f : task_futures) {
     task_f.wait();
@@ -190,6 +179,30 @@ void AsyncCommunicator::RecvNoBarrier() {
   for (auto &task : task_futures) {
     task.wait();
   }
+}
+
+int AsyncCommunicator::Meet() {
+  auto &step_queue = send_ids_to_queue_.at(STEP_COUNTER);
+
+  size_t merged_var_num = 0;
+  size_t wait_times = 0;
+
+  while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
+    if (var_queue->Size() == 0) {
+      VLOG(3) << "wait_times -> " << wait_times;
+      if (wait_times >= static_cast<size_t>(send_wait_times_)) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      wait_times++;
+      continue;
+    } else {
+      wait_times = 0;
+      merged_var_num++;
+    }
+  }
+
+  return merged_var_num;
 }
 
 void AsyncCommunicator::Start() {
@@ -414,30 +427,6 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
     ids.assign(rows.begin(), rows.end());
     queue.push(ids);
   }
-}
-
-int GeoCommunicator::Meet() {
-  auto &step_queue = send_ids_to_queue_.at(STEP_COUNTER);
-
-  size_t merged_var_num = 0;
-  size_t wait_times = 0;
-
-  while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
-    if (var_queue->Size() == 0) {
-      VLOG(3) << "wait_times -> " << wait_times;
-      if (wait_times >= static_cast<size_t>(send_wait_times_)) {
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      wait_times++;
-      continue;
-    } else {
-      wait_times = 0;
-      merged_var_num++;
-    }
-  }
-
-  return merged_var_num;
 }
 
 void GeoCommunicator::SendByCommunicator(int batches) {

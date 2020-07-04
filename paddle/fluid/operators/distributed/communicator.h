@@ -246,9 +246,6 @@ class Communicator {
   std::unordered_map<std::string, std::string> envs;
 };
 
-using SparseIdsMap =
-    std::unordered_map<std::string, std::vector<std::unordered_set<int64_t>>>;
-
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
@@ -408,8 +405,6 @@ class GeoCommunicator : public AsyncCommunicator {
   void Send(const std::vector<std::string> &var_names,
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
-
-  int Meet() override;
 
   void SendByCommunicator(int batches) override;
 
