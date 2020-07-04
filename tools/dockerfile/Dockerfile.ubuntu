@@ -125,7 +125,9 @@ RUN curl -s -q https://glide.sh/get | sh
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
 # Downgrade TensorRT 
-<install_trt>
+COPY tools/dockerfile/build_scripts /build_scripts
+RUN bash /build_scripts/install_trt.sh
+RUN rm -rf /build_scripts
 
 # git credential to skip password typing
 RUN git config --global credential.helper store

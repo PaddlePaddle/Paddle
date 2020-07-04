@@ -1,17 +1,6 @@
 #!/bin/bash
 
 docker_name=$1
-
-
-function install_trt(){
-  cuda=`echo $docker_name|awk -F '-' '{print $1}' `
-  cudnn=`echo $docker_name|awk -F '-' '{print $2}' `
-
-  sed -i "s#<install_trt>#COPY tools/dockerfile/build_scripts /build_scripts \n\
-RUN bash /build_scripts/install_trt.sh cuda${cuda}${cudnn} \&\& rm -rf /build_scripts #g" Dockerfile.tmp 
-
-}
-
   
 function ref_whl(){
   if [[ ${WITH_GPU} == "ON" ]]; then
@@ -95,7 +84,6 @@ function make_dockerfile(){
 function main(){
   make_dockerfile
   install_gcc
-  install_trt
   ref_whl
   install_whl
 }
