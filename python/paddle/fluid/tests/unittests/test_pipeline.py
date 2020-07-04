@@ -140,7 +140,7 @@ def build_network(input, layers=50, class_dim=1000):
 class TestPipeline(unittest.TestCase):
     """  TestCases for Pipeline Training. """
 
-    def _run(self):
+    def _run(self, debug):
         main_prog = fluid.Program()
         startup_prog = fluid.Program()
         with fluid.program_guard(main_prog, startup_prog):
@@ -197,13 +197,11 @@ class TestPipeline(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         data_loader.start()
-        exe.train_from_dataset(main_prog, dataset, debug=False)
-
-        data_loader.start()
-        exe.train_from_dataset(main_prog, dataset, debug=True)
+        exe.train_from_dataset(main_prog, dataset, debug=debug)
 
     def test_pipeline(self):
-        self._run()
+        self._run(False)
+        self._run(True)
 
     def test_pipeline_noneoptimizer(self):
         with fluid.device_guard("gpu:0"):
