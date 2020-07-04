@@ -109,8 +109,7 @@ void SectionWorker::TrainFiles() {
       for (int i = 0; i < num_microbatches_; ++i) {
         try {
           for (auto& op : ops_) {
-            int op_role =
-                BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+            int op_role = op->Attr<int>(std::string("op_role"));
             // We run op with op_role = kLRSched only for the first microbatch
             // to avoid increasing the @LR_DECAY_STEP@ multiple times.
             bool run_first_mbatch =
@@ -150,8 +149,7 @@ void SectionWorker::TrainFiles() {
       // backward pass
       for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
-          int op_role =
-              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+          int op_role = op->Attr<int>(std::string("op_role"));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -167,8 +165,7 @@ void SectionWorker::TrainFiles() {
       }
       // update pass
       for (auto& op : ops_) {
-        int op_role =
-            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+        int op_role = op->Attr<int>(std::string("op_role"));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
@@ -207,8 +204,7 @@ void SectionWorker::TrainFiles() {
       // forward pass:
       for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
-          int op_role =
-              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+          int op_role = op->Attr<int>(std::string("op_role"));
           // We run op with op_role = kLRSched only for the first microbatch
           // to avoid increasing the @LR_DECAY_STEP@ multiple times.
           bool run_first_mbatch =
@@ -233,8 +229,7 @@ void SectionWorker::TrainFiles() {
       // backward pass
       for (int i = 0; i < num_microbatches_; ++i) {
         for (auto& op : ops_) {
-          int op_role =
-              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+          int op_role = op->Attr<int>(std::string("op_role"));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -250,8 +245,7 @@ void SectionWorker::TrainFiles() {
       }
       // update pass
       for (auto& op : ops_) {
-        int op_role =
-            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+        int op_role = op->Attr<int>(std::string("op_role"));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
@@ -320,8 +314,7 @@ void SectionWorker::TrainFilesWithProfiler() {
         try {
           int op_idx = 0;
           for (auto& op : ops_) {
-            int op_role =
-                BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+            int op_role = op->Attr<int>(std::string("op_role"));
             // We run op with op_role = kLRSched only for the first microbatch
             // to avoid increasing the @LR_DECAY_STEP@ multiple times.
             bool run_first_mbatch =
@@ -382,8 +375,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
-          int op_role =
-              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+          int op_role = op->Attr<int>(std::string("op_role"));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -413,8 +405,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       // update pass
       int op_idx = 0;
       for (auto& op : ops_) {
-        int op_role =
-            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+        int op_role = op->Attr<int>(std::string("op_role"));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
@@ -476,8 +467,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
-          int op_role =
-              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+          int op_role = op->Attr<int>(std::string("op_role"));
           // We run op with op_role = kLRSched only for the first microbatch
           // to avoid increasing the @LR_DECAY_STEP@ multiple times.
           bool run_first_mbatch =
@@ -516,8 +506,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       for (int i = 0; i < num_microbatches_; ++i) {
         int op_idx = 0;
         for (auto& op : ops_) {
-          int op_role =
-              BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+          int op_role = op->Attr<int>(std::string("op_role"));
           if (op_role == static_cast<int>(OpRole::kBackward) ||
               op_role == (static_cast<int>(OpRole::kBackward) |
                           static_cast<int>(OpRole::kLoss))) {
@@ -547,8 +536,7 @@ void SectionWorker::TrainFilesWithProfiler() {
       // update pass
       int op_idx = 0;
       for (auto& op : ops_) {
-        int op_role =
-            BOOST_GET_CONST(int, op->Attr<int>(std::string("op_role")));
+        int op_role = op->Attr<int>(std::string("op_role"));
         if (op_role == static_cast<int>(OpRole::kOptimize)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
