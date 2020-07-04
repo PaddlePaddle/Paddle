@@ -67,27 +67,6 @@ void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const std::string& mode, const ProgramDesc& program,
-                       Scope* param_scope,
-                       std::map<std::string, std::string>& envs) {
-        if (mode == "HALF_ASYNC") {
-          Communicator::InitInstance<HalfAsyncCommunicator>(program,
-                                                            param_scope, envs);
-        } else if (mode == "ASYNC") {
-          Communicator::InitInstance<AsyncCommunicator>(program, param_scope,
-                                                        envs);
-        } else if (mode == "GEO") {
-          Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,
-                                                         envs);
-        } else if (mode == "SYNC") {
-          Communicator::InitInstance<SyncCommunicator>(program, param_scope,
-                                                       envs);
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "unsuported communicator MODE"));
-        }
-        return Communicator::GetInstantcePtr();
-      }))
       .def(py::init([](const std::string& mode, const RpcCtxMap& send_ctx,
                        const RpcCtxMap& recv_ctx, Scope* param_scope,
                        std::map<std::string, std::string>& envs) {
@@ -100,6 +79,9 @@ void BindCommunicator(py::module* m) {
         } else if (mode == "SYNC") {
           Communicator::InitInstance<SyncCommunicator>(send_ctx, recv_ctx,
                                                        param_scope, envs);
+        } else if (mode == "GEO") {
+          Communicator::InitInstance<GeoSgdCommunicator>(send_ctx, recv_ctx,
+                                                         param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsuported communicator MODE"));

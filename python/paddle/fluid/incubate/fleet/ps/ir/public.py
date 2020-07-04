@@ -246,21 +246,13 @@ class CompileTimeStrategy(object):
 
         trainer_id = self.get_role_id()
         aggregate = True
-        send_hander = True
+        queue = True
         ctx = CommContext(name, names, eps, sections, origin_varnames,
-                          trainer_id, aggregate, send_hander)
+                          trainer_id, aggregate, queue)
         return ctx
 
     def get_communicator_send_context(self):
-        send_ctx = {}
-        for merged in self.merged_variables_pairs:
-            grads = merged[1]
-            ctx = self.build_ctx(grads, self.grad_var_mapping, True)
-            send_ctx[ctx.merged_varname()] = ctx
-
-        lr_ops = _get_lr_ops(self.get_origin_main_program())
-
-        if lr_ops:
+        def step_ctx():
             name = STEP_COUNTER
             trainer_id = self.get_role_id()
             endpoints = self.get_ps_endpoints()
@@ -268,7 +260,25 @@ class CompileTimeStrategy(object):
             names = [name] * len(endpoints)
             ctx = CommContext(name, names, endpoints, sections, [name],
                               trainer_id, True, False)
+            return name, ctx
+
+        send_ctx = {}
+        if self.is_geo_mode():
+            for pairs in self.origin_sparse_pairs:
+                grad = pairs[1]
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+                send_ctx[ctx.merged_varname()] = ctx
+            name, ctx = step_ctx()
             send_ctx[name] = ctx
+        else:
+            for merged in self.merged_variables_pairs:
+                grad = merged[1]
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+                send_ctx[ctx.merged_varname()] = ctx
+
+            if _get_lr_ops(self.get_origin_main_program()):
+                name, ctx = step_ctx()
+                send_ctx[name] = ctx
         return send_ctx
 
     def get_communicator_recv_context(self, recv_type=1):
