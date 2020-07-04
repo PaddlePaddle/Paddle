@@ -1,5 +1,5 @@
 #!/bin/bash
-version=$1
+VERSION=$(nvcc --version | grep release | grep -oEi "release ([0-9]+)\.([0-9])"| sed "s/release //")
 
 if [[ "$version" == "cuda10.1cudnn7" ]];then
   wget -q https://paddle-ci.gz.bcebos.com/TRT/TensorRT6-cuda10.1-cudnn7.tar.gz --no-check-certificate
