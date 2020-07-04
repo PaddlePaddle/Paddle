@@ -194,6 +194,7 @@ class TestPipeline(unittest.TestCase):
         exe.run(startup_prog)
         data_loader.start()
         exe.train_from_dataset(main_prog, dataset, debug=False)
+
         data_loader.start()
         exe.train_from_dataset(main_prog, dataset, debug=True)
 
