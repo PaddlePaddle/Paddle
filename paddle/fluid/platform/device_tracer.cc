@@ -177,8 +177,10 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
   static std::thread::id cupti_thread_id(0);
   if (cupti_thread_id == std::thread::id(0))
     cupti_thread_id = std::this_thread::get_id();
-  PADDLE_ENFORCE_EQ(std::this_thread::get_id(), cupti_thread_id,
-                    "Only one thread is allowed to call bufferCompleted()");
+  PADDLE_ENFORCE_EQ(
+      std::this_thread::get_id(), cupti_thread_id,
+      platform::errors::PermissionDenied(
+          "Only one thread is allowed to call bufferCompleted()."));
   CUptiResult status;
   CUpti_Activity *record = NULL;
   if (validSize > 0) {

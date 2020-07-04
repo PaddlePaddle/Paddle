@@ -24,7 +24,8 @@ size_t Alignment(size_t size, const platform::Place &place) {
 #ifdef PADDLE_WITH_CUDA
     alignment = GpuMinChunkSize();
 #else
-    PADDLE_THROW("Fluid is not compiled with CUDA");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Fluid is not compiled with CUDA."));
 #endif
   }
   size_t remaining = size % alignment;

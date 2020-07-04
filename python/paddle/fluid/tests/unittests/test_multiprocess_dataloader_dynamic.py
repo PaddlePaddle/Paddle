@@ -28,12 +28,7 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
 from test_multiprocess_dataloader_static import RandomDataset, prepare_places
-
-EPOCH_NUM = 5
-BATCH_SIZE = 16
-IMAGE_SIZE = 784
-SAMPLE_NUM = 400
-CLASS_NUM = 10
+from test_multiprocess_dataloader_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
