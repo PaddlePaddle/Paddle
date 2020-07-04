@@ -216,6 +216,7 @@ int AsyncCommunicator::Meet() {
       wait_times++;
       continue;
     } else {
+      step_queue->Pop();
       wait_times = 0;
       merged_var_num++;
     }

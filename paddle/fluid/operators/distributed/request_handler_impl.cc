@@ -283,7 +283,7 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
 
     auto* send_var = scope->FindVar(varname);
     auto send_var_tensor = send_var->Get<framework::LoDTensor>();
-    float* send_value =
+    auto* send_value =
         send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
 
     auto counter = decay_counters.at(trainer_id);

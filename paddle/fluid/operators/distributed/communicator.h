@@ -416,6 +416,8 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void SendDense(const std::string &varname);
 
+  void SendGlobalStep(int batches) {}
+
   void RecvByCommunicator();
 
   void RecvSparse(const std::string &varname);
