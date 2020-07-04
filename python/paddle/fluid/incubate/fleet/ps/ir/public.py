@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
+#
+#Licensed under the Apache License, Version 2.0(the "License");
+#you may not use this file except in compliance with the License.
+#You may obtain a copy of the License at
+#
+#http:  // www.apache.org/licenses/LICENSE-2.0
+#
+#Unless required by applicable law or agreed to in writing, software
+#distributed under the License is distributed on an "AS IS" BASIS,
+#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#See the License for the specific language governing permissions and
+#limitations under the License.
+
 from __future__ import print_function
 
 import collections
@@ -168,6 +182,10 @@ class CompileTimeStrategy(object):
         trainer = self.strategy.get_trainer_runtime_config()
         return trainer.mode == DistributedMode.GEO
 
+    def is_async_mode(self):
+        trainer = self.strategy.get_trainer_runtime_config()
+        return trainer.mode == DistributedMode.ASYNC
+
     def get_role_id(self):
         return self.role_maker.role_id()
 
@@ -251,38 +269,58 @@ class CompileTimeStrategy(object):
                           trainer_id, aggregate, queue)
         return ctx
 
+    def get_trainer_send_context(self):
+        send_ctx = {}
+        if not self.is_geo_mode():
+            for merged in self.merged_variables_pairs:
+                grad = merged[1]
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+                send_ctx[ctx.var_name()] = ctx
+
+            if self.is_async_mode():
+                name, ctx = self._step_ctx()
+                send_ctx[name] = ctx
+        else:
+            for pairs in self.origin_sparse_pairs:
+                param, grad = pairs
+                param_ctx = self.build_ctx(param, self.param_var_mapping, False)
+                grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+
+                ctx = CommContext(param_ctx.var_name(),
+                                  param.split_varnames(),
+                                  param.split_endpoints(),
+                                  param.sections(),
+                                  grad_ctx.origin_varnames(),
+                                  param.trainer_id(),
+                                  param_ctx.aggregate(), param_ctx.is_sparse())
+
+                send_ctx[ctx.var_name()] = ctx
+            name, ctx = self._step_ctx()
+            send_ctx[name] = ctx
+
     def get_communicator_send_context(self):
-        def step_ctx():
-            name = STEP_COUNTER
-            trainer_id = self.get_role_id()
-            endpoints = self.get_ps_endpoints()
-            sections = [1] * len(endpoints)
-            names = [name] * len(endpoints)
-            ctx = CommContext(name, names, endpoints, sections, [name],
-                              trainer_id, True, False)
-            return name, ctx
 
         send_ctx = {}
         if self.is_geo_mode():
             for pairs in self.origin_sparse_pairs:
                 grad = pairs[1]
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True)
-                send_ctx[ctx.merged_varname()] = ctx
-            name, ctx = step_ctx()
+                send_ctx[ctx.var_name()] = ctx
+            name, ctx = self._step_ctx()
             send_ctx[name] = ctx
         else:
             for merged in self.merged_variables_pairs:
                 grad = merged[1]
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True)
-                send_ctx[ctx.merged_varname()] = ctx
+                send_ctx[ctx.var_name()] = ctx
 
-            name, ctx = step_ctx()
+            name, ctx = self._step_ctx()
             send_ctx[name] = ctx
         return send_ctx
 
     def get_communicator_recv_context(self, recv_type=1):
-        # recv_type
-        # 1: DENSE 2. SPARSE 3. ALL
+        #recv_type
+        # 1 : DENSE 2. SPARSE 3. ALL
         sparse_varnames = []
 
         for pairs in self.origin_sparse_pairs:
@@ -298,12 +336,12 @@ class CompileTimeStrategy(object):
                 continue
 
             ctx = self.build_ctx(params, self.param_var_mapping, False)
-            dense_recv_ctx[ctx.merged_varname()] = ctx
+            dense_recv_ctx[ctx.var_name()] = ctx
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
             ctx = self.build_ctx(param, self.param_var_mapping, False)
-            sparse_recv_ctx[ctx.merged_varname()] = ctx
+            sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
             return dense_recv_ctx
@@ -359,6 +397,16 @@ class CompileTimeStrategy(object):
 
         pretty_print_envs(maps, header)
 
+    def _step_ctx(self):
+        name = STEP_COUNTER
+        trainer_id = self.get_role_id()
+        endpoints = self.get_ps_endpoints()
+        sections = [1] * len(endpoints)
+        names = [name] * len(endpoints)
+        ctx = CommContext(name, names, endpoints, sections, [name], trainer_id,
+                          True, False)
+        return name, ctx
+
     def _create_vars_from_blocklist(self, block_list):
         """
         Create vars for each split.
@@ -372,7 +420,7 @@ class CompileTimeStrategy(object):
                 from original var name to each var split.
         """
 
-        # varname->[(block_id, current_block_size)]
+        #varname->[(block_id, current_block_size)]
         block_map = collections.OrderedDict()
         var_mapping = collections.OrderedDict()
 
@@ -516,12 +564,12 @@ class CompileTimeStrategy(object):
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
-                    # align by dim1(width)
+                    #align by dim1(width)
                     dim1 = reduce(lambda x, y: x * y, var.shape[1:])
                     remains = block_size % dim1
                     if remains != 0:
                         block_size += dim1 - remains
-                # update split_count after aligning
+#update split_count after aligning
                 split_count = int(math.ceil(var_numel / float(block_size)))
                 for block_id in range(split_count):
                     curr_block_size = min(block_size, var_numel - (
@@ -544,9 +592,9 @@ class CompileTimeStrategy(object):
         grad_list = []
         param_grad_set = set()
         for p, g in pairs:
-            # todo(tangwei12) skip parameter marked not trainable
-            # if type(p) == Parameter and p.trainable == False:
-            # continue
+            #todo(tangwei12) skip parameter marked not trainable
+            #if type(p) == Parameter and p.trainable == False:
+            #continue
             p = p.merged_var
             g = g.merged_var
 
@@ -557,8 +605,8 @@ class CompileTimeStrategy(object):
                 grad_list.append(g)
                 param_grad_set.add(g.name)
 
-                # when we slice var up into blocks, we will slice the var according to
-                # pserver services' count. A pserver may have two or more listening ports.
+#when we slice var up into blocks, we will slice the var according to
+#pserver services' count. A pserver may have two or more listening ports.
         grad_blocks = self._slice_variable(grad_list,
                                            len(self.get_ps_endpoints()),
                                            min_block_size, uniform)
@@ -569,7 +617,7 @@ class CompileTimeStrategy(object):
         return param_blocks, grad_blocks
 
     def _var_slice_and_distribute(self):
-        # update these mappings for further transpile:
+        #update these mappings for further transpile:
         # 1. param_var_mapping : param var name->[split params vars]
         # 2. grad_var_mapping : grad var name->[split grads vars]
         # 3. grad_param_mapping : grad.blockx->param.blockx
@@ -585,11 +633,11 @@ class CompileTimeStrategy(object):
 
         assert (len(grad_blocks) == len(param_blocks))
 
-        # origin_param_name->[splited_param_vars]
+        #origin_param_name->[splited_param_vars]
         self.param_var_mapping = self._create_vars_from_blocklist(param_blocks)
         self.grad_var_mapping = self._create_vars_from_blocklist(grad_blocks)
 
-        # dict(grad_splited_var->param_splited_var)
+        #dict(grad_splited_var->param_splited_var)
         self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
@@ -601,7 +649,7 @@ class CompileTimeStrategy(object):
         for k, v in self.grad_param_mapping.items():
             print_maps[str(k)] = str(v)
 
-        # create mapping of endpoint->split var to create pserver side program
+#create mapping of endpoint->split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
             self.param_grad_ep_mapping.update({
@@ -721,7 +769,7 @@ class CompileTimeStrategy(object):
             role_id = int(core.op_proto_and_checker_maker.OpRole.Backward)
             for op in block.ops:
                 if _is_opt_role_op(op):
-                    # delete clip op from opt_ops when run in Parameter Server mode
+                    #delete clip op from opt_ops when run in Parameter Server mode
                     if OP_NAME_SCOPE in op.all_attrs() \
                             and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
                         op._set_attr("op_role", role_id)
@@ -759,8 +807,8 @@ class CompileTimeStrategy(object):
 
 
 def _is_opt_role_op(op):
-    # NOTE : depend on oprole to find out whether this op is for
-    # optimize
+    #NOTE : depend on oprole to find out whether this op is for
+    #optimize
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
@@ -774,7 +822,7 @@ def _get_optimize_ops(_program):
     opt_ops = []
     for op in block.ops:
         if _is_opt_role_op(op):
-            # delete clip op from opt_ops when run in Parameter Server mode
+            #delete clip op from opt_ops when run in Parameter Server mode
             if OP_NAME_SCOPE in op.all_attrs() \
                     and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
                 op._set_attr(
@@ -786,7 +834,7 @@ def _get_optimize_ops(_program):
 
 
 def _get_varname_parts(varname):
-    # returns origin, blockid, trainerid
+    #returns origin, blockid, trainerid
     orig_var_name = ""
     trainer_part = ""
     block_part = ""

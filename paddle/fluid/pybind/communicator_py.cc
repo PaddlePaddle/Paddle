@@ -50,14 +50,17 @@ void BindCommunicatorContext(py::module* m) {
           py::init<const std::string&, const std::vector<std::string>&,
                    const std::vector<std::string>&, const std::vector<int64_t>&,
                    const std::vector<std::string>&, int, bool, bool>())
+      .def("var_name", [](const CommContext& self) { return self.var_name; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
-      .def("merged_varname",
-           [](const CommContext& self) { return self.var_name; })
       .def("split_varnames",
            [](const CommContext& self) { return self.splited_varnames; })
       .def("split_endpoints",
            [](const CommContext& self) { return self.epmap; })
+      .def("sections",
+           [](const CommContext& self) { return self.height_sections; })
+      .def("aggregate", [](const CommContext& self) { return self.merge_add; })
+      .def("is_sparse", [](const CommContext& self) { return self.is_sparse; })
       .def("origin_varnames",
            [](const CommContext& self) { return self.origin_varnames; })
       .def("__str__", [](const CommContext& self) { return self.print(); });
