@@ -177,8 +177,10 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
   static std::thread::id cupti_thread_id(0);
   if (cupti_thread_id == std::thread::id(0))
     cupti_thread_id = std::this_thread::get_id();
-  PADDLE_ENFORCE_EQ(std::this_thread::get_id(), cupti_thread_id,
-                    "Only one thread is allowed to call bufferCompleted()");
+  PADDLE_ENFORCE_EQ(
+      std::this_thread::get_id(), cupti_thread_id,
+      platform::errors::PermissionDenied(
+          "Only one thread is allowed to call bufferCompleted()."));
   CUptiResult status;
   CUpti_Activity *record = NULL;
   if (validSize > 0) {
@@ -641,22 +643,23 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-std::string SetCurAnnotation(Event *event) {
-  std::string ret;
-  if (!annotation_stack.empty() && event->role() != EventRole::kSpecial) {
+// In order to record PE time, we add main_thread_annotation_stack
+// for all event between PE run, we treat it as PE's child Event,
+// so when event is not in same thread of PE event, we need add
+// father event(PE::run event) for this event
+void SetCurAnnotation(Event *event) {
+  if (!annotation_stack.empty()) {
     event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
   }
-
+  if (annotation_stack.empty() && !main_thread_annotation_stack.empty() &&
+      main_thread_annotation_stack.back()->thread_id() != event->thread_id()) {
+    event->set_parent(main_thread_annotation_stack.back());
+    event->set_name(main_thread_annotation_stack.back()->name() + "/" +
+                    event->name());
+  }
   annotation_stack.push_back(event);
 
-  if (!main_thread_annotation_stack_name.empty() && !annotation_stack.empty() &&
-      main_thread_annotation_stack.back()->thread_id() !=
-          annotation_stack.back()->thread_id()) {
-    ret = main_thread_annotation_stack_name.back() + "/" + event->name();
-  } else {
-    ret = event->name();
-  }
   if (event->role() == EventRole::kSpecial) {
     std::string name = event->name();
     if (!main_thread_annotation_stack_name.empty()) {
@@ -665,22 +668,22 @@ std::string SetCurAnnotation(Event *event) {
     main_thread_annotation_stack_name.push_back(name);
     main_thread_annotation_stack.push_back(event);
   }
-
-  return ret;
 }
 
 void ClearCurAnnotation() {
-  if (!main_thread_annotation_stack_name.empty() && !annotation_stack.empty() &&
-      main_thread_annotation_stack.back()->thread_id() !=
-          annotation_stack.back()->thread_id()) {
-    annotation_stack.back()->set_name(main_thread_annotation_stack_name.back() +
-                                      "/" + annotation_stack.back()->name());
-  }
-  if (!main_thread_annotation_stack.empty() &&
-      main_thread_annotation_stack.back()->name() ==
-          annotation_stack.back()->name()) {
-    main_thread_annotation_stack_name.pop_back();
-    main_thread_annotation_stack.pop_back();
+  if (!main_thread_annotation_stack.empty()) {
+    std::string name = annotation_stack.back()->name();
+    std::string main_name = main_thread_annotation_stack.back()->name();
+    int main_name_len = main_name.length();
+    int name_len = name.length();
+    int prefix_len = main_name_len - name_len;
+
+    if ((prefix_len > 0 && main_name.at(prefix_len - 1) == '/' &&
+         name == main_name.substr(prefix_len, name_len)) ||
+        (name == main_name)) {
+      main_thread_annotation_stack_name.pop_back();
+      main_thread_annotation_stack.pop_back();
+    }
   }
   annotation_stack.pop_back();
 }

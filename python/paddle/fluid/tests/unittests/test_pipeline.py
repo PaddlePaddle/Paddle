@@ -20,7 +20,6 @@ import os
 import shutil
 import unittest
 import math
-import time
 
 
 def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
@@ -34,7 +33,9 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         groups=groups,
         act=None,
         bias_attr=False)
-    return fluid.layers.batch_norm(input=conv, act=act)
+    return fluid.layers.batch_norm(
+        input=conv,
+        act=act, )
 
 
 def shortcut(input, ch_out, stride, is_first):

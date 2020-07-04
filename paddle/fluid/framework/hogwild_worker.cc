@@ -58,6 +58,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   thread_scope_ = &root_scope_->NewScope();
 
   for (auto &var : block.AllVars()) {
+    all_param_.push_back(var->Name());
     if (var->Persistable()) {
       auto *ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());

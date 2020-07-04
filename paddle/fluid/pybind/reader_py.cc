@@ -160,8 +160,8 @@ class MultiDeviceFeedReader {
                 reader, p, 2));
       } else {
         if (platform::is_gpu_place(p)) {
-          PADDLE_THROW(
-              "Place cannot be CUDAPlace when use_double_buffer is False");
+          PADDLE_THROW(platform::errors::PermissionDenied(
+              "Place cannot be CUDAPlace when use_double_buffer is False"));
         }
         holder->Reset(reader);
       }
@@ -188,6 +188,14 @@ class MultiDeviceFeedReader {
 
       result.emplace_back();
       auto &ret = result.back();
+      PADDLE_ENFORCE_EQ(names_.size(), ret_[i].size(),
+                        platform::errors::InvalidArgument(
+                            "The sample number of reader's input data and the "
+                            "input number of feed list are not equal.\n"
+                            "Possible reasons are:\n"
+                            "  The generator is decorated by `paddle.batch` "
+                            "and configured by `set_batch_generator`, but here "
+                            "need to used `set_sample_list_generator`."));
       for (size_t j = 0; j < names_.size(); ++j) {
         ret.emplace(names_[j], std::move(ret_[i][j]));
       }
@@ -233,7 +241,11 @@ class MultiDeviceFeedReader {
       auto each_status = futures_[i].get();
       if (UNLIKELY(each_status != Status::kSuccess)) {
         if (UNLIKELY(each_status == Status::kException)) {
-          PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
+          PADDLE_ENFORCE_NOT_NULL(
+              exceptions_[i],
+              platform::errors::NotFound("exceptions_[%d] is NULL, but the "
+                                         "result status is Status::kException",
+                                         i));
           *excep = exceptions_[i];
           exceptions_[i] = nullptr;
         }
@@ -280,7 +292,10 @@ class MultiDeviceFeedReader {
     Status status = WaitFutures(&excep);
 
     if (UNLIKELY(excep)) {
-      PADDLE_ENFORCE_EQ(status, Status::kException);
+      PADDLE_ENFORCE_EQ(status, Status::kException,
+                        platform::errors::NotFound(
+                            "The exception raised is not NULL, but "
+                            "the result status is not Status::kException"));
       std::rethrow_exception(excep);
     }
 
@@ -290,7 +305,10 @@ class MultiDeviceFeedReader {
       throw py::stop_iteration();
     }
 
-    PADDLE_ENFORCE_EQ(status, Status::kSuccess);
+    PADDLE_ENFORCE_EQ(status, Status::kSuccess,
+                      platform::errors::NotFound(
+                          "The function executed sucessfully, but "
+                          "the result status is not Status::kSuccess"));
   }
 
   std::shared_ptr<QueueType> queue_;

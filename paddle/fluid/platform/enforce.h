@@ -31,6 +31,7 @@ limitations under the License. */
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+#include "paddle/fluid/platform/cuda_error.pb.h"
 #endif  // PADDLE_WITH_CUDA
 
 #include <fstream>
@@ -45,7 +46,6 @@ limitations under the License. */
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
-#include "paddle/fluid/platform/cuda_error.pb.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/port.h"
@@ -62,6 +62,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
+
+// Note: these headers for simplify demangle type string
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace platform {
@@ -191,6 +195,35 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
+template <typename T>
+inline std::string ReplaceComplexTypeStr(std::string str,
+                                         const std::string& type_name) {
+  auto demangle_type_str = demangle(typeid(T).name());
+  size_t start_pos = 0;
+  while ((start_pos = str.find(demangle_type_str, start_pos)) !=
+         std::string::npos) {
+    str.replace(start_pos, demangle_type_str.length(), type_name);
+    start_pos += type_name.length();
+  }
+  return str;
+}
+
+#define __REPLACE_COMPLEX_TYPE_STR__(__TYPENAME, __STR)                       \
+  do {                                                                        \
+    __STR = paddle::platform::ReplaceComplexTypeStr<__TYPENAME>(__STR,        \
+                                                                #__TYPENAME); \
+  } while (0)
+
+inline std::string SimplifyDemangleStr(std::string str) {
+  // the older is important, you have to put complex types in front
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::AttributeMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::framework::Attribute, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVariableWrapperMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(paddle::imperative::NameVarBaseMap, str);
+  __REPLACE_COMPLEX_TYPE_STR__(std::string, str);
+  return str;
+}
+
 template <typename StrType>
 inline std::string GetTraceBackString(StrType&& what, const char* file,
                                       int line) {
@@ -212,7 +245,8 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
       std::string path(info.dli_fname);
       // C++ traceback info are from core.so
       if (path.substr(path.length() - 3).compare(".so") == 0) {
-        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
+        sout << string::Sprintf("%-3d %s\n", idx++,
+                                SimplifyDemangleStr(demangled));
       }
     }
   }
@@ -231,11 +265,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 inline bool is_error(bool stat) { return !stat; }
 
 inline void throw_on_error(bool stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 // Note: This Macro can only be used within enforce.h
@@ -626,11 +656,7 @@ inline std::string build_nvidia_error_msg(cudaError_t e) {
 }
 
 inline void throw_on_error(cudaError_t e, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /** curand ERROR **/
@@ -677,12 +703,8 @@ inline std::string build_nvidia_error_msg(curandStatus_t stat) {
 }
 
 inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw thrust::system_error(cudaErrorLaunchFailure, thrust::cuda_category(),
                              msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUDNN ERROR *****/
@@ -696,11 +718,7 @@ inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
 }
 
 inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUBLAS ERROR *****/
@@ -739,11 +757,7 @@ inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
 }
 
 inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /***** CUSOLVER ERROR *****/
@@ -777,11 +791,7 @@ inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
 }
 
 inline void throw_on_error(cusolverStatus_t stat, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 
 /****** NCCL ERROR ******/
@@ -796,11 +806,7 @@ inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
 }
 
 inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
-#ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
-#else
-  LOG(FATAL) << msg;
-#endif
 }
 #endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 

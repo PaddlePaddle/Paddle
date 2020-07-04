@@ -26,8 +26,11 @@ __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
     'MSRA', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
     'TruncatedNormalInitializer', 'XavierInitializer', 'BilinearInitializer',
-    'MSRAInitializer', 'NumpyArrayInitializer'
+    'MSRAInitializer', 'NumpyArrayInitializer', 'set_global_initializer'
 ]
+
+_global_weight_initializer_ = None
+_global_bias_initializer_ = None
 
 
 class Initializer(object):
@@ -783,7 +786,7 @@ class BilinearInitializer(Initializer):
         weight = np.reshape(weight, shape)
 
         # to be compatible of fp16 initalizers
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype == VarDesc.VarType.FP16 or var.dtype == VarDesc.VarType.FP64:
             out_dtype = VarDesc.VarType.FP32
             out_var = block.create_var(
                 name=unique_name.generate(".".join(
@@ -800,7 +803,8 @@ class BilinearInitializer(Initializer):
             value_name = "fp32_values"
             values = [float(v) for v in weight.flat]
         else:
-            raise ValueError("Unsupported dtype %s", input.dtype)
+            raise TypeError("Unsupported dtype %s", var.dtype)
+
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
         op = block.append_op(
@@ -812,7 +816,7 @@ class BilinearInitializer(Initializer):
                 value_name: values
             })
 
-        if var.dtype == VarDesc.VarType.FP16:
+        if var.dtype == VarDesc.VarType.FP16 or var.dtype == VarDesc.VarType.FP64:
             block.append_op(
                 type="cast",
                 inputs={"X": out_var},
@@ -914,6 +918,78 @@ class NumpyArrayInitializer(Initializer):
         if not framework.in_dygraph_mode():
             var.op = op
         return op
+
+
+def set_global_initializer(weight_init, bias_init=None):
+    """
+    This API is used to set up global model parameter initializer in framework.
+
+    After this API is invoked, the global initializer will takes effect in subsequent code.
+
+    The model parameters include ``weight`` and ``bias`` . In the framework, they correspond 
+    to ``fluid.Parameter`` , which is inherited from ``fluid.Variable`` , and is a persistable Variable.
+    This API only takes effect for model parameters, not for variables created through apis such as 
+    :ref:`api_fluid_layers_create_global_var` , :ref:`api_fluid_layers_create_tensor`.
+    
+    If the initializer is also set up by ``param_attr`` or ``bias_attr`` when creating a network layer,
+    the global initializer setting here will not take effect because it has a lower priority.
+
+    If you want to cancel the global initializer in framework, please set global initializer to ``None`` .
+
+    Args:
+        weight_init (Initializer): set the global initializer for ``weight`` of model parameters.
+        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters. 
+            Default: None.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+
+            fluid.set_global_initializer(fluid.initializer.Uniform(), fluid.initializer.Constant())
+            x = fluid.data(name="x", shape=[1, 3, 32, 32])
+
+            # The weight of conv1 is initialized by Uniform
+            # The bias of conv1 is initialized by Constant
+            conv1 = fluid.layers.conv2d(x, 5, 3)
+
+            # If set param_attr/bias_attr too, global initializer will not take effect
+            # The weight of conv2 is initialized by Xavier
+            # The bias of conv2 is initialized by Normal
+            conv2 = fluid.layers.conv2d(conv1, 5, 3, 
+                param_attr=fluid.initializer.Xavier(), 
+                bias_attr=fluid.initializer.Normal())
+
+            # Cancel the global initializer in framework, it will takes effect in subsequent code
+            fluid.set_global_initializer(None)
+
+
+    """
+    check_type(weight_init, 'weight_init', (Initializer, type(None)),
+               'set_global_initializer')
+    global _global_weight_initializer_
+    _global_weight_initializer_ = weight_init
+
+    check_type(bias_init, 'bias_init', (Initializer, type(None)),
+               'set_global_initializer')
+    global _global_bias_initializer_
+    _global_bias_initializer_ = bias_init
+
+
+def _global_weight_initializer():
+    """
+    Return the global weight initializer, The user doesn't need to use it.
+    """
+    return _global_weight_initializer_
+
+
+def _global_bias_initializer():
+    """
+    Return the global weight initializer, The user doesn't need to use it.
+    """
+    return _global_bias_initializer_
 
 
 # We short the class name, since users will use the initializer with the package

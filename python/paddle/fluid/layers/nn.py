@@ -185,6 +185,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'mish',
     'gather_tree',
     'uniform_random',
     'unbind',
@@ -5582,6 +5583,8 @@ def im2sequence(input,
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
 
+    check_variable_and_dtype(input, 'input', ['float32'], 'im2sequence')
+
     if isinstance(filter_size, int):
         filter_size = [filter_size, filter_size]
     if isinstance(stride, int):
@@ -6175,7 +6178,7 @@ def squeeze(input, axes, name=None):
             Out.shape = [1,3,5]
 
     Args:
-        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+        input (Variable): The input Tensor. Support data type: float16, float32, float64, int8, int32, int64.
                           axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
                           Axes range is :math:`[-rank(input), rank(input))`.
                           If axes is negative, :math:`axes=axes+rank(input)`.
@@ -6195,9 +6198,9 @@ def squeeze(input, axes, name=None):
 
     """
     helper = LayerHelper("squeeze", **locals())
-    check_variable_and_dtype(input, 'input',
-                             ['float32', 'float64', 'int8', 'int32', 'int64'],
-                             'squeeze')
+    check_variable_and_dtype(
+        input, 'input',
+        ['float16', 'float32', 'float64', 'int8', 'int32', 'int64'], 'squeeze')
     check_type(axes, 'axes', list, 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6727,7 +6730,7 @@ def label_smooth(label,
         label(Variable): The input variable containing the label data. The
                         label data should use one-hot representation. It's
                         a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
         prior_dist(Variable, optional): The prior distribution to be used to smooth
                         labels. If not provided, an uniform distribution
                         is used. It's a multidimensional tensor with a shape of
@@ -6750,7 +6753,7 @@ def label_smooth(label,
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            label = layers.data(name="label", shape=[1], dtype="float32")
+            label = layers.data(name="label", shape=[1], dtype="int32")
             one_hot_label = layers.one_hot(input=label, depth=10)
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
@@ -6761,6 +6764,9 @@ def label_smooth(label,
     if in_dygraph_mode():
         return core.ops.label_smooth(label, prior_dist, 'epsilon',
                                      float(epsilon))
+
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'label_smooth')
 
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
@@ -9121,6 +9127,9 @@ def affine_grid(theta, out_shape, name=None):
     """
     helper = LayerHelper('affine_grid')
 
+    check_variable_and_dtype(theta, 'theta', ['float32', 'float64'],
+                             'affine_grid')
+
     if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
             isinstance(out_shape, Variable)):
         raise ValueError("The out_shape should be a list, tuple or Variable.")
@@ -9133,6 +9142,8 @@ def affine_grid(theta, out_shape, name=None):
     attrs = {}
     if isinstance(out_shape, Variable):
         ipts['OutputShape'] = out_shape
+        check_variable_and_dtype(out_shape, 'out_shape', ['int32'],
+                                 'affine_grid')
     else:
         attrs['output_shape'] = out_shape
 
@@ -9616,10 +9627,20 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
+    # NOTE(): The input of this API should be ``N,C,...`` format, 
+    # which means x.shape[0] is batch_size and x.shape[0] is channel.
     if mode == 'channel':
-        alpha_shape = [1, x.shape[1], 1, 1]
+        assert len(
+            x.shape
+        ) >= 2, "The size of input shape should be equal or larger than 2 in prelu() when mode is 'channel'"
+        #NOTE(zhiqiu): The alpha_shape should be [1, channel] + [1] * len(x.shape[2:]).
+        # To be consistent with Prelu, it is simplified.
+        alpha_shape = [1, x.shape[1]]
     elif mode == 'element':
-        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
+        assert len(
+            x.shape
+        ) >= 1, "The size of input shape should be equal or larger than 1 in prelu() when mode is 'element'"
+        alpha_shape = [1] + list(x.shape)[1:]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -11887,8 +11908,10 @@ for func in [
             Default is None. It's used to print debug info for developers. Details: \
             :ref:`api_guide_Name` "
         ],
-        skip_attrs_set={"x_data_format", "y_data_format", "axis"
-                        }) + """\n""" + str(func.__doc__)
+        skip_attrs_set={
+            "x_data_format", "y_data_format", "axis", "use_quantizer",
+            "Scale_x", "Scale_y", "Scale_out"
+        }) + """\n""" + str(func.__doc__)
 
 for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
@@ -12774,16 +12797,14 @@ def hash(input, hash_size, num_hash=1, name=None):
 
             place = fluid.core.CPUPlace()
 
-            x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
-            res = fluid.layers.hash(name="res",input=x, hash_size=1000, num_hash=4)
+            x = fluid.data(name="x", shape=[2,2], dtype="int32", lod_level=1)
+            res = fluid.layers.hash(name="res", input=x, hash_size=1000, num_hash=4)
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             in1 = np.array([[1,2],[3,4]]).astype("int32")
             print(in1)
-            x_i = fluid.core.LoDTensor()
-            x_i.set(in1,place)
-            x_i.set_recursive_sequence_lengths([[0,2]])
+            x_i = fluid.create_lod_tensor(in1, [[0, 2]], place)
             res = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res], return_numpy=False)
             print(np.array(res[0]))
             # [[[722]
@@ -12796,8 +12817,8 @@ def hash(input, hash_size, num_hash=1, name=None):
             #   [901]]]
     """
     check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'hash')
-    check_type(hash_size, 'hash_size', ['int32', 'int64'], 'hash')
-    check_type(num_hash, 'num_hash', ['int32', 'int64'], 'hash')
+    check_type(hash_size, 'hash_size', int, 'hash')
+    check_type(num_hash, 'num_hash', int, 'hash')
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
         helper.input_dtype(), stop_gradient=True)
@@ -14759,6 +14780,81 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         attrs={'threshold': threshold,
                'scale': scale,
                'offset': offset})
+    return out
+
+
+@templatedoc()
+def mish(x, threshold=20, name=None):
+    """
+    This operator implements the mish activation function.
+    Refer to `Mish: A Self Regularized Non-Monotonic Neural
+    Activation Function <https://arxiv.org/abs/1908.08681>`_
+
+
+    The formula is as follows if :attr:`threshold` is :code:`None` or negative:
+
+    .. math::
+
+        out = x * \\tanh(\\ln(1 + e^{x}))
+
+    The formula is as follows if :attr:`threshold` is set as positive value:
+
+    .. math::
+
+	out = \\begin{cases}
+		x \\ast \\tanh(x), \\text{if } x > \\text{threshold} \\\\
+		x \\ast \\tanh(e^{x}), \\text{if } x < -\\text{threshold} \\\\
+		x \\ast \\tanh(\\ln(1 + e^{x})),  \\text{otherwise}
+	      \\end{cases}
+
+    Args:
+        x (Variable): Input feature, multi-dimensional Tensor. The data type
+                      should be float16, float32 or float64.
+        threshold (float|None): threshold for softplus in Mish operator.
+                Approximate value of softplus will be used if absolute value
+                of input is greater than :attr:threshold and :attr:threshold
+                is set as positive value. For none or negative threshold,
+                approximate value is not used. Default 20.
+        name (str, optional): The default value is None. Normally there is no
+                need for user to set this property. For more information, please
+                refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: The output tensor with the same shape and data type as input.
+
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        DATATYPE='float32'
+
+        x_data = np.array([i for i in range(1,5)]).reshape([1,1,4]).astype(DATATYPE)
+
+        x = fluid.data(name="x", shape=[None,1,4], dtype=DATATYPE)
+        y = fluid.layers.mish(x)
+
+        place = fluid.CPUPlace()
+        # place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
+        print(out)  # [[0.66666667, 1.66666667, 3., 4.]]
+    """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'mish')
+    check_type(threshold, 'threshold', (float, int), 'mish')
+    assert threshold > 0, "threshold of mish should be greater than 0, " \
+                          "but got {}".format(threshold)
+
+    helper = LayerHelper('mish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold or -1})
     return out
 
 

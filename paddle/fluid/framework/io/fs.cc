@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/io/fs.h"
+
 #include <memory>
+
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -127,7 +130,8 @@ std::shared_ptr<FILE> localfs_open_write(std::string path,
 int64_t localfs_file_size(const std::string& path) {
   struct stat buf;
   if (0 != stat(path.c_str(), &buf)) {
-    LOG(FATAL) << "file stat not zero";
+    PADDLE_THROW(platform::errors::External(
+        "Failed to get file status via stat function."));
     return -1;
   }
   return (int64_t)buf.st_size;
@@ -365,7 +369,9 @@ std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
       return hdfs_open_read(path, err_no, converter);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return {};
@@ -381,7 +387,9 @@ std::shared_ptr<FILE> fs_open_write(const std::string& path, int* err_no,
       return hdfs_open_write(path, err_no, converter);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return {};
@@ -397,7 +405,9 @@ std::shared_ptr<FILE> fs_open(const std::string& path, const std::string& mode,
     return fs_open_write(path, err_no, converter);
   }
 
-  LOG(FATAL) << "Unknown mode: " << mode;
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Unsupport file open mode: %s. Only supports 'r', 'rb', 'w' or 'wb'.",
+      mode));
   return {};
 }
 
@@ -407,7 +417,8 @@ int64_t fs_file_size(const std::string& path) {
       return localfs_file_size(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system."));
   }
 
   return 0;
@@ -422,7 +433,9 @@ void fs_remove(const std::string& path) {
       return hdfs_remove(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 }
 
@@ -435,7 +448,9 @@ std::vector<std::string> fs_list(const std::string& path) {
       return hdfs_list(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return {};
@@ -450,7 +465,9 @@ std::string fs_tail(const std::string& path) {
       return hdfs_tail(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return "";
@@ -465,7 +482,9 @@ bool fs_exists(const std::string& path) {
       return hdfs_exists(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 
   return false;
@@ -480,7 +499,9 @@ void fs_mkdir(const std::string& path) {
       return hdfs_mkdir(path);
 
     default:
-      LOG(FATAL) << "Not supported";
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Unsupport file system. Now only supports local file system and "
+          "HDFS."));
   }
 }
 

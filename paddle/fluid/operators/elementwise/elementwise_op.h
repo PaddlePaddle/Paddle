@@ -100,15 +100,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    auto CanMKLDNNElementwiseAddBeUsed = [&]() {
-      int axis = ctx.Attr<int>("axis");
-      int rankdiff = ctx.Input<Tensor>("X")->dims().size() -
-                     ctx.Input<Tensor>("Y")->dims().size();
-      return (rankdiff == 0) || (axis == -1) || (axis == rankdiff);
-    };
-
-    if (platform::CanMKLDNNBeUsed(ctx) &&
-        (ctx.Type() != "elementwise_add" || CanMKLDNNElementwiseAddBeUsed())) {
+    if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -148,6 +140,21 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("");
     AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
         .SetDefault("");
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. Only used on CPU.")
+        .SetDefault(false);
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
     AddOpComment();
   }
 
@@ -348,16 +355,16 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplace, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
+DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
-DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplace, {"DDX", "DDOut"});
+DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplaceInferer,
+                           {"DDX", "DDOut"});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInference, "X",
-                                    "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInference,
-                                    "Y", "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInferer, "X", "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInferer, "Y",
+                                    "DOut");
 
 }  // namespace operators
 }  // namespace paddle
@@ -389,4 +396,4 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInference,
                     ::paddle::operators::ElementwiseOpInferVarType,     \
                     op_type##GradMaker<::paddle::framework::OpDesc>,    \
                     op_type##GradMaker<::paddle::imperative::OpBase>,   \
-                    ::paddle::operators::ElementwiseOpInplace);
+                    ::paddle::operators::ElementwiseOpInplaceInferer);

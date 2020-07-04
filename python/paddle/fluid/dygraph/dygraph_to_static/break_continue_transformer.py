@@ -17,7 +17,6 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
 from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
@@ -50,7 +49,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
-                return
+                return new_stmts
         if hasattr(self.parent_node, 'orelse'):
             body_list = self.parent_node.orelse
             i = index_in_list(body_list, self.loop_node)
@@ -58,7 +57,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
-                return
+                return new_stmts
         raise ValueError(
             "parent_node doesn't contain the loop_node in ForToWhileTransformer")
 

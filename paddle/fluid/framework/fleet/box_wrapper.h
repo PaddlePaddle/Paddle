@@ -214,35 +214,35 @@ class AfsManager {
     int fd_read[2];
     int fd_write[2];
     if (read) {
-      if (pipe(fd_read) != 0) {
-        LOG(FATAL) << "create read pipe failed";
-        return -1;
-      }
+      PADDLE_ENFORCE_EQ(
+          pipe(fd_read), 0,
+          platform::errors::External("Create read pipe failed in AfsManager."));
     }
     if (write) {
-      if (pipe(fd_write) != 0) {
-        LOG(FATAL) << "create write pipe failed";
-        return -1;
-      }
+      PADDLE_ENFORCE_EQ(pipe(fd_write), 0,
+                        platform::errors::External(
+                            "Create write pipe failed in AfsManager."));
     }
     pid = vfork();
-    if (pid < 0) {
-      LOG(FATAL) << "fork failed";
-      return -1;
-    }
+    PADDLE_ENFORCE_GE(
+        pid, 0,
+        platform::errors::External(
+            "Failed to create a child process via fork in AfsManager."));
     if (pid == 0) {
       if (read) {
-        if (-1 == dup2(fd_read[1], STDOUT_FILENO)) {
-          LOG(FATAL) << "dup2 failed";
-        }
+        PADDLE_ENFORCE_NE(
+            dup2(fd_read[1], STDOUT_FILENO), -1,
+            platform::errors::External(
+                "Failed to duplicate file descriptor via dup2 in AfsManager."));
         close(fd_read[1]);
         close(fd_read[0]);
       }
 
       if (write) {
-        if (-1 == dup2(fd_write[0], STDIN_FILENO)) {
-          LOG(FATAL) << "dup2 failed";
-        }
+        PADDLE_ENFORCE_NE(
+            dup2(fd_write[0], STDIN_FILENO), -1,
+            platform::errors::External(
+                "Failed to duplicate file descriptor via dup2 in AfsManager."));
         close(fd_write[0]);
         close(fd_write[1]);
       }
@@ -265,20 +265,20 @@ class AfsManager {
         close(fd_read[1]);
         fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
         fp_read = fdopen(fd_read[0], "r");
-        if (0 == fp_read) {
-          LOG(FATAL) << "fdopen failed.";
-          return -1;
-        }
+        PADDLE_ENFORCE_NE(
+            fp_read, nullptr,
+            platform::errors::External(
+                "Failed to open file descriptor via fdopen in AfsManager."));
       }
 
       if (write) {
         close(fd_write[0]);
         fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
         fp_write = fdopen(fd_write[1], "w");
-        if (0 == fp_write) {
-          LOG(FATAL) << "fdopen failed.";
-          return -1;
-        }
+        PADDLE_ENFORCE_NE(
+            fp_write, nullptr,
+            platform::errors::External(
+                "Failed to open file descriptor via fdopen in AfsManager."));
       }
       return 0;
     }
@@ -637,14 +637,19 @@ class BoxWrapper {
                         const std::string& pred_varname, int metric_phase,
                         const std::string& cmatch_rank_group,
                         const std::string& cmatch_rank_varname,
-                        int bucket_size = 1000000) {
+                        bool ignore_rank = false, int bucket_size = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       cmatch_rank_varname_ = cmatch_rank_varname;
       metric_phase_ = metric_phase;
+      ignore_rank_ = ignore_rank;
       calculator = new BasicAucCalculator();
       calculator->init(bucket_size);
       for (auto& cmatch_rank : string::split_string(cmatch_rank_group)) {
+        if (ignore_rank) {  // CmatchAUC
+          cmatch_rank_v.emplace_back(atoi(cmatch_rank.c_str()), 0);
+          continue;
+        }
         const std::vector<std::string>& cur_cmatch_rank =
             string::split_string(cmatch_rank, "_");
         PADDLE_ENFORCE_EQ(
@@ -678,7 +683,13 @@ class BoxWrapper {
       for (size_t i = 0; i < batch_size; ++i) {
         const auto& cur_cmatch_rank = parse_cmatch_rank(cmatch_rank_data[i]);
         for (size_t j = 0; j < cmatch_rank_v.size(); ++j) {
-          if (cmatch_rank_v[j] == cur_cmatch_rank) {
+          bool is_matched = false;
+          if (ignore_rank_) {
+            is_matched = cmatch_rank_v[j].first == cur_cmatch_rank.first;
+          } else {
+            is_matched = cmatch_rank_v[j] == cur_cmatch_rank;
+          }
+          if (is_matched) {
             cal->add_data(pred_data[i], label_data[i]);
             break;
           }
@@ -689,6 +700,7 @@ class BoxWrapper {
    protected:
     std::vector<std::pair<int, int>> cmatch_rank_v;
     std::string cmatch_rank_varname_;
+    bool ignore_rank_;
   };
   class MaskMetricMsg : public MetricMsg {
    public:
@@ -757,7 +769,7 @@ class BoxWrapper {
                   const std::string& pred_varname,
                   const std::string& cmatch_rank_varname,
                   const std::string& mask_varname, int metric_phase,
-                  const std::string& cmatch_rank_group,
+                  const std::string& cmatch_rank_group, bool ignore_rank,
                   int bucket_size = 1000000) {
     if (method == "AucCalculator") {
       metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
@@ -768,10 +780,10 @@ class BoxWrapper {
                                        metric_phase, cmatch_rank_group,
                                        cmatch_rank_varname, bucket_size));
     } else if (method == "CmatchRankAucCalculator") {
-      metric_lists_.emplace(
-          name, new CmatchRankMetricMsg(label_varname, pred_varname,
-                                        metric_phase, cmatch_rank_group,
-                                        cmatch_rank_varname, bucket_size));
+      metric_lists_.emplace(name, new CmatchRankMetricMsg(
+                                      label_varname, pred_varname, metric_phase,
+                                      cmatch_rank_group, cmatch_rank_varname,
+                                      ignore_rank, bucket_size));
     } else if (method == "MaskAucCalculator") {
       metric_lists_.emplace(
           name, new MaskMetricMsg(label_varname, pred_varname, metric_phase,
@@ -955,9 +967,6 @@ class BoxHelper {
     new_input_channel->Close();
     dynamic_cast<MultiSlotDataset*>(dataset_)->SetInputChannel(
         new_input_channel);
-    if (dataset_->EnablePvMerge()) {
-      dataset_->PreprocessInstance();
-    }
 #endif
   }
 #ifdef PADDLE_WITH_BOX_PS

@@ -106,9 +106,13 @@ class MNIST(fluid.dygraph.Layer):
             acc = fluid.layers.accuracy(input=x, label=label)
             loss = fluid.layers.cross_entropy(x, label)
             avg_loss = fluid.layers.mean(loss)
-            return x, acc, avg_loss
-        else:
-            return x
+
+        # TODO: Uncomment code after "return" statement can be transformed correctly.
+
+        #     return x, acc, avg_loss
+        # else:
+        #     return x
+        return x, acc, avg_loss
 
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
@@ -200,7 +204,6 @@ class TestMNISTWithDeclarative(TestMNIST):
                         break
         return loss_data
 
-    @switch_to_static_graph
     def check_save_inference_model(self, inputs, prog_trans, to_static, gt_out):
         if to_static:
             infer_model_path = "./test_mnist_inference_model"
@@ -208,6 +211,7 @@ class TestMNISTWithDeclarative(TestMNIST):
             infer_out = self.load_and_run_inference(infer_model_path, inputs)
             self.assertTrue(np.allclose(gt_out.numpy(), infer_out))
 
+    @switch_to_static_graph
     def load_and_run_inference(self, model_path, inputs):
         exe = fluid.Executor(self.place)
         [inference_program, feed_target_names,
