@@ -513,6 +513,11 @@ class TestLACModel(unittest.TestCase):
         return out
 
     def test_train(self):
+        # TODO(Aurelius84): The unittest will hang sometimes under command "ctest" 
+        # on Windows platform, which means it failed to start up this unittest. 
+        # So the unittest raised timeout.
+        if os.name == 'nt':
+            return
         dy_out = self.train(to_static=False)
         st_out = self.train(to_static=True)
         self.assertTrue(
