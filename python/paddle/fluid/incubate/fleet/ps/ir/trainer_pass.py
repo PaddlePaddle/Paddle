@@ -191,7 +191,7 @@ def append_send_ops_pass(program, config):
 
     dummys = []
 
-    sends = config.get_communicator_send_context()
+    sends = config.get_trainer_send_context()
 
     for merged_name, send in sends.items():
         dummys.append(_append_send_op(send.origin_varnames(), merged_name))

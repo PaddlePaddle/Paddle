@@ -224,7 +224,7 @@ class CompileTimeStrategy(object):
                     ps_sparse_varnames.append(table)
         return ps_sparse_varnames
 
-    def build_ctx(self, vars, mapping, is_grad):
+    def build_ctx(self, vars, mapping, is_grad, is_sparse):
         def get_grad_var_ep(slices):
             names = []
             eps = []
@@ -264,17 +264,21 @@ class CompileTimeStrategy(object):
 
         trainer_id = self.get_role_id()
         aggregate = True
-        queue = True
         ctx = CommContext(name, names, eps, sections, origin_varnames,
-                          trainer_id, aggregate, queue)
+                          trainer_id, aggregate, is_sparse)
         return ctx
 
     def get_trainer_send_context(self):
         send_ctx = {}
         if not self.is_geo_mode():
-            for merged in self.merged_variables_pairs:
+            for merged in self.merged_dense_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False)
+                send_ctx[ctx.var_name()] = ctx
+
+            for merged in self.merged_sparse_pairs:
+                grad = merged[1]
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, True)
                 send_ctx[ctx.var_name()] = ctx
 
             if self.is_async_mode():
@@ -283,8 +287,10 @@ class CompileTimeStrategy(object):
         else:
             for pairs in self.origin_sparse_pairs:
                 param, grad = pairs
-                param_ctx = self.build_ctx(param, self.param_var_mapping, False)
-                grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+                param_ctx = self.build_ctx(param, self.param_var_mapping, False,
+                                           True)
+                grad_ctx = self.build_ctx(grad, self.grad_var_mapping, True,
+                                          True)
 
                 ctx = CommContext(param_ctx.var_name(),
                                   param.split_varnames(),
@@ -299,19 +305,29 @@ class CompileTimeStrategy(object):
             send_ctx[name] = ctx
 
     def get_communicator_send_context(self):
-
         send_ctx = {}
         if self.is_geo_mode():
-            for pairs in self.origin_sparse_pairs:
-                grad = pairs[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+            for pairs in self.merged_dense_pairs:
+                param = pairs[0]
+                ctx = self.build_ctx(param, self.param_var_mapping, False,
+                                     False)
+                send_ctx[ctx.var_name()] = ctx
+
+            for pairs in self.merged_sparse_pairs:
+                param = pairs[0]
+                ctx = self.build_ctx(param, self.param_var_mapping, False, True)
                 send_ctx[ctx.var_name()] = ctx
             name, ctx = self._step_ctx()
             send_ctx[name] = ctx
         else:
-            for merged in self.merged_variables_pairs:
+            for merged in self.merged_dense_pairs:
                 grad = merged[1]
-                ctx = self.build_ctx(grad, self.grad_var_mapping, True)
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False)
+                send_ctx[ctx.var_name()] = ctx
+
+            for merged in self.merged_sparse_pairs:
+                grad = merged[1]
+                ctx = self.build_ctx(grad, self.grad_var_mapping, True, False)
                 send_ctx[ctx.var_name()] = ctx
 
             name, ctx = self._step_ctx()
