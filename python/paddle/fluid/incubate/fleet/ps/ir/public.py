@@ -276,9 +276,8 @@ class CompileTimeStrategy(object):
                 ctx = self.build_ctx(grad, self.grad_var_mapping, True)
                 send_ctx[ctx.merged_varname()] = ctx
 
-            if _get_lr_ops(self.get_origin_main_program()):
-                name, ctx = step_ctx()
-                send_ctx[name] = ctx
+            name, ctx = step_ctx()
+            send_ctx[name] = ctx
         return send_ctx
 
     def get_communicator_recv_context(self, recv_type=1):

@@ -87,6 +87,26 @@ AsyncCommunicator::~AsyncCommunicator() {
   if (main_thread_) main_thread_->join();
 }
 
+void AsyncCommunicator::SendGlobalStep(int batches) {
+  if (!need_global_step_) {
+    return;
+  }
+
+  if (batches == 0) {
+    return;
+  }
+
+  auto &var_name = STEP_COUNTER;
+  auto *out_var = send_scope_->Var(var_name);
+  auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+  auto *data = out_t->mutable_data<int64_t>({1}, platform::CPUPlace());
+  data[0] = static_cast<int64_t>(batches);
+
+  auto &ctx = send_varname_to_ctx_.at(var_name);
+  auto send_functor = distributed::ParameterSend<float>();
+  send_functor(ctx, *send_scope_, true, 1);
+}
+
 void AsyncCommunicator::SendByCommunicator(int batches) {
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(send_varname_to_ctx_.size());
@@ -144,6 +164,7 @@ void AsyncCommunicator::MainThread() {
 
   while (running_) {
     int meet = Meet();
+    SendGlobalStep(meet);
     SendByCommunicator(meet);
     BarrierSend();
     RecvByCommunicator();
@@ -152,8 +173,6 @@ void AsyncCommunicator::MainThread() {
   }
   VLOG(1) << "communicator stopped, send thread exit";
 }
-
-void AsyncCommunicator::Meet() {}
 
 void AsyncCommunicator::RecvByCommunicator() {
   VLOG(3) << "parallel run recv graph";
@@ -182,13 +201,13 @@ void AsyncCommunicator::RecvNoBarrier() {
 }
 
 int AsyncCommunicator::Meet() {
-  auto &step_queue = send_ids_to_queue_.at(STEP_COUNTER);
+  auto &step_queue = send_varname_to_queue_.at(STEP_COUNTER);
 
   size_t merged_var_num = 0;
   size_t wait_times = 0;
 
   while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
-    if (var_queue->Size() == 0) {
+    if (step_queue->Size() == 0) {
       VLOG(3) << "wait_times -> " << wait_times;
       if (wait_times >= static_cast<size_t>(send_wait_times_)) {
         break;
@@ -251,8 +270,8 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
     auto tmp_var = std::make_shared<Variable>();
     auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
     tensor->Resize(framework::make_ddim({1}));
-    auto *out_d = tensor->mutable_data<float>(platform::CPUPlace());
-    out_d[0] = 1.0;
+    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    out_d[0] = 1;
     VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
     queue->Push(tmp_var);
   } else {
@@ -402,12 +421,19 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
       platform::errors::InvalidArgument("var_tables.size() == 1 is permitted"));
 
   auto table_name = var_tables[0];
-  auto &queue = send_ids_to_queue_.at(table_name);
 
   if (table_name == STEP_COUNTER) {
+    auto &queue = send_varname_to_queue_.at(table_name);
+
+    auto tmp_var = std::make_shared<Variable>();
+    auto *tensor = tmp_var->GetMutable<framework::LoDTensor>();
+    tensor->Resize(framework::make_ddim({1}));
+    auto *out_d = tensor->mutable_data<int64_t>(platform::CPUPlace());
+    out_d[0] = 1;
     VLOG(3) << "send to " << table_name << " with queue size " << queue->Size();
-    queue->Push({1});
+    queue->Push(tmp_var);
   } else {
+    auto &queue = send_ids_to_queue_.at(table_name);
     PADDLE_ENFORCE_EQ(var_names.size(), 1,
                       platform::errors::InvalidArgument(
                           "var_names.size() == 1 is permitted"));
@@ -425,7 +451,7 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
     std::vector<int64_t> ids;
     auto &rows = var->Get<framework::SelectedRows>().rows();
     ids.assign(rows.begin(), rows.end());
-    queue.push(ids);
+    queue->Push(ids);
   }
 }
 
@@ -443,8 +469,9 @@ void GeoCommunicator::SendByCommunicator(int batches) {
       }
 
       if (send_ctx.is_sparse) {
-        auto &ids_queue = send_ids_to_queue_.at(var_name);
-        SendSparse(var_name, ids);
+        std::vector<int64_t> ids;
+        // auto &ids_queue = send_ids_to_queue_.at(var_name);
+        SendSparse(var_name, &ids);
       } else {
         SendDense(var_name);
       }
@@ -456,6 +483,10 @@ void GeoCommunicator::SendByCommunicator(int batches) {
   }
 }
 
+void GeoCommunicator::SendSparse(const std::string &varname,
+                                 std::vector<int64_t> *ids) {}
+void GeoCommunicator::SendDense(const std::string &varname) {}
+
 void GeoCommunicator::RecvByCommunicator() {
   std::vector<std::future<void>> tasks;
   tasks.reserve(recv_varname_to_ctx_.size());
@@ -464,7 +495,7 @@ void GeoCommunicator::RecvByCommunicator() {
     auto &var_name = iter.first;
     auto &recv_ctx = iter.second;
 
-    auto recv_task = [this, batches, &var_name, &recv_ctx] {
+    auto recv_task = [this, &var_name, &recv_ctx] {
       if (recv_ctx.is_sparse) {
         RecvSparse(var_name);
       } else {
@@ -477,6 +508,9 @@ void GeoCommunicator::RecvByCommunicator() {
     task.wait();
   }
 }
+
+void GeoCommunicator::RecvSparse(const std::string &varname) {}
+void GeoCommunicator::RecvDense(const std::string &varname) {}
 
 void GeoCommunicator::Init() {}
 

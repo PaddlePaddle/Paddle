@@ -281,6 +281,8 @@ class AsyncCommunicator : public Communicator {
 
   void SendByCommunicator(int batches);
 
+  void SendGlobalStep(int batches);
+
   void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
@@ -300,6 +302,7 @@ class AsyncCommunicator : public Communicator {
   int send_wait_times_;
   int send_queue_size_;
   int trainer_id_ = 0;
+  bool need_global_step_ = false;
 
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
@@ -381,6 +384,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
 };
 
 class GeoCommunicator : public AsyncCommunicator {
+ public:
   GeoCommunicator() : AsyncCommunicator() {}
 
   explicit GeoCommunicator(const std::map<std::string, std::string> &envs)
@@ -406,17 +410,17 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches) override;
+  void SendByCommunicator(int batches);
 
-  void SendSparse(conststd::string varname, std::string *ids);
+  void SendSparse(const std::string &varname, std::vector<int64_t> *ids);
 
-  void SendDense(const std::string varname);
+  void SendDense(const std::string &varname);
 
-  void RecvByCommunicator() override;
+  void RecvByCommunicator();
 
-  void RecvSparse(const std::string varname);
+  void RecvSparse(const std::string &varname);
 
-  void RecvDense(const std::string varname);
+  void RecvDense(const std::string &varname);
 
   void Init();
 

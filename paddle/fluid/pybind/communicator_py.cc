@@ -32,7 +32,7 @@ using paddle::framework::ProgramDesc;
 using paddle::framework::Scope;
 using paddle::operators::distributed::AsyncCommunicator;
 using paddle::operators::distributed::Communicator;
-using paddle::operators::distributed::GeoSgdCommunicator;
+using paddle::operators::distributed::GeoCommunicator;
 using paddle::operators::distributed::HalfAsyncCommunicator;
 using paddle::operators::distributed::SyncCommunicator;
 
@@ -80,8 +80,8 @@ void BindCommunicator(py::module* m) {
           Communicator::InitInstance<SyncCommunicator>(send_ctx, recv_ctx,
                                                        param_scope, envs);
         } else if (mode == "GEO") {
-          Communicator::InitInstance<GeoSgdCommunicator>(send_ctx, recv_ctx,
-                                                         param_scope, envs);
+          Communicator::InitInstance<GeoCommunicator>(send_ctx, recv_ctx,
+                                                      param_scope, envs);
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "unsuported communicator MODE"));
