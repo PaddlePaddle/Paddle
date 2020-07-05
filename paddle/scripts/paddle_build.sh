@@ -782,19 +782,17 @@ function card_test() {
         done
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V &)|tee tmp.log
-            else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &)|tee tmp.log
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V &)|tee -a tmp.log
+            else  
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V &)|tee -a tmp.log
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee tmp.log
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee -a tmp.log
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee tmp.log
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure &)|tee -a tmp.log
             fi
         fi
-        echo "tmp.log"
-        cat tmp.log
     done
     wait; # wait for all subshells to finish
     ut_endTime_s=`date +%s`
@@ -893,6 +891,9 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         #card_test "$multiple_card_tests" 2  # run cases with two GPUs
         #card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        echo "begin tmp.log"
+        cat tmp.log
+        echo "end tmp.log"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
