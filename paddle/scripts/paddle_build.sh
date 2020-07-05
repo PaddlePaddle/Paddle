@@ -745,6 +745,7 @@ EOF
     fi
 }
 
+tmpdir=`mktemp -d`
 function card_test() {
     set -m
     case_count $1 $2
@@ -780,21 +781,23 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
+        tmpfile=$tmpdir/$i
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" -V |tee -a tmp.log
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V |tee -a tmp.log
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -V | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure |tee -a tmp.log
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else
-                env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure |tee -a tmp.log
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" --output-on-failure | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
     wait; # wait for all subshells to finish
+    gather_failtests
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
@@ -805,15 +808,17 @@ function card_test() {
 }
 
 function gather_failtests() {
-    set +e
-    grep 'The following tests FAILED:' tmp.log
-    if [ $? -eq 0 ]; then
-        failuretest=''
-    else
-        failuretest=`grep -A 10000 'The following tests FAILED:' tmp.log | sed 's/The following tests FAILED://g'|sed '/^$/d'`
-    fi
-    echo "failuretest: ""$failuretest"
-    summary_failtest="$summary_failtest $failuretest"
+    for file in `ls $tmpdir`; do
+        grep 'The following tests FAILED:' $file
+        if [ $? -eq 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+        fi
+        echo "failuretest: ""$failuretest"
+        summary_failtest="$summary_failtest
+$failuretest"
+    done
 }
 
 function parallel_test_base() {
