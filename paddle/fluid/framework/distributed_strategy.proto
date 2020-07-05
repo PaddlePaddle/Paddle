@@ -38,19 +38,17 @@ message DistributedStrategy {
   optional int32 gradient_merge_k_step = 12 [ default = 1 ];
   optional bool sequential_execution = 13 [ default = false ];
   optional bool enable_backward_optimizer_op_deps = 14 [ default = true ];
-  optional bool elastic = 15 [ default = false ];
-  optional bool lars = 16 [ default = false ];
-  optional bool lamb = 17 [ default = false ];
-  optional bool fuse_elewise_add_act_ops = 18 [ default = false ];
-  optional bool fuse_bn_act_ops = 19 [ default = false ];
-  optional bool enable_auto_fusion = 20 [ default = false ];
-  optional bool fuse_relu_depthwise_conv = 21 [ default = false ];
-  optional bool enable_inplace = 22 [ default = false ];
-  optional bool fuse_all_reduce_ops = 23 [ default = false ];
-  optional int32 num_iteration_per_drop_scope = 24 [ default = 1 ];
-  optional bool sync_batch_norm = 25 [ default = false ];
-  optional bool fuse_all_optimizer_ops = 26 [ default = false ];
-  optional int32 nccl_comm_num = 27 [ default = 1 ];
+  optional bool lars = 15 [ default = false ];
+  optional bool lamb = 16 [ default = false ];
+  optional bool fuse_elewise_add_act_ops = 17 [ default = false ];
+  optional bool fuse_bn_act_ops = 18 [ default = false ];
+  optional bool enable_auto_fusion = 19 [ default = false ];
+  optional bool fuse_relu_depthwise_conv = 20 [ default = false ];
+  optional bool enable_inplace = 21 [ default = false ];
+  optional bool fuse_all_reduce_ops = 22 [ default = false ];
+  optional int32 num_iteration_per_drop_scope = 23 [ default = 1 ];
+  optional bool sync_batch_norm = 24 [ default = false ];
+  optional bool fuse_all_optimizer_ops = 25 [ default = false ];
 
   // pipeline training
   optional bool pipeline = 101 [ default = false ];
@@ -69,8 +67,11 @@ message DistributedStrategy {
   optional bool runtime_split_send_recv = 210 [ default = false ];
   optional bool use_thread_barrier = 211 [ default = false ];
 
+  // elastic deep learning strategies
+  optional bool elastic = 301 [ default = false ];
+
   // auto parallel
-  optional bool auto = 301 [ default = false ];
+  optional bool auto = 401 [ default = false ];
 }
 
 message DistributedJobInfo {
