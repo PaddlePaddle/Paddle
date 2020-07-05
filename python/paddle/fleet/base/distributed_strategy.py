@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 from ..proto import distributed_strategy_pb2
-from fluid.framework import Variable
+from paddle.fluid.framework import Variable
 
 
 class DistributedJobInfo(object):
@@ -504,7 +503,7 @@ class DistributedStrategy(object):
     def elastic(self):
         return self.strategy.elastic
 
-    @auto.setter
+    @elastic.setter
     def elastic(self, flag):
         if isinstance(flag, bool):
             self.strategy.elastic = flag
