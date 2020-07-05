@@ -744,6 +744,9 @@ EOF
         echo "$2 card TestCases count is $num"
     fi
 }
+
+summary_failtest=''
+tmpdir=`mktemp -d`
 function gather_failtests() {
     for file in `ls $tmpdir`; do
         grep -q 'The following tests FAILED:' $tmpdir/$file
@@ -758,7 +761,6 @@ $failuretest"
     done
 }
 
-tmpdir=`mktemp -d`
 function card_test() {
     set -m
     case_count $1 $2
@@ -810,7 +812,7 @@ function card_test() {
         fi
     done
     wait; # wait for all subshells to finish
-    #gather_failtests
+    gather_failtests
     rm -f $tmpdir/*
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
@@ -822,7 +824,6 @@ function card_test() {
 }
 
 function parallel_test_base() {
-    summary_failtest=''
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
@@ -894,11 +895,8 @@ set +x
 
         card_test "$single_card_tests" 1    # run cases with single GPU
         card_test "$single_card_tests_1" 1    # run cases with single GPU
-        #card_test "$multiple_card_tests" 2  # run cases with two GPUs
-        #card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
-        echo "begin tmp.log"
-        cat tmp.log
-        echo "end tmp.log"
+        card_test "$multiple_card_tests" 2  # run cases with two GPUs
+        card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
