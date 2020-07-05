@@ -964,7 +964,7 @@ def sparse_embedding(input,
     w = helper.create_parameter(
         attr=helper.param_attr,
         shape=size,
-        type=core.VarDesc.VarType.SELECTED_ROWS,
+        type=core.VarDesc.VarType.LOD_TENSOR,
         dtype=dtype,
         is_bias=False)
 

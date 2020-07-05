@@ -65,26 +65,11 @@ class Communicator(object):
 
         if envs is None:
             envs = {}
-        if mode == DistributedMode.GEO:
-            push_vars = kwargs["push_vars"]
-            push_var_names = []
 
-            for k, vs in push_vars.items():
-                varnames = "&".join(vs["var_names"])
-                sections = "&".join([str(v) for v in vs["sections"]])
-                endpoints = "&".join(vs["epmap"])
-                is_sparse = "1" if vs["is_sparse"] == ['True'] else "0"
-
-                push_var_names.append(k)
-                envs[k] = "#".join([varnames, sections, endpoints, is_sparse])
-
-            envs["geo_trainer_nums"] = str(kwargs["trainers"])
-            envs["geo_need_push_nums"] = str(kwargs["push_nums"])
-            envs["geo_send_varnames"] = '#'.join(push_var_names)
-
-        if mode == DistributedMode.SYNC:
+        if mode in [DistributedMode.SYNC, DistributedMode.GEO]:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
             envs["trainer_id"] = str(kwargs["trainer_id"])
+            envs["trainers"] = str(kwargs["trainers"])
 
         mode_str = None
 

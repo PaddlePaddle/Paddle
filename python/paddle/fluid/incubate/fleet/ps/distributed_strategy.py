@@ -392,12 +392,11 @@ class GeoStrategy(DistributedStrategy):
     def check_trainer_runtime_config(self):
         self._trainer_runtime_config.mode = DistributedMode.GEO
 
-        if self.mode == DistributedMode.GEO:
-            self._trainer_runtime_config.runtime_configs[
-                'communicator_send_queue_size'] = self._program_config.geo_sgd_need_push_nums
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = self._program_config.geo_sgd_need_push_nums
 
-            self._trainer_runtime_config.runtime_configs[
-                'communicator_max_merge_var_num'] = self._program_config.geo_sgd_need_push_nums
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = self._program_config.geo_sgd_need_push_nums
 
     def check_server_runtime_config(self):
         pass
