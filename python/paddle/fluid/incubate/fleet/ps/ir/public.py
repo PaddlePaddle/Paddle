@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
+# Copyright(c) 2020 PaddlePaddle Authors.All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0(the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0(the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-#http:  // www.apache.org/licenses/LICENSE-2.0
+# http:  // www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from __future__ import print_function
 
@@ -293,16 +293,17 @@ class CompileTimeStrategy(object):
                                           True)
 
                 ctx = CommContext(param_ctx.var_name(),
-                                  param.split_varnames(),
-                                  param.split_endpoints(),
-                                  param.sections(),
+                                  param_ctx.split_varnames(),
+                                  param_ctx.split_endpoints(),
+                                  param_ctx.sections(),
                                   grad_ctx.origin_varnames(),
-                                  param.trainer_id(),
+                                  param_ctx.trainer_id(),
                                   param_ctx.aggregate(), param_ctx.is_sparse())
 
                 send_ctx[ctx.var_name()] = ctx
             name, ctx = self._step_ctx()
             send_ctx[name] = ctx
+        return send_ctx
 
     def get_communicator_send_context(self):
         send_ctx = {}
@@ -335,7 +336,7 @@ class CompileTimeStrategy(object):
         return send_ctx
 
     def get_communicator_recv_context(self, recv_type=1):
-        #recv_type
+        # recv_type
         # 1 : DENSE 2. SPARSE 3. ALL
         sparse_varnames = []
 
@@ -351,12 +352,12 @@ class CompileTimeStrategy(object):
             if params.merged_var.name in sparse_varnames:
                 continue
 
-            ctx = self.build_ctx(params, self.param_var_mapping, False)
+            ctx = self.build_ctx(params, self.param_var_mapping, False, False)
             dense_recv_ctx[ctx.var_name()] = ctx
 
         for pairs in self.origin_sparse_pairs:
             param, grad = pairs
-            ctx = self.build_ctx(param, self.param_var_mapping, False)
+            ctx = self.build_ctx(param, self.param_var_mapping, False, True)
             sparse_recv_ctx[ctx.var_name()] = ctx
 
         if recv_type == 1:
@@ -436,7 +437,7 @@ class CompileTimeStrategy(object):
                 from original var name to each var split.
         """
 
-        #varname->[(block_id, current_block_size)]
+        # varname->[(block_id, current_block_size)]
         block_map = collections.OrderedDict()
         var_mapping = collections.OrderedDict()
 
@@ -580,12 +581,12 @@ class CompileTimeStrategy(object):
                 block_size = int(math.ceil(var_numel / float(split_count)))
 
                 if len(var.shape) >= 2:
-                    #align by dim1(width)
+                    # align by dim1(width)
                     dim1 = reduce(lambda x, y: x * y, var.shape[1:])
                     remains = block_size % dim1
                     if remains != 0:
                         block_size += dim1 - remains
-#update split_count after aligning
+                        # update split_count after aligning
                 split_count = int(math.ceil(var_numel / float(block_size)))
                 for block_id in range(split_count):
                     curr_block_size = min(block_size, var_numel - (
@@ -608,9 +609,9 @@ class CompileTimeStrategy(object):
         grad_list = []
         param_grad_set = set()
         for p, g in pairs:
-            #todo(tangwei12) skip parameter marked not trainable
-            #if type(p) == Parameter and p.trainable == False:
-            #continue
+            # todo(tangwei12) skip parameter marked not trainable
+            # if type(p) == Parameter and p.trainable == False:
+            # continue
             p = p.merged_var
             g = g.merged_var
 
@@ -621,8 +622,8 @@ class CompileTimeStrategy(object):
                 grad_list.append(g)
                 param_grad_set.add(g.name)
 
-#when we slice var up into blocks, we will slice the var according to
-#pserver services' count. A pserver may have two or more listening ports.
+                # when we slice var up into blocks, we will slice the var according to
+                # pserver services' count. A pserver may have two or more listening ports.
         grad_blocks = self._slice_variable(grad_list,
                                            len(self.get_ps_endpoints()),
                                            min_block_size, uniform)
@@ -633,7 +634,7 @@ class CompileTimeStrategy(object):
         return param_blocks, grad_blocks
 
     def _var_slice_and_distribute(self):
-        #update these mappings for further transpile:
+        # update these mappings for further transpile:
         # 1. param_var_mapping : param var name->[split params vars]
         # 2. grad_var_mapping : grad var name->[split grads vars]
         # 3. grad_param_mapping : grad.blockx->param.blockx
@@ -649,11 +650,11 @@ class CompileTimeStrategy(object):
 
         assert (len(grad_blocks) == len(param_blocks))
 
-        #origin_param_name->[splited_param_vars]
+        # origin_param_name->[splited_param_vars]
         self.param_var_mapping = self._create_vars_from_blocklist(param_blocks)
         self.grad_var_mapping = self._create_vars_from_blocklist(grad_blocks)
 
-        #dict(grad_splited_var->param_splited_var)
+        # dict(grad_splited_var->param_splited_var)
         self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
@@ -665,7 +666,7 @@ class CompileTimeStrategy(object):
         for k, v in self.grad_param_mapping.items():
             print_maps[str(k)] = str(v)
 
-#create mapping of endpoint->split var to create pserver side program
+        # create mapping of endpoint->split var to create pserver side program
         self.param_grad_ep_mapping = collections.OrderedDict()
         [
             self.param_grad_ep_mapping.update({
@@ -785,7 +786,7 @@ class CompileTimeStrategy(object):
             role_id = int(core.op_proto_and_checker_maker.OpRole.Backward)
             for op in block.ops:
                 if _is_opt_role_op(op):
-                    #delete clip op from opt_ops when run in Parameter Server mode
+                    # delete clip op from opt_ops when run in Parameter Server mode
                     if OP_NAME_SCOPE in op.all_attrs() \
                             and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
                         op._set_attr("op_role", role_id)
@@ -823,8 +824,8 @@ class CompileTimeStrategy(object):
 
 
 def _is_opt_role_op(op):
-    #NOTE : depend on oprole to find out whether this op is for
-    #optimize
+    # NOTE : depend on oprole to find out whether this op is for
+    # optimize
     op_maker = core.op_proto_and_checker_maker
     optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
     if op_maker.kOpRoleAttrName() in op.attr_names and \
@@ -838,7 +839,7 @@ def _get_optimize_ops(_program):
     opt_ops = []
     for op in block.ops:
         if _is_opt_role_op(op):
-            #delete clip op from opt_ops when run in Parameter Server mode
+            # delete clip op from opt_ops when run in Parameter Server mode
             if OP_NAME_SCOPE in op.all_attrs() \
                     and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
                 op._set_attr(
@@ -850,7 +851,7 @@ def _get_optimize_ops(_program):
 
 
 def _get_varname_parts(varname):
-    #returns origin, blockid, trainerid
+    # returns origin, blockid, trainerid
     orig_var_name = ""
     trainer_part = ""
     block_part = ""
