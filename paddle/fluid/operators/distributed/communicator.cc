@@ -607,14 +607,17 @@ void GeoCommunicator::Init() {
 }
 
 void GeoCommunicator::InitDense(const std::string varname) {
+  auto *var = old_scope_->Var(varname);
+  var->GetMutable<framework::LoDTensor>();
+
   auto &ctx = recv_varname_to_ctx_.at(varname);
   auto recv = distributed::ParameterRecv<float>();
-  recv_functor(ctx, *old_scope_);
+  recv(ctx, *old_scope_);
   VLOG(1) << "init dense variable " << varname << " done";
 }
 
 void GeoCommunicator::InitSparse(const std::string varname) {
-  VLOG(1) << "init dense variable " << varname << " done";
+  VLOG(1) << "init sparse variable " << varname << " done";
 }
 
 }  // namespace distributed
