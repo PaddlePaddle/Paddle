@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..proto import distributed_strategy_pb2
+from paddle.fleet.proto import distributed_strategy_pb2
 from paddle.fluid.framework import Variable
 
 
