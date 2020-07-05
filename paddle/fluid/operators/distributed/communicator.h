@@ -280,11 +280,11 @@ class AsyncCommunicator : public Communicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches);
+  virtual void SendByCommunicator(int batches);
 
-  void SendGlobalStep(int batches);
+  virtual void SendGlobalStep(int batches);
 
-  void RecvByCommunicator();
+  virtual void RecvByCommunicator();
 
   virtual void RecvNoBarrier();
 
@@ -411,15 +411,15 @@ class GeoCommunicator : public AsyncCommunicator {
             const std::vector<std::string> &var_tables,
             const framework::Scope &scope) override;
 
-  void SendByCommunicator(int batches);
+  void SendByCommunicator(int batches) override;
 
   void SendSparse(const std::string &varname, int batches);
 
   void SendDense(const std::string &varname);
 
-  void SendGlobalStep(int batches) {}
+  void SendGlobalStep(int batches) override {}
 
-  void RecvByCommunicator();
+  void RecvByCommunicator() override;
 
   void RecvSparse(const std::string &varname);
 

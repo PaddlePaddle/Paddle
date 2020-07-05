@@ -438,6 +438,8 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
+
+  Init();
 }
 
 void GeoCommunicator::Send(const std::vector<std::string> &var_names,
@@ -525,7 +527,6 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
 void GeoCommunicator::SendDense(const std::string &varname) {
   auto *var_latest = recv_scope_->FindVar(varname);
   auto *var_timestamp = old_scope_->FindVar(varname);
-  auto *var_delta = delta_scope_->FindVar(varname);
 
   PADDLE_ENFORCE_EQ(var_latest->IsInitialized(), true,
                     platform::errors::Unavailable(
@@ -534,6 +535,7 @@ void GeoCommunicator::SendDense(const std::string &varname) {
                     platform::errors::Unavailable(
                         "%s is not initialized, please check", varname));
 
+  auto *var_delta = delta_scope_->Var(varname);
   auto &t_latest = var_latest->Get<framework::LoDTensor>();
   auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
   auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
@@ -578,13 +580,42 @@ void GeoCommunicator::RecvByCommunicator() {
 }
 
 void GeoCommunicator::RecvSparse(const std::string &varname) {}
+
 void GeoCommunicator::RecvDense(const std::string &varname) {}
 
-void GeoCommunicator::Init() {}
+void GeoCommunicator::Init() {
+  std::vector<std::future<void>> tasks;
+  tasks.reserve(recv_varname_to_ctx_.size());
 
-void GeoCommunicator::InitDense(const std::string varname) {}
+  for (auto &iter : recv_varname_to_ctx_) {
+    auto &var_name = iter.first;
+    auto &recv_ctx = iter.second;
 
-void GeoCommunicator::InitSparse(const std::string varname) {}
+    auto recv_task = [this, &var_name, &recv_ctx] {
+      if (recv_ctx.is_sparse) {
+        InitSparse(var_name);
+      } else {
+        InitDense(var_name);
+      }
+    };
+    tasks.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
+  }
+
+  for (auto &task : tasks) {
+    task.wait();
+  }
+}
+
+void GeoCommunicator::InitDense(const std::string varname) {
+  auto &ctx = recv_varname_to_ctx_.at(varname);
+  auto recv = distributed::ParameterRecv<float>();
+  recv_functor(ctx, *old_scope_);
+  VLOG(1) << "init dense variable " << varname << " done";
+}
+
+void GeoCommunicator::InitSparse(const std::string varname) {
+  VLOG(1) << "init dense variable " << varname << " done";
+}
 
 }  // namespace distributed
 }  // namespace operators

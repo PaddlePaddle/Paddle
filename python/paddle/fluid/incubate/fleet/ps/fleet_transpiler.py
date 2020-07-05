@@ -387,8 +387,6 @@ class FleetTranspiler(Fleet):
             raise ValueError(
                 "fleet.init(role) to initialize before optimizer.minimize(loss)")
 
-        _strategy = strategy
-
         if not strategy:
             _strategy = StrategyFactory.create_async_strategy()
 
