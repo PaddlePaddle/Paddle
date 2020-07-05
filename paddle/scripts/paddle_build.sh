@@ -809,11 +809,11 @@ function card_test() {
 
 function gather_failtests() {
     for file in `ls $tmpdir`; do
-        grep 'The following tests FAILED:' $file
+        grep 'The following tests FAILED:' $tmpdir/$file
         if [ $? -eq 0 ]; then
             failuretest=''
         else
-            failuretest=`grep -A 10000 'The following tests FAILED:' $file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
         fi
         echo "failuretest: ""$failuretest"
         summary_failtest="$summary_failtest
