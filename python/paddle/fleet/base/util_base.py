@@ -16,8 +16,9 @@
 """basic collective operations in python"""
 """remote file system"""
 
-
-class Util(object):
+# __all__ = ['UtilBase']
+'''
+class UtilBase(object):
     def __init__(self, role_maker, fleet_obj):
         self.role_maker = roke_maker
         self.fleet_obj = fleet_obj
@@ -60,3 +61,4 @@ class Util(object):
 
     def print_on_rank(self):
         pass
+'''

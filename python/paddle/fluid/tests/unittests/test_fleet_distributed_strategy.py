@@ -141,6 +141,103 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.sequential_execution = "True"
         self.assertEqual(strategy.sequential_execution, False)
 
+    def test_lars(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.lars = True
+        self.assertEqual(strategy.lars, True)
+        strategy.lars = False
+        self.assertEqual(strategy.lars, False)
+        strategy.lars = "True"
+        self.assertEqual(strategy.lars, False)
+
+    def test_lamb(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.lamb = True
+        self.assertEqual(strategy.lamb, True)
+        strategy.lamb = False
+        self.assertEqual(strategy.lamb, False)
+        strategy.lamb = "True"
+        self.assertEqual(strategy.lamb, False)
+
+    def test_fuse_elewise_add_act_ops(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_elewise_add_act_ops = True
+        self.assertEqual(strategy.fuse_elewise_add_act_ops, True)
+        strategy.fuse_elewise_add_act_ops = False
+        self.assertEqual(strategy.fuse_elewise_add_act_ops, False)
+        strategy.fuse_elewise_add_act_ops = "True"
+        self.assertEqual(strategy.fuse_elewise_add_act_ops, False)
+
+    def test_fuse_bn_act_ops(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_bn_act_ops = True
+        self.assertEqual(strategy.fuse_bn_act_ops, True)
+        strategy.fuse_bn_act_ops = False
+        self.assertEqual(strategy.fuse_bn_act_ops, False)
+        strategy.fuse_bn_act_ops = "True"
+        self.assertEqual(strategy.fuse_bn_act_ops, False)
+
+    def test_enable_auto_fusion(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.enable_auto_fusion = True
+        self.assertEqual(strategy.enable_auto_fusion, True)
+        strategy.enable_auto_fusion = False
+        self.assertEqual(strategy.enable_auto_fusion, False)
+        strategy.enable_auto_fusion = "True"
+        self.assertEqual(strategy.enable_auto_fusion, False)
+
+    def test_fuse_relu_depthwise_conv(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_relu_depthwise_conv = True
+        self.assertEqual(strategy.fuse_relu_depthwise_conv, True)
+        strategy.fuse_relu_depthwise_conv = False
+        self.assertEqual(strategy.fuse_relu_depthwise_conv, False)
+        strategy.fuse_relu_depthwise_conv = "True"
+        self.assertEqual(strategy.fuse_relu_depthwise_conv, False)
+
+    def test_enable_inplace(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.enable_inplace = True
+        self.assertEqual(strategy.enable_inplace, True)
+        strategy.enable_inplace = False
+        self.assertEqual(strategy.enable_inplace, False)
+        strategy.enable_inplace = "True"
+        self.assertEqual(strategy.enable_inplace, False)
+
+    def test_fuse_all_reduce_ops(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_all_reduce_ops = True
+        self.assertEqual(strategy.fuse_all_reduce_ops, True)
+        strategy.fuse_all_reduce_ops = False
+        self.assertEqual(strategy.fuse_all_reduce_ops, False)
+        strategy.fuse_all_reduce_ops = "True"
+        self.assertEqual(strategy.fuse_all_reduce_ops, False)
+
+    def test_num_iteration_per_drop_scope(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.num_iteration_per_drop_scope = 1
+        self.assertEqual(strategy.num_iteration_per_drop_scope, 1)
+        strategy.num_iteration_per_drop_scope = 0.1
+        self.assertEqual(strategy.num_iteration_per_drop_scope, 1)
+
+    def test_sync_batch_norm(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.sync_batch_norm = True
+        self.assertEqual(strategy.sync_batch_norm, True)
+        strategy.sync_batch_norm = False
+        self.assertEqual(strategy.sync_batch_norm, False)
+        strategy.sync_batch_norm = "True"
+        self.assertEqual(strategy.sync_batch_norm, False)
+
+    def test_fuse_all_optimizer_ops(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.fuse_all_optimizer_ops = True
+        self.assertEqual(strategy.fuse_all_optimizer_ops, True)
+        strategy.fuse_all_optimizer_ops = False
+        self.assertEqual(strategy.fuse_all_optimizer_ops, False)
+        strategy.fuse_all_optimizer_ops = "True"
+        self.assertEqual(strategy.fuse_all_optimizer_ops, False)
+
     def test_sync(self):
         strategy = paddle.fleet.DistributedStrategy()
         strategy.sync = True
@@ -165,6 +262,79 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.async_k_step, 10000)
         strategy.async_k_step = 0.1
         self.assertEqual(strategy.async_k_step, 10000)
+
+    def test_send_queue_size(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.send_queue_size = 10000
+        self.assertEqual(strategy.send_queue_size, 10000)
+        strategy.send_queue_size = 0.1
+        self.assertEqual(strategy.send_queue_size, 10000)
+
+    def test_independent_recv_thread(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.independent_recv_thread = True
+        self.assertEqual(strategy.independent_recv_thread, True)
+        strategy.independent_recv_thread = False
+        self.assertEqual(strategy.independent_recv_thread, False)
+        strategy.independent_recv_thread = "True"
+        self.assertEqual(strategy.independent_recv_thread, False)
+
+    def test_min_send_grad_num_before_recv(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.min_send_grad_num_before_recv = 10000
+        self.assertEqual(strategy.min_send_grad_num_before_recv, 10000)
+        strategy.min_send_grad_num_before_recv = 0.1
+        self.assertEqual(strategy.min_send_grad_num_before_recv, 10000)
+
+    def test_thread_pool_size(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.thread_pool_size = 10000
+        self.assertEqual(strategy.thread_pool_size, 10000)
+        strategy.thread_pool_size = 0.1
+        self.assertEqual(strategy.thread_pool_size, 10000)
+
+    def test_send_wait_times(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.send_wait_times = 10000
+        self.assertEqual(strategy.send_wait_times, 10000)
+        strategy.send_wait_times = 0.1
+        self.assertEqual(strategy.send_wait_times, 10000)
+
+    def test_runtime_split_send_recv(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.runtime_split_send_recv = True
+        self.assertEqual(strategy.runtime_split_send_recv, True)
+        strategy.runtime_split_send_recv = False
+        self.assertEqual(strategy.runtime_split_send_recv, False)
+        strategy.runtime_split_send_recv = "True"
+        self.assertEqual(strategy.runtime_split_send_recv, False)
+
+    def use_thread_barrier(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.thread_barrier = True
+        self.assertEqual(strategy.thread_barrier, True)
+        strategy.thread_barrier = False
+        self.assertEqual(strategy.thread_barrier, False)
+        strategy.thread_barrier = "True"
+        self.assertEqual(strategy.thread_barrier, False)
+
+    def test_enable_backward_optimizer_op_deps(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.enable_backward_optimizer_op_deps = True
+        self.assertEqual(strategy.enable_backward_optimizer_op_deps, True)
+        strategy.enable_backward_optimizer_op_deps = False
+        self.assertEqual(strategy.enable_backward_optimizer_op_deps, False)
+        strategy.enable_backward_optimizer_op_deps = "True"
+        self.assertEqual(strategy.enable_backward_optimizer_op_deps, False)
+
+    def test_elastic(self):
+        strategy = paddle.fleet.DistributedStrategy()
+        strategy.elastic = True
+        self.assertEqual(strategy.elastic, True)
+        strategy.elastic = False
+        self.assertEqual(strategy.elastic, False)
+        strategy.elastic = "True"
+        self.assertEqual(strategy.elastic, False)
 
     def test_auto(self):
         strategy = paddle.fleet.DistributedStrategy()
