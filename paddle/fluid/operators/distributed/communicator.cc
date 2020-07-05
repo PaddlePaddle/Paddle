@@ -44,13 +44,6 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-template <typename T>
-inline void VSUB(int n, const T *x, const T *y, T *z) {
-  for (int i = 0; i < n; ++i) {
-    z[i] = x[i] - y[i];
-  }
-}
-
 Communicator::Communicator() {}
 
 std::once_flag Communicator::init_flag_;
@@ -405,8 +398,42 @@ void SyncCommunicator::BarrierRecv() {
 void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                const RpcCtxMap &recv_varname_to_ctx,
                                Scope *recv_scope) {
-  AsyncCommunicator::InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
-                              recv_scope);
+  send_varname_to_ctx_ = std::move(send_varname_to_ctx);
+  recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
+  recv_scope_ = std::move(recv_scope);
+
+  PADDLE_ENFORCE_GT(
+      send_varname_to_ctx.size(), 0,
+      platform::errors::InvalidArgument("send var contexts can not be zero"));
+
+  send_scope_.reset(new Scope());
+  for (auto &iter : send_varname_to_ctx_) {
+    auto &varname = iter.fitst;
+
+    if (varname == STEP_COUNTER) {
+      send_varname_to_queue_[varname] =
+          std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
+              send_queue_size_);
+    } else {
+      auto &send_ctx = iter.second;
+
+      if (!send_ctx.is_sparse) {
+        continue;
+      }
+
+      send_ids_to_queue_[varname] =
+          std::make_shared<BlockingQueue<std::vector<int64_t>>>(
+              send_queue_size_);
+    }
+  }
+  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+
+  if (recv_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be received, will not start recv_thread";
+  } else {
+    recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+  }
+
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
@@ -470,9 +497,7 @@ void GeoCommunicator::SendByCommunicator(int batches) {
       }
 
       if (send_ctx.is_sparse) {
-        std::vector<int64_t> ids;
-        // auto &ids_queue = send_ids_to_queue_.at(var_name);
-        SendSparse(var_name, &ids);
+        SendSparse(var_name, batches);
       } else {
         SendDense(var_name);
       }
@@ -484,9 +509,42 @@ void GeoCommunicator::SendByCommunicator(int batches) {
   }
 }
 
-void GeoCommunicator::SendSparse(const std::string &varname,
-                                 std::vector<int64_t> *ids) {}
-void GeoCommunicator::SendDense(const std::string &varname) {}
+void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
+  std::vector<int64_t> ids;
+  auto &ids_queue = send_ids_to_queue_.at(varname);
+
+  for (int i = 0; i < batches; ++i) {
+    ids.emplace(ids_queue->Pop());
+  }
+
+  VLOG(1) << "SendSparse receive var: " << varname << " ids: " << ids.size();
+}
+
+void GeoCommunicator::SendDense(const std::string &varname) {
+  auto *var_latest = recv_scope_->FindVar(varname);
+  auto *var_timestamp = old_scope_->FindVar(varname);
+  auto *var_delta = delta_scope_->FindVar(varname);
+
+  PADDLE_ENFORCE_EQ(var_latest->IsInitialized(), true,
+                    platform::errors::Unavailable(
+                        "%s is not initialized, please check", varname));
+  PADDLE_ENFORCE_EQ(var_timestamp->IsInitialized(), true,
+                    platform::errors::Unavailable(
+                        "%s is not initialized, please check", varname));
+
+  auto &t_latest = var_latest->Get<framework::LoDTensor>();
+  auto &t_timestamp = var_timestamp->Get<framework::LoDTensor>();
+  auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+  t_delta->Resize(t_latest.dims());
+
+  auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+  blas.VSUB(t_latest->numel(), t_latest->data<float>(),
+            t_timestamp->data<float>(), t_delta->data<float>());
+
+  auto &ctx = send_varname_to_ctx_.at(varname);
+  auto send_functor = distributed::ParameterSend<float>();
+  send_functor(ctx, delta_scope_.get(), true, 1);
+}
 
 void GeoCommunicator::RecvByCommunicator() {
   std::vector<std::future<void>> tasks;

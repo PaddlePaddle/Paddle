@@ -231,12 +231,12 @@ class CompileTimeStrategy(object):
             sections = []
 
             for slice in slices:
-                if self.is_sync_mode() and self.get_trainers() > 1:
-                    if is_grad:
-                        names.append("{}.trainer_{}".format(slice.name,
-                                                            self.get_role_id()))
-                    else:
-                        names.append(slice.name)
+                if self.is_geo_mode():
+                    names.append("{}.delta".format(slice.name))
+                elif is_grad and self.is_sync_mode() and self.get_trainers(
+                ) > 1:
+                    names.append("{}.trainer_{}".format(slice.name,
+                                                        self.get_role_id()))
                 else:
                     names.append(slice.name)
 

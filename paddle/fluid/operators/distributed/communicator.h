@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -412,7 +413,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void SendByCommunicator(int batches);
 
-  void SendSparse(const std::string &varname, std::vector<int64_t> *ids);
+  void SendSparse(const std::string &varname, int batches);
 
   void SendDense(const std::string &varname);
 

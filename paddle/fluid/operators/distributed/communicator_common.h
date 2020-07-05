@@ -53,17 +53,20 @@ struct CommContext {
   std::string print() const {
     std::stringstream ss;
 
-    ss << "\nmerged_var: " << var_name << " trainer_id: " << trainer_id << "\n";
+    ss << "varname: " << var_name << " trainer_id: " << trainer_id << " ";
 
     for (size_t i = 0; i < splited_varnames.size(); i++) {
       ss << "slice varname: " << splited_varnames[i] << " ep: " << epmap[i]
-         << " section: " << height_sections[i] << "\n";
+         << " section: " << height_sections[i] << " ";
     }
 
     ss << "origin varnames: ";
     for (size_t i = 0; i < origin_varnames.size(); i++) {
       ss << origin_varnames[i] << " ";
     }
+
+    ss << " aggregation->add: " << merge_add << " ";
+    ss << " is_sparse: " << is_sparse << "\n";
 
     return ss.str();
   }
