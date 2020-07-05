@@ -744,6 +744,19 @@ EOF
         echo "$2 card TestCases count is $num"
     fi
 }
+function gather_failtests() {
+    for file in `ls $tmpdir`; do
+        grep -q 'The following tests FAILED:' $tmpdir/$file
+        if [ $? -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+        fi
+        echo "failuretest: ""$failuretest"
+        summary_failtest="$summary_failtest
+$failuretest"
+    done
+}
 
 tmpdir=`mktemp -d`
 function card_test() {
@@ -798,6 +811,7 @@ function card_test() {
     done
     wait; # wait for all subshells to finish
     gather_failtests
+    rm -f $tmpdir/*
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
         echo "exclusive TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
@@ -805,20 +819,6 @@ function card_test() {
         echo "$2 card TestCases Total Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
     fi
     set +m
-}
-
-function gather_failtests() {
-    for file in `ls $tmpdir`; do
-        grep 'The following tests FAILED:' $tmpdir/$file
-        if [ $? -eq 0 ]; then
-            failuretest=''
-        else
-            failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
-        fi
-        echo "failuretest: ""$failuretest"
-        summary_failtest="$summary_failtest
-$failuretest"
-    done
 }
 
 function parallel_test_base() {
