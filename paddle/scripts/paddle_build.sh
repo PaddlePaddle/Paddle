@@ -810,7 +810,7 @@ function card_test() {
         fi
     done
     wait; # wait for all subshells to finish
-    gather_failtests
+    #gather_failtests
     rm -f $tmpdir/*
     ut_endTime_s=`date +%s`
     if [ "$2" == "" ]; then
