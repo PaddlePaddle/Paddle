@@ -798,7 +798,7 @@ function card_test() {
                     cuda_list="$cuda_list,$[i*cardnumber+j]"
             fi
         done
-        tmpfile_rand=`mktemp`
+        tmpfile_rand=`date +%s%N`
         tmpfile=$tmpdir/$tmpfile_rand
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
