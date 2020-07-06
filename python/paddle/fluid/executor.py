@@ -555,7 +555,7 @@ class Executor(object):
         self.pruned_program_scope_caches = dict()
 
         self._auto_checkpoint_name = None
-        self._auto_checkpoint_epoch_status = {}
+        #self._auto_checkpoint_epoch_status = {}
         self._auto_checkpoint_running_status = None
 
     def _get_scope_cache(self, program_cache_key):
@@ -1154,13 +1154,8 @@ class Executor(object):
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        if acp._can_auto_checkpoint():
-            acp._initial_ids(exe, program,
-                             _get_program_cache_key(fee, fetch_list))
-            self._try_to_auto_load_checkpoint(
-                exe, program, _get_program_cache_key(feed, fetchlist))
-            self._try_to_auto_save_checkpoint(
-                ex, program, _get_program_cache_key(feed, fetch_list))
+        acp._auto_checkpoint(exe, program,
+                             _get_program_cache_key(feed, fetch_list))
 
         # For backward compatibility, run directly.
         if not compiled:
