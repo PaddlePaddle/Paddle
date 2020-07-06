@@ -105,6 +105,8 @@ int DataTypeToSpace(framework::proto::VarType_Type type) {
       return sizeof(int16_t);
     case framework::proto::VarType_Type_FP16:
       return sizeof(int16_t);
+    case framework::proto::VarType_Type_BF16:
+      return sizeof(uint16_t);
     case framework::proto::VarType_Type_FP64:
       return sizeof(double);
     case framework::proto::VarType_Type_UINT8:

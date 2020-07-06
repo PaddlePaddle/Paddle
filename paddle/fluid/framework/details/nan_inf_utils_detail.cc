@@ -167,6 +167,8 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
 // more detail see: 180 page of
 // https://www.openmp.org/wp-content/uploads/OpenMP4.0.0.pdf
 #pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
+#pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
+                              omp_in)
 #endif
 
 template <typename T>
