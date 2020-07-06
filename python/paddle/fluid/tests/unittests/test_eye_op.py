@@ -98,6 +98,11 @@ class API_TestTensorEye(unittest.TestCase):
             expected_result = np.eye(10, dtype="int64")
         self.assertEqual((result == expected_result).all(), True)
 
+        with paddle.imperative.guard():
+            out = paddle.eye(10, dtype="int64")
+            expected_result = np.eye(10, dtype="int64")
+        self.assertEqual((out.numpy() == expected_result).all(), True)
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 

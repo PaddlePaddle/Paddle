@@ -463,24 +463,31 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
           #  [0, 1, 0]]
     """
 
+    if dtype is None:
+        dtype = 'float32'
+    if num_columns is None:
+        num_columns = num_rows
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        return core.ops.eye('dtype', c_dtype, 'num_rows', num_rows,
+                            'num_columns', num_columns)
+
     helper = LayerHelper("eye", **locals())
 
     if dtype is None:
         dtype = 'float32'
-    else:
-        check_dtype(dtype, 'dtype',
-                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
+
+    check_dtype(dtype, 'dtype',
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'eye')
 
     if not isinstance(num_rows, int) or num_rows < 0:
         raise TypeError("num_rows should be a non-negative int")
     if num_columns is not None:
         if not isinstance(num_columns, int) or num_columns < 0:
             raise TypeError("num_columns should be a non-negative int")
-    else:
-        num_columns = num_rows
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
 
     helper.append_op(
         type='eye',
