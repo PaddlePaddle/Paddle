@@ -254,8 +254,8 @@ class CumCUDAKernel : public framework::OpKernel<T> {
     bool flatten = context.Attr<bool>("flatten");
     auto size = in->numel();
 
-    if (flatten){
-      paddle::framework::DDim flatten_dims{size};
+    if (flatten) {
+      paddle::framework::DDim flatten_dims({size});
       in->Resize(flatten_dims);
     }
 
