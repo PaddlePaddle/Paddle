@@ -26,12 +26,12 @@ from . import qat2_int8_mkldnn_pass
 from .qat2_int8_mkldnn_pass import *
 from . import post_training_quantization
 from .post_training_quantization import *
-from . import dyquant
-from .dyquant import *
+from . import imperative
+from .imperative import *
 
 __all__ = quantization_pass.__all__ + quantization_strategy.__all__
 __all__ += mkldnn_post_training_strategy.__all__
 __all__ += qat_int8_mkldnn_pass.__all__
 __all__ += qat2_int8_mkldnn_pass.__all__
 __all__ += post_training_quantization.__all__
-__all__ += dyquant.__all__
+__all__ += imperative.__all__

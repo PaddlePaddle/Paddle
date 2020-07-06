@@ -17,9 +17,9 @@ from __future__ import print_function
 from . import quant_nn
 from .quant_nn import *
 
-from . import dygraph_quantization
-from .dygraph_quantization import *
+from . import qat
+from .qat import *
 
 __all__ = []
 __all__ += quant_nn.__all__
-__all__ += dygraph_quantization.__all__
+__all__ += qat.__all__

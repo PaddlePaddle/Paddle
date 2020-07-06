@@ -101,6 +101,9 @@ class ImperativeQuantAware(object):
         assert len(input_dtype) == len(
             feed), "The length of input_shape should be equal to  feed's."
 
+        def _convert(model, *args):
+            return model(*args)
+
         prog_trans = dygraph.ProgramTranslator()
         with dygraph.guard():
             model.eval()
@@ -111,7 +114,7 @@ class ImperativeQuantAware(object):
                     dtype) if append_batch_size else raw_data.astype(dtype)
                 input_var = dygraph.to_variable(input_data)
                 input_vars.append(input_var)
-            prog_trans.get_output(model.__call__, model, *input_vars)
+            prog_trans.get_output(_convert, model, *input_vars)
         prog_trans.save_inference_model(dirname, feed, fetch)
 
     def _get_quantized_counterpart(self, layer):
