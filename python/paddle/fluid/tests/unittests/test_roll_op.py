@@ -28,10 +28,10 @@ class TestRollOp(OpTest):
         self.op_type = "roll"
         self.init_dtype_type()
         self.inputs = {'X': np.random.random(self.x_shape).astype(self.dtype)}
-        self.attrs = {'shifts': self.shifts, 'dims': self.axis}
+        self.attrs = {'shifts': self.shifts, 'axis': self.axis}
         self.outputs = {
             'Out': np.roll(self.inputs['X'], self.attrs['shifts'],
-                           self.attrs['dims'])
+                           self.attrs['axis'])
         }
 
     def init_dtype_type(self):
