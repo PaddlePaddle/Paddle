@@ -284,8 +284,6 @@ class ImperativeModeTest(unittest.TestCase):
             out = paddle.full_like(input, fill_value=888.88, dtype='float32')
             out_numpy = np.random.random((4)).astype("float32")
             out_numpy.fill(888.88)
-            print(out.numpy())
-            print(out_numpy)
             self.assertTrue((out.numpy() == out_numpy).all(), True)
 
 
