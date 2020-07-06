@@ -200,15 +200,31 @@ def pre_load(dso_name):
     load_dso(dso_path)
 
 
+def get_glibc_ver():
+    return run_shell_command("ldd --version|grep ldd|awk '{print $3}'").strip()
+
+
+def less_than_ver(a, b):
+    import re
+    import operator
+
+    def to_list(s):
+        s = re.sub('(\.0+)+$', '')
+        return [int(x) for x in s.split('.')]
+
+    return operator.lt(to_list(a), to_list(b))
+
+
 # NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22, 
-# the error message of which is "dlopen：cannot load any more object with static TLS".
+# the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
 # (1) the number of dynamic shared librarys (DSO) loaded > 14,
 # (2) after that, load a dynamic shared library (DSO) with static TLS.
 # For paddle, the problem is that 'libgomp' is a DSO with static TLS, and it is loaded after 14 DSOs.
 # So, here is a tricky way to solve the problem by pre load 'libgomp' before 'core_avx.so'.
 # The final solution is to upgrade glibc to > 2.22 on the target system.
-if platform.system().lower() == 'linux':
+if platform.system().lower() == 'linux' and less_than_ver(get_glibc_ver(),
+                                                          '2.23'):
     pre_load('libgomp')
 
 load_noavx = False
