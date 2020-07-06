@@ -458,6 +458,15 @@ class SparseVariable {
     rwlock_->UNLock();
   }
 
+  void Init(const std::vector<int64_t> &ids) {
+    rwlock_->RDLock();
+    for (auto &id : ids) {
+      auto *block = GetShard(id);
+      block->InitFromInitializer(id, meta_.value_names);
+    }
+    rwlock_->UNLock();
+  }
+
   void Get(const std::vector<int64_t> &ids,
            const std::vector<std::string> &value_names,
            std::vector<std::vector<std::vector<float> *>> *values) {

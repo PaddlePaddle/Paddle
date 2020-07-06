@@ -485,6 +485,10 @@ void GeoCommunicator::Send(const std::vector<std::string> &var_names,
     std::vector<int64_t> ids;
     auto &rows = var->Get<framework::SelectedRows>().rows();
     ids.assign(rows.begin(), rows.end());
+
+    std::vector<std::vector<std::vector<float> *>> values;
+    auto *ins = distributed::LargeScaleKV::GetInstance();
+    ins->Get(table_name)->Init(ids);
     queue->Push(ids);
   }
 }
@@ -534,39 +538,56 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
           << " set: " << ids.size();
 
   auto *var_latest = recv_scope_->FindVar(varname);
-  auto *var_timestamp = old_scope_->FindVar(varname);
 
   PADDLE_ENFORCE_EQ(var_latest->IsInitialized(), true,
                     platform::errors::Unavailable(
                         "%s is not initialized, please check", varname));
-  PADDLE_ENFORCE_EQ(var_timestamp->IsInitialized(), true,
-                    platform::errors::Unavailable(
-                        "%s is not initialized, please check", varname));
-
   auto &t_latest = var_latest->Get<framework::LoDTensor>();
-  auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+
+  auto dims1 = t_latest.dims()[1];
+  auto numel = ids.size() * dims1;
+
+  std::vector<float> v_latest;
+  v_latest.reserve(ids.size() * dims1);
+
+  std::vector<float> v_timestamp;
+  v_timestamp.reserve(ids.size() * dims1);
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto *var_delta = delta_scope_->Var(varname);
   auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
 
   t_delta->set_height(ids.size());
-  for (auto idx : ids) {
-    t_delta->mutable_rows()->push_back(idx);
+
+  std::vector<std::vector<std::vector<float> *>> values;
+  auto *ins = distributed::LargeScaleKV::GetInstance();
+  ins->Get(varname)->Get(ids, {"Param"}, &values);
+
+  for (auto j = 0; j < ids.size(); ++j) {
+    std::memcpy(v_latest.data() + j * dims1, t_latest.data<float>() + j * dims1,
+                dims1 * sizeof(float));
+    std::copy(values[j][0]->begin(), values[j][0]->end(),
+              back_inserter(v_timestamp));
+    t_delta->mutable_rows()->push_back(ids[j]);
   }
 
   auto *t_value = t_delta->mutable_value();
   t_value->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
 
   auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
-  blas.VSUB(t_latest.numel(), t_latest.data<float>(),
-            t_timestamp->data<float>(), t_value->data<float>());
+  blas.VSUB(numel, v_latest.data(), v_timestamp.data(), t_value->data<float>());
 
   float coefficient = 1.0 / static_cast<float>(trainers_);
-  blas.SCAL(t_latest.numel(), coefficient, t_value->data<float>());
+  blas.SCAL(numel, coefficient, t_value->data<float>());
 
-  blas.VADD(t_latest.numel(), t_timestamp->data<float>(),
-            t_value->data<float>(), t_timestamp->data<float>());
+  blas.VADD(numel, v_timestamp.data(), t_value->data<float>(),
+            v_timestamp.data());
+
+  for (auto j = 0; j < ids.size(); ++j) {
+    auto idx = ids[j];
+    std::memcpy(values[j][0]->data(), v_timestamp.data() + j * dims1,
+                dims1 * sizeof(float));
+  }
 
   auto &ctx = send_varname_to_ctx_.at(varname);
   auto send = distributed::ParameterSend<float>();
@@ -722,9 +743,7 @@ void GeoCommunicator::InitSparse() {
   }
 
   LargeScaleKV::Init(metas);
-
-  VLOG(1) << "init sparse variable " << varname
-          << " size: " << sparse_value->size() << " done";
+  VLOG(1) << "init sparse variable done";
 }
 
 }  // namespace distributed
