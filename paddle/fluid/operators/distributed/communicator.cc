@@ -705,7 +705,7 @@ void GeoCommunicator::InitSparse() {
   std::vector<distributed::SparseMeta> metas;
 
   for (auto &sparse_meta : sparse_metas) {
-    auto attrs = string::split_string<std::string>(sparse_meta, "&");
+    auto attrs = string::split_string<std::string>(sparse_meta, ":");
 
     auto meta = distributed::SparseMeta();
     meta.name = attrs[0];

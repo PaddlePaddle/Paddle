@@ -70,6 +70,7 @@ class Communicator(object):
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
             envs["trainer_id"] = str(kwargs["trainer_id"])
             envs["trainers"] = str(kwargs["trainers"])
+            envs["sparse_attrs"] = str(kwargs["sparse_attrs"])
 
         mode_str = None
 

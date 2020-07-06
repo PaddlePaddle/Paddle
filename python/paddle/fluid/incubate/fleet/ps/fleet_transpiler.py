@@ -110,6 +110,8 @@ class FleetTranspiler(Fleet):
                 "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
             kwargs["trainer_id"] = self._role_maker.worker_id()
             kwargs["trainers"] = self.worker_num()
+            kwargs[
+                "sparse_attrs"] = "SparseFeatFactors:10:uniform_random&0&-1.0&1.0"
             return kwargs
 
         # if MPISymetricRoleMaker is defined
