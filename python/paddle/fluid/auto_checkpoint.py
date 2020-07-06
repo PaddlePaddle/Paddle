@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from . import unique_name
 import paddle.fluid as fluid
 from fluid.incubate.fleet.utils.hdfs import HDFSClient
+import hashlib
 
 
 class AutoCheckpointChecker(object):
@@ -61,6 +62,12 @@ class AutoCheckpointChecker(object):
             self._trainer_id is not None
 
 
+class EpochStatus(object):
+    def __init__(self):
+        self._epoch_no = None
+        self._hash_key = None
+
+
 class TrainStatus(object):
     def __init__(self, epoch_no=-1):
         # completed epoch
@@ -93,13 +100,17 @@ class Checkpointer(object):
         pass
 
 
+g_train_epoch_range = None
+g_checker = AutoCheckpointChecker()
+
+
 class TrainEpochRange(object):
     def __init__(self, max_epoch_num, name):
         self._max_epoch_num = max_epoch_num
         self._epoch_no = -1
         self._name = name
 
-        self._checker = AutoCheckpointChecker()
+        self._checker = g_checker
         if not self._checker.valid():
             return
 
@@ -137,11 +148,12 @@ class TrainEpochRange(object):
             yield i
 
 
-g_train_epoch_range = None
-
-
-def get_tran_epoch_range():
+def _get_train_epoch_range_obj():
     return g_train_epoch_range
+
+
+def _can_auto_checkpoint():
+    return g_checker.valid() and g_train_epoch_range is not None
 
 
 def train_epoch_range(max_epoch_num):
@@ -150,3 +162,44 @@ def train_epoch_range(max_epoch_num):
     for i in t.get():
         yield i
     g_train_epoch_range = None
+
+
+def _initial_ids(exe, program, io_key):
+    if program._auto_checkpoint_name is None:
+        program._auto_checkpoint_name = _generate_program_name()
+
+    if exe._auto_checkpoint_name is None:
+        exe._auto_checkpoint_name = _generate_executor_name()
+
+    k = "%s_%s_%s".format(exe._auto_checkpoint_name,
+                          program._auto_checkpoint_name, io_key)
+    h = _get_hash(key)
+    logging.info("init auto checkpoint h:{} from key:{}".format(h, k))
+
+    if k not in exe._auto_checkpoint_epoch_status:
+        exe._auto_checkpoint_epoch_status[k] = EpochStatus()
+        exe._auto_checkpoint_epoch_status._hash_key = h
+
+
+def _get_hash(key):
+    k = key
+    if sys.version_info[0] >= 3:
+        k = key.encode('utf-8')
+
+    return hashlib.md5(k).hexdigest()
+
+
+def _try_to_load_checkpoint(exe, program, io_key):
+    pass
+
+
+def _try_to_save_checkpoint(exe, program, io_key):
+    pass
+
+
+def _generate_program_name():
+    return unique_name.generate(g_checker._job_id + "_program_")
+
+
+def _generate_executor_name():
+    return unique_name.generate(g_checker._job_id + "_executor_")

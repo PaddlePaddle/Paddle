@@ -157,6 +157,9 @@ class CompiledProgram(object):
         self._build_strategy = build_strategy
         self._exec_strategy = None
 
+        # identifier for auto checkpoint
+        self._auto_checkpoint_name = None
+
     def with_data_parallel(self,
                            loss_name=None,
                            build_strategy=None,

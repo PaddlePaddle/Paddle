@@ -3937,6 +3937,9 @@ class Program(object):
         # appending gradients times
         self._appending_grad_times = 0
 
+        # identifier for auto checkpoint
+        self._auto_checkpoint_name = None
+
     def global_seed(self, seed=0):
         """
         Set global seed for Program
