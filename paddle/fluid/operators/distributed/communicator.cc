@@ -158,6 +158,9 @@ void AsyncCommunicator::MainThread() {
 
   while (running_) {
     int meet = Meet();
+
+    VLOG(1) << "async_meet: " << meet;
+
     SendGlobalStep(meet);
     SendByCommunicator(meet);
     BarrierSend();
@@ -502,7 +505,9 @@ void GeoCommunicator::SendByCommunicator(int batches) {
       if (send_ctx.is_sparse) {
         SendSparse(var_name, batches);
       } else {
+        VLOG(1) << "send dense " << var_name << " begin";
         SendDense(var_name);
+        VLOG(1) << "send dense " << var_name << " done";
       }
     };
     tasks.emplace_back(send_threadpool_->enqueue(std::move(send_task)));
@@ -535,13 +540,14 @@ void GeoCommunicator::SendDense(const std::string &varname) {
                     platform::errors::Unavailable(
                         "%s is not initialized, please check", varname));
 
-  auto *var_delta = delta_scope_->Var(varname);
   auto &t_latest = var_latest->Get<framework::LoDTensor>();
   auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
-  auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
-  t_delta->Resize(t_latest.dims());
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto *var_delta = delta_scope_->Var(varname);
+  auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+  t_delta->mutable_data<float>(t_latest.dims(), cpu_ctx.GetPlace());
+
   auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
   blas.VSUB(t_latest.numel(), t_latest.data<float>(),
             t_timestamp->data<float>(), t_delta->data<float>());
@@ -569,7 +575,9 @@ void GeoCommunicator::RecvByCommunicator() {
       if (recv_ctx.is_sparse) {
         RecvSparse(var_name);
       } else {
+        VLOG(1) << "recv dense " << var_name << " begin";
         RecvDense(var_name);
+        VLOG(1) << "recv dense " << var_name << " done";
       }
     };
     tasks.emplace_back(send_threadpool_->enqueue(std::move(recv_task)));
@@ -579,9 +587,41 @@ void GeoCommunicator::RecvByCommunicator() {
   }
 }
 
-void GeoCommunicator::RecvSparse(const std::string &varname) {}
+void GeoCommunicator::RecvSparse(const std::string &varname) {
+  VLOG(1) << "RecvSparse receive var: " << varname;
+}
 
-void GeoCommunicator::RecvDense(const std::string &varname) {}
+void GeoCommunicator::RecvDense(const std::string &varname) {
+  auto *var_latest = recv_scope_->FindVar(varname);
+  auto *var_timestamp = old_scope_->FindVar(varname);
+  auto *var_psrever = pserver_scope_->Var(varname);
+
+  auto &ctx = recv_varname_to_ctx_.at(varname);
+  auto recv = distributed::ParameterRecv<float>();
+  recv(ctx, *pserver_scope_, true);
+
+  PADDLE_ENFORCE_EQ(
+      var_psrever->IsInitialized(), true,
+      platform::errors::Unavailable(
+          "%s in pserver scope is not initialized, please check", varname));
+
+  auto t_psrever = var_psrever->Get<framework::LoDTensor>();
+  auto t_latest = var_latest->GetMutable<framework::LoDTensor>();
+  auto t_timestamp = var_timestamp->GetMutable<framework::LoDTensor>();
+
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto *var_delta = delta_scope_->Var(varname);
+  auto *t_delta = var_delta->GetMutable<framework::LoDTensor>();
+  t_delta->mutable_data<float>(t_latest->dims(), cpu_ctx.GetPlace());
+
+  auto blas = math::GetBlas<platform::CPUDeviceContext, float>(cpu_ctx);
+  blas.VSUB(t_latest->numel(), t_psrever.data<float>(),
+            t_timestamp->data<float>(), t_delta->data<float>());
+  blas.VADD(t_latest->numel(), t_latest->data<float>(), t_delta->data<float>(),
+            t_latest->data<float>());
+  blas.VCOPY(t_latest->numel(), t_psrever.data<float>(),
+             t_timestamp->data<float>());
+}
 
 void GeoCommunicator::Init() {
   std::vector<std::future<void>> tasks;
