@@ -84,14 +84,6 @@ bool RequestSendHandler::Handle(const std::string& varname,
         scope->Rename(varname, run_varname);
       }
 
-      if (distributed_mode_ == DistributedMode::kGeo &&
-          AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(run_varname)) {
-        auto& grad_slr =
-            scope->FindVar(run_varname)->Get<framework::SelectedRows>();
-        AsyncSparseParamUpdateRecorder::GetInstance()->Update(run_varname,
-                                                              grad_slr.rows());
-      }
-
       auto* var = scope->FindVar(run_varname);
 
       // for sparse ids
@@ -101,6 +93,17 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
         for (auto name : varnames) {
           scope->Var(name);
+        }
+
+        if (distributed_mode_ == DistributedMode::kGeo &&
+            AsyncSparseParamUpdateRecorder::GetInstance()->HasGrad(
+                run_varname)) {
+          auto& grad_slr =
+              scope->FindVar(run_varname)->Get<framework::SelectedRows>();
+          AsyncSparseParamUpdateRecorder::GetInstance()->Update(
+              run_varname, grad_slr.rows());
+
+          ins->Get(run_varname)->Init(grad_slr.rows());
         }
       }
 
