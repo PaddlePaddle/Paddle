@@ -176,10 +176,11 @@ def index_select(x, index, axis=0, name=None):
             # [ 5.  6.  6.]
             # [ 9. 10. 10.]]
     """
-    helper = LayerHelper("index_select", **locals())
+
     if in_dygraph_mode():
         return core.ops.index_select(x, index, 'dim', axis)
 
+    helper = LayerHelper("index_select", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'paddle.tensor.search.index_select')
     check_variable_and_dtype(index, 'index', ['int32', 'int64'],
