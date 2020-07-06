@@ -748,11 +748,16 @@ EOF
 summary_failtest=''
 tmpdir=`mktemp -d`
 function gather_failtests() {
+    echo "exec gather_failtests"
     for file in `ls $tmpdir`; do
-        grep -q 'The following tests FAILED:' $tmpdir/$file
-        if [ $? -ne 0 ]; then
+        echo "file:" $tmpdir/$file
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmpdir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            echo "$exit_code != 0"
             failuretest=''
         else
+            echo "$exit_code == 0"
             failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
         fi
         echo "failuretest: ""$failuretest"
