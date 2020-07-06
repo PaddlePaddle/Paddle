@@ -324,7 +324,7 @@ class ProgramCache(object):
                 type(item))
         if item not in self._caches:
             raise RuntimeError(
-                'Failed to find program for input item, please decorate input function by declarative.'
+                "Failed to find program for input item, please decorate input function by `@declarative`."
             )
         return self._caches[item]
 

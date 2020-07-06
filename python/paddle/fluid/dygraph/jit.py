@@ -685,10 +685,11 @@ def save(layer, model_path, input_spec=None, configs=None):
     if configs is None:
         configs = SaveLoadConfig()
 
-    if input_spec is not None and not isinstance(input_spec, list):
-        raise TypeError(
-            "The input input_spec should be 'list', but received input_spec's type is %s."
-            % type(input_spec))
+    if input_spec is not None:
+        if not isinstance(input_spec, list):
+            raise TypeError(
+                "The input input_spec should be 'list', but received input_spec's type is %s."
+                % type(input_spec))
         for var in input_spec:
             if not isinstance(var, core.VarBase):
                 raise TypeError(
