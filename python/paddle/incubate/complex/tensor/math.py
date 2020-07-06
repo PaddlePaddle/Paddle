@@ -236,7 +236,7 @@ def elementwise_div(x, y, axis=-1, name=None):
         name=name)
 
 
-def trace(input, offset=0, dim1=0, dim2=1, name=None):
+def trace(input, offset=0, axis1=0, axis2=1, name=None):
     """
     The layer to compute the trace for a complex number tensor. input :attr:`input` must be a ComplexVariable. 
     See the detailed description for the function and other arguments 
@@ -246,8 +246,8 @@ def trace(input, offset=0, dim1=0, dim2=1, name=None):
         input(ComplexVariable): The input ComplexVariable. Must be at least 2-dimensional. 
             The supported data types include complex64 and complex128.
         offset(int, optional): Which diagonals in input tensor will be taken. Default: 0 (main diagonals).
-        dim1(int, optional): The first dimension with respect to take diagonal. Default: 0.
-        dim2(int, optional): The second dimension with respect to take diagonal. Default: 1.
+        axis1(int, optional): The first dimension with respect to take diagonal. Default: 0.
+        axis2(int, optional): The second dimension with respect to take diagonal. Default: 1.
         name (str, optional): Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
     
     Returns:
@@ -264,11 +264,11 @@ def trace(input, offset=0, dim1=0, dim2=1, name=None):
             
             with dg.guard():
                 case1 = dg.to_variable(case1)
-                data1 = paddle.complex.trace(case1, offset=1, dim1=1, dim2=2) # data1.shape = [3]
+                data1 = paddle.complex.trace(case1, offset=1, axis1=1, axis2=2) # data1.shape = [3]
     """
     complex_variable_exists([input], "trace")
-    real = math.trace(input.real, offset, dim1, dim2, name)
-    imag = math.trace(input.imag, offset, dim1, dim2, name)
+    real = math.trace(input.real, offset, axis1, axis2, name)
+    imag = math.trace(input.imag, offset, axis1, axis2, name)
 
     return ComplexVariable(real, imag)
 

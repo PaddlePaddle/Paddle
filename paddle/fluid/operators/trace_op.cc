@@ -30,8 +30,8 @@ class TraceOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"), true,
         platform::errors::NotFound("Output of TraceOp is not found."));
 
-    int dim1 = ctx->Attrs().Get<int>("dim1");
-    int dim2 = ctx->Attrs().Get<int>("dim2");
+    int dim1 = ctx->Attrs().Get<int>("axis1");
+    int dim2 = ctx->Attrs().Get<int>("axis2");
 
     auto x_dims = ctx->GetInputDim("Input");
 
@@ -84,13 +84,13 @@ class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(0);
     AddAttr<int>(
-        "dim1",
+        "axis1",
         R"DOC((int, default 0), the first dim of the 2-D planes from which the diagonals should be taken. 
         Can be both positive and negative. Default: 0.
         )DOC")
         .SetDefault(-2);
     AddAttr<int>(
-        "dim2",
+        "axis2",
         R"DOC((int, default 1), the second dim of the 2-D planes from which the diagonals should be taken. 
         Can be both positive and negative. Default: 1.
         )DOC")
