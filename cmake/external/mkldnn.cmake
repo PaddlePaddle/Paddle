@@ -30,7 +30,7 @@ if(CMAKE_INSTALL_LIBDIR MATCHES ".*lib64$")
   SET(LIBDIR "lib64")
 endif()
 
-MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/l${LIBDIR} to runtime path")
+MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/${LIBDIR} to runtime path")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR}")
 
@@ -109,9 +109,8 @@ add_definitions(-DPADDLE_WITH_MKLDNN)
 
 # generate a static dummy target to track mkldnn dependencies
 # for cc_library(xxx SRCS xxx.c DEPS mkldnn)
-SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/mkldnn_dummy.c)
-FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
-ADD_LIBRARY(mkldnn STATIC ${dummyfile})
+generate_dummy_static_lib(LIB_NAME "mkldnn" GENERATOR "mkldnn.cmake")
+
 TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_IOMP_LIB})
 ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 

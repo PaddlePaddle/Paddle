@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+
 #include <map>
 #include <memory>
 #include <utility>
@@ -48,7 +49,9 @@ class CUDADeviceContextAllocation : public Allocation {
 
   ~CUDADeviceContextAllocation() {
     PADDLE_ENFORCE_NOT_NULL(
-        dev_ctx_, "Didn't set device context for CUDADeviceContextAllocation");
+        dev_ctx_,
+        platform::errors::PreconditionNotMet(
+            "Device context is not set for CUDADeviceContextAllocation"));
     auto *p_allocation = underlying_allocation_.release();
     VLOG(4) << "Adding callback to delete CUDADeviceContextAllocation at "
             << p_allocation;
@@ -94,7 +97,8 @@ class CUDADeviceContextAllocator : public Allocator {
   Allocation *AllocateImpl(size_t size) override {
     PADDLE_ENFORCE_NOT_NULL(
         default_stream_,
-        "Didn't set default stream for CUDADeviceContextAllocator");
+        platform::errors::PreconditionNotMet(
+            "Default stream is not set for CUDADeviceContextAllocator"));
     platform::CUDADeviceGuard guard(place_.device);
     auto allocation =
         new CUDADeviceContextAllocation(memory::Alloc(place_, size));
@@ -130,8 +134,9 @@ class CUDADeviceContextAllocatorPool {
   AllocationPtr Alloc(const platform::CUDADeviceContext &dev_ctx, size_t size) {
     auto iter = allocators_.find(
         BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()));
-    PADDLE_ENFORCE_EQ(iter != allocators_.end(), true,
-                      "CUDADeviceContextAllocatorPool initialization error");
+    PADDLE_ENFORCE_NE(
+        iter, allocators_.end(),
+        platform::errors::NotFound("No allocator found for CUDAPlace."));
     auto &allocator = iter->second;
     AllocationPtr allocation = allocator->Allocate(size);
     static_cast<CUDADeviceContextAllocation *>(allocation.get())

@@ -17,10 +17,10 @@ from .... import core
 from ....framework import IrGraph
 from ....framework import IrNode
 
-__all__ = ['QatInt8MkldnnPass']
+__all__ = ['QuantInt8MkldnnPass']
 
 
-class QatInt8MkldnnPass(object):
+class QuantInt8MkldnnPass(object):
     """
     Convert QuantizationFreezePass generated IrGraph to MKL-DNN supported INT8
     IrGraph. Following transformations did in this pass:
@@ -48,13 +48,13 @@ class QatInt8MkldnnPass(object):
             # The original graph will be rewrite.
             import paddle.fluid as fluid
             from paddle.fluid.contrib.slim.quantization \
-                import QatInt8MkldnnPass
+                import QuantInt8MkldnnPass
             from paddle.fluid.framework import IrGraph
             from paddle.fluid import core
 
             graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
             place = fluid.CPUPlace()
-            mkldnn_pass = QatInt8MkldnnPass(fluid.global_scope(),
+            mkldnn_pass = QuantInt8MkldnnPass(fluid.global_scope(),
             place)
             mkldnn_pass.apply(graph)
         """
@@ -163,7 +163,7 @@ class QatInt8MkldnnPass(object):
                     'Filter': weight_var_node},
             outputs={'Output': output_var_node})
 
-        # Based on the QAT's scales to calculate the scales of MKL-DNN INT8 conv2d
+        # Based on the Quant's scales to calculate the scales of MKL-DNN INT8 conv2d
         scale_in = self._s8_max / self._in_scale[output_name]
         scale_w = []
         scale_w = [self._max_range[output_name] / self._s8_max]
@@ -207,7 +207,7 @@ class QatInt8MkldnnPass(object):
                     'Y': weight_var_node},
             outputs={'Out': output_var_node})
 
-        # Based on the QAT's scales to calculate MKL-DNN INT8 mul's scales
+        # Based on the Quant's scales to calculate MKL-DNN INT8 mul's scales
         scale_in = self._s8_max / self._in_scale[output_name]
         scale_w = []
         scale_w = [self._max_range[output_name] / self._s8_max]

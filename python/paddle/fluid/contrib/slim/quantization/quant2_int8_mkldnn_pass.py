@@ -16,17 +16,17 @@ import numpy as np
 from .... import core
 from ....framework import IrGraph
 
-__all__ = ['Qat2Int8MkldnnPass']
+__all__ = ['Quant2Int8MkldnnPass']
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
 
-class Qat2Int8MkldnnPass(object):
+class Quant2Int8MkldnnPass(object):
     """
-    Transform a QAT model IrGraph into MKL-DNN supported INT8 IrGraph.
+    Transform a quant model IrGraph into MKL-DNN supported INT8 IrGraph.
     The pass consists of the following transformations:
         1. gather scale values from fake quantize/dequantize operators,
-        2. extract FP32 inference model graph from the QAT graph, i.e.
+        2. extract FP32 inference model graph from the quant graph, i.e.
             a.  remove fake quantize/dequantize operators,
             b.  dequantize conv2d and mul's weights,
         3. optimize the FP32 graph using standard FP32 optimization fuses
@@ -67,7 +67,7 @@ class Qat2Int8MkldnnPass(object):
         self._relu_ops = ['relu', 'relu6']
         self._matmul_ops = ['matmul']
         self._weight_scales = {}
-        # Collect the Input and Output sclaes from Fake QAT models
+        # Collect the Input and Output sclaes from Fake quant models
         self._var_quant_scales = {}
         self._max_range = {}
         self._s8_max = 127
@@ -362,7 +362,7 @@ class Qat2Int8MkldnnPass(object):
                 ir_pass.set(attr, value)
         ir_pass.apply(cpp_graph)
         if self._debug:
-            graph.draw('.', 'qat_fp32_{}'.format(pass_name),
+            graph.draw('.', 'quant_fp32_{}'.format(pass_name),
                        graph.all_op_nodes())
         self._remove_unused_var_nodes(graph)
         return graph
@@ -472,7 +472,7 @@ class Qat2Int8MkldnnPass(object):
                     self._find_avg_pooling_ids(graph))
         ir_pass.apply(cpp_graph)
         if self._debug:
-            graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
+            graph.draw('.', 'quant_int8_{}'.format(ir_pass.type()),
                        graph.all_op_nodes())
         graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(graph,
