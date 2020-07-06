@@ -1654,7 +1654,7 @@ def ssd_loss(location,
     conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.flatten(x=var, axis=2)
+        return nn.flatten_2d(x=var, axis=2)
 
     # 1. Find matched bounding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -2269,7 +2269,7 @@ def multi_box_head(inputs,
     """
 
     def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
+        out = nn.flatten_2d(x=input, axis=axis)
         return out
 
     def _is_list_or_tuple_(data):
@@ -2359,7 +2359,7 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
+        mbox_loc_flatten = nn.flatten_2d(mbox_loc, axis=1)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -2371,7 +2371,7 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        conf_loc_flatten = nn.flatten(conf_loc, axis=1)
+        conf_loc_flatten = nn.flatten_2d(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:

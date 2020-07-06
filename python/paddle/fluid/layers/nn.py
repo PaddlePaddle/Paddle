@@ -122,6 +122,7 @@ __all__ = [
     'leaky_relu',
     'soft_relu',
     'flatten',
+    'flatten_2d',
     'stack',
     'pad2d',
     'unstack',
