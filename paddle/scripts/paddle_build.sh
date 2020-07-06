@@ -748,22 +748,22 @@ EOF
 summary_failtest=''
 tmpdir=`mktemp -d`
 function gather_failtests() {
-    echo "exec gather_failtests"
     for file in `ls $tmpdir`; do
-        echo "file:" $tmpdir/$file
+        #echo "file:" $tmpdir/$file
         exit_code=0
         grep -q 'The following tests FAILED:' $tmpdir/$file||exit_code=$?
         if [ $exit_code -ne 0 ]; then
-            echo "$exit_code != 0"
+            #echo "$exit_code != 0"
             failuretest=''
         else
-            echo "$exit_code == 0"
+            #echo "$exit_code == 0"
             failuretest=`grep -A 10000 'The following tests FAILED:' $tmpdir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
         fi
         echo "failuretest: ""$failuretest"
-        summary_failtest="$summary_failtest
-$failuretest"
+        summary_failtest="${summary_failtest}
+        ${failuretest}" 
     done
+    echo "summary_failtest: $summary_failtest" 
 }
 
 function card_test() {
@@ -902,6 +902,7 @@ set +x
         card_test "$single_card_tests_1" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        echo "summary_failtest_all: $summary_failtest"
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
