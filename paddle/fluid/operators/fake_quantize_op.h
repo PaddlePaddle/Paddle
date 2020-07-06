@@ -84,7 +84,6 @@ struct FindMovingAverageAbsMaxFunctor {
 template <typename DeviceContext, typename T>
 class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
-  virtual ~FakeAbsMaxKernelBase() {}
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
@@ -99,6 +98,8 @@ class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in_data, in->numel(), out_s);
     RunClipFunctor(dev_ctx, *in, *out_scale, bin_cnt, out);
   }
+
+  virtual ~FakeAbsMaxKernelBase() = default;
 
  protected:
   virtual void RunClipFunctor(const DeviceContext& dev_ctx,
@@ -197,7 +198,6 @@ class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
-  virtual ~FakeMovingAverageAbsMaxKernelBase() {}
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in = context.Input<framework::Tensor>("X");
     auto* in_scale = context.Input<framework::Tensor>("InScale");
@@ -238,6 +238,8 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
 
     RunClipFunctor(dev_ctx, *in, *out_scale, bin_cnt, out);
   }
+
+  virtual ~FakeMovingAverageAbsMaxKernelBase() = default;
 
  protected:
   virtual void RunClipFunctor(const DeviceContext& dev_ctx,
