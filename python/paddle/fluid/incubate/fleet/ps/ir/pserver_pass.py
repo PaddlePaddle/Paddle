@@ -734,11 +734,8 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             inputs={"Grad": grad},
             outputs={"Row": ids,
                      "Value": grad},
-            attrs={
-                "tablename": table_name,
-                "init": True if config.is_geo_mode() else False,
-                "is_entry": is_entry
-            })
+            attrs={"tablename": table_name,
+                   "is_entry": is_entry})
 
         # insert read at first
         vars = [global_block.vars[acture_name] for acture_name in acture_names]
@@ -747,8 +744,11 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             type="lookup_sparse_table_read",
             inputs={"Ids": ids},
             outputs={"Out": vars},
-            attrs={"tablename": table_name,
-                   "value_names": value_names})
+            attrs={
+                "tablename": table_name,
+                "init": True if config.is_geo_mode() else False,
+                "value_names": value_names
+            })
 
         # append write at last
         inputs = {"Ids": ids, "In": vars}
