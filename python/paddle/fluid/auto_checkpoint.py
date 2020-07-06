@@ -83,23 +83,6 @@ class TrainStatus(object):
         return not self == t
 
 
-class Checkpointer(object):
-    def __init__(self, fs):
-        pass
-
-    def save_checkpoint(self):
-        pass
-
-    def load_checkpoint(self):
-        pass
-
-    def get_last_checkpoint_no(self, dir_path):
-        pass
-
-    def load_train_status(self, path):
-        pass
-
-
 g_train_epoch_range = None
 g_checker = AutoCheckpointChecker()
 
