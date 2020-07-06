@@ -701,7 +701,22 @@ void GeoCommunicator::InitDense(const std::string varname) {
 }
 
 void GeoCommunicator::InitSparse(const std::string varname) {
-  VLOG(1) << "init sparse variable " << varname << " done";
+  auto &ctx = send_varname_to_ctx_.at(varname);
+
+  auto *var = recv_scope_->FindVar(varname);
+  auto &tensor = var->Get<framework::LoDTensor>();
+
+  auto dim1 = tensor.dims()[1];
+
+  old_sparses_[varname] = std::make_shared<SparseValue>();
+  auto &sparse_value = old_sparses_.at(varname);
+  for (auto i = 0; i < tensor.dims()[0]; ++i) {
+    std::memcpy(sparse_value->operator[](i).data(),
+                tensor.data<float>() + i * dim1, dim1 * sizeof(float));
+  }
+
+  VLOG(1) << "init sparse variable " << varname
+          << " size: " << sparse_value->size() << " done";
 }
 
 }  // namespace distributed

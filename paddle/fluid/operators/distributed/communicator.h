@@ -174,6 +174,7 @@ inline void MergeVars(const std::string &var_name,
 }
 
 using RpcCtxMap = std::unordered_map<std::string, CommContext>;
+using SparseValue = std::unordered_map<int64_t, std::vector<float>>;
 
 class Communicator {
  public:
@@ -446,6 +447,8 @@ class GeoCommunicator : public AsyncCommunicator {
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::vector<int64_t>>>>
       send_ids_to_queue_;
+
+  std::unordered_map<std::string, std::shared_ptr<SparseValue>> old_sparses_;
 };
 
 }  // namespace distributed
