@@ -22,6 +22,8 @@ void TrainerBase::SetScope(Scope* root_scope) { root_scope_ = root_scope; }
 
 void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
   dump_fields_path_ = desc.dump_fields_path();
+  need_dump_field_ = false;
+  need_dump_param_ = false;
   if (dump_fields_path_ == "") {
     VLOG(2) << "dump_fields_path_ is empty";
     return;
@@ -52,6 +54,9 @@ void TrainerBase::ParseDumpConfig(const TrainerDesc& desc) {
 
 void TrainerBase::DumpWork(int tid) {
 #ifdef _LINUX
+  if (!need_dump_field_ && !need_dump_param_) {
+    return;
+  }
   int err_no = 0;
   // GetDumpPath is implemented in each Trainer
   std::string path = GetDumpPath(tid);
@@ -78,6 +83,9 @@ void TrainerBase::DumpWork(int tid) {
 }
 
 void TrainerBase::FinalizeDumpEnv() {
+  if (!need_dump_field_ && !need_dump_param_) {
+    return;
+  }
   queue_->Close();
   for (auto& th : dump_thread_) {
     th.join();

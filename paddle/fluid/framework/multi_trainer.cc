@@ -76,6 +76,9 @@ std::string MultiTrainer::GetDumpPath(int tid) {
 }
 
 void MultiTrainer::InitDumpEnv() {
+  if (!need_dump_field_ && !need_dump_param_) {
+    return;
+  }
   queue_ = paddle::framework::MakeChannel<std::string>();
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetChannelWriter(queue_.get());
@@ -106,7 +109,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
   VLOG(3) << "init other env done.";
@@ -133,7 +136,7 @@ void MultiTrainer::Run() {
 }
 
 void MultiTrainer::Finalize() {
-  if (need_dump_field_) {
+  if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
   root_scope_->DropKids();
