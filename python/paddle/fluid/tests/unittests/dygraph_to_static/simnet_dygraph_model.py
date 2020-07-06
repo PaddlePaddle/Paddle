@@ -490,11 +490,11 @@ class BOW(Layer):
         left_soft = softsign_layer.ops(bow_left)
         right_soft = softsign_layer.ops(bow_right)
 
-        #left_bow = self.bow_layer(left_soft)
-        #right_bow = self.bow_layer(right_soft)
-        #cos_sim_layer = CosSimLayer()
-        #pred = cos_sim_layer.ops(left_bow, right_bow)
-        #return left_bow, pred
+        left_bow = self.bow_layer(left_soft)
+        right_bow = self.bow_layer(right_soft)
+        cos_sim_layer = CosSimLayer()
+        pred = cos_sim_layer.ops(left_bow, right_bow)
+        return left_bow, pred
 
         # matching layer
         #if self.task_mode == "pairwise":
