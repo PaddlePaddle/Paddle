@@ -49,7 +49,6 @@ endif()
 LIST(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
@@ -89,7 +88,6 @@ endif()
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
-    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -231,6 +229,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
+list(REMOVE_ITEM TEST_OPS test_conv3d_transpose_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
