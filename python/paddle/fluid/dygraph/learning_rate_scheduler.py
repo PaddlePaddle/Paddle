@@ -70,11 +70,31 @@ class LearningRateDecay(object):
         """
         Returns the state of the scheduler as a :class:`dict`.
 
-        It contains the value in self.__dict__ which is need to be saved.
+        It is a subset of self.__dict__ .
         """
+        self._state_keys()
         state_dict = {}
-        state_dict['step_num'] = self.__dict__['step_num']
+        for key in self.keys:
+            if key not in self.__dict__:
+                continue
+            value = self.__dict__[key]
+            if value is None:
+                continue
+            if isinstance(value, Variable):
+                assert value.shape == [
+                    1
+                ], "shape of Variable in state_dict must be [1] {}".format(
+                    value.shape)
+                value = value.numpy()[0]
+            state_dict[key] = value
+
         return state_dict
+
+    def _state_keys(self):
+        """
+        set the keys in self.__dict__ that are needed to be saved.
+        """
+        self.keys = ['step_num']
 
     def set_dict(self, state_dict):
         """
@@ -801,7 +821,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             raise ValueError(
                 'new_lr = origin_lr * decay_rate and decay_rate should be < 1.0.'
             )
-        self.decay_rate = decay_rate
+        self.decay_rate = self.create_lr_var(decay_rate)
 
         threshold_mode = threshold_mode.lower()
         if threshold_mode not in ['rel', 'abs']:
@@ -810,8 +830,10 @@ class ReduceLROnPlateau(LearningRateDecay):
         self.threshold_mode = threshold_mode
         check_type(learning_rate, 'learning_rate', (float, int, Variable),
                    'ReduceLROnPlateau')
-        if isinstance(learning_rate, (float, int)):
-            learning_rate = self.create_lr_var(learning_rate)
+        if not isinstance(learning_rate, (float, int, Variable)):
+            raise TypeError(
+                "The type of 'learning_rate' in 'ReduceLROnPlateau' must be 'float, int, Variable', but received %s."
+                % type(learning_rate))
 
         self.learning_rate = learning_rate
         self.verbose = verbose
@@ -825,19 +847,17 @@ class ReduceLROnPlateau(LearningRateDecay):
         self.cooldown_counter = 0
         self.best_loss = None
         self.num_bad_epochs = 0
-        self.epoch = 0
+        self.epoch_num = 0
 
-    def state_dict(self):
-        state_dict = {}
-        state_dict['cooldown_counter'] = self.cooldown_counter
-        if self.best_loss is not None:
-            state_dict['best_loss'] = self.best_loss
-
-        state_dict['num_bad_epochs'] = self.num_bad_epochs
-        state_dict['epoch'] = self.epoch
-        return state_dict
+    def _state_keys(self):
+        self.keys = [
+            'cooldown_counter', 'best_loss', 'num_bad_epochs', 'epoch_num',
+            'learning_rate'
+        ]
 
     def __call__(self):
+        if not isinstance(self.learning_rate, Variable):
+            self.learning_rate = self.create_lr_var(self.learning_rate)
         return self.learning_rate
 
     def step(self, loss):
@@ -863,7 +883,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             "should be (1L,), but the current loss.shape is {}. Maybe that "  \
             "you should call fluid.layers.mean to process it first.".format(loss.shape)
 
-        self.epoch += 1
+        self.epoch_num += 1
         if self.cooldown_counter > 0:
             self.cooldown_counter -= 1
         else:
@@ -881,10 +901,11 @@ class ReduceLROnPlateau(LearningRateDecay):
                                                 self.decay_rate, self.min_lr)
                 if self.learning_rate - new_lr > self.eps:
                     if self.verbose:
+                        old_lr = self.learning_rate.numpy()[0] if isinstance(
+                            self.learning_rate,
+                            Variable) else self.learning_rate
                         print('Epoch {}: reducing learning rate from {} to {}.'.
-                              format(self.epoch,
-                                     self.learning_rate.numpy()[0],
-                                     new_lr.numpy()[0]))
+                              format(self.epoch_num, old_lr, new_lr.numpy()[0]))
                     self.learning_rate = new_lr
 
     def _is_better(self, current, best):
@@ -929,17 +950,14 @@ class _LearningRateEpochDecay(LearningRateDecay):
 
         self.epoch()
 
-    def state_dict(self):
-        state_dict = {}
-        state_dict['epoch_num'] = self.epoch_num
-        state_dict['learning_rate'] = self.learning_rate.numpy()[0]
-        return state_dict
+    def _state_keys(self):
+        self.keys = ['epoch_num', 'learning_rate']
 
     def __call__(self):
         """ 
         Return last computed learning rate on current epoch.
         """
-        if isinstance(self.learning_rate, float):
+        if not isinstance(self.learning_rate, Variable):
             self.learning_rate = self.create_lr_var(self.learning_rate)
         return self.learning_rate
 
