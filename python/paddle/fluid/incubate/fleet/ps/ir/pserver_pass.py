@@ -24,6 +24,7 @@ from paddle.fluid.incubate.fleet.ps.ir.public import _get_optimize_ops
 from paddle.fluid.incubate.fleet.ps.ir.public import _orig_varname
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_varname_parts
 from paddle.fluid.incubate.fleet.ps.ir.public import get_sparse_tablename
+from paddle.fluid.incubate.fleet.ps.ir.public import get_all_get_sparse_tablenames
 from paddle.fluid.incubate.fleet.ps.ir.public import _get_lr_ops
 
 LEARNING_RATE_DECAY_COUNTER = "@LR_DECAY_COUNTER@"
@@ -733,8 +734,11 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
             inputs={"Grad": grad},
             outputs={"Row": ids,
                      "Value": grad},
-            attrs={"tablename": table_name,
-                   "is_entry": is_entry})
+            attrs={
+                "tablename": table_name,
+                "init": True if config.is_geo_mode() else False,
+                "is_entry": is_entry
+            })
 
         # insert read at first
         vars = [global_block.vars[acture_name] for acture_name in acture_names]
@@ -944,6 +948,9 @@ def add_geo_optimizer_pass(program, config):
     endpoint = config.get_ps_endpoint()
     params = [p for p in config.param_grad_ep_mapping[endpoint]["params"]]
 
+    sparse_tablenames = get_all_get_sparse_tablenames(
+        config.get_origin_main_program())
+
     for param in params:
         _clone_var(program.global_block(), param)
 
@@ -960,8 +967,9 @@ def add_geo_optimizer_pass(program, config):
         param = pserver_block.vars[var_name]
 
         delta_var_name = "%s.delta" % (param.name)
+        origin_varname = _orig_varname(param.name)
 
-        if param.type == core.VarDesc.VarType.SELECTED_ROWS:
+        if origin_varname in sparse_tablenames:
             sparse_grad_to_param.append(":".join([delta_var_name, param.name]))
 
         delta_var = pserver_block.create_var(

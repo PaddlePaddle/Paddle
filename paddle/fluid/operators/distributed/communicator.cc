@@ -554,16 +554,16 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
   v_timestamp.reserve(ids.size() * dims1);
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
+
   auto *var_delta = delta_scope_->Var(varname);
   auto *t_delta = var_delta->GetMutable<framework::SelectedRows>();
-
   t_delta->set_height(ids.size());
 
   std::vector<std::vector<std::vector<float> *>> values;
   auto *ins = distributed::LargeScaleKV::GetInstance();
   ins->Get(varname)->Get(ids, {"Param"}, &values);
 
-  for (auto j = 0; j < ids.size(); ++j) {
+  for (auto j = 0; j < static_cast<int>(ids.size()); ++j) {
     std::memcpy(v_latest.data() + j * dims1, t_latest.data<float>() + j * dims1,
                 dims1 * sizeof(float));
     std::copy(values[j][0]->begin(), values[j][0]->end(),
@@ -583,8 +583,7 @@ void GeoCommunicator::SendSparse(const std::string &varname, int batches) {
   blas.VADD(numel, v_timestamp.data(), t_value->data<float>(),
             v_timestamp.data());
 
-  for (auto j = 0; j < ids.size(); ++j) {
-    auto idx = ids[j];
+  for (auto j = 0; j < static_cast<int>(ids.size()); ++j) {
     std::memcpy(values[j][0]->data(), v_timestamp.data() + j * dims1,
                 dims1 * sizeof(float));
   }
