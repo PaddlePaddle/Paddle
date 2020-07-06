@@ -22,7 +22,14 @@ class CumOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    if (ctx->Attrs().Get<bool>("flatten")) {
+      ctx->SetOutputDim("Out", framework::make_ddim({framework::product(ctx->GetInputDim("X"))}));
+    }
+    else
+    {
+      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    }
+
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
