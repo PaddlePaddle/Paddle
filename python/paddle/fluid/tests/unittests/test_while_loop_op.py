@@ -199,10 +199,12 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         def cond(i, x):
             return layers.less_than(i, eleven)
 
-        def body(i, x):
+        def body(j, x):
+            i = layers.assign(j)
             x = layers.elementwise_mul(x=i, y=i)
-            i = layers.increment(i)
-            return [i, x]
+            j = layers.increment(j)
+            # i = i + 1
+            return [j, x]
 
         main_program = Program()
         startup_program = Program()
@@ -232,7 +234,9 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
                             'x': feed_x},
                       fetch_list=[mean.name, i.grad_name])
         self.assertTrue(np.allclose(np.asarray(res[0]), data))
-        self.assertTrue(np.allclose(np.asarray(res[1]), i_grad))
+        self.assertTrue(
+            np.allclose(np.asarray(res[1]), i_grad),
+            msg=" \nres = \n{} \n\n ans = \n{}".format(res[1], i_grad))
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
@@ -410,7 +414,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
             ten_2d = layers.fill_constant(shape=[2, 2], dtype='int64', value=10)
 
-            # The type of `cond` in Op(while_loop) must be callable 
+            # The type of `cond` in Op(while_loop) must be callable
             def type_error_cond():
                 out = layers.while_loop(data, body, [data_1d])
 
